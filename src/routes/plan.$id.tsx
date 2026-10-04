@@ -1,15 +1,10 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { Page, BackBar, StickyCta, btnRed, group, row } from "@/components/shell";
 import { getDest, getPkg, priceOf, gbLabel } from "@/lib/catalog";
 import { rupiah } from "@/lib/pricing";
 
 export const Route = createFileRoute("/plan/$id")({
-  loader: ({ params }) => {
-    const p = getPkg(params.id);
-    const d = p && getDest(p.dest);
-    if (!p || !d) throw notFound();
-    return { p, d, price: priceOf(p) };
-  },
+  loader: () => { throw redirect({ to: "/live-catalog" }); },
   head: ({ loaderData }) => {
     const t = loaderData ? `${loaderData.d.nameId} ${gbLabel(loaderData.p.dataGb)} — Djiwa Travel` : "Tidak ditemukan";
     const desc = loaderData ? `${gbLabel(loaderData.p.dataGb)} selama ${loaderData.p.days} hari, ${rupiah(loaderData.price)}.` : "";

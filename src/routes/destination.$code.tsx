@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { Page, BackBar, btnPrimary } from "@/components/shell";
 import { getDest, priceOf, gbLabel } from "@/lib/catalog";
@@ -6,11 +6,7 @@ import { rupiah } from "@/lib/pricing";
 import { durations, recommend, usageProfiles, type Usage } from "@/lib/recommend";
 
 export const Route = createFileRoute("/destination/$code")({
-  loader: ({ params }) => {
-    const d = getDest(params.code);
-    if (!d) throw notFound();
-    return d;
-  },
+  loader: () => { throw redirect({ to: "/live-catalog" }); },
   head: ({ loaderData }) => {
     const t = loaderData ? `eSIM ${loaderData.nameId} — Djiwa Travel` : "Tidak ditemukan";
     const desc = loaderData ? `Internet untuk perjalananmu ke ${loaderData.nameId}. Bayar QRIS, langsung aktif.` : "";

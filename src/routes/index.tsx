@@ -57,7 +57,7 @@ function Home() {
   const dest = pkg && getDest(pkg.dest);
 
   const services = [
-    { icon: Wifi, label: "eSIM", sub: "Internasional", to: "/explore" as const },
+    { icon: Wifi, label: "eSIM", sub: "Internasional", to: "/live-catalog" as const },
     { icon: Luggage, label: "Bagasi", sub: "Segera hadir" },
     { icon: ShoppingBag, label: "Shopper", sub: "Segera hadir" },
   ];
@@ -75,13 +75,13 @@ function Home() {
       <p className="mt-4 text-[14px] text-muted-foreground">{hello},</p>
       <h1 className="large-title">Mau pergi ke mana?</h1>
 
-      <button onClick={() => nav({ to: "/explore" })}
+      <button onClick={() => nav({ to: "/live-catalog" })}
         className="tap mt-4 flex h-12 w-full items-center gap-3 rounded-2xl bg-surface px-4 text-left text-[15px] text-muted-foreground shadow-sm">
         <Search className="size-5 shrink-0" /> Cari negara atau wilayah
       </button>
 
       <section className="mt-7">
-        <SectionTitle action={<Link to="/explore">Lihat Semua ›</Link>}>Destinasi Populer</SectionTitle>
+        <SectionTitle action={<Link to="/live-catalog">Lihat Semua ›</Link>}>Destinasi Populer</SectionTitle>
         <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4">
           {destinations.filter((d) => d.popular).map((d) => (
             <Link key={d.code} to="/destination/$code" params={{ code: d.code.toLowerCase() }}

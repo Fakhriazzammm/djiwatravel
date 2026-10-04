@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
+import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
@@ -33,6 +34,11 @@ const ExploreRoute = ExploreRouteImport.update({
 const FinderRoute = FinderRouteImport.update({
   id: '/finder',
   path: '/finder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveCatalogRoute = LiveCatalogRouteImport.update({
+  id: '/live-catalog',
+  path: '/live-catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
+  '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
+  '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
+  '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/explore'
     | '/finder'
+    | '/live-catalog'
     | '/profile'
     | '/checkout/$id'
     | '/destination/$code'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/explore'
     | '/finder'
+    | '/live-catalog'
     | '/profile'
     | '/checkout/$id'
     | '/destination/$code'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/explore'
     | '/finder'
+    | '/live-catalog'
     | '/profile'
     | '/checkout/$id'
     | '/destination/$code'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExploreRoute: typeof ExploreRoute
   FinderRoute: typeof FinderRoute
+  LiveCatalogRoute: typeof LiveCatalogRoute
   ProfileRoute: typeof ProfileRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/finder'
       fullPath: '/finder'
       preLoaderRoute: typeof FinderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live-catalog': {
+      id: '/live-catalog'
+      path: '/live-catalog'
+      fullPath: '/live-catalog'
+      preLoaderRoute: typeof LiveCatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -239,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExploreRoute: ExploreRoute,
   FinderRoute: FinderRoute,
+  LiveCatalogRoute: LiveCatalogRoute,
   ProfileRoute: ProfileRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,

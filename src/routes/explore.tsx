@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { Search, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Page, group } from "@/components/shell";
@@ -6,6 +6,7 @@ import { search, fromPrice } from "@/lib/catalog";
 import { rupiah } from "@/lib/pricing";
 
 export const Route = createFileRoute("/explore")({
+  loader: () => { throw redirect({ to: "/live-catalog" }); },
   head: () => ({
     meta: [
       { title: "Cari destinasi — Djiwa Travel" },
