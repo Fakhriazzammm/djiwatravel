@@ -1,8 +1,9 @@
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
-import { Copy } from "lucide-react";
+import { Copy, Eye, EyeOff } from "lucide-react";
 import type { EsimProfile } from "@/lib/providers";
 import { group } from "./shell";
+import { maskSensitive } from "@/lib/sensitive-data";
 
 export function EsimQr({ esim }: { esim: EsimProfile }) {
   return (
@@ -14,11 +15,18 @@ export function EsimQr({ esim }: { esim: EsimProfile }) {
 }
 
 function CopyRow({ k, v }: { k: string; v: string }) {
+  const [revealed, setRevealed] = useState(false);
+  const display = revealed ? v : maskSensitive(v);
   return (
-    <button onClick={() => navigator.clipboard?.writeText(v)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-      <div className="flex-1 min-w-0"><p className="text-xs text-muted-foreground">{k}</p><p className="truncate font-mono text-sm">{v}</p></div>
-      <Copy className="size-4 text-muted-foreground" />
-    </button>
+    <div className="flex w-full items-center gap-3 px-4 py-3">
+      <div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{k}</p><p className="truncate font-mono text-sm">{display}</p></div>
+      <button type="button" aria-label={revealed ? `Sembunyikan ${k}` : `Tampilkan ${k}`} onClick={() => setRevealed((value) => !value)} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary">
+        {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+      <button type="button" aria-label={`Salin ${k}`} onClick={() => navigator.clipboard?.writeText(v)} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary">
+        <Copy className="size-4" />
+      </button>
+    </div>
   );
 }
 

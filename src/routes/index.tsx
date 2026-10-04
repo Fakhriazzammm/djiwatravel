@@ -52,7 +52,7 @@ function Home() {
   const nav = useNavigate();
   const orders = useOrders();
   useEffect(() => setHello(greeting()), []);
-  const active = orders?.find((o) => o.status === "READY");
+  const active = orders?.find((o) => o.status === "READY" || o.status === "INSTALLED");
   const pkg = active && getPkg(active.packageId);
   const dest = pkg && getDest(pkg.dest);
 

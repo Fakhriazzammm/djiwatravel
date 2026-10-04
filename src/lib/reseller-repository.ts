@@ -1,7 +1,7 @@
 import type { ResellerCatalogPackage } from "./esim-access-catalog";
 import type { ResellerOrderStatus } from "./reseller-order";
 
-export type ResellerOrderRecord = { id: string; status: ResellerOrderStatus; totalAmount: number; currency: "IDR"; idempotencyKey: string; packageCode: string; createdAt: number };
+export type ResellerOrderRecord = { id: string; status: ResellerOrderStatus; totalAmount: number; currency: "IDR"; idempotencyKey: string; packageCode: string; createdAt: number; priceSnapshot?: Record<string, number | string>; providerOrderNo?: string; providerStatus?: string; expiresAt?: number };
 export type EsimProfileRecord = { orderId: string; iccid: string; status: string; qrPayloadEncrypted?: string; activationCodeEncrypted?: string };
 
 export interface ResellerRepository {

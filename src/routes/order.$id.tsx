@@ -31,7 +31,7 @@ function OrderPage() {
   const p = getPkg(o.packageId)!;
   const d = getDest(p.dest)!;
 
-  if (o.status === "WAITING_PAYMENT") {
+  if (o.status === "ORDER_CREATED" || o.status === "WAITING_PAYMENT") {
     return (
       <Page tabs={false}>
         <p className="pt-8 text-center text-sm text-muted-foreground">Menunggu pembayaran</p>
@@ -78,6 +78,19 @@ function OrderPage() {
         </div>
         {o.status !== "REFUNDED" && <button onClick={() => simulatePaid(o.id)} className={btnPrimary}>Coba Lagi</button>}
         <a href="https://wa.me/" className={`${btnSoft} mt-3`}>Hubungi Support</a>
+      </Page>
+    );
+  }
+
+  if (o.status === "CANCELLED" || o.status === "EXPIRED") {
+    return (
+      <Page tabs={false}>
+        <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+          <AlertCircle className="size-12 text-muted-foreground" />
+          <h1 className="mt-6 text-2xl font-bold">{o.status === "EXPIRED" ? "Paket sudah kedaluwarsa" : "Pesanan dibatalkan"}</h1>
+          <p className="mt-2 text-muted-foreground">Silakan pilih paket eSIM lain jika ingin melanjutkan perjalanan.</p>
+          <Link to="/live-catalog" className={`${btnPrimary} mt-6`}>Lihat paket eSIM</Link>
+        </div>
       </Page>
     );
   }

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Page, Wordmark, btnPrimary } from "@/components/shell";
 import { getDest, getPkg, gbLabel } from "@/lib/catalog";
 import { useOrders, type Order } from "@/lib/orders";
+import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 
 export const Route = createFileRoute("/my-esim/")({
   head: () => ({
@@ -21,7 +22,8 @@ export function EsimCard({ o }: { o: Order }) {
   const total = typeof p.dataGb === "number" ? p.dataGb : null;
   const left = total ? total - (o.usedGb ?? 0) : null;
   const pct = total && left !== null ? Math.round((left / total) * 100) : 100;
-  const ready = o.status === "READY";
+  const status = effectiveOrderStatus(o.status, o.expiresAt);
+  const ready = status === "READY" || status === "INSTALLED";
   return (
     <Link to={ready ? "/my-esim/$id" : "/order/$id"} params={{ id: o.id }} className="tap block rounded-2xl bg-surface p-5">
       <div className="flex items-center gap-3">
@@ -31,7 +33,7 @@ export function EsimCard({ o }: { o: Order }) {
           <p className="text-sm text-muted-foreground">{gbLabel(p.dataGb)} · {p.days} hari</p>
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ready ? "bg-success/15 text-success" : "bg-brand-red-soft text-brand-red"}`}>
-          {ready ? "Siap" : o.status === "WAITING_PAYMENT" ? "Belum bayar" : "Diproses"}
+          {ORDER_STATUS_LABEL[status]}
         </span>
       </div>
       {ready && (
@@ -51,8 +53,8 @@ export function EsimCard({ o }: { o: Order }) {
 
 function MyEsim() {
   const orders = useOrders();
-  const ready = orders?.filter((o) => o.status === "READY") ?? [];
-  const pending = orders?.filter((o) => o.status !== "READY" && o.status !== "REFUNDED") ?? [];
+  const ready = orders?.filter((o) => { const status = effectiveOrderStatus(o.status, o.expiresAt); return status === "READY" || status === "INSTALLED"; }) ?? [];
+  const pending = orders?.filter((o) => { const status = effectiveOrderStatus(o.status, o.expiresAt); return status !== "READY" && status !== "INSTALLED" && status !== "REFUNDED"; }) ?? [];
   return (
     <Page>
       <h1 className="large-title pt-4">My eSIM</h1>
