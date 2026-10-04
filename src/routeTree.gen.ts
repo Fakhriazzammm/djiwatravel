@@ -14,6 +14,10 @@ import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
+import { Route as AdminProvisioningRouteImport } from './routes/admin.provisioning'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
@@ -44,6 +48,26 @@ const LiveCatalogRoute = LiveCatalogRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminOrdersRoute = AdminOrdersRouteImport.update({
+  id: '/admin/orders',
+  path: '/admin/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
+  id: '/admin/provisioning',
+  path: '/admin/provisioning',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/admin/settings',
+  path: '/admin/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutIdRoute = CheckoutIdRouteImport.update({
@@ -83,11 +107,15 @@ export interface FileRoutesByFullPath {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/provisioning': typeof AdminProvisioningRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
 }
 export interface FileRoutesByTo {
@@ -96,11 +124,15 @@ export interface FileRoutesByTo {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/provisioning': typeof AdminProvisioningRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
+  '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
 }
 export interface FileRoutesById {
@@ -110,11 +142,15 @@ export interface FileRoutesById {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/provisioning': typeof AdminProvisioningRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
+  '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
 }
 export interface FileRouteTypes {
@@ -125,11 +161,15 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/profile'
+    | '/admin/orders'
+    | '/admin/provisioning'
+    | '/admin/settings'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
+    | '/admin/'
     | '/my-esim/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -138,11 +178,15 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/profile'
+    | '/admin/orders'
+    | '/admin/provisioning'
+    | '/admin/settings'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
+    | '/admin'
     | '/my-esim'
   id:
     | '__root__'
@@ -151,11 +195,15 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/profile'
+    | '/admin/orders'
+    | '/admin/provisioning'
+    | '/admin/settings'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
+    | '/admin/'
     | '/my-esim/'
   fileRoutesById: FileRoutesById
 }
@@ -165,11 +213,15 @@ export interface RootRouteChildren {
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
   ProfileRoute: typeof ProfileRoute
+  AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminProvisioningRoute: typeof AdminProvisioningRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
   OrderIdRoute: typeof OrderIdRoute
   PlanIdRoute: typeof PlanIdRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
 }
 
@@ -208,6 +260,34 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/orders': {
+      id: '/admin/orders'
+      path: '/admin/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/provisioning': {
+      id: '/admin/provisioning'
+      path: '/admin/provisioning'
+      fullPath: '/admin/provisioning'
+      preLoaderRoute: typeof AdminProvisioningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/admin/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout/$id': {
@@ -261,11 +341,15 @@ const rootRouteChildren: RootRouteChildren = {
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,
   ProfileRoute: ProfileRoute,
+  AdminOrdersRoute: AdminOrdersRoute,
+  AdminProvisioningRoute: AdminProvisioningRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
   MyEsimIdRoute: MyEsimIdRoute,
   OrderIdRoute: OrderIdRoute,
   PlanIdRoute: PlanIdRoute,
+  AdminIndexRoute: AdminIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
 }
 export const routeTree = rootRouteImport
