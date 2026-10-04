@@ -115,8 +115,6 @@ function Home() {
                 <p className="text-[11px] text-primary-foreground/85">Mulai {rupiah(fromPrice(d.code))}</p>
               </div>
             </Link>
-          ))}</p>
-            </Link>
           ))}
         </div>
       </section>
