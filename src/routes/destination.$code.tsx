@@ -53,23 +53,25 @@ function Destination() {
 
       <h2 className="mt-7 text-[18px] font-bold">Pilihan untuk perjalananmu</h2>
       <div className="mt-3 rounded-2xl bg-surface p-4 shadow-sm">
-        <span className="rounded-full bg-brand-red-soft px-2.5 py-1 text-xs font-semibold text-brand-red">Rekomendasi</span>
-        <p className="mt-3 text-4xl font-bold tracking-tight">{gbLabel(best.dataGb)}</p>
-        <p className="text-muted-foreground">{best.days} hari</p>
-        <p className="mt-3 text-sm">Cocok untuk {usageProfiles[usage].fit}.</p>
-        <div className="mt-5 flex items-center justify-between">
-          <p className="text-2xl font-bold">{rupiah(priceOf(best))}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span className="rounded-full bg-brand-red-soft px-2.5 py-1 text-[11px] font-semibold text-brand-red">Rekomendasi</span>
+            <p className="mt-2 text-3xl font-bold tracking-tight">{gbLabel(best.dataGb)}</p>
+            <p className="text-[13px] text-muted-foreground">{best.days} hari</p>
+          </div>
+          <p className="shrink-0 pt-7 text-xl font-bold">{rupiah(priceOf(best))}</p>
         </div>
+        <p className="mt-3 text-[13px] text-muted-foreground">Cocok untuk {usageProfiles[usage].fit}.</p>
         <Link to="/plan/$id" params={{ id: best.id }} className={`${btnPrimary} mt-4`}>Pilih Paket</Link>
       </div>
 
       <h3 className="mt-7 mb-3 text-[15px] font-semibold text-muted-foreground">Pilihan lainnya</h3>
       <div className="grid grid-cols-2 gap-3">
         {others.map((p) => (
-          <Link key={p.id} to="/plan/$id" params={{ id: p.id }} className="tap rounded-2xl bg-surface p-4">
-            <p className="text-xl font-bold">{gbLabel(p.dataGb)}</p>
-            <p className="text-sm text-muted-foreground">{p.days} hari</p>
-            <p className="mt-3 font-semibold">{rupiah(priceOf(p))}</p>
+          <Link key={p.id} to="/plan/$id" params={{ id: p.id }} className="tap flex flex-col rounded-2xl bg-surface p-4">
+            <span className="text-lg font-bold">{gbLabel(p.dataGb)}</span>
+            <span className="text-[12px] text-muted-foreground">{p.days} hari</span>
+            <span className="mt-2 text-[15px] font-semibold text-brand-red">{rupiah(priceOf(p))}</span>
           </Link>
         ))}
       </div>
