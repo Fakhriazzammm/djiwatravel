@@ -2,7 +2,7 @@ import { BarChart3, Boxes, CreditCard, Gauge, ListChecks, Settings, ShieldCheck,
 import { Link, useLocation } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 
-const items = [["Overview", "/admin", Gauge], ["Orders", "/admin/orders", ListChecks], ["Payments", "/admin/payments", CreditCard], ["Provisioning", "/admin/provisioning", ShieldCheck], ["Catalog", "/admin/catalog", Boxes], ["Analytics", "/admin/analytics", BarChart3], ["Customers", "/admin/customers", Users], ["Settings", "/admin/settings", Settings]] as const;
+const items = [["Overview", "/admin", Gauge], ["Orders", "/admin/orders", ListChecks], ["Payments", "/admin/payments", CreditCard], ["Provisioning", "/admin/provisioning", ShieldCheck], ["Catalog", "/admin/catalog", Boxes], ["Analytics", "/admin/analytics", BarChart3], ["Customers", "/admin/customers", Users], ["Settings", "/admin/settings", Settings], ["Audit log", "/admin/audit-log", ShieldCheck], ["Team", "/admin/team", Users]] as const;
 
 export function AdminShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
  const [open, setOpen] = useState(false); const location = useLocation();

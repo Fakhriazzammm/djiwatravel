@@ -9,6 +9,8 @@ export function getResellerReadiness(env: NodeJS.ProcessEnv = process.env): Read
     { name: "Payment API", ready: Boolean(env.MAYAR_API_KEY), detail: env.MAYAR_API_KEY ? "Mayar server-side key tersedia" : "MAYAR_API_KEY belum dikonfigurasi" },
     { name: "Payment webhook", ready: Boolean(env.PAYMENT_WEBHOOK_SECRET), detail: env.PAYMENT_WEBHOOK_SECRET ? "Webhook signing secret tersedia" : "Webhook payment belum dikonfigurasi" },
     { name: "Database", ready: Boolean(env.DATABASE_URL || (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY)), detail: (env.DATABASE_URL || env.SUPABASE_URL) ? "Database connection tersedia" : "Supabase/Postgres belum dipilih" },
+    { name: "Admin auth", ready: Boolean(env.ADMIN_AUTH_ISSUER && env.ADMIN_AUTH_AUDIENCE), detail: env.ADMIN_AUTH_ISSUER && env.ADMIN_AUTH_AUDIENCE ? "Admin session verifier tersedia" : "Admin auth issuer/audience belum dikonfigurasi" },
+    { name: "Operations worker", ready: Boolean(env.ESIM_RECONCILIATION_WORKER_ENABLED === "true"), detail: env.ESIM_RECONCILIATION_WORKER_ENABLED === "true" ? "Worker enabled" : "Reconciliation worker belum diaktifkan" },
   ];
 }
 
