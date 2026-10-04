@@ -11,8 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExploreRouteImport } from './routes/explore'
+import { Route as FinderRouteImport } from './routes/finder'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
+import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
+import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
 
@@ -26,6 +30,16 @@ const ExploreRoute = ExploreRouteImport.update({
   path: '/explore',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FinderRoute = FinderRouteImport.update({
+  id: '/finder',
+  path: '/finder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutIdRoute = CheckoutIdRouteImport.update({
   id: '/checkout/$id',
   path: '/checkout/$id',
@@ -34,6 +48,16 @@ const CheckoutIdRoute = CheckoutIdRouteImport.update({
 const DestinationCodeRoute = DestinationCodeRouteImport.update({
   id: '/destination/$code',
   path: '/destination/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyEsimIndexRoute = MyEsimIndexRouteImport.update({
+  id: '/my-esim/',
+  path: '/my-esim/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyEsimIdRoute = MyEsimIdRouteImport.update({
+  id: '/my-esim/$id',
+  path: '/my-esim/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderIdRoute = OrderIdRouteImport.update({
@@ -50,62 +74,90 @@ const PlanIdRoute = PlanIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/explore': typeof ExploreRoute
+  '/finder': typeof FinderRoute
+  '/profile': typeof ProfileRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
+  '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
+  '/my-esim/': typeof MyEsimIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/explore': typeof ExploreRoute
+  '/finder': typeof FinderRoute
+  '/profile': typeof ProfileRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
+  '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
+  '/my-esim': typeof MyEsimIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/explore': typeof ExploreRoute
+  '/finder': typeof FinderRoute
+  '/profile': typeof ProfileRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
+  '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
+  '/my-esim/': typeof MyEsimIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/explore'
+    | '/finder'
+    | '/profile'
     | '/checkout/$id'
     | '/destination/$code'
+    | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
+    | '/my-esim/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/explore'
+    | '/finder'
+    | '/profile'
     | '/checkout/$id'
     | '/destination/$code'
+    | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
+    | '/my-esim'
   id:
     | '__root__'
     | '/'
     | '/explore'
+    | '/finder'
+    | '/profile'
     | '/checkout/$id'
     | '/destination/$code'
+    | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
+    | '/my-esim/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExploreRoute: typeof ExploreRoute
+  FinderRoute: typeof FinderRoute
+  ProfileRoute: typeof ProfileRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
+  MyEsimIdRoute: typeof MyEsimIdRoute
   OrderIdRoute: typeof OrderIdRoute
   PlanIdRoute: typeof PlanIdRoute
+  MyEsimIndexRoute: typeof MyEsimIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -124,6 +176,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExploreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/finder': {
+      id: '/finder'
+      path: '/finder'
+      fullPath: '/finder'
+      preLoaderRoute: typeof FinderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout/$id': {
       id: '/checkout/$id'
       path: '/checkout/$id'
@@ -136,6 +202,20 @@ declare module '@tanstack/react-router' {
       path: '/destination/$code'
       fullPath: '/destination/$code'
       preLoaderRoute: typeof DestinationCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-esim/': {
+      id: '/my-esim/'
+      path: '/my-esim'
+      fullPath: '/my-esim/'
+      preLoaderRoute: typeof MyEsimIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-esim/$id': {
+      id: '/my-esim/$id'
+      path: '/my-esim/$id'
+      fullPath: '/my-esim/$id'
+      preLoaderRoute: typeof MyEsimIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order/$id': {
@@ -158,10 +238,14 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExploreRoute: ExploreRoute,
+  FinderRoute: FinderRoute,
+  ProfileRoute: ProfileRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
+  MyEsimIdRoute: MyEsimIdRoute,
   OrderIdRoute: OrderIdRoute,
   PlanIdRoute: PlanIdRoute,
+  MyEsimIndexRoute: MyEsimIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
