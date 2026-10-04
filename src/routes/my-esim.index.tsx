@@ -60,7 +60,7 @@ function MyEsim() {
         <div className="mt-6 h-32 animate-pulse rounded-2xl bg-secondary" />
       ) : orders.length === 0 ? (
         <div className="mt-24 text-center">
-          <Wordmark className="text-2xl" />
+          <Wordmark className="mx-auto h-20" />
           <p className="mt-2 text-muted-foreground">Bawa Djiwamu Lebih Jauh.</p>
           <p className="mt-6">Belum ada eSIM. Mau pergi ke mana?</p>
           <Link to="/explore" className={`${btnPrimary} mt-6`}>Cari Destinasi</Link>
