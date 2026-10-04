@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Page, BackBar, StickyCta, btnRed, group } from "@/components/shell";
+import { Page, BackBar, StickyCta, btnRed, group, row } from "@/components/shell";
 import { getDest, getPkg, priceOf, gbLabel } from "@/lib/catalog";
 import { rupiah } from "@/lib/pricing";
 
@@ -19,32 +19,34 @@ export const Route = createFileRoute("/plan/$id")({
 });
 
 function Row({ k, v }: { k: string; v: string }) {
-  return <div className="flex justify-between px-4 py-3.5"><span className="text-muted-foreground">{k}</span><span className="font-medium">{v}</span></div>;
+  return <div className={row}><span className="text-[14px] text-muted-foreground">{k}</span><span className="truncate text-[14px] font-medium">{v}</span></div>;
 }
 
 function Plan() {
   const { p, d, price } = Route.useLoaderData();
   return (
     <Page tabs={false}>
-      <BackBar />
-      <p className="text-[17px]">{d.flag} {d.nameId}</p>
-      <h1 className="mt-1 text-5xl font-bold tracking-tight">{gbLabel(p.dataGb)}</h1>
-      <p className="mt-1 text-muted-foreground">Berlaku {p.days} hari</p>
+      <BackBar title={`${d.flag} ${d.nameId}`} />
+      <div className="rounded-2xl bg-surface p-5 text-center">
+        <p className="text-4xl font-bold tracking-tight">{gbLabel(p.dataGb)}</p>
+        <p className="mt-1 text-[13px] text-muted-foreground">Berlaku {p.days} hari</p>
+        <p className="mt-3 text-2xl font-bold text-brand-red">{rupiah(price)}</p>
+      </div>
 
-      <div className={`${group} mt-8`}>
+      <div className={`${group} mt-4`}>
         <Row k="Kuota" v={gbLabel(p.dataGb)} />
         <Row k="Masa berlaku" v={`${p.days} hari`} />
-        <Row k="Wilayah" v={d.name} />
+        <Row k="Wilayah" v={d.nameId} />
         {d.network && <Row k="Jaringan" v={d.network} />}
         <Row k="Top up" v={p.topUp ? "Bisa" : "Tidak tersedia"} />
       </div>
 
       {p.activationOnConnect && (
-        <p className="mt-5 px-1 text-sm text-muted-foreground">
+        <p className="mt-4 px-1 text-[13px] text-muted-foreground">
           Masa aktif dimulai saat eSIM pertama kali terhubung ke jaringan di negara tujuan.
         </p>
       )}
-      <p className="mt-3 px-1 text-sm text-muted-foreground">Hanya data internet. Nomor WhatsApp-mu tetap bisa dipakai.</p>
+      <p className="mt-2 px-1 text-[13px] text-muted-foreground">Hanya data internet. Nomor WhatsApp-mu tetap bisa dipakai.</p>
 
       <StickyCta>
         <Link to="/checkout/$id" params={{ id: p.id }} className={btnRed}>Lanjut — {rupiah(price)}</Link>

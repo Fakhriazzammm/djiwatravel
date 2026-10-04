@@ -12,13 +12,15 @@ const tabs = [
 
 export function TabBar() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-surface/90 backdrop-blur-xl safe-bottom">
-      <div className="mx-auto flex max-w-md justify-around pt-2">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-surface/95 backdrop-blur-xl safe-bottom">
+      <div className="mx-auto grid max-w-md grid-cols-4 px-2 pt-1.5">
         {tabs.map(({ to, label, icon: Icon }) => (
           <Link key={to} to={to} activeOptions={{ exact: to === "/" }}
-            className="flex w-20 flex-col items-center gap-1 py-1 text-[11px] font-medium text-muted-foreground"
-            activeProps={{ className: "text-brand-red" }}>
-            <Icon className="size-6" strokeWidth={1.6} />
+            className="group flex flex-col items-center gap-0.5 py-1 text-[11px] font-medium text-muted-foreground"
+            activeProps={{ className: "text-brand-red", "data-active": "" } as never}>
+            <span className="flex h-7 w-12 items-center justify-center rounded-full group-data-[active]:bg-brand-red-soft">
+              <Icon className="size-[22px]" strokeWidth={1.8} />
+            </span>
             {label}
           </Link>
         ))}
@@ -33,34 +35,48 @@ export function Wordmark({ className = "h-10" }: { className?: string }) {
 
 export function Page({ children, tabs = true }: { children: ReactNode; tabs?: boolean }) {
   return (
-    <div className={`mx-auto min-h-screen max-w-md px-5 safe-top ${tabs ? "pb-28" : "pb-32"}`}>
+    <div className={`mx-auto min-h-screen w-full max-w-md px-4 safe-top ${tabs ? "pb-24" : "pb-28"}`}>
       {children}
       {tabs && <TabBar />}
     </div>
   );
 }
 
+/** iOS nav bar: back left, title centered, equal-width spacer right. */
 export function BackBar({ title }: { title?: string }) {
   const router = useRouter();
   return (
-    <div className="-mx-2 mb-2 flex h-11 items-center">
-      <button onClick={() => router.history.back()} className="tap flex items-center text-[17px] text-brand-red" aria-label="Kembali">
-        <ChevronLeft className="size-7" strokeWidth={2} /> Kembali
+    <div className="mb-3 grid h-11 grid-cols-[5.5rem_minmax(0,1fr)_5.5rem] items-center">
+      <button onClick={() => router.history.back()} className="tap -ml-1.5 flex items-center text-[16px] text-brand-red" aria-label="Kembali">
+        <ChevronLeft className="size-6 shrink-0" strokeWidth={2.2} /> Kembali
       </button>
-      {title && <span className="ml-auto mr-2 text-[15px] font-semibold">{title}</span>}
+      <span className="truncate text-center text-[16px] font-semibold">{title}</span>
+      <span />
     </div>
   );
 }
 
 export function StickyCta({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-surface/90 px-5 pt-3 backdrop-blur-xl safe-bottom">
-      <div className="mx-auto max-w-md pb-2">{children}</div>
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-surface/95 px-4 pt-3 backdrop-blur-xl safe-bottom">
+      <div className="mx-auto max-w-md pb-1">{children}</div>
     </div>
   );
 }
 
-export const btnPrimary = "tap flex h-14 w-full items-center justify-center rounded-2xl bg-primary text-[17px] font-semibold text-primary-foreground disabled:opacity-50";
-export const btnRed = "tap flex h-14 w-full items-center justify-center rounded-2xl bg-brand-red text-[17px] font-semibold text-primary-foreground dark:text-foreground";
-export const btnSoft = "tap flex h-12 w-full items-center justify-center rounded-2xl bg-secondary text-[15px] font-semibold text-secondary-foreground";
+export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <h2 className="min-w-0 truncate text-[18px] font-bold">{children}</h2>
+      {action && <div className="shrink-0 text-[13px] font-medium text-muted-foreground">{action}</div>}
+    </div>
+  );
+}
+
+export const btnBase = "tap flex w-full items-center justify-center gap-2 rounded-2xl font-semibold disabled:opacity-40";
+export const btnPrimary = `${btnBase} h-[52px] bg-primary text-[16px] text-primary-foreground`;
+export const btnRed = `${btnBase} h-[52px] bg-brand-red text-[16px] text-primary-foreground`;
+export const btnSoft = `${btnBase} h-11 bg-secondary text-[14px] text-secondary-foreground`;
 export const group = "overflow-hidden rounded-2xl bg-surface divide-y";
+export const row = "flex min-h-12 items-center justify-between gap-3 px-4 py-3";
+export const label = "mb-2 px-1 text-[13px] font-medium uppercase tracking-wide text-muted-foreground";
