@@ -11,6 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExploreRouteImport } from './routes/explore'
+import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
+import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
+import { Route as OrderIdRouteImport } from './routes/order.$id'
+import { Route as PlanIdRouteImport } from './routes/plan.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +26,86 @@ const ExploreRoute = ExploreRouteImport.update({
   path: '/explore',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutIdRoute = CheckoutIdRouteImport.update({
+  id: '/checkout/$id',
+  path: '/checkout/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DestinationCodeRoute = DestinationCodeRouteImport.update({
+  id: '/destination/$code',
+  path: '/destination/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderIdRoute = OrderIdRouteImport.update({
+  id: '/order/$id',
+  path: '/order/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanIdRoute = PlanIdRouteImport.update({
+  id: '/plan/$id',
+  path: '/plan/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/explore': typeof ExploreRoute
+  '/checkout/$id': typeof CheckoutIdRoute
+  '/destination/$code': typeof DestinationCodeRoute
+  '/order/$id': typeof OrderIdRoute
+  '/plan/$id': typeof PlanIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/explore': typeof ExploreRoute
+  '/checkout/$id': typeof CheckoutIdRoute
+  '/destination/$code': typeof DestinationCodeRoute
+  '/order/$id': typeof OrderIdRoute
+  '/plan/$id': typeof PlanIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/explore': typeof ExploreRoute
+  '/checkout/$id': typeof CheckoutIdRoute
+  '/destination/$code': typeof DestinationCodeRoute
+  '/order/$id': typeof OrderIdRoute
+  '/plan/$id': typeof PlanIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/explore'
+  fullPaths:
+    | '/'
+    | '/explore'
+    | '/checkout/$id'
+    | '/destination/$code'
+    | '/order/$id'
+    | '/plan/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/explore'
-  id: '__root__' | '/' | '/explore'
+  to:
+    | '/'
+    | '/explore'
+    | '/checkout/$id'
+    | '/destination/$code'
+    | '/order/$id'
+    | '/plan/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/explore'
+    | '/checkout/$id'
+    | '/destination/$code'
+    | '/order/$id'
+    | '/plan/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExploreRoute: typeof ExploreRoute
+  CheckoutIdRoute: typeof CheckoutIdRoute
+  DestinationCodeRoute: typeof DestinationCodeRoute
+  OrderIdRoute: typeof OrderIdRoute
+  PlanIdRoute: typeof PlanIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +124,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExploreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout/$id': {
+      id: '/checkout/$id'
+      path: '/checkout/$id'
+      fullPath: '/checkout/$id'
+      preLoaderRoute: typeof CheckoutIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/destination/$code': {
+      id: '/destination/$code'
+      path: '/destination/$code'
+      fullPath: '/destination/$code'
+      preLoaderRoute: typeof DestinationCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order/$id': {
+      id: '/order/$id'
+      path: '/order/$id'
+      fullPath: '/order/$id'
+      preLoaderRoute: typeof OrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan/$id': {
+      id: '/plan/$id'
+      path: '/plan/$id'
+      fullPath: '/plan/$id'
+      preLoaderRoute: typeof PlanIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExploreRoute: ExploreRoute,
+  CheckoutIdRoute: CheckoutIdRoute,
+  DestinationCodeRoute: DestinationCodeRoute,
+  OrderIdRoute: OrderIdRoute,
+  PlanIdRoute: PlanIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
