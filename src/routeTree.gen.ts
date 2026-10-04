@@ -19,7 +19,9 @@ import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as AdminCatalogRouteImport } from './routes/admin.catalog'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
+import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
 import { Route as AdminProvisioningRouteImport } from './routes/admin.provisioning'
 import { Route as AdminRefundsRouteImport } from './routes/admin.refunds'
@@ -83,9 +85,19 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
   path: '/admin/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/admin/dashboard',
+  path: '/admin/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
   id: '/admin/orders',
   path: '/admin/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminOverviewRoute = AdminOverviewRouteImport.update({
+  id: '/admin/overview',
+  path: '/admin/overview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
@@ -159,7 +171,9 @@ export interface FileRoutesByFullPath {
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
@@ -184,7 +198,9 @@ export interface FileRoutesByTo {
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
@@ -210,7 +226,9 @@ export interface FileRoutesById {
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
@@ -237,7 +255,9 @@ export interface FileRouteTypes {
     | '/admin/audit-log'
     | '/admin/catalog'
     | '/admin/customers'
+    | '/admin/dashboard'
     | '/admin/orders'
+    | '/admin/overview'
     | '/admin/payments'
     | '/admin/provisioning'
     | '/admin/refunds'
@@ -262,7 +282,9 @@ export interface FileRouteTypes {
     | '/admin/audit-log'
     | '/admin/catalog'
     | '/admin/customers'
+    | '/admin/dashboard'
     | '/admin/orders'
+    | '/admin/overview'
     | '/admin/payments'
     | '/admin/provisioning'
     | '/admin/refunds'
@@ -287,7 +309,9 @@ export interface FileRouteTypes {
     | '/admin/audit-log'
     | '/admin/catalog'
     | '/admin/customers'
+    | '/admin/dashboard'
     | '/admin/orders'
+    | '/admin/overview'
     | '/admin/payments'
     | '/admin/provisioning'
     | '/admin/refunds'
@@ -313,7 +337,9 @@ export interface RootRouteChildren {
   AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminCatalogRoute: typeof AdminCatalogRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminOverviewRoute: typeof AdminOverviewRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminProvisioningRoute: typeof AdminProvisioningRoute
   AdminRefundsRoute: typeof AdminRefundsRoute
@@ -401,11 +427,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/admin/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/orders': {
       id: '/admin/orders'
       path: '/admin/orders'
       fullPath: '/admin/orders'
       preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/overview': {
+      id: '/admin/overview'
+      path: '/admin/overview'
+      fullPath: '/admin/overview'
+      preLoaderRoute: typeof AdminOverviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/payments': {
@@ -505,7 +545,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAuditLogRoute: AdminAuditLogRoute,
   AdminCatalogRoute: AdminCatalogRoute,
   AdminCustomersRoute: AdminCustomersRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
   AdminOrdersRoute: AdminOrdersRoute,
+  AdminOverviewRoute: AdminOverviewRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminProvisioningRoute: AdminProvisioningRoute,
   AdminRefundsRoute: AdminRefundsRoute,
