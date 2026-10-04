@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
@@ -38,6 +39,11 @@ import { Route as PlanIdRouteImport } from './routes/plan.$id'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogRoute = CatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExploreRoute = ExploreRouteImport.update({
@@ -163,6 +169,7 @@ const PlanIdRoute = PlanIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
@@ -190,6 +197,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
@@ -218,6 +226,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/catalog'
     | '/explore'
     | '/finder'
     | '/live-catalog'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/catalog'
     | '/explore'
     | '/finder'
     | '/live-catalog'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/catalog'
     | '/explore'
     | '/finder'
     | '/live-catalog'
@@ -329,6 +341,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CatalogRoute: typeof CatalogRoute
   ExploreRoute: typeof ExploreRoute
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
@@ -362,6 +375,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalog': {
+      id: '/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof CatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explore': {
@@ -537,6 +557,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CatalogRoute: CatalogRoute,
   ExploreRoute: ExploreRoute,
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,

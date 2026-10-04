@@ -6,7 +6,7 @@ import { search, fromPrice } from "@/lib/catalog";
 import { rupiah } from "@/lib/pricing";
 
 export const Route = createFileRoute("/explore")({
-  loader: () => { throw redirect({ to: "/live-catalog" }); },
+  loader: () => { throw redirect({ to: "/catalog" }); },
   head: () => ({
     meta: [
       { title: "Cari destinasi — Djiwa Travel" },

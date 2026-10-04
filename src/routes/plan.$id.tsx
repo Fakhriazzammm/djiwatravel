@@ -4,7 +4,7 @@ import { getDest, getPkg, priceOf, gbLabel } from "@/lib/catalog";
 import { rupiah } from "@/lib/pricing";
 
 export const Route = createFileRoute("/plan/$id")({
-  loader: () => { throw redirect({ to: "/live-catalog" }); },
+  loader: () => { throw redirect({ to: "/catalog" }); },
   head: ({ loaderData }) => {
     const t = loaderData ? `${loaderData.d.nameId} ${gbLabel(loaderData.p.dataGb)} — Djiwa Travel` : "Tidak ditemukan";
     const desc = loaderData ? `${gbLabel(loaderData.p.dataGb)} selama ${loaderData.p.days} hari, ${rupiah(loaderData.price)}.` : "";

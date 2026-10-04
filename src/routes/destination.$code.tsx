@@ -6,7 +6,7 @@ import { rupiah } from "@/lib/pricing";
 import { durations, recommend, usageProfiles, type Usage } from "@/lib/recommend";
 
 export const Route = createFileRoute("/destination/$code")({
-  loader: () => { throw redirect({ to: "/live-catalog" }); },
+  loader: () => { throw redirect({ to: "/catalog" }); },
   head: ({ loaderData }) => {
     const t = loaderData ? `eSIM ${loaderData.nameId} — Djiwa Travel` : "Tidak ditemukan";
     const desc = loaderData ? `Internet untuk perjalananmu ke ${loaderData.nameId}. Bayar QRIS, langsung aktif.` : "";

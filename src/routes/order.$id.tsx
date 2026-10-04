@@ -89,7 +89,7 @@ function OrderPage() {
           <AlertCircle className="size-12 text-muted-foreground" />
           <h1 className="mt-6 text-2xl font-bold">{o.status === "EXPIRED" ? "Paket sudah kedaluwarsa" : "Pesanan dibatalkan"}</h1>
           <p className="mt-2 text-muted-foreground">Silakan pilih paket eSIM lain jika ingin melanjutkan perjalanan.</p>
-          <Link to="/live-catalog" className={`${btnPrimary} mt-6`}>Lihat paket eSIM</Link>
+          <Link to="/catalog" className={`${btnPrimary} mt-6`}>Lihat paket eSIM</Link>
         </div>
       </Page>
     );
