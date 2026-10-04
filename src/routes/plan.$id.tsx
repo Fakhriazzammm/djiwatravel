@@ -36,7 +36,7 @@ function Plan() {
       <div className={`${group} mt-4`}>
         <Row k="Kuota" v={gbLabel(p.dataGb)} />
         <Row k="Masa berlaku" v={`${p.days} hari`} />
-        <Row k="Wilayah" v={d.name} />
+        <Row k="Wilayah" v={d.nameId} />
         {d.network && <Row k="Jaringan" v={d.network} />}
         <Row k="Top up" v={p.topUp ? "Bisa" : "Tidak tersedia"} />
       </div>
