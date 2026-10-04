@@ -85,8 +85,8 @@ function OrderPage() {
   const esim = o.esim!;
   if (view === "qr") return (
     <Page tabs={false}>
-      <button onClick={() => setView("main")} className="h-11 text-brand-red">‹ Kembali</button>
-      <h1 className="large-title mb-6">QR Code</h1>
+      <button onClick={() => setView("main")} className="flex h-11 items-center text-[16px] text-brand-red">‹ Kembali</button>
+      <h1 className="large-title mb-4">QR Code</h1>
       <EsimQr esim={esim} />
       <h2 className="mt-8 mb-2 px-1 text-sm font-medium text-muted-foreground">Pasang manual</h2>
       <ManualDetails esim={esim} />
@@ -94,8 +94,8 @@ function OrderPage() {
   );
   if (view === "guide") return (
     <Page tabs={false}>
-      <button onClick={() => setView("main")} className="h-11 text-brand-red">‹ Kembali</button>
-      <h1 className="large-title mb-6">Panduan Instalasi</h1>
+      <button onClick={() => setView("main")} className="flex h-11 items-center text-[16px] text-brand-red">‹ Kembali</button>
+      <h1 className="large-title mb-4">Panduan Instalasi</h1>
       <InstallGuide />
     </Page>
   );
@@ -114,10 +114,10 @@ function OrderPage() {
         <a href={`https://esimsetup.apple.com/esim_qrcode_provisioning?carddata=${encodeURIComponent(esim.lpa)}`} className={btnRed}>Pasang eSIM</a>
         <button onClick={() => setView("qr")} className={btnSoft}>Lihat QR Code</button>
       </div>
-      <div className="mt-6 flex justify-around text-sm font-medium text-brand-red">
-        <button onClick={() => setView("guide")}>Panduan Instalasi</button>
-        <Link to="/my-esim">Simpan untuk Nanti</Link>
-        <a href="https://wa.me/">Support</a>
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[12px] font-medium text-brand-red">
+        <button onClick={() => setView("guide")} className="h-11 rounded-xl">Panduan</button>
+        <Link to="/my-esim" className="flex h-11 items-center justify-center rounded-xl">Simpan</Link>
+        <a href="https://wa.me/" className="flex h-11 items-center justify-center rounded-xl">Support</a>
       </div>
     </Page>
   );

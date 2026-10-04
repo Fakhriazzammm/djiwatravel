@@ -55,7 +55,7 @@ function MyEsim() {
   const pending = orders?.filter((o) => o.status !== "READY" && o.status !== "REFUNDED") ?? [];
   return (
     <Page>
-      <h1 className="large-title pt-6">My eSIM</h1>
+      <h1 className="large-title pt-4">My eSIM</h1>
       {orders === null ? (
         <div className="mt-6 h-32 animate-pulse rounded-2xl bg-secondary" />
       ) : orders.length === 0 ? (

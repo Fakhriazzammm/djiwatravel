@@ -28,9 +28,9 @@ function Finder() {
 
   return (
     <Page>
-      <BackBar />
+      <BackBar title="Cari Paket" />
       <h1 className="large-title">Cari Paket yang Cocok</h1>
-      <div className={`${group} mt-6`}>
+      <div className={`${group} mt-4`}>
         <select className={field} value={dest} onChange={(e) => setDest(e.target.value)}>
           {destinations.map((d) => <option key={d.code} value={d.code}>{d.flag} {d.nameId}</option>)}
         </select>
