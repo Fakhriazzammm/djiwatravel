@@ -21,7 +21,7 @@ export const Route = createFileRoute("/destination/$code")({
 
 function Destination() {
   const d = Route.useLoaderData();
-  const [dur, setDur] = useState(durations[1]);
+  const [dur, setDur] = useState(durations[1]!);
   const [usage, setUsage] = useState<Usage>("normal");
   const { best, others } = recommend(d.code, dur.days, usage);
 

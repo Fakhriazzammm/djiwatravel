@@ -22,6 +22,6 @@ export function recommend(dest: string, days: number, usage: Usage): { best: Pac
     .filter((p) => p.days >= Math.min(days, 30))
     .filter((p) => p.dataGb === "unlimited" || p.dataGb >= need)
     .sort((a, b) => (a.dataGb === "unlimited" ? 1e9 : a.dataGb) - (b.dataGb === "unlimited" ? 1e9 : b.dataGb));
-  const best = fits[0] ?? all[all.length - 1];
+  const best = (fits[0] ?? all[all.length - 1])!;
   return { best, others: all.filter((p) => p.id !== best.id) };
 }
