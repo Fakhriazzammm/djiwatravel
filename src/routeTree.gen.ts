@@ -17,9 +17,14 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
+import { Route as AdminCatalogRouteImport } from './routes/admin.catalog'
+import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
+import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
 import { Route as AdminProvisioningRouteImport } from './routes/admin.provisioning'
+import { Route as AdminRefundsRouteImport } from './routes/admin.refunds'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
@@ -68,9 +73,24 @@ const AdminAuditLogRoute = AdminAuditLogRouteImport.update({
   path: '/admin/audit-log',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCatalogRoute = AdminCatalogRouteImport.update({
+  id: '/admin/catalog',
+  path: '/admin/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCustomersRoute = AdminCustomersRouteImport.update({
+  id: '/admin/customers',
+  path: '/admin/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
   id: '/admin/orders',
   path: '/admin/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/admin/payments',
+  path: '/admin/payments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
@@ -78,9 +98,19 @@ const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
   path: '/admin/provisioning',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRefundsRoute = AdminRefundsRouteImport.update({
+  id: '/admin/refunds',
+  path: '/admin/refunds',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/admin/settings',
   path: '/admin/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/admin/support',
+  path: '/admin/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminTeamRoute = AdminTeamRouteImport.update({
@@ -127,9 +157,14 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/catalog': typeof AdminCatalogRoute
+  '/admin/customers': typeof AdminCustomersRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
+  '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -147,9 +182,14 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/catalog': typeof AdminCatalogRoute
+  '/admin/customers': typeof AdminCustomersRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
+  '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -168,9 +208,14 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/catalog': typeof AdminCatalogRoute
+  '/admin/customers': typeof AdminCustomersRoute
   '/admin/orders': typeof AdminOrdersRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
+  '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -190,9 +235,14 @@ export interface FileRouteTypes {
     | '/profile'
     | '/admin/analytics'
     | '/admin/audit-log'
+    | '/admin/catalog'
+    | '/admin/customers'
     | '/admin/orders'
+    | '/admin/payments'
     | '/admin/provisioning'
+    | '/admin/refunds'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/team'
     | '/checkout/$id'
     | '/destination/$code'
@@ -210,9 +260,14 @@ export interface FileRouteTypes {
     | '/profile'
     | '/admin/analytics'
     | '/admin/audit-log'
+    | '/admin/catalog'
+    | '/admin/customers'
     | '/admin/orders'
+    | '/admin/payments'
     | '/admin/provisioning'
+    | '/admin/refunds'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/team'
     | '/checkout/$id'
     | '/destination/$code'
@@ -230,9 +285,14 @@ export interface FileRouteTypes {
     | '/profile'
     | '/admin/analytics'
     | '/admin/audit-log'
+    | '/admin/catalog'
+    | '/admin/customers'
     | '/admin/orders'
+    | '/admin/payments'
     | '/admin/provisioning'
+    | '/admin/refunds'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/team'
     | '/checkout/$id'
     | '/destination/$code'
@@ -251,9 +311,14 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
+  AdminCatalogRoute: typeof AdminCatalogRoute
+  AdminCustomersRoute: typeof AdminCustomersRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminProvisioningRoute: typeof AdminProvisioningRoute
+  AdminRefundsRoute: typeof AdminRefundsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSupportRoute: typeof AdminSupportRoute
   AdminTeamRoute: typeof AdminTeamRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
@@ -322,11 +387,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditLogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/catalog': {
+      id: '/admin/catalog'
+      path: '/admin/catalog'
+      fullPath: '/admin/catalog'
+      preLoaderRoute: typeof AdminCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/customers': {
+      id: '/admin/customers'
+      path: '/admin/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminCustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/orders': {
       id: '/admin/orders'
       path: '/admin/orders'
       fullPath: '/admin/orders'
       preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/payments': {
+      id: '/admin/payments'
+      path: '/admin/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/provisioning': {
@@ -336,11 +422,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProvisioningRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/refunds': {
+      id: '/admin/refunds'
+      path: '/admin/refunds'
+      fullPath: '/admin/refunds'
+      preLoaderRoute: typeof AdminRefundsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/admin/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/admin/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/team': {
@@ -403,9 +503,14 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
+  AdminCatalogRoute: AdminCatalogRoute,
+  AdminCustomersRoute: AdminCustomersRoute,
   AdminOrdersRoute: AdminOrdersRoute,
+  AdminPaymentsRoute: AdminPaymentsRoute,
   AdminProvisioningRoute: AdminProvisioningRoute,
+  AdminRefundsRoute: AdminRefundsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminSupportRoute: AdminSupportRoute,
   AdminTeamRoute: AdminTeamRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
