@@ -81,7 +81,7 @@
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
 }
-@utility large-title { font-size: 2rem; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; }
+@utility large-title { font-size: 1.75rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; }
 @utility tap { transition: transform 120ms ease; &:active { transform: scale(0.97); } }
 
 @keyframes splash-out { 0%,70% { opacity: 1 } 100% { opacity: 0; visibility: hidden } }
