@@ -1,10 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Search, Wifi, Luggage, ShoppingBag, ChevronRight } from "lucide-react";
+import { Search, Wifi, User, Luggage, ShoppingBag, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, Wordmark } from "@/components/shell";
 import { destinations, fromPrice, getDest, getPkg, gbLabel } from "@/lib/catalog";
 import { rupiah } from "@/lib/pricing";
 import { useOrders } from "@/lib/orders";
+import jp from "@/assets/dest-jp.jpg";
+import sg from "@/assets/dest-sg.jpg";
+import th from "@/assets/dest-th.jpg";
+import kr from "@/assets/dest-kr.jpg";
+
+const photos: Record<string, string> = { JP: jp, SG: sg, TH: th, KR: kr };
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,7 +41,7 @@ function Splash() {
   if (!show) return null;
   return (
     <div className="animate-splash fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
-      <Wordmark className="text-4xl" />
+      <Wordmark className="h-28" />
       <p className="mt-2 text-sm text-muted-foreground">Bawa Djiwamu Lebih Jauh.</p>
     </div>
   );
@@ -54,11 +60,11 @@ function Home() {
     <Page>
       <Splash />
       <div className="flex items-center justify-between pt-2">
-        <Wordmark className="text-lg" />
-        <Link to="/profile" className="flex size-9 items-center justify-center rounded-full bg-secondary text-sm font-semibold">T</Link>
+        <Wordmark className="h-12" />
+        <Link to="/profile" className="flex size-10 items-center justify-center rounded-full bg-surface shadow-sm"><User className="size-5" strokeWidth={1.8} /></Link>
       </div>
 
-      <p className="mt-8 text-[15px] text-muted-foreground">{hello},</p>
+      <p className="mt-6 text-[15px] text-muted-foreground">{hello},</p>
       <h1 className="large-title mt-1">Mau pergi ke mana?</h1>
 
       <button onClick={() => nav({ to: "/explore" })}
@@ -69,21 +75,21 @@ function Home() {
       {active && pkg && dest && (
         <section className="mt-8">
           <h2 className="mb-3 text-[20px] font-bold">Perjalananmu</h2>
-          <Link to="/my-esim/$id" params={{ id: active.id }} className="tap block rounded-2xl bg-primary p-5 text-primary-foreground">
+          <Link to="/my-esim/$id" params={{ id: active.id }} className="tap block rounded-2xl bg-surface p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <span className="text-3xl">{dest.flag}</span>
               <div className="flex-1">
                 <p className="text-[17px] font-semibold">{dest.name}</p>
-                <p className="text-sm opacity-75">{gbLabel(pkg.dataGb)} · {pkg.days} hari</p>
+                <p className="text-sm text-muted-foreground">{gbLabel(pkg.dataGb)} · {pkg.days} hari</p>
               </div>
-              <ChevronRight className="size-5 opacity-60" />
+              <ChevronRight className="size-5 text-muted-foreground" />
             </div>
             {typeof pkg.dataGb === "number" && (
               <>
-                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-primary-foreground/20">
-                  <div className="h-full rounded-full bg-brand-red" style={{ width: `${100 - ((active.usedGb ?? 0) / pkg.dataGb) * 100}%` }} />
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary">
+                  <div className="h-full rounded-full bg-success" style={{ width: `${100 - ((active.usedGb ?? 0) / pkg.dataGb) * 100}%` }} />
                 </div>
-                <p className="mt-2 text-sm opacity-80">{(pkg.dataGb - (active.usedGb ?? 0)).toFixed(1)} GB tersisa</p>
+                <p className="mt-2 text-sm text-muted-foreground">{(pkg.dataGb - (active.usedGb ?? 0)).toFixed(1)} GB tersisa</p>
               </>
             )}
           </Link>
@@ -91,14 +97,25 @@ function Home() {
       )}
 
       <section className="mt-8">
-        <h2 className="mb-3 text-[20px] font-bold">Destinasi Populer</h2>
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-[20px] font-bold">Destinasi Populer</h2>
+          <Link to="/explore" className="text-sm text-muted-foreground">Lihat Semua ›</Link>
+        </div>
         <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
           {destinations.filter((d) => d.popular).map((d) => (
             <Link key={d.code} to="/destination/$code" params={{ code: d.code.toLowerCase() }}
-              className="tap w-32 shrink-0 rounded-2xl bg-surface p-4">
-              <span className="text-4xl">{d.flag}</span>
-              <p className="mt-3 font-semibold leading-tight">{d.nameId}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Mulai {rupiah(fromPrice(d.code))}</p>
+              className="tap relative h-44 w-32 shrink-0 overflow-hidden rounded-2xl bg-secondary">
+              {photos[d.code] ? (
+                <img src={photos[d.code]} alt={d.nameId} loading="lazy" width={736} height={912} className="absolute inset-0 size-full object-cover" />
+              ) : (
+                <span className="absolute inset-0 flex items-center justify-center text-5xl">{d.flag}</span>
+              )}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/80 to-transparent p-3 pt-8">
+                <p className="font-semibold leading-tight text-primary-foreground">{d.nameId}</p>
+                <p className="text-[11px] text-primary-foreground/85">Mulai {rupiah(fromPrice(d.code))}</p>
+              </div>
+            </Link>
+          ))}</p>
             </Link>
           ))}
         </div>
@@ -107,12 +124,12 @@ function Home() {
       <section className="mt-8">
         <h2 className="mb-3 text-[20px] font-bold">Kebutuhan Perjalananmu</h2>
         <div className="grid grid-cols-3 gap-3">
-          <Link to="/explore" className="tap rounded-2xl bg-surface p-4">
+          <Link to="/explore" className="tap rounded-2xl border-2 border-brand-red bg-brand-red-soft p-4">
             <Wifi className="size-6 text-brand-red" strokeWidth={1.8} />
-            <p className="mt-3 text-sm font-semibold">eSIM</p>
+            <p className="mt-3 text-sm font-semibold leading-tight">eSIM Internasional</p>
           </Link>
           {[{ i: Luggage, l: "Bagasi" }, { i: ShoppingBag, l: "Personal Shopper" }].map(({ i: I, l }) => (
-            <div key={l} className="rounded-2xl bg-surface p-4 opacity-60">
+            <div key={l} className="rounded-2xl bg-surface p-4 text-muted-foreground">
               <I className="size-6" strokeWidth={1.8} />
               <p className="mt-3 text-sm font-semibold leading-tight">{l}</p>
               <p className="text-[11px] text-muted-foreground">Segera hadir</p>

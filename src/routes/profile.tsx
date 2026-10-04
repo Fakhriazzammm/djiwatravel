@@ -49,7 +49,7 @@ function Profile() {
       </div>
 
       <div className="mt-12 text-center">
-        <Wordmark className="text-xl" />
+        <Wordmark className="mx-auto h-16" />
         <p className="mt-1 text-sm text-muted-foreground">Bawa Djiwamu Lebih Jauh.</p>
       </div>
     </Page>

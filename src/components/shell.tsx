@@ -1,6 +1,7 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import { Home, Compass, Smartphone, User, ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
+import logo from "@/assets/logo.png";
 
 const tabs = [
   { to: "/", label: "Home", icon: Home },
@@ -26,12 +27,8 @@ export function TabBar() {
   );
 }
 
-export function Wordmark({ className = "" }: { className?: string }) {
-  return (
-    <span className={`font-brand font-extrabold tracking-tight ${className}`}>
-      <span className="text-primary">Djiwa</span> <span className="text-brand-red">Travel</span>
-    </span>
-  );
+export function Wordmark({ className = "h-10" }: { className?: string }) {
+  return <img src={logo} alt="Djiwa Travel" className={`w-auto ${className}`} />;
 }
 
 export function Page({ children, tabs = true }: { children: ReactNode; tabs?: boolean }) {
