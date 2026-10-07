@@ -8,8 +8,8 @@ type OrderFn = (input: { data: { transactionId: string; packageInfoList: Provisi
 function providerResult(response: ProviderOrderResponse, transactionId: string): ProvisioningResult {
   if (response.success === false || (response.errorCode !== undefined && String(response.errorCode) !== "0")) throw new Error(`eSIM Access order gagal: ${response.errorMsg ?? response.errorCode ?? "unknown"}`);
   const result = response.obj ?? response.data ?? {};
-  const providerOrderNo = String(result.orderNo ?? result.orderNum ?? result.orderNoStr ?? "");
-  return { providerTransactionId: transactionId, providerOrderNo: providerOrderNo || undefined, status: String(result.status ?? "PENDING"), payload: response };
+  const providerOrderNo = String(result["orderNo"] ?? result["orderNum"] ?? result["orderNoStr"] ?? "");
+  return { providerTransactionId: transactionId, ...(providerOrderNo ? { providerOrderNo } : {}), status: String(result["status"] ?? "PENDING"), payload: response };
 }
 
 export function createEsimAccessProvisioner(orderFn: OrderFn = orderEsimAccessProfiles as unknown as OrderFn): EsimProvisioningGateway {

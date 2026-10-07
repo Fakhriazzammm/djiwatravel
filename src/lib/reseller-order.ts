@@ -1,5 +1,5 @@
 export type ResellerOrderStatus =
-  | "DRAFT" | "PAYMENT_PENDING" | "PAYMENT_CONFIRMED" | "PROVISIONING"
+  | "DRAFT" | "ORDER_CREATED" | "PAYMENT_PENDING" | "PAYMENT_CONFIRMED" | "PROVISIONING"
   | "READY" | "INSTALLED" | "EXPIRED" | "PROVISIONING_FAILED" | "CANCELLED" | "REFUNDED";
 
 const transitions: Record<ResellerOrderStatus, readonly ResellerOrderStatus[]> = {

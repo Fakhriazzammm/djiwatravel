@@ -2,8 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Search, Wifi, User, Luggage, ShoppingBag, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
-import { destinations, fromPrice, getDest, getPkg, gbLabel } from "@/lib/catalog";
-import { rupiah } from "@/lib/pricing";
+import { destinations } from "@/lib/catalog";
 import { useOrders } from "@/lib/orders";
 import jp from "@/assets/dest-jp.jpg";
 import sg from "@/assets/dest-sg.jpg";
@@ -16,9 +15,16 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Djiwa Travel — Mau pergi ke mana?" },
-      { name: "description", content: "eSIM internasional untuk traveler Indonesia. Pilih tujuan, bayar QRIS, langsung online." },
+      {
+        name: "description",
+        content:
+          "eSIM internasional untuk traveler Indonesia. Pilih tujuan, bayar QRIS, langsung online.",
+      },
       { property: "og:title", content: "Djiwa Travel — Mau pergi ke mana?" },
-      { property: "og:description", content: "eSIM internasional untuk traveler Indonesia. Bayar QRIS, langsung online." },
+      {
+        property: "og:description",
+        content: "eSIM internasional untuk traveler Indonesia. Bayar QRIS, langsung online.",
+      },
     ],
   }),
   component: Home,
@@ -26,7 +32,13 @@ export const Route = createFileRoute("/")({
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 11 ? "Selamat pagi" : h < 15 ? "Selamat siang" : h < 18 ? "Selamat sore" : "Selamat malam";
+  return h < 11
+    ? "Selamat pagi"
+    : h < 15
+      ? "Selamat siang"
+      : h < 18
+        ? "Selamat sore"
+        : "Selamat malam";
 }
 
 function Splash() {
@@ -53,8 +65,13 @@ function Home() {
   const orders = useOrders();
   useEffect(() => setHello(greeting()), []);
   const active = orders?.find((o) => o.status === "READY" || o.status === "INSTALLED");
-  const pkg = active && getPkg(active.packageId);
-  const dest = pkg && getDest(pkg.dest);
+  const activeName = active?.packageName ?? active?.packageId;
+  const activeLocation = active?.locationCodes?.join(", ") || "Regional";
+  const activeQuota =
+    active?.volumeBytes == null
+      ? "Unlimited"
+      : `${(active.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
+  const activeDuration = active?.durationDays ?? 0;
 
   const services = [
     { icon: Wifi, label: "eSIM", sub: "Internasional", to: "/catalog" as const },
@@ -67,7 +84,11 @@ function Home() {
       <Splash />
       <header className="flex h-14 items-center justify-between">
         <Wordmark className="h-11" />
-        <Link to="/profile" aria-label="Profil" className="tap flex size-10 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm">
+        <Link
+          to="/profile"
+          aria-label="Profil"
+          className="tap flex size-10 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm"
+        >
           <User className="size-5" strokeWidth={1.8} />
         </Link>
       </header>
@@ -75,28 +96,50 @@ function Home() {
       <p className="mt-4 text-[14px] text-muted-foreground">{hello},</p>
       <h1 className="large-title">Mau pergi ke mana?</h1>
 
-      <button onClick={() => nav({ to: "/catalog" })}
-        className="tap mt-4 flex h-12 w-full items-center gap-3 rounded-2xl bg-surface px-4 text-left text-[15px] text-muted-foreground shadow-sm">
+      <button
+        onClick={() => nav({ to: "/catalog" })}
+        className="tap mt-4 flex h-12 w-full items-center gap-3 rounded-2xl bg-surface px-4 text-left text-[15px] text-muted-foreground shadow-sm"
+      >
         <Search className="size-5 shrink-0" /> Cari negara atau wilayah
       </button>
 
       <section className="mt-7">
-        <SectionTitle action={<Link to="/catalog">Lihat Semua ›</Link>}>Destinasi Populer</SectionTitle>
+        <SectionTitle action={<Link to="/catalog">Lihat Semua ›</Link>}>
+          Destinasi Populer
+        </SectionTitle>
         <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4">
-          {destinations.filter((d) => d.popular).map((d) => (
-            <Link key={d.code} to="/destination/$code" params={{ code: d.code.toLowerCase() }}
-              className="tap relative aspect-[4/5] w-[31%] min-w-28 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary">
-              {photos[d.code] ? (
-                <img src={photos[d.code]} alt={d.nameId} loading="lazy" width={736} height={912} className="absolute inset-0 size-full object-cover" />
-              ) : (
-                <span className="absolute inset-0 flex items-center justify-center pb-8 text-5xl">{d.flag}</span>
-              )}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/85 to-transparent px-2.5 pb-2.5 pt-8">
-                <p className="truncate text-[14px] font-semibold text-primary-foreground">{d.nameId}</p>
-                <p className="truncate text-[11px] text-primary-foreground/85">Mulai {rupiah(fromPrice(d.code))}</p>
-              </div>
-            </Link>
-          ))}
+          {destinations
+            .filter((d) => d.popular)
+            .map((d) => (
+              <Link
+                key={d.code}
+                to="/catalog"
+                className="tap relative aspect-[4/5] w-[31%] min-w-28 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary"
+              >
+                {photos[d.code] ? (
+                  <img
+                    src={photos[d.code]}
+                    alt={d.nameId}
+                    loading="lazy"
+                    width={736}
+                    height={912}
+                    className="absolute inset-0 size-full object-cover"
+                  />
+                ) : (
+                  <span className="absolute inset-0 flex items-center justify-center pb-8 text-5xl">
+                    {d.flag}
+                  </span>
+                )}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/85 to-transparent px-2.5 pb-2.5 pt-8">
+                  <p className="truncate text-[14px] font-semibold text-primary-foreground">
+                    {d.nameId}
+                  </p>
+                  <p className="truncate text-[11px] text-primary-foreground/85">
+                    Lihat paket eSIM live
+                  </p>
+                </div>
+              </Link>
+            ))}
         </div>
       </section>
 
@@ -106,7 +149,9 @@ function Home() {
           {services.map(({ icon: I, label, sub, to }) => {
             const body = (
               <>
-                <span className={`flex size-10 items-center justify-center rounded-full ${to ? "bg-surface text-brand-red" : "bg-secondary"}`}>
+                <span
+                  className={`flex size-10 items-center justify-center rounded-full ${to ? "bg-surface text-brand-red" : "bg-secondary"}`}
+                >
                   <I className="size-5" strokeWidth={1.8} />
                 </span>
                 <span className="mt-2 text-[14px] font-semibold text-foreground">{label}</span>
@@ -115,44 +160,57 @@ function Home() {
             );
             const cls = "flex h-28 flex-col items-center justify-center rounded-2xl text-center";
             return to ? (
-              <Link key={label} to={to} className={`tap ${cls} border-2 border-brand-red bg-brand-red-soft text-brand-red`}>{body}</Link>
+              <Link
+                key={label}
+                to={to}
+                className={`tap ${cls} border-2 border-brand-red bg-brand-red-soft text-brand-red`}
+              >
+                {body}
+              </Link>
             ) : (
-              <div key={label} className={`${cls} border-2 border-transparent bg-surface text-muted-foreground`}>{body}</div>
+              <div
+                key={label}
+                className={`${cls} border-2 border-transparent bg-surface text-muted-foreground`}
+              >
+                {body}
+              </div>
             );
           })}
         </div>
       </section>
 
-      {active && pkg && dest ? (
+      {active ? (
         <section className="mt-7">
-          <SectionTitle action={<Link to="/my-esim">Lihat Semua ›</Link>}>Perjalananmu</SectionTitle>
-          <Link to="/my-esim/$id" params={{ id: active.id }} className="tap block rounded-2xl bg-surface p-4 shadow-sm">
+          <SectionTitle action={<Link to="/my-esim">Lihat Semua ›</Link>}>
+            Perjalananmu
+          </SectionTitle>
+          <Link
+            to="/my-esim/$id"
+            params={{ id: active.id }}
+            className="tap block rounded-2xl bg-surface p-4 shadow-sm"
+          >
             <div className="flex items-center gap-3">
-              <span className="shrink-0 text-3xl">{dest.flag}</span>
+              <span className="shrink-0 text-3xl">🌐</span>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{dest.nameId}</p>
-                <p className="text-[13px] text-muted-foreground">{gbLabel(pkg.dataGb)} · {pkg.days} hari</p>
+                <p className="truncate font-semibold">{activeName}</p>
+                <p className="text-[13px] text-muted-foreground">
+                  {activeLocation} · {activeQuota} · {activeDuration} hari
+                </p>
               </div>
               <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
             </div>
-            {typeof pkg.dataGb === "number" && (
-              <>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
-                  <div className="h-full rounded-full bg-success" style={{ width: `${100 - ((active.usedGb ?? 0) / pkg.dataGb) * 100}%` }} />
-                </div>
-                <div className="mt-1.5 flex justify-between text-[12px] text-muted-foreground">
-                  <span>{(pkg.dataGb - (active.usedGb ?? 0)).toFixed(1)} GB tersisa</span>
-                  <span>{gbLabel(pkg.dataGb)}</span>
-                </div>
-              </>
-            )}
           </Link>
         </section>
       ) : (
-        <Link to="/finder" className="tap mt-7 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-4">
+        <Link
+          to="/catalog"
+          className="tap mt-7 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-4"
+        >
           <div className="min-w-0 flex-1">
             <p className="font-semibold">Cari Paket yang Cocok</p>
-            <p className="truncate text-[13px] text-muted-foreground">Masukkan tanggal & kebutuhanmu</p>
+            <p className="truncate text-[13px] text-muted-foreground">
+              Masukkan tanggal & kebutuhanmu
+            </p>
           </div>
           <ChevronRight className="size-5 shrink-0 text-brand-red" />
         </Link>

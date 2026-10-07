@@ -5,7 +5,7 @@ const IV_BYTES = 12;
 const VERSION = "v1";
 
 function keyFromEnvironment() {
-  const raw = process.env.ESIM_PROFILE_ENCRYPTION_KEY;
+  const raw = process.env["ESIM_PROFILE_ENCRYPTION_KEY"];
   if (!raw) throw new Error("ESIM_PROFILE_ENCRYPTION_KEY belum dikonfigurasi");
   const key = /^[0-9a-f]{64}$/i.test(raw) ? Buffer.from(raw, "hex") : Buffer.from(raw, "base64");
   if (key.length !== 32) throw new Error("ESIM_PROFILE_ENCRYPTION_KEY harus 32 byte (64 hex atau base64)");

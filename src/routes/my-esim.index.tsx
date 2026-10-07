@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Page, Wordmark, btnPrimary } from "@/components/shell";
-import { getDest, getPkg, gbLabel } from "@/lib/catalog";
 import { useOrders, type Order } from "@/lib/orders";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 
@@ -17,29 +16,42 @@ export const Route = createFileRoute("/my-esim/")({
 });
 
 export function EsimCard({ o }: { o: Order }) {
-  const p = getPkg(o.packageId)!;
-  const d = getDest(p.dest)!;
-  const total = typeof p.dataGb === "number" ? p.dataGb : null;
-  const left = total ? total - (o.usedGb ?? 0) : null;
+  const packageName = o.packageName ?? o.packageId;
+  const locationLabel = o.locationCodes?.join(", ") || "Regional";
+  const durationDays = o.durationDays ?? 0;
+  const total = o.volumeBytes == null ? null : o.volumeBytes / 1_000_000_000;
+  const left = total === null ? null : Math.max(0, total - (o.usedGb ?? 0));
+  const quotaLabel = total === null ? "Unlimited" : `${total.toFixed(1)} GB`;
   const pct = total && left !== null ? Math.round((left / total) * 100) : 100;
   const status = effectiveOrderStatus(o.status, o.expiresAt);
   const ready = status === "READY" || status === "INSTALLED";
   return (
-    <Link to={ready ? "/my-esim/$id" : "/order/$id"} params={{ id: o.id }} className="tap block rounded-2xl bg-surface p-5">
+    <Link
+      to={ready ? "/my-esim/$id" : "/order/$id"}
+      params={{ id: o.id }}
+      className="tap block rounded-2xl bg-surface p-5"
+    >
       <div className="flex items-center gap-3">
-        <span className="text-3xl">{d.flag}</span>
+        <span className="text-3xl">🌐</span>
         <div className="flex-1">
-          <p className="font-semibold">{d.nameId}</p>
-          <p className="text-sm text-muted-foreground">{gbLabel(p.dataGb)} · {p.days} hari</p>
+          <p className="font-semibold">{packageName}</p>
+          <p className="text-sm text-muted-foreground">
+            {locationLabel} · {quotaLabel} · {durationDays} hari
+          </p>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ready ? "bg-success/15 text-success" : "bg-brand-red-soft text-brand-red"}`}>
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ready ? "bg-success/15 text-success" : "bg-brand-red-soft text-brand-red"}`}
+        >
           {ORDER_STATUS_LABEL[status]}
         </span>
       </div>
       {ready && (
         <>
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary">
-            <div className={`h-full rounded-full ${pct < 20 ? "bg-brand-red" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+            <div
+              className={`h-full rounded-full ${pct < 20 ? "bg-brand-red" : "bg-primary"}`}
+              style={{ width: `${pct}%` }}
+            />
           </div>
           <div className="mt-2 flex justify-between text-sm">
             <span>{left !== null ? `${left.toFixed(1)} GB tersisa` : "Unlimited"}</span>
@@ -53,8 +65,16 @@ export function EsimCard({ o }: { o: Order }) {
 
 function MyEsim() {
   const orders = useOrders();
-  const ready = orders?.filter((o) => { const status = effectiveOrderStatus(o.status, o.expiresAt); return status === "READY" || status === "INSTALLED"; }) ?? [];
-  const pending = orders?.filter((o) => { const status = effectiveOrderStatus(o.status, o.expiresAt); return status !== "READY" && status !== "INSTALLED" && status !== "REFUNDED"; }) ?? [];
+  const ready =
+    orders?.filter((o) => {
+      const status = effectiveOrderStatus(o.status, o.expiresAt);
+      return status === "READY" || status === "INSTALLED";
+    }) ?? [];
+  const pending =
+    orders?.filter((o) => {
+      const status = effectiveOrderStatus(o.status, o.expiresAt);
+      return status !== "READY" && status !== "INSTALLED" && status !== "REFUNDED";
+    }) ?? [];
   return (
     <Page>
       <h1 className="large-title pt-4">My eSIM</h1>
@@ -65,7 +85,9 @@ function MyEsim() {
           <Wordmark className="mx-auto h-20" />
           <p className="mt-2 text-muted-foreground">Bawa Djiwamu Lebih Jauh.</p>
           <p className="mt-6">Belum ada eSIM. Mau pergi ke mana?</p>
-          <Link to="/explore" className={`${btnPrimary} mt-6`}>Cari Destinasi</Link>
+          <Link to="/explore" className={`${btnPrimary} mt-6`}>
+            Cari Destinasi
+          </Link>
         </div>
       ) : (
         <>
@@ -81,7 +103,11 @@ function Section({ title, items }: { title: string; items: Order[] }) {
   return (
     <section className="mt-6">
       <h2 className="mb-3 px-1 text-sm font-medium text-muted-foreground">{title}</h2>
-      <div className="space-y-3">{items.map((o) => <EsimCard key={o.id} o={o} />)}</div>
+      <div className="space-y-3">
+        {items.map((o) => (
+          <EsimCard key={o.id} o={o} />
+        ))}
+      </div>
     </section>
   );
 }

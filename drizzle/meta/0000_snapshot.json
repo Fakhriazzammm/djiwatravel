@@ -1,0 +1,1180 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.esim_price_rules": {
+      "name": "esim_price_rules",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'esimaccess'"
+        },
+        "scope_type": {
+          "name": "scope_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scope_key": {
+          "name": "scope_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "markup_type": {
+          "name": "markup_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "markup_value": {
+          "name": "markup_value",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency_code": {
+          "name": "currency_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'IDR'"
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "effective_from": {
+          "name": "effective_from",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "effective_until": {
+          "name": "effective_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "esim_price_rules_scope_type_check": {
+          "name": "esim_price_rules_scope_type_check",
+          "value": "scope_type = ANY (ARRAY['global'::text, 'country'::text, 'package'::text])"
+        },
+        "esim_price_rules_markup_type_check": {
+          "name": "esim_price_rules_markup_type_check",
+          "value": "markup_type = ANY (ARRAY['percentage'::text, 'fixed'::text])"
+        },
+        "esim_price_rules_markup_value_check": {
+          "name": "esim_price_rules_markup_value_check",
+          "value": "markup_value >= (0)::numeric"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.esim_profiles": {
+      "name": "esim_profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "provisioning_order_id": {
+          "name": "provisioning_order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "iccid": {
+          "name": "iccid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "esim_tran_no": {
+          "name": "esim_tran_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "smdp_address": {
+          "name": "smdp_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activation_code_encrypted": {
+          "name": "activation_code_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qr_payload_encrypted": {
+          "name": "qr_payload_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "display_qr_asset_url": {
+          "name": "display_qr_asset_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_status": {
+          "name": "profile_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_payload": {
+          "name": "provider_payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activated_at": {
+          "name": "activated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "esim_profiles_provisioning_order_id_fkey": {
+          "name": "esim_profiles_provisioning_order_id_fkey",
+          "tableFrom": "esim_profiles",
+          "tableTo": "esim_provisioning_orders",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "provisioning_order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "esim_profiles_iccid_key": {
+          "columns": [
+            "iccid"
+          ],
+          "nullsNotDistinct": false,
+          "name": "esim_profiles_iccid_key"
+        }
+      },
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_order_items": {
+      "name": "customer_order_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_package_id": {
+          "name": "provider_package_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider_package_code": {
+          "name": "provider_package_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "package_name_snapshot": {
+          "name": "package_name_snapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_unit_cost": {
+          "name": "provider_unit_cost",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "markup_unit_amount": {
+          "name": "markup_unit_amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "selling_unit_price": {
+          "name": "selling_unit_price",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "line_total": {
+          "name": "line_total",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "package_snapshot": {
+          "name": "package_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "customer_order_items_order_id_fkey": {
+          "name": "customer_order_items_order_id_fkey",
+          "tableFrom": "customer_order_items",
+          "tableTo": "customer_orders",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "customer_order_items_provider_package_id_fkey": {
+          "name": "customer_order_items_provider_package_id_fkey",
+          "tableFrom": "customer_order_items",
+          "tableTo": "esim_provider_packages",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "provider_package_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "customer_order_items_quantity_check": {
+          "name": "customer_order_items_quantity_check",
+          "value": "quantity > 0"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.esim_provider_packages": {
+      "name": "esim_provider_packages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'esimaccess'"
+        },
+        "package_code": {
+          "name": "package_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location_codes": {
+          "name": "location_codes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "volume_bytes": {
+          "name": "volume_bytes",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_days": {
+          "name": "duration_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_unit": {
+          "name": "duration_unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_type": {
+          "name": "data_type",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_provider_minor": {
+          "name": "price_provider_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency_code": {
+          "name": "currency_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retail_price_provider_minor": {
+          "name": "retail_price_provider_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "support_top_up_type": {
+          "name": "support_top_up_type",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "speed": {
+          "name": "speed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "network": {
+          "name": "network",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "provider_payload": {
+          "name": "provider_payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "esim_provider_packages_provider_package_code_key": {
+          "columns": [
+            "provider",
+            "package_code"
+          ],
+          "nullsNotDistinct": false,
+          "name": "esim_provider_packages_provider_package_code_key"
+        }
+      },
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.provider_webhook_events": {
+      "name": "provider_webhook_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'esimaccess'"
+        },
+        "notify_id": {
+          "name": "notify_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notify_type": {
+          "name": "notify_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_fingerprint": {
+          "name": "event_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processing_error": {
+          "name": "processing_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "provider_webhook_events_provider_notify_id_notify_type_key": {
+          "columns": [
+            "provider",
+            "notify_id",
+            "notify_type"
+          ],
+          "nullsNotDistinct": false,
+          "name": "provider_webhook_events_provider_notify_id_notify_type_key"
+        },
+        "provider_webhook_events_event_fingerprint_key": {
+          "columns": [
+            "event_fingerprint"
+          ],
+          "nullsNotDistinct": false,
+          "name": "provider_webhook_events_event_fingerprint_key"
+        }
+      },
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.esim_provisioning_orders": {
+      "name": "esim_provisioning_orders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'esimaccess'"
+        },
+        "provider_transaction_id": {
+          "name": "provider_transaction_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider_order_no": {
+          "name": "provider_order_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "request_fingerprint": {
+          "name": "request_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_provider_response": {
+          "name": "last_provider_response",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attempt_count": {
+          "name": "attempt_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "next_retry_at": {
+          "name": "next_retry_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "provider_status": {
+          "name": "provider_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provisioning_attempts": {
+          "name": "provisioning_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_provisioning_error": {
+          "name": "last_provisioning_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "esim_provisioning_orders_order_id_fkey": {
+          "name": "esim_provisioning_orders_order_id_fkey",
+          "tableFrom": "esim_provisioning_orders",
+          "tableTo": "customer_orders",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "esim_provisioning_orders_order_id_key": {
+          "columns": [
+            "order_id"
+          ],
+          "nullsNotDistinct": false,
+          "name": "esim_provisioning_orders_order_id_key"
+        },
+        "esim_provisioning_orders_provider_transaction_id_key": {
+          "columns": [
+            "provider_transaction_id"
+          ],
+          "nullsNotDistinct": false,
+          "name": "esim_provisioning_orders_provider_transaction_id_key"
+        },
+        "esim_provisioning_orders_provider_order_no_key": {
+          "columns": [
+            "provider_order_no"
+          ],
+          "nullsNotDistinct": false,
+          "name": "esim_provisioning_orders_provider_order_no_key"
+        }
+      },
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_orders": {
+      "name": "customer_orders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "public_order_code": {
+          "name": "public_order_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency_code": {
+          "name": "currency_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'IDR'"
+        },
+        "subtotal_amount": {
+          "name": "subtotal_amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "markup_amount": {
+          "name": "markup_amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_amount": {
+          "name": "total_amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payment_provider": {
+          "name": "payment_provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_reference": {
+          "name": "payment_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "customer_auth_id": {
+          "name": "customer_auth_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_snapshot": {
+          "name": "price_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refund_reference": {
+          "name": "refund_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refunded_at": {
+          "name": "refunded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "customer_orders_customer_auth_idx": {
+          "name": "customer_orders_customer_auth_idx",
+          "columns": [
+            {
+              "expression": "customer_auth_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "created_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "customer_orders_status_expiry_idx": {
+          "name": "customer_orders_status_expiry_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "expires_at",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "customer_orders_public_order_code_key": {
+          "columns": [
+            "public_order_code"
+          ],
+          "nullsNotDistinct": false,
+          "name": "customer_orders_public_order_code_key"
+        },
+        "customer_orders_idempotency_key_key": {
+          "columns": [
+            "idempotency_key"
+          ],
+          "nullsNotDistinct": false,
+          "name": "customer_orders_idempotency_key_key"
+        }
+      },
+      "checkConstraints": {
+        "customer_orders_status_check": {
+          "name": "customer_orders_status_check",
+          "value": "status = ANY (ARRAY['DRAFT'::text, 'ORDER_CREATED'::text, 'PAYMENT_PENDING'::text, 'PAYMENT_CONFIRMED'::text, 'PROVISIONING'::text, 'READY'::text, 'INSTALLED'::text, 'EXPIRED'::text, 'PROVISIONING_FAILED'::text, 'CANCELLED'::text, 'REFUNDED'::text])"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.payment_webhook_events": {
+      "name": "payment_webhook_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_event_id": {
+          "name": "provider_event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency_code": {
+          "name": "currency_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'IDR'"
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signature_fingerprint": {
+          "name": "signature_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processing_error": {
+          "name": "processing_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "payment_webhook_events_order_idx": {
+          "name": "payment_webhook_events_order_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "created_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "payment_webhook_events_order_id_fkey": {
+          "name": "payment_webhook_events_order_id_fkey",
+          "tableFrom": "payment_webhook_events",
+          "tableTo": "customer_orders",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "payment_webhook_events_provider_provider_event_id_key": {
+          "columns": [
+            "provider",
+            "provider_event_id"
+          ],
+          "nullsNotDistinct": false,
+          "name": "payment_webhook_events_provider_provider_event_id_key"
+        }
+      },
+      "checkConstraints": {
+        "payment_webhook_events_status_check": {
+          "name": "payment_webhook_events_status_check",
+          "value": "status = ANY (ARRAY['PENDING'::text, 'PAID'::text, 'FAILED'::text, 'EXPIRED'::text, 'REFUNDED'::text])"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.esim_reconciliation_runs": {
+      "name": "esim_reconciliation_runs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_order_no": {
+          "name": "provider_order_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_status": {
+          "name": "previous_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "next_status": {
+          "name": "next_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "error_message": {
+          "name": "error_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "esim_reconciliation_runs_order_idx": {
+          "name": "esim_reconciliation_runs_order_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "created_at",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "esim_reconciliation_runs_order_id_fkey": {
+          "name": "esim_reconciliation_runs_order_id_fkey",
+          "tableFrom": "esim_reconciliation_runs",
+          "tableTo": "customer_orders",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {}
+  }
+}

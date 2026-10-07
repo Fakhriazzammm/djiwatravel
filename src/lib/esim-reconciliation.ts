@@ -20,12 +20,12 @@ export async function reconcileProviderOrder(input: {
   attempts?: number;
   sleep?: (ms: number) => Promise<void>;
 }): Promise<ReconciliationResult> {
-  const result = await withRetry(input.query, { attempts: input.attempts, sleep: input.sleep });
+  const result = await withRetry(input.query, { ...(input.attempts === undefined ? {} : { attempts: input.attempts }), ...(input.sleep === undefined ? {} : { sleep: input.sleep }) });
   const incoming = mapProviderStatus(result.value.status);
   return {
     status: shouldApplyProfileStatus(input.currentStatus, incoming) ? incoming : input.currentStatus,
-    providerOrderNo: result.value.orderNo,
-    iccid: result.value.iccid,
+    ...(result.value.orderNo ? { providerOrderNo: result.value.orderNo } : {}),
+    ...(result.value.iccid ? { iccid: result.value.iccid } : {}),
     changed: shouldApplyProfileStatus(input.currentStatus, incoming),
     attempts: result.attempts,
   };

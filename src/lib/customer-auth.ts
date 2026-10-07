@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
 type SessionClaims = { sub: string; email?: string; iat: number; exp: number; nonce: string };
 
 function secret() {
-  const value = process.env.CUSTOMER_AUTH_SECRET;
+  const value = process.env["CUSTOMER_AUTH_SECRET"];
   if (!value || value.length < 32) throw new Error("CUSTOMER_AUTH_SECRET harus dikonfigurasi minimal 32 karakter");
   return value;
 }
@@ -14,7 +14,7 @@ function sign(body: string) { return createHmac("sha256", secret()).update(body)
 export function issueCustomerSession(input: { customerId: string; email?: string; ttlSeconds?: number }) {
   if (!input.customerId) throw new Error("customerId wajib diisi");
   const now = Math.floor(Date.now() / 1000);
-  const claims: SessionClaims = { sub: input.customerId, email: input.email, iat: now, exp: now + Math.min(input.ttlSeconds ?? 900, 3600), nonce: randomBytes(16).toString("hex") };
+  const claims: SessionClaims = { sub: input.customerId, iat: now, exp: now + Math.min(input.ttlSeconds ?? 900, 3600), nonce: randomBytes(16).toString("hex"), ...(input.email ? { email: input.email } : {}) };
   const body = b64(JSON.stringify(claims));
   return `${body}.${sign(body)}`;
 }

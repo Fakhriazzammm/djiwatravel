@@ -1,0 +1,5 @@
+import { describe, expect, it } from "vitest";
+import { filterPackages } from "./package-filter";
+import { rankPackages } from "./package-ranker";
+const pkg = (code: string, price: number, volumeBytes: number, days = 7, supportsTopUp = true) => ({ provider: "esimaccess" as const, packageCode: code, slug: code, name: code, locationCodes: ["JP"], volumeBytes, durationDays: days, providerPriceUnits: 1, sellingPrice: { providerCostIdr: price, markupIdr: 0, sellingPriceIdr: price, currency: "IDR" as const, configSnapshot: {} }, supportsTopUp, providerSnapshot: { packageCode: code } });
+describe("package recommendation ranking", () => { it("filters destination and ranks a suitable package first", () => { const prefs = { destinations: ["JP"], durationDays: 7, dataNeed: "medium" as const, budgetIdr: 200000 }; const filtered = filterPackages([pkg("cheap", 100000, 1e9), pkg("fit", 150000, 3e9), { ...pkg("other", 100000, 3e9), locationCodes: ["KR"] }], prefs); const result = rankPackages(filtered, prefs); expect(result.map((x) => x.packageCode)).not.toContain("other"); expect(result[0]?.packageCode).toBe("fit"); }); });

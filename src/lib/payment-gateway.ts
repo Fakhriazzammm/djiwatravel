@@ -11,7 +11,7 @@ export interface PaymentGateway {
 
 /** Provider-neutral boundary. Bind a real gateway adapter after provider selection; never auto-confirms payment. */
 export class HmacPaymentWebhookVerifier {
-  constructor(private readonly secret = process.env.PAYMENT_WEBHOOK_SECRET) {}
+  constructor(private readonly secret = process.env["PAYMENT_WEBHOOK_SECRET"]) {}
 
   verifyWebhook(rawBody: string, signature: string): VerifiedPaymentEvent {
     if (!this.secret) throw new Error("PAYMENT_WEBHOOK_SECRET belum dikonfigurasi");

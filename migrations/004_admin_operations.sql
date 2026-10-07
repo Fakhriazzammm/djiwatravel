@@ -105,6 +105,8 @@ create table if not exists support_cases (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.provider_webhook_events add column if not exists created_at timestamptz not null default now();
+
 create index if not exists admin_audit_logs_entity_idx on admin_audit_logs(entity_type, entity_id, created_at desc);
 create index if not exists admin_audit_logs_actor_idx on admin_audit_logs(actor_id, created_at desc);
 create index if not exists admin_sessions_active_idx on admin_sessions(admin_user_id, expires_at) where revoked_at is null;

@@ -3,7 +3,7 @@ import { decryptEsimSecret } from "@/lib/esim-secret-crypto";
 import { protectProviderProfile } from "@/lib/esim-profile-protection";
 
 describe("provider eSIM profile protection", () => {
-  beforeEach(() => { process.env.ESIM_PROFILE_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"; });
+  beforeEach(() => { process.env["ESIM_PROFILE_ENCRYPTION_KEY"] = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"; });
   it("encrypts activation and QR payload before repository persistence", () => {
     const profile = protectProviderProfile("order-1", { obj: { esimProfile: { iccid: "898821234", smdpAddress: "smdp.example", activationCode: "secret-code", status: "ENABLED" } } });
     expect(profile.iccid).toBe("898821234");

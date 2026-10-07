@@ -1,5 +1,5 @@
 export const AI_ACTIONS_ENABLED = false;
-export const AI_AUTOMATION_ENABLED = false;
+export const AI_AUTOMATION_ENABLED = new Set<string>();
 
 const BLOCKED_ACTIONS = new Set(["refund", "price_publish", "provision", "auth", "order_status"]);
 
