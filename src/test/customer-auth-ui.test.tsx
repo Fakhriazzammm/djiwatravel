@@ -27,7 +27,7 @@ describe("Customer email authentication", () => {
     await waitFor(() => expect(getBetterAuthSession).toHaveBeenCalledOnce());
     expect(signInEmail).toHaveBeenCalledWith("traveler@example.com", "secret-pass");
     expect(done).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Memverifikasi sesi…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Memverifikasi…" })).toBeDisabled();
     resolveSession({ user: { id: "u1", name: "Traveler" }, session: { id: "s1", expiresAt: "2030-01-01" } });
     await waitFor(() => expect(done).toHaveBeenCalledWith({ id: "u1", name: "Traveler" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
