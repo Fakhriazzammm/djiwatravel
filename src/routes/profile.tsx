@@ -20,6 +20,7 @@ export const Route = createFileRoute("/profile")({
 
 function Profile() {
   const orders = useOrders() ?? [];
+  const item = row;
   const [user, setUser] = useState<BetterAuthUser | null>(null);
   const [open, setOpen] = useState(false);
   const [register, setRegister] = useState(false);
