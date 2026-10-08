@@ -94,7 +94,7 @@ function Home() {
       </header>
 
       <p className="mt-4 text-[14px] text-muted-foreground">{hello},</p>
-      <div className="flex items-end justify-between gap-3"><h1 className="large-title">Mau pergi ke mana?</h1><Link to="/profile" className="tap shrink-0 rounded-xl bg-brand-red px-3 py-2 text-xs font-semibold text-white">Masuk / Daftar</Link></div>
+      <div className="flex items-end justify-between gap-3"><h1 className="large-title">Mau pergi ke mana?</h1><Link to="/profile" className="tap shrink-0 rounded-xl bg-brand-red px-3 py-2 text-xs font-semibold text-white">Masuk dengan Google</Link></div>
 
       <button
         onClick={() => nav({ to: "/catalog" })}
