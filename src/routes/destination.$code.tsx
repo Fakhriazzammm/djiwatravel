@@ -3,6 +3,7 @@ import { BackBar, Page } from "@/components/shell";
 import { getDest } from "@/lib/catalog";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
+import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
 
 export const Route = createFileRoute("/destination/$code")({
   loader: async ({ params }) => {
@@ -50,10 +51,12 @@ function Destination() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {packages.map((pkg) => (
             <article key={pkg.packageCode} className="rounded-2xl bg-surface p-4 shadow-sm">
-              <h2 className="font-semibold">{pkg.name}</h2>
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Paket internet</p>
+              <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
               <p className="mt-2 text-xs text-muted-foreground">
-                {pkg.locationCodes.join(", ")} · {pkg.durationDays} hari
+                {packageDataLabel(pkg)} · {pkg.durationDays} hari masa aktif
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">Cakupan: {packageCoverageLabel(pkg)}</p>
               <p className="mt-4 text-lg font-bold text-brand-red">
                 {rupiah(pkg.sellingPrice.sellingPriceIdr)}
               </p>
@@ -62,7 +65,7 @@ function Destination() {
                 params={{ id: pkg.packageCode }}
                 className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
               >
-                Pilih paket
+                Lihat detail &amp; pilih
               </Link>
             </article>
           ))}

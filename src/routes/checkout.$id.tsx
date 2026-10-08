@@ -6,6 +6,7 @@ import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { resolveCheckoutPackage } from "@/lib/checkout-package";
 import { rupiah } from "@/lib/pricing";
 import { createOrder } from "@/lib/orders";
+import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: async ({ params }) => {
@@ -79,10 +80,12 @@ function Checkout() {
       <div className="flex items-center gap-3 rounded-2xl bg-surface p-4">
         <span className="shrink-0 text-3xl">🌐</span>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">{pkg.name}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Paket internet</p>
+          <p className="font-semibold">{packageDestinationLabel(pkg)}</p>
           <p className="text-sm text-muted-foreground">
-            {pkg.locationCodes.join(", ") || "Regional"} · {pkg.durationDays} hari
-          </p>
+            {packageDataLabel(pkg)} · {pkg.durationDays} hari masa aktif
+            </p>
+          <p className="mt-1 text-xs text-muted-foreground">Cakupan: {packageCoverageLabel(pkg)}</p>
         </div>
         <p className="shrink-0 font-bold">{rupiah(price)}</p>
       </div>
