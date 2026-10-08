@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Search, Wifi, User, Luggage, ShoppingBag, ChevronRight } from "lucide-react";
+import { Search, Wifi, Luggage, ShoppingBag, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { destinations } from "@/lib/catalog";
@@ -85,13 +85,6 @@ function Home() {
       <Splash />
       <header className="flex h-14 items-center justify-between">
         <Wordmark className="h-11" />
-        <Link
-          to="/profile"
-          aria-label="Profil"
-          className="tap flex size-10 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm"
-        >
-          <User className="size-5" strokeWidth={1.8} />
-        </Link>
       </header>
 
       <p className="mt-4 text-[14px] text-muted-foreground">{hello},</p>

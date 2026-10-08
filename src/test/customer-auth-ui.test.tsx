@@ -9,7 +9,8 @@ beforeEach(() => vi.resetAllMocks());
 function openForm() {
   const done = vi.fn();
   render(<CustomerAuth onAuthenticated={done} />);
-  fireEvent.click(screen.getByText("Masuk / daftar dengan email"));
+  fireEvent.click(screen.getByText("Masuk atau daftar"));
+  fireEvent.click(screen.getByText("Lanjutkan dengan email"));
   fireEvent.change(screen.getByLabelText("Email"), { target: { value: "traveler@example.com" } });
   return done;
 }
@@ -47,9 +48,9 @@ describe("Customer email authentication", () => {
     const done = openForm();
     submit();
     await waitFor(() => expect(getBetterAuthSession).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("button", { name: "Batal" }));
+    fireEvent.click(screen.getByRole("button", { name: "‹ Pilih metode lain" }));
     resolveSession({ user: { id: "u1" }, session: { id: "s1", expiresAt: "2030-01-01" } });
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Selamat datang")).toBeInTheDocument());
     expect(done).not.toHaveBeenCalled();
   });
   it("shows a safe error and allows cancellation", async () => {
@@ -59,8 +60,8 @@ describe("Customer email authentication", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Masuk gagal"));
     expect(screen.queryByText("internal secret")).not.toBeInTheDocument();
     expect(getBetterAuthSession).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Batal" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "‹ Pilih metode lain" }));
+    expect(screen.getByText("Selamat datang")).toBeInTheDocument();
     expect(done).not.toHaveBeenCalled();
   });
 });
