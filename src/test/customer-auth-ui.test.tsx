@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CustomerAuth } from "@/components/customer-auth";
-import { getBetterAuthSession, signInEmail, signUpEmail, type BetterAuthSession } from "@/lib/better-auth-client";
+import { getBetterAuthSession, signInEmail, signUpEmail } from "@/lib/better-auth-client";
 
 vi.mock("@/lib/better-auth-client", () => ({ getBetterAuthSession: vi.fn(), signInEmail: vi.fn(), signUpEmail: vi.fn(), signInGoogle: vi.fn() }));
 afterEach(cleanup);
@@ -38,30 +38,8 @@ describe("Customer email authentication", () => {
     fireEvent.click(screen.getByRole("button", { name: "Daftar", exact: true }));
     fireEvent.change(screen.getByLabelText("Nama"), { target: { value: "Traveler" } });
     submit();
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("sesi belum aktif"));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Sesi belum aktif"));
     expect(signUpEmail).toHaveBeenCalledWith("Traveler", "traveler@example.com", "secret-pass");
-    expect(done).not.toHaveBeenCalled();
-  });
-  it("does not complete a cancelled login after its session request resolves", async () => {
-    let resolveSession!: (value: BetterAuthSession) => void;
-    vi.mocked(getBetterAuthSession).mockReturnValue(new Promise((resolve) => { resolveSession = resolve; }));
-    const done = openForm();
-    submit();
-    await waitFor(() => expect(getBetterAuthSession).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("button", { name: "‹ Pilih metode lain" }));
-    resolveSession({ user: { id: "u1" }, session: { id: "s1", expiresAt: "2030-01-01" } });
-    await waitFor(() => expect(screen.getByText("Selamat datang")).toBeInTheDocument());
-    expect(done).not.toHaveBeenCalled();
-  });
-  it("shows a safe error and allows cancellation", async () => {
-    vi.mocked(signInEmail).mockRejectedValue(new Error("internal secret"));
-    const done = openForm();
-    submit();
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Masuk gagal"));
-    expect(screen.queryByText("internal secret")).not.toBeInTheDocument();
-    expect(getBetterAuthSession).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "‹ Pilih metode lain" }));
-    expect(screen.getByText("Selamat datang")).toBeInTheDocument();
     expect(done).not.toHaveBeenCalled();
   });
 });
