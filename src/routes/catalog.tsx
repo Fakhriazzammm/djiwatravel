@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
+import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
 
 export const Route = createFileRoute("/catalog")({
   loader: () => getResellerCatalog(),
@@ -18,12 +19,12 @@ function LiveCatalog() {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Djiwa Travel
         </p>
-        <h1 className="mt-2 text-2xl font-bold">Paket eSIM Live</h1>
+        <h1 className="mt-2 text-2xl font-bold">Paket internet untuk perjalanan</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Pilih paket eSIM yang sesuai untuk perjalanan Anda.
+          Pilih kuota dan masa aktif yang sesuai. Cakupan negara ditampilkan di setiap paket.
         </p>
         <div className="mt-4 rounded-xl border border-border bg-card p-4 text-sm">
-          Tersedia <strong>{catalog.packages.length.toLocaleString("id-ID")}</strong> paket eSIM
+          <strong>{catalog.packages.length.toLocaleString("id-ID")}</strong> pilihan paket tersedia
           untuk berbagai destinasi.
         </div>
       </header>
@@ -33,21 +34,21 @@ function LiveCatalog() {
             key={pkg.packageCode}
             className="rounded-2xl border border-border bg-card p-4 shadow-sm"
           >
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="font-semibold">{pkg.name}</h2>
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Paket internet</p>
+            <h2 className="mt-2 font-semibold leading-snug">{packageDestinationLabel(pkg)}</h2>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Kuota</p><p className="mt-1 font-semibold">{packageDataLabel(pkg)}</p></div>
+              <div className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">Masa aktif</p><p className="mt-1 font-semibold">{pkg.durationDays} hari</p></div>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {pkg.locationCodes.join(", ") || "Regional"} · {pkg.durationDays} hari
-            </p>
-            <p className="mt-4 text-lg font-bold text-primary">
-              {rupiah(pkg.sellingPrice.sellingPriceIdr)}
-            </p>
+            <p className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Cakupan:</span> {packageCoverageLabel(pkg)}</p>
+            <p className="mt-4 text-xs text-muted-foreground">Harga paket</p>
+            <p className="text-lg font-bold text-primary">{rupiah(pkg.sellingPrice.sellingPriceIdr)}</p>
             <Link
               to="/checkout/$id"
               params={{ id: pkg.packageCode }}
               className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
             >
-              Pilih paket
+              Lihat detail &amp; pilih
             </Link>
           </article>
         ))}
