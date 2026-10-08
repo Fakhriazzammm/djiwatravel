@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { TabBar } from "@/components/shell";
 import { useMemo, useState } from "react";
 import type { ResellerCatalogPackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
@@ -36,6 +37,7 @@ function LiveCatalog() {
     });
   }, [catalog.packages, destination, sort]);
   return (
+    <>
     <main className="mx-auto min-h-screen w-full min-w-0 max-w-5xl overflow-x-hidden bg-background px-4 py-5 pb-24 text-foreground sm:px-6 sm:py-8">
       <header className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Djiwa Travel</p>
@@ -58,5 +60,7 @@ function LiveCatalog() {
       </section>
       {packages.length === 0 ? <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">Belum ada paket untuk destinasi ini. Coba pilih bendera lain.</p> : <div className="grid min-w-0 grid-cols-2 gap-2 lg:gap-2.5 lg:grid-cols-3">{packages.map((pkg) => <article key={pkg.packageCode} className="min-w-0 max-w-full rounded-2xl border border-border/80 border-t-2 border-t-primary/70 bg-gradient-to-b from-card via-card to-muted/30 p-2.5 shadow-sm transition-shadow hover:shadow-md sm:p-3"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><h2 className="break-words text-sm font-bold leading-snug tracking-tight sm:text-base">{packageDestinationLabel(pkg)}</h2></div><p className="shrink-0 text-sm font-extrabold tracking-tight text-primary sm:text-base">{rupiah(pkg.sellingPrice.sellingPriceIdr)}</p></div><div className="mt-2 inline-flex max-w-full items-center rounded-lg bg-primary/10 px-2 py-1.5 text-[11px] font-bold text-primary"><span className="whitespace-nowrap">{packageDataLabel(pkg)} · {pkg.durationDays} hari</span></div><p className="mt-2 break-words px-0.5 text-xs leading-snug text-muted-foreground"><span className="font-semibold text-foreground">Cakupan:</span> {packageCoverageLabel(pkg)}</p><Link to="/checkout/$id" params={{ id: pkg.packageCode }} className="mt-2.5 inline-flex min-h-10 w-full max-w-full items-center justify-center rounded-xl bg-primary px-2.5 py-2 text-center text-[11px] font-bold leading-tight text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:px-3 sm:text-sm">Pilih paket</Link></article>)}</div>}
     </main>
+      <TabBar />
+    </>
   );
 }

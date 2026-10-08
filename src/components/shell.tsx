@@ -35,9 +35,9 @@ export function Wordmark({ className = "h-10" }: { className?: string }) {
 
 export function Page({ children, tabs = true }: { children: ReactNode; tabs?: boolean }) {
   return (
-    <div className={`mx-auto min-h-screen w-full max-w-md px-4 safe-top ${tabs ? "pb-24" : "pb-28"}`}>
+    <div className="mx-auto min-h-screen w-full max-w-md px-4 pb-24 safe-top">
       {children}
-      {tabs && <TabBar />}
+      <TabBar />
     </div>
   );
 }
@@ -58,7 +58,7 @@ export function BackBar({ title }: { title?: string }) {
 
 export function StickyCta({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-surface/95 px-4 pt-3 backdrop-blur-xl safe-bottom">
+    <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 border-t bg-surface/95 px-4 pt-3 backdrop-blur-xl">
       <div className="mx-auto max-w-md pb-1">{children}</div>
     </div>
   );
