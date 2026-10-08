@@ -17,6 +17,9 @@ async function proxyAuth(request: Request) {
   const upstream = `${UPSTREAM_BASE}/${suffix}${incoming.search}`;
   const headers = new Headers(request.headers);
   headers.delete("host");
+  headers.delete("connection");
+  headers.delete("upgrade");
+  headers.delete("transfer-encoding");
   headers.delete("content-length");
   headers.set("origin", "https://djiwatravel.com");
 
