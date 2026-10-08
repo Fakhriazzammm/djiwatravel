@@ -1,4 +1,7 @@
-const AUTH_BASE = (import.meta.env.VITE_BETTER_AUTH_URL || "https://auth.zantara.id/api/auth").replace(/\/$/, "");
+const CANONICAL_AUTH_BASE = "https://auth.zantara.id/api/auth";
+const AUTH_BASE = typeof window === "undefined"
+  ? (import.meta.env.VITE_BETTER_AUTH_URL || CANONICAL_AUTH_BASE).replace(/\/$/, "")
+  : "/api/auth";
 export type BetterAuthUser = { id: string; name?: string | null; email?: string | null };
 export type BetterAuthSession = { user: BetterAuthUser; session: { id: string; expiresAt: string } } | null;
 async function request(path: string, init: RequestInit = {}) {
