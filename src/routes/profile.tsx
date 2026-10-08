@@ -30,7 +30,7 @@ function Profile() {
         <div className="flex items-center gap-3">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-xl font-semibold">{user?.name?.slice(0, 1).toUpperCase() || "T"}</div>
           <div className="min-w-0 flex-1"><p className="font-semibold">{user?.name || "Traveler"}</p><p className="text-sm text-muted-foreground">{user?.email || "Masuk untuk menyimpan pesananmu"}</p></div>
-          {user ? <button className="tap rounded-xl p-2 text-muted-foreground" aria-label="Keluar" onClick={() => { void signOutBetterAuth().then(() => setUser(null)); }}><LogOut className="size-5" /></button> : <button className="tap rounded-xl bg-brand-red px-3 py-2 text-xs font-semibold text-white" onClick={() => void signInGoogle(`${window.location.origin}/profile`)}><LogIn className="mr-1 inline size-4" />Masuk dengan Google</button>}
+          {user ? <button className="tap rounded-xl p-2 text-muted-foreground" aria-label="Keluar" onClick={() => { void signOutBetterAuth().then(() => setUser(null)); }}><LogOut className="size-5" /></button> : <button className="tap min-h-11 rounded-xl bg-brand-red px-4 py-2.5 text-sm font-semibold text-white" onClick={() => void signInGoogle(`${window.location.origin}/profile`)}><LogIn className="mr-1 inline size-4" />Masuk dengan Google</button>}
         </div>
       </div>
 

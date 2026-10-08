@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { destinations } from "@/lib/catalog";
 import { useOrders } from "@/lib/orders";
+import { signInGoogle } from "@/lib/better-auth-client";
 import jp from "@/assets/dest-jp.jpg";
 import sg from "@/assets/dest-sg.jpg";
 import th from "@/assets/dest-th.jpg";
@@ -94,7 +95,7 @@ function Home() {
       </header>
 
       <p className="mt-4 text-[14px] text-muted-foreground">{hello},</p>
-      <div className="flex items-end justify-between gap-3"><h1 className="large-title">Mau pergi ke mana?</h1><Link to="/profile" className="tap shrink-0 rounded-xl bg-brand-red px-3 py-2 text-xs font-semibold text-white">Masuk dengan Google</Link></div>
+      <div className="flex items-end justify-between gap-3"><h1 className="large-title">Mau pergi ke mana?</h1><button type="button" onClick={() => void signInGoogle(`${window.location.origin}/profile`)} className="tap min-h-11 shrink-0 rounded-xl bg-brand-red px-3 py-2 text-xs font-semibold text-white">Masuk dengan Google</button></div>
 
       <button
         onClick={() => nav({ to: "/catalog" })}
