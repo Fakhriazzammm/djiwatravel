@@ -8,7 +8,9 @@ function rewriteCookie(value: string) {
 }
 
 function rewriteText(value: string) {
-  return value.replaceAll(UPSTREAM_BASE, PUBLIC_BASE);
+  return value
+    .replaceAll(UPSTREAM_BASE, PUBLIC_BASE)
+    .replaceAll(encodeURIComponent(UPSTREAM_BASE), encodeURIComponent(PUBLIC_BASE));
 }
 
 async function proxyAuth(request: Request) {
@@ -22,6 +24,8 @@ async function proxyAuth(request: Request) {
   headers.delete("transfer-encoding");
   headers.delete("content-length");
   headers.set("origin", "https://djiwatravel.com");
+  headers.set("x-forwarded-host", "djiwatravel.com");
+  headers.set("x-forwarded-proto", "https");
 
   const upstreamResponse = await fetch(upstream, {
     method: request.method,
