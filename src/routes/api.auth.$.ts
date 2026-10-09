@@ -36,6 +36,7 @@ async function proxyAuth(request: Request) {
 
   const responseHeaders = new Headers(upstreamResponse.headers);
   responseHeaders.delete("content-length");
+  responseHeaders.delete("content-encoding");
   const location = responseHeaders.get("location");
   if (location) responseHeaders.set("location", rewriteText(location));
   const cookies = upstreamResponse.headers.getSetCookie?.() ?? [];
