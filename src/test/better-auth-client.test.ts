@@ -8,7 +8,7 @@ describe("Better Auth email requests", () => {
     await signInEmail("a@example.com", "password");
     await signUpEmail("Traveler", "a@example.com", "password");
     await getBetterAuthSession();
-    const base = "/api/auth";
+    const base = "https://auth.zantara.id/api/auth";
     expect(fetch).toHaveBeenNthCalledWith(1, `${base}/sign-in/email`, expect.objectContaining({ method: "POST", credentials: "include", body: JSON.stringify({ email: "a@example.com", password: "password" }) }));
     expect(fetch).toHaveBeenNthCalledWith(2, `${base}/sign-up/email`, expect.objectContaining({ method: "POST", credentials: "include", body: JSON.stringify({ name: "Traveler", email: "a@example.com", password: "password" }) }));
     expect(fetch).toHaveBeenNthCalledWith(3, `${base}/get-session`, expect.objectContaining({ credentials: "include" }));
