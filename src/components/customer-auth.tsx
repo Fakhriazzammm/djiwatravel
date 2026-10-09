@@ -1,76 +1,49 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { getBetterAuthSession, signInEmail, signInGoogle, signUpEmail, type BetterAuthUser } from "@/lib/better-auth-client";
+import { signInGoogle, type BetterAuthUser } from "@/lib/better-auth-client";
 
 const button = "tap min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50";
-const input = "mt-1 min-h-11 w-full rounded-xl border bg-background px-3 text-base";
 
-export function CustomerAuth({ onAuthenticated }: { onAuthenticated: (user: BetterAuthUser) => void }) {
+export function CustomerAuth({ onAuthenticated: _onAuthenticated }: { onAuthenticated: (user: BetterAuthUser) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button type="button" className={`${button} w-full bg-brand-red text-white sm:w-auto`}>Masuk atau daftar</button>
       </DialogTrigger>
-      {open && <AuthChoice onAuthenticated={(user) => { setOpen(false); onAuthenticated(user); }} />}
+      {open && <AuthChoice />}
     </Dialog>
   );
 }
 
-function AuthChoice({ onAuthenticated }: { onAuthenticated: (user: BetterAuthUser) => void }) {
-  const [emailMode, setEmailMode] = useState(false);
+function AuthChoice() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function googleLogin() {
     setGoogleLoading(true);
     setError("");
-    try { await signInGoogle("/profile"); }
-    catch { setError("Google gagal. Coba lagi atau gunakan email."); }
+    try { await signInGoogle(`${window.location.origin}/profile`); }
+    catch { setError("Google gagal. Coba lagi."); }
     finally { setGoogleLoading(false); }
   }
 
   return (
     <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-3xl">
-      <DialogTitle>{emailMode ? "Masuk atau daftar" : "Selamat datang"}</DialogTitle>
-      <DialogDescription>{emailMode ? "Gunakan akun Djiwa Travel untuk melanjutkan." : "Simpan pesanan dan eSIM dalam satu akun."}</DialogDescription>
-      {!emailMode ? <div className="space-y-2 pt-2">
-        <button type="button" className={`${button} w-full bg-brand-red text-white`} disabled={googleLoading} onClick={() => void googleLogin()}>{googleLoading ? "Menghubungkan…" : "Lanjutkan dengan Google"}</button>
-        <button type="button" className={`${button} w-full border bg-background`} onClick={() => setEmailMode(true)}>Lanjutkan dengan email</button>
+      <DialogTitle>Selamat datang</DialogTitle>
+      <DialogDescription>Simpan pesanan dan eSIM dalam satu akun.</DialogDescription>
+      <div className="space-y-2 pt-2">
+        <button type="button" className={`${button} flex w-full items-center justify-center gap-2 bg-brand-red text-white`} disabled={googleLoading} onClick={() => void googleLogin()}>
+          <svg aria-hidden="true" focusable="false" data-icon="google" className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.36Z" />
+            <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.41l-3.24-2.51c-.9.6-2.05.96-3.38.96-2.6 0-4.81-1.76-5.6-4.12H3.06v2.59A10 10 0 0 0 12 22Z" />
+            <path fill="#FBBC05" d="M6.4 13.92a6 6 0 0 1 0-3.84V7.49H3.06a10 10 0 0 0 0 9.02l3.34-2.59Z" />
+            <path fill="#EA4335" d="M12 5.96c1.47 0 2.79.51 3.82 1.51l2.87-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.94 5.49l3.34 2.59C7.19 7.72 9.4 5.96 12 5.96Z" />
+          </svg>
+          {googleLoading ? "Menghubungkan…" : "Lanjutkan dengan Google"}
+        </button>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      </div> : <EmailAuthForm onAuthenticated={onAuthenticated} onBack={() => { setEmailMode(false); setError(""); }} />}
-      {error && emailMode && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      </div>
     </DialogContent>
   );
-}
-
-function EmailAuthForm({ onBack, onAuthenticated }: { onBack: () => void; onAuthenticated: (user: BetterAuthUser) => void }) {
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const active = useRef(true);
-  useEffect(() => () => { active.current = false; }, []);
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (loading) return; setLoading(true); setError("");
-    try {
-      if (mode === "register") await signUpEmail(name.trim(), email.trim(), password); else await signInEmail(email.trim(), password);
-      const session = await getBetterAuthSession(); if (!active.current) return;
-      if (!session?.user?.id) { setError("Sesi belum aktif. Silakan coba lagi."); return; }
-      onAuthenticated(session.user);
-    } catch { if (active.current) setError(mode === "register" ? "Pendaftaran gagal. Periksa data lalu coba lagi." : "Masuk gagal. Periksa email dan kata sandi."); }
-    finally { if (active.current) setLoading(false); }
-  }
-  return <div className="space-y-4 pt-2">
-    <div className="flex items-center justify-center gap-1 rounded-xl bg-secondary p-1" aria-label="Mode akun">
-      {(["login", "register"] as const).map((value) => <button key={value} type="button" disabled={loading} aria-pressed={mode === value} className={`min-h-10 flex-1 rounded-lg px-3 text-sm font-semibold ${mode === value ? "bg-background shadow-sm" : "text-muted-foreground"}`} onClick={() => { setMode(value); setError(""); }}>{value === "login" ? "Masuk" : "Daftar"}</button>)}
-    </div>
-    <form onSubmit={submit} className="space-y-3" aria-busy={loading}>
-      {mode === "register" && <label className="block text-sm font-medium">Nama<input className={input} name="name" autoComplete="name" required maxLength={100} value={name} onChange={(event) => setName(event.target.value)} disabled={loading} /></label>}
-      <label className="block text-sm font-medium">Email<input className={input} name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} disabled={loading} /></label>
-      <label className="block text-sm font-medium">Kata sandi<input className={input} name="password" type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} required minLength={mode === "register" ? 8 : undefined} value={password} onChange={(event) => setPassword(event.target.value)} disabled={loading} /></label>
-      {mode === "register" && <p className="text-xs text-muted-foreground">Minimal 8 karakter.</p>}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <button type="submit" disabled={loading} className={`${button} w-full bg-brand-red text-white`}>{loading ? "Memverifikasi…" : mode === "login" ? "Masuk" : "Buat akun"}</button>
-      <button type="button" className="min-h-11 w-full text-sm font-semibold text-muted-foreground" onClick={onBack}>‹ Pilih metode lain</button>
-    </form>
-  </div>;
 }
