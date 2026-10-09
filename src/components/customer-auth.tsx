@@ -23,7 +23,7 @@ function AuthChoice() {
   async function googleLogin() {
     setGoogleLoading(true);
     setError("");
-    try { await signInGoogle(`${window.location.origin}/profile`); }
+    try { await signInGoogle("/profile"); }
     catch { setError("Google gagal. Coba lagi."); }
     finally { setGoogleLoading(false); }
   }
