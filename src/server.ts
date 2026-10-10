@@ -1,4 +1,5 @@
 import "./lib/error-capture";
+import { canonicalRedirectUrl } from "./lib/canonical-host";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
@@ -47,6 +48,14 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const canonicalRedirect = canonicalRedirectUrl(request.url);
+      if (canonicalRedirect) {
+        return new Response(null, {
+          status: request.method === "GET" || request.method === "HEAD" ? 301 : 308,
+          headers: { location: canonicalRedirect, "cache-control": "no-store" },
+        });
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
