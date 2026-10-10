@@ -3,13 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppSplash } from "@/components/app-splash";
 
-// The splash is what keeps a cold load from showing an empty white page, so these tests
-// pin both halves: it renders on the server pass and it goes away by itself afterwards.
+// A splash that fails to clear covers the whole app and swallows taps, so these tests pin
+// both halves: it is there on the first paint, and it is hidden and inert once mounted.
 describe("AppSplash", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    // Reduced motion keeps the exit instant, which is what makes this assertion
-    // deterministic in jsdom (motion otherwise waits on an animation frame).
     vi.stubGlobal(
       "matchMedia",
       vi.fn((query: string) => ({
@@ -30,9 +28,10 @@ describe("AppSplash", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the brand splash immediately", () => {
+  it("renders the brand splash on the first paint", () => {
     render(<AppSplash />);
-    expect(screen.getByTestId("app-splash")).toBeTruthy();
+    const splash = screen.getByTestId("app-splash");
+    expect(splash.style.visibility).toBe("visible");
     expect(screen.getByText(/Menyiapkan Djiwa Travel/)).toBeTruthy();
   });
 
@@ -41,6 +40,11 @@ describe("AppSplash", () => {
     await act(async () => {
       vi.advanceTimersByTime(1200);
     });
-    expect(screen.queryByTestId("app-splash")).toBeNull();
+    expect(screen.getByTestId("app-splash").style.visibility).toBe("hidden");
+  });
+
+  it("never swallows taps, even while visible", () => {
+    render(<AppSplash />);
+    expect(screen.getByTestId("app-splash").className).toContain("pointer-events-none");
   });
 });
