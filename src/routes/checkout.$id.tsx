@@ -1,12 +1,15 @@
-import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { QrCode, Landmark, Check } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Page, BackBar, StickyCta, btnRed, group, label } from "@/components/shell";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { resolveCheckoutPackage } from "@/lib/checkout-package";
 import { rupiah } from "@/lib/pricing";
 import { createOrder } from "@/lib/orders";
 import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
+import { getBetterAuthSession, type BetterAuthUser } from "@/lib/better-auth-client";
+import { isCustomerProfileComplete } from "@/lib/customer-profile";
+import { loadCustomerProfile } from "@/lib/customer-profile-client";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: async ({ params }) => {
@@ -21,7 +24,7 @@ export const Route = createFileRoute("/checkout/$id")({
       { name: "description", content: "Bayar eSIM dengan QRIS atau Virtual Account." },
       { property: "og:title", content: "Checkout — Djiwa Travel" },
       { property: "og:description", content: "Bayar eSIM dengan QRIS atau Virtual Account." },
-      { name: "robots", content: "noindex" },
+      { property: "robots", content: "noindex" },
     ],
   }),
   component: Checkout,
@@ -41,7 +44,25 @@ function Checkout() {
   const [method, setMethod] = useState<"qris" | "va">("qris");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const valid = /\S+@\S+\.\S+/.test(email) && wa.replace(/\D/g, "").length >= 9;
+  const [user, setUser] = useState<BetterAuthUser | null>(null);
+  const [memberProfileReady, setMemberProfileReady] = useState(false);
+  useEffect(() => {
+    void getBetterAuthSession().then((session) => {
+      const nextUser = session?.user ?? null;
+      setUser(nextUser);
+      if (nextUser) {
+        void loadCustomerProfile().then((saved) => {
+          if (saved) {
+            setEmail(saved.email);
+            setWa(saved.whatsapp);
+          }
+          setMemberProfileReady(Boolean(saved && isCustomerProfileComplete(saved)));
+        }).catch(() => setMemberProfileReady(false));
+      }
+    }).catch(() => setUser(null));
+  }, []);
+  const valid = isCustomerProfileComplete({ email, whatsapp: wa });
+  const canPay = valid && (!user || memberProfileReady);
 
   const pay = async () => {
     if (submitting) return;
@@ -91,6 +112,13 @@ function Checkout() {
       </div>
 
       <h2 className={`${label} mt-6`}>Dikirim ke</h2>
+      {user && !memberProfileReady && (
+        <div className="mb-3 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-3 text-sm">
+          <p className="font-semibold">Lengkapi profil untuk checkout sebagai member</p>
+          <p className="mt-1 text-muted-foreground">Guest checkout tetap tersedia tanpa akun.</p>
+          <Link to="/profile" className="mt-2 inline-flex font-semibold text-brand-red">Lengkapi data di Profil →</Link>
+        </div>
+      )}
       <div className={group}>
         <input
           className={input}
@@ -104,12 +132,16 @@ function Checkout() {
           className={input}
           type="tel"
           inputMode="tel"
-          placeholder="Nomor WhatsApp"
+          placeholder="Nomor WhatsApp (62…)"
           value={wa}
           onChange={(e) => setWa(e.target.value)}
         />
       </div>
-      <p className="mt-2 px-1 text-xs text-muted-foreground">Tanpa perlu daftar akun.</p>
+      <p className="mt-2 px-1 text-xs text-muted-foreground">
+        {user
+          ? "Masuk sebagai member. Nomor WhatsApp memakai format 62…"
+          : "Tanpa perlu daftar akun. Nomor WhatsApp memakai format 62…"}
+      </p>
 
       <h2 className={`${label} mt-6`}>Pembayaran</h2>
       <div className={group}>
@@ -137,7 +169,7 @@ function Checkout() {
 
       <StickyCta>
         <button
-          disabled={!valid || submitting}
+          disabled={!canPay || submitting}
           onClick={pay}
           className={`${btnRed} disabled:opacity-40`}
         >

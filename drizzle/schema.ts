@@ -227,3 +227,15 @@ export const guestOrderAccess = pgTable("guest_order_access", {
 	unique("guest_order_access_token_hash_key").on(table.accessTokenHash),
 	check("guest_order_access_payment_method_check", sql`payment_method = ANY (ARRAY['qris'::text, 'va'::text])`),
 ]);
+
+export const customerProfiles = pgTable("customer_profiles", {
+	// Better Auth user id is an opaque text token (32 chars), not a uuid.
+	authUserId: text("auth_user_id").primaryKey().notNull(),
+	email: text().notNull(),
+	whatsapp: text().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	unique("customer_profiles_email_key").on(table.email),
+	check("customer_profiles_whatsapp_check", sql`whatsapp ~ '^[0-9]{9,15}$'`),
+]);

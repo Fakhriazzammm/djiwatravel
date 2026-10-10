@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Loader2, AlertCircle } from "lucide-react";
+import { Check, Loader2, AlertCircle, Printer } from "lucide-react";
 import { useState } from "react";
 import { Page, btnPrimary, btnRed, btnSoft } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
 import { rupiah } from "@/lib/pricing";
-import { useOrders } from "@/lib/orders";
+import { useOrders, type Order } from "@/lib/orders";
 
 export const Route = createFileRoute("/order/$id")({
   head: () => ({
@@ -69,6 +69,7 @@ function OrderPage() {
             </a>
           )}
         </div>
+        <InvoiceCard order={o} />
         <Link to="/catalog" className="mt-5 block text-center text-sm font-semibold text-primary">
           Kembali ke katalog
         </Link>
@@ -194,6 +195,29 @@ function OrderPage() {
           Support
         </a>
       </div>
+      <InvoiceCard order={o} />
     </Page>
+  );
+}
+
+function InvoiceCard({ order }: { order: Order }) {
+  return (
+    <section className="invoice-card mt-6 rounded-2xl bg-surface p-4 text-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice</p>
+          <p className="mt-1 font-semibold">Djiwa Travel</p>
+          <p className="text-muted-foreground">#{order.publicOrderCode ?? order.id.slice(0, 8)}</p>
+        </div>
+        <button type="button" onClick={() => window.print()} className="print-button flex min-h-10 items-center gap-2 rounded-xl bg-secondary px-3 font-semibold" aria-label="Cetak atau simpan invoice sebagai PDF">
+          <Printer className="size-4" /> Cetak / PDF
+        </button>
+      </div>
+      <dl className="mt-4 grid grid-cols-[1fr_auto] gap-y-2 border-t pt-3">
+        <dt className="text-muted-foreground">Produk</dt><dd className="text-right font-medium">{order.packageName ?? order.packageId}</dd>
+        <dt className="text-muted-foreground">Pembayaran</dt><dd className="text-right font-medium uppercase">{order.method}</dd>
+        <dt className="text-muted-foreground">Total</dt><dd className="text-right font-semibold">{rupiah(order.amount)}</dd>
+      </dl>
+    </section>
   );
 }

@@ -94,3 +94,20 @@
   .tap:active { transform: scale(0.96); }
 }
 html { scroll-behavior: smooth; }
+
+/* Respect the user's reduced-motion preference across the whole app. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Invoice printing: keep only the invoice card on paper. */
+@media print {
+  body { background: white !important; }
+  nav, .print-button, a, button:not(.invoice-card button) { display: none !important; }
+  .invoice-card { display: block !important; margin: 0 !important; border: 1px solid #d7d7dc; box-shadow: none; }
+}
