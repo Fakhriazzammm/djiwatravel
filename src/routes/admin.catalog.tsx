@@ -10,6 +10,7 @@ import {
 } from "@/lib/reseller-catalog-view";
 
 export const Route = createFileRoute("/admin/catalog")({
+  head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
   loader: async () => {
     try {
       const catalog = await getResellerCatalog();
