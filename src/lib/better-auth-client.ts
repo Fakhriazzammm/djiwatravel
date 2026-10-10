@@ -13,7 +13,7 @@ async function request(path: string, init: RequestInit = {}) {
 export function getBetterAuthSession() { return request("/get-session") as Promise<BetterAuthSession>; }
 export function signInEmail(email: string, password: string) { return request("/sign-in/email", { method: "POST", body: JSON.stringify({ email, password }) }); }
 export function signUpEmail(name: string, email: string, password: string) { return request("/sign-up/email", { method: "POST", body: JSON.stringify({ name, email, password }) }); }
-export async function signInGoogle(callbackURL: string) {
+export async function signInGoogle(callbackURL = `${window.location.origin}/profile`) {
   const response = await fetch(`${AUTH_BASE}/sign-in/social`, { method: "POST", redirect: "manual", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider: "google", callbackURL }) });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload.url) throw new Error(payload?.message || "Google Auth belum tersedia");
