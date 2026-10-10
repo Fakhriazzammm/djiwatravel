@@ -5,6 +5,7 @@ import { Page, btnPrimary, btnRed, btnSoft } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
 import { rupiah } from "@/lib/pricing";
 import {
+  ensurePaymentLink,
   guestAccessTokenFor,
   refreshOrdersFromServer,
   useOrders,
@@ -51,6 +52,34 @@ function OrderPage() {
     if (!notificationsSupported()) return;
     setNotifyReady(readNotifyPreference() && notificationPermission() === "granted");
   }, []);
+
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkNote, setLinkNote] = useState("");
+  const linkAttempted = useRef(false);
+
+  /** Rebuilds the Mayar link for an order that was created while checkout failed. */
+  const buildLink = async () => {
+    if (!current) return;
+    setLinkBusy(true);
+    setLinkNote("");
+    try {
+      const url = await ensurePaymentLink(current);
+      setLinkNote(url ? "" : "Data kontak pesanan tidak lengkap. Hubungi support ya.");
+    } catch {
+      setLinkNote("Belum bisa membuat link pembayaran. Coba lagi sebentar lagi.");
+    } finally {
+      setLinkBusy(false);
+    }
+  };
+
+  // An order created during a provider hiccup used to be a dead end: try once on its own.
+  useEffect(() => {
+    if (!current || current.paymentUrl) return;
+    if (current.status !== "ORDER_CREATED" || linkAttempted.current) return;
+    linkAttempted.current = true;
+    void buildLink();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id, current?.status, current?.paymentUrl]);
 
   const toggleNotify = async () => {
     if (notifyReady) {
@@ -186,14 +215,24 @@ function OrderPage() {
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {o.paymentUrl
-              ? "Setelah membayar di Mayar, halaman ini langsung menampilkan eSIM kamu."
-              : "Tagihan Mayar belum terbentuk. Muat ulang halaman ini sebentar lagi."}
+              ? "Setelah membayar di Mayar, kamu otomatis kembali ke halaman ini dan eSIM langsung muncul."
+              : "Tagihan Mayar belum terbentuk. Tekan tombol di bawah untuk membuatnya."}
           </p>
-          {o.paymentUrl && (
+          {o.paymentUrl ? (
             <a href={o.paymentUrl} target="_blank" rel="noreferrer" className={`${btnRed} mt-4 block`}>
               Lanjutkan pembayaran
             </a>
+          ) : (
+            <button
+              type="button"
+              disabled={linkBusy}
+              onClick={() => void buildLink()}
+              className={`${btnRed} mt-4 block w-full disabled:opacity-50`}
+            >
+              {linkBusy ? "Membuat link pembayaran…" : "Buat link pembayaran"}
+            </button>
           )}
+          {linkNote && <p className="mt-2 text-xs text-destructive">{linkNote}</p>}
           <button
             type="button"
             disabled={checking}

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import type { EsimProfile } from "./providers";
 import { createGuestOrderDraft, getGuestOrders } from "./guest-orders.server";
+import { rebuildMayarInvoice } from "./mayar-gateway";
 import { createMayarInvoice } from "./mayar-gateway";
 import { mapGuestOrderRecord } from "./guest-order-view";
 
@@ -95,6 +96,49 @@ export function useOrders() {
   return orders;
 }
 
+type InvoiceInput = Parameters<typeof createMayarInvoice>[0]["data"];
+
+/**
+ * Invoice creation talks to an external provider over the public internet, so a single slow or
+ * dropped request used to leave the customer with an order and no way to pay. Retries are safe:
+ * the server returns the existing invoice when one is already attached to the order.
+ */
+export async function createInvoiceWithRetry(
+  input: InvoiceInput,
+  attempts = 3,
+): Promise<Awaited<ReturnType<typeof createMayarInvoice>>> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await createMayarInvoice({ data: input });
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1_200));
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Tagihan pembayaran gagal dibuat");
+}
+
+/**
+ * Rebuilds the payment link for an order that has none: the server reads the saved contact from
+ * guest_order_access and creates the Mayar invoice again, so the customer only needs the order
+ * open (the access token already lives in this browser).
+ */
+export async function ensurePaymentLink(order: Order): Promise<string | null> {
+
+  const accessToken = guestAccessTokenFor(order.id);
+  if (!accessToken) return null;
+  const invoice = await rebuildMayarInvoice({ data: { orderId: order.id, accessToken } });
+  patch(order.id, {
+    paymentUrl: invoice.paymentUrl,
+    paymentReference: invoice.invoiceId,
+    status: "WAITING_PAYMENT",
+  });
+  return invoice.paymentUrl;
+}
+
 const ACCESS_KEY = "djiwa.guest-order-access";
 type PendingOrder = {
   packageId: string;
@@ -171,17 +215,15 @@ export async function createOrder(
   const access = readGuestAccess();
   access[saved.id] = accessToken;
   localStorage.setItem(ACCESS_KEY, JSON.stringify(access));
-  const invoice = await createMayarInvoice({
-    data: {
-      orderId: saved.id,
-      accessToken,
-      amountIdr: saved.amount,
-      customerName: o.email.split("@")[0] || "Customer",
-      customerEmail: o.email,
-      customerMobile: o.whatsapp,
-      description: `Djiwa Travel ${saved.publicOrderCode}`,
-      redirectUrl: `${window.location.origin}/order/${saved.id}`,
-    },
+  const invoice = await createInvoiceWithRetry({
+    orderId: saved.id,
+    accessToken,
+    amountIdr: saved.amount,
+    customerName: o.email.split("@")[0] || "Customer",
+    customerEmail: o.email,
+    customerMobile: o.whatsapp,
+    description: `Djiwa Travel ${saved.publicOrderCode}`,
+    redirectUrl: `${window.location.origin}/order/${saved.id}`,
   });
   sessionStorage.removeItem("djiwa.pending-order");
   const order: Order = {
@@ -189,6 +231,9 @@ export async function createOrder(
     publicOrderCode: saved.publicOrderCode,
     packageId: saved.packageCode,
     amount: saved.amount,
+    // Kept locally so the payment link can be rebuilt later without asking the customer again.
+    email: o.email,
+    whatsapp: o.whatsapp,
     method: o.method,
     status: "WAITING_PAYMENT",
     paymentUrl: invoice.paymentUrl,
