@@ -8,6 +8,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PageTransition } from "../components/motion-primitives";
+import { NavProgress } from "../components/nav-progress";
 import { easeIos } from "../lib/motion";
 
 function NotFoundComponent() {
@@ -81,6 +82,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <MotionConfig transition={{ duration: 0.34, ease: easeIos }} reducedMotion="user">
+        <NavProgress />
         <AnimatedOutlet />
       </MotionConfig>
     </QueryClientProvider>

@@ -1,14 +1,42 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { TabBar } from "@/components/shell";
+import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import type { ResellerCatalogPackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
+import { SkeletonCards } from "@/components/route-loading";
+import { springIos } from "@/lib/motion";
 
 export const Route = createFileRoute("/catalog")({
+  // The whole reseller catalog is one expensive read (thousands of packages). Keep the
+  // loader result warm for a minute so returning to this screen is instant instead of
+  // paying for the fetch again; the server-side cache TTLs at 5 minutes, so this stays
+  // consistent with what the server would return.
+  staleTime: 60_000,
+  pendingMs: 120,
+  pendingMinMs: 400,
+  pendingComponent: CatalogPending,
   loader: () => getResellerCatalog(),
   component: LiveCatalog,
 });
+
+/** Shown while the catalog loads: same header shape, card skeleton, tab bar in place. */
+function CatalogPending() {
+  return (
+    <>
+      <main className="mx-auto min-h-[100dvh] w-full min-w-0 max-w-5xl overflow-x-hidden bg-background px-4 py-5 pb-24 text-foreground sm:px-6 sm:py-8">
+        <header className="mb-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Djiwa Travel</p>
+          <h1 className="mt-2 max-w-[22ch] text-xl font-bold leading-tight sm:max-w-none sm:text-2xl">Memuat paket internet…</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Sedang mengambil daftar paket terbaru. Ini biasanya hanya butuh beberapa detik.</p>
+        </header>
+        <SkeletonCards count={8} />
+      </main>
+      <TabBar />
+    </>
+  );
+}
 
 function rupiah(value: number) {
   return `Rp${value.toLocaleString("id-ID")}`;
@@ -27,6 +55,10 @@ function LiveCatalog() {
   const catalog = Route.useLoaderData();
   const [destination, setDestination] = useState("ALL");
   const [sort, setSort] = useState<SortMode>("recommended");
+  // Client-only entrance: the server must ship visible markup, but after a client-side
+  // navigation (where the pending screen was on screen) the grid fades in instead of
+  // snapping into place.
+  const [animateIn] = useState(() => typeof document !== "undefined");
   const packages = useMemo(() => {
     const filtered = destination === "ALL" ? catalog.packages : catalog.packages.filter((pkg) => pkg.locationCodes.includes(destination));
     return [...filtered].sort((a, b) => {
@@ -59,7 +91,7 @@ function LiveCatalog() {
         </div>
         <p className="mt-2 text-xs text-muted-foreground">Ketuk bendera untuk melihat paket di negara tersebut.</p>
       </section>
-      {packages.length === 0 ? <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">Belum ada paket untuk destinasi ini. Coba pilih bendera lain.</p> : <div className="grid min-w-0 grid-cols-2 gap-2 lg:gap-2.5 lg:grid-cols-3">{packages.map((pkg) => <article key={pkg.packageCode} className="min-w-0 max-w-full rounded-2xl border border-border/80 border-t-2 border-t-primary/70 bg-gradient-to-b from-card via-card to-muted/30 p-2.5 shadow-sm transition-shadow hover:shadow-md sm:p-3"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><h2 className="break-words text-sm font-bold leading-snug tracking-tight sm:text-base">{packageDestinationLabel(pkg)}</h2></div><p className="shrink-0 text-sm font-extrabold tracking-tight text-primary sm:text-base">{rupiah(pkg.sellingPrice.sellingPriceIdr)}</p></div><div className="mt-2 inline-flex max-w-full items-center rounded-lg bg-primary/10 px-2 py-1.5 text-[11px] font-bold text-primary"><span className="whitespace-nowrap">{packageDataLabel(pkg)} · {pkg.durationDays} hari</span></div><p className="mt-2 break-words px-0.5 text-xs leading-snug text-muted-foreground"><span className="font-semibold text-foreground">Cakupan:</span> {packageCoverageLabel(pkg)}</p><Link to="/checkout/$id" params={{ id: pkg.packageCode }} className="mt-2.5 inline-flex min-h-10 w-full max-w-full items-center justify-center rounded-xl bg-primary px-2.5 py-2 text-center text-[11px] font-bold leading-tight text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:px-3 sm:text-sm">Pilih paket</Link></article>)}</div>}
+      {packages.length === 0 ? <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">Belum ada paket untuk destinasi ini. Coba pilih bendera lain.</p> : <motion.div initial={animateIn ? { opacity: 0, y: 10 } : false} animate={{ opacity: 1, y: 0 }} transition={springIos} className="grid min-w-0 grid-cols-2 gap-2 lg:gap-2.5 lg:grid-cols-3">{packages.map((pkg) => <article key={pkg.packageCode} className="min-w-0 max-w-full rounded-2xl border border-border/80 border-t-2 border-t-primary/70 bg-gradient-to-b from-card via-card to-muted/30 p-2.5 shadow-sm transition-shadow hover:shadow-md sm:p-3"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><h2 className="break-words text-sm font-bold leading-snug tracking-tight sm:text-base">{packageDestinationLabel(pkg)}</h2></div><p className="shrink-0 text-sm font-extrabold tracking-tight text-primary sm:text-base">{rupiah(pkg.sellingPrice.sellingPriceIdr)}</p></div><div className="mt-2 inline-flex max-w-full items-center rounded-lg bg-primary/10 px-2 py-1.5 text-[11px] font-bold text-primary"><span className="whitespace-nowrap">{packageDataLabel(pkg)} · {pkg.durationDays} hari</span></div><p className="mt-2 break-words px-0.5 text-xs leading-snug text-muted-foreground"><span className="font-semibold text-foreground">Cakupan:</span> {packageCoverageLabel(pkg)}</p><Link to="/checkout/$id" params={{ id: pkg.packageCode }} className="mt-2.5 inline-flex min-h-10 w-full max-w-full items-center justify-center rounded-xl bg-primary px-2.5 py-2 text-center text-[11px] font-bold leading-tight text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 sm:px-3 sm:text-sm">Pilih paket</Link></article>)}</motion.div>}
     </main>
       <TabBar />
     </>
