@@ -7,6 +7,7 @@ import { db } from "../db/client.server";
 import { hashGuestAccessToken, normalizeGuestWhatsapp } from "./guest-order-access.server";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 import { decryptEsimSecret } from "./esim-secret-crypto";
+import { readMayarSnapshot } from "./payment-snapshot";
 
 const createGuestOrderSchema = z.object({
   packageCode: z.string().trim().min(1).max(160),
@@ -164,8 +165,9 @@ export const getGuestOrders = createServerFn({ method: "POST" })
         const row = rows[0];
         if (!row) return null;
         const snapshot = (row.packageSnapshot ?? {}) as Record<string, unknown>;
-        const priceSnapshot = (row.priceSnapshot ?? {}) as Record<string, unknown>;
-        const paymentUrl = typeof priceSnapshot["mayarPaymentUrl"] === "string" ? priceSnapshot["mayarPaymentUrl"] : typeof priceSnapshot["paymentUrl"] === "string" ? priceSnapshot["paymentUrl"] : undefined;
+        // The invoice step stores the Mayar reference nested under `mayar`, so a
+        // returning customer still gets their payment link after a reload.
+        const paymentUrl = readMayarSnapshot(row.priceSnapshot).paymentUrl;
         const qrPayload = row.qrPayloadEncrypted ? decryptEsimSecret(row.qrPayloadEncrypted) : "";
         const activationCode = row.activationCodeEncrypted ? decryptEsimSecret(row.activationCodeEncrypted) : (qrPayload.split("$")[2] ?? "");
         const esim = row.iccid && (qrPayload || activationCode) ? {

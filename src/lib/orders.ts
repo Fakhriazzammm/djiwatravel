@@ -53,41 +53,43 @@ const write = (o: Order[]) => {
   window.dispatchEvent(new Event("djiwa-orders"));
 };
 
+/** Pulls the authoritative server state for every stored guest credential. */
+export async function refreshOrdersFromServer(): Promise<void> {
+  const credentials = Object.entries(readGuestAccess())
+    .filter(
+      ([orderId, token]) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          orderId,
+        ) &&
+        typeof token === "string" &&
+        token.length >= 32 &&
+        token.length <= 256,
+    )
+    .slice(0, 20)
+    .map(([orderId, accessToken]) => ({ orderId, accessToken }));
+  if (!credentials.length) return;
+  try {
+    const records = await getGuestOrders({ data: credentials });
+    const remote = records.map(mapGuestOrderRecord);
+    const current = read();
+    const byId = new Map(remote.map((order) => [order.id, order]));
+    const merged = current.map((order) => byId.get(order.id) ?? order);
+    for (const order of remote) {
+      if (!current.some((existing) => existing.id === order.id)) merged.unshift(order);
+    }
+    write(merged);
+  } catch {
+    // Keep the local order cache available while the server is unreachable.
+  }
+}
+
 export function useOrders() {
   const [orders, set] = useState<Order[] | null>(null);
   useEffect(() => {
     const f = () => set(read());
     f();
-    const hydrate = async () => {
-      const credentials = Object.entries(readGuestAccess())
-        .filter(
-          ([orderId, token]) =>
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-              orderId,
-            ) &&
-            typeof token === "string" &&
-            token.length >= 32 &&
-            token.length <= 256,
-        )
-        .slice(0, 20)
-        .map(([orderId, accessToken]) => ({ orderId, accessToken }));
-      if (!credentials.length) return;
-      try {
-        const records = await getGuestOrders({ data: credentials });
-        const remote = records.map(mapGuestOrderRecord);
-        const current = read();
-        const byId = new Map(remote.map((order) => [order.id, order]));
-        const merged = current.map((order) => byId.get(order.id) ?? order);
-        for (const order of remote) {
-          if (!current.some((existing) => existing.id === order.id)) merged.unshift(order);
-        }
-        write(merged);
-      } catch {
-        // Keep the local order cache available while the server is unreachable.
-      }
-    };
     window.addEventListener("djiwa-orders", f);
-    void hydrate();
+    void refreshOrdersFromServer();
     return () => window.removeEventListener("djiwa-orders", f);
   }, []);
   return orders;
@@ -109,6 +111,14 @@ function readGuestAccess(): Record<string, string> {
   } catch {
     return {};
   }
+}
+
+/** Access token for one guest order, used to re-verify its payment server-side. */
+export function guestAccessTokenFor(orderId: string): string | undefined {
+  const token = readGuestAccess()[orderId];
+  return typeof token === "string" && token.length >= 32 && token.length <= 256
+    ? token
+    : undefined;
 }
 
 export async function createOrder(

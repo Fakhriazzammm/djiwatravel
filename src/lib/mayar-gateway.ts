@@ -80,13 +80,27 @@ export const createMayarInvoice = createServerFn({ method: "POST" })
     return { invoiceId, transactionId, paymentUrl };
   });
 
+export type MayarTransaction = {
+  id?: string;
+  status?: string;
+  amount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+/** Authoritative payment lookup: Mayar's transaction detail is the payment proof. */
+export async function fetchMayarTransaction(transactionId: string): Promise<MayarTransaction> {
+  const { apiKey, baseUrl } = mayarConfig();
+  const response = await fetch(`${baseUrl}/transactions/${encodeURIComponent(transactionId)}`, { headers: { authorization: `Bearer ${apiKey}`, accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
+  const body = await response.json().catch(() => ({})) as { data?: MayarTransaction; messages?: string; message?: string };
+  if (!response.ok) throw new Error(body.messages || body.message || `Payment verification error ${response.status}`);
+  return body.data ?? {};
+}
+
 export const getMayarTransaction = createServerFn({ method: "POST" })
   .validator(z.object({ transactionId: z.string().min(1).max(160) }))
   .handler(async ({ data }) => {
-    const { apiKey, baseUrl } = mayarConfig();
-    const response = await fetch(`${baseUrl}/transactions/${encodeURIComponent(data.transactionId)}`, { headers: { authorization: `Bearer ${apiKey}`, accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
-    const body = await response.json().catch(() => ({})) as { data?: { status?: string }; messages?: string; message?: string };
-    if (!response.ok) throw new Error(body.messages || body.message || `Payment verification error ${response.status}`);
-    if (String(body.data?.status).toLowerCase() !== "paid") throw new Error("Pembayaran belum terverifikasi");
-    return body.data;
+    const transaction = await fetchMayarTransaction(data.transactionId);
+    if (String(transaction.status).toLowerCase() !== "paid") throw new Error("Pembayaran belum terverifikasi");
+    return transaction;
   });

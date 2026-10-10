@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Loader2, AlertCircle, Printer } from "lucide-react";
-import { useState } from "react";
+import { Check, Loader2, AlertCircle, Printer, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Page, btnPrimary, btnRed, btnSoft } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
 import { rupiah } from "@/lib/pricing";
-import { useOrders, type Order } from "@/lib/orders";
+import { guestAccessTokenFor, refreshOrdersFromServer, useOrders, type Order } from "@/lib/orders";
+import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
 
 export const Route = createFileRoute("/order/$id")({
   head: () => ({
@@ -23,6 +24,58 @@ function OrderPage() {
   const { id } = Route.useParams();
   const orders = useOrders();
   const [view, setView] = useState<"main" | "qr" | "guide">("main");
+  const [checking, setChecking] = useState(false);
+  const [checkNote, setCheckNote] = useState("");
+  const current = orders?.find((x) => x.id === id);
+  const awaitingPayment =
+    current?.status === "ORDER_CREATED" || current?.status === "WAITING_PAYMENT";
+
+  const checkPayment = async (auto: boolean) => {
+    const token = guestAccessTokenFor(id);
+    if (!token) return false;
+    if (!auto) {
+      setChecking(true);
+      setCheckNote("");
+    }
+    try {
+      const result = await verifyMayarPayment({ data: { orderId: id, accessToken: token } });
+      await refreshOrdersFromServer();
+      if (!auto)
+        setCheckNote(
+          result.settled
+            ? "Pembayaran terverifikasi. eSIM sedang disiapkan…"
+            : "Pembayaran belum kami terima. Selesaikan dulu di Mayar, lalu cek lagi.",
+        );
+      return result.settled;
+    } catch {
+      if (!auto) setCheckNote("Belum bisa memeriksa pembayaran. Coba lagi sebentar lagi.");
+      return false;
+    } finally {
+      if (!auto) setChecking(false);
+    }
+  };
+
+  // Coming back from Mayar: verify server-side and refresh, then keep watching
+  // for a short while so a paid order turns into an eSIM without a manual reload.
+  useEffect(() => {
+    if (!awaitingPayment) return;
+    let cancelled = false;
+    let attempts = 0;
+    let timer: number | undefined;
+    const run = async () => {
+      attempts += 1;
+      const settled = await checkPayment(true);
+      if (cancelled || settled) return;
+      if (attempts < 12) timer = window.setTimeout(() => void run(), 7000);
+    };
+    void run();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingPayment, id]);
+
   if (!orders)
     return (
       <Page tabs={false}>
@@ -59,15 +112,29 @@ function OrderPage() {
           )}
         </div>
         <div className="mt-4 rounded-2xl border border-border p-4 text-center">
-          <p className="font-semibold">Pembayaran belum tersedia</p>
+          <p className="font-semibold">
+            {o.paymentUrl ? "Menunggu pembayaran" : "Menyiapkan tagihan pembayaran"}
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tagihan Mayar sudah dibuat. Selesaikan pembayaran untuk memproses eSIM.
+            {o.paymentUrl
+              ? "Setelah membayar di Mayar, halaman ini langsung menampilkan eSIM kamu."
+              : "Tagihan Mayar belum terbentuk. Muat ulang halaman ini sebentar lagi."}
           </p>
           {o.paymentUrl && (
             <a href={o.paymentUrl} target="_blank" rel="noreferrer" className={`${btnRed} mt-4 block`}>
               Lanjutkan pembayaran
             </a>
           )}
+          <button
+            type="button"
+            disabled={checking}
+            onClick={() => void checkPayment(false)}
+            className={`${btnSoft} mt-3 inline-flex items-center justify-center gap-2 disabled:opacity-50`}
+          >
+            <RefreshCw className={checking ? "size-4 animate-spin" : "size-4"} />
+            {checking ? "Memeriksa…" : "Saya sudah bayar, cek status"}
+          </button>
+          {checkNote && <p className="mt-2 text-xs text-muted-foreground">{checkNote}</p>}
         </div>
         <InvoiceCard order={o} />
         <Link to="/catalog" className="mt-5 block text-center text-sm font-semibold text-primary">
@@ -200,6 +267,7 @@ function OrderPage() {
   );
 }
 
+/** Printable receipt for a guest or member order (browser print / save as PDF). */
 function InvoiceCard({ order }: { order: Order }) {
   return (
     <section className="invoice-card mt-6 rounded-2xl bg-surface p-4 text-sm">
@@ -209,14 +277,22 @@ function InvoiceCard({ order }: { order: Order }) {
           <p className="mt-1 font-semibold">Djiwa Travel</p>
           <p className="text-muted-foreground">#{order.publicOrderCode ?? order.id.slice(0, 8)}</p>
         </div>
-        <button type="button" onClick={() => window.print()} className="print-button flex min-h-10 items-center gap-2 rounded-xl bg-secondary px-3 font-semibold" aria-label="Cetak atau simpan invoice sebagai PDF">
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="print-button flex min-h-10 items-center gap-2 rounded-xl bg-secondary px-3 font-semibold"
+          aria-label="Cetak atau simpan invoice sebagai PDF"
+        >
           <Printer className="size-4" /> Cetak / PDF
         </button>
       </div>
       <dl className="mt-4 grid grid-cols-[1fr_auto] gap-y-2 border-t pt-3">
-        <dt className="text-muted-foreground">Produk</dt><dd className="text-right font-medium">{order.packageName ?? order.packageId}</dd>
-        <dt className="text-muted-foreground">Pembayaran</dt><dd className="text-right font-medium uppercase">{order.method}</dd>
-        <dt className="text-muted-foreground">Total</dt><dd className="text-right font-semibold">{rupiah(order.amount)}</dd>
+        <dt className="text-muted-foreground">Produk</dt>
+        <dd className="text-right font-medium">{order.packageName ?? order.packageId}</dd>
+        <dt className="text-muted-foreground">Pembayaran</dt>
+        <dd className="text-right font-medium uppercase">{order.method}</dd>
+        <dt className="text-muted-foreground">Total</dt>
+        <dd className="text-right font-semibold">{rupiah(order.amount)}</dd>
       </dl>
     </section>
   );
