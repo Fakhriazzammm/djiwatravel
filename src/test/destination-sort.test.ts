@@ -1,20 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import { PAGE_SIZE, sortPackages, type SortKey } from "@/routes/destination.$code";
-import type { ResellerCatalogPackage } from "@/lib/esim-access-catalog";
+import type { ViewPackage } from "@/lib/package-view";
 
-function pkg(
-  code: string,
-  priceIdr: number,
-  volumeBytes: number,
-  durationDays: number,
-): ResellerCatalogPackage {
+function pkg(code: string, priceIdr: number, volumeBytes: number, durationDays: number): ViewPackage {
   return {
     packageCode: code,
-    sellingPrice: { sellingPriceIdr: priceIdr },
+    name: code,
+    locationCodes: ["JP"],
     volumeBytes,
+    unlimited: false,
     durationDays,
-  } as ResellerCatalogPackage;
+    priceIdr,
+  };
 }
 
 // Sorting decides which packages a customer sees first, so the rules are pinned here rather

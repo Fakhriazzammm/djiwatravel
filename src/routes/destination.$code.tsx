@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { BackBar, Page } from "@/components/shell";
 import { getDest } from "@/lib/catalog";
-import type { ResellerCatalogPackage } from "@/lib/esim-access-catalog";
+import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
@@ -20,36 +20,27 @@ export const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
   { key: "value", label: "Paling hemat (Rp/GB)" },
 ];
 
-function pricePerGb(pkg: ResellerCatalogPackage): number {
+function pricePerGb(pkg: ViewPackage): number {
   const gb = pkg.volumeBytes / 1_000_000_000;
   if (!Number.isFinite(gb) || gb <= 0) return Number.POSITIVE_INFINITY;
-  return pkg.sellingPrice.sellingPriceIdr / gb;
+  return pkg.priceIdr / gb;
 }
 
 /**
  * Sorts a copy of the package list. Kept pure and exported so the ordering rules are covered by
  * tests instead of being verified by eye on production.
  */
-export function sortPackages(
-  packages: ResellerCatalogPackage[],
-  key: SortKey,
-): ResellerCatalogPackage[] {
+export function sortPackages(packages: ViewPackage[], key: SortKey): ViewPackage[] {
   const list = [...packages];
   switch (key) {
     case "price":
-      return list.sort((a, b) => a.sellingPrice.sellingPriceIdr - b.sellingPrice.sellingPriceIdr);
+      return list.sort((a, b) => a.priceIdr - b.priceIdr);
     case "data":
-      return list.sort(
-        (a, b) => b.volumeBytes - a.volumeBytes || a.sellingPrice.sellingPriceIdr - b.sellingPrice.sellingPriceIdr,
-      );
+      return list.sort((a, b) => b.volumeBytes - a.volumeBytes || a.priceIdr - b.priceIdr);
     case "duration":
-      return list.sort(
-        (a, b) => b.durationDays - a.durationDays || a.sellingPrice.sellingPriceIdr - b.sellingPrice.sellingPriceIdr,
-      );
+      return list.sort((a, b) => b.durationDays - a.durationDays || a.priceIdr - b.priceIdr);
     case "value":
-      return list.sort(
-        (a, b) => pricePerGb(a) - pricePerGb(b) || a.sellingPrice.sellingPriceIdr - b.sellingPrice.sellingPriceIdr,
-      );
+      return list.sort((a, b) => pricePerGb(a) - pricePerGb(b) || a.priceIdr - b.priceIdr);
     default:
       return list;
   }
@@ -70,9 +61,11 @@ export const Route = createFileRoute("/destination/$code")({
       getDest(params.code.toLowerCase());
     if (!destination) throw notFound();
     const catalog = await getResellerCatalog(destination.code);
+    // Only display fields are sent to the client: the full record carries our cost basis and
+    // made this page ~680 KB (see lib/package-view.ts).
     return {
       destination,
-      packages: filterPackagesByDestination(catalog.packages, destination.code),
+      packages: toViewPackages(filterPackagesByDestination(catalog.packages, destination.code)),
       stale: catalog.stale,
     };
   },
@@ -164,9 +157,7 @@ function Destination() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   Cakupan: {packageCoverageLabel(pkg)}
                 </p>
-                <p className="mt-4 text-lg font-bold text-brand-red">
-                  {rupiah(pkg.sellingPrice.sellingPriceIdr)}
-                </p>
+                <p className="mt-4 text-lg font-bold text-brand-red">{rupiah(pkg.priceIdr)}</p>
                 <Link
                   to="/checkout/$id"
                   params={{ id: pkg.packageCode }}

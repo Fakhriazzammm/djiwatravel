@@ -11,13 +11,15 @@ import { getBetterAuthSession, type BetterAuthUser } from "@/lib/better-auth-cli
 import { isCustomerProfileComplete } from "@/lib/customer-profile";
 import { formatWhatsapp, isValidWhatsapp, normalizeWhatsapp } from "@/lib/phone";
 import { loadCustomerProfile } from "@/lib/customer-profile-client";
+import { toViewPackage } from "@/lib/package-view";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: async ({ params }) => {
     const catalog = await getResellerCatalog();
     const pkg = resolveCheckoutPackage(catalog.packages, params.id);
     if (!pkg) throw notFound();
-    return { pkg };
+    // Display fields only: the full record carries our cost basis (lib/package-view.ts).
+    return { pkg: toViewPackage(pkg) };
   },
   head: () => ({
     meta: [
@@ -38,7 +40,7 @@ const methods = [
 
 function Checkout() {
   const { pkg } = Route.useLoaderData();
-  const price = pkg.sellingPrice.sellingPriceIdr;
+  const price = pkg.priceIdr;
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [wa, setWa] = useState("");

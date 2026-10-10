@@ -142,7 +142,7 @@ function Finder() {
                     Harga paket
                   </p>
                   <p className="text-lg font-bold">
-                    {rupiah(item.package.sellingPrice.sellingPriceIdr)}
+                    {rupiah(item.package.priceIdr)}
                   </p>
                   <ul className="mt-3 list-disc pl-5 text-xs text-muted-foreground">
                     {item.reasons.map((reason) => (
