@@ -39,10 +39,16 @@ export type ResellerCatalogPackage = {
   sellingPrice: PriceBreakdown;
   speed?: string;
   supportsTopUp: boolean;
+  /** Explicit provider signals only; absent signals remain unknown. */
+  unlimited?: boolean;
+  available?: boolean;
+  reliabilityScore?: number;
   providerSnapshot: ProviderPackage;
 };
 
-export function normalizeEsimAccessPackage(pkg: ProviderPackage): ResellerCatalogPackage {
+export function normalizeEsimAccessPackage(
+  pkg: ProviderPackage,
+): ResellerCatalogPackage {
   const locationCodes = (pkg.location ?? pkg.locationCode ?? "")
     .split(",")
     .map((v) => v.trim().toUpperCase())
@@ -60,13 +66,61 @@ export function normalizeEsimAccessPackage(pkg: ProviderPackage): ResellerCatalo
     sellingPrice: calculateSellingPrice({ providerPriceUnits }),
     ...(pkg.speed == null ? {} : { speed: pkg.speed }),
     supportsTopUp: (pkg.supportTopUpType ?? 1) > 1,
+    ...(typeof pkg["unlimited"] === "boolean"
+      ? { unlimited: pkg["unlimited"] }
+      : {}),
+    ...(typeof pkg["available"] === "boolean"
+      ? { available: pkg["available"] }
+      : {}),
+    ...(typeof pkg["reliabilityScore"] === "number" &&
+    Number.isFinite(pkg["reliabilityScore"]) &&
+    pkg["reliabilityScore"] >= 0 &&
+    pkg["reliabilityScore"] <= 1
+      ? { reliabilityScore: pkg["reliabilityScore"] }
+      : {}),
     providerSnapshot: pkg,
   };
 }
 
+function hasUsableProviderPrice(price: unknown): price is number {
+  return typeof price === "number" && Number.isFinite(price) && price > 0;
+}
+
+/**
+ * Customer catalog boundary. The partner catalog is the single source of truth
+ * for what the customer app may list and order, and only packages the partner
+ * can actually sell are kept: a known positive price, a known duration, at
+ * least one location and a known data volume (or an explicit unlimited signal).
+ * Anything whose commercial terms are missing or zero is hidden instead of being
+ * shown as free, unlimited or unmetered.
+ */
 export async function loadResellerCatalog(query: EsimAccessPackageQuery = {}) {
   const response = await queryEsimAccessPackages({ data: query });
   const payload = response as PackageListResponse;
   const packages = payload.obj?.packageList ?? payload.data?.packageList ?? [];
-  return packages.map(normalizeEsimAccessPackage);
+  return packages
+    .filter((pkg) => hasUsableProviderPrice(pkg.price))
+    .map(normalizeEsimAccessPackage)
+    .filter(isRecommendablePackage);
+}
+
+/**
+ * Availability gate shared by the catalog boundary and the recommendation
+ * layer. Unknown or zero provider fields are never treated as free or
+ * unlimited data: a package must carry known, positive commercial terms to be
+ * listed, recommended or ordered.
+ */
+export function isRecommendablePackage(pkg: ResellerCatalogPackage): boolean {
+  return (
+    Number.isFinite(pkg.providerPriceUnits) &&
+    pkg.providerPriceUnits > 0 &&
+    Number.isFinite(pkg.sellingPrice.sellingPriceIdr) &&
+    pkg.sellingPrice.sellingPriceIdr > 0 &&
+    Number.isFinite(pkg.durationDays) &&
+    pkg.durationDays > 0 &&
+    pkg.locationCodes.some((code) => code.trim().length > 0) &&
+    (pkg.unlimited === true ||
+      (Number.isFinite(pkg.volumeBytes) && pkg.volumeBytes > 0)) &&
+    pkg.available !== false
+  );
 }

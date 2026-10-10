@@ -35,6 +35,7 @@ import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
 import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
+import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
 
@@ -168,6 +169,11 @@ const PlanIdRoute = PlanIdRouteImport.update({
   path: '/plan/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksDjiwaTravelRoute = ApiWebhooksDjiwaTravelRouteImport.update({
   id: '/api/webhooks/djiwa-travel',
   path: '/api/webhooks/djiwa-travel',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/plan/$id': typeof PlanIdRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/plan/$id': typeof PlanIdRoute
   '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/plan/$id': typeof PlanIdRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/plan/$id'
     | '/admin/'
     | '/my-esim/'
+    | '/api/auth/$'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -330,6 +340,7 @@ export interface FileRouteTypes {
     | '/plan/$id'
     | '/admin'
     | '/my-esim'
+    | '/api/auth/$'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   id:
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/plan/$id'
     | '/admin/'
     | '/my-esim/'
+    | '/api/auth/$'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesById: FileRoutesById
@@ -391,6 +403,7 @@ export interface RootRouteChildren {
   PlanIdRoute: typeof PlanIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
   ApiWebhooksEsimAccessTokenRoute: typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -579,6 +592,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/djiwa-travel': {
       id: '/api/webhooks/djiwa-travel'
       path: '/api/webhooks/djiwa-travel'
@@ -623,6 +643,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlanIdRoute: PlanIdRoute,
   AdminIndexRoute: AdminIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
   ApiWebhooksEsimAccessTokenRoute: ApiWebhooksEsimAccessTokenRoute,
 }

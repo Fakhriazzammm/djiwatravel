@@ -20,7 +20,8 @@ const destinationFilters = [
   ["AU", "Australia", "🇦🇺"], ["GB", "Inggris", "🇬🇧"], ["SA", "Arab Saudi", "🇸🇦"],
 ] as const;
 type SortMode = "recommended" | "price-asc" | "price-desc" | "data-desc" | "duration-desc";
-function volumeForSort(pkg: ResellerCatalogPackage) { return pkg.volumeBytes === 0 ? Number.POSITIVE_INFINITY : pkg.volumeBytes; }
+/** Unknown quota is not unlimited: sort it last instead of treating it as the largest package. */
+function volumeForSort(pkg: ResellerCatalogPackage) { if (pkg.unlimited === true) return Number.POSITIVE_INFINITY; return Number.isFinite(pkg.volumeBytes) && pkg.volumeBytes > 0 ? pkg.volumeBytes : -1; }
 
 function LiveCatalog() {
   const catalog = Route.useLoaderData();
