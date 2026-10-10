@@ -229,13 +229,13 @@ function Home() {
         ) : (
           <Reveal className="block">
             <Link
-              to="/explore"
+              to="/finder"
               className="tap mt-7 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-4"
             >
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">Cari Paket yang Cocok</p>
                 <p className="truncate text-[13px] text-muted-foreground">
-                  Masukkan tanggal & kebutuhanmu
+                  Jawab singkat, kami urutkan paket terbaiknya
                 </p>
               </div>
               <ChevronRight className="size-5 shrink-0 text-brand-red" />

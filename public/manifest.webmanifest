@@ -1,9 +1,78 @@
 {
-  "name": "Djiwa Travel",
-  "short_name": "Djiwa",
+  "id": "/",
+  "name": "Djiwa Travel — eSIM Perjalanan",
+  "short_name": "Djiwa Travel",
+  "description": "Beli eSIM untuk perjalananmu: Jepang, Korea, Singapura, Thailand, dan banyak lagi.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
+  "lang": "id",
+  "dir": "ltr",
   "background_color": "#faf9f6",
   "theme_color": "#1f2d5c",
-  "icons": [{ "src": "/favicon.png", "sizes": "64x64", "type": "image/png" }]
+  "categories": [
+    "travel",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Cari destinasi",
+      "short_name": "Explore",
+      "url": "/explore",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "My eSIM",
+      "short_name": "eSIM",
+      "url": "/my-esim",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Lacak pesanan",
+      "short_name": "Lacak",
+      "url": "/profile",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }

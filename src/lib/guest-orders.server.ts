@@ -5,6 +5,7 @@ import { z } from "zod";
 import { customerOrderItems, customerOrders, guestOrderAccess, esimProvisioningOrders, esimProfiles } from "../../drizzle/schema";
 import { db } from "../db/client.server";
 import { hashGuestAccessToken, normalizeGuestWhatsapp } from "./guest-order-access.server";
+import { normalizeWhatsapp, WHATSAPP_PATTERN } from "./phone";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 import { decryptEsimSecret } from "./esim-secret-crypto";
 import { readMayarSnapshot } from "./payment-snapshot";
@@ -12,7 +13,15 @@ import { readMayarSnapshot } from "./payment-snapshot";
 const createGuestOrderSchema = z.object({
   packageCode: z.string().trim().min(1).max(160),
   email: z.string().trim().email().max(254),
-  whatsapp: z.string().trim().min(9).max(32),
+  whatsapp: z
+    .string()
+    .trim()
+    .min(9)
+    .max(32)
+    .transform((value) => normalizeWhatsapp(value))
+    .refine((value) => WHATSAPP_PATTERN.test(value), {
+      message: "Nomor WhatsApp belum valid. Contoh: 08123456789.",
+    }),
   paymentMethod: z.enum(["qris", "va"]),
   idempotencyKey: z.string().uuid(),
   accessToken: z.string().min(32).max(256),

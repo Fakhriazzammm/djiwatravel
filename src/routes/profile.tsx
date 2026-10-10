@@ -7,7 +7,11 @@ import { Page, Wordmark, group, row, label } from "@/components/shell";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useOrders } from "@/lib/orders";
 import { rupiah } from "@/lib/pricing";
-import { validateCustomerProfile, type CustomerProfileDraft } from "@/lib/customer-profile";
+import {
+  normalizeCustomerProfile,
+  validateCustomerProfile,
+  type CustomerProfileDraft,
+} from "@/lib/customer-profile";
 import { loadCustomerProfile, saveCustomerProfile } from "@/lib/customer-profile-client";
 
 export const Route = createFileRoute("/profile")({
@@ -55,7 +59,7 @@ function Profile() {
     }
     setSavingProfile(true);
     try {
-      await saveCustomerProfile(profile);
+      await saveCustomerProfile(normalizeCustomerProfile(profile));
       setProfileSaved(true);
       setEditingProfile(false);
       setProfileError(null);
@@ -173,7 +177,9 @@ function Profile() {
       <h2 className={`${label} mt-6`}>Riwayat Pesanan</h2>
       <div className={group}>
         {orders.length === 0 && (
-          <p className="px-4 py-3.5 text-muted-foreground">Belum ada pesanan.</p>
+          <p className="px-4 py-3.5 text-muted-foreground">
+            {user ? "Belum ada pesanan." : "Masuk untuk menyimpan & melihat riwayat pesananmu."}
+          </p>
         )}
         {orders.map((o) => {
           return (

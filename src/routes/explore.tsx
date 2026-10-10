@@ -46,6 +46,18 @@ function Explore() {
           className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
         />
       </label>
+      <Link
+        to="/finder"
+        className="tap mt-3 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-3"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold">Bingung pilih paket?</p>
+          <p className="truncate text-[12px] text-muted-foreground">
+            Jawab 3 pertanyaan, kami urutkan yang paling cocok
+          </p>
+        </div>
+        <ChevronRight className="size-5 shrink-0 text-brand-red" />
+      </Link>
       {res.length === 0 ? (
         <p className="mt-16 text-center text-muted-foreground">
           Belum ada untuk “{q}”. Coba nama negara lain.

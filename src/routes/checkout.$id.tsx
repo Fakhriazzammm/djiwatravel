@@ -9,6 +9,7 @@ import { createOrder } from "@/lib/orders";
 import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
 import { getBetterAuthSession, type BetterAuthUser } from "@/lib/better-auth-client";
 import { isCustomerProfileComplete } from "@/lib/customer-profile";
+import { formatWhatsapp, isValidWhatsapp, normalizeWhatsapp } from "@/lib/phone";
 import { loadCustomerProfile } from "@/lib/customer-profile-client";
 
 export const Route = createFileRoute("/checkout/$id")({
@@ -72,8 +73,8 @@ function Checkout() {
       const o = await createOrder({
         packageId: pkg.packageCode,
         amount: price,
-        email,
-        whatsapp: wa,
+        email: email.trim(),
+        whatsapp: normalizeWhatsapp(wa),
         method,
       });
       // Go straight to Mayar: leaving the customer on the order screen when a
@@ -131,22 +132,30 @@ function Checkout() {
           type="email"
           inputMode="email"
           placeholder="Email"
+          aria-label="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => setEmail((value) => value.trim())}
         />
         <input
           className={input}
           type="tel"
           inputMode="tel"
-          placeholder="Nomor WhatsApp (62…)"
+          placeholder="Nomor WhatsApp (0812… atau 62812…)"
+          aria-label="Nomor WhatsApp"
           value={wa}
           onChange={(e) => setWa(e.target.value)}
+          onBlur={() => setWa((value) => (isValidWhatsapp(value) ? formatWhatsapp(value) : value))}
         />
       </div>
+      {wa.trim() !== "" && !isValidWhatsapp(wa) && (
+        <p role="alert" className="mt-2 px-1 text-xs text-destructive">
+          Nomor WhatsApp belum valid. Contoh: 08123456789.
+        </p>
+      )}
       <p className="mt-2 px-1 text-xs text-muted-foreground">
-        {user
-          ? "Masuk sebagai member. Nomor WhatsApp memakai format 62…"
-          : "Tanpa perlu daftar akun. Nomor WhatsApp memakai format 62…"}
+        {user ? "Masuk sebagai member." : "Tanpa perlu daftar akun."} Boleh ketik 0812… — kami
+        ubah otomatis ke format 62….
       </p>
 
       <h2 className={`${label} mt-6`}>Pembayaran</h2>
@@ -174,6 +183,13 @@ function Checkout() {
       </div>
 
       <StickyCta aboveTabBar={false}>
+        {!canPay && !submitting && (
+          <p className="pb-2 text-center text-xs text-muted-foreground">
+            {valid
+              ? "Lengkapi data pengiriman di Profil untuk checkout sebagai member."
+              : "Isi email dan nomor WhatsApp yang valid untuk melanjutkan."}
+          </p>
+        )}
         <button
           disabled={!canPay || submitting}
           onClick={pay}

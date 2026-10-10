@@ -1,0 +1,59 @@
+import { describe, expect, it } from "vitest";
+
+import { PAGE_SIZE, sortPackages, type SortKey } from "@/routes/destination.$code";
+import type { ResellerCatalogPackage } from "@/lib/esim-access-catalog";
+
+function pkg(
+  code: string,
+  priceIdr: number,
+  volumeBytes: number,
+  durationDays: number,
+): ResellerCatalogPackage {
+  return {
+    packageCode: code,
+    sellingPrice: { sellingPriceIdr: priceIdr },
+    volumeBytes,
+    durationDays,
+  } as ResellerCatalogPackage;
+}
+
+// Sorting decides which packages a customer sees first, so the rules are pinned here rather
+// than eyeballed on production.
+describe("destination package sorting", () => {
+  const packages = [
+    pkg("MID", 50_000, 5_000_000_000, 7),
+    pkg("CHEAP", 15_000, 1_000_000_000, 3),
+    pkg("BIG", 120_000, 20_000_000_000, 30),
+  ];
+  const codes = (key: SortKey) => sortPackages(packages, key).map((p) => p.packageCode);
+
+  it("keeps the catalogue order for the recommended view", () => {
+    expect(codes("recommended")).toEqual(["MID", "CHEAP", "BIG"]);
+  });
+
+  it("sorts by price ascending", () => {
+    expect(codes("price")).toEqual(["CHEAP", "MID", "BIG"]);
+  });
+
+  it("sorts by quota descending", () => {
+    expect(codes("data")).toEqual(["BIG", "MID", "CHEAP"]);
+  });
+
+  it("sorts by validity descending", () => {
+    expect(codes("duration")).toEqual(["BIG", "MID", "CHEAP"]);
+  });
+
+  it("sorts by price per GB ascending", () => {
+    expect(codes("value")).toEqual(["BIG", "MID", "CHEAP"]);
+  });
+
+  it("does not mutate the loader array", () => {
+    const original = [...packages];
+    sortPackages(packages, "price");
+    expect(packages).toEqual(original);
+  });
+
+  it("renders one screen of cards on the first paint", () => {
+    expect(PAGE_SIZE).toBe(20);
+  });
+});
