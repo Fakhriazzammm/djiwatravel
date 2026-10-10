@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin-guard";
 import { Boxes, ChevronDown, ChevronUp, Filter, RefreshCw, Search } from "lucide-react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -10,6 +11,7 @@ import {
 } from "@/lib/reseller-catalog-view";
 
 export const Route = createFileRoute("/admin/catalog")({
+  beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
   loader: async () => {
     try {
