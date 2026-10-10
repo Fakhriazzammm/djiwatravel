@@ -76,6 +76,12 @@ function Checkout() {
         whatsapp: wa,
         method,
       });
+      // Go straight to Mayar: leaving the customer on the order screen when a
+      // payment link already exists is a dead end they asked us to remove.
+      if (o.paymentUrl) {
+        window.location.assign(o.paymentUrl);
+        return;
+      }
       nav({ to: "/order/$id", params: { id: o.id } });
     } catch {
       setError("Pesanan belum dapat disimpan. Coba kembali beberapa saat lagi.");
@@ -167,13 +173,13 @@ function Checkout() {
         ))}
       </div>
 
-      <StickyCta>
+      <StickyCta aboveTabBar={false}>
         <button
           disabled={!canPay || submitting}
           onClick={pay}
           className={`${btnRed} disabled:opacity-40`}
         >
-          {submitting ? "Menyimpan pesanan…" : `Buat pesanan · ${rupiah(price)}`}
+          {submitting ? "Mengalihkan ke Mayar…" : `Buat pesanan · ${rupiah(price)}`}
         </button>
       </StickyCta>
     </Page>

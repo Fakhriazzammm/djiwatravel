@@ -79,11 +79,25 @@ export function BackBar({ title }: { title?: string }) {
   );
 }
 
-export function StickyCta({ children }: { children: ReactNode }) {
+export function StickyCta({
+  children,
+  aboveTabBar = true,
+}: {
+  children: ReactNode;
+  /** Set false on pages rendered with `Page tabs={false}` so the bar sits at the
+   * bottom instead of floating where the tab bar would have been. */
+  aboveTabBar?: boolean;
+}) {
   return (
     <FixedLayer>
-      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 border-t bg-surface/95 px-4 pt-3 backdrop-blur-xl">
-        <div className="mx-auto max-w-md pb-1">{children}</div>
+      <div
+        className={`fixed inset-x-0 ${
+          aboveTabBar
+            ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]"
+            : "bottom-0 safe-bottom"
+        } z-40 border-t bg-surface/95 px-4 pt-2.5 backdrop-blur-xl`}
+      >
+        <div className="mx-auto max-w-md">{children}</div>
       </div>
     </FixedLayer>
   );
@@ -99,8 +113,8 @@ export function SectionTitle({ children, action }: { children: ReactNode; action
 }
 
 export const btnBase = "tap flex w-full items-center justify-center gap-2 rounded-2xl font-semibold disabled:opacity-40";
-export const btnPrimary = `${btnBase} h-[52px] bg-primary text-[16px] text-primary-foreground`;
-export const btnRed = `${btnBase} h-[52px] bg-brand-red text-[16px] text-primary-foreground`;
+export const btnPrimary = `${btnBase} h-12 bg-primary text-[16px] text-primary-foreground`;
+export const btnRed = `${btnBase} h-12 bg-brand-red text-[16px] text-primary-foreground`;
 export const btnSoft = `${btnBase} h-11 bg-secondary text-[14px] text-secondary-foreground`;
 export const group = "overflow-hidden rounded-2xl bg-surface divide-y";
 export const row = "flex min-h-12 items-center justify-between gap-3 px-4 py-3";
