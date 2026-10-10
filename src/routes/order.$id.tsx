@@ -1,10 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Loader2, AlertCircle, Printer, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Bell, BellRing, Check, Loader2, AlertCircle, Printer, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Page, btnPrimary, btnRed, btnSoft } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
 import { rupiah } from "@/lib/pricing";
-import { guestAccessTokenFor, refreshOrdersFromServer, useOrders, type Order } from "@/lib/orders";
+import {
+  guestAccessTokenFor,
+  refreshOrdersFromServer,
+  useOrders,
+  type Order,
+  type OrderStatus,
+} from "@/lib/orders";
+import {
+  enableEsimNotifications,
+  isWaitingForEsim,
+  notificationPermission,
+  notificationsSupported,
+  notifyEsimReady,
+  readNotifyPreference,
+  shouldNotifyReady,
+  writeNotifyPreference,
+} from "@/lib/esim-notify";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
 
 export const Route = createFileRoute("/order/$id")({
@@ -26,7 +42,31 @@ function OrderPage() {
   const [view, setView] = useState<"main" | "qr" | "guide">("main");
   const [checking, setChecking] = useState(false);
   const [checkNote, setCheckNote] = useState("");
+  const [notifyReady, setNotifyReady] = useState(false);
+  const [notifyBusy, setNotifyBusy] = useState(false);
   const current = orders?.find((x) => x.id === id);
+
+  // The customer's choice survives a reload, and counts as on when permission already is.
+  useEffect(() => {
+    if (!notificationsSupported()) return;
+    setNotifyReady(readNotifyPreference() && notificationPermission() === "granted");
+  }, []);
+
+  const toggleNotify = async () => {
+    if (notifyReady) {
+      writeNotifyPreference(false);
+      setNotifyReady(false);
+      return;
+    }
+    setNotifyBusy(true);
+    try {
+      const enabled = await enableEsimNotifications();
+      writeNotifyPreference(enabled);
+      setNotifyReady(enabled);
+    } finally {
+      setNotifyBusy(false);
+    }
+  };
   const awaitingPayment =
     current?.status === "ORDER_CREATED" || current?.status === "WAITING_PAYMENT";
 
@@ -75,6 +115,35 @@ function OrderPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [awaitingPayment, id]);
+
+  // PAID/PROVISIONING used to be a dead end until the customer reloaded by hand.
+  useEffect(() => {
+    if (!current || !isWaitingForEsim(current.status)) return;
+    let cancelled = false;
+    let timer: number | undefined;
+    const tick = async () => {
+      await refreshOrdersFromServer();
+      if (!cancelled) timer = window.setTimeout(() => void tick(), 8000);
+    };
+    timer = window.setTimeout(() => void tick(), 8000);
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.status, id]);
+
+  // Fire once, at the moment the order becomes usable.
+  const previousStatus = useRef<OrderStatus | null>(null);
+  useEffect(() => {
+    const status = current?.status ?? null;
+    const previous = previousStatus.current;
+    previousStatus.current = status;
+    if (!status || !notifyReady) return;
+    if (!shouldNotifyReady(previous, status)) return;
+    void notifyEsimReady(current?.packageName ?? current?.packageId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.status, notifyReady]);
 
   if (!orders)
     return (
@@ -147,11 +216,29 @@ function OrderPage() {
   if (o.status === "PAID" || o.status === "PROVISIONING") {
     return (
       <Page tabs={false}>
-        <div className="flex min-h-[70vh] flex-col items-center justify-center text-center">
+        <div className="flex min-h-[55vh] flex-col items-center justify-center text-center">
           <Loader2 className="size-10 animate-spin text-brand-red" />
           <h1 className="mt-6 text-2xl font-bold">Pembayaran diterima</h1>
           <p className="mt-2 text-muted-foreground">Sedang menyiapkan eSIM kamu…</p>
         </div>
+        {notificationsSupported() && (
+          <button
+            type="button"
+            onClick={() => void toggleNotify()}
+            disabled={notifyBusy}
+            className="tap mx-auto flex min-h-11 items-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold disabled:opacity-50"
+          >
+            {notifyReady ? <BellRing className="size-4" /> : <Bell className="size-4" />}
+            {notifyBusy
+              ? "Mengaktifkan…"
+              : notifyReady
+                ? "Notifikasi aktif — kami kabari saat siap"
+                : "Beri tahu saya saat eSIM siap"}
+          </button>
+        )}
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          Halaman ini memperbarui sendiri, jadi kamu tidak perlu menekan apa pun.
+        </p>
       </Page>
     );
   }
