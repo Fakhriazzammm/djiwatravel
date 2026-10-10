@@ -15,6 +15,7 @@ import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
@@ -67,6 +68,11 @@ const LiveCatalogRoute = LiveCatalogRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -193,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -256,6 +264,7 @@ export interface FileRoutesById {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -289,6 +298,7 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/profile'
+    | '/sitemap.xml'
     | '/admin/analytics'
     | '/admin/audit-log'
     | '/admin/catalog'
@@ -320,6 +330,7 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/profile'
+    | '/sitemap.xml'
     | '/admin/analytics'
     | '/admin/audit-log'
     | '/admin/catalog'
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/profile'
+    | '/sitemap.xml'
     | '/admin/analytics'
     | '/admin/audit-log'
     | '/admin/catalog'
@@ -383,6 +395,7 @@ export interface RootRouteChildren {
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
   ProfileRoute: typeof ProfileRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminCatalogRoute: typeof AdminCatalogRoute
@@ -450,6 +463,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -623,6 +643,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,
   ProfileRoute: ProfileRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
   AdminCatalogRoute: AdminCatalogRoute,
