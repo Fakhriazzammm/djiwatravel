@@ -6,6 +6,9 @@ import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
 
 export const Route = createFileRoute("/destination/$code")({
+  // Same reseller read as Explore: keep the result warm so opening a country from the
+  // destination list or the home cards does not pay for it twice.
+  staleTime: 60_000,
   loader: async ({ params }) => {
     const destination =
       getDest(params.code) ??

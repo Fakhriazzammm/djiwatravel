@@ -6,6 +6,9 @@ import { destinations, search } from "@/lib/catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 
 export const Route = createFileRoute("/explore")({
+  // Explore is the only package list now, so it carries the catalog's caching: one
+  // expensive reseller read, reused for a minute so coming back is instant.
+  staleTime: 60_000,
   loader: async () => {
     const catalog = await getResellerCatalog();
     const codes = new Set(

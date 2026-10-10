@@ -128,7 +128,7 @@ function Home() {
 
       <Stagger className="block">
         <Reveal as="section" className="mt-7">
-          <SectionTitle action={<Link to="/catalog">Lihat Semua ›</Link>}>
+          <SectionTitle action={<Link to="/explore">Lihat Semua ›</Link>}>
             Destinasi Populer
           </SectionTitle>
           <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4">
@@ -229,7 +229,7 @@ function Home() {
         ) : (
           <Reveal className="block">
             <Link
-              to="/catalog"
+              to="/explore"
               className="tap mt-7 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-4"
             >
               <div className="min-w-0 flex-1">
