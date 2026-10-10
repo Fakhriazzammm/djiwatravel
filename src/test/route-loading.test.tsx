@@ -7,18 +7,19 @@ import { PROGRESS_MIN_VISIBLE_MS, PROGRESS_SHOW_DELAY_MS, progressPhase } from "
 afterEach(cleanup);
 
 describe("route pending screen", () => {
-  it("renders a labelled, busy pending screen with placeholder cards", () => {
+  it("renders a labelled, busy pending screen centred on the spinner", () => {
     render(<RoutePendingScreen />);
     const pending = screen.getByTestId("route-pending");
     expect(pending).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Memuat data…")).toBeInTheDocument();
-    expect(screen.getAllByTestId("pending-card")).toHaveLength(6);
+    // Just the indicator: a skeleton grid below it would push the spinner off centre.
+    expect(screen.queryAllByTestId("pending-card")).toHaveLength(0);
   });
 
-  it("takes a custom label and card count", () => {
-    render(<RoutePendingScreen label="Memuat paket internet…" count={2} />);
+  it("takes a custom label and hint", () => {
+    render(<RoutePendingScreen label="Memuat paket internet…" hint="Sebentar ya." />);
     expect(screen.getByText("Memuat paket internet…")).toBeInTheDocument();
-    expect(screen.getAllByTestId("pending-card")).toHaveLength(2);
+    expect(screen.getByText("Sebentar ya.")).toBeInTheDocument();
   });
 
   it("keeps rendering when the user prefers reduced motion", () => {

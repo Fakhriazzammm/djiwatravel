@@ -9,6 +9,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PageTransition } from "../components/motion-primitives";
 import { NavProgress } from "../components/nav-progress";
+import { AppSplash } from "../components/app-splash";
 import { easeIos } from "../lib/motion";
 
 function NotFoundComponent() {
@@ -83,6 +84,8 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <MotionConfig transition={{ duration: 0.34, ease: easeIos }} reducedMotion="user">
         <NavProgress />
+        {/* Server-rendered, so the first paint is never a blank white page. */}
+        <AppSplash />
         <AnimatedOutlet />
       </MotionConfig>
     </QueryClientProvider>

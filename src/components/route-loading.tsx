@@ -70,10 +70,10 @@ export function SkeletonCards({ count = 6, className = "" }: { count?: number; c
 }
 
 /** Brand spinner: a rotating ring around a solid dot, static when motion is reduced. */
-function PendingSpinner({ reduce }: { reduce: boolean }) {
+export function PendingSpinner({ reduce, className = "size-12" }: { reduce: boolean; className?: string }) {
   const ring = "absolute inset-0 rounded-full border-2 border-brand-red border-b-transparent border-r-transparent";
   return (
-    <span className="relative flex size-12 items-center justify-center" aria-hidden="true">
+    <span className={`relative flex ${className} items-center justify-center`} aria-hidden="true">
       <span className="absolute inset-0 rounded-full border-2 border-border" />
       {reduce ? (
         <span className={ring} />
@@ -92,16 +92,21 @@ function PendingSpinner({ reduce }: { reduce: boolean }) {
 export type RoutePendingScreenProps = {
   label?: string;
   hint?: string;
-  count?: number;
   /** Chrome that must stay on screen while the page loads (usually the tab bar). */
   chrome?: ReactNode;
 };
 
-/** Full-viewport pending state: label, spinner and a card skeleton. */
+/**
+ * Pending state: the spinner and its label sit in the middle of the screen.
+ *
+ * Deliberately just the indicator — no skeleton grid under it. Anything placed below
+ * grows the element past the viewport, which drags a "centred" indicator off centre
+ * (measured: 487px on a 757px viewport). Routes that want a shape-matching skeleton can
+ * still render `SkeletonCards` inside their own pending component.
+ */
 export function RoutePendingScreen({
   label = "Memuat data…",
   hint = "Menyiapkan paket internet untukmu.",
-  count = 6,
   chrome = null,
 }: RoutePendingScreenProps) {
   const reduce = useReducedMotion();
@@ -112,14 +117,11 @@ export function RoutePendingScreen({
         aria-live="polite"
         aria-busy="true"
         data-testid="route-pending"
-        className="mx-auto flex min-h-[100dvh] w-full min-w-0 max-w-md flex-col px-4 pb-24 safe-top sm:max-w-2xl"
+        className="mx-auto flex min-h-[100dvh] w-full min-w-0 max-w-md flex-col items-center justify-center gap-3 px-4 pb-4 text-center safe-top sm:max-w-2xl"
       >
-        <div className="flex flex-col items-center gap-2.5 pt-14 text-center">
-          <PendingSpinner reduce={!!reduce} />
-          <p className="text-[15px] font-semibold text-foreground">{label}</p>
-          <p className="text-[13px] text-muted-foreground">{hint}</p>
-        </div>
-        <SkeletonCards count={count} className="mt-7" />
+        <PendingSpinner reduce={!!reduce} className="size-16" />
+        <p className="text-[15px] font-semibold text-foreground">{label}</p>
+        <p className="text-[13px] text-muted-foreground">{hint}</p>
       </main>
       {chrome}
     </>
