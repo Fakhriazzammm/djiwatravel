@@ -4,12 +4,20 @@ import { signInGoogle, type BetterAuthUser } from "@/lib/better-auth-client";
 
 const button = "tap min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50";
 
-export function CustomerAuth({ onAuthenticated: _onAuthenticated }: { onAuthenticated: (user: BetterAuthUser) => void }) {
+/** `compact` is the header slot: never full width, so it cannot stretch a nav bar. */
+export function CustomerAuth({
+  onAuthenticated: _onAuthenticated,
+  size = "block",
+}: {
+  onAuthenticated: (user: BetterAuthUser) => void;
+  size?: "block" | "compact";
+}) {
   const [open, setOpen] = useState(false);
+  const layout = size === "compact" ? "shrink-0 px-3 py-2 text-[13px]" : "w-full sm:w-auto";
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button type="button" className={`${button} w-full bg-brand-red text-white sm:w-auto`}>Masuk atau daftar</button>
+        <button type="button" className={`${button} ${layout} bg-brand-red text-white`}>Masuk atau daftar</button>
       </DialogTrigger>
       {open && <AuthChoice />}
     </Dialog>

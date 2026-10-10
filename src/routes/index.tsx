@@ -89,35 +89,35 @@ function Home() {
   return (
     <Page>
       <Splash />
-      <header className="flex h-14 items-center justify-between">
+      <header className="flex h-14 items-center justify-between gap-3">
         <Wordmark className="h-11" />
+        {loading ? null : user ? (
+          <Link
+            to="/profile"
+            aria-label="Buka profil akun"
+            data-testid="header-account"
+            className="tap flex min-w-0 shrink-0 items-center gap-2 rounded-full bg-surface px-3 py-1.5 shadow-sm"
+          >
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold">
+              {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
+            </span>
+            <span className="max-w-[6.5rem] truncate text-[14px] font-semibold text-foreground">{accountLabel}</span>
+          </Link>
+        ) : (
+          <CustomerAuth
+            size="compact"
+            onAuthenticated={() => {
+              void nav({ to: "/profile" });
+            }}
+          />
+        )}
       </header>
 
       <p className="mt-4 text-[14px] text-muted-foreground">
         {hello}
         {user ? `, ${accountLabel}` : ""},
       </p>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <h1 className="large-title">Mau pergi ke mana?</h1>
-        {loading ? null : user ? (
-          <Link
-            to="/profile"
-            aria-label="Buka profil akun"
-            className="tap flex shrink-0 items-center gap-2 self-start rounded-full bg-surface px-3 py-2 shadow-sm sm:self-auto"
-          >
-            <span className="flex size-7 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold">
-              {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
-            </span>
-            <span className="text-[14px] font-semibold text-foreground">{accountLabel}</span>
-          </Link>
-        ) : (
-          <CustomerAuth
-            onAuthenticated={() => {
-              void nav({ to: "/profile" });
-            }}
-          />
-        )}
-      </div>
+      <h1 className="large-title mt-3 text-balance">Mau pergi ke mana?</h1>
 
       <button
         onClick={() => nav({ to: "/explore" })}
