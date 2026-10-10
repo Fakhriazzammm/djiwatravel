@@ -31,7 +31,7 @@ async function proxyAuth(request: Request) {
   headers.delete("transfer-encoding");
   headers.delete("content-length");
   headers.set("origin", "https://djiwatravel.com");
-  headers.set("x-forwarded-host", "auth.zantara.id");
+  headers.set("x-forwarded-host", incoming.host);
   headers.set("x-forwarded-proto", "https");
 
   const upstreamResponse = await fetch(upstream, {
