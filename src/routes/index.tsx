@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Search, Wifi, Luggage, ShoppingBag, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
+import { FixedLayer, Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations } from "@/lib/catalog";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
@@ -54,10 +55,12 @@ function Splash() {
   }, []);
   if (!show) return null;
   return (
-    <div className="animate-splash fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
-      <Wordmark className="h-28" />
-      <p className="mt-2 text-sm text-muted-foreground">Bawa Djiwamu Lebih Jauh.</p>
-    </div>
+    <FixedLayer>
+      <div className="animate-splash fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
+        <Wordmark className="h-28" />
+        <p className="mt-2 text-sm text-muted-foreground">Bawa Djiwamu Lebih Jauh.</p>
+      </div>
+    </FixedLayer>
   );
 }
 
@@ -123,118 +126,122 @@ function Home() {
         <Search className="size-5 shrink-0" /> Cari negara atau wilayah
       </button>
 
-      <section className="mt-7">
-        <SectionTitle action={<Link to="/catalog">Lihat Semua ›</Link>}>
-          Destinasi Populer
-        </SectionTitle>
-        <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4">
-          {destinations
-            .filter((d) => d.popular)
-            .map((d) => (
-              <Link
-                key={d.code}
-                to="/catalog"
-                className="tap relative aspect-[4/5] w-[31%] min-w-28 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary"
-              >
-                {photos[d.code] ? (
-                  <img
-                    src={photos[d.code]}
-                    alt={d.nameId}
-                    loading="lazy"
-                    width={736}
-                    height={912}
-                    className="absolute inset-0 size-full object-cover"
-                  />
-                ) : (
-                  <span className="absolute inset-0 flex items-center justify-center pb-8 text-5xl">
-                    {d.flag}
+      <Stagger className="block">
+        <Reveal as="section" className="mt-7">
+          <SectionTitle action={<Link to="/catalog">Lihat Semua ›</Link>}>
+            Destinasi Populer
+          </SectionTitle>
+          <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4">
+            {destinations
+              .filter((d) => d.popular)
+              .map((d) => (
+                <Link
+                  key={d.code}
+                  to="/catalog"
+                  className="tap relative aspect-[4/5] w-[31%] min-w-28 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary"
+                >
+                  {photos[d.code] ? (
+                    <img
+                      src={photos[d.code]}
+                      alt={d.nameId}
+                      loading="lazy"
+                      width={736}
+                      height={912}
+                      className="absolute inset-0 size-full object-cover"
+                    />
+                  ) : (
+                    <span className="absolute inset-0 flex items-center justify-center pb-8 text-5xl">
+                      {d.flag}
+                    </span>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/85 to-transparent px-2.5 pb-2.5 pt-8">
+                    <p className="truncate text-[14px] font-semibold text-primary-foreground">
+                      {d.nameId}
+                    </p>
+                    <p className="truncate text-[11px] text-primary-foreground/85">
+                      Lihat paket eSIM live
+                    </p>
+                  </div>
+                </Link>
+              ))}
+          </div>
+        </Reveal>
+
+        <Reveal as="section" className="mt-7">
+          <SectionTitle>Kebutuhan Perjalananmu</SectionTitle>
+          <div className="grid grid-cols-3 gap-3">
+            {services.map(({ icon: I, label, sub, to }) => {
+              const body = (
+                <>
+                  <span
+                    className={`flex size-10 items-center justify-center rounded-full ${to ? "bg-surface text-brand-red" : "bg-secondary"}`}
+                  >
+                    <I className="size-5" strokeWidth={1.8} />
                   </span>
-                )}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/85 to-transparent px-2.5 pb-2.5 pt-8">
-                  <p className="truncate text-[14px] font-semibold text-primary-foreground">
-                    {d.nameId}
-                  </p>
-                  <p className="truncate text-[11px] text-primary-foreground/85">
-                    Lihat paket eSIM live
+                  <span className="mt-2 text-[14px] font-semibold text-foreground">{label}</span>
+                  <span className="text-[11px]">{sub}</span>
+                </>
+              );
+              const cls = "flex h-28 flex-col items-center justify-center rounded-2xl text-center";
+              return to ? (
+                <Link
+                  key={label}
+                  to={to}
+                  className={`tap ${cls} border-2 border-brand-red bg-brand-red-soft text-brand-red`}
+                >
+                  {body}
+                </Link>
+              ) : (
+                <div
+                  key={label}
+                  className={`${cls} border-2 border-transparent bg-surface text-muted-foreground`}
+                >
+                  {body}
+                </div>
+              );
+            })}
+          </div>
+        </Reveal>
+
+        {active ? (
+          <Reveal as="section" className="mt-7">
+            <SectionTitle action={<Link to="/my-esim">Lihat Semua ›</Link>}>
+              Perjalananmu
+            </SectionTitle>
+            <Link
+              to="/my-esim/$id"
+              params={{ id: active.id }}
+              className="tap block rounded-2xl bg-surface p-4 shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 text-3xl">🌐</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{activeName}</p>
+                  <p className="text-[13px] text-muted-foreground">
+                    {activeLocation} · {activeQuota} · {activeDuration} hari
                   </p>
                 </div>
-              </Link>
-            ))}
-        </div>
-      </section>
-
-      <section className="mt-7">
-        <SectionTitle>Kebutuhan Perjalananmu</SectionTitle>
-        <div className="grid grid-cols-3 gap-3">
-          {services.map(({ icon: I, label, sub, to }) => {
-            const body = (
-              <>
-                <span
-                  className={`flex size-10 items-center justify-center rounded-full ${to ? "bg-surface text-brand-red" : "bg-secondary"}`}
-                >
-                  <I className="size-5" strokeWidth={1.8} />
-                </span>
-                <span className="mt-2 text-[14px] font-semibold text-foreground">{label}</span>
-                <span className="text-[11px]">{sub}</span>
-              </>
-            );
-            const cls = "flex h-28 flex-col items-center justify-center rounded-2xl text-center";
-            return to ? (
-              <Link
-                key={label}
-                to={to}
-                className={`tap ${cls} border-2 border-brand-red bg-brand-red-soft text-brand-red`}
-              >
-                {body}
-              </Link>
-            ) : (
-              <div
-                key={label}
-                className={`${cls} border-2 border-transparent bg-surface text-muted-foreground`}
-              >
-                {body}
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
               </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {active ? (
-        <section className="mt-7">
-          <SectionTitle action={<Link to="/my-esim">Lihat Semua ›</Link>}>
-            Perjalananmu
-          </SectionTitle>
-          <Link
-            to="/my-esim/$id"
-            params={{ id: active.id }}
-            className="tap block rounded-2xl bg-surface p-4 shadow-sm"
-          >
-            <div className="flex items-center gap-3">
-              <span className="shrink-0 text-3xl">🌐</span>
+            </Link>
+          </Reveal>
+        ) : (
+          <Reveal className="block">
+            <Link
+              to="/catalog"
+              className="tap mt-7 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-4"
+            >
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{activeName}</p>
-                <p className="text-[13px] text-muted-foreground">
-                  {activeLocation} · {activeQuota} · {activeDuration} hari
+                <p className="font-semibold">Cari Paket yang Cocok</p>
+                <p className="truncate text-[13px] text-muted-foreground">
+                  Masukkan tanggal & kebutuhanmu
                 </p>
               </div>
-              <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-            </div>
-          </Link>
-        </section>
-      ) : (
-        <Link
-          to="/catalog"
-          className="tap mt-7 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-4"
-        >
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">Cari Paket yang Cocok</p>
-            <p className="truncate text-[13px] text-muted-foreground">
-              Masukkan tanggal & kebutuhanmu
-            </p>
-          </div>
-          <ChevronRight className="size-5 shrink-0 text-brand-red" />
-        </Link>
-      )}
+              <ChevronRight className="size-5 shrink-0 text-brand-red" />
+            </Link>
+          </Reveal>
+        )}
+      </Stagger>
     </Page>
   );
 }

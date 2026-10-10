@@ -1,11 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts, type ErrorComponentProps,
+  Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts, useRouterState, type ErrorComponentProps,
 } from "@tanstack/react-router";
+import { AnimatePresence, MotionConfig } from "motion/react";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { PageTransition } from "../components/motion-primitives";
+import { easeIos } from "../lib/motion";
 
 function NotFoundComponent() {
   return (
@@ -77,7 +80,24 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <MotionConfig transition={{ duration: 0.34, ease: easeIos }} reducedMotion="user">
+        <AnimatedOutlet />
+      </MotionConfig>
     </QueryClientProvider>
+  );
+}
+
+/**
+ * Crossfade + slide between pages. `mode="wait"` keeps only one page mounted, so
+ * exit finishes before enter starts (no overlapping scroll positions).
+ */
+function AnimatedOutlet() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <PageTransition key={pathname} pathname={pathname}>
+        <Outlet />
+      </PageTransition>
+    </AnimatePresence>
   );
 }

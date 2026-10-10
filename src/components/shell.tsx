@@ -1,7 +1,10 @@
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { Home, Compass, Smartphone, User, ChevronLeft } from "lucide-react";
+import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import logo from "@/assets/logo.png";
+import { springSnappy } from "@/lib/motion";
+import { FixedLayer } from "@/components/motion-primitives";
 
 const tabs = [
   { to: "/", label: "Home", icon: Home },
@@ -10,20 +13,36 @@ const tabs = [
   { to: "/profile", label: "Profile", icon: User },
 ] as const;
 
+const isActiveTab = (to: string, pathname: string) =>
+  to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
+
 export function TabBar() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-surface/95 backdrop-blur-xl safe-bottom">
       <div className="mx-auto grid max-w-md grid-cols-4 px-2 pt-1.5">
-        {tabs.map(({ to, label, icon: Icon }) => (
-          <Link key={to} to={to} activeOptions={{ exact: to === "/" }}
-            className="group flex flex-col items-center gap-0.5 py-1 text-[11px] font-medium text-muted-foreground"
-            activeProps={{ className: "text-brand-red", "data-active": "" } as never}>
-            <span className="flex h-7 w-12 items-center justify-center rounded-full group-data-[active]:bg-brand-red-soft">
-              <Icon className="size-[22px]" strokeWidth={1.8} />
-            </span>
-            {label}
-          </Link>
-        ))}
+        {tabs.map(({ to, label, icon: Icon }) => {
+          const active = isActiveTab(to, pathname);
+          return (
+            <Link key={to} to={to} activeOptions={{ exact: to === "/" }}
+              aria-current={active ? "page" : undefined}
+              className={`flex flex-col items-center gap-0.5 py-1 text-[11px] font-medium ${
+                active ? "text-brand-red" : "text-muted-foreground"
+              }`}>
+              <span className="relative flex h-7 w-12 items-center justify-center rounded-full">
+                {active && (
+                  <motion.span
+                    layoutId="tab-indicator"
+                    className="absolute inset-0 rounded-full bg-brand-red-soft"
+                    transition={springSnappy}
+                  />
+                )}
+                <Icon className="relative size-[22px]" strokeWidth={1.8} />
+              </span>
+              {label}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );
@@ -35,10 +54,14 @@ export function Wordmark({ className = "h-10" }: { className?: string }) {
 
 export function Page({ children, tabs = true }: { children: ReactNode; tabs?: boolean }) {
   return (
-    <div className="mx-auto min-h-screen w-full max-w-md px-4 pb-24 safe-top">
-      {children}
-      <TabBar />
-    </div>
+    <>
+      <div className="mx-auto min-h-screen w-full max-w-md px-4 pb-24 safe-top">{children}</div>
+      {tabs && (
+        <FixedLayer>
+          <TabBar />
+        </FixedLayer>
+      )}
+    </>
   );
 }
 
@@ -58,9 +81,11 @@ export function BackBar({ title }: { title?: string }) {
 
 export function StickyCta({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 border-t bg-surface/95 px-4 pt-3 backdrop-blur-xl">
-      <div className="mx-auto max-w-md pb-1">{children}</div>
-    </div>
+    <FixedLayer>
+      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 border-t bg-surface/95 px-4 pt-3 backdrop-blur-xl">
+        <div className="mx-auto max-w-md pb-1">{children}</div>
+      </div>
+    </FixedLayer>
   );
 }
 
