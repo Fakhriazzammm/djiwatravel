@@ -81,7 +81,7 @@ function Home() {
   const accountLabel = user?.name?.trim().split(/\s+/)[0] || "Akun";
 
   const services = [
-    { icon: Wifi, label: "eSIM", sub: "Internasional", to: "/catalog" as const },
+    { icon: Wifi, label: "eSIM", sub: "Internasional", to: "/explore" as const },
     { icon: Luggage, label: "Bagasi", sub: "Segera hadir" },
     { icon: ShoppingBag, label: "Shopper", sub: "Segera hadir" },
   ];
@@ -120,7 +120,7 @@ function Home() {
       </div>
 
       <button
-        onClick={() => nav({ to: "/catalog" })}
+        onClick={() => nav({ to: "/explore" })}
         className="tap mt-4 flex h-12 w-full items-center gap-3 rounded-2xl bg-surface px-4 text-left text-[15px] text-muted-foreground shadow-sm"
       >
         <Search className="size-5 shrink-0" /> Cari negara atau wilayah
@@ -137,7 +137,8 @@ function Home() {
               .map((d) => (
                 <Link
                   key={d.code}
-                  to="/catalog"
+                  to="/destination/$code"
+                  params={{ code: d.code.toLowerCase() }}
                   className="tap relative aspect-[4/5] w-[31%] min-w-28 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary"
                 >
                   {photos[d.code] ? (
