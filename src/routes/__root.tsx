@@ -10,6 +10,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PageTransition } from "../components/motion-primitives";
 import { NavProgress } from "../components/nav-progress";
 import { AppSplash } from "../components/app-splash";
+import { TransitionLoader } from "../components/transition-loader";
 import { easeIos } from "../lib/motion";
 
 function NotFoundComponent() {
@@ -86,6 +87,8 @@ function RootComponent() {
         <NavProgress />
         {/* Server-rendered, so the first paint is never a blank white page. */}
         <AppSplash />
+        {/* Every later page change gets the same centred spinner. */}
+        <TransitionLoader />
         <AnimatedOutlet />
       </MotionConfig>
     </QueryClientProvider>
