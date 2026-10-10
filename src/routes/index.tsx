@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Search, Wifi, Luggage, ShoppingBag, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
-import { FixedLayer, Reveal, Stagger } from "@/components/motion-primitives";
+import { Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations } from "@/lib/catalog";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
@@ -44,26 +44,6 @@ function greeting() {
         : "Selamat malam";
 }
 
-function Splash() {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    if (sessionStorage.getItem("djiwa.splash")) return;
-    sessionStorage.setItem("djiwa.splash", "1");
-    setShow(true);
-    const t = setTimeout(() => setShow(false), 1100);
-    return () => clearTimeout(t);
-  }, []);
-  if (!show) return null;
-  return (
-    <FixedLayer>
-      <div className="animate-splash fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
-        <Wordmark className="h-28" />
-        <p className="mt-2 text-sm text-muted-foreground">Bawa Djiwamu Lebih Jauh.</p>
-      </div>
-    </FixedLayer>
-  );
-}
-
 function Home() {
   const [hello, setHello] = useState("Halo");
   const nav = useNavigate();
@@ -88,7 +68,6 @@ function Home() {
 
   return (
     <Page>
-      <Splash />
       <header className="flex h-14 items-center justify-between gap-3">
         <Wordmark className="h-11" />
         {loading ? null : user ? (

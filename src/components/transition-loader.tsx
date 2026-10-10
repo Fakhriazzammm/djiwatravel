@@ -23,6 +23,26 @@ export function transitionVisible(input: { stillLoading: boolean; sinceChangeMs:
   return input.stillLoading || input.sinceChangeMs < TRANSITION_MIN_VISIBLE_MS;
 }
 
+/**
+ * Opaque on purpose: a translucent overlay let the route pending indicator show through, so one
+ * page change looked like two loaders stacked on top of each other.
+ */
+export const TRANSITION_OVERLAY_CLASS =
+  "pointer-events-none fixed inset-0 z-[65] flex flex-col items-center justify-center gap-3 bg-background px-6 text-center transition-opacity";
+
+/**
+ * Marks the document while this overlay owns the screen. styles.css hides the route pending
+ * indicator behind it, so exactly one loader is visible during a page change.
+ */
+export function setTransitionActive(
+  active: boolean,
+  root: HTMLElement | null = typeof document === "undefined" ? null : document.documentElement,
+) {
+  if (!root) return;
+  if (active) root.dataset["routeTransition"] = "1";
+  else delete root.dataset["routeTransition"];
+}
+
 export function TransitionLoader() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const loading = useRouterState({ select: (state) => state.isLoading || state.status === "pending" });
@@ -61,6 +81,9 @@ export function TransitionLoader() {
     return () => window.clearInterval(intervalId);
   }, [visible, loading]);
 
+  // One loading UI at a time: tell the pending screen behind us to stay hidden.
+  useEffect(() => setTransitionActive(visible), [visible]);
+
   // Kept mounted and toggled with CSS instead of AnimatePresence: an exiting overlay stayed
   // in the DOM at opacity 0 (invisible but still hit-testable), which could swallow taps.
   // `visibility: hidden` plus `pointer-events-none` makes a hidden overlay inert for sure.
@@ -72,9 +95,9 @@ export function TransitionLoader() {
       aria-busy={visible}
       aria-hidden={!visible}
       style={{ visibility: visible ? "visible" : "hidden" }}
-      className={`pointer-events-none fixed inset-0 z-[65] flex flex-col items-center justify-center gap-3 bg-background/90 px-6 text-center transition-opacity ${
-        reduce ? "duration-0" : "duration-150"
-      } ${visible ? "opacity-100" : "opacity-0"}`}
+      className={`${TRANSITION_OVERLAY_CLASS} ${reduce ? "duration-0" : "duration-150"} ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
     >
       <PendingSpinner reduce={!!reduce} className="size-14" />
       <p className="text-[15px] font-semibold text-foreground">Memuat halaman…</p>
