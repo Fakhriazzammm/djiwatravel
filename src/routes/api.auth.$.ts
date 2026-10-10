@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { renderAuthErrorPage } from "../lib/error-page";
 
 const UPSTREAM_BASE = "https://auth.zantara.id/api/auth";
 const PUBLIC_BASE = "https://djiwatravel.com/api/auth";
@@ -16,6 +17,12 @@ function rewriteText(value: string) {
 async function proxyAuth(request: Request) {
   const incoming = new URL(request.url);
   const suffix = incoming.pathname.slice("/api/auth/".length);
+  if (incoming.pathname === "/api/auth/error") {
+    return new Response(renderAuthErrorPage(incoming.searchParams.get("error") ?? undefined), {
+      status: 200,
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+    });
+  }
   const upstream = `${UPSTREAM_BASE}/${suffix}${incoming.search}`;
   const headers = new Headers(request.headers);
   headers.delete("host");
