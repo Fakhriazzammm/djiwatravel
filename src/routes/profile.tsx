@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, LogOut } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getBetterAuthSession, signOutBetterAuth, type BetterAuthUser } from "@/lib/better-auth-client";
+import { signOutBetterAuth } from "@/lib/better-auth-client";
+import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { Page, Wordmark, group, row, label } from "@/components/shell";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useOrders } from "@/lib/orders";
@@ -22,18 +22,38 @@ export const Route = createFileRoute("/profile")({
 function Profile() {
   const orders = useOrders() ?? [];
   const item = row;
-  const [user, setUser] = useState<BetterAuthUser | null>(null);
-  useEffect(() => { void getBetterAuthSession().then((session) => setUser(session?.user ?? null)).catch(() => setUser(null)); }, []);
+  const { user, setUser, loading } = useBetterAuthUser();
   return (
     <Page>
       <h1 className="large-title pt-4">Profil</h1>
       <div className="mt-4 rounded-2xl bg-surface p-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-xl font-semibold">{user?.name?.slice(0, 1).toUpperCase() || "T"}</div>
-          <div className="min-w-0 flex-1"><p className="font-semibold">{user?.name || "Traveler"}</p><p className="text-sm text-muted-foreground">{user?.email || "Masuk untuk menyimpan pesananmu"}</p></div>
-          {user ? <button className="tap rounded-xl p-2 text-muted-foreground" aria-label="Keluar" onClick={() => { void signOutBetterAuth().then(() => setUser(null)); }}><LogOut className="size-5" /></button> : null}
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-xl font-semibold">
+            {loading ? "…" : user?.name?.slice(0, 1).toUpperCase() || "T"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{loading ? "Memuat akun…" : user?.name || "Traveler"}</p>
+            <p className="text-sm text-muted-foreground">
+              {loading ? "Mohon tunggu sebentar" : user?.email || "Masuk untuk menyimpan pesananmu"}
+            </p>
+          </div>
+          {user ? (
+            <button
+              className="tap rounded-xl p-2 text-muted-foreground"
+              aria-label="Keluar"
+              onClick={() => {
+                void signOutBetterAuth().then(() => setUser(null));
+              }}
+            >
+              <LogOut className="size-5" />
+            </button>
+          ) : null}
         </div>
-        {!user && <div className="mt-4"><CustomerAuth onAuthenticated={setUser} /></div>}
+        {!loading && !user && (
+          <div className="mt-4">
+            <CustomerAuth onAuthenticated={setUser} />
+          </div>
+        )}
       </div>
 
       <h2 className={`${label} mt-6`}>Riwayat Pesanan</h2>

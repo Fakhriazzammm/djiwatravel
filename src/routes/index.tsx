@@ -5,6 +5,7 @@ import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { destinations } from "@/lib/catalog";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
+import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import jp from "@/assets/dest-jp.jpg";
 import sg from "@/assets/dest-sg.jpg";
 import th from "@/assets/dest-th.jpg";
@@ -64,6 +65,7 @@ function Home() {
   const [hello, setHello] = useState("Halo");
   const nav = useNavigate();
   const orders = useOrders();
+  const { user, loading } = useBetterAuthUser();
   useEffect(() => setHello(greeting()), []);
   const active = orders?.find((o) => o.status === "READY" || o.status === "INSTALLED");
   const activeName = active?.packageName ?? active?.packageId;
@@ -73,6 +75,7 @@ function Home() {
       ? "Unlimited"
       : `${(active.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
   const activeDuration = active?.durationDays ?? 0;
+  const accountLabel = user?.name?.trim().split(/\s+/)[0] || "Akun";
 
   const services = [
     { icon: Wifi, label: "eSIM", sub: "Internasional", to: "/catalog" as const },
@@ -87,10 +90,30 @@ function Home() {
         <Wordmark className="h-11" />
       </header>
 
-      <p className="mt-4 text-[14px] text-muted-foreground">{hello},</p>
+      <p className="mt-4 text-[14px] text-muted-foreground">
+        {hello}
+        {user ? `, ${accountLabel}` : ""},
+      </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="large-title">Mau pergi ke mana?</h1>
-        <CustomerAuth onAuthenticated={() => { void nav({ to: "/profile" }); }} />
+        {loading ? null : user ? (
+          <Link
+            to="/profile"
+            aria-label="Buka profil akun"
+            className="tap flex shrink-0 items-center gap-2 self-start rounded-full bg-surface px-3 py-2 shadow-sm sm:self-auto"
+          >
+            <span className="flex size-7 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold">
+              {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
+            </span>
+            <span className="text-[14px] font-semibold text-foreground">{accountLabel}</span>
+          </Link>
+        ) : (
+          <CustomerAuth
+            onAuthenticated={() => {
+              void nav({ to: "/profile" });
+            }}
+          />
+        )}
       </div>
 
       <button
