@@ -4,7 +4,7 @@ import { ChevronDown, QrCode, Plus, Headphones } from "lucide-react";
 import { Page, BackBar, group, row } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
 import { rupiah } from "@/lib/pricing";
-import { cancelOrder, markInstalled, useOrders } from "@/lib/orders";
+import { cancelOrder, hasGuestOrderAccess, markInstalled, useOrders } from "@/lib/orders";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 
@@ -29,7 +29,7 @@ function Detail() {
   const [tab, setTab] = useState<"none" | "install" | "topup">("none");
   const [tech, setTech] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const o = orders?.find((x) => x.id === id);
+  const o = hasGuestOrderAccess(id) ? orders?.find((x) => x.id === id) : undefined;
   if (!orders)
     return (
       <Page>

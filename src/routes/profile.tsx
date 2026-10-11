@@ -12,6 +12,9 @@ import { loadCustomerProfile, saveCustomerProfile } from "@/lib/customer-profile
 import { DjiwaPayTopup } from "@/components/djiwa-pay-topup";
 
 export const Route = createFileRoute("/profile")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    admin: search.admin === "unauthorized" ? "unauthorized" as const : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Profil — Djiwa Travel" },
@@ -24,6 +27,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 function Profile() {
+  const { admin } = Route.useSearch();
   const orders = useOrders() ?? [];
   const item = row;
   const { user, setUser, loading } = useBetterAuthUser();
@@ -69,6 +73,11 @@ function Profile() {
   return (
     <Page>
       <h1 className="large-title pt-4">Profil</h1>
+      {admin === "unauthorized" && (
+        <div role="alert" className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          Area admin membutuhkan akun admin yang diizinkan. Kamu tetap berada di area traveler.
+        </div>
+      )}
       <div className="mt-4 rounded-2xl bg-surface p-4">
         <div className="flex items-center gap-3">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-xl font-semibold">

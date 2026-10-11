@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GUEST_ACCESS_TTL_MS, hashGuestAccessToken, isGuestAccessExpired, normalizeGuestWhatsapp, SUPPORT_WHATSAPP_URL } from "../lib/guest-order-access.server";
+import { hasGuestOrderAccess } from "../lib/orders";
 
 describe("hashGuestAccessToken", () => {
   it("returns a stable SHA-256 digest rather than the bearer token", () => {
@@ -7,6 +8,13 @@ describe("hashGuestAccessToken", () => {
     expect(first).toMatch(/^[a-f0-9]{64}$/);
     expect(first).toBe(hashGuestAccessToken("guest-token-example-32-characters"));
     expect(first).not.toBe("guest-token-example-32-characters");
+  });
+});
+
+describe("guest order authorization boundary", () => {
+  it("does not authorize a bare UUID without a locally held guest token", () => {
+    localStorage.removeItem("djiwa.guest-order-access");
+    expect(hasGuestOrderAccess("00000000-0000-4000-8000-000000000000")).toBe(false);
   });
 });
 

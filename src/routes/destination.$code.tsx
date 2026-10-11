@@ -110,6 +110,9 @@ function Destination() {
     <Page>
       <BackBar title={`${destination.flag} ${destination.nameId}`} />
       <h1 className="large-title">Paket eSIM untuk {destination.nameId}</h1>
+      <p className="mt-2 inline-flex rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
+        {destination.region === "Regional" ? "Cakupan regional · beberapa negara" : "Cakupan negara · satu tujuan"}
+      </p>
       {stale && (
         <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
           Menampilkan katalog tersimpan; harga mungkin belum terbaru.

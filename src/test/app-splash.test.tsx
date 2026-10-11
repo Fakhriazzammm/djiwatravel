@@ -40,7 +40,7 @@ describe("AppSplash", () => {
     await act(async () => {
       vi.advanceTimersByTime(1200);
     });
-    expect(screen.getByTestId("app-splash").style.visibility).toBe("hidden");
+    expect(screen.queryByTestId("app-splash")).not.toBeInTheDocument();
   });
 
   it("never swallows taps, even while visible", () => {

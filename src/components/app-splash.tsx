@@ -29,11 +29,21 @@ const FALLBACK_CSS = `
 export function AppSplash() {
   const reduce = useReducedMotion();
   const [visible, setVisible] = useState(true);
+  const [mounted, setMounted] = useState(true);
 
   useEffect(() => {
-    const id = window.setTimeout(() => setVisible(false), reduce ? 0 : SPLASH_MIN_VISIBLE_MS);
-    return () => window.clearTimeout(id);
+    const hideId = window.setTimeout(() => setVisible(false), reduce ? 0 : SPLASH_MIN_VISIBLE_MS);
+    const unmountId = window.setTimeout(
+      () => setMounted(false),
+      reduce ? 0 : SPLASH_MIN_VISIBLE_MS + 180,
+    );
+    return () => {
+      window.clearTimeout(hideId);
+      window.clearTimeout(unmountId);
+    };
   }, [reduce]);
+
+  if (!mounted) return <style dangerouslySetInnerHTML={{ __html: FALLBACK_CSS }} />;
 
   return (
     <>
