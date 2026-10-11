@@ -7,6 +7,11 @@ import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { getCustomerWallet, type CustomerWalletResponse, type CustomerWalletLedgerEntry } from "@/lib/customer-wallet.server";
 import { groupWalletLedger, ledgerStatusLabel, walletStatusLabel } from "@/lib/customer-wallet-view";
 import { rupiah } from "@/lib/pricing";
+import {
+  QUICK_ACTION_SUPPORT_COPY,
+  quickActionSoonCopy,
+  WALLET_ACTIONS,
+} from "@/lib/wallet-quick-actions";
 
 export const Route = createFileRoute("/wallet")({
   head: () => ({
@@ -29,6 +34,19 @@ function Wallet() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
+
+  function focusWalletSection(selector: "#djiwa-pay-topup" | "#wallet-history-title") {
+    const target = document.querySelector<HTMLElement>(selector);
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    target?.focus({ preventScroll: true });
+  }
+
+  function handleQuickAction(label: string) {
+    if (label === "Isi Saldo") focusWalletSection("#djiwa-pay-topup");
+    else if (label === "Riwayat") focusWalletSection("#wallet-history-title");
+    else setQuickActionDialog(label);
+  }
 
   const loadWallet = useCallback(async () => {
     if (!user) return;
@@ -100,15 +118,54 @@ function Wallet() {
             <Summary label="Total digunakan" value={formatted(wallet.total_debited)} icon={ArrowUpRight} tone="text-brand-red" />
           </div>
 
+          <section className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5" aria-labelledby="wallet-quick-actions-title">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Djiwa Pay</p>
+            <h2 id="wallet-quick-actions-title" className="mt-1 text-lg font-semibold tracking-tight">Aksi cepat</h2>
+            <div className="mt-4 grid grid-cols-4 gap-2" aria-label="Aksi cepat Djiwa Pay">
+              {WALLET_ACTIONS.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  className="tap relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={action.supported ? action.label : `${action.label}, segera hadir`}
+                  onClick={() => handleQuickAction(action.label)}
+                >
+                  <img src={action.asset} alt="" className="size-9 object-contain" />
+                  <span className="text-[11px] font-semibold leading-tight">{action.label}</span>
+                  {!action.supported && <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">Soon</span>}
+                </button>
+              ))}
+            </div>
+          </section>
+
           <DjiwaPayTopup userId={user.id} />
 
           <section className="mt-7" aria-labelledby="wallet-history-title">
             <SectionTitle action={<span className="text-xs font-normal normal-case">{data.ledger.length} transaksi</span>}>
-              <span id="wallet-history-title">Riwayat Wallet</span>
+              <span id="wallet-history-title" tabIndex={-1}>Riwayat Wallet</span>
             </SectionTitle>
             {groups.length === 0 ? <p className="rounded-2xl bg-surface px-4 py-5 text-sm text-muted-foreground">Belum ada transaksi Wallet.</p> : <div className="space-y-5">{groups.map((group) => <div key={group.key}><h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</h3><div className="overflow-hidden rounded-2xl bg-surface">{group.entries.map((entry) => <LedgerRow key={String(entry.id)} entry={entry} visible={visible} />)}</div></div>)}</div>}
           </section>
         </>
+      )}
+      {quickActionDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setQuickActionDialog(null);
+          }}
+        >
+          <div role="dialog" aria-modal="true" aria-labelledby="wallet-quick-action-dialog-title" className="w-full max-w-md rounded-3xl bg-surface p-5 shadow-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Djiwa Pay</p>
+            <h2 id="wallet-quick-action-dialog-title" className="mt-1 text-xl font-bold">Segera Hadir</h2>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">
+              {quickActionDialog === "Bantuan" ? QUICK_ACTION_SUPPORT_COPY : quickActionSoonCopy(quickActionDialog)}
+            </p>
+            {quickActionDialog === "Bantuan" && <a className="mt-3 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="https://wa.me/6285156399831" target="_blank" rel="noreferrer">Hubungi customer service</a>}
+            <button type="button" className="mt-4 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setQuickActionDialog(null)}>Mengerti</button>
+          </div>
+        </div>
       )}
     </Page>
   );

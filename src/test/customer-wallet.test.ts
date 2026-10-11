@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseCanonicalWalletResponse, classifyCanonicalWalletError, canonicalWalletPayload } from "@/lib/customer-wallet.server";
 import { groupWalletLedger, ledgerStatusLabel } from "@/lib/customer-wallet-view";
+import { quickActionSoonCopy, WALLET_ACTIONS, QUICK_ACTION_SUPPORT_COPY } from "@/lib/wallet-quick-actions";
 
 const wallet = {
   customer_id: "customer-1",
@@ -52,5 +53,23 @@ describe("Wallet ledger presentation", () => {
     expect(groups[0]?.entries.map((item) => item.id)).toEqual(["newer", "new"]);
     expect(ledgerStatusLabel("pending")).toBe("Menunggu");
     expect(ledgerStatusLabel("posted")).toBe("Berhasil");
+  });
+});
+
+describe("Wallet quick actions", () => {
+  it("keeps the eight Travel actions and supported mapping", () => {
+    expect(WALLET_ACTIONS.map(({ label }) => label)).toEqual([
+      "Isi Saldo", "Kirim", "Terima", "Scan QR", "Riwayat", "Kartu", "Tarik Dana", "Bantuan",
+    ]);
+    expect(WALLET_ACTIONS.map(({ supported }) => supported)).toEqual([
+      true, false, false, false, true, false, false, true,
+    ]);
+    expect(WALLET_ACTIONS.every(({ asset }) => asset.startsWith("/assets/djiwa-pay-actions/") && asset.endsWith(".webp"))).toBe(true);
+  });
+
+  it("uses truthful copy for unsupported actions and bantuan", () => {
+    expect(quickActionSoonCopy("Kirim")).toBe("Fitur Kirim sedang kami siapkan untuk Djiwa Pay.");
+    expect(quickActionSoonCopy("Scan QR")).toBe("Fitur Scan QR sedang kami siapkan untuk Djiwa Pay.");
+    expect(QUICK_ACTION_SUPPORT_COPY).toContain("customer service");
   });
 });
