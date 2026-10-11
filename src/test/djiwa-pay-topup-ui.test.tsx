@@ -12,11 +12,20 @@ function renderSheet() {
 }
 
 describe("Djiwa Travel Isi Saldo sheet", () => {
-  it("opens as an accessible sheet with four presets", () => {
-    renderSheet();
-    expect(screen.getByRole("dialog", { name: "Isi Saldo" })).toBeInTheDocument();
+  it("opens as an accessible sheet with four presets through a body portal", async () => {
+    const { container } = renderSheet();
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Isi Saldo" })).toBeInTheDocument());
+    const dialog = screen.getByRole("dialog", { name: "Isi Saldo" });
+    expect(document.body).toContainElement(dialog);
+    expect(container).not.toContainElement(dialog);
     fireEvent.click(screen.getByRole("button", { name: "Rp50.000" }));
     expect(screen.getByRole("button", { name: "Rp50.000" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("renders nothing when closed", () => {
+    render(<DjiwaPayTopup userId="user-1" open={false} onOpenChange={vi.fn()} creditedBefore={25_000} />);
+    expect(screen.queryByRole("dialog", { name: "Isi Saldo" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Tunggu sebentar")).not.toBeInTheDocument();
   });
 
   it("supports keypad append, leading-zero stripping, delete, and eight digits", () => {

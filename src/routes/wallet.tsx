@@ -3,6 +3,7 @@ import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, RefreshCw, WalletCards } from
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Page, SectionTitle } from "@/components/shell";
 import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
+import { FixedLayer } from "@/components/motion-primitives";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { getCustomerWallet, type CustomerWalletResponse, type CustomerWalletLedgerEntry } from "@/lib/customer-wallet.server";
 import { groupWalletLedger, ledgerStatusLabel, walletStatusLabel } from "@/lib/customer-wallet-view";
@@ -202,23 +203,25 @@ function Wallet() {
         </>
       )}
       {quickActionDialog && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
-          role="presentation"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setQuickActionDialog(null);
-          }}
-        >
-          <div role="dialog" aria-modal="true" aria-labelledby="wallet-quick-action-dialog-title" className="w-full max-w-md rounded-3xl bg-surface p-5 shadow-xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Djiwa Pay</p>
-            <h2 id="wallet-quick-action-dialog-title" className="mt-1 text-xl font-bold">Segera Hadir</h2>
-            <p className="mt-2 text-sm leading-5 text-muted-foreground">
-              {quickActionDialog === "Bantuan" ? QUICK_ACTION_SUPPORT_COPY : quickActionSoonCopy(quickActionDialog)}
-            </p>
-            {quickActionDialog === "Bantuan" && <a className="mt-3 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="https://wa.me/6285156399831" target="_blank" rel="noreferrer">Hubungi customer service</a>}
-            <button type="button" className="mt-4 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setQuickActionDialog(null)}>Mengerti</button>
+        <FixedLayer>
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+            role="presentation"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setQuickActionDialog(null);
+            }}
+          >
+            <div role="dialog" aria-modal="true" aria-labelledby="wallet-quick-action-dialog-title" className="w-full max-w-md rounded-3xl bg-surface p-5 shadow-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Djiwa Pay</p>
+              <h2 id="wallet-quick-action-dialog-title" className="mt-1 text-xl font-bold">Segera Hadir</h2>
+              <p className="mt-2 text-sm leading-5 text-muted-foreground">
+                {quickActionDialog === "Bantuan" ? QUICK_ACTION_SUPPORT_COPY : quickActionSoonCopy(quickActionDialog)}
+              </p>
+              {quickActionDialog === "Bantuan" && <a className="mt-3 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="https://wa.me/6285156399831" target="_blank" rel="noreferrer">Hubungi customer service</a>}
+              <button type="button" className="mt-4 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setQuickActionDialog(null)}>Mengerti</button>
+            </div>
           </div>
-        </div>
+        </FixedLayer>
       )}
     </Page>
   );
