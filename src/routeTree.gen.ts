@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BalanceRouteImport } from './routes/balance'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
@@ -46,6 +47,11 @@ import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.web
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BalanceRoute = BalanceRouteImport.update({
+  id: '/balance',
+  path: '/balance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogRoute = CatalogRouteImport.update({
@@ -212,6 +218,7 @@ const ApiWebhooksEsimAccessTokenRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/balance': typeof BalanceRoute
   '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
@@ -247,6 +254,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/balance': typeof BalanceRoute
   '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
@@ -283,6 +291,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/balance': typeof BalanceRoute
   '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/balance'
     | '/catalog'
     | '/explore'
     | '/finder'
@@ -355,6 +365,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/balance'
     | '/catalog'
     | '/explore'
     | '/finder'
@@ -390,6 +401,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/balance'
     | '/catalog'
     | '/explore'
     | '/finder'
@@ -426,6 +438,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BalanceRoute: typeof BalanceRoute
   CatalogRoute: typeof CatalogRoute
   ExploreRoute: typeof ExploreRoute
   FinderRoute: typeof FinderRoute
@@ -467,6 +480,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/balance': {
+      id: '/balance'
+      path: '/balance'
+      fullPath: '/balance'
+      preLoaderRoute: typeof BalanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalog': {
@@ -698,6 +718,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BalanceRoute: BalanceRoute,
   CatalogRoute: CatalogRoute,
   ExploreRoute: ExploreRoute,
   FinderRoute: FinderRoute,

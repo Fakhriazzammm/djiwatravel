@@ -1,5 +1,5 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { Home, Compass, Smartphone, User, ChevronLeft } from "lucide-react";
+import { Home, Compass, Smartphone, User, ChevronLeft, WalletCards } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import logo from "@/assets/logo.png";
@@ -10,6 +10,7 @@ const tabs = [
   { to: "/", label: "Home", icon: Home },
   { to: "/explore", label: "Explore", icon: Compass },
   { to: "/my-esim", label: "My eSIM", icon: Smartphone },
+  { to: "/balance", label: "Wallet", icon: WalletCards },
   { to: "/profile", label: "Profile", icon: User },
 ] as const;
 
@@ -20,7 +21,7 @@ export function TabBar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-surface/95 backdrop-blur-xl safe-bottom">
-      <div className="mx-auto grid max-w-md grid-cols-4 px-2 pt-1.5">
+      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pt-1.5">
         {tabs.map(({ to, label, icon: Icon }) => {
           const active = isActiveTab(to, pathname);
           return (
