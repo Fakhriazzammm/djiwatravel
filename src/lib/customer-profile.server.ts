@@ -13,7 +13,11 @@ const profileInputSchema = z.object({
 type BetterAuthSession = {
   user?: { id?: string; email?: string | null } | null;
 } | null;
-type AuthenticatedUser = { id: string; email: string };
+export type AuthenticatedUser = { id: string; email: string };
+
+type CanonicalCustomerProfileResponse = {
+  customer?: { source_id?: unknown; email?: unknown } | null;
+};
 
 /**
  * Better Auth issues an opaque text token as the user id (observed: 32
@@ -30,8 +34,7 @@ export function normalizeCustomerWhatsapp(value: string) {
   return normalized;
 }
 
-async function requireBetterAuthUser(): Promise<AuthenticatedUser> {
-  const cookie = getRequestHeader("cookie");
+export async function requireBetterAuthUser(cookie = getRequestHeader("cookie")): Promise<AuthenticatedUser> {
   if (!cookie) throw new Error("Autentikasi diperlukan");
   const response = await fetch("https://auth.zantara.id/api/auth/get-session", {
     headers: { cookie, origin: "https://djiwatravel.com" },
@@ -41,6 +44,36 @@ async function requireBetterAuthUser(): Promise<AuthenticatedUser> {
   const user = session?.user;
   if (!user?.email || !isBetterAuthUserId(user.id)) throw new Error("Autentikasi diperlukan");
   return { id: user.id, email: user.email };
+}
+
+/** Resolve the canonical wallet identity without exposing the session cookie. */
+export async function resolveCanonicalCustomerSourceId(
+  authenticatedEmail: string,
+  cookie = getRequestHeader("cookie"),
+): Promise<string> {
+  if (!cookie) throw new Error("Profil customer canonical tidak tersedia");
+  let response: Response;
+  try {
+    response = await fetch("https://auth.zantara.id/api/customer/profile", {
+      headers: { cookie, origin: "https://djiwatravel.com", accept: "application/json" },
+    });
+  } catch {
+    throw new Error("Profil customer canonical tidak tersedia");
+  }
+  if (!response.ok) throw new Error("Profil customer canonical tidak tersedia");
+
+  let payload: CanonicalCustomerProfileResponse | null;
+  try {
+    payload = (await response.json()) as CanonicalCustomerProfileResponse;
+  } catch {
+    throw new Error("Profil customer canonical tidak valid");
+  }
+  const sourceId = typeof payload?.customer?.source_id === "string" ? payload.customer.source_id.trim() : "";
+  const profileEmail = typeof payload?.customer?.email === "string" ? payload.customer.email.trim() : "";
+  if (!sourceId || !profileEmail || profileEmail.toLowerCase() !== authenticatedEmail.trim().toLowerCase()) {
+    throw new Error("Profil customer canonical tidak valid");
+  }
+  return sourceId;
 }
 
 export const getCustomerProfile = createServerFn({ method: "GET" }).handler(async () => {

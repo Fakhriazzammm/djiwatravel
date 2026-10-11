@@ -22,3 +22,18 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Djiwa Pay top-up boundary
+
+The authenticated profile page exposes Djiwa Pay saldo top-up only after the central Better Auth session is verified server-side. Travel does not create or store a wallet, balance, ledger, Mayar key, or webhook settlement.
+
+Before enabling this in a runtime, configure these server-only variables:
+
+- `DJIWA_PAY_CUSTOMER_WALLET_URL`: the verified HTTPS URL for the canonical `customer-wallet` Edge Function boundary.
+- `DJIWA_TRAVEL_PUBLIC_ORIGIN` (optional): HTTPS origin used for the canonical `/saldo` return URL; defaults to `https://djiwatravel.com`.
+
+The server resolves each user's canonical `customerSourceId` by forwarding the incoming Better Auth session cookie to `GET https://auth.zantara.id/api/customer/profile`. It requires a non-empty `customer.source_id` and case-insensitive email ownership matching the authenticated Better Auth user. Unavailable, malformed, or mismatched profiles fail closed before `customer-wallet` is called. It must never pass `user.id` as `sourceId`, use email as identity, or read a shared browser/server value as every user's source id.
+
+`DJIWA_PAY_CUSTOMER_SOURCE_ID` is not used: canonical identity is a per-request server-side exchange result, never a static environment value or browser input.
+
+Invoice creation is pending only; Travel never marks saldo credited. The canonical Mayar webhook remains the only settlement authority.

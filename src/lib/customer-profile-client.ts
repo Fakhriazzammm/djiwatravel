@@ -1,18 +1,16 @@
-import { getCustomerProfile, upsertCustomerProfile } from "./customer-profile.server";
 import type { CustomerProfileDraft } from "./customer-profile";
 
-/**
- * Client wrapper around the authenticated customer-profile server functions.
- * The Better Auth session is read server-side from the HttpOnly cookie, so the
- * browser never supplies the profile identity.
- */
+async function request(path: string, init?: RequestInit) {
+  const response = await fetch(path, { ...init, credentials: "include", headers: { "content-type": "application/json", ...(init?.headers || {}) } });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload && typeof payload.error === "string" ? payload.error : "Permintaan profil gagal");
+  return payload;
+}
+
 export async function loadCustomerProfile(): Promise<CustomerProfileDraft | null> {
-  const profile = await getCustomerProfile({ data: undefined });
-  return profile ?? null;
+  return request("/api/customer-profile") as Promise<CustomerProfileDraft | null>;
 }
 
 export async function saveCustomerProfile(draft: CustomerProfileDraft): Promise<CustomerProfileDraft> {
-  const saved = await upsertCustomerProfile({ data: draft });
-  if (!saved) throw new Error("Data profil belum tersimpan. Coba lagi.");
-  return saved;
+  return request("/api/customer-profile", { method: "POST", body: JSON.stringify(draft) }) as Promise<CustomerProfileDraft>;
 }

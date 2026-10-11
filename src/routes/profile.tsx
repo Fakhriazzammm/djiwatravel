@@ -7,12 +7,9 @@ import { Page, Wordmark, group, row, label } from "@/components/shell";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useOrders } from "@/lib/orders";
 import { rupiah } from "@/lib/pricing";
-import {
-  normalizeCustomerProfile,
-  validateCustomerProfile,
-  type CustomerProfileDraft,
-} from "@/lib/customer-profile";
+import { validateCustomerProfile, type CustomerProfileDraft } from "@/lib/customer-profile";
 import { loadCustomerProfile, saveCustomerProfile } from "@/lib/customer-profile-client";
+import { DjiwaPayTopup } from "@/components/djiwa-pay-topup";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -59,7 +56,7 @@ function Profile() {
     }
     setSavingProfile(true);
     try {
-      await saveCustomerProfile(normalizeCustomerProfile(profile));
+      await saveCustomerProfile(profile);
       setProfileSaved(true);
       setEditingProfile(false);
       setProfileError(null);
@@ -172,14 +169,13 @@ function Profile() {
             </button>
           </div>
         )}
+        {user && <DjiwaPayTopup userId={user.id} />}
       </div>
 
       <h2 className={`${label} mt-6`}>Riwayat Pesanan</h2>
       <div className={group}>
         {orders.length === 0 && (
-          <p className="px-4 py-3.5 text-muted-foreground">
-            {user ? "Belum ada pesanan." : "Masuk untuk menyimpan & melihat riwayat pesananmu."}
-          </p>
+          <p className="px-4 py-3.5 text-muted-foreground">Belum ada pesanan.</p>
         )}
         {orders.map((o) => {
           return (

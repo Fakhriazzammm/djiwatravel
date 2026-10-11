@@ -30,6 +30,7 @@ import { Route as AdminRefundsRouteImport } from './routes/admin.refunds'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
+import { Route as ApiCustomerProfileRouteImport } from './routes/api.customer-profile'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
@@ -38,6 +39,7 @@ import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
 import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
+import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.topup'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
 
@@ -146,6 +148,11 @@ const AdminTeamRoute = AdminTeamRouteImport.update({
   path: '/admin/team',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCustomerProfileRoute = ApiCustomerProfileRouteImport.update({
+  id: '/api/customer-profile',
+  path: '/api/customer-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutIdRoute = CheckoutIdRouteImport.update({
   id: '/checkout/$id',
   path: '/checkout/$id',
@@ -186,6 +193,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDjiwaPayTopupRoute = ApiDjiwaPayTopupRouteImport.update({
+  id: '/api/djiwa-pay/topup',
+  path: '/api/djiwa-pay/topup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksDjiwaTravelRoute = ApiWebhooksDjiwaTravelRouteImport.update({
   id: '/api/webhooks/djiwa-travel',
   path: '/api/webhooks/djiwa-travel',
@@ -219,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
@@ -228,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -252,6 +266,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
@@ -261,6 +276,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -286,6 +302,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
@@ -295,6 +312,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -321,6 +339,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/support'
     | '/admin/team'
+    | '/api/customer-profile'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
@@ -330,6 +349,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/my-esim/'
     | '/api/auth/$'
+    | '/api/djiwa-pay/topup'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -354,6 +374,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/support'
     | '/admin/team'
+    | '/api/customer-profile'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
@@ -363,6 +384,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/my-esim'
     | '/api/auth/$'
+    | '/api/djiwa-pay/topup'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   id:
@@ -387,6 +409,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/support'
     | '/admin/team'
+    | '/api/customer-profile'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
@@ -396,6 +419,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/my-esim/'
     | '/api/auth/$'
+    | '/api/djiwa-pay/topup'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesById: FileRoutesById
@@ -421,6 +445,7 @@ export interface RootRouteChildren {
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSupportRoute: typeof AdminSupportRoute
   AdminTeamRoute: typeof AdminTeamRoute
+  ApiCustomerProfileRoute: typeof ApiCustomerProfileRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
@@ -430,6 +455,7 @@ export interface RootRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
   ApiWebhooksEsimAccessTokenRoute: typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -583,6 +609,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTeamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/customer-profile': {
+      id: '/api/customer-profile'
+      path: '/api/customer-profile'
+      fullPath: '/api/customer-profile'
+      preLoaderRoute: typeof ApiCustomerProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout/$id': {
       id: '/checkout/$id'
       path: '/checkout/$id'
@@ -639,6 +672,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/djiwa-pay/topup': {
+      id: '/api/djiwa-pay/topup'
+      path: '/api/djiwa-pay/topup'
+      fullPath: '/api/djiwa-pay/topup'
+      preLoaderRoute: typeof ApiDjiwaPayTopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/djiwa-travel': {
       id: '/api/webhooks/djiwa-travel'
       path: '/api/webhooks/djiwa-travel'
@@ -677,6 +717,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSupportRoute: AdminSupportRoute,
   AdminTeamRoute: AdminTeamRoute,
+  ApiCustomerProfileRoute: ApiCustomerProfileRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
   MyEsimIdRoute: MyEsimIdRoute,
@@ -686,6 +727,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
   ApiWebhooksEsimAccessTokenRoute: ApiWebhooksEsimAccessTokenRoute,
 }
