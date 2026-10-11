@@ -19,6 +19,7 @@ import {
   type ReceiptDocument,
 } from "@/lib/receipt-print";
 import { rupiah } from "@/lib/pricing";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
 
 export const Route = createFileRoute("/receipt/$id")({
   head: () => ({
@@ -31,7 +32,6 @@ export const Route = createFileRoute("/receipt/$id")({
   component: ReceiptPage,
 });
 
-const SUPPORT_HREF = "https://wa.me/";
 
 function buildReceiptDocument(order: Order): ReceiptDocument {
   const status = effectiveOrderStatus(order.status, order.expiresAt);
@@ -76,6 +76,7 @@ function ReceiptPage() {
   const orders = useOrders();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   // A refresh from the server can carry newer status, so settle once on arrival.
   useEffect(() => {
@@ -84,17 +85,46 @@ function ReceiptPage() {
 
   const order = orders?.find((x) => x.id === id);
 
-  // Mayar returns directly here: verify payment before rendering the receipt status.
+  // Mayar may settle shortly after the redirect. Poll only while pending, stop on
+  // terminal state, and keep a manual retry available instead of looping forever.
   useEffect(() => {
     if (!order) return;
-    const awaiting = order.status === "ORDER_CREATED" || order.status === "WAITING_PAYMENT";
-    if (!awaiting) return;
+    if (!["ORDER_CREATED", "WAITING_PAYMENT"].includes(order.status)) return;
     const token = guestAccessTokenFor(id);
     if (!token) return;
-    void verifyMayarPayment({ data: { orderId: id, accessToken: token } })
-      .then(() => refreshOrdersFromServer())
-      .catch(() => undefined);
+    let cancelled = false;
+    let attempts = 0;
+    let timer: number | undefined;
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const result = await verifyMayarPayment({ data: { orderId: id, accessToken: token } });
+        await refreshOrdersFromServer();
+        if (result.settled || attempts >= 6 || cancelled) return;
+      } catch {
+        if (attempts >= 6 || cancelled) return;
+      }
+      timer = window.setTimeout(() => void poll(), Math.min(1000 * 2 ** attempts, 8000));
+    };
+    void poll();
+    return () => { cancelled = true; if (timer) window.clearTimeout(timer); };
   }, [id, order?.id, order?.status]);
+
+  const retryPaymentCheck = async () => {
+    const token = guestAccessTokenFor(id);
+    if (!token || checkingPayment) return;
+    setCheckingPayment(true);
+    setNote("");
+    try {
+      const result = await verifyMayarPayment({ data: { orderId: id, accessToken: token } });
+      await refreshOrdersFromServer();
+      setNote(result.settled ? "Pembayaran terverifikasi. Status diperbarui." : "Pembayaran masih menunggu verifikasi.");
+    } catch {
+      setNote("Belum bisa memeriksa pembayaran. Coba lagi nanti.");
+    } finally {
+      setCheckingPayment(false);
+    }
+  };
 
   if (!orders)
     return (
@@ -177,6 +207,11 @@ function ReceiptPage() {
               Cetak struk
             </button>
             {note && <p className="text-xs text-destructive">{note}</p>}
+            {(order.status === "ORDER_CREATED" || order.status === "WAITING_PAYMENT") && (
+              <button type="button" disabled={checkingPayment} onClick={() => void retryPaymentCheck()} className={`${btnSoft} disabled:opacity-50`}>
+                {checkingPayment ? "Memeriksa pembayaran…" : "Cek ulang pembayaran"}
+              </button>
+            )}
           </div>
         }
       >
@@ -240,7 +275,7 @@ function ReceiptPage() {
           <Link to="/order/$id" params={{ id: order.id }} className={btnSoft}>
             Buka status pesanan
           </Link>
-          <a href={SUPPORT_HREF} target="_blank" rel="noreferrer" className={`${btnSoft} text-center`}>
+          <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noreferrer" className={`${btnSoft} text-center`}>
             Butuh bantuan? Hubungi support
           </a>
         </div>

@@ -23,12 +23,12 @@ import {
   writeNotifyPreference,
 } from "@/lib/esim-notify";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
 
 /**
  * Support channel. Kept as one constant so every entry point points at the same place, and so
  * the empty `https://wa.me/` link that went nowhere can be swapped for a real number in one edit.
  */
-const SUPPORT_WHATSAPP = "https://wa.me/";
 
 export const Route = createFileRoute("/order/$id")({
   head: () => ({
@@ -311,7 +311,7 @@ function OrderPage() {
             Provisioning otomatis belum diaktifkan.
           </p>
         )}
-        <a href={SUPPORT_WHATSAPP} className={`${btnSoft} mt-3`}>
+        <a href={SUPPORT_WHATSAPP_URL} className={`${btnSoft} mt-3`}>
           Hubungi Support
         </a>
       </Page>
@@ -407,7 +407,7 @@ function OrderPage() {
         Struk &amp; panduan pasang
       </Link>
       <a
-        href={SUPPORT_WHATSAPP}
+        href={SUPPORT_WHATSAPP_URL}
         target="_blank"
         rel="noreferrer"
         className="mt-3 block text-center text-[12px] font-medium text-brand-red"

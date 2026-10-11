@@ -1,9 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { db } from "../db/client.server";
 import { customerOrders, guestOrderAccess } from "../../drizzle/schema";
 import { hashGuestAccessToken } from "./guest-order-access.server";
+import { assertPaymentNotExpired } from "./payment-expiry";
 
 const invoicePayloadSchema = z.object({
   orderId: z.string().uuid(),
@@ -50,6 +51,55 @@ export function buildMayarInvoicePayload(input: z.input<typeof invoicePayloadSch
   };
 }
 
+function configuredAppOrigin() {
+  const raw = process.env["PUBLIC_APP_ORIGIN"] || process.env["APP_ORIGIN"];
+  if (!raw) throw new Error("Canonical app origin belum dikonfigurasi");
+  const origin = new URL(raw);
+  if (origin.protocol !== "https:" || origin.pathname !== "/" || origin.search || origin.hash) throw new Error("Canonical app origin tidak valid");
+  return origin.origin;
+}
+
+async function createMayarInvoiceForOrder(
+  orderId: string,
+  expectedAmount: number,
+  payload: z.input<typeof invoicePayloadSchema>,
+  currentSnapshot: Record<string, unknown>,
+) {
+  const { apiKey, baseUrl } = mayarConfig();
+  const intentRows = await db.execute(sql`select status, provider_invoice_id, provider_transaction_id, payment_url from public.payment_intents where order_id = ${orderId}::uuid and provider = 'mayar' limit 1`);
+  const intent = intentRows.rows[0] as { status?: string; provider_invoice_id?: string | null; provider_transaction_id?: string | null; payment_url?: string | null } | undefined;
+  if (intent) {
+    if (intent.payment_url && intent.provider_invoice_id) return { invoiceId: intent.provider_invoice_id, transactionId: intent.provider_transaction_id ?? "", paymentUrl: intent.payment_url };
+    throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
+  }
+  const claim = await db.execute(sql`insert into public.payment_intents(order_id, provider, idempotency_key, status, amount, currency_code, attempt_count, updated_at)
+    values (${orderId}::uuid, 'mayar', ${orderId}, 'REQUESTING', ${expectedAmount}, 'IDR', 1, now())
+    on conflict (order_id, provider) do nothing returning id`);
+  if (claim.rows.length === 0) throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/invoices/create`, { method: "POST", headers: { authorization: "Bearer " + apiKey, "content-type": "application/json" }, body: JSON.stringify(buildMayarInvoicePayload(payload)), signal: AbortSignal.timeout(15_000) });
+  } catch (error) {
+    await db.execute(sql`update public.payment_intents set status = 'UNKNOWN', last_error = ${error instanceof Error ? error.message.slice(0, 240) : "provider_timeout"}, next_reconcile_at = now() + interval '1 minute', updated_at = now() where order_id = ${orderId}::uuid and provider = 'mayar'`);
+    throw new Error("Tagihan pembayaran belum terkonfirmasi; coba rekonsiliasi, bukan membuat tagihan baru");
+  }
+  const body = await response.json().catch(() => ({})) as { data?: Record<string, unknown>; messages?: string; message?: string };
+  if (!response.ok) {
+    await db.execute(sql`update public.payment_intents set status = 'FAILED', last_error = ${body.messages || body.message || `provider_${response.status}`}, updated_at = now() where order_id = ${orderId}::uuid and provider = 'mayar'`);
+    throw new Error(body.messages || body.message || `Payment provider error ${response.status}`);
+  }
+  const invoiceId = String(body.data?.["id"] ?? "");
+  const transactionId = String(body.data?.["transactionId"] ?? "");
+  const paymentUrl = String(body.data?.["link"] ?? body.data?.["paymentUrl"] ?? "");
+  if (!invoiceId || !transactionId || !paymentUrl) {
+    await db.execute(sql`update public.payment_intents set status = 'UNKNOWN', last_error = 'provider_response_incomplete', next_reconcile_at = now(), updated_at = now() where order_id = ${orderId}::uuid and provider = 'mayar'`);
+    throw new Error("Respons invoice Mayar tidak lengkap");
+  }
+  await db.execute(sql`update public.payment_intents set status = 'PROVIDER_CONFIRMED', provider_invoice_id = ${invoiceId}, provider_transaction_id = ${transactionId}, payment_url = ${paymentUrl}, updated_at = now() where order_id = ${orderId}::uuid and provider = 'mayar'`);
+  await db.update(customerOrders).set({ status: "PAYMENT_PENDING", paymentProvider: "mayar", paymentReference: invoiceId, priceSnapshot: { ...currentSnapshot, mayar: { invoiceId, transactionId, paymentUrl } } }).where(eq(customerOrders.id, orderId));
+  return { invoiceId, transactionId, paymentUrl };
+}
+
 export const createMayarInvoice = createServerFn({ method: "POST" })
   .validator(invoiceSchema)
   .handler(async ({ data }) => {
@@ -58,34 +108,21 @@ export const createMayarInvoice = createServerFn({ method: "POST" })
       .select({ order: customerOrders, access: guestOrderAccess })
       .from(customerOrders)
       .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
-      .where(and(eq(customerOrders.id, data.orderId), eq(guestOrderAccess.accessTokenHash, accessHash)))
+      .where(and(eq(customerOrders.id, data.orderId), eq(guestOrderAccess.accessTokenHash, accessHash), gt(guestOrderAccess.expiresAt, new Date().toISOString())))
       .limit(1);
     const row = rows[0];
     if (!row) throw new Error("Pesanan tidak ditemukan");
     const expectedAmount = Number(row.order.totalAmount);
     if (!Number.isSafeInteger(expectedAmount) || expectedAmount !== data.amountIdr) throw new Error("Nominal pesanan berubah");
+    assertPaymentNotExpired(row.order.status, row.order.paymentExpiresAt);
     if (row.order.paymentProvider === "mayar" && row.order.paymentReference) {
       const snapshot = row.order.priceSnapshot && typeof row.order.priceSnapshot === "object" ? row.order.priceSnapshot as Record<string, unknown> : {};
       const mayar = snapshot["mayar"] && typeof snapshot["mayar"] === "object" ? snapshot["mayar"] as Record<string, unknown> : {};
       if (typeof mayar["paymentUrl"] === "string" && mayar["paymentUrl"]) return { invoiceId: String(mayar["invoiceId"] || row.order.paymentReference), transactionId: String(mayar["transactionId"] || ""), paymentUrl: mayar["paymentUrl"] };
       throw new Error("Tagihan pesanan sudah dibuat tetapi link pembayaran tidak tersedia");
     }
-    const { apiKey, baseUrl } = mayarConfig();
-    const response = await fetch(`${baseUrl}/invoices/create`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify(buildMayarInvoicePayload(data)),
-      signal: AbortSignal.timeout(15_000),
-    });
-    const body = await response.json().catch(() => ({})) as { data?: Record<string, unknown>; messages?: string; message?: string };
-    if (!response.ok) throw new Error(body.messages || body.message || `Payment provider error ${response.status}`);
-    const invoiceId = String(body.data?.["id"] ?? "");
-    const transactionId = String(body.data?.["transactionId"] ?? "");
-    const paymentUrl = String(body.data?.["link"] ?? body.data?.["paymentUrl"] ?? "");
-    if (!invoiceId || !transactionId || !paymentUrl) throw new Error("Respons invoice Mayar tidak lengkap");
     const currentSnapshot = row.order.priceSnapshot && typeof row.order.priceSnapshot === "object" ? row.order.priceSnapshot as Record<string, unknown> : {};
-    await db.update(customerOrders).set({ status: "PAYMENT_PENDING", paymentProvider: "mayar", paymentReference: invoiceId, priceSnapshot: { ...currentSnapshot, mayar: { invoiceId, transactionId, paymentUrl } } }).where(eq(customerOrders.id, data.orderId));
-    return { invoiceId, transactionId, paymentUrl };
+    return createMayarInvoiceForOrder(data.orderId, expectedAmount, data, currentSnapshot);
   });
 
 /**
@@ -102,15 +139,16 @@ export const rebuildMayarInvoice = createServerFn({ method: "POST" })
       .select({ order: customerOrders, access: guestOrderAccess })
       .from(customerOrders)
       .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
-      .where(and(eq(customerOrders.id, data.orderId), eq(guestOrderAccess.accessTokenHash, accessHash)))
+      .where(and(eq(customerOrders.id, data.orderId), eq(guestOrderAccess.accessTokenHash, accessHash), gt(guestOrderAccess.expiresAt, new Date().toISOString())))
       .limit(1);
     const row = rows[0];
     if (!row) throw new Error("Pesanan tidak ditemukan");
-    const snapshot = row.order.priceSnapshot && typeof row.order.priceSnapshot === "object"
+    assertPaymentNotExpired(row.order.status, row.order.paymentExpiresAt);
+    const orderSnapshot = row.order.priceSnapshot && typeof row.order.priceSnapshot === "object"
       ? (row.order.priceSnapshot as Record<string, unknown>)
       : {};
-    const stored = snapshot["mayar"] && typeof snapshot["mayar"] === "object"
-      ? (snapshot["mayar"] as Record<string, unknown>)
+    const stored = orderSnapshot["mayar"] && typeof orderSnapshot["mayar"] === "object"
+      ? (orderSnapshot["mayar"] as Record<string, unknown>)
       : {};
     if (typeof stored["paymentUrl"] === "string" && stored["paymentUrl"]) {
       return {
@@ -122,46 +160,21 @@ export const rebuildMayarInvoice = createServerFn({ method: "POST" })
     const email = (row.access.email ?? "").trim();
     const whatsapp = (row.access.whatsapp ?? "").trim();
     if (!email || !whatsapp) throw new Error("Kontak pesanan tidak lengkap");
+    assertPaymentNotExpired(row.order.status, row.order.paymentExpiresAt);
     const amountIdr = Number(row.order.totalAmount);
     if (!Number.isSafeInteger(amountIdr) || amountIdr <= 0) throw new Error("Nominal pesanan tidak valid");
     const description = `Djiwa Travel ${row.order.publicOrderCode}`;
-    const { apiKey, baseUrl } = mayarConfig();
-    const response = await fetch(`${baseUrl}/invoices/create`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify(
-        buildMayarInvoicePayload({
-          orderId: data.orderId,
-          amountIdr,
-          customerName: email.split("@")[0] || "Customer",
-          customerEmail: email,
-          customerMobile: whatsapp,
-          description,
-          redirectUrl: `https://djiwatravel.com/receipt/${data.orderId}`,
-        }),
-      ),
-      signal: AbortSignal.timeout(15_000),
-    });
-    const body = (await response.json().catch(() => ({}))) as {
-      data?: Record<string, unknown>;
-      messages?: string;
-      message?: string;
-    };
-    if (!response.ok) throw new Error(body.messages || body.message || `Payment provider error ${response.status}`);
-    const invoiceId = String(body.data?.["id"] ?? "");
-    const transactionId = String(body.data?.["transactionId"] ?? "");
-    const paymentUrl = String(body.data?.["link"] ?? body.data?.["paymentUrl"] ?? "");
-    if (!invoiceId || !transactionId || !paymentUrl) throw new Error("Respons invoice Mayar tidak lengkap");
-    await db
-      .update(customerOrders)
-      .set({
-        status: "PAYMENT_PENDING",
-        paymentProvider: "mayar",
-        paymentReference: invoiceId,
-        priceSnapshot: { ...snapshot, mayar: { invoiceId, transactionId, paymentUrl } },
-      })
-      .where(eq(customerOrders.id, data.orderId));
-    return { invoiceId, transactionId, paymentUrl };
+    const snapshot = row.order.priceSnapshot && typeof row.order.priceSnapshot === "object" ? row.order.priceSnapshot as Record<string, unknown> : {};
+    const result = await createMayarInvoiceForOrder(data.orderId, amountIdr, {
+      orderId: data.orderId,
+      amountIdr,
+      customerName: email.split("@")[0] || "Customer",
+      customerEmail: email,
+      customerMobile: whatsapp,
+      description,
+      redirectUrl: `${configuredAppOrigin()}/receipt/${data.orderId}`,
+    }, snapshot);
+    return result;
   });
 
 export type MayarTransaction = {
@@ -175,7 +188,7 @@ export type MayarTransaction = {
 /** Authoritative payment lookup: Mayar's transaction detail is the payment proof. */
 export async function fetchMayarTransaction(transactionId: string): Promise<MayarTransaction> {
   const { apiKey, baseUrl } = mayarConfig();
-  const response = await fetch(`${baseUrl}/transactions/${encodeURIComponent(transactionId)}`, { headers: { authorization: `Bearer ${apiKey}`, accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
+  const response = await fetch(`${baseUrl}/transactions/${encodeURIComponent(transactionId)}`, { headers: { authorization: "Bearer " + apiKey, accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
   const body = await response.json().catch(() => ({})) as { data?: MayarTransaction; messages?: string; message?: string };
   if (!response.ok) throw new Error(body.messages || body.message || `Payment verification error ${response.status}`);
   return body.data ?? {};

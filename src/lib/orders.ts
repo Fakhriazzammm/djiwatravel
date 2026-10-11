@@ -5,6 +5,7 @@ import { createGuestOrderDraft, getGuestOrders } from "./guest-orders.server";
 import { rebuildMayarInvoice } from "./mayar-gateway";
 import { createMayarInvoice } from "./mayar-gateway";
 import { mapGuestOrderRecord } from "./guest-order-view";
+import { effectivePaymentStatus } from "./payment-expiry";
 
 export type OrderStatus =
   | "ORDER_CREATED"
@@ -35,6 +36,7 @@ export type Order = {
   status: OrderStatus;
   createdAt: number;
   expiresAt?: number;
+  paymentExpiresAt?: number | null;
   esim?: EsimProfile;
   usedGb?: number;
   providerOrderNo?: string;
@@ -236,6 +238,7 @@ export async function createOrder(
     whatsapp: o.whatsapp,
     method: o.method,
     status: "WAITING_PAYMENT",
+    paymentExpiresAt: saved.paymentExpiresAtMs,
     paymentUrl: invoice.paymentUrl,
     paymentReference: invoice.invoiceId,
     createdAt: saved.createdAtMs,
@@ -255,7 +258,7 @@ const patch = (id: string, p: Partial<Order>) =>
 
 export function cancelOrder(id: string) {
   const o = read().find((x) => x.id === id);
-  if (!o || !["ORDER_CREATED", "WAITING_PAYMENT"].includes(o.status)) return false;
+  if (!o || effectivePaymentStatus(o.status, o.paymentExpiresAt) === "EXPIRED" || !["ORDER_CREATED", "WAITING_PAYMENT"].includes(o.status)) return false;
   patch(id, { status: "CANCELLED" });
   return true;
 }
@@ -269,7 +272,9 @@ export function markInstalled(id: string) {
 
 export function refreshExpiredOrders(now = Date.now()) {
   const changed = read().map((o) =>
-    o.expiresAt && o.expiresAt <= now && ["READY", "INSTALLED"].includes(o.status)
+    effectivePaymentStatus(o.status, o.paymentExpiresAt, now) === "EXPIRED"
+      ? { ...o, status: "EXPIRED" as const }
+      : o.expiresAt && o.expiresAt <= now && ["READY", "INSTALLED"].includes(o.status)
       ? { ...o, status: "EXPIRED" as const }
       : o,
   );

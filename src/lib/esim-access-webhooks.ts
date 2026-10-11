@@ -25,6 +25,52 @@ export function shouldApplyProfileStatus(current: EsimProfileStatus, incoming: E
   return incoming !== "UNKNOWN" && (current === "UNKNOWN" || rank[incoming] >= rank[current]);
 }
 
+export type NormalizedUsage = {
+  dataUsage?: { totalVolume?: number; orderUsage?: number; remain?: number };
+  validityUsage?: { totalDuration?: number; expiredTime?: string; remain?: number };
+};
+
+function finiteNumber(value: unknown): number | undefined {
+  const number = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function normalizedTimestamp(value: unknown): string | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const date = new Date(value < 10_000_000_000 ? value * 1000 : value);
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  }
+  if (typeof value === "string" && value.trim()) {
+    const date = new Date(value.trim());
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  }
+  return undefined;
+}
+
+export function normalizeUsagePayload(notifyType: string, content: Record<string, unknown>): NormalizedUsage {
+  if (notifyType === "DATA_USAGE") {
+    const dataUsage: NonNullable<NormalizedUsage["dataUsage"]> = {};
+    const totalVolume = finiteNumber(content["totalVolume"]);
+    const orderUsage = finiteNumber(content["orderUsage"]);
+    const remain = finiteNumber(content["remain"]);
+    if (totalVolume !== undefined) dataUsage.totalVolume = totalVolume;
+    if (orderUsage !== undefined) dataUsage.orderUsage = orderUsage;
+    if (remain !== undefined) dataUsage.remain = remain;
+    return Object.keys(dataUsage).length ? { dataUsage } : {};
+  }
+  if (notifyType === "VALIDITY_USAGE") {
+    const validityUsage: NonNullable<NormalizedUsage["validityUsage"]> = {};
+    const totalDuration = finiteNumber(content["totalDuration"]);
+    const expiredTime = normalizedTimestamp(content["expiredTime"]);
+    const remain = finiteNumber(content["remain"]);
+    if (totalDuration !== undefined) validityUsage.totalDuration = totalDuration;
+    if (expiredTime !== undefined) validityUsage.expiredTime = expiredTime;
+    if (remain !== undefined) validityUsage.remain = remain;
+    return Object.keys(validityUsage).length ? { validityUsage } : {};
+  }
+  return {};
+}
+
 export class InMemoryWebhookDedupe {
   private readonly seen = new Set<string>();
   has(event: ProviderWebhook) { return this.seen.has(webhookFingerprint(event)); }

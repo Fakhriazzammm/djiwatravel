@@ -16,6 +16,11 @@ function providerResult(response: ProviderResponse) {
 /** Starts exactly one provider order for a settled Travel order; retries reuse the same deterministic transaction id. */
 export async function provisionSettledTravelOrder(orderId: string) {
   const existing = await db.execute(sql`select id, status, provider_transaction_id, provider_order_no from public.esim_provisioning_orders where order_id = ${orderId}::uuid limit 1`);
+  const orderResult = await db.execute(sql`select status from public.customer_orders where id = ${orderId}::uuid limit 1`);
+  const orderStatus = String((orderResult.rows[0] as { status?: string } | undefined)?.status ?? "");
+  if (!["PAYMENT_CONFIRMED", "PROVISIONING", "READY", "INSTALLED"].includes(orderStatus)) {
+    throw new Error("order_not_settled");
+  }
   const current = existing.rows[0] as { id?: string; status?: string; provider_transaction_id?: string | null } | undefined;
   if (current?.status === "READY" || current?.status === "PROVISIONING") return { started: false, status: current.status };
   const itemsResult = await db.execute(sql`select provider_package_code, quantity, provider_unit_cost, package_snapshot from public.customer_order_items where order_id = ${orderId}::uuid order by id`);

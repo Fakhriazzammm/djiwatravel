@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.server";
 import { customerOrders, guestOrderAccess } from "../../drizzle/schema";
@@ -7,6 +7,7 @@ import { hashGuestAccessToken } from "./guest-order-access.server";
 import { fetchMayarTransaction } from "./mayar-gateway";
 import { provisionSettledTravelOrder } from "./mayar-provisioning.server";
 import { readMayarSnapshot, toIsoTimestamp } from "./payment-snapshot";
+import { assertPaymentNotExpired } from "./payment-expiry";
 
 const verifySchema = z.object({
   orderId: z.string().uuid(),
@@ -51,11 +52,13 @@ export const verifyMayarPayment = createServerFn({ method: "POST" })
         and(
           eq(customerOrders.id, data.orderId),
           eq(guestOrderAccess.accessTokenHash, accessHash),
+          gt(guestOrderAccess.expiresAt, new Date().toISOString()),
         ),
       )
       .limit(1);
     const order = rows[0]?.order;
     if (!order) throw new Error("Pesanan tidak ditemukan");
+    assertPaymentNotExpired(order.status, order.paymentExpiresAt);
 
     const mayar = readMayarSnapshot(order.priceSnapshot);
     if (!mayar.transactionId) {

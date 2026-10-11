@@ -11,6 +11,7 @@ export type GuestOrderStatus =
   | "REFUNDED";
 
 import type { EsimProfile } from "./providers";
+import { effectivePaymentStatus } from "./payment-expiry";
 
 export type GuestOrderRecord = {
   id: string;
@@ -19,6 +20,7 @@ export type GuestOrderRecord = {
   amount: number;
   createdAtMs: number;
   expiresAtMs?: number | null;
+  paymentExpiresAtMs?: number | null;
   packageCode: string;
   paymentMethod: string;
   paymentProvider?: string | null;
@@ -50,6 +52,7 @@ export type GuestOrderView = {
   status: GuestOrderStatus;
   createdAt: number;
   expiresAt?: number;
+  paymentExpiresAt?: number | null;
   priceSnapshot: { amountIdr: number; capturedAt: number; currency: "IDR"; packageId: string };
 };
 
@@ -67,7 +70,8 @@ const knownStatuses = new Set<GuestOrderStatus>([
 ]);
 
 export function mapGuestOrderRecord(record: GuestOrderRecord): GuestOrderView {
-  const normalizedStatus = record.status === "PAYMENT_PENDING" ? "WAITING_PAYMENT" : record.status === "PAYMENT_CONFIRMED" ? "PAID" : record.status;
+  const serverStatus = effectivePaymentStatus(record.status, record.paymentExpiresAtMs);
+  const normalizedStatus = serverStatus === "PAYMENT_PENDING" ? "WAITING_PAYMENT" : serverStatus === "PAYMENT_CONFIRMED" ? "PAID" : serverStatus;
   const status = knownStatuses.has(normalizedStatus as GuestOrderStatus)
     ? (normalizedStatus as GuestOrderStatus)
     : "ORDER_CREATED";
@@ -89,6 +93,7 @@ export function mapGuestOrderRecord(record: GuestOrderRecord): GuestOrderView {
     status,
     createdAt: record.createdAtMs,
     ...(record.expiresAtMs == null ? {} : { expiresAt: record.expiresAtMs }),
+    ...(record.paymentExpiresAtMs == null ? {} : { paymentExpiresAt: record.paymentExpiresAtMs }),
     priceSnapshot: {
       amountIdr: record.amount,
       capturedAt: record.createdAtMs,

@@ -72,9 +72,7 @@ const orderSchema = z.object({
 });
 
 export async function orderEsimAccessProfilesServer(data: z.infer<typeof orderSchema>) {
+  // This function is intentionally server-only. Do not wrap provisioning in a
+  // public createServerFn: callers must pass through the settled-order worker.
   return request("/api/v1/open/esim/order", data);
 }
-
-export const orderEsimAccessProfiles = createServerFn({ method: "POST" })
-  .validator(orderSchema)
-  .handler(({ data }) => orderEsimAccessProfilesServer(data));

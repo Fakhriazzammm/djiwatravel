@@ -1,4 +1,4 @@
-import { orderEsimAccessProfiles } from "./esim-access";
+import { orderEsimAccessProfilesServer } from "./esim-access";
 import type { EsimProvisioningGateway, ProvisioningResult } from "./reseller-provisioning";
 import type { ProvisioningOrderDraft } from "./reseller-order";
 
@@ -12,7 +12,7 @@ function providerResult(response: ProviderOrderResponse, transactionId: string):
   return { providerTransactionId: transactionId, ...(providerOrderNo ? { providerOrderNo } : {}), status: String(result["status"] ?? "PENDING"), payload: response };
 }
 
-export function createEsimAccessProvisioner(orderFn: OrderFn = orderEsimAccessProfiles as unknown as OrderFn): EsimProvisioningGateway {
+export function createEsimAccessProvisioner(orderFn: OrderFn = orderEsimAccessProfilesServer as unknown as OrderFn): EsimProvisioningGateway {
   return {
     async provision(draft) {
       const response = await orderFn({ data: { transactionId: draft.transactionId, packageInfoList: draft.packageInfoList } });

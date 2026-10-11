@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hashGuestAccessToken, normalizeGuestWhatsapp } from "../lib/guest-order-access.server";
+import { GUEST_ACCESS_TTL_MS, hashGuestAccessToken, isGuestAccessExpired, normalizeGuestWhatsapp, SUPPORT_WHATSAPP_URL } from "../lib/guest-order-access.server";
 
 describe("hashGuestAccessToken", () => {
   it("returns a stable SHA-256 digest rather than the bearer token", () => {
@@ -7,6 +7,21 @@ describe("hashGuestAccessToken", () => {
     expect(first).toMatch(/^[a-f0-9]{64}$/);
     expect(first).toBe(hashGuestAccessToken("guest-token-example-32-characters"));
     expect(first).not.toBe("guest-token-example-32-characters");
+  });
+});
+
+describe("support URL", () => {
+  it("uses the validated official WhatsApp number", () => {
+    expect(SUPPORT_WHATSAPP_URL).toBe("https://wa.me/6285156399831");
+  });
+});
+
+describe("guest access expiry", () => {
+  it("expires exactly one hour after issuance and remains valid before the boundary", () => {
+    const issuedAt = Date.parse("2026-01-01T00:00:00.000Z");
+    const expiresAt = new Date(issuedAt + GUEST_ACCESS_TTL_MS);
+    expect(isGuestAccessExpired(expiresAt, issuedAt + GUEST_ACCESS_TTL_MS - 1)).toBe(false);
+    expect(isGuestAccessExpired(expiresAt, issuedAt + GUEST_ACCESS_TTL_MS)).toBe(true);
   });
 });
 

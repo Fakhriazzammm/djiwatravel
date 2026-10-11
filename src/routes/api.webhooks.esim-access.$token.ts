@@ -2,7 +2,7 @@ import { createHmac, createHash, timingSafeEqual } from "node:crypto";
 import { appendFile, chmod, mkdir, readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createFileRoute } from "@tanstack/react-router";
-import { InMemoryWebhookDedupe, mapProviderStatus, type ProviderWebhook } from "@/lib/esim-access-webhooks";
+import { InMemoryWebhookDedupe, mapProviderStatus, normalizeUsagePayload, type ProviderWebhook } from "@/lib/esim-access-webhooks";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client.server";
 import { protectProviderProfile } from "@/lib/esim-profile-protection";
@@ -125,6 +125,13 @@ async function loadPersistedReceipts(file: string) {
   await persistedLoad;
 }
 
+function eventTimestamp(value: string | undefined): string | null {
+  if (!value) return null;
+  const number = Number(value);
+  const date = Number.isFinite(number) ? new Date(number < 10_000_000_000 ? number * 1000 : number) : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 async function receive(request: Request, token: string) {
   const secret = process.env["ESIM_ACCESS_SECRET_KEY"];
   if (!secret) return json({ error: "webhook_unconfigured" }, 503);
@@ -154,6 +161,8 @@ async function receive(request: Request, token: string) {
   await chmod(file, 0o600);
   try {
     const content = event.content ?? {};
+    const usage = normalizeUsagePayload(event.notifyType, content);
+    const providerEventAt = eventTimestamp(event.eventGenerateTime);
     const providerOrderNo = typeof content["orderNo"] === "string" ? content["orderNo"] : null;
     const providerTransactionId = typeof content["transactionId"] === "string" ? content["transactionId"] : null;
     const rawStatus = content["esimStatus"] ?? content["smdpStatus"] ?? content["orderStatus"];
@@ -161,16 +170,14 @@ async function receive(request: Request, token: string) {
     const providerStatus = rawStatus == null ? null : String(rawStatus).slice(0, 80);
     const result = await db.execute(sql`update public.esim_provisioning_orders
       set provider_status = coalesce(${providerStatus}, provider_status),
-          status = case when ${profileStatus} in ('RELEASED','ENABLED','IN_USE','USED_UP','SUSPENDED') then 'READY' when ${profileStatus} in ('REVOKED','CANCELLED') then 'FAILED' else status end,
+          status = case when ${profileStatus} in ('REVOKED','CANCELLED') then 'FAILED' else status end,
           last_provider_response = jsonb_build_object('notifyId', ${event.notifyId}, 'notifyType', ${event.notifyType}, 'content', ${JSON.stringify(content)}::jsonb),
           updated_at = now()
       where (${providerOrderNo} is not null and provider_order_no = ${providerOrderNo})
          or (${providerTransactionId} is not null and provider_transaction_id = ${providerTransactionId})
       returning order_id, status`);
     for (const row of result.rows as Array<{ order_id?: string; status?: string }>) {
-      if (row.order_id && row.status === "READY") {
-        await db.execute(sql`update public.customer_orders set status = 'READY', updated_at = now() where id = ${row.order_id}::uuid and status in ('PROVISIONING','PAYMENT_CONFIRMED')`);
-      } else if (row.order_id && row.status === "FAILED") {
+      if (row.order_id && row.status === "FAILED") {
         await db.execute(sql`update public.customer_orders set status = 'PROVISIONING_FAILED', updated_at = now() where id = ${row.order_id}::uuid and status = 'PROVISIONING'`);
       }
     }
@@ -182,17 +189,28 @@ async function receive(request: Request, token: string) {
       if (provisioningOrderId) {
         try {
           const protectedProfile = protectProviderProfile(provisioningOrderId, rawContent);
-          await db.execute(sql`insert into public.esim_profiles(provisioning_order_id, iccid, activation_code_encrypted, qr_payload_encrypted, profile_status, provider_payload, updated_at)
-            values (${provisioningOrderId}::uuid, ${protectedProfile.iccid}, ${protectedProfile.activationCodeEncrypted ?? null}, ${protectedProfile.qrPayloadEncrypted ?? null}, ${protectedProfile.status}, ${JSON.stringify({ notifyId: event.notifyId })}::jsonb, now())
-            on conflict (iccid) do update set activation_code_encrypted = excluded.activation_code_encrypted, qr_payload_encrypted = excluded.qr_payload_encrypted, profile_status = excluded.profile_status, updated_at = now()`);
+          await db.execute(sql`insert into public.esim_profiles(provisioning_order_id, iccid, activation_code_encrypted, qr_payload_encrypted, profile_status, installable, provider_payload, updated_at)
+            values (${provisioningOrderId}::uuid, ${protectedProfile.iccid}, ${protectedProfile.activationCodeEncrypted ?? null}, ${protectedProfile.qrPayloadEncrypted ?? null}, ${protectedProfile.status}, ${Boolean(protectedProfile.qrPayloadEncrypted)}, ${JSON.stringify({ notifyId: event.notifyId })}::jsonb, now())
+            on conflict (iccid) do update set activation_code_encrypted = excluded.activation_code_encrypted, qr_payload_encrypted = excluded.qr_payload_encrypted, installable = excluded.installable, profile_status = excluded.profile_status, updated_at = now()`);
+          if (protectedProfile.qrPayloadEncrypted) {
+            await db.execute(sql`update public.esim_provisioning_orders set status = 'READY', updated_at = now() where id = ${provisioningOrderId}::uuid and status in ('PROVISIONING','PENDING')`);
+            await db.execute(sql`update public.customer_orders set status = 'READY', esim_activation_expires_at = coalesce(esim_activation_expires_at, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = (select order_id from public.esim_provisioning_orders where id = ${provisioningOrderId}::uuid) and status in ('PROVISIONING','PAYMENT_CONFIRMED')`);
+          }
         } catch {
           // Status reconciliation remains valid even when a provider payload has no installable profile.
         }
       }
     }
-    await db.execute(sql`insert into public.provider_webhook_events(provider, notify_id, notify_type, event_fingerprint, payload, processed_at)
-      values ('esimaccess', ${event.notifyId}, ${event.notifyType}, ${fingerprint}, ${JSON.stringify(event)}::jsonb, now())
-      on conflict do nothing`);
+    await db.execute(sql`insert into public.provider_webhook_events(
+        provider, notify_id, notify_type, event_fingerprint, payload, processed_at,
+        provider_event_at, synced_at, data_usage_total_volume, data_usage_order_usage,
+        data_usage_remain, validity_usage_total_duration, validity_usage_expired_time, validity_usage_remain
+      ) values (
+        'esimaccess', ${event.notifyId}, ${event.notifyType}, ${fingerprint}, ${JSON.stringify(event)}::jsonb, now(),
+        ${providerEventAt}::timestamptz, now(),
+        ${usage.dataUsage?.totalVolume ?? null}, ${usage.dataUsage?.orderUsage ?? null}, ${usage.dataUsage?.remain ?? null},
+        ${usage.validityUsage?.totalDuration ?? null}, ${usage.validityUsage?.expiredTime ?? null}::timestamptz, ${usage.validityUsage?.remain ?? null}
+      ) on conflict do nothing`);
   } catch (error) {
     return json({ error: "webhook_processing_failed" }, 503);
   }

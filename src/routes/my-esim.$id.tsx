@@ -5,10 +5,10 @@ import { Page, BackBar, group, row } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
 import { rupiah } from "@/lib/pricing";
 import { cancelOrder, markInstalled, useOrders } from "@/lib/orders";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 
 /** Support channel; single place to swap in a real number. */
-const SUPPORT_WHATSAPP = "https://wa.me/";
 
 export const Route = createFileRoute("/my-esim/$id")({
   head: () => ({
@@ -129,7 +129,7 @@ function Detail() {
             id: "support",
             l: "Support",
             i: Headphones,
-            on: () => window.open(SUPPORT_WHATSAPP, "_blank"),
+            on: () => window.open(SUPPORT_WHATSAPP_URL, "_blank"),
           },
         ].map(({ id, l, i: I, on, off }) => (
           <button

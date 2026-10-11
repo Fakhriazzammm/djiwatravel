@@ -94,7 +94,7 @@ function RootComponent() {
         <NavProgress />
         {/* Server-rendered, so the first paint is never a blank white page. */}
         <AppSplash />
-        {/* Every later page change gets the same centred spinner. */}
+        {/* Later page changes get one centred loader. */}
         <TransitionLoader />
         <AnimatedOutlet />
       </MotionConfig>

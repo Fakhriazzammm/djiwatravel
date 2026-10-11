@@ -1,14 +1,15 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { customerOrderItems, customerOrders, guestOrderAccess, esimProvisioningOrders, esimProfiles } from "../../drizzle/schema";
 import { db } from "../db/client.server";
-import { hashGuestAccessToken, normalizeGuestWhatsapp } from "./guest-order-access.server";
+import { GUEST_ACCESS_TTL_MS, hashGuestAccessToken, normalizeGuestWhatsapp } from "./guest-order-access.server";
 import { normalizeWhatsapp, WHATSAPP_PATTERN } from "./phone";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 import { decryptEsimSecret } from "./esim-secret-crypto";
 import { readMayarSnapshot } from "./payment-snapshot";
+import { effectivePaymentStatus } from "./payment-expiry";
 
 const createGuestOrderSchema = z.object({
   packageCode: z.string().trim().min(1).max(160),
@@ -39,18 +40,21 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
       .limit(1);
     if (previous[0]) {
       const guest = await db
-        .select({ accessTokenHash: guestOrderAccess.accessTokenHash })
+        .select({ accessTokenHash: guestOrderAccess.accessTokenHash, expiresAt: guestOrderAccess.expiresAt })
         .from(guestOrderAccess)
         .where(eq(guestOrderAccess.orderId, previous[0].id))
         .limit(1);
       if (guest[0]?.accessTokenHash !== accessTokenHash)
         throw new Error("Idempotency key already used");
+      if (!guest[0]?.expiresAt || new Date(guest[0].expiresAt).getTime() <= Date.now())
+        throw new Error("Guest access token expired");
       return {
         id: previous[0].id,
         publicOrderCode: previous[0].publicOrderCode,
         status: previous[0].status,
         amount: Number(previous[0].totalAmount),
         createdAtMs: new Date(previous[0].createdAt).getTime(),
+        paymentExpiresAtMs: previous[0].paymentExpiresAt ? new Date(previous[0].paymentExpiresAt).getTime() : null,
         packageCode: data.packageCode,
         accessToken: data.accessToken,
       };
@@ -63,7 +67,7 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
     const id = randomUUID();
     const publicOrderCode = randomBytes(12).toString("hex").toUpperCase();
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30 * 60 * 1000);
+    const expiresAt = new Date(now.getTime() + GUEST_ACCESS_TTL_MS);
     const packageSnapshot = {
       packageCode: pkg.packageCode,
       name: pkg.name,
@@ -90,7 +94,8 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
           providerPriceUnits: pkg.providerPriceUnits,
           package: packageSnapshot,
         },
-        expiresAt: expiresAt.toISOString(),
+        expiresAt: null,
+        paymentExpiresAt: expiresAt.toISOString(),
       });
       await tx.insert(customerOrderItems).values({
         orderId: id,
@@ -109,6 +114,7 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
         email: data.email.toLowerCase(),
         whatsapp: phone,
         paymentMethod: data.paymentMethod,
+        expiresAt: expiresAt.toISOString(),
       });
     });
 
@@ -118,6 +124,7 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
       status: "ORDER_CREATED",
       amount: price.sellingPriceIdr,
       createdAtMs: now.getTime(),
+      paymentExpiresAtMs: expiresAt.getTime(),
       packageCode: pkg.packageCode,
       accessToken: data.accessToken,
     };
@@ -145,11 +152,14 @@ export const getGuestOrders = createServerFn({ method: "POST" })
             status: customerOrders.status,
             amount: customerOrders.totalAmount,
             createdAt: customerOrders.createdAt,
-            expiresAt: customerOrders.expiresAt,
+            expiresAt: customerOrders.esimActivationExpiresAt,
+            paymentExpiresAt: customerOrders.paymentExpiresAt,
+            activationProfileExpiresAt: esimProfiles.expiresAt,
             packageCode: customerOrderItems.providerPackageCode,
-            paymentMethod: guestOrderAccess.paymentMethod,
             paymentProvider: customerOrders.paymentProvider,
             paymentReference: customerOrders.paymentReference,
+            paymentMethod: guestOrderAccess.paymentMethod,
+            guestAccessExpiresAt: guestOrderAccess.expiresAt,
             packageSnapshot: customerOrderItems.packageSnapshot,
             priceSnapshot: customerOrders.priceSnapshot,
             providerOrderNo: esimProvisioningOrders.providerOrderNo,
@@ -158,6 +168,7 @@ export const getGuestOrders = createServerFn({ method: "POST" })
             profileStatus: esimProfiles.profileStatus,
             qrPayloadEncrypted: esimProfiles.qrPayloadEncrypted,
             activationCodeEncrypted: esimProfiles.activationCodeEncrypted,
+            installable: esimProfiles.installable,
           })
           .from(customerOrders)
           .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
@@ -168,6 +179,7 @@ export const getGuestOrders = createServerFn({ method: "POST" })
             and(
               eq(customerOrders.id, orderId),
               eq(guestOrderAccess.accessTokenHash, accessTokenHash),
+              gt(guestOrderAccess.expiresAt, new Date().toISOString()),
             ),
           )
           .limit(1);
@@ -179,7 +191,7 @@ export const getGuestOrders = createServerFn({ method: "POST" })
         const paymentUrl = readMayarSnapshot(row.priceSnapshot).paymentUrl;
         const qrPayload = row.qrPayloadEncrypted ? decryptEsimSecret(row.qrPayloadEncrypted) : "";
         const activationCode = row.activationCodeEncrypted ? decryptEsimSecret(row.activationCodeEncrypted) : (qrPayload.split("$")[2] ?? "");
-        const esim = row.iccid && (qrPayload || activationCode) ? {
+        const esim = row.installable === true && row.iccid && (qrPayload || activationCode) ? {
           iccid: row.iccid,
           smdp: qrPayload.startsWith("LPA:") ? (qrPayload.split("$")[1] ?? "") : "",
           activationCode,
@@ -188,10 +200,15 @@ export const getGuestOrders = createServerFn({ method: "POST" })
         return {
           id: row.id,
           publicOrderCode: row.publicOrderCode,
-          status: row.status,
+          status: effectivePaymentStatus(row.status, row.paymentExpiresAt),
           amount: Number(row.amount),
           createdAtMs: new Date(row.createdAt).getTime(),
-          expiresAtMs: row.expiresAt ? new Date(row.expiresAt).getTime() : null,
+          expiresAtMs: row.activationProfileExpiresAt
+            ? new Date(row.activationProfileExpiresAt).getTime()
+            : row.expiresAt
+              ? new Date(row.expiresAt).getTime()
+              : null,
+          paymentExpiresAtMs: row.paymentExpiresAt ? new Date(row.paymentExpiresAt).getTime() : null,
           packageCode: row.packageCode,
           paymentMethod: row.paymentMethod === "va" ? "va" : "qris",
           paymentProvider: row.paymentProvider,

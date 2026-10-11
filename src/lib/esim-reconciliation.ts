@@ -14,6 +14,9 @@ export async function withRetry<T>(fn: () => Promise<T>, options: { attempts?: n
   throw Object.assign(new Error("Provider tidak merespons setelah retry"), { cause: lastError });
 }
 
+// The adapter currently exposes no verified read-only eSIM Access query endpoint. Keep this
+// interface dependency-injected so a future reconciliation worker can provide an approved query;
+// do not add a guessed provider path here.
 export async function reconcileProviderOrder(input: {
   currentStatus: EsimProfileStatus;
   query: () => Promise<ProviderSnapshot>;
