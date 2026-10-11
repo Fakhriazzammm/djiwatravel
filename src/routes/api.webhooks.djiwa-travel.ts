@@ -1,7 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
-import { sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db/client.server";
+import { customerOrders } from "../../drizzle/schema";
+import { settleVerifiedTravelPayment } from "@/lib/mayar-settlement.server";
 import { provisionSettledTravelOrder } from "@/lib/mayar-provisioning.server";
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -63,14 +65,23 @@ async function receive(request: Request) {
   try { payload = parsePayload(rawBody); } catch { payload = null; }
   if (!payload) return json({ error: "Invalid payment payload" }, 400);
 
-  const result = await db.execute(sql`select public.settle_mayar_travel_payment(${payload.eventId}, ${payload.orderId}::uuid, ${payload.invoiceId}, ${payload.transactionId}, ${payload.amountIdr}, ${payload.paidAt}::timestamptz, ${JSON.stringify(payload)}::jsonb) as result`);
-  const settlement = (result.rows[0] as { result?: { duplicate?: boolean } } | undefined)?.result;
+  const orderRows = await db.select({ publicOrderCode: customerOrders.publicOrderCode }).from(customerOrders).where(eq(customerOrders.id, payload.orderId)).limit(1);
+  const order = orderRows[0];
+  if (!order) return json({ error: "Order not found" }, 404);
+  const settlement = await settleVerifiedTravelPayment({
+    orderId: payload.orderId,
+    orderNumber: order.publicOrderCode,
+    amount: payload.amountIdr,
+    paidAt: Date.parse(payload.paidAt),
+    invoiceId: payload.invoiceId,
+    transactionId: payload.transactionId,
+  });
   try {
     const provisioning = await provisionSettledTravelOrder(payload.orderId);
-    return json({ ok: true, duplicate: settlement?.duplicate === true, provisioning });
+    return json({ ok: true, duplicate: settlement.local.duplicate, provisioning });
   } catch (error) {
     const message = error instanceof Error ? error.message : "provisioning_failed";
-    return json({ ok: true, duplicate: settlement?.duplicate === true, provisioning: { started: false, status: "PROVISIONING_FAILED" }, warning: message.slice(0, 200) }, 202);
+    return json({ ok: true, duplicate: settlement.local.duplicate, provisioning: { started: false, status: "PROVISIONING_FAILED" }, warning: message.slice(0, 200) }, 202);
   }
 }
 
