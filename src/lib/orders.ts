@@ -223,7 +223,7 @@ export async function createOrder(
     customerEmail: o.email,
     customerMobile: o.whatsapp,
     description: `Djiwa Travel ${saved.publicOrderCode}`,
-    redirectUrl: `${window.location.origin}/order/${saved.id}`,
+    redirectUrl: `${window.location.origin}/receipt/${saved.id}`,
   });
   sessionStorage.removeItem("djiwa.pending-order");
   const order: Order = {

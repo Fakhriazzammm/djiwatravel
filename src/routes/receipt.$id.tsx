@@ -7,6 +7,7 @@ import { Page, btnRed, btnSoft } from "@/components/shell";
 import { ReceiptLine, ReceiptPrinter, ReceiptRule } from "@/components/receipt-printer";
 import { ManualDetails } from "@/components/esim-install";
 import { guestAccessTokenFor, refreshOrdersFromServer, useOrders, type Order } from "@/lib/orders";
+import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import {
   downloadReceiptPdf,
@@ -82,6 +83,18 @@ function ReceiptPage() {
   }, []);
 
   const order = orders?.find((x) => x.id === id);
+
+  // Mayar returns directly here: verify payment before rendering the receipt status.
+  useEffect(() => {
+    if (!order) return;
+    const awaiting = order.status === "ORDER_CREATED" || order.status === "WAITING_PAYMENT";
+    if (!awaiting) return;
+    const token = guestAccessTokenFor(id);
+    if (!token) return;
+    void verifyMayarPayment({ data: { orderId: id, accessToken: token } })
+      .then(() => refreshOrdersFromServer())
+      .catch(() => undefined);
+  }, [id, order?.id, order?.status]);
 
   if (!orders)
     return (

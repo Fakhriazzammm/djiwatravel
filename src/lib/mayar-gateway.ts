@@ -137,7 +137,7 @@ export const rebuildMayarInvoice = createServerFn({ method: "POST" })
           customerEmail: email,
           customerMobile: whatsapp,
           description,
-          redirectUrl: `https://djiwatravel.com/order/${data.orderId}`,
+          redirectUrl: `https://djiwatravel.com/receipt/${data.orderId}`,
         }),
       ),
       signal: AbortSignal.timeout(15_000),
