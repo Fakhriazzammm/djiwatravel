@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { requireBetterAuthUser, resolveCanonicalCustomerSourceId as fetchCanonicalCustomerSourceId } from "./customer-profile.server";
+import {
+  requireBetterAuthUser,
+  resolveCanonicalCustomerIdentity as fetchCanonicalCustomerIdentity,
+  type CanonicalCustomerIdentity,
+} from "./customer-profile.server";
 
 const topupInputSchema = z.object({
   amount: z.number().finite(),
@@ -58,21 +62,28 @@ export async function resolveVerifiedCanonicalCustomerSourceId(
   user: { email: string },
   cookie?: string | null,
 ) {
+  return (await resolveVerifiedCanonicalCustomerIdentity(user, cookie)).sourceId;
+}
+
+export async function resolveVerifiedCanonicalCustomerIdentity(
+  user: { email: string },
+  cookie?: string | null,
+): Promise<CanonicalCustomerIdentity> {
   try {
-    return await fetchCanonicalCustomerSourceId(user.email, cookie);
+    return await fetchCanonicalCustomerIdentity(user.email, cookie);
   } catch {
     throw new CanonicalIdentityConfigurationError();
   }
 }
 
-export function canonicalTopupPayload(input: { amount: number; idempotencyKey: string; canonicalCustomerSourceId: string; email: string }) {
+export function canonicalTopupPayload(input: { amount: number; idempotencyKey: string; canonicalCustomerIdentity: CanonicalCustomerIdentity }) {
   return {
     action: "topup",
     amount: validateTopupAmount(input.amount),
     idempotencyKey: input.idempotencyKey,
     // The canonical source id was resolved and ownership-validated server-side.
-    sourceId: input.canonicalCustomerSourceId,
-    email: input.email,
+    sourceId: input.canonicalCustomerIdentity.sourceId,
+    email: input.canonicalCustomerIdentity.email,
     origin: publicOrigin(),
   } as const;
 }
@@ -83,12 +94,11 @@ async function createDjiwaPayTopupForAuthenticatedUser(
   rawInput: unknown,
 ) {
   const data = topupInputSchema.parse(rawInput);
-  const canonicalCustomerSourceId = await resolveVerifiedCanonicalCustomerSourceId(user, cookie);
+  const canonicalCustomerIdentity = await resolveVerifiedCanonicalCustomerIdentity(user, cookie);
   const payload = canonicalTopupPayload({
     amount: data.amount,
     idempotencyKey: data.idempotencyKey,
-    canonicalCustomerSourceId,
-    email: user.email,
+    canonicalCustomerIdentity,
   });
 
   const response = await fetch(canonicalWalletUrl(), {

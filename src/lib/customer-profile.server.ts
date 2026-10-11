@@ -18,6 +18,7 @@ export type AuthenticatedUser = { id: string; email: string };
 type CanonicalCustomerProfileResponse = {
   customer?: { source_id?: unknown; email?: unknown } | null;
 };
+export type CanonicalCustomerIdentity = { sourceId: string; email: string };
 
 /**
  * Better Auth issues an opaque text token as the user id (observed: 32
@@ -47,10 +48,10 @@ export async function requireBetterAuthUser(cookie = getRequestHeader("cookie"))
 }
 
 /** Resolve the canonical wallet identity without exposing the session cookie. */
-export async function resolveCanonicalCustomerSourceId(
+export async function resolveCanonicalCustomerIdentity(
   authenticatedEmail: string,
   cookie = getRequestHeader("cookie"),
-): Promise<string> {
+): Promise<CanonicalCustomerIdentity> {
   if (!cookie) throw new Error("Profil customer canonical tidak tersedia");
   let response: Response;
   try {
@@ -73,7 +74,15 @@ export async function resolveCanonicalCustomerSourceId(
   if (!sourceId || !profileEmail || profileEmail.toLowerCase() !== authenticatedEmail.trim().toLowerCase()) {
     throw new Error("Profil customer canonical tidak valid");
   }
-  return sourceId;
+  return { sourceId, email: profileEmail };
+}
+
+/** Backwards-compatible source-id helper for callers that do not send email. */
+export async function resolveCanonicalCustomerSourceId(
+  authenticatedEmail: string,
+  cookie = getRequestHeader("cookie"),
+): Promise<string> {
+  return (await resolveCanonicalCustomerIdentity(authenticatedEmail, cookie)).sourceId;
 }
 
 export const getCustomerProfile = createServerFn({ method: "GET" }).handler(async () => {
