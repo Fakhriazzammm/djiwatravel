@@ -44,13 +44,38 @@ function canonicalWalletUrl() {
   return url.toString();
 }
 
+function unwrapCanonicalWalletResponse(raw: unknown) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const value = raw as Record<string, unknown>;
+  // customer-wallet returns the standard Edge Function envelope: { success, ...data }.
+  if (value.success === true) {
+    const { success: _success, ...data } = value;
+    return data;
+  }
+  return raw;
+}
+
 export function parseCanonicalWalletResponse(raw: unknown, sourceId: string): CustomerWalletResponse {
-  const parsed = walletResponseSchema.safeParse(raw);
+  const parsed = walletResponseSchema.safeParse(unwrapCanonicalWalletResponse(raw));
   if (!parsed.success) throw new Error("Respons saldo Djiwa Pay tidak valid");
   if (parsed.data.wallet && parsed.data.wallet.customer_id !== sourceId) {
     throw new Error("Respons saldo Djiwa Pay tidak sesuai dengan pemilik akun");
   }
   return parsed.data;
+}
+
+export function classifyCanonicalWalletError(status: number, raw: unknown) {
+  if (status === 401 || status === 403) return "Sesi autentikasi Djiwa Pay tidak valid. Silakan masuk lagi.";
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const error = (raw as Record<string, unknown>).error;
+    if (error && typeof error === "object" && !Array.isArray(error)) {
+      const code = (error as Record<string, unknown>).code;
+      if (code === "CUSTOMER_ACCESS_DENIED" || code === "INVALID_SOURCE_ID") {
+        return "Wallet Djiwa Pay tidak sesuai dengan akun ini.";
+      }
+    }
+  }
+  return "Saldo Djiwa Pay belum dapat dimuat. Coba lagi.";
 }
 
 export async function readCanonicalWalletForRequest(request: Request) {
@@ -64,10 +89,7 @@ export async function readCanonicalWalletForRequest(request: Request) {
   });
   const raw = await response.json().catch(() => null);
   if (!response.ok) {
-    const message = raw && typeof raw === "object" && "error" in raw && typeof raw.error === "string"
-      ? raw.error
-      : "Saldo Djiwa Pay belum dapat dimuat. Coba lagi.";
-    throw new Error(message);
+    throw new Error(classifyCanonicalWalletError(response.status, raw));
   }
   return parseCanonicalWalletResponse(raw, sourceId);
 }
