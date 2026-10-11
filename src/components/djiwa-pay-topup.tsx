@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { beginDjiwaPayTopup } from "@/lib/djiwa-pay-topup-client";
 import { rupiah } from "@/lib/pricing";
+import { FixedLayer } from "@/components/motion-primitives";
 
 const PRESETS = [50_000, 100_000, 500_000, 1_000_000] as const;
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "delete"] as const;
@@ -60,7 +61,8 @@ export function DjiwaPayTopup({
   const close = () => { if (!busy) onOpenChange(false); };
 
   return (
-    <>
+    <FixedLayer>
+      <>
       <motion.div className="fixed inset-0 z-[2000] flex items-end justify-center bg-slate-950/35" initial={reduceMotion ? false : { opacity: 0 }} animate={reduceMotion ? undefined : { opacity: 1 }} exit={reduceMotion ? undefined : { opacity: 0 }} onClick={close} role="presentation">
         <motion.section role="dialog" aria-modal="true" aria-labelledby="djiwa-pay-topup-title" className="flex max-h-[94dvh] w-full max-w-md flex-col overflow-y-auto rounded-t-[28px] bg-surface px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-18px_60px_rgba(15,23,42,0.2)]" initial={reduceMotion ? false : { y: "100%" }} animate={reduceMotion ? undefined : { y: 0 }} exit={reduceMotion ? undefined : { y: "100%" }} transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }} drag="y" dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.45 }} onDragEnd={(_, info) => { if (info.offset.y > 120) close(); }} onClick={(event) => event.stopPropagation()}>
           <div className="mx-auto h-1.5 w-11 rounded-full bg-muted" aria-hidden="true" />
@@ -73,6 +75,7 @@ export function DjiwaPayTopup({
         </motion.section>
       </motion.div>
       {redirecting && <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-slate-950/60 px-5 backdrop-blur-sm"><section role="status" aria-live="polite" aria-labelledby="djiwa-pay-redirect-title" className="w-full max-w-sm rounded-[28px] bg-surface p-6 text-center shadow-xl"><LoaderCircle aria-hidden="true" className="mx-auto size-9 animate-spin text-primary motion-reduce:animate-none" /><h2 id="djiwa-pay-redirect-title" className="mt-4 text-xl font-bold">Tunggu sebentar</h2><p className="mt-2 text-sm">Anda akan diarahkan ke pembayaran Djiwa Pay</p><p className="mt-3 text-xs text-muted-foreground">Menyiapkan halaman pembayaran Mayar...</p></section></div>}
-    </>
+      </>
+    </FixedLayer>
   );
 }
