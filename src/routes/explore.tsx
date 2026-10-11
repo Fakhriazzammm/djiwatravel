@@ -36,6 +36,7 @@ function Explore() {
   return (
     <Page>
       <h1 className="large-title pt-4">Explore</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Paket negara untuk satu tujuan, atau paket regional untuk beberapa negara sekaligus.</p>
       <label className="mt-3 flex h-11 items-center gap-2 rounded-xl bg-surface px-3 shadow-sm">
         <Search className="size-5 text-muted-foreground" />
         <input
@@ -74,7 +75,7 @@ function Explore() {
               <span className="shrink-0 text-2xl">{d.flag}</span>
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{d.nameId}</p>
-                <p className="text-[12px] text-muted-foreground">Lihat paket tersedia</p>
+                <p className="text-[12px] text-muted-foreground">{d.region === "Regional" ? "Paket regional · beberapa negara" : "Paket negara · satu tujuan"}</p>
               </div>
               <ChevronRight className="size-5 text-muted-foreground" />
             </Link>

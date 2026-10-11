@@ -17,5 +17,5 @@ export async function requireAdmin() {
   } catch {
     allowed = false;
   }
-  if (!allowed) throw redirect({ to: "/profile", replace: true });
+  if (!allowed) throw redirect({ to: "/profile", search: { admin: "unauthorized" }, replace: true });
 }

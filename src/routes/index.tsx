@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Search, Wifi, Luggage, ShoppingBag, ChevronRight } from "lucide-react";
+import { Search, Wifi, Luggage, ShoppingBag, ChevronRight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { Reveal, Stagger } from "@/components/motion-primitives";
-import { destinations } from "@/lib/catalog";
+import { destinations, search } from "@/lib/catalog";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
@@ -46,6 +46,8 @@ function greeting() {
 
 function Home() {
   const [hello, setHello] = useState("Halo");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const nav = useNavigate();
   const orders = useOrders();
   const { user, loading } = useBetterAuthUser();
@@ -99,11 +101,44 @@ function Home() {
       <h1 className="large-title mt-3 text-balance">Mau pergi ke mana?</h1>
 
       <button
-        onClick={() => nav({ to: "/explore" })}
+        onClick={() => setSearchOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={searchOpen}
         className="tap mt-4 flex h-12 w-full items-center gap-3 rounded-2xl bg-surface px-4 text-left text-[15px] text-muted-foreground shadow-sm"
       >
         <Search className="size-5 shrink-0" /> Cari negara atau wilayah
       </button>
+
+      {searchOpen && (
+        <div className="fixed inset-0 z-50 flex items-end bg-foreground/30 p-3 sm:items-center sm:justify-center" role="presentation" onClick={() => setSearchOpen(false)}>
+          <section role="dialog" aria-modal="true" aria-labelledby="home-search-title" className="w-full max-w-lg rounded-3xl bg-background p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="home-search-title" className="text-lg font-bold">Cari destinasi</h2>
+              <button type="button" aria-label="Tutup pencarian" onClick={() => setSearchOpen(false)} className="tap rounded-full p-2"><X className="size-5" /></button>
+            </div>
+            <label className="mt-4 flex h-11 items-center gap-2 rounded-xl bg-surface px-3 shadow-sm">
+              <Search className="size-5 text-muted-foreground" />
+              <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Jepang, Korea, Eropa…" className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground" />
+            </label>
+            <div className="mt-4 max-h-[min(55vh,24rem)] overflow-y-auto">
+              {search(query).length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Belum ada destinasi untuk “{query}”. Coba nama negara lain.</p>
+              ) : (
+                <div className="divide-y divide-border rounded-2xl bg-surface">
+                  {search(query).map((destination) => (
+                    <Link key={destination.code} to="/destination/$code" params={{ code: destination.code.toLowerCase() }} onClick={() => setSearchOpen(false)} className="tap flex items-center gap-3 px-4 py-3">
+                      <span className="text-2xl">{destination.flag}</span>
+                      <span className="min-w-0 flex-1"><span className="block font-medium">{destination.nameId}</span><span className="block text-xs text-muted-foreground">{destination.region === "Regional" ? "Paket regional" : "Paket negara"}</span></span>
+                      <ChevronRight className="size-5 text-muted-foreground" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={() => { setSearchOpen(false); void nav({ to: "/explore" }); }} className="mt-4 w-full rounded-xl bg-secondary px-4 py-3 text-sm font-semibold">Lihat semua destinasi</button>
+          </section>
+        </div>
+      )}
 
       <Stagger className="block">
         <Reveal as="section" className="mt-7">

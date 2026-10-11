@@ -7,6 +7,7 @@ import { rupiah } from "@/lib/pricing";
 import {
   ensurePaymentLink,
   guestAccessTokenFor,
+  hasGuestOrderAccess,
   refreshOrdersFromServer,
   useOrders,
   type Order,
@@ -186,7 +187,7 @@ function OrderPage() {
         <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
       </Page>
     );
-  const o = orders.find((x) => x.id === id);
+  const o = hasGuestOrderAccess(id) ? orders.find((x) => x.id === id) : undefined;
   if (!o)
     return (
       <Page>

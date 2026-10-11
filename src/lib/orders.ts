@@ -74,7 +74,7 @@ export async function refreshOrdersFromServer(): Promise<void> {
   try {
     const records = await getGuestOrders({ data: credentials });
     const remote = records.map(mapGuestOrderRecord);
-    const current = read();
+    const current = read().filter((order) => hasGuestOrderAccess(order.id));
     const byId = new Map(remote.map((order) => [order.id, order]));
     const merged = current.map((order) => byId.get(order.id) ?? order);
     for (const order of remote) {
@@ -89,7 +89,7 @@ export async function refreshOrdersFromServer(): Promise<void> {
 export function useOrders() {
   const [orders, set] = useState<Order[] | null>(null);
   useEffect(() => {
-    const f = () => set(read());
+    const f = () => set(read().filter((order) => hasGuestOrderAccess(order.id)));
     f();
     window.addEventListener("djiwa-orders", f);
     void refreshOrdersFromServer();
@@ -165,6 +165,10 @@ export function guestAccessTokenFor(orderId: string): string | undefined {
   return typeof token === "string" && token.length >= 32 && token.length <= 256
     ? token
     : undefined;
+}
+
+export function hasGuestOrderAccess(orderId: string): boolean {
+  return guestAccessTokenFor(orderId) !== undefined;
 }
 
 export async function createOrder(
