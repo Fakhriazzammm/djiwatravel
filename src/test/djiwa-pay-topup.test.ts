@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { requireBetterAuthUser, resolveCanonicalCustomerSourceId } from "../lib/customer-profile.server";
+import { receive } from "../routes/api.djiwa-pay.topup";
 import {
   canonicalTopupPayload,
   parseCanonicalTopupResponse,
@@ -10,6 +11,21 @@ import {
 describe("Djiwa Pay Travel top-up boundary", () => {
   it("rejects unauthenticated requests before reading a wallet identity", async () => {
     await expect(requireBetterAuthUser("")).rejects.toThrow("Autentikasi diperlukan");
+  });
+
+  it("returns 401 for a direct HTTP request without a session before any wallet call", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await receive(new Request("https://djiwatravel.com/api/djiwa-pay/topup", {
+      method: "POST",
+      body: JSON.stringify({ amount: 25000, idempotencyKey: "travel_topup_123456" }),
+      headers: { "content-type": "application/json" },
+    }));
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "Autentikasi diperlukan" });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("enforces integer IDR and the canonical minimum server-side", () => {

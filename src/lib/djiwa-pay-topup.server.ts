@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireBetterAuthUser, resolveCanonicalCustomerSourceId as fetchCanonicalCustomerSourceId } from "./customer-profile.server";
 
@@ -53,9 +54,12 @@ export class CanonicalIdentityConfigurationError extends Error {
   }
 }
 
-export async function resolveVerifiedCanonicalCustomerSourceId(user: { email: string }) {
+export async function resolveVerifiedCanonicalCustomerSourceId(
+  user: { email: string },
+  cookie?: string | null,
+) {
   try {
-    return await fetchCanonicalCustomerSourceId(user.email);
+    return await fetchCanonicalCustomerSourceId(user.email, cookie);
   } catch {
     throw new CanonicalIdentityConfigurationError();
   }
@@ -73,32 +77,52 @@ export function canonicalTopupPayload(input: { amount: number; idempotencyKey: s
   } as const;
 }
 
+async function createDjiwaPayTopupForAuthenticatedUser(
+  user: { email: string },
+  cookie: string | null,
+  rawInput: unknown,
+) {
+  const data = topupInputSchema.parse(rawInput);
+  const canonicalCustomerSourceId = await resolveVerifiedCanonicalCustomerSourceId(user, cookie);
+  const payload = canonicalTopupPayload({
+    amount: data.amount,
+    idempotencyKey: data.idempotencyKey,
+    canonicalCustomerSourceId,
+    email: user.email,
+  });
+
+  const response = await fetch(canonicalWalletUrl(), {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const raw = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = raw && typeof raw === "object" && "error" in raw && typeof raw.error === "string"
+      ? raw.error
+      : "Top up belum dapat dibuat. Coba lagi.";
+    throw new Error(message);
+  }
+  return parseCanonicalTopupResponse(raw);
+}
+
+async function createDjiwaPayTopupForCookie(cookie: string | null, rawInput: unknown) {
+  // Authenticate before parsing browser input or contacting any wallet service.
+  const user = await requireBetterAuthUser(cookie ?? "");
+  return createDjiwaPayTopupForAuthenticatedUser(user, cookie, rawInput);
+}
+
+/** Plain request implementation for manually declared HTTP route handlers. */
+export async function createDjiwaPayTopupForRequest(request: Request) {
+  const cookie = request.headers.get("cookie");
+  // Keep authentication ahead of body parsing and all wallet-side effects.
+  const user = await requireBetterAuthUser(cookie ?? "");
+  return createDjiwaPayTopupForAuthenticatedUser(user, cookie, await request.json());
+}
+
 export const createDjiwaPayTopup = createServerFn({ method: "POST" })
   .validator(topupInputSchema)
-  .handler(async ({ data }) => {
-    const user = await requireBetterAuthUser();
-    const canonicalCustomerSourceId = await resolveVerifiedCanonicalCustomerSourceId(user);
-    const payload = canonicalTopupPayload({
-      amount: data.amount,
-      idempotencyKey: data.idempotencyKey,
-      canonicalCustomerSourceId,
-      email: user.email,
-    });
-
-    const response = await fetch(canonicalWalletUrl(), {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const raw = await response.json().catch(() => null);
-    if (!response.ok) {
-      const message = raw && typeof raw === "object" && "error" in raw && typeof raw.error === "string"
-        ? raw.error
-        : "Top up belum dapat dibuat. Coba lagi.";
-      throw new Error(message);
-    }
-    return parseCanonicalTopupResponse(raw);
-  });
+  .handler(({ data }) => createDjiwaPayTopupForCookie(getRequestHeader("cookie"), data));
 
 export const djiwaPayTopupContract = {
   auth: "Better Auth session is required; sourceId and email are never accepted from the browser",

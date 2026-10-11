@@ -1,18 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   CanonicalIdentityConfigurationError,
-  createDjiwaPayTopup,
+  createDjiwaPayTopupForRequest,
 } from "@/lib/djiwa-pay-topup.server";
 
 function json(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-async function receive(request: Request) {
+export async function receive(request: Request) {
   try {
     if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
-    const body = await request.json();
-    return json(await createDjiwaPayTopup({ data: body }));
+    return json(await createDjiwaPayTopupForRequest(request));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Top up gagal. Coba lagi.";
     const status = message === "Autentikasi diperlukan"
