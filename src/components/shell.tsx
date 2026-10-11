@@ -10,7 +10,7 @@ const tabs = [
   { to: "/", label: "Home", icon: Home },
   { to: "/explore", label: "Explore", icon: Compass },
   { to: "/my-esim", label: "My eSIM", icon: Smartphone },
-  { to: "/balance", label: "Wallet", icon: WalletCards },
+  { to: "/wallet", label: "Wallet", icon: WalletCards },
   { to: "/profile", label: "Profile", icon: User },
 ] as const;
 

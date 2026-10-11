@@ -10,13 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as BalanceRouteImport } from './routes/balance'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
@@ -49,11 +49,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BalanceRoute = BalanceRouteImport.update({
-  id: '/balance',
-  path: '/balance',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CatalogRoute = CatalogRouteImport.update({
   id: '/catalog',
   path: '/catalog',
@@ -82,6 +77,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -218,13 +218,13 @@ const ApiWebhooksEsimAccessTokenRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/balance': typeof BalanceRoute
   '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -254,13 +254,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/balance': typeof BalanceRoute
   '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -291,13 +291,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/balance': typeof BalanceRoute
   '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -329,13 +329,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/balance'
     | '/catalog'
     | '/explore'
     | '/finder'
     | '/live-catalog'
     | '/profile'
     | '/sitemap.xml'
+    | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
     | '/admin/catalog'
@@ -365,13 +365,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/balance'
     | '/catalog'
     | '/explore'
     | '/finder'
     | '/live-catalog'
     | '/profile'
     | '/sitemap.xml'
+    | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
     | '/admin/catalog'
@@ -401,13 +401,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/balance'
     | '/catalog'
     | '/explore'
     | '/finder'
     | '/live-catalog'
     | '/profile'
     | '/sitemap.xml'
+    | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
     | '/admin/catalog'
@@ -438,13 +438,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  BalanceRoute: typeof BalanceRoute
   CatalogRoute: typeof CatalogRoute
   ExploreRoute: typeof ExploreRoute
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
   ProfileRoute: typeof ProfileRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  WalletRoute: typeof WalletRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminCatalogRoute: typeof AdminCatalogRoute
@@ -480,13 +480,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/balance': {
-      id: '/balance'
-      path: '/balance'
-      fullPath: '/balance'
-      preLoaderRoute: typeof BalanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalog': {
@@ -529,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -718,13 +718,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  BalanceRoute: BalanceRoute,
   CatalogRoute: CatalogRoute,
   ExploreRoute: ExploreRoute,
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,
   ProfileRoute: ProfileRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  WalletRoute: WalletRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
   AdminCatalogRoute: AdminCatalogRoute,
