@@ -5,6 +5,7 @@ import { db } from "@/db/client.server";
 import { customerOrders } from "../../drizzle/schema";
 import { settleVerifiedTravelPayment } from "@/lib/mayar-settlement.server";
 import { provisionSettledTravelOrder } from "@/lib/mayar-provisioning.server";
+import { validateTravelSettlementPreflight } from "@/lib/travel-settlement-preflight";
 
 const MAX_BODY_BYTES = 64 * 1024;
 const REPLAY_WINDOW_SECONDS = 300;
@@ -65,9 +66,23 @@ async function receive(request: Request) {
   try { payload = parsePayload(rawBody); } catch { payload = null; }
   if (!payload) return json({ error: "Invalid payment payload" }, 400);
 
-  const orderRows = await db.select({ publicOrderCode: customerOrders.publicOrderCode }).from(customerOrders).where(eq(customerOrders.id, payload.orderId)).limit(1);
+  const orderRows = await db.select({
+    publicOrderCode: customerOrders.publicOrderCode,
+    status: customerOrders.status,
+    totalAmount: customerOrders.totalAmount,
+    paymentReference: customerOrders.paymentReference,
+  }).from(customerOrders).where(eq(customerOrders.id, payload.orderId)).limit(1);
   const order = orderRows[0];
   if (!order) return json({ error: "Order not found" }, 404);
+  const preflightError = validateTravelSettlementPreflight({
+    status: order.status,
+    totalAmount: order.totalAmount,
+    paymentReference: order.paymentReference,
+    payloadAmount: payload.amountIdr,
+    payloadInvoiceId: payload.invoiceId,
+    paidAt: payload.paidAt,
+  });
+  if (preflightError) return json({ error: preflightError }, 400);
   const settlement = await settleVerifiedTravelPayment({
     orderId: payload.orderId,
     orderNumber: order.publicOrderCode,
