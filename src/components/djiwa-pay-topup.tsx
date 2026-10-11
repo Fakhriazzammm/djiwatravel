@@ -51,6 +51,8 @@ export function DjiwaPayTopup({ userId }: { userId: string }) {
 
   return (
     <section
+      id="djiwa-pay-topup"
+      tabIndex={-1}
       className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5"
       aria-labelledby="djiwa-pay-topup-title"
     >
