@@ -181,10 +181,8 @@ export function Wallet() {
             <Summary label="Total digunakan" value={formatted(wallet.total_debited)} icon={ArrowUpRight} tone="text-brand-red" />
           </div>
 
-          <section className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5" aria-labelledby="wallet-quick-actions-title">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Djiwa Pay</p>
-            <h2 id="wallet-quick-actions-title" className="mt-1 text-lg font-semibold tracking-tight">Aksi cepat</h2>
-            <div className="mt-4 grid grid-cols-4 gap-2" aria-label="Aksi cepat Djiwa Pay">
+          <section className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5" aria-label="Aksi cepat">
+            <div className="grid grid-cols-4 gap-2" aria-label="Aksi cepat">
               {WALLET_ACTIONS.map((action) => (
                 <button
                   key={action.label}
