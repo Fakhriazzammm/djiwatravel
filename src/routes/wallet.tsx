@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, RefreshCw, WalletCards } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Page, SectionTitle } from "@/components/shell";
-import { DjiwaPayTopup } from "@/components/djiwa-pay-topup";
+import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { getCustomerWallet, type CustomerWalletResponse, type CustomerWalletLedgerEntry } from "@/lib/customer-wallet.server";
 import { groupWalletLedger, ledgerStatusLabel, walletStatusLabel } from "@/lib/customer-wallet-view";
@@ -35,15 +35,19 @@ function Wallet() {
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [topupPending, setTopupPending] = useState<{ amount: number; startedAt: number; creditedBefore: number } | null>(null);
+  const [topupVerifiedAmount, setTopupVerifiedAmount] = useState(0);
+  const [topupTimedOut, setTopupTimedOut] = useState(false);
 
-  function focusWalletSection(selector: "#djiwa-pay-topup" | "#wallet-history-title") {
+  function focusWalletSection(selector: "#wallet-history-title") {
     const target = document.querySelector<HTMLElement>(selector);
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
     target?.focus({ preventScroll: true });
   }
 
   function handleQuickAction(label: string) {
-    if (label === "Isi Saldo") focusWalletSection("#djiwa-pay-topup");
+    if (label === "Isi Saldo") setTopupOpen(true);
     else if (label === "Riwayat") focusWalletSection("#wallet-history-title");
     else setQuickActionDialog(label);
   }
@@ -53,7 +57,9 @@ function Wallet() {
     setLoading(true);
     setError(null);
     try {
-      setData(await getCustomerWallet());
+      const next = await getCustomerWallet();
+      setData(next);
+      return next;
     } catch (cause) {
       setData(null);
       setError(cause instanceof Error ? cause.message : "Wallet belum dapat dimuat. Coba lagi.");
@@ -63,6 +69,50 @@ function Wallet() {
   }, [user]);
 
   useEffect(() => { void loadWallet(); }, [loadWallet]);
+
+  const topupPendingKey = user ? `${TOPUP_PENDING_KEY}:${user.id}` : TOPUP_PENDING_KEY;
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const raw = window.sessionStorage.getItem(topupPendingKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { amount?: number; startedAt?: number; creditedBefore?: number };
+      if (Number.isFinite(parsed.amount) && Number.isFinite(parsed.startedAt) && Date.now() - Number(parsed.startedAt) < 10 * 60_000) {
+        setTopupPending({ amount: Number(parsed.amount), startedAt: Number(parsed.startedAt), creditedBefore: Number(parsed.creditedBefore ?? 0) });
+      } else {
+        window.sessionStorage.removeItem(topupPendingKey);
+        setTopupTimedOut(true);
+      }
+    } catch { /* Abaikan session marker yang rusak. */ }
+  }, [topupPendingKey, user]);
+
+  useEffect(() => {
+    if (!topupPending) return;
+    let active = true;
+    const verify = async () => {
+      try {
+        const latest = await loadWallet();
+        if (!active) return;
+        if (Number(latest?.wallet?.total_credited ?? 0) >= topupPending.creditedBefore + topupPending.amount) {
+          setTopupVerifiedAmount(topupPending.amount);
+          setTopupPending(null);
+          window.sessionStorage.removeItem(topupPendingKey);
+        } else if (Date.now() - topupPending.startedAt >= 10 * 60_000) {
+          setTopupPending(null);
+          setTopupTimedOut(true);
+          window.sessionStorage.removeItem(topupPendingKey);
+        }
+      } catch { /* Keep the truthful pending state when a read is temporarily unavailable. */ }
+    };
+    void verify();
+    const timer = window.setInterval(() => void verify(), 7_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [loadWallet, topupPending, topupPendingKey]);
+
+  async function checkWalletAgain() {
+    setTopupTimedOut(false);
+    try { await loadWallet(); } finally { setTopupTimedOut(true); }
+  }
 
   const groups = useMemo(() => groupWalletLedger(data?.ledger ?? []), [data?.ledger]);
   const wallet = data?.wallet;
@@ -138,7 +188,10 @@ function Wallet() {
             </div>
           </section>
 
-          <DjiwaPayTopup userId={user.id} />
+          {topupPending && <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950" role="status" aria-live="polite"><p className="text-sm font-bold">Menunggu konfirmasi pembayaran</p><p className="mt-1 text-xs leading-5 text-emerald-800">Pembayaran sedang diverifikasi. Wallet akan diperbarui otomatis setelah konfirmasi diterima.</p></section>}
+          {topupVerifiedAmount > 0 && !topupPending && <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950" role="status"><p className="text-sm font-bold">Top up berhasil</p><p className="mt-1 text-xs leading-5 text-emerald-800">Wallet bertambah {rupiah(topupVerifiedAmount)} dan sudah dikonfirmasi.</p></section>}
+          {topupTimedOut && !topupPending && <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status"><p className="text-sm font-bold">Pembayaran sedang diverifikasi</p><p className="mt-1 text-xs leading-5 text-amber-900">Wallet belum berubah. Jangan membuat top up baru; cek kembali setelah beberapa saat.</p><button type="button" onClick={() => void checkWalletAgain()} disabled={loading} className="tap mt-3 min-h-11 rounded-xl bg-amber-600 px-3 text-xs font-bold text-white disabled:opacity-60">{loading ? "Memuat Wallet..." : "Cek saldo lagi"}</button></section>}
+          <DjiwaPayTopup userId={user.id} open={topupOpen} onOpenChange={setTopupOpen} creditedBefore={Number(wallet.total_credited)} onSubmitted={(pending) => { setTopupTimedOut(false); setTopupVerifiedAmount(0); setTopupPending(pending); }} />
 
           <section className="mt-7" aria-labelledby="wallet-history-title">
             <SectionTitle action={<span className="text-xs font-normal normal-case">{data.ledger.length} transaksi</span>}>

@@ -1,86 +1,61 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DjiwaPayTopup } from "@/components/djiwa-pay-topup";
-import { beginDjiwaPayTopup, resetDjiwaPayTopupIdempotency } from "@/lib/djiwa-pay-topup-client";
+import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
+import { beginDjiwaPayTopup } from "@/lib/djiwa-pay-topup-client";
 
-vi.mock("@/lib/djiwa-pay-topup-client", () => ({
-  beginDjiwaPayTopup: vi.fn(),
-  resetDjiwaPayTopupIdempotency: vi.fn(),
-}));
-
+vi.mock("@/lib/djiwa-pay-topup-client", () => ({ beginDjiwaPayTopup: vi.fn() }));
 afterEach(cleanup);
-beforeEach(() => vi.resetAllMocks());
+beforeEach(() => { vi.resetAllMocks(); window.sessionStorage.clear(); });
 
-describe("Djiwa Pay top-up card", () => {
-  it("offers presets and keeps the selected amount editable", () => {
-    render(<DjiwaPayTopup userId="user-1" />);
+function renderSheet() {
+  return render(<DjiwaPayTopup userId="user-1" open onOpenChange={vi.fn()} creditedBefore={25_000} />);
+}
 
+describe("Djiwa Travel Isi Saldo sheet", () => {
+  it("opens as an accessible sheet with four presets", () => {
+    renderSheet();
+    expect(screen.getByRole("dialog", { name: "Isi Saldo" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Rp50.000" }));
-
-    expect(screen.getByRole("button", { name: "Rp50.000" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByLabelText("Nominal isi saldo dalam rupiah")).toHaveValue("50.000");
+    expect(screen.getByRole("button", { name: "Rp50.000" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("validates the minimum without creating an invoice", () => {
-    render(<DjiwaPayTopup userId="user-1" />);
-    const input = screen.getByLabelText("Nominal isi saldo dalam rupiah");
+  it("supports keypad append, leading-zero stripping, delete, and eight digits", () => {
+    renderSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Angka 0" }));
+    fireEvent.click(screen.getByRole("button", { name: "Angka 5" }));
+    expect(screen.getByText("Rp5")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hapus satu angka" }));
+    expect(screen.getByText("Rp0")).toBeInTheDocument();
+    for (let index = 0; index < 10; index += 1) fireEvent.click(screen.getByRole("button", { name: "Angka 9" }));
+    expect(screen.getByText("Rp99.999.999")).toBeInTheDocument();
+  });
 
-    fireEvent.change(input, { target: { value: "999" } });
-    fireEvent.click(screen.getByRole("button", { name: "Buat invoice top up" }));
+  it("keeps Lanjutkan disabled below the minimum", () => {
+    renderSheet();
+    expect(screen.getByRole("button", { name: "Lanjutkan" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Angka 9" }));
+    expect(screen.getByRole("button", { name: "Lanjutkan" })).toBeDisabled();
+  });
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Minimal isi saldo Rp1.000.");
+  it("persists the pending marker before redirecting to Mayar", async () => {
+    vi.mocked(beginDjiwaPayTopup).mockResolvedValue({ topup_id: "t1", invoice_id: "i1", invoice_url: "https://payments.example/i1", status: "pending" });
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", { configurable: true, value: { assign } });
+    renderSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Rp50.000" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan" }));
+    await waitFor(() => expect(beginDjiwaPayTopup).toHaveBeenCalledWith(50_000, "user-1"));
+    const marker = JSON.parse(window.sessionStorage.getItem(`${TOPUP_PENDING_KEY}:user-1`) ?? "null");
+    expect(marker).toEqual(expect.objectContaining({ amount: 50_000, creditedBefore: 25_000 }));
+    expect(screen.getByText("Tunggu sebentar")).toBeInTheDocument();
+    expect(assign).toHaveBeenCalledWith("https://payments.example/i1");
+  });
+
+  it("does not create an invoice below the minimum", () => {
+    renderSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Angka 9" }));
+    fireEvent.click(screen.getByRole("button", { name: "Angka 9" }));
+    expect(screen.getByRole("button", { name: "Lanjutkan" })).toBeDisabled();
     expect(beginDjiwaPayTopup).not.toHaveBeenCalled();
-  });
-
-  it("shows a truthful pending invoice and blocks duplicate submission", async () => {
-    let resolveInvoice: ((value: { invoice_url: string }) => void) | undefined;
-    vi.mocked(beginDjiwaPayTopup).mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveInvoice = resolve;
-        }),
-    );
-    render(<DjiwaPayTopup userId="user-1" />);
-    const submit = screen.getByRole("button", { name: "Buat invoice top up" });
-
-    fireEvent.click(submit);
-    fireEvent.click(submit);
-    expect(beginDjiwaPayTopup).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Menyiapkan invoice… Jangan tutup halaman ini.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Menyiapkan invoice…" })).toBeDisabled();
-
-    resolveInvoice?.({ invoice_url: "https://payments.example/invoice-1" });
-    await waitFor(() =>
-      expect(
-        screen.getByText("Invoice siap, pembayaran masih menunggu konfirmasi."),
-      ).toBeInTheDocument(),
-    );
-    expect(screen.getByText(/Saldo belum bertambah/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Buka invoice pembayaran" })).toHaveAttribute(
-      "href",
-      "https://payments.example/invoice-1",
-    );
-  });
-
-  it("resets only local invoice state for an explicit new invoice recovery path", async () => {
-    vi.mocked(beginDjiwaPayTopup).mockResolvedValue({
-      invoice_url: "https://payments.example/invoice-1",
-    });
-    render(<DjiwaPayTopup userId="user-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Buat invoice top up" }));
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Buat invoice baru" })).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Buat invoice baru" }));
-
-    expect(resetDjiwaPayTopupIdempotency).toHaveBeenCalledWith("user-1");
-    expect(screen.getByRole("button", { name: "Buat invoice top up" })).toBeInTheDocument();
-    expect(
-      screen.queryByText("Invoice siap, pembayaran masih menunggu konfirmasi."),
-    ).not.toBeInTheDocument();
   });
 });
