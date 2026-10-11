@@ -8,7 +8,7 @@ import { getCustomerWallet, type CustomerWalletResponse, type CustomerWalletLedg
 import { groupWalletLedger, ledgerStatusLabel, walletStatusLabel } from "@/lib/customer-wallet-view";
 import { rupiah } from "@/lib/pricing";
 
-export const Route = createFileRoute("/balance")({
+export const Route = createFileRoute("/wallet")({
   head: () => ({
     meta: [
       { title: "Wallet — Djiwa Travel" },

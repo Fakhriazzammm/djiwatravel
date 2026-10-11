@@ -15,7 +15,7 @@ describe("App routing", () => {
 
   it("matches the first-class Wallet route", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-    const matches = router.matchRoutes("/balance");
-    expect(matches.at(-1)?.routeId).toBe("/balance");
+    const matches = router.matchRoutes("/wallet");
+    expect(matches.at(-1)?.routeId).toBe("/wallet");
   });
 });
