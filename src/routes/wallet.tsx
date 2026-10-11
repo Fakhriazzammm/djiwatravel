@@ -132,7 +132,7 @@ function Wallet() {
                 >
                   <img src={action.asset} alt="" className="size-9 object-contain" />
                   <span className="text-[11px] font-semibold leading-tight">{action.label}</span>
-                  {!action.supported && <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">Soon</span>}
+                  {!action.supported && <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white ${action.badgeClass ?? "bg-secondary"}`}>Soon</span>}
                 </button>
               ))}
             </div>
