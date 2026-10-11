@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCanonicalWalletResponse } from "@/lib/customer-wallet.server";
+import { parseCanonicalWalletResponse, classifyCanonicalWalletError } from "@/lib/customer-wallet.server";
 import { groupWalletLedger, ledgerStatusLabel } from "@/lib/customer-wallet-view";
 
 const wallet = {
@@ -23,8 +23,13 @@ describe("canonical customer Wallet adapter", () => {
     expect(() => parseCanonicalWalletResponse({ wallet: { ...wallet, customer_id: "other" }, ledger: [] }, "customer-1")).toThrow("pemilik akun");
   });
 
-  it("accepts the canonical wallet shape", () => {
-    expect(parseCanonicalWalletResponse({ wallet, ledger: [entry("a", "2026-10-01T10:00:00Z")] }, "customer-1").wallet?.available_balance).toBe(120000);
+  it("accepts the canonical wallet shape and standard success envelope", () => {
+    expect(parseCanonicalWalletResponse({ success: true, wallet, ledger: [entry("a", "2026-10-01T10:00:00Z")] }, "customer-1").wallet?.available_balance).toBe(120000);
+  });
+
+  it("classifies canonical errors without leaking provider details", () => {
+    expect(classifyCanonicalWalletError(400, { success: false, error: { code: "CUSTOMER_ACCESS_DENIED", message: "internal detail" } })).toBe("Wallet Djiwa Pay tidak sesuai dengan akun ini.");
+    expect(classifyCanonicalWalletError(500, { success: false, error: { code: "DB_ERROR", message: "internal detail" } })).toBe("Saldo Djiwa Pay belum dapat dimuat. Coba lagi.");
   });
 });
 
