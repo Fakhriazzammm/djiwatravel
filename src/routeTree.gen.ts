@@ -36,6 +36,7 @@ import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
 import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
+import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
@@ -175,6 +176,11 @@ const PlanIdRoute = PlanIdRouteImport.update({
   path: '/plan/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReceiptIdRoute = ReceiptIdRouteImport.update({
+  id: '/receipt/$id',
+  path: '/receipt/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -218,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
+  '/receipt/$id': typeof ReceiptIdRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -250,6 +257,7 @@ export interface FileRoutesByTo {
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
+  '/receipt/$id': typeof ReceiptIdRoute
   '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
+  '/receipt/$id': typeof ReceiptIdRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
+    | '/receipt/$id'
     | '/admin/'
     | '/my-esim/'
     | '/api/auth/$'
@@ -349,6 +359,7 @@ export interface FileRouteTypes {
     | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
+    | '/receipt/$id'
     | '/admin'
     | '/my-esim'
     | '/api/auth/$'
@@ -381,6 +392,7 @@ export interface FileRouteTypes {
     | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
+    | '/receipt/$id'
     | '/admin/'
     | '/my-esim/'
     | '/api/auth/$'
@@ -414,6 +426,7 @@ export interface RootRouteChildren {
   MyEsimIdRoute: typeof MyEsimIdRoute
   OrderIdRoute: typeof OrderIdRoute
   PlanIdRoute: typeof PlanIdRoute
+  ReceiptIdRoute: typeof ReceiptIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -612,6 +625,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/receipt/$id': {
+      id: '/receipt/$id'
+      path: '/receipt/$id'
+      fullPath: '/receipt/$id'
+      preLoaderRoute: typeof ReceiptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -662,6 +682,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyEsimIdRoute: MyEsimIdRoute,
   OrderIdRoute: OrderIdRoute,
   PlanIdRoute: PlanIdRoute,
+  ReceiptIdRoute: ReceiptIdRoute,
   AdminIndexRoute: AdminIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

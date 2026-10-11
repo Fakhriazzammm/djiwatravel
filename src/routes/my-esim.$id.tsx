@@ -7,6 +7,9 @@ import { rupiah } from "@/lib/pricing";
 import { cancelOrder, markInstalled, useOrders } from "@/lib/orders";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 
+/** Support channel; single place to swap in a real number. */
+const SUPPORT_WHATSAPP = "https://wa.me/";
+
 export const Route = createFileRoute("/my-esim/$id")({
   head: () => ({
     meta: [
@@ -126,7 +129,7 @@ function Detail() {
             id: "support",
             l: "Support",
             i: Headphones,
-            on: () => window.open("https://wa.me/", "_blank"),
+            on: () => window.open(SUPPORT_WHATSAPP, "_blank"),
           },
         ].map(({ id, l, i: I, on, off }) => (
           <button

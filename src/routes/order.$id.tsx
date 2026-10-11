@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, BellRing, Check, Loader2, AlertCircle, Printer, RefreshCw } from "lucide-react";
+import { Bell, BellRing, Check, Loader2, AlertCircle, Printer, Receipt, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Page, btnPrimary, btnRed, btnSoft } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
@@ -23,6 +23,12 @@ import {
   writeNotifyPreference,
 } from "@/lib/esim-notify";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
+
+/**
+ * Support channel. Kept as one constant so every entry point points at the same place, and so
+ * the empty `https://wa.me/` link that went nowhere can be swapped for a real number in one edit.
+ */
+const SUPPORT_WHATSAPP = "https://wa.me/";
 
 export const Route = createFileRoute("/order/$id")({
   head: () => ({
@@ -245,7 +251,14 @@ function OrderPage() {
           {checkNote && <p className="mt-2 text-xs text-muted-foreground">{checkNote}</p>}
         </div>
         <InvoiceCard order={o} />
-        <Link to="/explore" className="mt-5 block text-center text-sm font-semibold text-primary">
+        <Link
+          to="/receipt/$id"
+          params={{ id: o.id }}
+          className="mt-5 block text-center text-sm font-semibold text-brand-red"
+        >
+          Lihat struk pembayaran
+        </Link>
+        <Link to="/explore" className="mt-3 block text-center text-sm font-semibold text-primary">
           Kembali ke Explore
         </Link>
       </Page>
@@ -298,7 +311,7 @@ function OrderPage() {
             Provisioning otomatis belum diaktifkan.
           </p>
         )}
-        <a href="https://wa.me/" className={`${btnSoft} mt-3`}>
+        <a href={SUPPORT_WHATSAPP} className={`${btnSoft} mt-3`}>
           Hubungi Support
         </a>
       </Page>
@@ -377,17 +390,30 @@ function OrderPage() {
           Lihat QR Code
         </button>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[12px] font-medium text-brand-red">
+      <div className="mt-4 grid grid-cols-2 gap-2 text-center text-[12px] font-medium text-brand-red">
         <button onClick={() => setView("guide")} className="h-11 rounded-xl">
           Panduan
         </button>
         <Link to="/my-esim" className="flex h-11 items-center justify-center rounded-xl">
           Simpan
         </Link>
-        <a href="https://wa.me/" className="flex h-11 items-center justify-center rounded-xl">
-          Support
-        </a>
       </div>
+      <Link
+        to="/receipt/$id"
+        params={{ id: o.id }}
+        className={`${btnRed} mt-3 inline-flex items-center justify-center gap-2`}
+      >
+        <Receipt className="size-4" aria-hidden="true" />
+        Struk &amp; panduan pasang
+      </Link>
+      <a
+        href={SUPPORT_WHATSAPP}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-3 block text-center text-[12px] font-medium text-brand-red"
+      >
+        Butuh bantuan? Hubungi support
+      </a>
       <InvoiceCard order={o} />
     </Page>
   );
@@ -403,14 +429,14 @@ function InvoiceCard({ order }: { order: Order }) {
           <p className="mt-1 font-semibold">Djiwa Travel</p>
           <p className="text-muted-foreground">#{order.publicOrderCode ?? order.id.slice(0, 8)}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="print-button flex min-h-10 items-center gap-2 rounded-xl bg-secondary px-3 font-semibold"
-          aria-label="Cetak atau simpan invoice sebagai PDF"
+        <Link
+          to="/receipt/$id"
+          params={{ id: order.id }}
+          className="print-hide flex min-h-10 items-center gap-2 rounded-xl bg-secondary px-3 font-semibold"
+          aria-label="Buka struk untuk diunduh sebagai PDF"
         >
-          <Printer className="size-4" /> Cetak / PDF
-        </button>
+          <Receipt className="size-4" /> Struk
+        </Link>
       </div>
       <dl className="mt-4 grid grid-cols-[1fr_auto] gap-y-2 border-t pt-3">
         <dt className="text-muted-foreground">Produk</dt>

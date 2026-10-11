@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ReceiptText } from "lucide-react";
 import { Page, Wordmark, btnPrimary } from "@/components/shell";
 import { useOrders, type Order } from "@/lib/orders";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
@@ -26,40 +27,51 @@ export function EsimCard({ o }: { o: Order }) {
   const status = effectiveOrderStatus(o.status, o.expiresAt);
   const ready = status === "READY" || status === "INSTALLED";
   return (
-    <Link
-      to={ready ? "/my-esim/$id" : "/order/$id"}
-      params={{ id: o.id }}
-      className="tap block rounded-2xl bg-surface p-5"
-    >
-      <div className="flex items-center gap-3">
-        <span className="text-3xl">🌐</span>
-        <div className="flex-1">
-          <p className="font-semibold">{packageName}</p>
-          <p className="text-sm text-muted-foreground">
-            {locationLabel} · {quotaLabel} · {durationDays} hari
-          </p>
+    // The wrapper keeps the receipt link outside the card link, so no nested anchors.
+    <div className="rounded-2xl bg-surface p-5">
+      <Link
+        to={ready ? "/my-esim/$id" : "/order/$id"}
+        params={{ id: o.id }}
+        className="tap block"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">🌐</span>
+          <div className="flex-1">
+            <p className="font-semibold">{packageName}</p>
+            <p className="text-sm text-muted-foreground">
+              {locationLabel} · {quotaLabel} · {durationDays} hari
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ready ? "bg-success/15 text-success" : "bg-brand-red-soft text-brand-red"}`}
+          >
+            {ORDER_STATUS_LABEL[status]}
+          </span>
         </div>
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ready ? "bg-success/15 text-success" : "bg-brand-red-soft text-brand-red"}`}
-        >
-          {ORDER_STATUS_LABEL[status]}
-        </span>
-      </div>
-      {ready && (
-        <>
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary">
-            <div
-              className={`h-full rounded-full ${pct < 20 ? "bg-brand-red" : "bg-primary"}`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <div className="mt-2 flex justify-between text-sm">
-            <span>{left !== null ? `${left.toFixed(1)} GB tersisa` : "Unlimited"}</span>
-            <span className="text-muted-foreground">{pct}%</span>
-          </div>
-        </>
-      )}
-    </Link>
+        {ready && (
+          <>
+            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div
+                className={`h-full rounded-full ${pct < 20 ? "bg-brand-red" : "bg-primary"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className="mt-2 flex justify-between text-sm">
+              <span>{left !== null ? `${left.toFixed(1)} GB tersisa` : "Unlimited"}</span>
+              <span className="text-muted-foreground">{pct}%</span>
+            </div>
+          </>
+        )}
+      </Link>
+      <Link
+        to="/receipt/$id"
+        params={{ id: o.id }}
+        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-red"
+      >
+        <ReceiptText className="size-3.5" aria-hidden="true" />
+        Lihat struk
+      </Link>
+    </div>
   );
 }
 
