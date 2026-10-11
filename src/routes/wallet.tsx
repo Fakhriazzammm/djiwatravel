@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, RefreshCw, WalletCards } from "lucide-react";
+import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Page, SectionTitle } from "@/components/shell";
+import { Page, SectionTitle, Wordmark } from "@/components/shell";
 import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
 import { FixedLayer } from "@/components/motion-primitives";
+import { PendingSpinner } from "@/components/route-loading";
+
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { getCustomerWallet, type CustomerWalletResponse, type CustomerWalletLedgerEntry } from "@/lib/customer-wallet.server";
 import { groupWalletLedger, ledgerStatusLabel, walletStatusLabel } from "@/lib/customer-wallet-view";
@@ -29,10 +32,10 @@ function maskedId(value: string, visible: boolean) {
   return `${value.slice(0, 3)}••••${value.slice(-3)}`;
 }
 
-function Wallet() {
+export function Wallet() {
   const { user, loading: authLoading } = useBetterAuthUser();
   const [data, setData] = useState<CustomerWalletResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
@@ -118,6 +121,15 @@ function Wallet() {
   const groups = useMemo(() => groupWalletLedger(data?.ledger ?? []), [data?.ledger]);
   const wallet = data?.wallet;
   const formatted = (amount: number) => (visible ? rupiah(amount) : "Rp ••••••");
+  const initialLoading = authLoading || Boolean(user && loading && !data);
+
+  if (initialLoading) {
+    return (
+      <Page tabs={false}>
+        <WalletLoadingSplash />
+      </Page>
+    );
+  }
 
   return (
     <Page>
@@ -137,7 +149,7 @@ function Wallet() {
         </button>
       </header>
 
-      {authLoading ? <WalletLoading /> : !user ? <GuestState /> : loading && !data ? <WalletLoading /> : error ? (
+      {!user ? <GuestState /> : error ? (
         <ErrorState message={error} onRetry={() => void loadWallet()} />
       ) : !wallet ? (
         <EmptyState />
@@ -240,7 +252,28 @@ function LedgerRow({ entry, visible }: { entry: CustomerWalletLedgerEntry; visib
   return <div className="flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0"><span className={`flex size-9 shrink-0 items-center justify-center rounded-full ${credit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-brand-red"}`}><StatusIcon className="size-4" aria-hidden="true" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{title}</p><p className="truncate text-xs text-muted-foreground">{date.toLocaleDateString("id-ID")} · {ledgerStatusLabel(entry.status)}{reference ? ` · ${reference}` : ""}</p></div><p className={`shrink-0 text-sm font-bold ${credit ? "text-emerald-700" : "text-brand-red"}`}>{visible ? `${credit ? "+" : "−"}${rupiah(entry.amount)}` : "••••••"}</p></div>;
 }
 
-function WalletLoading() { return <div className="mt-5 space-y-4" role="status" aria-label="Memuat Wallet"><div className="h-52 animate-pulse rounded-[26px] bg-secondary" /><div className="grid grid-cols-2 gap-3"><div className="h-24 animate-pulse rounded-2xl bg-secondary" /><div className="h-24 animate-pulse rounded-2xl bg-secondary" /></div><div className="h-44 animate-pulse rounded-2xl bg-secondary" /></div>; }
+function WalletLoadingSplash() {
+  const reduce = useReducedMotion();
+  return (
+    <FixedLayer>
+      <main
+        data-testid="wallet-loading-splash"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        className="fixed inset-0 z-[70] flex min-h-[100dvh] flex-col items-center justify-center gap-5 bg-background px-6 text-center"
+      >
+        <Wordmark className="h-12" />
+        <PendingSpinner reduce={!!reduce} className="size-14" />
+        <div className="flex flex-col gap-1">
+          <p className="text-[15px] font-semibold text-foreground">Menyiapkan Wallet…</p>
+          <p className="text-[13px] text-muted-foreground">Memuat data Wallet Djiwa Pay.</p>
+        </div>
+      </main>
+    </FixedLayer>
+  );
+}
+
 function GuestState() { return <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm"><WalletCards className="mx-auto size-10 text-muted-foreground" aria-hidden="true" /><h2 className="mt-4 text-lg font-bold">Masuk untuk membuka Wallet</h2><p className="mt-2 text-sm leading-5 text-muted-foreground">Wallet tersedia untuk akun Djiwa Travel yang sudah masuk.</p></div>; }
 function EmptyState() { return <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm"><WalletCards className="mx-auto size-10 text-muted-foreground" aria-hidden="true" /><h2 className="mt-4 text-lg font-bold">Wallet belum tersedia</h2><p className="mt-2 text-sm leading-5 text-muted-foreground">Kami belum menemukan Wallet untuk akun ini. Coba segarkan atau hubungi bantuan jika akunmu sudah terdaftar.</p></div>; }
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) { return <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm"><h2 className="text-lg font-bold">Wallet belum dapat dimuat</h2><p className="mt-2 text-sm leading-5 text-muted-foreground">{message}</p><button type="button" onClick={onRetry} className="mt-5 min-h-11 rounded-xl bg-primary px-5 font-semibold text-primary-foreground">Coba lagi</button></div>; }
