@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { requireBetterAuthUser, resolveCanonicalCustomerSourceId } from "./customer-profile.server";
+import { requireBetterAuthUser, resolveCanonicalCustomerIdentity, type CanonicalCustomerIdentity } from "./customer-profile.server";
 
 const walletSchema = z.object({
   customer_id: z.string(),
@@ -71,27 +71,31 @@ export function classifyCanonicalWalletError(status: number, raw: unknown) {
     if (error && typeof error === "object" && !Array.isArray(error)) {
       const code = (error as Record<string, unknown>).code;
       if (code === "CUSTOMER_ACCESS_DENIED" || code === "INVALID_SOURCE_ID") {
-        return "Wallet Djiwa Pay tidak sesuai dengan akun ini.";
+        return "Wallet belum terhubung ke akun ini.";
       }
     }
   }
   return "Saldo Djiwa Pay belum dapat dimuat. Coba lagi.";
 }
 
+export function canonicalWalletPayload(identity: CanonicalCustomerIdentity) {
+  return { action: "get", sourceId: identity.sourceId, email: identity.email } as const;
+}
+
 export async function readCanonicalWalletForRequest(request: Request) {
   const cookie = request.headers.get("cookie");
   const user = await requireBetterAuthUser(cookie ?? "");
-  const sourceId = await resolveCanonicalCustomerSourceId(user.email, cookie ?? undefined);
+  const identity = await resolveCanonicalCustomerIdentity(user.email, cookie ?? undefined);
   const response = await fetch(canonicalWalletUrl(), {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({ action: "get", sourceId, email: user.email }),
+    body: JSON.stringify(canonicalWalletPayload(identity)),
   });
   const raw = await response.json().catch(() => null);
   if (!response.ok) {
     throw new Error(classifyCanonicalWalletError(response.status, raw));
   }
-  return parseCanonicalWalletResponse(raw, sourceId);
+  return parseCanonicalWalletResponse(raw, identity.sourceId);
 }
 
 export const getCustomerWallet = createServerFn({ method: "GET" }).handler(async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCanonicalWalletResponse, classifyCanonicalWalletError } from "@/lib/customer-wallet.server";
+import { parseCanonicalWalletResponse, classifyCanonicalWalletError, canonicalWalletPayload } from "@/lib/customer-wallet.server";
 import { groupWalletLedger, ledgerStatusLabel } from "@/lib/customer-wallet-view";
 
 const wallet = {
@@ -28,8 +28,16 @@ describe("canonical customer Wallet adapter", () => {
   });
 
   it("classifies canonical errors without leaking provider details", () => {
-    expect(classifyCanonicalWalletError(400, { success: false, error: { code: "CUSTOMER_ACCESS_DENIED", message: "internal detail" } })).toBe("Wallet Djiwa Pay tidak sesuai dengan akun ini.");
+    expect(classifyCanonicalWalletError(400, { success: false, error: { code: "CUSTOMER_ACCESS_DENIED", message: "internal detail" } })).toBe("Wallet belum terhubung ke akun ini.");
     expect(classifyCanonicalWalletError(500, { success: false, error: { code: "DB_ERROR", message: "internal detail" } })).toBe("Saldo Djiwa Pay belum dapat dimuat. Coba lagi.");
+  });
+
+  it("sends the verified profile email with its canonical source id", () => {
+    expect(canonicalWalletPayload({ sourceId: "customer-1", email: "A@EXAMPLE.COM" })).toEqual({
+      action: "get",
+      sourceId: "customer-1",
+      email: "A@EXAMPLE.COM",
+    });
   });
 });
 

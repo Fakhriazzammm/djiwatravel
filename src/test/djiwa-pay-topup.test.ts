@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { requireBetterAuthUser, resolveCanonicalCustomerSourceId } from "../lib/customer-profile.server";
+import { requireBetterAuthUser, resolveCanonicalCustomerIdentity, resolveCanonicalCustomerSourceId } from "../lib/customer-profile.server";
 import { receive } from "../routes/api.djiwa-pay.topup";
 import {
   canonicalTopupPayload,
@@ -41,13 +41,15 @@ describe("Djiwa Pay Travel top-up boundary", () => {
   });
 
   it("maps a verified auth cookie to the canonical customer source id", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    const fetchMock = vi.fn().mockImplementation(() => new Response(JSON.stringify({
       customer: { source_id: " djiwa-customer-1 ", email: "A@EXAMPLE.COM", name: "A" },
     }), { status: 200, headers: { "content-type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(resolveCanonicalCustomerSourceId("a@example.com", "better-auth-session=secret"))
       .resolves.toBe("djiwa-customer-1");
+    await expect(resolveCanonicalCustomerIdentity("a@example.com", "better-auth-session=secret"))
+      .resolves.toEqual({ sourceId: "djiwa-customer-1", email: "A@EXAMPLE.COM" });
     expect(fetchMock).toHaveBeenCalledWith(
       "https://auth.zantara.id/api/customer/profile",
       expect.objectContaining({ headers: expect.objectContaining({ cookie: "better-auth-session=secret" }) }),
@@ -67,10 +69,9 @@ describe("Djiwa Pay Travel top-up boundary", () => {
     const payload = canonicalTopupPayload({
       amount: 25000,
       idempotencyKey: "travel_topup_123456",
-      canonicalCustomerSourceId: "djiwa-customer-1",
-      email: "a@example.com",
+      canonicalCustomerIdentity: { sourceId: "djiwa-customer-1", email: "A@EXAMPLE.COM" },
     });
-    expect(payload).toMatchObject({ sourceId: "djiwa-customer-1", email: "a@example.com" });
+    expect(payload).toMatchObject({ sourceId: "djiwa-customer-1", email: "A@EXAMPLE.COM" });
     expect(payload.sourceId).not.toBe("better-auth-user-1");
   });
 });
