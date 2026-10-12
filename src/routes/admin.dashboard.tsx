@@ -10,11 +10,13 @@ import {
 } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
+import { getAdminDashboard } from "@/lib/admin-read-model.server";
 import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/dashboard")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
+  loader: () => getAdminDashboard(),
   component: AdminDashboard,
 });
 const exceptions = [
@@ -43,6 +45,13 @@ const exceptions = [
   ["Masalah provider", "Readiness payment dan eSIM", "settings", Database, "warn"],
 ] as const;
 function AdminDashboard() {
+  const { counts, items } = Route.useLoaderData();
+  const countByHref = {
+    orders: counts.newOrders + counts.pendingOrders,
+    payments: counts.paymentExceptions,
+    provisioning: counts.failedProvisioning + counts.paidNotStarted,
+    settings: 0,
+  };
   return (
     <AdminShell
       title="Dashboard"
@@ -67,7 +76,9 @@ function AdminDashboard() {
                 <Icon className="size-4 text-[#6b6b72]" />
               </span>
               <StatusPill tone={tone}>
-                {tone === "danger" ? "Perlu ditinjau" : "Belum tersedia"}
+                {href === "settings"
+                  ? "Readiness"
+                  : `${countByHref[href as keyof typeof countByHref]} exception`}
               </StatusPill>
             </div>
             <h2 className="mt-4 text-sm font-semibold">{label}</h2>
@@ -77,6 +88,30 @@ function AdminDashboard() {
             </span>
           </Link>
         ))}
+      </section>
+      <section className="mt-6 rounded-2xl border border-[#e5e5ea] bg-white p-5">
+        <SectionHeading
+          title="Exception terbaru"
+          detail="Record terbaru dari database; detail sensitif tetap di route detail yang dilindungi."
+        />
+        {items.length === 0 ? (
+          <p className="mt-5 text-sm text-[#6b6b72]">Tidak ada exception aktif.</p>
+        ) : (
+          <div className="mt-4 divide-y">
+            {items.map((item) => (
+              <a
+                key={`${item.kind}-${item.id}`}
+                href={item.kind === "payment" ? "/admin/payments" : `/admin/orders/${item.id}`}
+                className="flex items-center justify-between gap-3 py-3 text-sm"
+              >
+                <span className="font-semibold text-[#0a67c7]">{item.publicOrderCode}</span>
+                <span className="text-[#6b6b72]">
+                  {item.kind} · {item.status}
+                </span>
+              </a>
+            ))}
+          </div>
+        )}
       </section>
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         <article className="rounded-2xl border border-[#e5e5ea] bg-white p-5">
