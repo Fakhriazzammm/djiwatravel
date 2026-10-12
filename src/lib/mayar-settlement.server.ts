@@ -136,6 +136,7 @@ async function settleLocalPayment(input: {
   amount: number;
   paidAt: string;
   gatewayPayload: TravelFinanceGatewayPayload;
+  financeError?: string;
 }) {
   return db.transaction(async (tx) => {
     const rows = await tx.execute(sql`select status, total_amount, payment_reference from public.customer_orders where id = ${input.orderId}::uuid for update`);
@@ -148,8 +149,8 @@ async function settleLocalPayment(input: {
     const existing = await tx.execute(sql`select id from public.payment_webhook_events where provider = 'mayar' and provider_event_id = ${input.eventId} limit 1`);
     if (existing.rows.length > 0) return { duplicate: true, status: order.status };
 
-    await tx.execute(sql`insert into public.payment_webhook_events(provider, provider_event_id, event_type, order_id, status, amount, currency_code, payload, processed_at)
-      values ('mayar', ${input.eventId}, 'payment.received', ${input.orderId}::uuid, 'PAID', ${input.amount}, 'IDR', ${JSON.stringify(input.gatewayPayload)}::jsonb, now())`);
+    await tx.execute(sql`insert into public.payment_webhook_events(provider, provider_event_id, event_type, order_id, status, amount, currency_code, payload, processed_at, processing_error)
+      values ('mayar', ${input.eventId}, 'payment.received', ${input.orderId}::uuid, 'PAID', ${input.amount}, 'IDR', ${JSON.stringify(input.gatewayPayload)}::jsonb, now(), ${input.financeError ?? null})`);
     if (SETTLED_STATUSES.has(order.status)) return { duplicate: true, status: order.status };
 
     await tx.execute(sql`update public.customer_orders set status = 'PAYMENT_CONFIRMED', payment_provider = 'mayar', payment_reference = coalesce(${input.invoiceId ?? ""}, payment_reference), paid_at = ${input.paidAt}::timestamptz, updated_at = now() where id = ${input.orderId}::uuid`);
@@ -178,7 +179,17 @@ export async function settleVerifiedTravelPayment(input: {
   customerName?: string | null;
 }) {
   const gatewayPayload = buildTravelFinanceGatewayPayload(input);
-  const gateway = await postTravelFinanceSettlement(gatewayPayload);
+  // Mayar is the source of truth that the money arrived, so the customer's order must settle even
+  // when the finance hand-off is unavailable. The failure is recorded on the settlement event
+  // instead of blocking the paid order (and its eSIM provisioning) forever.
+  let finance: TravelFinanceGatewayResponse | undefined;
+  let financeError: string | undefined;
+  try {
+    finance = await postTravelFinanceSettlement(gatewayPayload);
+  } catch (error) {
+    financeError = error instanceof Error ? error.message.slice(0, 200) : "finance_settlement_failed";
+    console.error("[travel] finance settlement unavailable, settling locally", { orderId: input.orderId, financeError });
+  }
   const localInput = {
     eventId: `mayar:${input.transactionId}`,
     orderId: input.orderId,
@@ -187,9 +198,10 @@ export async function settleVerifiedTravelPayment(input: {
     paidAt: new Date(input.paidAt).toISOString(),
     gatewayPayload,
     ...(input.invoiceId ? { invoiceId: input.invoiceId } : {}),
+    ...(financeError ? { financeError } : {}),
   };
   const local = await settleLocalPayment(localInput);
-  return { gateway, local };
+  return { ...(finance ? { finance } : {}), ...(financeError ? { financeError } : {}), local };
 }
 
 function verifiedPaidAt(transaction: MayarTransaction) {
@@ -212,14 +224,21 @@ export const verifyMayarPayment = createServerFn({ method: "POST" })
       .limit(1);
     const order = rows[0]?.order;
     if (!order) throw new Error("Pesanan tidak ditemukan");
-    assertPaymentNotExpired(order.status, order.paymentExpiresAt);
 
     const mayar = readMayarSnapshot(order.priceSnapshot);
-    if (!mayar.transactionId) return { status: order.status, settled: false, reason: "invoice_not_created" as const };
+    if (!mayar.transactionId) {
+      assertPaymentNotExpired(order.status, order.paymentExpiresAt);
+      return { status: order.status, settled: false, reason: "invoice_not_created" as const };
+    }
     if (SETTLED_STATUSES.has(order.status)) return { status: order.status, settled: true, provisioning: await startProvisioning(order.id) };
 
     const transaction = await fetchMayarTransaction(mayar.transactionId);
-    if (String(transaction.status ?? "").toLowerCase() !== "paid") return { status: order.status, settled: false, reason: "payment_pending" as const };
+    if (String(transaction.status ?? "").toLowerCase() !== "paid") {
+      // Only an unpaid order is bound by our own payment window: a payment Mayar already confirmed
+      // must settle instead of being refused because our local window ran out.
+      assertPaymentNotExpired(order.status, order.paymentExpiresAt);
+      return { status: order.status, settled: false, reason: "payment_pending" as const };
+    }
     const amount = Number(transaction.amount);
     const expectedAmount = Number(order.totalAmount);
     if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isSafeInteger(expectedAmount) || amount !== expectedAmount) return { status: order.status, settled: false, reason: "amount_mismatch" as const };
