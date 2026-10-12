@@ -56,7 +56,13 @@ type MayarPaymentIntent = {
   provider_invoice_id?: string | null;
   provider_transaction_id?: string | null;
   payment_url?: string | null;
+  attempt_count?: number | null;
+  next_reconcile_at?: string | Date | null;
 };
+
+export type MayarInvoiceListItem = { id?: string | null; description?: string | null };
+
+export type MayarInvoice = { invoiceId: string; transactionId: string; paymentUrl: string };
 
 /** Only a provider-rejected attempt without any provider identifiers is retryable. */
 export function canRetryMayarIntent(intent: MayarPaymentIntent) {
@@ -64,6 +70,74 @@ export function canRetryMayarIntent(intent: MayarPaymentIntent) {
     && !intent.provider_invoice_id
     && !intent.provider_transaction_id
     && !intent.payment_url;
+}
+
+/** Matches the provider invoice that belongs to this order, by its exact description. */
+export function findMayarInvoiceRecord(items: MayarInvoiceListItem[], description: string) {
+  const wanted = description.trim();
+  if (!wanted) return null;
+  return items.find((item) => typeof item.description === "string" && item.description.trim() === wanted) ?? null;
+}
+
+/**
+ * A dropped connection leaves the intent UNKNOWN with no provider identifier at all. Once the
+ * reconcile window has passed and the attempt budget is not exhausted the order can be checked
+ * against Mayar again — and, when Mayar really has no invoice for it, tried again.
+ */
+export function canReclaimStaleMayarIntent(intent: MayarPaymentIntent, nowMs: number, maxAttempts = 5) {
+  if (intent.status !== "UNKNOWN") return false;
+  if (intent.provider_invoice_id || intent.provider_transaction_id || intent.payment_url) return false;
+  const attempts = Number(intent.attempt_count ?? 0);
+  if (!Number.isFinite(attempts) || attempts >= maxAttempts) return false;
+  const next = intent.next_reconcile_at;
+  if (next === null || next === undefined) return true;
+  const nextMs = next instanceof Date ? next.getTime() : Date.parse(String(next));
+  if (!Number.isFinite(nextMs)) return true;
+  return nextMs <= nowMs;
+}
+
+/** Persists an invoice that already exists on Mayar's side (created earlier, or reconciled). */
+async function persistConfirmedMayarInvoice(orderId: string, invoice: MayarInvoice, currentSnapshot: Record<string, unknown>) {
+  await db.execute(sql`update public.payment_intents set status = 'PROVIDER_CONFIRMED', provider_invoice_id = ${invoice.invoiceId}, provider_transaction_id = ${invoice.transactionId}, payment_url = ${invoice.paymentUrl}, last_error = null, next_reconcile_at = null, updated_at = now() where order_id = ${orderId}::uuid and provider = 'mayar'`);
+  await db.update(customerOrders).set({ status: "PAYMENT_PENDING", paymentProvider: "mayar", paymentReference: invoice.invoiceId, priceSnapshot: { ...currentSnapshot, mayar: { invoiceId: invoice.invoiceId, transactionId: invoice.transactionId, paymentUrl: invoice.paymentUrl } } }).where(eq(customerOrders.id, orderId));
+}
+
+/**
+ * Mayar's create call is not idempotent, so before any retry we ask the provider whether an invoice
+ * already exists for this order. Invoices stay traceable through their exact description
+ * (`Djiwa Travel <publicOrderCode>`) and the detail endpoint returns the full payment URL.
+ * Every failure returns null on purpose: reconciliation must never break a checkout that could
+ * still succeed.
+ */
+async function findExistingMayarInvoice(baseUrl: string, apiKey: string, description: string): Promise<MayarInvoice | null> {
+  const headers = { authorization: "Bearer " + apiKey, accept: "application/json" };
+  try {
+    const listResponse = await fetch(`${baseUrl}/invoices?page=1&pageSize=100`, { headers, signal: AbortSignal.timeout(15_000) });
+    if (!listResponse.ok) {
+      console.warn("[mayar] reconcile list failed", { status: listResponse.status });
+      return null;
+    }
+    const listBody = (await listResponse.json().catch(() => ({}))) as { data?: MayarInvoiceListItem[] };
+    const match = findMayarInvoiceRecord(Array.isArray(listBody.data) ? listBody.data : [], description);
+    const invoiceId = String(match?.id ?? "");
+    if (!invoiceId) return null;
+    const detailResponse = await fetch(`${baseUrl}/invoices/${encodeURIComponent(invoiceId)}`, { headers, signal: AbortSignal.timeout(15_000) });
+    if (!detailResponse.ok) {
+      console.warn("[mayar] reconcile detail failed", { status: detailResponse.status, invoiceId });
+      return null;
+    }
+    const detailBody = (await detailResponse.json().catch(() => ({}))) as Record<string, unknown> & { data?: Record<string, unknown> };
+    const detail = (detailBody.data && typeof detailBody.data === "object" ? detailBody.data : detailBody) as Record<string, unknown>;
+    const paymentUrl = String(detail["paymentUrl"] ?? "");
+    if (!paymentUrl) {
+      console.warn("[mayar] reconcile without payment url", { invoiceId });
+      return null;
+    }
+    return { invoiceId, transactionId: String(detail["transactionId"] ?? ""), paymentUrl };
+  } catch (error) {
+    console.warn("[mayar] reconcile skipped", { message: error instanceof Error ? error.message : String(error) });
+    return null;
+  }
 }
 
 function configuredAppOrigin() {
@@ -81,17 +155,38 @@ async function createMayarInvoiceForOrder(
   currentSnapshot: Record<string, unknown>,
 ) {
   const { apiKey, baseUrl } = mayarConfig();
-  const intentRows = await db.execute(sql`select status, provider_invoice_id, provider_transaction_id, payment_url from public.payment_intents where order_id = ${orderId}::uuid and provider = 'mayar' limit 1`);
+  const intentRows = await db.execute(sql`select status, provider_invoice_id, provider_transaction_id, payment_url, attempt_count, next_reconcile_at from public.payment_intents where order_id = ${orderId}::uuid and provider = 'mayar' limit 1`);
   const intent = intentRows.rows[0] as MayarPaymentIntent | undefined;
   if (intent) {
     if (intent.payment_url && intent.provider_invoice_id) return { invoiceId: intent.provider_invoice_id, transactionId: intent.provider_transaction_id ?? "", paymentUrl: intent.payment_url };
-    if (!canRetryMayarIntent(intent)) throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
-    const retryClaim = await db.execute(sql`update public.payment_intents
+    // Mayar's create call is not idempotent, so adopt an invoice that already exists for this order
+    // (a response we never received, or Mayar's own "Duplicate request detected" guard) instead of
+    // creating a second one.
+    const existing = await findExistingMayarInvoice(baseUrl, apiKey, payload.description);
+    if (existing) {
+      await persistConfirmedMayarInvoice(orderId, existing, currentSnapshot);
+      console.info("[mayar] reconciled existing invoice", { orderId, invoiceId: existing.invoiceId });
+      return existing;
+    }
+    if (canRetryMayarIntent(intent)) {
+      const retryClaim = await db.execute(sql`update public.payment_intents
       set status = 'REQUESTING', attempt_count = attempt_count + 1, last_error = null, next_reconcile_at = null, updated_at = now()
       where order_id = ${orderId}::uuid and provider = 'mayar' and status = 'FAILED'
         and provider_invoice_id is null and provider_transaction_id is null and payment_url is null
       returning id`);
-    if (retryClaim.rows.length === 0) throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
+      if (retryClaim.rows.length === 0) throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
+    } else if (canReclaimStaleMayarIntent(intent, Date.now())) {
+      // Mayar has no invoice for this order and the reconcile window has passed, so the earlier
+      // attempt never reached the provider and a fresh one is safe.
+      const staleClaim = await db.execute(sql`update public.payment_intents
+      set status = 'REQUESTING', attempt_count = attempt_count + 1, last_error = null, next_reconcile_at = null, updated_at = now()
+      where order_id = ${orderId}::uuid and provider = 'mayar' and status = 'UNKNOWN'
+        and provider_invoice_id is null and provider_transaction_id is null and payment_url is null
+      returning id`);
+      if (staleClaim.rows.length === 0) throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
+    } else {
+      throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
+    }
   } else {
     const claim = await db.execute(sql`insert into public.payment_intents(order_id, provider, idempotency_key, status, amount, currency_code, attempt_count, updated_at)
       values (${orderId}::uuid, 'mayar', ${orderId}, 'REQUESTING', ${expectedAmount}, 'IDR', 1, now())
@@ -102,6 +197,11 @@ async function createMayarInvoiceForOrder(
   try {
     response = await fetch(`${baseUrl}/invoices/create`, { method: "POST", headers: { authorization: "Bearer " + apiKey, "content-type": "application/json" }, body: JSON.stringify(buildMayarInvoicePayload(payload)), signal: AbortSignal.timeout(15_000) });
   } catch (error) {
+    console.error("[mayar] create invoice failed", {
+      orderId,
+      message: error instanceof Error ? error.message : String(error),
+      causeCode: (error as { cause?: { code?: string } })?.cause?.code ?? null,
+    });
     await db.execute(sql`update public.payment_intents set status = 'UNKNOWN', last_error = ${error instanceof Error ? error.message.slice(0, 240) : "provider_timeout"}, next_reconcile_at = now() + interval '1 minute', updated_at = now() where order_id = ${orderId}::uuid and provider = 'mayar'`);
     throw new Error("Tagihan pembayaran belum terkonfirmasi; coba rekonsiliasi, bukan membuat tagihan baru");
   }
@@ -117,8 +217,7 @@ async function createMayarInvoiceForOrder(
     await db.execute(sql`update public.payment_intents set status = 'UNKNOWN', last_error = 'provider_response_incomplete', next_reconcile_at = now(), updated_at = now() where order_id = ${orderId}::uuid and provider = 'mayar'`);
     throw new Error("Respons invoice Mayar tidak lengkap");
   }
-  await db.execute(sql`update public.payment_intents set status = 'PROVIDER_CONFIRMED', provider_invoice_id = ${invoiceId}, provider_transaction_id = ${transactionId}, payment_url = ${paymentUrl}, updated_at = now() where order_id = ${orderId}::uuid and provider = 'mayar'`);
-  await db.update(customerOrders).set({ status: "PAYMENT_PENDING", paymentProvider: "mayar", paymentReference: invoiceId, priceSnapshot: { ...currentSnapshot, mayar: { invoiceId, transactionId, paymentUrl } } }).where(eq(customerOrders.id, orderId));
+  await persistConfirmedMayarInvoice(orderId, { invoiceId, transactionId, paymentUrl }, currentSnapshot);
   return { invoiceId, transactionId, paymentUrl };
 }
 
