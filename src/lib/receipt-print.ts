@@ -23,6 +23,10 @@ export type ReceiptDocument = {
   fileName: string;
 };
 
+export type ReceiptActionResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
 /** Cents-safe rupiah formatting for documents ("Rp15.000"). */
 export function formatReceiptAmount(amountIdr: number): string {
   const rounded = Math.max(0, Math.round(amountIdr));
@@ -51,80 +55,104 @@ export function safeReceiptFileName(code: string): string {
 }
 
 /** Opens the browser print dialog (the user can choose "Save as PDF" there). */
-export function printReceiptWindow(doc: Document = document): boolean {
+export function printReceiptWindow(doc?: Document): ReceiptActionResult {
+  const view = doc?.defaultView;
+  if (!view || typeof view.print !== "function") {
+    return { ok: false, message: "Browser ini tidak mendukung cetak. Gunakan Unduh PDF." };
+  }
+
   try {
-    doc.defaultView?.print();
-    return true;
+    view.print();
+    return { ok: true };
   } catch {
-    return false;
+    return { ok: false, message: "Dialog cetak diblokir browser. Gunakan Unduh PDF." };
   }
 }
 
 /** Builds and downloads the receipt as a real PDF file. */
-export async function downloadReceiptPdf(receipt: ReceiptDocument): Promise<boolean> {
-  const { jsPDF } = await import("jspdf");
-  const pdf = new jsPDF({ unit: "pt", format: "a4" });
-  const marginX = 48;
-  let y = 64;
+export async function downloadReceiptPdf(receipt: ReceiptDocument): Promise<ReceiptActionResult> {
+  try {
+    const { jsPDF } = await import("jspdf");
+    const pdf = new jsPDF({ unit: "pt", format: "a4" });
+    const marginX = 48;
+    let y = 64;
 
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(18);
-  pdf.text(receipt.brand, marginX, y);
-  y += 22;
-  pdf.setFontSize(11);
-  pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(110);
-  pdf.text(receipt.title, marginX, y);
-  y += 16;
-  pdf.text(`Kode pesanan: ${receipt.code}`, marginX, y);
-  y += 16;
-  pdf.text(`Status: ${receipt.statusLabel}`, marginX, y);
-  y += 26;
-
-  pdf.setDrawColor(200);
-  pdf.line(marginX, y, 547, y);
-  y += 22;
-
-  pdf.setTextColor(20);
-  for (const field of receipt.fields) {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.text(receipt.brand, marginX, y);
+    y += 22;
+    pdf.setFontSize(11);
     pdf.setFont("helvetica", "normal");
     pdf.setTextColor(110);
-    pdf.text(field.label, marginX, y);
-    pdf.setTextColor(20);
-    pdf.text(field.value, 547, y, { align: "right" });
-    y += 20;
-  }
+    pdf.text(receipt.title, marginX, y);
+    y += 16;
+    pdf.text(`Kode pesanan: ${receipt.code}`, marginX, y);
+    y += 16;
+    pdf.text(`Status: ${receipt.statusLabel}`, marginX, y);
+    y += 26;
 
-  if (receipt.lpa) {
-    y += 10;
     pdf.setDrawColor(200);
     pdf.line(marginX, y, 547, y);
-    y += 24;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Panduan pasang eSIM", marginX, y);
-    y += 18;
-    pdf.setFont("helvetica", "normal");
-    for (const step of receiptSteps()) {
-      const lines = pdf.splitTextToSize(step, 470) as string[];
-      pdf.text(lines, marginX + 6, y);
-      y += lines.length * 15 + 4;
+    y += 22;
+
+    pdf.setTextColor(20);
+    for (const field of receipt.fields) {
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(110);
+      pdf.text(field.label, marginX, y);
+      pdf.setTextColor(20);
+      pdf.text(field.value, 547, y, { align: "right" });
+      y += 20;
     }
-  }
 
-  y += 8;
-  pdf.setDrawColor(200);
-  pdf.line(marginX, y, 547, y);
-  y += 22;
-  pdf.setTextColor(110);
-  pdf.setFontSize(10);
-  for (const line of receipt.footer) {
-    const lines = pdf.splitTextToSize(line, 499) as string[];
-    pdf.text(lines, marginX, y);
-    y += lines.length * 13 + 2;
-  }
+    if (receipt.lpa) {
+      y += 10;
+      pdf.setDrawColor(200);
+      pdf.line(marginX, y, 547, y);
+      y += 24;
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Panduan pasang eSIM", marginX, y);
+      y += 18;
+      pdf.setFont("helvetica", "normal");
+      for (const step of receiptSteps()) {
+        const lines = pdf.splitTextToSize(step, 470) as string[];
+        pdf.text(lines, marginX + 6, y);
+        y += lines.length * 15 + 4;
+      }
+    }
 
-  pdf.save(receipt.fileName);
-  return true;
+    y += 8;
+    pdf.setDrawColor(200);
+    pdf.line(marginX, y, 547, y);
+    y += 22;
+    pdf.setTextColor(110);
+    pdf.setFontSize(10);
+    for (const line of receipt.footer) {
+      const lines = pdf.splitTextToSize(line, 499) as string[];
+      pdf.text(lines, marginX, y);
+      y += lines.length * 13 + 2;
+    }
+
+    if (typeof document === "undefined" || typeof window === "undefined") {
+      return { ok: false, message: "PDF hanya dapat diunduh dari browser." };
+    }
+    const createObjectUrl = window.URL?.createObjectURL;
+    if (typeof createObjectUrl !== "function") {
+      return { ok: false, message: "Browser tidak mendukung unduhan PDF. Gunakan tombol cetak." };
+    }
+    const url = createObjectUrl.call(window.URL, pdf.output("blob"));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = receipt.fileName;
+    anchor.rel = "noopener";
+    anchor.click();
+    if (typeof window.URL.revokeObjectURL === "function") {
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "PDF gagal dibuat atau diblokir browser. Gunakan tombol cetak." };
+  }
 }
 
 /** Installation steps repeated inside the PDF so the file is useful on its own. */

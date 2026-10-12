@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  downloadReceiptPdf,
   formatReceiptAmount,
   formatReceiptDate,
+  printReceiptWindow,
   receiptSteps,
   safeReceiptFileName,
 } from "@/lib/receipt-print";
@@ -60,5 +62,54 @@ describe("receipt paper edge", () => {
   it("uses a torn polygon so the paper looks cut, not rectangular", () => {
     expect(RECEIPT_CLIP_PATH.startsWith("polygon(0 0, 100% 0")).toBe(true);
     expect(RECEIPT_CLIP_PATH.endsWith(")")).toBe(true);
+  });
+});
+
+
+describe("receipt actions", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("reports unsupported printing instead of claiming success", () => {
+    const result = printReceiptWindow({ defaultView: null } as unknown as Document);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Browser ini tidak mendukung cetak. Gunakan Unduh PDF.",
+    });
+  });
+
+  it("reports a blocked print dialog", () => {
+    const print = vi.fn(() => { throw new Error("blocked"); });
+    const result = printReceiptWindow({ defaultView: { print } } as unknown as Document);
+
+    expect(print).toHaveBeenCalledOnce();
+    expect(result).toEqual({
+      ok: false,
+      message: "Dialog cetak diblokir browser. Gunakan Unduh PDF.",
+    });
+  });
+
+  it("reports an actionable fallback when PDF download APIs are unavailable", async () => {
+    Object.defineProperty(window.URL, "createObjectURL", {
+      configurable: true,
+      value: undefined,
+    });
+
+    const result = await downloadReceiptPdf({
+      brand: "Djiwa Travel",
+      title: "Struk pembayaran eSIM",
+      code: "ORDER123",
+      statusLabel: "Menunggu pembayaran",
+      fields: [{ label: "Total", value: "Rp15.000" }],
+      footer: [],
+      fileName: "struk-djiwa-travel-ORDER123.pdf",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Browser tidak mendukung unduhan PDF. Gunakan tombol cetak.",
+    });
   });
 });

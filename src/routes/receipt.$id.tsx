@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Page, btnRed, btnSoft } from "@/components/shell";
 import { ReceiptLine, ReceiptPrinter, ReceiptRule } from "@/components/receipt-printer";
 import { ManualDetails } from "@/components/esim-install";
-import { guestAccessTokenFor, refreshOrdersFromServer, useOrders, type Order } from "@/lib/orders";
+import { guestAccessTokenFor, hasGuestOrderAccess, refreshOrdersFromServer, useOrders, type Order } from "@/lib/orders";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import {
@@ -83,7 +83,7 @@ function ReceiptPage() {
     void refreshOrdersFromServer().catch(() => undefined);
   }, []);
 
-  const order = orders?.find((x) => x.id === id);
+  const order = hasGuestOrderAccess(id) ? orders?.find((x) => x.id === id) : undefined;
 
   // Mayar may settle shortly after the redirect. Poll only while pending, stop on
   // terminal state, and keep a manual retry available instead of looping forever.
@@ -156,9 +156,10 @@ function ReceiptPage() {
     setBusy(true);
     setNote("");
     try {
-      await downloadReceiptPdf(doc);
+      const result = await downloadReceiptPdf(doc);
+      if (!result.ok) setNote(result.message);
     } catch {
-      setNote("Gagal membuat PDF. Gunakan tombol cetak sebagai gantinya.");
+      setNote("PDF gagal dibuat atau diblokir browser. Gunakan tombol cetak.");
     } finally {
       setBusy(false);
     }
@@ -200,7 +201,10 @@ function ReceiptPage() {
             </button>
             <button
               type="button"
-              onClick={() => printReceiptWindow()}
+              onClick={() => {
+                const result = printReceiptWindow(document);
+                if (!result.ok) setNote(result.message);
+              }}
               className={`${btnSoft} inline-flex items-center justify-center gap-2`}
             >
               <Printer className="size-4" aria-hidden="true" />
