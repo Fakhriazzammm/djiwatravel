@@ -59,7 +59,7 @@ function AdminDashboard() {
     >
       <AdminPageState
         title="Read model operasional belum tersedia"
-        detail="Dashboard tidak mengarang angka. Hubungkan read model order, payment, provisioning, dan provider untuk menampilkan exception nyata."
+        detail="Dashboard hanya membaca tabel Travel yang tersedia. Payment exception berasal dari order dan payment webhook; data yang tidak tersedia tetap unknown."
       />
       <section
         className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5"

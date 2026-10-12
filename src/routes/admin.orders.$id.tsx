@@ -68,7 +68,7 @@ function AdminOrderDetail() {
         <article className="rounded-2xl border border-[#e5e5ea] bg-white p-5">
           <SectionHeading
             title="Lifecycle timeline"
-            detail="Status berasal dari order, payment intent/webhook, provisioning, dan reconciliation."
+            detail="Status berasal dari order, payment webhook, provisioning, dan provider webhook yang tersedia."
           />
           <ol className="mt-6 space-y-5">
             {milestones.map((step) => (
@@ -114,8 +114,8 @@ function AdminOrderDetail() {
               </dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt>Payment intent</dt>
-              <dd>{order.paymentIntent?.status ?? "none"}</dd>
+              <dt>Payment evidence</dt>
+              <dd>{order.payment.status ?? "unknown (no payment webhook evidence)"}</dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt>Provisioning</dt>
@@ -144,6 +144,30 @@ function AdminOrderDetail() {
             </div>
           ))}
         </div>
+      </section>
+      <section className="mt-4 rounded-2xl border border-[#e5e5ea] bg-white p-5">
+        <SectionHeading
+          title="Payment webhook evidence"
+          detail="Intent/reconciliation fields are not assumed; only Travel payment webhook records are shown."
+        />
+        {order.payment.webhooks.length === 0 ? (
+          <p className="mt-4 text-sm text-[#6b6b72]">No payment webhook evidence recorded.</p>
+        ) : (
+          <div className="mt-4 divide-y">
+            {order.payment.webhooks.map((event) => (
+              <div key={`${event.eventId}-${event.createdAt}`} className="py-3 text-sm">
+                <p className="font-semibold">
+                  {event.eventType ?? "event unknown"} · {event.status ?? "status unknown"}
+                </p>
+                <p className="mt-1 text-xs text-[#6b6b72]">
+                  {event.currencyCode ?? "currency unknown"}{" "}
+                  {event.amount?.toLocaleString("id-ID") ?? "amount unknown"}
+                  {event.processingError ? ` · ${event.processingError}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </AdminShell>
   );

@@ -21,7 +21,7 @@ function AdminPayments() {
         <div className="flex items-center justify-between gap-3">
           <SectionHeading
             title="Payment exceptions"
-            detail="Berasal dari payment intent dan webhook server-side; Mark as Paid tidak tersedia."
+            detail="Berasal dari order dan payment webhook server-side; detail yang tidak tersedia tetap unknown. Mark as Paid tidak tersedia."
           />
           <StatusPill>{payments.length} exception</StatusPill>
         </div>
@@ -39,8 +39,9 @@ function AdminPayments() {
                     {payment.publicOrderCode} · {payment.status}
                   </p>
                   <p className="mt-1 text-xs text-[#6b6b72]">
-                    {payment.currencyCode} {payment.amount.toLocaleString("id-ID")} · attempts{" "}
-                    {payment.attemptCount}
+                    {payment.currencyCode ?? "Currency unknown"}{" "}
+                    {payment.amount?.toLocaleString("id-ID") ?? "amount unknown"} · attempts{" "}
+                    {payment.attemptCount ?? "unknown"}
                   </p>
                   {payment.lastError && (
                     <p className="mt-1 text-xs text-[#b00020]">{payment.lastError}</p>

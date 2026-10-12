@@ -18,6 +18,13 @@ function number(row: Row, key: string): number {
   return typeof value === "number" ? value : Number(value ?? 0);
 }
 
+function nullableNumber(row: Row, key: string): number | null {
+  const value = row[key];
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function mask(value: string | null): string | null {
   if (!value) return null;
   if (value.includes("@")) {
@@ -78,26 +85,36 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
     const row = orderResult.rows[0] as Row | undefined;
     if (!row) return null;
 
-    const [itemsResult, paymentResult, webhookResult, reconciliationResult] = await Promise.all([
+    const [itemsResult, webhookResult, providerWebhookResult] = await Promise.all([
       db.execute(sql`
         select package_name_snapshot, provider_package_code, quantity, line_total
           from public.customer_order_items where order_id = ${data.id}::uuid order by id
       `),
       db.execute(sql`
-        select status, provider_invoice_id, provider_transaction_id, amount,
-               attempt_count, next_reconcile_at, created_at, updated_at
-          from public.payment_intents where order_id = ${data.id}::uuid order by created_at desc limit 1
-      `),
-      db.execute(sql`
-        select provider_event_id, event_type, status, amount, processed_at,
-               processing_error, created_at
+        select provider_event_id, event_type, status, amount, currency_code,
+               processed_at, processing_error, created_at
           from public.payment_webhook_events where order_id = ${data.id}::uuid order by created_at desc limit 20
       `),
       db.execute(sql`
-        select previous_status, next_status, attempts, error_message, created_at
-          from public.esim_reconciliation_runs where order_id = ${data.id}::uuid order by created_at desc limit 20
+        select notify_id, notify_type, processed_at, processing_error, provider_event_at, synced_at
+          from public.provider_webhook_events
+         where notify_id in (
+           select provider_order_no from public.esim_provisioning_orders where order_id = ${data.id}::uuid
+         )
+         order by coalesce(provider_event_at, synced_at) desc nulls last limit 20
       `),
     ]);
+
+    const paymentWebhooks = (webhookResult.rows as Row[]).map((event) => ({
+      eventId: text(event, "provider_event_id"),
+      eventType: text(event, "event_type"),
+      status: text(event, "status"),
+      amount: nullableNumber(event, "amount"),
+      currencyCode: text(event, "currency_code"),
+      processedAt: text(event, "processed_at"),
+      processingError: text(event, "processing_error"),
+      createdAt: text(event, "created_at"),
+    }));
 
     return {
       id: text(row, "id")!,
@@ -127,33 +144,20 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
         quantity: number(item, "quantity"),
         lineTotal: number(item, "line_total"),
       })),
-      paymentIntent: (paymentResult.rows[0] as Row | undefined)
-        ? {
-            status: text(paymentResult.rows[0] as Row, "status"),
-            invoiceId: text(paymentResult.rows[0] as Row, "provider_invoice_id"),
-            transactionId: text(paymentResult.rows[0] as Row, "provider_transaction_id"),
-            amount: number(paymentResult.rows[0] as Row, "amount"),
-            attemptCount: number(paymentResult.rows[0] as Row, "attempt_count"),
-            nextReconcileAt: text(paymentResult.rows[0] as Row, "next_reconcile_at"),
-            createdAt: text(paymentResult.rows[0] as Row, "created_at"),
-            updatedAt: text(paymentResult.rows[0] as Row, "updated_at"),
-          }
-        : null,
-      paymentWebhooks: (webhookResult.rows as Row[]).map((event) => ({
-        eventId: text(event, "provider_event_id"),
-        eventType: text(event, "event_type"),
-        status: text(event, "status"),
-        amount: number(event, "amount"),
+      payment: {
+        status: paymentWebhooks[0]?.status ?? (text(row, "paid_at") ? "PAID" : null),
+        provider: text(row, "payment_provider"),
+        reference: text(row, "payment_reference"),
+        paidAt: text(row, "paid_at"),
+        webhooks: paymentWebhooks,
+      },
+      providerWebhooks: (providerWebhookResult.rows as Row[]).map((event) => ({
+        notifyId: text(event, "notify_id"),
+        notifyType: text(event, "notify_type"),
         processedAt: text(event, "processed_at"),
         processingError: text(event, "processing_error"),
-        createdAt: text(event, "created_at"),
-      })),
-      reconciliations: (reconciliationResult.rows as Row[]).map((event) => ({
-        previousStatus: text(event, "previous_status"),
-        nextStatus: text(event, "next_status"),
-        attempts: number(event, "attempts"),
-        errorMessage: text(event, "error_message"),
-        createdAt: text(event, "created_at"),
+        providerEventAt: text(event, "provider_event_at"),
+        syncedAt: text(event, "synced_at"),
       })),
     };
   });
@@ -161,21 +165,40 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
 export const getAdminPayments = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
   const result = await db.execute(sql`
-    select i.id, i.order_id, o.public_order_code, i.status, i.amount, i.currency_code,
-           i.attempt_count, i.next_reconcile_at, i.last_error, i.created_at, i.updated_at
-      from public.payment_intents i join public.customer_orders o on o.id = i.order_id
-     where i.status in ('UNKNOWN','FAILED','EXPIRED') or i.next_reconcile_at <= now()
-        or exists (select 1 from public.payment_webhook_events w where w.order_id = i.order_id and (w.processing_error is not null or w.processed_at is null))
-     order by i.updated_at desc limit ${LIMIT}
+    with payment_exceptions as (
+      select w.id::text as id, w.order_id, o.public_order_code,
+             w.status, w.amount, w.currency_code, w.processing_error as last_error,
+             w.created_at, w.created_at as updated_at
+        from public.payment_webhook_events w
+        join public.customer_orders o on o.id = w.order_id
+       where w.processing_error is not null
+          or w.processed_at is null
+          or w.status in ('FAILED', 'EXPIRED')
+      union all
+      select ('pending:' || o.id::text) as id, o.id as order_id, o.public_order_code,
+             o.status, o.total_amount as amount, o.currency_code,
+             null::text as last_error, o.updated_at as created_at, o.updated_at
+        from public.customer_orders o
+       where o.status = 'PAYMENT_PENDING'
+         and not exists (
+           select 1 from public.payment_webhook_events w
+            where w.order_id = o.id and w.status = 'PAID'
+         )
+    )
+    select id, order_id, public_order_code, status, amount, currency_code,
+           null::int as attempt_count, null::timestamptz as next_reconcile_at,
+           last_error, created_at, updated_at
+      from payment_exceptions
+     order by updated_at desc limit ${LIMIT}
   `);
   return (result.rows as Row[]).map((row) => ({
     id: text(row, "id")!,
     orderId: text(row, "order_id")!,
     publicOrderCode: text(row, "public_order_code")!,
     status: text(row, "status")!,
-    amount: number(row, "amount"),
-    currencyCode: text(row, "currency_code")!,
-    attemptCount: number(row, "attempt_count"),
+    amount: nullableNumber(row, "amount"),
+    currencyCode: text(row, "currency_code"),
+    attemptCount: nullableNumber(row, "attempt_count"),
     nextReconcileAt: text(row, "next_reconcile_at"),
     lastError: text(row, "last_error"),
     createdAt: text(row, "created_at")!,
@@ -220,17 +243,26 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
       from public.customer_orders
   `);
   const [paymentResult, exceptionResult] = await Promise.all([
-    db.execute(
-      sql`select count(*)::int as count from public.payment_intents where status in ('UNKNOWN','FAILED','EXPIRED') or next_reconcile_at <= now()`,
-    ),
     db.execute(sql`
-      select o.id, o.public_order_code, o.status, o.updated_at, 'order' as kind
-        from public.customer_orders o
-       where o.status in ('ORDER_CREATED','PAYMENT_PENDING','PAYMENT_CONFIRMED','PROVISIONING_FAILED')
-      union all
-      select i.order_id as id, o.public_order_code, i.status, i.updated_at, 'payment' as kind
-        from public.payment_intents i join public.customer_orders o on o.id = i.order_id
-       where i.status in ('UNKNOWN','FAILED','EXPIRED') or i.next_reconcile_at <= now()
+      select count(*)::int as count
+        from public.payment_webhook_events w
+       where w.processing_error is not null
+          or w.processed_at is null
+          or w.status in ('FAILED', 'EXPIRED')
+    `),
+    db.execute(sql`
+      with exceptions as (
+        select o.id, o.public_order_code, o.status, o.updated_at, 'order' as kind
+          from public.customer_orders o
+         where o.status in ('ORDER_CREATED','PAYMENT_PENDING','PAYMENT_CONFIRMED','PROVISIONING_FAILED')
+        union all
+        select w.order_id as id, o.public_order_code, w.status, w.created_at as updated_at, 'payment' as kind
+          from public.payment_webhook_events w
+          join public.customer_orders o on o.id = w.order_id
+         where w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED')
+      )
+      select id, public_order_code, status, kind, updated_at
+        from exceptions
        order by updated_at desc limit ${LIMIT}
     `),
   ]);
