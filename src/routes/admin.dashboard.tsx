@@ -26,6 +26,8 @@ export const Route = createFileRoute("/admin/dashboard")({
 });
 
 type Period = "daily" | "weekly" | "monthly";
+/** Display-only alert threshold: the credit at which provisioning could start failing. */
+const LOW_BALANCE_USD = 5;
 function AdminDashboard() {
   const data = Route.useLoaderData();
   const router = useRouter();
@@ -40,6 +42,15 @@ function AdminDashboard() {
   const formatAmount = (value: number | null) =>
     value === null ? "—" : privateMode ? "••••" : `Rp${value.toLocaleString("id-ID")}`;
   const actions = data.items.slice(0, 5);
+  const providerBalance = data.providerBalance;
+  const balanceLabel =
+    providerBalance.state !== "ok" || providerBalance.usd === null
+      ? "—"
+      : privateMode
+        ? "••••"
+        : `US$${providerBalance.usd.toFixed(2)}`;
+  const balanceIsLow =
+    providerBalance.state === "ok" && providerBalance.usd !== null && providerBalance.usd < LOW_BALANCE_USD;
 
   const refresh = async () => {
     setRefreshing(true);
@@ -113,6 +124,44 @@ function AdminDashboard() {
         <article className="rounded-xl border border-[#e5e5ea] bg-white p-3">
           <p className="text-xs text-[#6b6b72]">Gross IDR paid</p>
           <p className="mt-2 text-xl font-bold">{formatAmount(data.counts.grossIdr)}</p>
+        </article>
+      </section>
+
+      <section className="mt-4">
+        <article className="rounded-xl border border-[#e5e5ea] bg-white p-4">
+          <SectionHeading
+            title="Saldo provider eSIM"
+            detail="Kredit tersisa di eSIM Access. Kalau habis, order pelanggan gagal di tahap provisioning."
+          />
+          {providerBalance.state === "ok" ? (
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-2xl font-bold">{balanceLabel}</p>
+                <p className="mt-1 text-xs text-[#6b6b72]">
+                  ≈ {formatAmount(providerBalance.idrReference)} · kurs referensi Rp
+                  {providerBalance.fxRateIdr.toLocaleString("id-ID")}/US$
+                </p>
+              </div>
+              <div className="text-right">
+                <StatusPill tone={balanceIsLow ? "warn" : "good"}>
+                  {privateMode ? "••••" : balanceIsLow ? "Perlu top-up" : "Sehat"}
+                </StatusPill>
+                <p className="mt-2 text-[10px] text-[#8a8a91]">
+                  Diambil {formatAdminDateTime(providerBalance.fetchedAt)}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 flex items-start gap-2 text-sm text-[#6b6b72]">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#b25e00]" />
+              <span>
+                Saldo provider tidak bisa dibaca sekarang
+                {providerBalance.error ? ` (${providerBalance.error})` : ""}. Cek kredensial eSIM
+                Access bila berulang; order yang sudah dibayar tetap diproses ulang oleh timer
+                provisioning.
+              </span>
+            </div>
+          )}
         </article>
       </section>
 

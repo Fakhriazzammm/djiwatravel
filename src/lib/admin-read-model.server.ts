@@ -5,8 +5,20 @@ import { db } from "@/db/client.server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { classifyAdminError, maskReference, toAdminCustomer } from "@/lib/admin-display";
 import { normalizePaymentQuery, type PaymentQuery } from "@/lib/admin-metrics";
+import { RESELLER_CONFIG } from "@/lib/reseller-config";
+import { fetchEsimAccessBalanceServer, type ProviderBalance } from "@/lib/esim-access";
 
 const LIMIT = 50;
+
+/** Provider credit as shown to admins: never includes keys, only the balance and a reference rate. */
+export type ProviderBalanceView = {
+  state: "ok" | "unavailable";
+  usd: number | null;
+  idrReference: number | null;
+  fxRateIdr: number;
+  fetchedAt: string | null;
+  error: string | null;
+};
 
 // Browser display values must come from this allowlist, never provider input.
 function paymentProviderLabel(row: Row): "Mayar" | null {
@@ -372,5 +384,30 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         exceptionAt: text(item, "exception_at")!,
         customer: toAdminCustomer(text(item, "customer_email"), text(item, "customer_whatsapp")),
       })),
+      providerBalance: await loadAdminProviderBalance(RESELLER_CONFIG.usdToIdr),
     };
   });
+
+/** Provider credit shown on the dashboard; never throws, so the dashboard still renders. */
+async function loadAdminProviderBalance(fxRateIdr: number): Promise<ProviderBalanceView> {
+  try {
+    const balance = await fetchEsimAccessBalanceServer();
+    return {
+      state: "ok",
+      usd: balance.usd,
+      idrReference: balance.idrReference,
+      fxRateIdr: balance.fxRateIdr,
+      fetchedAt: balance.fetchedAt,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      state: "unavailable",
+      usd: null,
+      idrReference: null,
+      fxRateIdr,
+      fetchedAt: null,
+      error: classifyAdminError(error instanceof Error ? error.message : String(error)),
+    };
+  }
+}

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createHmac, randomUUID } from "node:crypto";
 import { z } from "zod";
+import { RESELLER_CONFIG } from "./reseller-config";
 
 const BASE_URL = "https://api.esimaccess.com";
 const querySchema = z
@@ -105,4 +106,31 @@ export async function fetchEsimAccessPackagePrices(packageCodes: string[]): Prom
     }
   }
   return prices;
+}
+
+/** Provider balance in 1/10,000 USD units (193000 = US$19.30). */
+export type ProviderBalance = {
+  balanceUnits: number;
+  usd: number;
+  idrReference: number;
+  fxRateIdr: number;
+  fetchedAt: string;
+};
+
+export async function fetchEsimAccessBalanceServer(): Promise<ProviderBalance> {
+  const payload = await request("/api/v1/open/balance/query", {});
+  const obj = (payload.obj ?? payload.data) as { balance?: unknown } | undefined;
+  const balanceUnits = Number(obj?.balance);
+  if (!Number.isFinite(balanceUnits) || balanceUnits < 0) {
+    throw new Error("Saldo provider tidak terbaca");
+  }
+  const usd = balanceUnits / 10_000;
+  return {
+    balanceUnits,
+    usd,
+    // Indicative only: the reseller FX config is the reference, not an accounting rate.
+    idrReference: Math.round(usd * RESELLER_CONFIG.usdToIdr),
+    fxRateIdr: RESELLER_CONFIG.usdToIdr,
+    fetchedAt: new Date().toISOString(),
+  };
 }
