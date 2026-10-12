@@ -6,7 +6,15 @@ import { adminNavigation } from "@/components/admin-navigation";
 
 const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "utf8");
 
-const legacyRoutes = ["analytics", "customers", "refunds", "support", "catalog"];
+const legacyRoutes = [
+  "analytics",
+  "customers",
+  "refunds",
+  "support",
+  "catalog",
+  "index",
+  "overview",
+];
 
 describe("simplified admin P0 scope", () => {
   it("keeps exactly five visible destinations", () => {
@@ -43,10 +51,17 @@ describe("simplified admin P0 scope", () => {
     const source = read("lib/admin-read-model.server.ts");
     expect(source).not.toContain("payment_intents");
     expect(source).not.toContain("esim_reconciliation_runs");
+    expect(source).not.toContain("guest_order_access");
     expect(source).toContain("payment_webhook_events");
     expect(source).toContain("provider_webhook_events");
     expect(source).toContain("null::int as attempt_count");
     expect(source).toContain("null::timestamptz as next_reconcile_at");
+  });
+
+  it("describes successful dashboard data as realtime database data", () => {
+    const source = read("routes/admin.dashboard.tsx");
+    expect(source).toContain("Data realtime dari database Travel");
+    expect(source).not.toContain("Read model operasional belum tersedia");
   });
 
   it("does not put server-only database/provider modules in admin route source", () => {

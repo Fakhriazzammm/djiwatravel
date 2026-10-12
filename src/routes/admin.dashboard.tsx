@@ -11,7 +11,7 @@ import {
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminDashboard } from "@/lib/admin-read-model.server";
-import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
+import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/dashboard")({
   beforeLoad: () => requireAdmin(),
@@ -57,10 +57,13 @@ function AdminDashboard() {
       title="Dashboard"
       subtitle="Hanya menampilkan hal yang perlu ditindaklanjuti operator."
     >
-      <AdminPageState
-        title="Read model operasional belum tersedia"
-        detail="Dashboard hanya membaca tabel Travel yang tersedia. Payment exception berasal dari order dan payment webhook; data yang tidak tersedia tetap unknown."
-      />
+      <div className="rounded-2xl border border-[#d8e8f8] bg-[#f5faff] p-5">
+        <p className="font-semibold">Data realtime dari database Travel</p>
+        <p className="mt-1 text-sm leading-6 text-[#6b6b72]">
+          Dashboard membaca order dan payment webhook yang tersedia. Data yang tidak tersedia tetap
+          unknown.
+        </p>
+      </div>
       <section
         className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5"
         aria-label="Exception operasional"
