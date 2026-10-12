@@ -25,24 +25,13 @@ function nullableNumber(row: Row, key: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function mask(value: string | null): string | null {
-  if (!value) return null;
-  if (value.includes("@")) {
-    const [local, domain] = value.split("@", 2);
-    return `${(local ?? "").slice(0, 1)}***@${domain ?? ""}`;
-  }
-  return `${value.slice(0, 3)}***${value.slice(-2)}`;
-}
-
 export const getAdminOrders = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
   const result = await db.execute(sql`
     select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
            o.payment_provider, o.payment_reference, o.created_at, o.updated_at,
-           a.email as customer_email, a.whatsapp as customer_whatsapp,
            p.status as provisioning_status, p.provider_status
       from public.customer_orders o
-      left join public.guest_order_access a on a.order_id = o.id
       left join public.esim_provisioning_orders p on p.order_id = o.id
      order by o.created_at desc
      limit ${LIMIT}
@@ -57,7 +46,7 @@ export const getAdminOrders = createServerFn({ method: "GET" }).handler(async ()
     paymentReference: text(row, "payment_reference"),
     createdAt: text(row, "created_at")!,
     updatedAt: text(row, "updated_at")!,
-    customer: mask(text(row, "customer_email")) ?? mask(text(row, "customer_whatsapp")),
+    customer: null,
     provisioningStatus: text(row, "provisioning_status"),
     providerStatus: text(row, "provider_status"),
   }));
@@ -71,13 +60,11 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
       select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
              o.payment_provider, o.payment_reference, o.paid_at, o.created_at, o.updated_at,
              o.payment_expires_at, o.esim_activation_expires_at,
-             a.email as customer_email, a.whatsapp as customer_whatsapp,
              p.status as provisioning_status, p.provider_status,
              p.provider_order_no, p.attempt_count, p.provisioning_attempts,
              p.last_provisioning_error, p.created_at as provisioning_created_at,
              p.updated_at as provisioning_updated_at
         from public.customer_orders o
-        left join public.guest_order_access a on a.order_id = o.id
         left join public.esim_provisioning_orders p on p.order_id = o.id
        where o.id = ${data.id}::uuid
        limit 1
@@ -129,7 +116,7 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
       updatedAt: text(row, "updated_at")!,
       paymentExpiresAt: text(row, "payment_expires_at"),
       esimActivationExpiresAt: text(row, "esim_activation_expires_at"),
-      customer: mask(text(row, "customer_email")) ?? mask(text(row, "customer_whatsapp")),
+      customer: null,
       provisioning: {
         status: text(row, "provisioning_status"),
         providerStatus: text(row, "provider_status"),
