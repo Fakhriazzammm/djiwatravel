@@ -45,5 +45,23 @@ export function humanizeAdminStatus(status: string | null | undefined): string {
 export function formatAdminDateTime(value: string | null | undefined): string {
   if (!value) return "Waktu belum tersedia";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Waktu belum tersedia" : date.toLocaleString("id-ID");
+  return Number.isNaN(date.getTime())
+    ? "Waktu belum tersedia"
+    : date.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+}
+
+export function maskSensitiveValue(value: string | number | null | undefined, hidden: boolean): string {
+  if (!hidden) return value === null || value === undefined ? "—" : String(value);
+  return "••••";
+}
+
+export function ageFrom(value: string | null | undefined, now = Date.now()): string {
+  if (!value) return "Usia tidak tersedia";
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "Usia tidak tersedia";
+  const minutes = Math.max(0, Math.floor((now - timestamp) / 60000));
+  if (minutes < 60) return `${minutes} mnt`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam`;
+  return `${Math.floor(hours / 24)} hari`;
 }

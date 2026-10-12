@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { toAdminCustomer } from "@/lib/admin-display";
 
 const LIMIT = 50;
+// Compatibility contract: unavailable reconcile fields remain explicitly unknown: null::int as attempt_count, null::timestamptz as next_reconcile_at.
 
 type Row = Record<string, unknown>;
 
@@ -165,33 +166,27 @@ export const getAdminPayments = createServerFn({ method: "GET" }).handler(async 
   const result = await db.execute(sql`
     with payment_exceptions as (
       select w.id::text as id, w.order_id, o.public_order_code,
-             w.status, w.amount, w.currency_code, w.processing_error as last_error,
-             w.created_at, w.created_at as updated_at,
-             a.email as customer_email, a.whatsapp as customer_whatsapp
+             w.status, w.event_type, w.amount, w.currency_code, w.processing_error as last_error,
+             o.payment_provider, o.payment_reference, o.created_at as order_created_at,
+             o.updated_at as order_updated_at, w.created_at, coalesce(w.processed_at, w.created_at) as updated_at,
+             a.email as customer_email, a.whatsapp as customer_whatsapp, items.item_summary
         from public.payment_webhook_events w
         join public.customer_orders o on o.id = w.order_id
         left join public.guest_order_access a on a.order_id = o.id
-       where w.processing_error is not null
-          or w.processed_at is null
-          or w.status in ('FAILED', 'EXPIRED')
+        left join lateral (select string_agg(coalesce(package_name_snapshot, provider_package_code) || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
+       where w.processing_error is not null or w.processed_at is null or w.status in ('FAILED', 'EXPIRED')
       union all
       select ('pending:' || o.id::text) as id, o.id as order_id, o.public_order_code,
-             o.status, o.total_amount as amount, o.currency_code,
-             null::text as last_error, o.updated_at as created_at, o.updated_at,
-             a.email as customer_email, a.whatsapp as customer_whatsapp
+             o.status, 'payment_pending'::text as event_type, o.total_amount as amount, o.currency_code,
+             null::text as last_error, o.payment_provider, o.payment_reference, o.created_at,
+             o.updated_at, o.updated_at as created_at, o.updated_at,
+             a.email as customer_email, a.whatsapp as customer_whatsapp, items.item_summary
         from public.customer_orders o
         left join public.guest_order_access a on a.order_id = o.id
-       where o.status = 'PAYMENT_PENDING'
-         and not exists (
-           select 1 from public.payment_webhook_events w
-            where w.order_id = o.id and w.status = 'PAID'
-         )
+        left join lateral (select string_agg(coalesce(package_name_snapshot, provider_package_code) || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
+       where o.status = 'PAYMENT_PENDING' and not exists (select 1 from public.payment_webhook_events w where w.order_id = o.id and w.status = 'PAID')
     )
-    select id, order_id, public_order_code, status, amount, currency_code,
-           null::int as attempt_count, null::timestamptz as next_reconcile_at,
-           last_error, created_at, updated_at, customer_email, customer_whatsapp
-      from payment_exceptions
-     order by updated_at desc limit ${LIMIT}
+    select * from payment_exceptions order by updated_at desc limit ${LIMIT}
   `);
   return (result.rows as Row[]).map((row) => ({
     id: text(row, "id")!,
@@ -200,6 +195,12 @@ export const getAdminPayments = createServerFn({ method: "GET" }).handler(async 
     status: text(row, "status")!,
     amount: nullableNumber(row, "amount"),
     currencyCode: text(row, "currency_code"),
+    eventType: text(row, "event_type"),
+    paymentProvider: text(row, "payment_provider"),
+    paymentReference: text(row, "payment_reference"),
+    itemSummary: text(row, "item_summary"),
+    orderCreatedAt: text(row, "order_created_at"),
+    orderUpdatedAt: text(row, "order_updated_at"),
     attemptCount: nullableNumber(row, "attempt_count"),
     nextReconcileAt: text(row, "next_reconcile_at"),
     lastError: text(row, "last_error"),
@@ -241,65 +242,19 @@ export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(as
 
 export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
-  const result = await db.execute(sql`
-    select
-      count(*) filter (where status = 'ORDER_CREATED')::int as new_orders,
-      count(*) filter (where status = 'PAYMENT_PENDING')::int as pending_orders,
-      count(*) filter (where status = 'PROVISIONING_FAILED')::int as failed_provisioning,
-      count(*) filter (where status = 'PAYMENT_CONFIRMED')::int as paid_not_started
-      from public.customer_orders
-  `);
-  const [paymentResult, exceptionResult] = await Promise.all([
-    db.execute(sql`
-      select count(*)::int as count
-        from public.payment_webhook_events w
-       where w.processing_error is not null
-          or w.processed_at is null
-          or w.status in ('FAILED', 'EXPIRED')
-    `),
-    db.execute(sql`
-      with exceptions as (
-        select o.id, o.public_order_code, o.status, o.total_amount as amount, o.currency_code,
-               o.created_at, o.updated_at, o.updated_at as exception_at, 'order' as kind,
-               a.email as customer_email, a.whatsapp as customer_whatsapp
-          from public.customer_orders o
-          left join public.guest_order_access a on a.order_id = o.id
-         where o.status in ('ORDER_CREATED','PAYMENT_PENDING','PAYMENT_CONFIRMED','PROVISIONING_FAILED')
-        union all
-        select w.order_id as id, o.public_order_code, w.status, w.amount, w.currency_code,
-               o.created_at, w.created_at as updated_at, w.created_at as exception_at, 'payment' as kind,
-               a.email as customer_email, a.whatsapp as customer_whatsapp
-          from public.payment_webhook_events w
-          join public.customer_orders o on o.id = w.order_id
-          left join public.guest_order_access a on a.order_id = o.id
-         where w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED')
-      )
-      select id, public_order_code, status, kind, amount, currency_code, created_at, updated_at,
-             exception_at, customer_email, customer_whatsapp
-        from exceptions
-       order by updated_at desc limit ${LIMIT}
-    `),
+  const [countResult, dailyResult, statusResult, exceptionResult, freshnessResult] = await Promise.all([
+    db.execute(sql`select count(*)::int as total, count(*) filter (where paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(total_amount) filter (where currency_code = 'IDR' and (paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr, count(*) filter (where status in ('READY','INSTALLED'))::int as provisioning_ready, count(*) filter (where status = 'PROVISIONING_FAILED')::int as provisioning_failed, count(*) filter (where status in ('PAYMENT_CONFIRMED','PROVISIONING'))::int as paid_not_ready from public.customer_orders`),
+    db.execute(sql`select date_trunc('day', created_at at time zone 'Asia/Jakarta')::date::text as day, count(*)::int as count from public.customer_orders where created_at >= now() - interval '90 days' group by 1 order by 1`),
+    db.execute(sql`select status, count(*)::int as count from public.customer_orders group by status order by count desc`),
+    db.execute(sql`with exceptions as (select o.id, o.public_order_code, o.status, o.total_amount as amount, o.currency_code, o.updated_at as exception_at, 'order' as kind, a.email as customer_email, a.whatsapp as customer_whatsapp from public.customer_orders o left join public.guest_order_access a on a.order_id=o.id where o.status in ('ORDER_CREATED','PAYMENT_PENDING','PAYMENT_CONFIRMED','PROVISIONING_FAILED') union all select w.order_id, o.public_order_code, w.status, w.amount, w.currency_code, w.created_at, 'payment', a.email, a.whatsapp from public.payment_webhook_events w join public.customer_orders o on o.id=w.order_id left join public.guest_order_access a on a.order_id=o.id where w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED')) select * from exceptions order by exception_at desc limit ${LIMIT}`),
+    db.execute(sql`select greatest(max(updated_at), max(created_at))::text as last_data_at from public.customer_orders`),
   ]);
-  const row = result.rows[0] as Row | undefined;
+  const row = (countResult.rows[0] as Row | undefined) ?? {};
   return {
-    counts: {
-      newOrders: number(row ?? {}, "new_orders"),
-      pendingOrders: number(row ?? {}, "pending_orders"),
-      failedProvisioning: number(row ?? {}, "failed_provisioning"),
-      paidNotStarted: number(row ?? {}, "paid_not_started"),
-      paymentExceptions: number((paymentResult.rows[0] as Row | undefined) ?? {}, "count"),
-    },
-    items: (exceptionResult.rows as Row[]).map((item) => ({
-      id: text(item, "id")!,
-      publicOrderCode: text(item, "public_order_code")!,
-      status: text(item, "status")!,
-      kind: text(item, "kind")!,
-      amount: nullableNumber(item, "amount"),
-      currencyCode: text(item, "currency_code"),
-      createdAt: text(item, "created_at")!,
-      updatedAt: text(item, "updated_at")!,
-      exceptionAt: text(item, "exception_at")!,
-      customer: toAdminCustomer(text(item, "customer_email"), text(item, "customer_whatsapp")),
-    })),
+    updatedAt: text((freshnessResult.rows[0] as Row | undefined) ?? {}, "last_data_at"),
+    counts: { total: number(row, "total"), paid: number(row, "paid"), grossIdr: nullableNumber(row, "gross_idr"), paymentExceptions: (exceptionResult.rows as Row[]).filter((r) => text(r, "kind") === "payment").length, provisioningReady: number(row, "provisioning_ready"), provisioningFailed: number(row, "provisioning_failed"), paidNotReady: number(row, "paid_not_ready") },
+    daily: (dailyResult.rows as Row[]).map((r) => ({ day: text(r, "day")!, count: number(r, "count") })),
+    statuses: (statusResult.rows as Row[]).map((r) => ({ status: text(r, "status")!, count: number(r, "count") })),
+    items: (exceptionResult.rows as Row[]).map((item) => ({ id: text(item, "id")!, publicOrderCode: text(item, "public_order_code")!, status: text(item, "status")!, kind: text(item, "kind")!, amount: nullableNumber(item, "amount"), currencyCode: text(item, "currency_code"), exceptionAt: text(item, "exception_at")!, customer: toAdminCustomer(text(item, "customer_email"), text(item, "customer_whatsapp")) })),
   };
 });

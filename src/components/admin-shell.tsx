@@ -107,8 +107,8 @@ export function AdminShell({
             </div>
           </div>
         </header>
-        <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6">
-          {subtitle && <p className="mb-6 max-w-2xl text-sm text-[#6b6b72]">{subtitle}</p>}
+        <div className="mx-auto max-w-[1200px] px-4 py-4 sm:px-6">
+                  {subtitle && <p className="mb-3 max-w-2xl text-xs text-[#6b6b72]">{subtitle}</p>}
           {children}
         </div>
       </main>
