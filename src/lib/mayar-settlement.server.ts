@@ -17,6 +17,8 @@ const verifySchema = z.object({
 const SETTLED_STATUSES = new Set([
   "PAYMENT_CONFIRMED",
   "PROVISIONING",
+  // A failed eSIM provisioning still means the payment settled; it stays retryable.
+  "PROVISIONING_FAILED",
   "READY",
   "INSTALLED",
 ]);
