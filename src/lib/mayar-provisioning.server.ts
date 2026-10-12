@@ -3,7 +3,7 @@ import { db } from "@/db/client.server";
 import { fetchEsimAccessPackagePrices, orderEsimAccessProfilesServer } from "./esim-access";
 
 type OrderItem = { provider_package_code: string; quantity: number; provider_unit_cost: number | string; package_snapshot: Record<string, unknown> | null };
-type ProviderResponse = { success?: boolean; errorCode?: string | number; errorMsg?: string; errorMessage?: string; obj?: Record<string, unknown>; data?: Record<string, unknown> };
+type ProviderResponse = { success?: boolean; errorCode?: string | number | null; errorMsg?: string | null; errorMessage?: string | null; obj?: Record<string, unknown>; data?: Record<string, unknown> };
 
 function providerResult(response: ProviderResponse) {
   const result = response.obj ?? response.data ?? {};
@@ -11,6 +11,12 @@ function providerResult(response: ProviderResponse) {
     providerOrderNo: String(result["orderNo"] ?? result["orderNum"] ?? result["orderNoStr"] ?? "") || null,
     providerStatus: String(result["status"] ?? "PENDING"),
   };
+}
+
+/** Only an explicit non-zero code (or `success: false`) means the provider refused the order. */
+export function providerOrderFailed(response: ProviderResponse) {
+  const code = response.errorCode == null ? "" : String(response.errorCode).trim();
+  return response.success === false || (code !== "" && code !== "0");
 }
 
 /** Starts exactly one provider order for a settled Travel order; retries reuse the same deterministic transaction id. */
@@ -42,7 +48,10 @@ export async function provisionSettledTravelOrder(orderId: string) {
   await db.execute(sql`update public.customer_orders set status = 'PROVISIONING', updated_at = now() where id = ${orderId}::uuid and status in ('PAYMENT_CONFIRMED','PROVISIONING_FAILED')`);
   try {
     const response = await orderEsimAccessProfilesServer({ transactionId, packageInfoList }) as ProviderResponse;
-    if (response.success === false || (response.errorCode !== undefined && String(response.errorCode) !== "0")) {
+    // The provider answers with `errorCode: null` on success, so only an explicit non-zero code
+    // (or success: false) is a real failure. Reading `null` as an error discarded orders that the
+    // provider had already created.
+    if (providerOrderFailed(response)) {
       // Keep the raw provider answer: without it a failure like `success:false` with no message is
       // impossible to diagnose from the order row alone.
       const detail = response.errorMsg ?? response.errorMessage ?? JSON.stringify(response).slice(0, 400);
