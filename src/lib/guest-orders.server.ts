@@ -10,6 +10,7 @@ import { getResellerCatalog } from "./reseller-catalog-cache";
 import { decryptEsimSecret } from "./esim-secret-crypto";
 import { readMayarSnapshot } from "./payment-snapshot";
 import { effectivePaymentStatus } from "./payment-expiry";
+import { refreshTravelOrderProvisioning } from "./esim-provisioning-refresh.server";
 
 const createGuestOrderSchema = z.object({
   packageCode: z.string().trim().min(1).max(160),
@@ -144,6 +145,9 @@ export const getGuestOrders = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const records = await Promise.all(
       data.map(async ({ orderId, accessToken }) => {
+        // The provider webhook is not registered on this deployment, so pull the issued eSIM profile
+        // here: opening the order page is what turns PROVISIONING into READY for the customer.
+        await refreshTravelOrderProvisioning(orderId).catch(() => undefined);
         const accessTokenHash = hashGuestAccessToken(accessToken);
         const rows = await db
           .select({

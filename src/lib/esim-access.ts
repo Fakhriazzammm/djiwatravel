@@ -79,6 +79,11 @@ export async function orderEsimAccessProfilesServer(data: z.infer<typeof orderSc
 
 type ProviderPackageListItem = { packageCode?: string; price?: number };
 
+/** Reads the eSIM profiles the provider has issued for one provider order number. */
+export async function queryEsimAccessProfilesServer(input: { orderNo: string }) {
+  return request("/api/v1/open/esim/query", { pager: { pageNum: 1, pageSize: 20 }, orderNo: input.orderNo });
+}
+
 /**
  * The provider rejects an order whose `price` no longer matches its catalogue
  * ("the package`s price is expired, please update it"), so reprice every package against the
