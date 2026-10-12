@@ -1,14 +1,7 @@
-import { CreditCard, Gauge, ListChecks, Menu, Settings, ShieldCheck, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
-
-export const adminNavigation = [
-  ["Dashboard", "/admin/dashboard", Gauge],
-  ["Orders", "/admin/orders", ListChecks],
-  ["Payments", "/admin/payments", CreditCard],
-  ["eSIM / Provisioning", "/admin/provisioning", ShieldCheck],
-  ["Settings", "/admin/settings", Settings],
-] as const;
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { adminNavigation } from "@/components/admin-navigation";
 
 export function AdminShell({
   children,
@@ -21,9 +14,25 @@ export function AdminShell({
 }) {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeMenu = useCallback(() => {
+    setOpen(false);
+    menuTriggerRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, closeMenu]);
+
   return (
     <div className="min-h-screen bg-[#f7f7f8] text-[#111113]">
       <aside
+        id="admin-mobile-drawer"
         className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-[#e5e5ea] bg-white p-5 transition-transform lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex items-center justify-between">
@@ -34,9 +43,9 @@ export function AdminShell({
             <h2 className="mt-1 text-lg font-bold">Admin</h2>
           </div>
           <button
-            className="rounded-xl p-2 lg:hidden"
+            className="min-h-11 min-w-11 rounded-xl p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] lg:hidden"
             aria-label="Tutup menu"
-            onClick={() => setOpen(false)}
+            onClick={closeMenu}
           >
             <X className="size-5" />
           </button>
@@ -50,7 +59,7 @@ export function AdminShell({
               <Link
                 key={href}
                 to={href as never}
-                onClick={() => setOpen(false)}
+                onClick={closeMenu}
                 className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${active ? "bg-[#eaf3ff] text-[#0a67c7]" : "text-[#6b6b72] hover:bg-[#f4f4f5]"}`}
               >
                 <Icon className="size-4" strokeWidth={1.8} />
@@ -68,15 +77,18 @@ export function AdminShell({
         <button
           aria-label="Tutup sidebar"
           className="fixed inset-0 z-30 bg-black/20 lg:hidden"
-          onClick={() => setOpen(false)}
+          onClick={closeMenu}
         />
       )}
       <main className="lg:pl-64">
         <header className="sticky top-0 z-20 border-b border-[#e5e5ea]/80 bg-white/95 px-4 py-4 sm:px-6">
           <div className="mx-auto flex max-w-[1200px] items-center gap-3">
             <button
-              className="rounded-xl border border-[#e5e5ea] p-2 lg:hidden"
+              ref={menuTriggerRef}
+              className="min-h-11 min-w-11 rounded-xl border border-[#e5e5ea] p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] lg:hidden"
               aria-label="Buka menu"
+              aria-expanded={open}
+              aria-controls="admin-mobile-drawer"
               onClick={() => setOpen(true)}
             >
               <Menu className="size-5" />

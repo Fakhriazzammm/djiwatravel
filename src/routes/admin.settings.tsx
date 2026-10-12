@@ -1,28 +1,25 @@
-import { CircleAlert, CircleCheck, Database, Server } from "lucide-react";
+import { CircleAlert, Database, Server } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
 import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
+import { getAdminReadiness } from "@/lib/admin-readiness.server";
 
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
+  loader: async () => ({ readiness: await getAdminReadiness() }),
   component: AdminSettings,
 });
-const readiness = [
-  ["Payment provider", "Status provider pembayaran", CircleCheck, "warn"],
-  ["eSIM provider", "Status provider provisioning", CircleCheck, "warn"],
-  ["Database / worker", "Koneksi read model dan heartbeat worker", Database, "warn"],
-  ["Last sync", "Waktu sinkronisasi terakhir", Server, "neutral"],
-] as const;
 function AdminSettings() {
+  const { readiness } = Route.useLoaderData();
   return (
     <AdminShell
       title="Settings"
       subtitle="Readiness sistem saja. Credential, secret, pricing, dan maintenance dikelola di server/platform."
     >
       <AdminPageState
-        title="Readiness belum terverifikasi"
-        detail="Status berikut akan membaca sumber server-side. Nilai kosong tidak berarti sistem sehat atau bermasalah."
+        title="Server readiness"
+        detail="Status berikut dibaca server-side dari konfigurasi readiness. Secret tidak pernah dikirim ke browser."
       />
       <section className="mt-6 rounded-2xl border border-[#e5e5ea] bg-white p-5">
         <SectionHeading
@@ -30,16 +27,22 @@ function AdminSettings() {
           detail="Tidak ada credential atau konfigurasi bisnis yang dapat diedit di sini."
         />
         <div className="mt-5 divide-y divide-[#f0f0f2]">
-          {readiness.map(([label, detail, Icon, tone]) => (
-            <div key={label} className="flex min-h-16 items-center gap-3 py-3">
+          {readiness.map((item) => (
+            <div key={item.name} className="flex min-h-16 items-center gap-3 py-3">
               <span className="rounded-xl bg-[#f4f4f5] p-2">
-                <Icon className="size-4 text-[#8a8a91]" />
+                {item.ready ? (
+                  <Database className="size-4 text-[#248a3d]" />
+                ) : (
+                  <Server className="size-4 text-[#8a8a91]" />
+                )}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{label}</p>
-                <p className="mt-1 text-xs text-[#8a8a91]">{detail}</p>
+                <p className="text-sm font-semibold">{item.name}</p>
+                <p className="mt-1 text-xs text-[#8a8a91]">{item.detail}</p>
               </div>
-              <StatusPill tone={tone}>Belum tersedia</StatusPill>
+              <StatusPill tone={item.ready ? "good" : "warn"}>
+                {item.ready ? "Ready" : "Belum tersedia"}
+              </StatusPill>
             </div>
           ))}
         </div>
