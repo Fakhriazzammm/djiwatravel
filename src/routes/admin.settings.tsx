@@ -1,6 +1,56 @@
-import { CircleCheck, CircleX, Settings2 } from "lucide-react";
-import { requireAdmin } from "@/lib/admin-guard";
+import { CircleAlert, CircleCheck, Database, Server } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AdminShell } from "@/components/admin-shell";
-export const Route = createFileRoute("/admin/settings")({ beforeLoad: () => requireAdmin(), head: () => ({ meta: [{ name: "robots", content: "noindex" }] }), component: AdminSettings });
-function AdminSettings() { const rows = [["Database production", false, "DATABASE_URL atau Supabase server-side"],["Admin authentication", false, "Admin session dan role guard"],["Payment API", false, "MAYAR_API_KEY"],["Payment webhook", false, "PAYMENT_WEBHOOK_SECRET"],["eSIM Access balance", false, "Provider balance belum diverifikasi"],["Price/FX source", false, "Masih memakai temporary config"]] as const; return <AdminShell title="Settings & readiness" subtitle="Konfigurasi ditampilkan sebagai health state. Secret tidak pernah ditampilkan atau diedit sebagai plaintext."><div className="grid gap-6 lg:grid-cols-[1.2fr_.8fr]"><section className="rounded-3xl border border-[#e5e5ea] bg-white p-5 sm:p-6"><div className="flex items-center gap-3"><div className="rounded-2xl bg-[#f0f6ff] p-3"><Settings2 className="size-5 text-[#0a84ff]" /></div><div><h2 className="font-semibold">Production readiness</h2><p className="mt-1 text-sm text-[#8a8a91]">Status aman tanpa mengekspos credential.</p></div></div><div className="mt-6 divide-y divide-[#f0f0f2]">{rows.map(([label, ready, detail]) => <div key={label} className="flex items-center gap-3 py-4"><span className={`rounded-full p-1.5 ${ready ? "bg-[#e8f8ed] text-[#248a3d]" : "bg-[#fff4df] text-[#b87400]"}`}>{ready ? <CircleCheck className="size-4" /> : <CircleX className="size-4" />}</span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{label}</p><p className="mt-0.5 text-xs text-[#8a8a91]">{detail}</p></div><span className="text-xs font-semibold text-[#8a8a91]">{ready ? "Ready" : "Setup required"}</span></div>)}</div></section><section className="rounded-3xl border border-[#e5e5ea] bg-[#fafafa] p-5 sm:p-6"><h2 className="font-semibold">Operational policy</h2><p className="mt-2 text-sm leading-6 text-[#6b6b72]">Pricing, retry, expiry, maintenance mode, webhook, dan provider policy akan menjadi versioned settings setelah database dan admin authorization aktif.</p><div className="mt-5 space-y-3 text-sm"><div className="rounded-2xl bg-white p-4"><p className="font-semibold">Tidak ada manual Mark as Paid</p><p className="mt-1 text-xs text-[#8a8a91]">Settlement harus berasal dari verifikasi provider.</p></div><div className="rounded-2xl bg-white p-4"><p className="font-semibold">Tidak ada secret di UI</p><p className="mt-1 text-xs text-[#8a8a91]">Hanya Configured/Missing/Invalid.</p></div></div></section></div></AdminShell>; }
+import { requireAdmin } from "@/lib/admin-guard";
+import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
+
+export const Route = createFileRoute("/admin/settings")({
+  beforeLoad: () => requireAdmin(),
+  head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
+  component: AdminSettings,
+});
+const readiness = [
+  ["Payment provider", "Status provider pembayaran", CircleCheck, "warn"],
+  ["eSIM provider", "Status provider provisioning", CircleCheck, "warn"],
+  ["Database / worker", "Koneksi read model dan heartbeat worker", Database, "warn"],
+  ["Last sync", "Waktu sinkronisasi terakhir", Server, "neutral"],
+] as const;
+function AdminSettings() {
+  return (
+    <AdminShell
+      title="Settings"
+      subtitle="Readiness sistem saja. Credential, secret, pricing, dan maintenance dikelola di server/platform."
+    >
+      <AdminPageState
+        title="Readiness belum terverifikasi"
+        detail="Status berikut akan membaca sumber server-side. Nilai kosong tidak berarti sistem sehat atau bermasalah."
+      />
+      <section className="mt-6 rounded-2xl border border-[#e5e5ea] bg-white p-5">
+        <SectionHeading
+          title="System readiness"
+          detail="Tidak ada credential atau konfigurasi bisnis yang dapat diedit di sini."
+        />
+        <div className="mt-5 divide-y divide-[#f0f0f2]">
+          {readiness.map(([label, detail, Icon, tone]) => (
+            <div key={label} className="flex min-h-16 items-center gap-3 py-3">
+              <span className="rounded-xl bg-[#f4f4f5] p-2">
+                <Icon className="size-4 text-[#8a8a91]" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">{label}</p>
+                <p className="mt-1 text-xs text-[#8a8a91]">{detail}</p>
+              </div>
+              <StatusPill tone={tone}>Belum tersedia</StatusPill>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="mt-4 flex gap-3 rounded-2xl border border-[#e5e5ea] bg-white p-5 text-sm text-[#6b6b72]">
+        <CircleAlert className="size-5 shrink-0 text-[#b87400]" />
+        <p>
+          Error terakhir dan correlation ID hanya ditampilkan setelah observability read model
+          tersedia. Secret dan raw provider payload tidak pernah ditampilkan.
+        </p>
+      </section>
+    </AdminShell>
+  );
+}

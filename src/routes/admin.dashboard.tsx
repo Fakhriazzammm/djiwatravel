@@ -1,6 +1,105 @@
-import { ArrowUpRight, CircleAlert, Database, RefreshCw, TrendingUp } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CircleAlert,
+  Clock3,
+  CreditCard,
+  Database,
+  LoaderCircle,
+  ShieldAlert,
+} from "lucide-react";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { AdminShell, DecisionCard } from "@/components/admin-shell";
-export const Route = createFileRoute("/admin/dashboard")({ beforeLoad: () => requireAdmin(), head: () => ({ meta: [{ name: "robots", content: "noindex" }] }), component: AdminOverview });
-function AdminOverview() { return <AdminShell title="Overview" subtitle="Monitor operasional untuk melihat dampak, memprioritaskan masalah, dan mengambil tindakan yang dapat diverifikasi."><section className="rounded-3xl border border-[#f1d9a8] bg-[#fffaf0] p-5 sm:p-6"><div className="flex items-start gap-3"><CircleAlert className="mt-0.5 size-5 shrink-0 text-[#b87400]" /><div><h2 className="font-semibold">Admin data belum tersambung</h2><p className="mt-1 max-w-3xl text-sm text-[#6b6b72]">Dashboard tidak mengarang angka. Database production, admin authentication, dan read model operasional harus dikonfigurasi sebelum statistik real ditampilkan.</p><Link to="/admin/settings" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#111113] px-4 text-sm font-semibold text-white">Buka readiness settings <ArrowUpRight className="size-4" /></Link></div></div></section><section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><DecisionCard label="Needs attention" value="—" context="Menunggu data operasional" impact="Tidak ada kesimpulan sebelum query production berhasil" action="Review issues" /><DecisionCard label="Paid but not ready" value="—" context="Order paid tanpa profile READY" impact="Dampak customer akan dihitung dari read model" action="Open provisioning" /><DecisionCard label="Provider health" value="—" context="Balance, latency, dan error rate" impact="Provider status belum dapat diverifikasi" action="View provider health" /><DecisionCard label="Margin risk" value="—" context="FX dan minimum margin" impact="Pricing masih menunggu konfigurasi admin" action="Review pricing" /></section><section className="mt-6 grid gap-6 xl:grid-cols-[1.45fr_1fr]"><article className="rounded-3xl border border-[#e5e5ea] bg-white p-5 sm:p-6"><div className="flex items-center justify-between"><div><h2 className="font-semibold">Payment & provisioning funnel</h2><p className="mt-1 text-sm text-[#8a8a91]">Chart aktif setelah read model tersedia.</p></div><TrendingUp className="size-5 text-[#0a84ff]" /></div><div className="mt-6 flex h-56 items-center justify-center rounded-2xl bg-[#fafafa] text-center text-sm text-[#8a8a91]"><div><Database className="mx-auto mb-3 size-7" /><p>Belum ada data chart yang dapat diverifikasi.</p><p className="mt-1 text-xs">Range, timezone, denominator, dan freshness akan ditampilkan di sini.</p></div></div></article><article className="rounded-3xl border border-[#e5e5ea] bg-white p-5 sm:p-6"><div className="flex items-center justify-between"><div><h2 className="font-semibold">Decision queue</h2><p className="mt-1 text-sm text-[#8a8a91]">Masalah yang memerlukan keputusan.</p></div><RefreshCw className="size-5 text-[#8a8a91]" /></div><div className="mt-6 rounded-2xl border border-dashed border-[#d5d5da] p-5 text-sm text-[#6b6b72]">Queue kosong karena database dan worker belum tersambung. Ini berbeda dari “tidak ada masalah”.</div></article></section></AdminShell>; }
+import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
+
+export const Route = createFileRoute("/admin/dashboard")({
+  beforeLoad: () => requireAdmin(),
+  head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
+  component: AdminDashboard,
+});
+const exceptions = [
+  ["Order baru", "Order yang perlu diproses", "orders", Clock3, "neutral"],
+  [
+    "Pembayaran pending/gagal",
+    "Periksa status invoice dan webhook",
+    "payments",
+    CreditCard,
+    "warn",
+  ],
+  [
+    "Sudah bayar, eSIM belum siap",
+    "Paid tanpa profile READY",
+    "provisioning",
+    ShieldAlert,
+    "danger",
+  ],
+  [
+    "Provisioning gagal/stuck",
+    "Job yang perlu investigasi",
+    "provisioning",
+    AlertTriangle,
+    "danger",
+  ],
+  ["Masalah provider", "Readiness payment dan eSIM", "settings", Database, "warn"],
+] as const;
+function AdminDashboard() {
+  return (
+    <AdminShell
+      title="Dashboard"
+      subtitle="Hanya menampilkan hal yang perlu ditindaklanjuti operator."
+    >
+      <AdminPageState
+        title="Read model operasional belum tersedia"
+        detail="Dashboard tidak mengarang angka. Hubungkan read model order, payment, provisioning, dan provider untuk menampilkan exception nyata."
+      />
+      <section
+        className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5"
+        aria-label="Exception operasional"
+      >
+        {exceptions.map(([label, detail, href, Icon, tone]) => (
+          <Link
+            key={label}
+            to={`/admin/${href}` as never}
+            className="group rounded-2xl border border-[#e5e5ea] bg-white p-4 transition hover:border-[#b9d7ff] focus:outline-none focus:ring-2 focus:ring-[#0a84ff]"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <span className="rounded-xl bg-[#f4f4f5] p-2">
+                <Icon className="size-4 text-[#6b6b72]" />
+              </span>
+              <StatusPill tone={tone}>
+                {tone === "danger" ? "Perlu ditinjau" : "Belum tersedia"}
+              </StatusPill>
+            </div>
+            <h2 className="mt-4 text-sm font-semibold">{label}</h2>
+            <p className="mt-1 text-xs leading-5 text-[#8a8a91]">{detail}</p>
+            <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#0a67c7]">
+              Buka area <ArrowRight className="size-3 transition group-hover:translate-x-0.5" />
+            </span>
+          </Link>
+        ))}
+      </section>
+      <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <article className="rounded-2xl border border-[#e5e5ea] bg-white p-5">
+          <SectionHeading
+            title="Prioritas hari ini"
+            detail="Urutan kerja berdasarkan exception, bukan KPI dekoratif."
+          />
+          <div className="mt-5 flex items-center gap-3 rounded-xl bg-[#fafafa] p-4 text-sm text-[#6b6b72]">
+            <CircleAlert className="size-5 shrink-0 text-[#b87400]" />
+            Belum ada data untuk menentukan prioritas.
+          </div>
+        </article>
+        <article className="rounded-2xl border border-[#e5e5ea] bg-white p-5">
+          <SectionHeading
+            title="Status sinkronisasi"
+            detail="Sumber terakhir dan freshness akan muncul di sini."
+          />
+          <div className="mt-5 flex items-center gap-3 rounded-xl bg-[#fafafa] p-4 text-sm text-[#6b6b72]">
+            <LoaderCircle className="size-5 shrink-0 text-[#8a8a91]" />
+            Last sync belum tersedia.
+          </div>
+        </article>
+      </section>
+    </AdminShell>
+  );
+}
