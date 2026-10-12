@@ -76,3 +76,28 @@ export async function orderEsimAccessProfilesServer(data: z.infer<typeof orderSc
   // public createServerFn: callers must pass through the settled-order worker.
   return request("/api/v1/open/esim/order", data);
 }
+
+type ProviderPackageListItem = { packageCode?: string; price?: number };
+
+/**
+ * The provider rejects an order whose `price` no longer matches its catalogue
+ * ("the package`s price is expired, please update it"), so reprice every package against the
+ * live catalogue right before ordering. Unknown packages keep the stored price.
+ */
+export async function fetchEsimAccessPackagePrices(packageCodes: string[]): Promise<Record<string, number>> {
+  const prices: Record<string, number> = {};
+  for (const code of new Set(packageCodes.filter(Boolean))) {
+    try {
+      const payload = await request("/api/v1/open/package/list", { packageCode: code });
+      const list = (payload.obj as { packageList?: ProviderPackageListItem[] } | undefined)?.packageList
+        ?? (payload.data as { packageList?: ProviderPackageListItem[] } | undefined)?.packageList
+        ?? [];
+      const match = list.find((item) => String(item.packageCode ?? "") === code) ?? list[0];
+      const price = Number(match?.price);
+      if (Number.isFinite(price) && price >= 0) prices[code] = price;
+    } catch {
+      // Keep the stored price when the catalogue is unreachable.
+    }
+  }
+  return prices;
+}

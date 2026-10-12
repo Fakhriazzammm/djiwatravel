@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client.server";
-import { orderEsimAccessProfilesServer } from "./esim-access";
+import { fetchEsimAccessPackagePrices, orderEsimAccessProfilesServer } from "./esim-access";
 
 type OrderItem = { provider_package_code: string; quantity: number; provider_unit_cost: number | string; package_snapshot: Record<string, unknown> | null };
 type ProviderResponse = { success?: boolean; errorCode?: string | number; errorMsg?: string; obj?: Record<string, unknown>; data?: Record<string, unknown> };
@@ -18,7 +18,8 @@ export async function provisionSettledTravelOrder(orderId: string) {
   const existing = await db.execute(sql`select id, status, provider_transaction_id, provider_order_no from public.esim_provisioning_orders where order_id = ${orderId}::uuid limit 1`);
   const orderResult = await db.execute(sql`select status from public.customer_orders where id = ${orderId}::uuid limit 1`);
   const orderStatus = String((orderResult.rows[0] as { status?: string } | undefined)?.status ?? "");
-  if (!["PAYMENT_CONFIRMED", "PROVISIONING", "READY", "INSTALLED"].includes(orderStatus)) {
+  // PROVISIONING_FAILED still means the payment settled, so it must stay retryable.
+  if (!["PAYMENT_CONFIRMED", "PROVISIONING", "PROVISIONING_FAILED", "READY", "INSTALLED"].includes(orderStatus)) {
     throw new Error("order_not_settled");
   }
   const current = existing.rows[0] as { id?: string; status?: string; provider_transaction_id?: string | null } | undefined;
@@ -27,9 +28,12 @@ export async function provisionSettledTravelOrder(orderId: string) {
   const items = itemsResult.rows as unknown as OrderItem[];
   if (items.length === 0) throw new Error("order_items_not_found");
   const transactionId = current?.provider_transaction_id || `DJIWA-${orderId}`;
+  // Reprice against the live catalogue first: the provider rejects a stale price outright.
+  const livePrices = await fetchEsimAccessPackagePrices(items.map((item) => item.provider_package_code));
   const packageInfoList = items.map((item) => {
     const snapshot = item.package_snapshot ?? {};
-    const providerPrice = Number(snapshot["providerPriceUnits"] ?? item.provider_unit_cost);
+    const storedPrice = Number(snapshot["providerPriceUnits"] ?? item.provider_unit_cost);
+    const providerPrice = Number(livePrices[item.provider_package_code] ?? storedPrice);
     return { packageCode: item.provider_package_code, count: Number(item.quantity), ...(Number.isFinite(providerPrice) && providerPrice >= 0 ? { price: providerPrice } : {}) };
   });
   await db.execute(sql`insert into public.esim_provisioning_orders(order_id, provider, provider_transaction_id, status, request_fingerprint, attempt_count, provisioning_attempts, updated_at)
