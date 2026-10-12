@@ -27,7 +27,8 @@ type TravelFinanceGatewayPayload = {
   orderId: string;
   orderNumber: string;
   amount: number;
-  customerName?: string;
+  /** Always present: the finance gateway rejects a payload that omits the field entirely. */
+  customerName: string | null;
   paidAt: number;
   paymentGateway: {
     provider: "mayar";
@@ -89,9 +90,8 @@ export function buildTravelFinanceGatewayPayload(input: {
     amount: input.amount,
     paidAt: input.paidAt,
     paymentGateway: gateway,
+    customerName: input.customerName?.trim() ? input.customerName.trim().slice(0, 120) : null,
   };
-  const name = input.customerName?.trim();
-  if (name) payload.customerName = name.slice(0, 120);
   return payload;
 }
 
