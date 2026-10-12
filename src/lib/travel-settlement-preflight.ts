@@ -3,6 +3,8 @@ export const SETTLEABLE_TRAVEL_ORDER_STATUSES = new Set([
   "PAYMENT_PENDING",
   "PAYMENT_CONFIRMED",
   "PROVISIONING",
+  // The payment settled here too; a failed eSIM provisioning must stay retryable.
+  "PROVISIONING_FAILED",
   "READY",
   "INSTALLED",
 ]);
