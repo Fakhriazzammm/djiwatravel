@@ -44,6 +44,8 @@ export function summarizeMargin(rows: MarginRow[]): MarginSummary[] {
 }
 
 export type PaymentSortKey = "createdAt" | "updatedAt" | "amount" | "status";
+export const MAX_PAYMENT_PAGE = 1000;
+
 export type PaymentQuery = {
   query: string;
   status: string;
@@ -59,7 +61,9 @@ export function normalizePaymentQuery(input: Partial<PaymentQuery> = {}): Paymen
     ? (input.sort as PaymentSortKey)
     : "updatedAt";
   const page =
-    Number.isInteger(input.page) && (input.page as number) >= 0 ? (input.page as number) : 0;
+    Number.isInteger(input.page) && (input.page as number) >= 0
+      ? Math.min(input.page as number, MAX_PAYMENT_PAGE)
+      : 0;
   const pageSize =
     Number.isInteger(input.pageSize) && (input.pageSize as number) > 0
       ? Math.min(input.pageSize as number, 50)

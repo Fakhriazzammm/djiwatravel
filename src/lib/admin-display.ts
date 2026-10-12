@@ -76,6 +76,28 @@ export function projectAdminTitle(
   return hidden ? undefined : (value ?? undefined);
 }
 
+export function projectAdminCustomer(customer: AdminCustomer, hidden: boolean): AdminCustomer {
+  if (!hidden) return customer;
+  return {
+    label: "Customer — email masked",
+    email: customer.email ? "••••" : null,
+    whatsapp: customer.whatsapp ? "••••" : null,
+  };
+}
+
+export function projectAdminCount(value: number | null | undefined, hidden: boolean): string {
+  return hidden ? "••••" : value === null || value === undefined ? "—" : String(value);
+}
+
+export function projectAdminAmount(
+  amount: number | null | undefined,
+  currency: string | null | undefined,
+  hidden: boolean,
+): string {
+  if (amount === null || amount === undefined || !currency) return "—";
+  return hidden ? `${currency} ••••` : `${currency} ${amount.toLocaleString("id-ID")}`;
+}
+
 export function ageFrom(value: string | null | undefined, now = Date.now()): string {
   if (!value) return "Usia tidak tersedia";
   const timestamp = new Date(value).getTime();

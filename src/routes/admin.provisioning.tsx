@@ -1,8 +1,15 @@
 import { CircleX, LoaderCircle, ShieldCheck } from "lucide-react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminProvisioning } from "@/lib/admin-read-model.server";
-import { formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
+import { useState } from "react";
+import {
+  formatAdminDateTime,
+  humanizeAdminStatus,
+  projectAdminCount,
+  projectAdminCustomer,
+  projectAdminPrivacy,
+} from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/provisioning")({
@@ -13,6 +20,7 @@ export const Route = createFileRoute("/admin/provisioning")({
 });
 function AdminProvisioning() {
   const queue = Route.useLoaderData();
+  const [privateMode, setPrivateMode] = useState(false);
   return (
     <AdminShell
       title="eSIM / Provisioning"
@@ -24,7 +32,17 @@ function AdminProvisioning() {
             title="Queue status"
             detail="Provider order number, payload, QR, LPA, dan activation secret tidak dikirim ke browser."
           />
-          <StatusPill>{queue.length} queue</StatusPill>
+          <div className="flex items-center gap-2">
+            <StatusPill>{privateMode ? "••••" : queue.length} queue</StatusPill>
+            <button
+              type="button"
+              onClick={() => setPrivateMode((value) => !value)}
+              className="min-h-9 rounded-lg border px-3 text-xs font-semibold"
+              aria-pressed={privateMode}
+            >
+              {privateMode ? "Tampilkan" : "Privasi"}
+            </button>
+          </div>
         </div>
         {queue.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed p-10 text-center text-sm text-[#6b6b72]">
@@ -40,23 +58,34 @@ function AdminProvisioning() {
                     ? LoaderCircle
                     : ShieldCheck;
               return (
-                <div key={item.id} className="flex items-center gap-3 py-4">
-                  <Icon className="size-5 shrink-0 text-[#8a8a91]" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">
-                      {item.publicOrderCode} · {humanizeAdminStatus(item.status)}
-                    </p>
-                    <p className="mt-1 text-xs text-[#6b6b72]">{item.customer.label}</p>
-                    <p className="mt-1 text-xs text-[#6b6b72]">
-                      Order {humanizeAdminStatus(item.orderStatus)} · attempts{" "}
-                      {item.provisioningAttempts} · update {formatAdminDateTime(item.updatedAt)}
-                    </p>
-                    {item.lastError && (
-                      <p className="mt-1 text-xs text-[#b00020]">{item.lastError}</p>
-                    )}
-                  </div>
+                <div key={item.detailHref} className="flex items-center gap-3 py-4">
+                  <Link to={item.detailHref as never} className="contents">
+                    <Icon className="size-5 shrink-0 text-[#8a8a91]" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">
+                        {projectAdminPrivacy(item.displayIdentifier, privateMode)} ·{" "}
+                        {humanizeAdminStatus(item.status)}
+                      </p>
+                      <p className="mt-1 text-xs text-[#6b6b72]">
+                        {projectAdminCustomer(item.customer, privateMode).label}
+                      </p>
+                      <p className="mt-1 text-xs text-[#6b6b72]">
+                        Order {humanizeAdminStatus(item.orderStatus)} · attempts{" "}
+                        {projectAdminCount(item.provisioningAttempts, privateMode)} · update{" "}
+                        {formatAdminDateTime(item.updatedAt)}
+                      </p>
+                      {item.lastError && (
+                        <p className="mt-1 text-xs text-[#b00020]">
+                          {projectAdminPrivacy(item.lastError, privateMode)}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
                   <StatusPill tone={item.status === "FAILED" ? "danger" : "warn"}>
-                    {item.providerStatus ?? "provider status unavailable"}
+                    {projectAdminPrivacy(
+                      item.providerStatus ?? "provider status unavailable",
+                      privateMode,
+                    )}
                   </StatusPill>
                 </div>
               );

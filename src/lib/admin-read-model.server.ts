@@ -71,8 +71,8 @@ export const getAdminOrders = createServerFn({ method: "GET" }).handler(async ()
      limit ${LIMIT}
   `);
   return (result.rows as Row[]).map((row) => ({
-    id: text(row, "id")!,
-    publicOrderCode: text(row, "public_order_code")!,
+    detailHref: `/admin/orders/${text(row, "id")!}`,
+    displayIdentifier: maskReference(text(row, "public_order_code")),
     status: text(row, "status")!,
     currencyCode: text(row, "currency_code")!,
     totalAmount: number(row, "total_amount"),
@@ -132,8 +132,7 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
     const paymentWebhooks = (webhookResult.rows as Row[]).map(toSafeAdminPaymentWebhook);
 
     return {
-      id: text(row, "id")!,
-      publicOrderCode: text(row, "public_order_code")!,
+      displayIdentifier: maskReference(text(row, "public_order_code")),
       status: text(row, "status")!,
       currencyCode: text(row, "currency_code")!,
       totalAmount: number(row, "total_amount"),
@@ -226,9 +225,8 @@ export const getAdminPayments = createServerFn({ method: "GET" })
     const total = Number((countResult.rows[0] as Row | undefined)?.["total"] ?? 0);
     return {
       rows: rows.map((row) => ({
-        id: maskReference(text(row, "id"))!,
-        orderId: text(row, "order_id")!,
-        publicOrderCode: text(row, "public_order_code")!,
+        displayIdentifier: maskReference(text(row, "id")),
+        detailHref: `/admin/orders/${text(row, "order_id")!}`,
         status: text(row, "status")!,
         amount: nullableNumber(row, "amount"),
         currencyCode: text(row, "currency_code"),
@@ -266,9 +264,8 @@ export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(as
      order by p.updated_at desc limit ${LIMIT}
   `);
   return (result.rows as Row[]).map((row) => ({
-    id: text(row, "id")!,
-    orderId: text(row, "order_id")!,
-    publicOrderCode: text(row, "public_order_code")!,
+    detailHref: `/admin/orders/${text(row, "order_id")!}`,
+    displayIdentifier: maskReference(text(row, "public_order_code")),
     orderStatus: text(row, "order_status")!,
     status: text(row, "status")!,
     providerStatus: text(row, "provider_status"),
@@ -353,8 +350,8 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
         count: number(r, "count"),
       })),
       items: (exceptionResult.rows as Row[]).map((item) => ({
-        id: text(item, "id")!,
-        publicOrderCode: text(item, "public_order_code")!,
+        detailHref: `/admin/orders/${text(item, "id")!}`,
+        displayIdentifier: maskReference(text(item, "public_order_code")),
         status: text(item, "status")!,
         kind: text(item, "kind")!,
         amount: nullableNumber(item, "amount"),

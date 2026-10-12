@@ -2,7 +2,14 @@ import { ClipboardList } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminOrders } from "@/lib/admin-read-model.server";
-import { formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
+import { useState } from "react";
+import {
+  formatAdminDateTime,
+  humanizeAdminStatus,
+  projectAdminAmount,
+  projectAdminCustomer,
+  projectAdminPrivacy,
+} from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/orders")({
@@ -13,6 +20,7 @@ export const Route = createFileRoute("/admin/orders")({
 });
 function AdminOrders() {
   const orders = Route.useLoaderData();
+  const [privateMode, setPrivateMode] = useState(false);
   return (
     <AdminShell title="Orders" subtitle="Satu daftar order untuk menelusuri payment sampai eSIM.">
       <section className="mt-6 rounded-2xl border border-[#e5e5ea] bg-white p-5">
@@ -21,7 +29,17 @@ function AdminOrders() {
             title="Daftar order"
             detail="Customer masked; secret provider dan payload tidak dikirim ke browser."
           />
-          <StatusPill>{orders.length} terbaru</StatusPill>
+          <div className="flex items-center gap-2">
+            <StatusPill>{orders.length} terbaru</StatusPill>
+            <button
+              type="button"
+              onClick={() => setPrivateMode((value) => !value)}
+              className="min-h-9 rounded-lg border px-3 text-xs font-semibold"
+              aria-pressed={privateMode}
+            >
+              {privateMode ? "Tampilkan" : "Privasi"}
+            </button>
+          </div>
         </div>
         {orders.length === 0 ? (
           <div className="mt-5 flex flex-col items-center rounded-xl border border-dashed border-[#d5d5da] px-5 py-12 text-center">
@@ -43,37 +61,45 @@ function AdminOrders() {
               </thead>
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.id} className="border-b align-top last:border-0">
+                  <tr key={order.detailHref} className="border-b align-top last:border-0">
                     <td className="p-3">
-                      <Link
-                        className="font-semibold text-[#0a67c7]"
-                        to="/admin/orders/$id"
-                        params={{ id: order.id }}
-                      >
-                        {order.publicOrderCode}
+                      <Link className="font-semibold text-[#0a67c7]" to={order.detailHref as never}>
+                        {projectAdminPrivacy(order.displayIdentifier, privateMode)}
                       </Link>
                       <div className="mt-1 text-xs text-[#8a8a91]">
-                        {order.paymentProvider ?? "Payment belum tersedia"}
+                        {projectAdminPrivacy(
+                          order.paymentProvider ?? "Payment belum tersedia",
+                          privateMode,
+                        )}
                       </div>
                     </td>
                     <td className="p-3">
-                      <div className="font-medium">{order.customer.label}</div>
-                      {order.customer.email && (
-                        <div className="text-xs text-[#6b6b72]">{order.customer.email}</div>
+                      <div className="font-medium">
+                        {projectAdminCustomer(order.customer, privateMode).label}
+                      </div>
+                      {projectAdminCustomer(order.customer, privateMode).email && (
+                        <div className="text-xs text-[#6b6b72]">
+                          {projectAdminCustomer(order.customer, privateMode).email}
+                        </div>
                       )}
-                      {order.customer.whatsapp && (
-                        <div className="text-xs text-[#6b6b72]">WA {order.customer.whatsapp}</div>
+                      {projectAdminCustomer(order.customer, privateMode).whatsapp && (
+                        <div className="text-xs text-[#6b6b72]">
+                          WA {projectAdminCustomer(order.customer, privateMode).whatsapp}
+                        </div>
                       )}
                     </td>
                     <td className="p-3">
                       <div
                         className="max-w-[230px] truncate"
-                        title={order.itemSummary ?? undefined}
+                        title={privateMode ? undefined : (order.itemSummary ?? undefined)}
                       >
-                        {order.itemSummary ?? "Item belum tersedia"}
+                        {projectAdminPrivacy(
+                          order.itemSummary ?? "Item belum tersedia",
+                          privateMode,
+                        )}
                       </div>
                       <div className="mt-1 font-semibold">
-                        {order.currencyCode} {order.totalAmount.toLocaleString("id-ID")}
+                        {projectAdminAmount(order.totalAmount, order.currencyCode, privateMode)}
                       </div>
                     </td>
                     <td className="p-3">
@@ -86,7 +112,9 @@ function AdminOrders() {
                       <div>{formatAdminDateTime(order.createdAt)}</div>
                       <div className="mt-1">Update {formatAdminDateTime(order.updatedAt)}</div>
                       {order.paymentReference && (
-                        <div className="mt-1">Ref: {order.paymentReference}</div>
+                        <div className="mt-1">
+                          Ref: {projectAdminPrivacy(order.paymentReference, privateMode)}
+                        </div>
                       )}
                     </td>
                   </tr>

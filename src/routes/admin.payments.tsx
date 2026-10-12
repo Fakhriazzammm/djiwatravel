@@ -4,11 +4,12 @@ import { useState } from "react";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminPayments } from "@/lib/admin-read-model.server";
-import { normalizePaymentQuery, type PaymentSortKey } from "@/lib/admin-metrics";
+import { MAX_PAYMENT_PAGE, normalizePaymentQuery, type PaymentSortKey } from "@/lib/admin-metrics";
 import {
   ageFrom,
   formatAdminDateTime,
   humanizeAdminStatus,
+  projectAdminCustomer,
   projectAdminIdentifier,
   projectAdminPrivacy,
   projectAdminTitle,
@@ -20,7 +21,7 @@ const paymentSearch = z.object({
   status: z.string().default("ALL"),
   sort: z.enum(["createdAt", "updatedAt", "amount", "status"]).default("updatedAt"),
   dir: z.enum(["asc", "desc"]).default("desc"),
-  page: z.coerce.number().int().min(0).default(0),
+  page: z.coerce.number().int().min(0).max(MAX_PAYMENT_PAGE).default(0),
 });
 
 export const Route = createFileRoute("/admin/payments")({
@@ -82,17 +83,14 @@ function AdminPayments() {
       </td>
       <td
         className="max-w-28 truncate font-mono"
-        title={projectAdminTitle(payment.id, privateMode)}
+        title={projectAdminTitle(payment.displayIdentifier, privateMode)}
       >
-        {projectAdminIdentifier(privateMode ? null : `${payment.id.slice(0, 12)}…`, privateMode)}
+        {projectAdminIdentifier(payment.displayIdentifier, privateMode)}
       </td>
-      <td>{privateMode ? "••••" : payment.customer.label}</td>
+      <td>{projectAdminCustomer(payment.customer, privateMode).label}</td>
       <td>
-        <Link
-          to={`/admin/orders/${payment.orderId}` as never}
-          className="font-semibold text-[#0a67c7]"
-        >
-          {projectAdminIdentifier(payment.publicOrderCode, privateMode)}
+        <Link to={payment.detailHref as never} className="font-semibold text-[#0a67c7]">
+          {projectAdminIdentifier(payment.displayIdentifier, privateMode)}
         </Link>
       </td>
       <td className="max-w-44 truncate" title={projectAdminTitle(payment.itemSummary, privateMode)}>
@@ -218,7 +216,7 @@ function AdminPayments() {
                 </thead>
                 <tbody className="divide-y">
                   {result.rows.map((payment) => (
-                    <tr key={payment.id}>{row(payment)}</tr>
+                    <tr key={payment.detailHref}>{row(payment)}</tr>
                   ))}
                 </tbody>
               </table>
@@ -226,14 +224,14 @@ function AdminPayments() {
             <div className="space-y-2 lg:hidden">
               {result.rows.map((payment) => (
                 <Link
-                  key={payment.id}
-                  to={`/admin/orders/${payment.orderId}` as never}
+                  key={payment.detailHref}
+                  to={payment.detailHref as never}
                   className="block rounded-xl border border-[#e5e5ea] p-3 text-xs"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold">
-                        {projectAdminIdentifier(payment.publicOrderCode, privateMode)} ·{" "}
+                        {projectAdminIdentifier(payment.displayIdentifier, privateMode)} ·{" "}
                         {humanizeAdminStatus(payment.status)}
                       </p>
                       <p className="mt-1 text-[#6b6b72]">

@@ -9,6 +9,8 @@ import {
   humanizeAdminStatus,
   maskSensitiveValue,
   projectAdminIdentifier,
+  projectAdminAmount,
+  projectAdminCustomer,
   projectAdminTitle,
 } from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
@@ -31,7 +33,7 @@ function AdminDashboard() {
   const [privateMode, setPrivateMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const series = useMemo(() => data.daily, [data.daily]);
-  const max = Math.max(...series.map((point) => point.count), 1);
+  const max = privateMode ? 1 : Math.max(...series.map((point) => point.count), 1);
   const formatCount = (value: number) => maskSensitiveValue(value, privateMode);
   const projectIdentifier = (value: string | null | undefined) =>
     projectAdminIdentifier(value, privateMode);
@@ -135,7 +137,9 @@ function AdminDashboard() {
                   </span>
                   <div
                     className="w-full max-w-7 rounded-t bg-[#0a84ff]"
-                    style={{ height: `${Math.max(4, (point.count / max) * 100)}%` }}
+                    style={{
+                      height: privateMode ? "4px" : `${Math.max(4, (point.count / max) * 100)}%`,
+                    }}
                   />
                   <span className="max-w-full truncate text-[10px] text-[#8a8a91]">
                     {point.day.slice(5)}
@@ -154,7 +158,11 @@ function AdminDashboard() {
                 <div className="h-2 w-20 rounded bg-[#eef0f3]">
                   <div
                     className="h-2 rounded bg-[#5b9bea]"
-                    style={{ width: `${(item.count / Math.max(data.counts.total, 1)) * 100}%` }}
+                    style={{
+                      width: privateMode
+                        ? "0%"
+                        : `${(item.count / Math.max(data.counts.total, 1)) * 100}%`,
+                    }}
                   />
                 </div>
                 <span className="w-8 text-right font-semibold">{formatCount(item.count)}</span>
@@ -172,7 +180,7 @@ function AdminDashboard() {
               detail="Prioritas dari status dan webhook yang tercatat."
             />
             <StatusPill tone={actions.length ? "warn" : "good"}>
-              {formatCount(actions.length)} item
+              {privateMode ? "••••" : formatCount(actions.length)} item
             </StatusPill>
           </div>
           {actions.length === 0 ? (
@@ -181,17 +189,14 @@ function AdminDashboard() {
             <div className="mt-3 divide-y">
               {actions.map((item) => (
                 <Link
-                  key={`${item.kind}-${item.id}`}
-                  to={
-                    (item.kind === "payment"
-                      ? "/admin/payments"
-                      : `/admin/orders/${item.id}`) as never
-                  }
+                  key={`${item.kind}-${item.detailHref}`}
+                  to={item.kind === "payment" ? "/admin/payments" : (item.detailHref as never)}
                   className="flex min-h-11 items-center gap-3 py-2 text-xs"
                 >
                   <AlertTriangle className="size-4 shrink-0 text-[#b87400]" />
                   <span className="min-w-0 flex-1">
-                    <b>{projectIdentifier(item.publicOrderCode)}</b> · {item.customer.label}
+                    <b>{projectIdentifier(item.displayIdentifier)}</b> ·{" "}
+                    {projectAdminCustomer(item.customer, privateMode).label}
                     <span className="block text-[#6b6b72]">
                       {humanizeAdminStatus(item.status)} · {ageFrom(item.exceptionAt)}
                     </span>
@@ -247,7 +252,7 @@ function AdminDashboard() {
               </thead>
               <tbody>
                 {data.items.map((item) => (
-                  <tr key={`${item.kind}-${item.id}`} className="border-b last:border-0">
+                  <tr key={`${item.kind}-${item.detailHref}`} className="border-b last:border-0">
                     <td className="py-2 whitespace-nowrap">
                       {formatAdminDateTime(item.exceptionAt)}
                     </td>
@@ -256,19 +261,19 @@ function AdminDashboard() {
                       <Link
                         className="font-semibold text-[#0a67c7]"
                         to={
-                          (item.kind === "payment"
-                            ? "/admin/payments"
-                            : `/admin/orders/${item.id}`) as never
+                          item.kind === "payment" ? "/admin/payments" : (item.detailHref as never)
                         }
                       >
-                        {projectIdentifier(item.publicOrderCode)}
+                        {projectIdentifier(item.displayIdentifier)}
                       </Link>
                     </td>
-                    <td>{item.customer.label}</td>
+                    <td>{projectAdminCustomer(item.customer, privateMode).label}</td>
                     <td>
-                      {item.amount !== null && item.currencyCode
-                        ? `${item.currencyCode} ${privateMode ? "••••" : item.amount.toLocaleString("id-ID")}`
-                        : "—"}
+                      {projectAdminAmount(
+                        item.amount,
+                        privateMode ? null : item.currencyCode,
+                        privateMode,
+                      )}
                     </td>
                     <td>{humanizeAdminStatus(item.status)}</td>
                   </tr>

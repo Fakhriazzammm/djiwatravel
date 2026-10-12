@@ -7,6 +7,9 @@ import { getAdminOrderDetail } from "@/lib/admin-read-model.server";
 import {
   formatAdminDateTime,
   humanizeAdminStatus,
+  projectAdminAmount,
+  projectAdminCount,
+  projectAdminCustomer,
   projectAdminIdentifier,
   projectAdminPrivacy,
 } from "@/lib/admin-display";
@@ -64,7 +67,7 @@ function AdminOrderDetail() {
   return (
     <AdminShell
       title="Detail order"
-      subtitle={`Order ${projectAdminIdentifier(order.publicOrderCode, privateMode)} · data sensitif tetap masked.`}
+      subtitle={`Order ${projectAdminIdentifier(order.displayIdentifier, privateMode)} · data sensitif tetap masked.`}
     >
       <Link
         to="/admin/orders"
@@ -123,19 +126,27 @@ function AdminOrderDetail() {
             <div className="flex justify-between gap-3">
               <dt>Customer</dt>
               <dd className="text-right">
-                <div>{order.customer.label}</div>
-                {order.customer.email && (
-                  <div className="text-xs text-[#6b6b72]">{order.customer.email}</div>
+                <div>{projectAdminCustomer(order.customer, privateMode).label}</div>
+                {projectAdminCustomer(order.customer, privateMode).email && (
+                  <div className="text-xs text-[#6b6b72]">
+                    {projectAdminCustomer(order.customer, privateMode).email}
+                  </div>
                 )}
-                {order.customer.whatsapp && (
-                  <div className="text-xs text-[#6b6b72]">WA {order.customer.whatsapp}</div>
+                {projectAdminCustomer(order.customer, privateMode).whatsapp && (
+                  <div className="text-xs text-[#6b6b72]">
+                    WA {projectAdminCustomer(order.customer, privateMode).whatsapp}
+                  </div>
                 )}
               </dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt>Total</dt>
               <dd>
-                {order.currencyCode} {projectAdminPrivacy(order.totalAmount, privateMode)}
+                {projectAdminAmount(
+                  order.totalAmount,
+                  privateMode ? null : order.currencyCode,
+                  privateMode,
+                )}
               </dd>
             </div>
             <div className="flex justify-between gap-3">
@@ -177,10 +188,15 @@ function AdminOrderDetail() {
           {order.items.map((item, index) => (
             <div key={`${item.packageName}-${index}`} className="flex justify-between py-3 text-sm">
               <span>
-                {item.packageName} × {item.quantity}
+                {projectAdminPrivacy(item.packageName, privateMode)} ×{" "}
+                {projectAdminCount(item.quantity, privateMode)}
               </span>
               <span>
-                {order.currencyCode} {projectAdminPrivacy(item.lineTotal, privateMode)}
+                {projectAdminAmount(
+                  item.lineTotal,
+                  privateMode ? null : order.currencyCode,
+                  privateMode,
+                )}
               </span>
             </div>
           ))}
@@ -201,8 +217,11 @@ function AdminOrderDetail() {
                   {event.eventType ?? "event unknown"} · {event.status ?? "status unknown"}
                 </p>
                 <p className="mt-1 text-xs text-[#6b6b72]">
-                  {event.currencyCode ?? "currency unknown"}{" "}
-                  {event.amount?.toLocaleString("id-ID") ?? "amount unknown"}
+                  {projectAdminAmount(
+                    event.amount,
+                    privateMode ? null : event.currencyCode,
+                    privateMode,
+                  )}
                   {event.processingError ? ` · ${event.processingError}` : ""}
                 </p>
               </div>
