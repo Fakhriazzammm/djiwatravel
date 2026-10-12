@@ -115,6 +115,11 @@ export async function refreshTravelOrderProvisioning(orderId: string, options: {
   if (!installable) return { status: "PENDING", installable: false };
   await db.execute(sql`update public.esim_provisioning_orders set status = 'READY', last_provisioning_error = null, updated_at = now() where id = ${provisioningOrderId}::uuid and status in ('PROVISIONING','PENDING')`);
   await db.execute(sql`update public.customer_orders set status = 'READY', esim_activation_expires_at = coalesce(esim_activation_expires_at, ${expiresAtIso}::timestamptz, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = ${orderId}::uuid and status in ('PROVISIONING','PAYMENT_CONFIRMED','PROVISIONING_FAILED')`);
+  // The activation window is provider truth, so keep it on every run — an order that is already
+  // READY is skipped by the transition above and would otherwise never learn its expiry.
+  if (expiresAtIso) {
+    await db.execute(sql`update public.customer_orders set esim_activation_expires_at = ${expiresAtIso}::timestamptz, updated_at = now() where id = ${orderId}::uuid and (esim_activation_expires_at is null or esim_activation_expires_at <> ${expiresAtIso}::timestamptz)`);
+  }
   return { status: "READY", installable: true };
 }
 
