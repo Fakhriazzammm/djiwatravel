@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMayarInvoicePayload } from "../lib/mayar-gateway";
+import { buildMayarInvoicePayload, canRetryMayarIntent } from "../lib/mayar-gateway";
 
 // A live 400 "extraData Validation Error" from Mayar meant every checkout died at the invoice
 // step, so this pins the exact payload shape the provider accepts.
@@ -18,6 +18,16 @@ describe("Mayar gateway payload", () => {
     const payload = buildMayarInvoicePayload(input);
     expect("extraData" in payload).toBe(false);
     expect(JSON.stringify(payload)).not.toContain("extraData");
+  });
+
+  it("allows retrying a provider-rejected intent with no provider identifiers", () => {
+    expect(canRetryMayarIntent({ status: "FAILED" })).toBe(true);
+  });
+
+  it("keeps provider-ambiguous intents fail-closed", () => {
+    expect(canRetryMayarIntent({ status: "REQUESTING" })).toBe(false);
+    expect(canRetryMayarIntent({ status: "UNKNOWN" })).toBe(false);
+    expect(canRetryMayarIntent({ status: "FAILED", provider_invoice_id: "inv_123" })).toBe(false);
   });
 
   it("sends the amount as an invoice item", () => {
