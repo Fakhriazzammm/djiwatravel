@@ -3,7 +3,7 @@ import { db } from "@/db/client.server";
 import { fetchEsimAccessPackagePrices, orderEsimAccessProfilesServer } from "./esim-access";
 
 type OrderItem = { provider_package_code: string; quantity: number; provider_unit_cost: number | string; package_snapshot: Record<string, unknown> | null };
-type ProviderResponse = { success?: boolean; errorCode?: string | number; errorMsg?: string; obj?: Record<string, unknown>; data?: Record<string, unknown> };
+type ProviderResponse = { success?: boolean; errorCode?: string | number; errorMsg?: string; errorMessage?: string; obj?: Record<string, unknown>; data?: Record<string, unknown> };
 
 function providerResult(response: ProviderResponse) {
   const result = response.obj ?? response.data ?? {};
@@ -42,12 +42,20 @@ export async function provisionSettledTravelOrder(orderId: string) {
   await db.execute(sql`update public.customer_orders set status = 'PROVISIONING', updated_at = now() where id = ${orderId}::uuid and status in ('PAYMENT_CONFIRMED','PROVISIONING_FAILED')`);
   try {
     const response = await orderEsimAccessProfilesServer({ transactionId, packageInfoList }) as ProviderResponse;
-    if (response.success === false || (response.errorCode !== undefined && String(response.errorCode) !== "0")) throw new Error(`esim_access_order_failed:${response.errorMsg ?? response.errorCode ?? "unknown"}`);
+    if (response.success === false || (response.errorCode !== undefined && String(response.errorCode) !== "0")) {
+      // Keep the raw provider answer: without it a failure like `success:false` with no message is
+      // impossible to diagnose from the order row alone.
+      const detail = response.errorMsg ?? response.errorMessage ?? JSON.stringify(response).slice(0, 400);
+      await db.execute(sql`update public.esim_provisioning_orders set status = 'FAILED', last_provisioning_error = ${`esim_access_order_failed:${detail}`.slice(0, 500)}, last_provider_response = ${JSON.stringify(response)}::jsonb, updated_at = now() where order_id = ${orderId}::uuid`);
+      await db.execute(sql`update public.customer_orders set status = 'PROVISIONING_FAILED', updated_at = now() where id = ${orderId}::uuid and status = 'PROVISIONING'`);
+      throw new Error(`esim_access_order_failed:${detail}`);
+    }
     const mapped = providerResult(response);
     await db.execute(sql`update public.esim_provisioning_orders set provider_order_no = ${mapped.providerOrderNo}, provider_status = ${mapped.providerStatus}, last_provider_response = ${JSON.stringify(response)}::jsonb, updated_at = now() where order_id = ${orderId}::uuid`);
     return { started: true, status: "PROVISIONING", providerOrderNo: mapped.providerOrderNo };
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 500) : "provider_order_failed";
+    console.error("[esim] provisioning failed", { orderId, message });
     await db.execute(sql`update public.esim_provisioning_orders set status = 'FAILED', last_provisioning_error = ${message}, updated_at = now() where order_id = ${orderId}::uuid`);
     await db.execute(sql`update public.customer_orders set status = 'PROVISIONING_FAILED', updated_at = now() where id = ${orderId}::uuid and status = 'PROVISIONING'`);
     throw error;
