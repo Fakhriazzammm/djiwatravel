@@ -2,6 +2,7 @@ import { CreditCard } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminPayments } from "@/lib/admin-read-model.server";
+import { formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/payments")({
@@ -36,12 +37,16 @@ function AdminPayments() {
                 <CreditCard className="size-5 shrink-0 text-[#b87400]" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">
-                    {payment.publicOrderCode} · {payment.status}
+                    {payment.publicOrderCode} · {humanizeAdminStatus(payment.status)}
                   </p>
+                  <p className="mt-1 text-xs text-[#6b6b72]">{payment.customer.label}</p>
                   <p className="mt-1 text-xs text-[#6b6b72]">
                     {payment.currencyCode ?? "Currency unknown"}{" "}
                     {payment.amount?.toLocaleString("id-ID") ?? "amount unknown"} · attempts{" "}
                     {payment.attemptCount ?? "unknown"}
+                  </p>
+                  <p className="mt-1 text-xs text-[#8a8a91]">
+                    Exception {formatAdminDateTime(payment.exceptionAt)}
                   </p>
                   {payment.lastError && (
                     <p className="mt-1 text-xs text-[#b00020]">{payment.lastError}</p>

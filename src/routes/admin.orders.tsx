@@ -2,6 +2,7 @@ import { ClipboardList } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminOrders } from "@/lib/admin-read-model.server";
+import { formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/orders")({
@@ -30,19 +31,19 @@ function AdminOrders() {
           </div>
         ) : (
           <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b text-xs text-[#6b6b72]">
                 <tr>
                   <th className="p-3">Order</th>
                   <th className="p-3">Customer</th>
-                  <th className="p-3">Total</th>
-                  <th className="p-3">Lifecycle</th>
-                  <th className="p-3">Dibuat</th>
+                  <th className="p-3">Paket / total</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Dibuat / diperbarui</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.id} className="border-b last:border-0">
+                  <tr key={order.id} className="border-b align-top last:border-0">
                     <td className="p-3">
                       <Link
                         className="font-semibold text-[#0a67c7]"
@@ -51,19 +52,42 @@ function AdminOrders() {
                       >
                         {order.publicOrderCode}
                       </Link>
-                    </td>
-                    <td className="p-3">{order.customer ?? "masked unavailable"}</td>
-                    <td className="p-3">
-                      {order.currencyCode} {order.totalAmount.toLocaleString("id-ID")}
-                    </td>
-                    <td className="p-3">
-                      <div>{order.status}</div>
-                      <div className="text-xs text-[#8a8a91]">
-                        {order.provisioningStatus ?? "no provisioning row"}
+                      <div className="mt-1 text-xs text-[#8a8a91]">
+                        {order.paymentProvider ?? "Payment belum tersedia"}
                       </div>
                     </td>
-                    <td className="p-3 text-xs">
-                      {new Date(order.createdAt).toLocaleString("id-ID")}
+                    <td className="p-3">
+                      <div className="font-medium">{order.customer.label}</div>
+                      {order.customer.email && (
+                        <div className="text-xs text-[#6b6b72]">{order.customer.email}</div>
+                      )}
+                      {order.customer.whatsapp && (
+                        <div className="text-xs text-[#6b6b72]">WA {order.customer.whatsapp}</div>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      <div
+                        className="max-w-[230px] truncate"
+                        title={order.itemSummary ?? undefined}
+                      >
+                        {order.itemSummary ?? "Item belum tersedia"}
+                      </div>
+                      <div className="mt-1 font-semibold">
+                        {order.currencyCode} {order.totalAmount.toLocaleString("id-ID")}
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <div className="font-medium">{humanizeAdminStatus(order.status)}</div>
+                      <div className="text-xs text-[#8a8a91]">
+                        eSIM: {humanizeAdminStatus(order.provisioningStatus)}
+                      </div>
+                    </td>
+                    <td className="p-3 text-xs text-[#6b6b72]">
+                      <div>{formatAdminDateTime(order.createdAt)}</div>
+                      <div className="mt-1">Update {formatAdminDateTime(order.updatedAt)}</div>
+                      {order.paymentReference && (
+                        <div className="mt-1">Ref: {order.paymentReference}</div>
+                      )}
                     </td>
                   </tr>
                 ))}

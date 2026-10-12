@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client.server";
 import { requireAdmin } from "@/lib/admin-guard";
+import { toAdminCustomer } from "@/lib/admin-display";
 
 const LIMIT = 50;
 
@@ -30,9 +31,16 @@ export const getAdminOrders = createServerFn({ method: "GET" }).handler(async ()
   const result = await db.execute(sql`
     select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
            o.payment_provider, o.payment_reference, o.created_at, o.updated_at,
-           p.status as provisioning_status, p.provider_status
+           p.status as provisioning_status, p.provider_status,
+           a.email as customer_email, a.whatsapp as customer_whatsapp,
+           items.item_summary
       from public.customer_orders o
       left join public.esim_provisioning_orders p on p.order_id = o.id
+      left join public.guest_order_access a on a.order_id = o.id
+      left join lateral (
+        select string_agg(coalesce(package_name_snapshot, provider_package_code) || ' × ' || quantity::text, ', ' order by id) as item_summary
+          from public.customer_order_items where order_id = o.id
+      ) items on true
      order by o.created_at desc
      limit ${LIMIT}
   `);
@@ -46,7 +54,8 @@ export const getAdminOrders = createServerFn({ method: "GET" }).handler(async ()
     paymentReference: text(row, "payment_reference"),
     createdAt: text(row, "created_at")!,
     updatedAt: text(row, "updated_at")!,
-    customer: null,
+    customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
+    itemSummary: text(row, "item_summary"),
     provisioningStatus: text(row, "provisioning_status"),
     providerStatus: text(row, "provider_status"),
   }));
@@ -63,9 +72,11 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
              p.status as provisioning_status, p.provider_status,
              p.provider_order_no, p.attempt_count, p.provisioning_attempts,
              p.last_provisioning_error, p.created_at as provisioning_created_at,
-             p.updated_at as provisioning_updated_at
+             p.updated_at as provisioning_updated_at,
+             a.email as customer_email, a.whatsapp as customer_whatsapp
         from public.customer_orders o
         left join public.esim_provisioning_orders p on p.order_id = o.id
+        left join public.guest_order_access a on a.order_id = o.id
        where o.id = ${data.id}::uuid
        limit 1
     `);
@@ -116,7 +127,7 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
       updatedAt: text(row, "updated_at")!,
       paymentExpiresAt: text(row, "payment_expires_at"),
       esimActivationExpiresAt: text(row, "esim_activation_expires_at"),
-      customer: null,
+      customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
       provisioning: {
         status: text(row, "provisioning_status"),
         providerStatus: text(row, "provider_status"),
@@ -155,17 +166,21 @@ export const getAdminPayments = createServerFn({ method: "GET" }).handler(async 
     with payment_exceptions as (
       select w.id::text as id, w.order_id, o.public_order_code,
              w.status, w.amount, w.currency_code, w.processing_error as last_error,
-             w.created_at, w.created_at as updated_at
+             w.created_at, w.created_at as updated_at,
+             a.email as customer_email, a.whatsapp as customer_whatsapp
         from public.payment_webhook_events w
         join public.customer_orders o on o.id = w.order_id
+        left join public.guest_order_access a on a.order_id = o.id
        where w.processing_error is not null
           or w.processed_at is null
           or w.status in ('FAILED', 'EXPIRED')
       union all
       select ('pending:' || o.id::text) as id, o.id as order_id, o.public_order_code,
              o.status, o.total_amount as amount, o.currency_code,
-             null::text as last_error, o.updated_at as created_at, o.updated_at
+             null::text as last_error, o.updated_at as created_at, o.updated_at,
+             a.email as customer_email, a.whatsapp as customer_whatsapp
         from public.customer_orders o
+        left join public.guest_order_access a on a.order_id = o.id
        where o.status = 'PAYMENT_PENDING'
          and not exists (
            select 1 from public.payment_webhook_events w
@@ -174,7 +189,7 @@ export const getAdminPayments = createServerFn({ method: "GET" }).handler(async 
     )
     select id, order_id, public_order_code, status, amount, currency_code,
            null::int as attempt_count, null::timestamptz as next_reconcile_at,
-           last_error, created_at, updated_at
+           last_error, created_at, updated_at, customer_email, customer_whatsapp
       from payment_exceptions
      order by updated_at desc limit ${LIMIT}
   `);
@@ -190,6 +205,8 @@ export const getAdminPayments = createServerFn({ method: "GET" }).handler(async 
     lastError: text(row, "last_error"),
     createdAt: text(row, "created_at")!,
     updatedAt: text(row, "updated_at")!,
+    exceptionAt: text(row, "updated_at")!,
+    customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
   }));
 });
 
@@ -198,8 +215,10 @@ export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(as
   const result = await db.execute(sql`
     select p.id, p.order_id, o.public_order_code, o.status as order_status,
            p.status, p.provider_status, p.attempt_count, p.provisioning_attempts,
-           p.last_provisioning_error, p.next_retry_at, p.created_at, p.updated_at
+           p.last_provisioning_error, p.next_retry_at, p.created_at, p.updated_at,
+           a.email as customer_email, a.whatsapp as customer_whatsapp
       from public.esim_provisioning_orders p join public.customer_orders o on o.id = p.order_id
+      left join public.guest_order_access a on a.order_id = p.order_id
      where p.status in ('PENDING','PROVISIONING','FAILED') or (o.status in ('PAYMENT_CONFIRMED','PROVISIONING_FAILED') and p.id is not null)
      order by p.updated_at desc limit ${LIMIT}
   `);
@@ -216,6 +235,7 @@ export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(as
     nextRetryAt: text(row, "next_retry_at"),
     createdAt: text(row, "created_at")!,
     updatedAt: text(row, "updated_at")!,
+    customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
   }));
 });
 
@@ -239,16 +259,23 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
     `),
     db.execute(sql`
       with exceptions as (
-        select o.id, o.public_order_code, o.status, o.updated_at, 'order' as kind
+        select o.id, o.public_order_code, o.status, o.total_amount as amount, o.currency_code,
+               o.created_at, o.updated_at, o.updated_at as exception_at, 'order' as kind,
+               a.email as customer_email, a.whatsapp as customer_whatsapp
           from public.customer_orders o
+          left join public.guest_order_access a on a.order_id = o.id
          where o.status in ('ORDER_CREATED','PAYMENT_PENDING','PAYMENT_CONFIRMED','PROVISIONING_FAILED')
         union all
-        select w.order_id as id, o.public_order_code, w.status, w.created_at as updated_at, 'payment' as kind
+        select w.order_id as id, o.public_order_code, w.status, w.amount, w.currency_code,
+               o.created_at, w.created_at as updated_at, w.created_at as exception_at, 'payment' as kind,
+               a.email as customer_email, a.whatsapp as customer_whatsapp
           from public.payment_webhook_events w
           join public.customer_orders o on o.id = w.order_id
+          left join public.guest_order_access a on a.order_id = o.id
          where w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED')
       )
-      select id, public_order_code, status, kind, updated_at
+      select id, public_order_code, status, kind, amount, currency_code, created_at, updated_at,
+             exception_at, customer_email, customer_whatsapp
         from exceptions
        order by updated_at desc limit ${LIMIT}
     `),
@@ -267,7 +294,12 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
       publicOrderCode: text(item, "public_order_code")!,
       status: text(item, "status")!,
       kind: text(item, "kind")!,
+      amount: nullableNumber(item, "amount"),
+      currencyCode: text(item, "currency_code"),
+      createdAt: text(item, "created_at")!,
       updatedAt: text(item, "updated_at")!,
+      exceptionAt: text(item, "exception_at")!,
+      customer: toAdminCustomer(text(item, "customer_email"), text(item, "customer_whatsapp")),
     })),
   };
 });

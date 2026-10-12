@@ -2,6 +2,7 @@ import { CircleX, LoaderCircle, ShieldCheck } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminProvisioning } from "@/lib/admin-read-model.server";
+import { formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/provisioning")({
@@ -43,10 +44,12 @@ function AdminProvisioning() {
                   <Icon className="size-5 shrink-0 text-[#8a8a91]" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold">
-                      {item.publicOrderCode} · {item.status}
+                      {item.publicOrderCode} · {humanizeAdminStatus(item.status)}
                     </p>
+                    <p className="mt-1 text-xs text-[#6b6b72]">{item.customer.label}</p>
                     <p className="mt-1 text-xs text-[#6b6b72]">
-                      Order {item.orderStatus} · attempts {item.provisioningAttempts}
+                      Order {humanizeAdminStatus(item.orderStatus)} · attempts{" "}
+                      {item.provisioningAttempts} · update {formatAdminDateTime(item.updatedAt)}
                     </p>
                     {item.lastError && (
                       <p className="mt-1 text-xs text-[#b00020]">{item.lastError}</p>

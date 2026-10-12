@@ -2,6 +2,7 @@ import { ArrowLeft, CircleCheck, CircleDashed, ShieldAlert } from "lucide-react"
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminOrderDetail } from "@/lib/admin-read-model.server";
+import { formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
 import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/orders/$id")({
@@ -86,7 +87,7 @@ function AdminOrderDetail() {
                 {step.done && <StatusPill tone="good">Tercatat</StatusPill>}
                 {step.at && (
                   <span className="ml-auto text-xs text-[#8a8a91]">
-                    {new Date(step.at).toLocaleString("id-ID")}
+                    {formatAdminDateTime(step.at)}
                   </span>
                 )}
               </li>
@@ -101,11 +102,19 @@ function AdminOrderDetail() {
           <dl className="mt-5 space-y-3 text-sm">
             <div className="flex justify-between gap-3">
               <dt>Status</dt>
-              <dd className="font-semibold">{order.status}</dd>
+              <dd className="font-semibold">{humanizeAdminStatus(order.status)}</dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt>Customer</dt>
-              <dd>{order.customer ?? "masked unavailable"}</dd>
+              <dd className="text-right">
+                <div>{order.customer.label}</div>
+                {order.customer.email && (
+                  <div className="text-xs text-[#6b6b72]">{order.customer.email}</div>
+                )}
+                {order.customer.whatsapp && (
+                  <div className="text-xs text-[#6b6b72]">WA {order.customer.whatsapp}</div>
+                )}
+              </dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt>Total</dt>
@@ -114,9 +123,25 @@ function AdminOrderDetail() {
               </dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt>Payment evidence</dt>
-              <dd>{order.payment.status ?? "unknown (no payment webhook evidence)"}</dd>
+              <dt>Dibuat</dt>
+              <dd>{formatAdminDateTime(order.createdAt)}</dd>
             </div>
+            <div className="flex justify-between gap-3">
+              <dt>Diperbarui</dt>
+              <dd>{formatAdminDateTime(order.updatedAt)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Status payment</dt>
+              <dd>{humanizeAdminStatus(order.payment.status)}</dd>
+            </div>
+            {order.payment.reference && (
+              <div className="flex justify-between gap-3">
+                <dt>Payment reference</dt>
+                <dd className="max-w-[55%] truncate" title={order.payment.reference}>
+                  {order.payment.reference}
+                </dd>
+              </div>
+            )}
             <div className="flex justify-between gap-3">
               <dt>Provisioning</dt>
               <dd>{order.provisioning.status ?? "none"}</dd>

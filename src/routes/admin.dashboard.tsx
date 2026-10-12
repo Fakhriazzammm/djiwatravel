@@ -11,6 +11,7 @@ import {
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminDashboard } from "@/lib/admin-read-model.server";
+import { formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/dashboard")({
@@ -105,11 +106,22 @@ function AdminDashboard() {
               <a
                 key={`${item.kind}-${item.id}`}
                 href={item.kind === "payment" ? "/admin/payments" : `/admin/orders/${item.id}`}
-                className="flex items-center justify-between gap-3 py-3 text-sm"
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3 text-sm"
               >
-                <span className="font-semibold text-[#0a67c7]">{item.publicOrderCode}</span>
-                <span className="text-[#6b6b72]">
-                  {item.kind} · {item.status}
+                <span>
+                  <span className="font-semibold text-[#0a67c7]">{item.publicOrderCode}</span>
+                  <span className="ml-2 text-xs text-[#6b6b72]">{item.customer.label}</span>
+                </span>
+                <span className="text-right text-[#6b6b72]">
+                  <span className="block">
+                    {item.kind} · {humanizeAdminStatus(item.status)}
+                  </span>
+                  <span className="block text-xs">
+                    {item.amount !== null && item.currencyCode
+                      ? `${item.currencyCode} ${item.amount.toLocaleString("id-ID")} · `
+                      : ""}
+                    {formatAdminDateTime(item.exceptionAt)}
+                  </span>
                 </span>
               </a>
             ))}

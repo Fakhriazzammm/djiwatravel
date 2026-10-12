@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { adminNavigation } from "@/components/admin-navigation";
+import { maskEmail, maskWhatsapp, toAdminCustomer } from "@/lib/admin-display";
 
 const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "utf8");
 
@@ -51,7 +52,8 @@ describe("simplified admin P0 scope", () => {
     const source = read("lib/admin-read-model.server.ts");
     expect(source).not.toContain("payment_intents");
     expect(source).not.toContain("esim_reconciliation_runs");
-    expect(source).not.toContain("guest_order_access");
+    expect(source).toContain("guest_order_access");
+    expect(source).toContain("toAdminCustomer");
     expect(source).toContain("payment_webhook_events");
     expect(source).toContain("provider_webhook_events");
     expect(source).toContain("null::int as attempt_count");
@@ -62,6 +64,28 @@ describe("simplified admin P0 scope", () => {
     const source = read("routes/admin.dashboard.tsx");
     expect(source).toContain("Data realtime dari database Travel");
     expect(source).not.toContain("Read model operasional belum tersedia");
+  });
+
+  it("masks customer contacts and never returns raw values", () => {
+    const customer = toAdminCustomer("person@example.com", "+6281234567890");
+    expect(maskEmail("person@example.com")).not.toContain("person");
+    expect(maskWhatsapp("+6281234567890")).not.toContain("081234567890");
+    expect(customer).toEqual({
+      label: "Customer — email masked",
+      email: "p•••••@example.com",
+      whatsapp: "•••••••••7890",
+    });
+    expect(toAdminCustomer(null, null).label).toBe("Nama belum tersedia");
+  });
+
+  it("keeps admin read models timestamped and free of sensitive provider payloads", () => {
+    const source = read("lib/admin-read-model.server.ts");
+    expect(source).toContain("exceptionAt");
+    expect(source).toContain("createdAt");
+    expect(source).toContain("updatedAt");
+    expect(source).not.toContain("provider_payload");
+    expect(source).not.toContain("qr_payload_encrypted");
+    expect(source).not.toContain("activation_code_encrypted");
   });
 
   it("does not put server-only database/provider modules in admin route source", () => {
