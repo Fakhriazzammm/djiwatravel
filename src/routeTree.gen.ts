@@ -43,6 +43,7 @@ import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.topup'
+import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
 
@@ -216,6 +217,11 @@ const ApiDjiwaPayTopupRoute = ApiDjiwaPayTopupRouteImport.update({
   path: '/api/djiwa-pay/topup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTasksEsimSyncRoute = ApiTasksEsimSyncRouteImport.update({
+  id: '/api/tasks/esim-sync',
+  path: '/api/tasks/esim-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksDjiwaTravelRoute = ApiWebhooksDjiwaTravelRouteImport.update({
   id: '/api/webhooks/djiwa-travel',
   path: '/api/webhooks/djiwa-travel',
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -301,6 +308,7 @@ export interface FileRoutesByTo {
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -340,6 +348,7 @@ export interface FileRoutesById {
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -380,6 +389,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
+    | '/api/tasks/esim-sync'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -418,6 +428,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
+    | '/api/tasks/esim-sync'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   id:
@@ -456,6 +467,7 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
+    | '/api/tasks/esim-sync'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesById: FileRoutesById
@@ -494,6 +506,7 @@ export interface RootRouteChildren {
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
+  ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
   ApiWebhooksEsimAccessTokenRoute: typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -738,6 +751,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDjiwaPayTopupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tasks/esim-sync': {
+      id: '/api/tasks/esim-sync'
+      path: '/api/tasks/esim-sync'
+      fullPath: '/api/tasks/esim-sync'
+      preLoaderRoute: typeof ApiTasksEsimSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/djiwa-travel': {
       id: '/api/webhooks/djiwa-travel'
       path: '/api/webhooks/djiwa-travel'
@@ -801,6 +821,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyEsimIndexRoute: MyEsimIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
+  ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
   ApiWebhooksEsimAccessTokenRoute: ApiWebhooksEsimAccessTokenRoute,
 }
