@@ -7,6 +7,7 @@ import { classifyAdminError, maskReference, toAdminCustomer } from "@/lib/admin-
 import { normalizePaymentQuery, type PaymentQuery } from "@/lib/admin-metrics";
 import { RESELLER_CONFIG } from "@/lib/reseller-config";
 import { fetchEsimAccessBalanceServer, type ProviderBalance } from "@/lib/esim-access";
+import { affordableCeilingUsd, sellabilityMode, type BalanceSnapshot } from "@/lib/sellability";
 
 const LIMIT = 50;
 
@@ -18,6 +19,9 @@ export type ProviderBalanceView = {
   fxRateIdr: number;
   fetchedAt: string | null;
   error: string | null;
+  /** Priciest package still sellable at this balance (buffer included); null when unknown. */
+  sellableCeilingUsd: number | null;
+  sellabilityMode: "off" | "shadow" | "on";
 };
 
 // Browser display values must come from this allowlist, never provider input.
@@ -390,8 +394,14 @@ export const getAdminDashboard = createServerFn({ method: "GET" })
 
 /** Provider credit shown on the dashboard; never throws, so the dashboard still renders. */
 async function loadAdminProviderBalance(fxRateIdr: number): Promise<ProviderBalanceView> {
+  const mode = sellabilityMode();
   try {
     const balance = await fetchEsimAccessBalanceServer();
+    const snapshot: BalanceSnapshot = {
+      balanceUnits: balance.balanceUnits,
+      capturedAtMs: Date.now(),
+      source: "live",
+    };
     return {
       state: "ok",
       usd: balance.usd,
@@ -399,6 +409,8 @@ async function loadAdminProviderBalance(fxRateIdr: number): Promise<ProviderBala
       fxRateIdr: balance.fxRateIdr,
       fetchedAt: balance.fetchedAt,
       error: null,
+      sellableCeilingUsd: affordableCeilingUsd(snapshot),
+      sellabilityMode: mode,
     };
   } catch (error) {
     return {
@@ -407,7 +419,9 @@ async function loadAdminProviderBalance(fxRateIdr: number): Promise<ProviderBala
       idrReference: null,
       fxRateIdr,
       fetchedAt: null,
-      error: classifyAdminError(error instanceof Error ? error.message : String(error)),
+      error: classifyAdminError(error instanceof Error ? error.message : String(error)) ?? "processing_failed",
+      sellableCeilingUsd: null,
+      sellabilityMode: mode,
     };
   }
 }

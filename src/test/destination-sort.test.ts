@@ -12,6 +12,7 @@ function pkg(code: string, priceIdr: number, volumeBytes: number, durationDays: 
     unlimited: false,
     durationDays,
     priceIdr,
+    sellable: true,
   };
 }
 

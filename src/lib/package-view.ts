@@ -17,6 +17,11 @@ export type ViewPackage = {
   unlimited: boolean;
   durationDays: number;
   priceIdr: number;
+  /**
+   * False when the provider balance cannot cover this package: shown as sold out, never sold.
+   * A boolean keeps the balance and the cost basis on the server.
+   */
+  sellable: boolean;
 };
 
 /** Anything that carries at least the display fields — the full record or a narrower pick. */
@@ -25,7 +30,7 @@ export type PackageDisplaySource = Pick<
   "packageCode" | "name" | "locationCodes" | "volumeBytes" | "durationDays" | "sellingPrice"
 > & { unlimited?: boolean };
 
-export function toViewPackage(pkg: PackageDisplaySource): ViewPackage {
+export function toViewPackage(pkg: PackageDisplaySource, sellable = true): ViewPackage {
   return {
     packageCode: pkg.packageCode,
     name: pkg.name,
@@ -34,9 +39,14 @@ export function toViewPackage(pkg: PackageDisplaySource): ViewPackage {
     unlimited: pkg.unlimited === true,
     durationDays: pkg.durationDays,
     priceIdr: pkg.sellingPrice.sellingPriceIdr,
+    sellable,
   };
 }
 
-export function toViewPackages(packages: PackageDisplaySource[]): ViewPackage[] {
-  return packages.map(toViewPackage);
+/** `hidden` holds the package codes the balance cannot cover; everything else is sellable. */
+export function toViewPackages(
+  packages: PackageDisplaySource[],
+  hidden?: ReadonlySet<string>,
+): ViewPackage[] {
+  return packages.map((pkg) => toViewPackage(pkg, !hidden?.has(pkg.packageCode)));
 }

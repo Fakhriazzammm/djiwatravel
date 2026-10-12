@@ -8,6 +8,7 @@ import { GUEST_ACCESS_TTL_MS, hashGuestAccessToken, normalizeGuestWhatsapp } fro
 import { normalizeWhatsapp, WHATSAPP_PATTERN } from "./phone";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 import { loadLiveResellerPackage } from "./esim-access-catalog";
+import { assertPackageSellableForOrder } from "./sellability.server";
 import { decryptEsimSecret } from "./esim-secret-crypto";
 import { readMayarSnapshot } from "./payment-snapshot";
 import { effectivePaymentStatus } from "./payment-expiry";
@@ -69,6 +70,9 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
     const live = await loadLiveResellerPackage(data.packageCode).catch(() => null);
     const pkg = live ?? catalog.packages.find((item) => item.packageCode === data.packageCode);
     if (!pkg) throw new Error("Paket eSIM tidak ditemukan atau sudah tidak tersedia");
+    // Authoritative gate: the catalogue badge can be seconds stale, so re-check the balance here,
+    // before an order row or an invoice exists.
+    await assertPackageSellableForOrder(pkg);
     const price = pkg.sellingPrice;
     const id = randomUUID();
     const publicOrderCode = randomBytes(12).toString("hex").toUpperCase();

@@ -141,6 +141,20 @@ function AdminDashboard() {
                   ≈ {formatAmount(providerBalance.idrReference)} · kurs referensi Rp
                   {providerBalance.fxRateIdr.toLocaleString("id-ID")}/US$
                 </p>
+                {providerBalance.sellableCeilingUsd !== null && (
+                  <p className="mt-1 text-xs text-[#6b6b72]">
+                    Ambang batas jual: paket di atas US$
+                    {providerBalance.sellableCeilingUsd.toFixed(2)} ditandai Habis (buffer 15%).
+                  </p>
+                )}
+                <p className="mt-1 text-[11px] text-[#8a8a91]">
+                  Gerbang kelayakan jual:{" "}
+                  {providerBalance.sellabilityMode === "on"
+                    ? "aktif"
+                    : providerBalance.sellabilityMode === "shadow"
+                      ? "uji bayangan (tampilan belum berubah)"
+                      : "nonaktif"}
+                </p>
               </div>
               <div className="text-right">
                 <StatusPill tone={balanceIsLow ? "warn" : "good"}>
