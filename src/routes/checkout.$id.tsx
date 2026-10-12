@@ -3,6 +3,7 @@ import { QrCode, Landmark, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, BackBar, StickyCta, btnRed, group, label } from "@/components/shell";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
+import { loadLiveResellerPackage } from "@/lib/esim-access-catalog";
 import { resolveCheckoutPackage } from "@/lib/checkout-package";
 import { rupiah } from "@/lib/pricing";
 import { createOrder } from "@/lib/orders";
@@ -15,8 +16,11 @@ import { toViewPackage } from "@/lib/package-view";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: async ({ params }) => {
+    // Price the page from the provider's current catalogue, so what the customer sees is what the
+    // order is created with (and what the provider will accept).
+    const live = await loadLiveResellerPackage(params.id).catch(() => null);
     const catalog = await getResellerCatalog();
-    const pkg = resolveCheckoutPackage(catalog.packages, params.id);
+    const pkg = live ?? resolveCheckoutPackage(catalog.packages, params.id);
     if (!pkg) throw notFound();
     // Display fields only: the full record carries our cost basis (lib/package-view.ts).
     return { pkg: toViewPackage(pkg) };

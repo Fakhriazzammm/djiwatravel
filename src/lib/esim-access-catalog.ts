@@ -124,3 +124,19 @@ export function isRecommendablePackage(pkg: ResellerCatalogPackage): boolean {
     pkg.available !== false
   );
 }
+
+/**
+ * Provider terms for one package code straight from the provider, bypassing the browsing cache.
+ *
+ * Money must never be based on a cached price: the provider refuses an order whose price no longer
+ * matches its catalogue, so the price the customer pays — and the price we send back to the
+ * provider — is always derived from this live read.
+ */
+export async function loadLiveResellerPackage(packageCode: string): Promise<ResellerCatalogPackage | null> {
+  const response = await queryEsimAccessPackages({ data: { packageCode } });
+  const payload = response as PackageListResponse;
+  const packages = payload.obj?.packageList ?? payload.data?.packageList ?? [];
+  const match = packages.find((pkg) => pkg.packageCode === packageCode) ?? packages[0];
+  if (!match || !hasUsableProviderPrice(match.price)) return null;
+  return normalizeEsimAccessPackage(match);
+}
