@@ -51,6 +51,21 @@ export function buildMayarInvoicePayload(input: z.input<typeof invoicePayloadSch
   };
 }
 
+type MayarPaymentIntent = {
+  status?: string;
+  provider_invoice_id?: string | null;
+  provider_transaction_id?: string | null;
+  payment_url?: string | null;
+};
+
+/** Only a provider-rejected attempt without any provider identifiers is retryable. */
+export function canRetryMayarIntent(intent: MayarPaymentIntent) {
+  return intent.status === "FAILED"
+    && !intent.provider_invoice_id
+    && !intent.provider_transaction_id
+    && !intent.payment_url;
+}
+
 function configuredAppOrigin() {
   const raw = process.env["PUBLIC_APP_ORIGIN"] || process.env["APP_ORIGIN"];
   if (!raw) throw new Error("Canonical app origin belum dikonfigurasi");
@@ -67,15 +82,22 @@ async function createMayarInvoiceForOrder(
 ) {
   const { apiKey, baseUrl } = mayarConfig();
   const intentRows = await db.execute(sql`select status, provider_invoice_id, provider_transaction_id, payment_url from public.payment_intents where order_id = ${orderId}::uuid and provider = 'mayar' limit 1`);
-  const intent = intentRows.rows[0] as { status?: string; provider_invoice_id?: string | null; provider_transaction_id?: string | null; payment_url?: string | null } | undefined;
+  const intent = intentRows.rows[0] as MayarPaymentIntent | undefined;
   if (intent) {
     if (intent.payment_url && intent.provider_invoice_id) return { invoiceId: intent.provider_invoice_id, transactionId: intent.provider_transaction_id ?? "", paymentUrl: intent.payment_url };
-    throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
+    if (!canRetryMayarIntent(intent)) throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
+    const retryClaim = await db.execute(sql`update public.payment_intents
+      set status = 'REQUESTING', attempt_count = attempt_count + 1, last_error = null, next_reconcile_at = null, updated_at = now()
+      where order_id = ${orderId}::uuid and provider = 'mayar' and status = 'FAILED'
+        and provider_invoice_id is null and provider_transaction_id is null and payment_url is null
+      returning id`);
+    if (retryClaim.rows.length === 0) throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
+  } else {
+    const claim = await db.execute(sql`insert into public.payment_intents(order_id, provider, idempotency_key, status, amount, currency_code, attempt_count, updated_at)
+      values (${orderId}::uuid, 'mayar', ${orderId}, 'REQUESTING', ${expectedAmount}, 'IDR', 1, now())
+      on conflict (order_id, provider) do nothing returning id`);
+    if (claim.rows.length === 0) throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
   }
-  const claim = await db.execute(sql`insert into public.payment_intents(order_id, provider, idempotency_key, status, amount, currency_code, attempt_count, updated_at)
-    values (${orderId}::uuid, 'mayar', ${orderId}, 'REQUESTING', ${expectedAmount}, 'IDR', 1, now())
-    on conflict (order_id, provider) do nothing returning id`);
-  if (claim.rows.length === 0) throw new Error("Tagihan pembayaran sedang diproses atau perlu direkonsiliasi");
   let response: Response;
   try {
     response = await fetch(`${baseUrl}/invoices/create`, { method: "POST", headers: { authorization: "Bearer " + apiKey, "content-type": "application/json" }, body: JSON.stringify(buildMayarInvoicePayload(payload)), signal: AbortSignal.timeout(15_000) });
