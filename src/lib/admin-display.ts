@@ -50,7 +50,10 @@ export function formatAdminDateTime(value: string | null | undefined): string {
     : date.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
 }
 
-export function maskSensitiveValue(value: string | number | null | undefined, hidden: boolean): string {
+export function maskSensitiveValue(
+  value: string | number | null | undefined,
+  hidden: boolean,
+): string {
   if (!hidden) return value === null || value === undefined ? "—" : String(value);
   return "••••";
 }
@@ -64,4 +67,34 @@ export function ageFrom(value: string | null | undefined, now = Date.now()): str
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} jam`;
   return `${Math.floor(hours / 24)} hari`;
+}
+
+export type AdminPeriod = "daily" | "weekly" | "monthly";
+
+export function maskReference(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return `••••${value.slice(-4)}`;
+}
+
+export type AdminErrorCategory =
+  | "provider_timeout"
+  | "provider_unavailable"
+  | "provider_rejected"
+  | "validation_failed"
+  | "duplicate_event"
+  | "expired"
+  | "processing_failed"
+  | "unknown";
+
+export function classifyAdminError(value: string | null | undefined): AdminErrorCategory | null {
+  if (!value) return null;
+  const error = value.toLowerCase();
+  if (/timeout|timed out|deadline/.test(error)) return "provider_timeout";
+  if (/unavailable|econn|connection|network|503|502|429/.test(error)) return "provider_unavailable";
+  if (/reject|declin|invalid.*provider|provider.*error|4\d\d/.test(error))
+    return "provider_rejected";
+  if (/valid|schema|missing|required|format/.test(error)) return "validation_failed";
+  if (/duplicate|already processed|idempot/.test(error)) return "duplicate_event";
+  if (/expir/.test(error)) return "expired";
+  return "processing_failed";
 }
