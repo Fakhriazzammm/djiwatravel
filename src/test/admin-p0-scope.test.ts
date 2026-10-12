@@ -18,14 +18,21 @@ const legacyRoutes = [
 ];
 
 describe("simplified admin P0 scope", () => {
-  it("keeps exactly five visible destinations", () => {
+  it("keeps only curated destinations and never re-exposes legacy routes", () => {
+    // "Keuangan" (the Travel finance book) is a deliberate addition on top of the P0 five;
+    // what this guards is that no legacy destination creeps back into the sidebar.
     expect(adminNavigation.map(([label]) => label)).toEqual([
       "Dashboard",
       "Orders",
       "Payments",
+      "Keuangan",
       "eSIM / Provisioning",
       "Settings",
     ]);
+    const visibleHrefs = adminNavigation.map(([, href]) => href);
+    for (const route of legacyRoutes) {
+      expect(visibleHrefs).not.toContain(`/admin/${route}`);
+    }
   });
 
   it("protects and redirects legacy admin routes without preview records", () => {
