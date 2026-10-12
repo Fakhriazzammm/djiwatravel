@@ -44,6 +44,7 @@ import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.topup'
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
+import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
 
@@ -222,6 +223,12 @@ const ApiTasksEsimSyncRoute = ApiTasksEsimSyncRouteImport.update({
   path: '/api/tasks/esim-sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTasksFinanceReconcileRoute =
+  ApiTasksFinanceReconcileRouteImport.update({
+    id: '/api/tasks/finance-reconcile',
+    path: '/api/tasks/finance-reconcile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiWebhooksDjiwaTravelRoute = ApiWebhooksDjiwaTravelRouteImport.update({
   id: '/api/webhooks/djiwa-travel',
   path: '/api/webhooks/djiwa-travel',
@@ -270,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
+  '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -309,6 +317,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
+  '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -349,6 +358,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
+  '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -390,6 +400,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
     | '/api/tasks/esim-sync'
+    | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -429,6 +440,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
     | '/api/tasks/esim-sync'
+    | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   id:
@@ -468,6 +480,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
     | '/api/tasks/esim-sync'
+    | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesById: FileRoutesById
@@ -507,6 +520,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
+  ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
   ApiWebhooksEsimAccessTokenRoute: typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -758,6 +772,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTasksEsimSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tasks/finance-reconcile': {
+      id: '/api/tasks/finance-reconcile'
+      path: '/api/tasks/finance-reconcile'
+      fullPath: '/api/tasks/finance-reconcile'
+      preLoaderRoute: typeof ApiTasksFinanceReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/djiwa-travel': {
       id: '/api/webhooks/djiwa-travel'
       path: '/api/webhooks/djiwa-travel'
@@ -822,6 +843,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
+  ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
   ApiWebhooksEsimAccessTokenRoute: ApiWebhooksEsimAccessTokenRoute,
 }
