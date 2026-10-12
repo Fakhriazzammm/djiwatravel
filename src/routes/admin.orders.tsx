@@ -68,7 +68,7 @@ function AdminOrders() {
                       </Link>
                       <div className="mt-1 text-xs text-[#8a8a91]">
                         {projectAdminPrivacy(
-                          order.paymentProvider ?? "Payment belum tersedia",
+                          order.paymentProviderLabel ?? "Payment belum tersedia",
                           privateMode,
                         )}
                       </div>

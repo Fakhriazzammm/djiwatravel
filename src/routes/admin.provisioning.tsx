@@ -82,10 +82,7 @@ function AdminProvisioning() {
                     </div>
                   </Link>
                   <StatusPill tone={item.status === "FAILED" ? "danger" : "warn"}>
-                    {projectAdminPrivacy(
-                      item.providerStatus ?? "provider status unavailable",
-                      privateMode,
-                    )}
+                    {projectAdminPrivacy(humanizeAdminStatus(item.status), privateMode)}
                   </StatusPill>
                 </div>
               );

@@ -103,7 +103,7 @@ function AdminPayments() {
       <td className="whitespace-nowrap">{formatAdminDateTime(payment.updatedAt)}</td>
       <td className="whitespace-nowrap">{ageFrom(payment.updatedAt)}</td>
       <td className="max-w-32 truncate">
-        {projectAdminPrivacy(payment.paymentProvider ?? "Provider unknown", privateMode)}
+        {projectAdminPrivacy(payment.paymentProviderLabel ?? "Provider unknown", privateMode)}
         {payment.paymentReference
           ? ` · ${projectAdminPrivacy(payment.paymentReference, privateMode)}`
           : ""}

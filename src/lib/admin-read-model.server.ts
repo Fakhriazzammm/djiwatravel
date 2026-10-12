@@ -8,6 +8,16 @@ import { normalizePaymentQuery, type PaymentQuery } from "@/lib/admin-metrics";
 
 const LIMIT = 50;
 
+// Browser display values must come from this allowlist, never provider input.
+function paymentProviderLabel(row: Row): "Mayar" | null {
+  return text(row, "payment_provider") === "mayar" ? "Mayar" : null;
+}
+
+function safeEventType(row: Row, key: string, allowed: readonly string[]): string | null {
+  const value = text(row, key);
+  return value && allowed.includes(value) ? value : null;
+}
+
 const safeError = (row: Row, key: string) => classifyAdminError(text(row, key));
 // Compatibility contract: unavailable reconcile fields remain explicitly unknown: null::int as attempt_count, null::timestamptz as next_reconcile_at.
 
@@ -32,8 +42,8 @@ function nullableNumber(row: Row, key: string): number | null {
 
 export function toSafeAdminPaymentWebhook(event: Row) {
   return {
-    eventType: text(event, "event_type"),
-    status: text(event, "status"),
+    eventType: safeEventType(event, "event_type", ["payment.received", "payment_pending"]),
+    status: safeEventType(event, "status", ["PAID", "PENDING", "FAILED", "EXPIRED"]),
     amount: nullableNumber(event, "amount"),
     currencyCode: text(event, "currency_code"),
     processedAt: text(event, "processed_at"),
@@ -44,7 +54,13 @@ export function toSafeAdminPaymentWebhook(event: Row) {
 
 export function toSafeAdminProviderWebhook(event: Row) {
   return {
-    notifyType: text(event, "notify_type"),
+    notifyType: safeEventType(event, "notify_type", [
+      "ORDER_STATUS",
+      "ESIM_STATUS",
+      "DATA_USAGE",
+      "VALIDITY_USAGE",
+      "SMDP_EVENT",
+    ]),
     processedAt: text(event, "processed_at"),
     processingError: safeError(event, "processing_error"),
     providerEventAt: text(event, "provider_event_at"),
@@ -57,14 +73,14 @@ export const getAdminOrders = createServerFn({ method: "GET" }).handler(async ()
   const result = await db.execute(sql`
     select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
            o.payment_provider, o.payment_reference, o.created_at, o.updated_at,
-           p.status as provisioning_status, p.provider_status,
+           p.status as provisioning_status,
            a.email as customer_email, a.whatsapp as customer_whatsapp,
            items.item_summary
       from public.customer_orders o
       left join public.esim_provisioning_orders p on p.order_id = o.id
       left join public.guest_order_access a on a.order_id = o.id
       left join lateral (
-        select string_agg(coalesce(package_name_snapshot, provider_package_code) || ' × ' || quantity::text, ', ' order by id) as item_summary
+        select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) as item_summary
           from public.customer_order_items where order_id = o.id
       ) items on true
      order by o.created_at desc
@@ -76,14 +92,13 @@ export const getAdminOrders = createServerFn({ method: "GET" }).handler(async ()
     status: text(row, "status")!,
     currencyCode: text(row, "currency_code")!,
     totalAmount: number(row, "total_amount"),
-    paymentProvider: text(row, "payment_provider"),
+    paymentProviderLabel: paymentProviderLabel(row),
     paymentReference: maskReference(text(row, "payment_reference")),
     createdAt: text(row, "created_at")!,
     updatedAt: text(row, "updated_at")!,
     customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
     itemSummary: text(row, "item_summary"),
     provisioningStatus: text(row, "provisioning_status"),
-    providerStatus: text(row, "provider_status"),
   }));
 });
 
@@ -95,8 +110,8 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
       select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
              o.payment_provider, o.payment_reference, o.paid_at, o.created_at, o.updated_at,
              o.payment_expires_at, o.esim_activation_expires_at,
-             p.status as provisioning_status, p.provider_status,
-             p.provider_order_no, p.attempt_count, p.provisioning_attempts,
+             p.status as provisioning_status,
+             p.attempt_count, p.provisioning_attempts,
              p.last_provisioning_error, p.created_at as provisioning_created_at,
              p.updated_at as provisioning_updated_at,
              a.email as customer_email, a.whatsapp as customer_whatsapp
@@ -111,16 +126,16 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
 
     const [itemsResult, webhookResult, providerWebhookResult] = await Promise.all([
       db.execute(sql`
-        select package_name_snapshot, provider_package_code, quantity, line_total
+        select package_name_snapshot, quantity, line_total
           from public.customer_order_items where order_id = ${data.id}::uuid order by id
       `),
       db.execute(sql`
-        select provider_event_id, event_type, status, amount, currency_code,
+        select event_type, status, amount, currency_code,
                processed_at, processing_error, created_at
           from public.payment_webhook_events where order_id = ${data.id}::uuid order by created_at desc limit 20
       `),
       db.execute(sql`
-        select notify_id, notify_type, processed_at, processing_error, provider_event_at, synced_at
+        select notify_type, processed_at, processing_error, provider_event_at, synced_at
           from public.provider_webhook_events
          where notify_id in (
            select provider_order_no from public.esim_provisioning_orders where order_id = ${data.id}::uuid
@@ -136,7 +151,7 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
       status: text(row, "status")!,
       currencyCode: text(row, "currency_code")!,
       totalAmount: number(row, "total_amount"),
-      paymentProvider: text(row, "payment_provider"),
+      paymentProviderLabel: paymentProviderLabel(row),
       paymentReference: maskReference(text(row, "payment_reference")),
       paidAt: text(row, "paid_at"),
       createdAt: text(row, "created_at")!,
@@ -146,7 +161,6 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
       customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
       provisioning: {
         status: text(row, "provisioning_status"),
-        providerStatus: text(row, "provider_status"),
         attemptCount: number(row, "attempt_count"),
         provisioningAttempts: number(row, "provisioning_attempts"),
         lastError: safeError(row, "last_provisioning_error"),
@@ -154,13 +168,13 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
         updatedAt: text(row, "provisioning_updated_at"),
       },
       items: (itemsResult.rows as Row[]).map((item) => ({
-        packageName: text(item, "package_name_snapshot") ?? text(item, "provider_package_code"),
+        packageName: text(item, "package_name_snapshot") ?? "Paket belum tersedia",
         quantity: number(item, "quantity"),
         lineTotal: number(item, "line_total"),
       })),
       payment: {
         status: paymentWebhooks[0]?.status ?? (text(row, "paid_at") ? "PAID" : null),
-        provider: text(row, "payment_provider"),
+        providerLabel: paymentProviderLabel(row),
         reference: maskReference(text(row, "payment_reference")),
         paidAt: text(row, "paid_at"),
         webhooks: paymentWebhooks,
@@ -201,7 +215,7 @@ export const getAdminPayments = createServerFn({ method: "GET" })
           from public.payment_webhook_events w
           join public.customer_orders o on o.id = w.order_id
           left join public.guest_order_access a on a.order_id = o.id
-          left join lateral (select string_agg(coalesce(package_name_snapshot, provider_package_code) || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
+          left join lateral (select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
          where w.processing_error is not null or w.processed_at is null or w.status in ('FAILED', 'EXPIRED')
         union all
         select ('pending:' || o.id::text) as id, o.id as order_id, o.public_order_code,
@@ -211,7 +225,7 @@ export const getAdminPayments = createServerFn({ method: "GET" })
                a.email as customer_email, a.whatsapp as customer_whatsapp, items.item_summary
           from public.customer_orders o
           left join public.guest_order_access a on a.order_id = o.id
-          left join lateral (select string_agg(coalesce(package_name_snapshot, provider_package_code) || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
+          left join lateral (select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
          where o.status = 'PAYMENT_PENDING' and not exists (select 1 from public.payment_webhook_events w where w.order_id = o.id and w.status = 'PAID')
       )
     `;
@@ -230,8 +244,8 @@ export const getAdminPayments = createServerFn({ method: "GET" })
         status: text(row, "status")!,
         amount: nullableNumber(row, "amount"),
         currencyCode: text(row, "currency_code"),
-        eventType: text(row, "event_type"),
-        paymentProvider: text(row, "payment_provider"),
+        eventType: safeEventType(row, "event_type", ["payment.received", "payment_pending"]),
+        paymentProviderLabel: paymentProviderLabel(row),
         paymentReference: maskReference(text(row, "payment_reference")),
         itemSummary: text(row, "item_summary"),
         orderCreatedAt: text(row, "order_created_at"),
@@ -255,7 +269,7 @@ export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(as
   await requireAdmin();
   const result = await db.execute(sql`
     select p.id, p.order_id, o.public_order_code, o.status as order_status,
-           p.status, p.provider_status, p.attempt_count, p.provisioning_attempts,
+           p.status, p.attempt_count, p.provisioning_attempts,
            p.last_provisioning_error, p.next_retry_at, p.created_at, p.updated_at,
            a.email as customer_email, a.whatsapp as customer_whatsapp
       from public.esim_provisioning_orders p join public.customer_orders o on o.id = p.order_id
@@ -268,7 +282,6 @@ export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(as
     displayIdentifier: maskReference(text(row, "public_order_code")),
     orderStatus: text(row, "order_status")!,
     status: text(row, "status")!,
-    providerStatus: text(row, "provider_status"),
     attemptCount: number(row, "attempt_count"),
     provisioningAttempts: number(row, "provisioning_attempts"),
     lastError: safeError(row, "last_provisioning_error"),
