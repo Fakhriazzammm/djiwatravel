@@ -1,7 +1,54 @@
-import { CreditCard, ReceiptText } from "lucide-react";
-import { requireAdmin } from "@/lib/admin-guard";
+import { CreditCard } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AdminShell } from "@/components/admin-shell";
-import { MetricTile, PreviewBanner, PreviewTable, StatusPill } from "@/components/admin-preview";
-export const Route = createFileRoute("/admin/payments")({ beforeLoad: () => requireAdmin(), head: () => ({ meta: [{ name: "robots", content: "noindex" }] }), component: AdminPayments });
-function AdminPayments() { return <AdminShell title="Payments" subtitle="Pantau invoice, settlement, webhook, mismatch, dan refund exposure."><PreviewBanner /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><MetricTile label="Paid today" value="Rp 8,42 jt" detail="24 transaksi preview" tone="good" /><MetricTile label="Pending" value="7" detail="Tertua 18 menit" tone="warn" /><MetricTile label="Webhook failed" value="2" detail="Perlu retry" tone="danger" /><MetricTile label="Amount mismatch" value="1" detail="Review sebelum fulfill" tone="danger" /></div><section className="mt-6 rounded-3xl border border-[#e5e5ea] bg-white p-5 sm:p-6"><div className="flex items-center gap-3"><div className="rounded-2xl bg-[#f0f6ff] p-3"><CreditCard className="size-5 text-[#0a84ff]" /></div><div><h2 className="font-semibold">Recent transactions</h2><p className="mt-1 text-sm text-[#8a8a91]">Preview pembayaran dengan correlation order.</p></div><ReceiptText className="ml-auto size-5 text-[#8a8a91]" /></div><div className="mt-5"><PreviewTable headers={["Transaction", "Order", "Customer", "Amount", "Status", "Age"]} rows={[[<span className="font-medium">MYR-8F31</span>, "DJ-20261005-001", "fa••@mail.com", "Rp 340.000", <StatusPill tone="good">Paid</StatusPill>, "4m"],["MYR-8F32", "DJ-20261005-002", "ri••@mail.com", "Rp 156.000", <StatusPill tone="warn">Pending</StatusPill>, "18m"],["MYR-8F33", "DJ-20261005-003", "an••@mail.com", "Rp 234.000", <StatusPill tone="danger">Mismatch</StatusPill>, "22m"]]} /></div></section></AdminShell>; }
+import { requireAdmin } from "@/lib/admin-guard";
+import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
+
+export const Route = createFileRoute("/admin/payments")({
+  beforeLoad: () => requireAdmin(),
+  head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
+  component: AdminPayments,
+});
+const states = [
+  ["Pending", "Menunggu konfirmasi provider", "warn"],
+  ["Berhasil", "Payment terverifikasi", "good"],
+  ["Gagal", "Payment gagal", "danger"],
+  ["Expired", "Invoice kedaluwarsa", "neutral"],
+  ["Amount mismatch", "Nominal provider berbeda", "danger"],
+  ["Webhook bermasalah", "Event tidak terselesaikan", "danger"],
+] as const;
+function AdminPayments() {
+  return (
+    <AdminShell
+      title="Payments"
+      subtitle="Cari pembayaran bermasalah tanpa mengubah status secara manual."
+    >
+      <AdminPageState
+        title="Data payment belum tersambung"
+        detail="Status hanya boleh berasal dari payment intent dan webhook yang diverifikasi server-side. Tombol Mark as Paid tidak tersedia."
+      />
+      <section className="mt-6 rounded-2xl border border-[#e5e5ea] bg-white p-5">
+        <SectionHeading
+          title="Filter exception payment"
+          detail="Pending, berhasil, gagal, expired, mismatch, dan webhook problem."
+        />
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {states.map(([label, detail, tone]) => (
+            <button
+              key={label}
+              type="button"
+              disabled
+              className="flex min-h-20 cursor-not-allowed items-center gap-3 rounded-xl border border-[#e5e5ea] p-4 text-left opacity-80"
+            >
+              <CreditCard className="size-5 shrink-0 text-[#8a8a91]" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{label}</span>
+                <span className="mt-1 block text-xs text-[#8a8a91]">{detail}</span>
+              </span>
+              <StatusPill tone={tone}>Belum tersedia</StatusPill>
+            </button>
+          ))}
+        </div>
+      </section>
+    </AdminShell>
+  );
+}
