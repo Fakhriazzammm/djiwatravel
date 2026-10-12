@@ -5,7 +5,14 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminPayments } from "@/lib/admin-read-model.server";
 import { normalizePaymentQuery, type PaymentSortKey } from "@/lib/admin-metrics";
-import { ageFrom, formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
+import {
+  ageFrom,
+  formatAdminDateTime,
+  humanizeAdminStatus,
+  projectAdminIdentifier,
+  projectAdminPrivacy,
+  projectAdminTitle,
+} from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 const paymentSearch = z.object({
@@ -73,8 +80,11 @@ function AdminPayments() {
           {payment.lastError ?? payment.eventType ?? "Reason unknown"}
         </span>
       </td>
-      <td className="max-w-28 truncate font-mono" title={payment.id}>
-        {payment.id.slice(0, 12)}…
+      <td
+        className="max-w-28 truncate font-mono"
+        title={projectAdminTitle(payment.id, privateMode)}
+      >
+        {projectAdminIdentifier(privateMode ? null : `${payment.id.slice(0, 12)}…`, privateMode)}
       </td>
       <td>{privateMode ? "••••" : payment.customer.label}</td>
       <td>
@@ -82,11 +92,11 @@ function AdminPayments() {
           to={`/admin/orders/${payment.orderId}` as never}
           className="font-semibold text-[#0a67c7]"
         >
-          {payment.publicOrderCode}
+          {projectAdminIdentifier(payment.publicOrderCode, privateMode)}
         </Link>
       </td>
-      <td className="max-w-44 truncate" title={payment.itemSummary ?? undefined}>
-        {payment.itemSummary ?? "Paket belum tersedia"}
+      <td className="max-w-44 truncate" title={projectAdminTitle(payment.itemSummary, privateMode)}>
+        {projectAdminPrivacy(payment.itemSummary ?? "Paket belum tersedia", privateMode)}
       </td>
       <td className="whitespace-nowrap">{displayAmount(payment)}</td>
       <td className="whitespace-nowrap">
@@ -95,8 +105,10 @@ function AdminPayments() {
       <td className="whitespace-nowrap">{formatAdminDateTime(payment.updatedAt)}</td>
       <td className="whitespace-nowrap">{ageFrom(payment.updatedAt)}</td>
       <td className="max-w-32 truncate">
-        {payment.paymentProvider ?? "Provider unknown"}
-        {payment.paymentReference ? ` · ${payment.paymentReference}` : ""}
+        {projectAdminPrivacy(payment.paymentProvider ?? "Provider unknown", privateMode)}
+        {payment.paymentReference
+          ? ` · ${projectAdminPrivacy(payment.paymentReference, privateMode)}`
+          : ""}
       </td>
     </>
   );
@@ -221,7 +233,8 @@ function AdminPayments() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold">
-                        {payment.publicOrderCode} · {humanizeAdminStatus(payment.status)}
+                        {projectAdminIdentifier(payment.publicOrderCode, privateMode)} ·{" "}
+                        {humanizeAdminStatus(payment.status)}
                       </p>
                       <p className="mt-1 text-[#6b6b72]">
                         {privateMode ? "••••" : payment.customer.label} · {displayAmount(payment)}
@@ -230,7 +243,11 @@ function AdminPayments() {
                     <CreditCard className="size-4 text-[#b87400]" />
                   </div>
                   <p className="mt-2 text-[#6b6b72]">
-                    {payment.itemSummary ?? "Paket belum tersedia"} · {ageFrom(payment.updatedAt)}
+                    {projectAdminPrivacy(
+                      payment.itemSummary ?? "Paket belum tersedia",
+                      privateMode,
+                    )}{" "}
+                    · {ageFrom(payment.updatedAt)}
                   </p>
                   <p className="mt-1 text-[#b00020]">
                     {payment.lastError ?? payment.eventType ?? "Reason unknown"}

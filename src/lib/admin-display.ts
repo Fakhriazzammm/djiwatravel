@@ -58,6 +58,24 @@ export function maskSensitiveValue(
   return "••••";
 }
 
+export function projectAdminPrivacy(
+  value: string | number | null | undefined,
+  hidden: boolean,
+): string {
+  return hidden ? "••••" : value === null || value === undefined ? "—" : String(value);
+}
+
+export function projectAdminIdentifier(value: string | null | undefined, hidden: boolean): string {
+  return hidden ? "••••" : (value ?? "—");
+}
+
+export function projectAdminTitle(
+  value: string | null | undefined,
+  hidden: boolean,
+): string | undefined {
+  return hidden ? undefined : (value ?? undefined);
+}
+
 export function ageFrom(value: string | null | undefined, now = Date.now()): string {
   if (!value) return "Usia tidak tersedia";
   const timestamp = new Date(value).getTime();

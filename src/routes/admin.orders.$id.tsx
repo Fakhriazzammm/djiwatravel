@@ -1,8 +1,15 @@
 import { ArrowLeft, CircleCheck, CircleDashed, ShieldAlert } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminOrderDetail } from "@/lib/admin-read-model.server";
-import { formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
+import {
+  formatAdminDateTime,
+  humanizeAdminStatus,
+  projectAdminIdentifier,
+  projectAdminPrivacy,
+} from "@/lib/admin-display";
 import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/orders/$id")({
@@ -14,6 +21,7 @@ export const Route = createFileRoute("/admin/orders/$id")({
 function AdminOrderDetail() {
   const { id } = Route.useParams();
   const order = Route.useLoaderData();
+  const [privateMode, setPrivateMode] = useState(false);
   if (!order)
     return (
       <AdminShell title="Detail order">
@@ -56,7 +64,7 @@ function AdminOrderDetail() {
   return (
     <AdminShell
       title="Detail order"
-      subtitle={`Order ${order.publicOrderCode} · data sensitif tetap masked.`}
+      subtitle={`Order ${projectAdminIdentifier(order.publicOrderCode, privateMode)} · data sensitif tetap masked.`}
     >
       <Link
         to="/admin/orders"
@@ -65,6 +73,14 @@ function AdminOrderDetail() {
         <ArrowLeft className="size-4" />
         Kembali ke orders
       </Link>
+      <button
+        type="button"
+        onClick={() => setPrivateMode((value) => !value)}
+        aria-pressed={privateMode}
+        className="mb-5 ml-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#e5e5ea] bg-white px-3 text-sm font-semibold"
+      >
+        {privateMode ? <EyeOff className="size-4" /> : <Eye className="size-4" />} Privasi
+      </button>
       <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
         <article className="rounded-2xl border border-[#e5e5ea] bg-white p-5">
           <SectionHeading
@@ -119,7 +135,7 @@ function AdminOrderDetail() {
             <div className="flex justify-between gap-3">
               <dt>Total</dt>
               <dd>
-                {order.currencyCode} {order.totalAmount.toLocaleString("id-ID")}
+                {order.currencyCode} {projectAdminPrivacy(order.totalAmount, privateMode)}
               </dd>
             </div>
             <div className="flex justify-between gap-3">
@@ -137,8 +153,8 @@ function AdminOrderDetail() {
             {order.payment.reference && (
               <div className="flex justify-between gap-3">
                 <dt>Payment reference</dt>
-                <dd className="max-w-[55%] truncate" title={order.payment.reference}>
-                  {order.payment.reference}
+                <dd className="max-w-[55%] truncate">
+                  {projectAdminPrivacy(order.payment.reference, privateMode)}
                 </dd>
               </div>
             )}
@@ -164,7 +180,7 @@ function AdminOrderDetail() {
                 {item.packageName} × {item.quantity}
               </span>
               <span>
-                {order.currencyCode} {item.lineTotal.toLocaleString("id-ID")}
+                {order.currencyCode} {projectAdminPrivacy(item.lineTotal, privateMode)}
               </span>
             </div>
           ))}
@@ -180,7 +196,7 @@ function AdminOrderDetail() {
         ) : (
           <div className="mt-4 divide-y">
             {order.payment.webhooks.map((event) => (
-              <div key={`${event.eventId}-${event.createdAt}`} className="py-3 text-sm">
+              <div key={`${event.eventType}-${event.createdAt}`} className="py-3 text-sm">
                 <p className="font-semibold">
                   {event.eventType ?? "event unknown"} · {event.status ?? "status unknown"}
                 </p>

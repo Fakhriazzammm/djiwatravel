@@ -8,6 +8,8 @@ import {
   formatAdminDateTime,
   humanizeAdminStatus,
   maskSensitiveValue,
+  projectAdminIdentifier,
+  projectAdminTitle,
 } from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { z } from "zod";
@@ -31,6 +33,8 @@ function AdminDashboard() {
   const series = useMemo(() => data.daily, [data.daily]);
   const max = Math.max(...series.map((point) => point.count), 1);
   const formatCount = (value: number) => maskSensitiveValue(value, privateMode);
+  const projectIdentifier = (value: string | null | undefined) =>
+    projectAdminIdentifier(value, privateMode);
   const formatAmount = (value: number | null) =>
     value === null ? "—" : privateMode ? "••••" : `Rp${value.toLocaleString("id-ID")}`;
   const actions = data.items.slice(0, 5);
@@ -124,7 +128,7 @@ function AdminDashboard() {
                 <div
                   key={point.day}
                   className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
-                  title={`${point.day}: ${point.count}`}
+                  title={projectAdminTitle(`${point.day}: ${point.count}`, privateMode)}
                 >
                   <span className="text-[10px] text-[#6b6b72]">
                     {privateMode ? "••" : point.count}
@@ -187,7 +191,7 @@ function AdminDashboard() {
                 >
                   <AlertTriangle className="size-4 shrink-0 text-[#b87400]" />
                   <span className="min-w-0 flex-1">
-                    <b>{item.publicOrderCode}</b> · {item.customer.label}
+                    <b>{projectIdentifier(item.publicOrderCode)}</b> · {item.customer.label}
                     <span className="block text-[#6b6b72]">
                       {humanizeAdminStatus(item.status)} · {ageFrom(item.exceptionAt)}
                     </span>
@@ -257,7 +261,7 @@ function AdminDashboard() {
                             : `/admin/orders/${item.id}`) as never
                         }
                       >
-                        {item.publicOrderCode}
+                        {projectIdentifier(item.publicOrderCode)}
                       </Link>
                     </td>
                     <td>{item.customer.label}</td>
