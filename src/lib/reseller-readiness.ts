@@ -1,3 +1,5 @@
+import { ADMIN_AUTH_ISSUER, ADMIN_INVITE_READINESS, adminEmails } from "@/lib/admin-guard.server";
+
 export type ReadinessItem = { name: string; ready: boolean; detail: string };
 
 /** Safe operational checklist; never returns secret values. */
@@ -44,11 +46,24 @@ export function getResellerReadiness(env: NodeJS.ProcessEnv = process.env): Read
     },
     {
       name: "Admin auth",
-      ready: Boolean(env["ADMIN_AUTH_ISSUER"] && env["ADMIN_AUTH_AUDIENCE"]),
+      ready: adminEmails(env).length > 0,
       detail:
-        env["ADMIN_AUTH_ISSUER"] && env["ADMIN_AUTH_AUDIENCE"]
-          ? "Admin session verifier tersedia"
-          : "Admin auth issuer/audience belum dikonfigurasi",
+        adminEmails(env).length > 0
+          ? `Allowlist aktif; session diverifikasi oleh ${ADMIN_AUTH_ISSUER}`
+          : "ADMIN_EMAILS belum dikonfigurasi; session verifier fail-closed",
+    },
+    {
+      name: "Admin Google provider",
+      ready: Boolean(env["GOOGLE_CLIENT_ID"] && env["GOOGLE_CLIENT_SECRET"]),
+      detail:
+        env["GOOGLE_CLIENT_ID"] && env["GOOGLE_CLIENT_SECRET"]
+          ? "Google provider dikonfigurasi pada runtime ini"
+          : "Google provider dikelola canonical Better Auth; status runtime external belum terverifikasi",
+    },
+    {
+      name: "Admin invites",
+      ready: ADMIN_INVITE_READINESS.available,
+      detail: ADMIN_INVITE_READINESS.reason,
     },
     {
       name: "Operations worker",

@@ -96,4 +96,11 @@ describe("simplified admin P0 scope", () => {
       expect(source).not.toContain("payment_intents");
     }
   });
+
+  it("uses the shared Better Auth Google flow for the admin entry", () => {
+    const source = read("routes/admin.login.tsx");
+    expect(source).toContain("signInGoogle(`${window.location.origin}/admin/dashboard`)");
+    expect(source).toContain("Lanjutkan dengan Google");
+    expect(source).not.toMatch(/password|pin/i);
+  });
 });

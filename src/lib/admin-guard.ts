@@ -7,8 +7,7 @@ import { isAdminRequest } from "@/lib/admin-guard.server";
  *
  * Runs in `beforeLoad`, so the check happens on the server for a cold load and again on the
  * client for in-app navigation. Anyone who is not an allow-listed admin (see
- * `admin-guard.server.ts`) is sent to /profile, which carries the sign-in form — there is no
- * /login route in this app.
+ * `admin-guard.server.ts`) is sent to the dedicated Google admin sign-in entry.
  */
 export async function requireAdmin() {
   let allowed = false;
@@ -17,5 +16,5 @@ export async function requireAdmin() {
   } catch {
     allowed = false;
   }
-  if (!allowed) throw redirect({ to: "/profile", search: { admin: "unauthorized" }, replace: true });
+  if (!allowed) throw redirect({ to: "/admin/login", replace: true });
 }

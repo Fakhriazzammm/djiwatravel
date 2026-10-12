@@ -4,6 +4,7 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 /** Same upstream Better Auth instance the rest of the app trusts. */
 const AUTH_SESSION_URL = "https://auth.zantara.id/api/auth/get-session";
 const AUTH_ORIGIN = "https://djiwatravel.com";
+export const ADMIN_AUTH_ISSUER = "https://auth.zantara.id";
 
 type BetterAuthSession = { user?: { email?: string | null } | null } | null;
 
@@ -20,13 +21,17 @@ export function adminEmails(env: NodeJS.ProcessEnv = process.env): string[] {
     .filter(Boolean);
 }
 
+export function normalizeAdminEmail(email: string | null | undefined): string {
+  return (email ?? "").trim().toLowerCase();
+}
+
 export function isAdminEmail(
   email: string | null | undefined,
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
   const allowed = adminEmails(env);
   if (allowed.length === 0) return false;
-  const value = (email ?? "").trim().toLowerCase();
+  const value = normalizeAdminEmail(email);
   return value !== "" && allowed.includes(value);
 }
 
@@ -54,3 +59,9 @@ export const getAdminEmail = createServerFn({ method: "GET" }).handler(async () 
 export const isAdminRequest = createServerFn({ method: "GET" }).handler(async () =>
   isAdminEmail(await readSignedInEmail()),
 );
+
+/** No shadow role store: the canonical Better Auth control-plane contract is not verified here. */
+export const ADMIN_INVITE_READINESS = {
+  available: false,
+  reason: "Canonical Better Auth admin-management API is not verified in this repository.",
+} as const;
