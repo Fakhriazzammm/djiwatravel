@@ -10,7 +10,7 @@ import {
   projectAdminCustomer,
   projectAdminPrivacy,
 } from "@/lib/admin-display";
-import { AdminDetailSheet, AdminShell, AdminSurface, StatusPill } from "@/components/admin-shell";
+import { AdminShell, AdminSurface, StatusPill } from "@/components/admin-shell";
 export const Route = createFileRoute("/admin/orders")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
@@ -20,7 +20,6 @@ export const Route = createFileRoute("/admin/orders")({
 function AdminOrders() {
   const orders = Route.useLoaderData();
   const [privateMode, setPrivateMode] = useState(false);
-  const [listOpen, setListOpen] = useState(false);
   const newest = orders[0];
   const card = (order: (typeof orders)[number]) => (
     <Link
@@ -86,13 +85,9 @@ function AdminOrders() {
             <>
               <p className="mt-3 text-[11px] font-medium text-[#6e6e73]">Order terbaru</p>
               <div className="mt-1">{card(newest)}</div>
-              <button
-                type="button"
-                onClick={() => setListOpen(true)}
-                className="mt-2 min-h-11 w-full rounded-xl bg-[#0a84ff] px-3 text-xs font-semibold text-white active:bg-[#006fe6]"
-              >
-                Lihat semua order
-              </button>
+              <p className="mt-2 text-[11px] text-[#6e6e73]">
+                Semua order tampil di bawah untuk monitoring langsung.
+              </p>
             </>
           ) : (
             <div className="mt-3 flex items-center gap-3 text-sm text-[#6e6e73]">
@@ -159,14 +154,13 @@ function AdminOrders() {
             </table>
           </div>
         </AdminSurface>
+        <div className="lg:hidden">
+          <AdminSurface className="p-3">
+            <p className="mb-2 text-[11px] font-medium text-[#6e6e73]">Semua order</p>
+            <div className="space-y-1.5">{orders.map(card)}</div>
+          </AdminSurface>
+        </div>
       </div>
-      <AdminDetailSheet
-        open={listOpen}
-        title={`Semua order · ${orders.length}`}
-        onClose={() => setListOpen(false)}
-      >
-        <div className="space-y-2">{orders.map(card)}</div>
-      </AdminDetailSheet>
     </AdminShell>
   );
 }

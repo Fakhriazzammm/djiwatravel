@@ -54,56 +54,15 @@ export function AdminDetailSheet({
   onClose: () => void;
   children: ReactNode;
 }) {
-  const closeRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.activeElement as HTMLElement | null;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    closeRef.current?.focus();
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      previous?.focus();
-    };
-  }, [open, onClose]);
-  if (!open) return null;
+  void open;
+  void onClose;
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/25 p-0 sm:p-4"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="admin-sheet-title"
-        className="max-h-[88dvh] w-full overflow-y-auto rounded-t-[24px] bg-white p-4 pb-[max(16px,env(safe-area-inset-bottom))] shadow-2xl sm:max-w-2xl sm:rounded-2xl"
-      >
-        <div
-          className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#d1d1d6] sm:hidden"
-          aria-hidden="true"
-        />
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="admin-sheet-title" className="font-semibold">
-            {title}
-          </h2>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup detail"
-            className="min-h-11 min-w-11 rounded-xl border border-[#e5e5ea] p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]"
-          >
-            <X className="mx-auto size-4" />
-          </button>
-        </div>
-        <div className="mt-3">{children}</div>
-      </section>
-    </div>
+    <section className="mt-2 rounded-2xl border border-black/[0.06] bg-white p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="font-semibold">{title}</h2>
+      </div>
+      {children}
+    </section>
   );
 }
 

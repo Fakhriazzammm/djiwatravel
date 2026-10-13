@@ -38,7 +38,6 @@ function AdminDashboard() {
   const period = data.period;
   const [privateMode, setPrivateMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
   const series = useMemo(() => data.daily, [data.daily]);
   const max = privateMode ? 1 : Math.max(...series.map((p) => p.count), 1);
   const count = (v: number) => maskSensitiveValue(v, privateMode);
@@ -178,13 +177,7 @@ function AdminDashboard() {
                     : "Tidak ada exception aktif"
                 }
               />
-              <button
-                type="button"
-                onClick={() => setDetailOpen(true)}
-                className="min-h-11 rounded-xl px-3 text-xs font-semibold text-[#0a67c7]"
-              >
-                Lihat detail
-              </button>
+              <span className="text-[11px] text-[#6e6e73]">Detail di bawah</span>
             </div>
             {actions.slice(0, 1).map((item) => (
               <Link
@@ -221,11 +214,7 @@ function AdminDashboard() {
           </AdminSurface>
         </div>
       </div>
-      <AdminDetailSheet
-        open={detailOpen}
-        title="Detail operasional"
-        onClose={() => setDetailOpen(false)}
-      >
+      <AdminDetailSheet open title="Detail operasional" onClose={() => undefined}>
         <div className="space-y-2">
           {series.length ? (
             <div className="flex h-40 items-end gap-1 border-b border-black/[0.06]">
@@ -261,7 +250,6 @@ function AdminDashboard() {
             <Link
               key={item.detailHref}
               to={item.kind === "payment" ? "/admin/payments" : (item.detailHref as never)}
-              onClick={() => setDetailOpen(false)}
               className="flex min-h-11 items-center gap-2 py-2 text-xs"
             >
               <AlertTriangle className="size-4 text-[#b87400]" />

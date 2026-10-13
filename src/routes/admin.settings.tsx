@@ -1,15 +1,8 @@
 import { CircleAlert, Database, Server } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
-import {
-  AdminDetailSheet,
-  AdminShell,
-  AdminSurface,
-  SectionHeading,
-  StatusPill,
-} from "@/components/admin-shell";
+import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { getAdminReadiness } from "@/lib/admin-readiness.server";
-import { useState } from "react";
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
@@ -18,7 +11,6 @@ export const Route = createFileRoute("/admin/settings")({
 });
 function AdminSettings() {
   const { readiness } = Route.useLoaderData();
-  const [open, setOpen] = useState(false);
   const ready = readiness.filter((x) => x.ready).length;
   return (
     <AdminShell title="Settings" subtitle="Server readiness">
@@ -44,35 +36,22 @@ function AdminSettings() {
             </div>
             <div className="p-2">
               <p className="text-[11px] text-[#6e6e73]">Last check</p>
-              <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className="mt-1 min-h-11 rounded-xl bg-[#0a84ff] px-3 text-xs font-semibold text-white"
-              >
-                Lihat detail
-              </button>
+              <b className="mt-1 block text-sm">Live</b>
             </div>
           </div>
         </AdminSurface>
-        <AdminSurface className="hidden p-3 lg:block">
+        <AdminSurface className="p-3">
           <div className="divide-y divide-[#f0f0f2]">
             {readiness.map((item) => (
               <ReadinessRow key={item.name} item={item} />
             ))}
           </div>
+          <div className="mt-3 flex gap-2 rounded-xl bg-[#fffaf0] p-3 text-xs text-[#6e6e73]">
+            <CircleAlert className="size-4 shrink-0 text-[#b87400]" />
+            <p>Secret dan raw provider payload tidak pernah ditampilkan.</p>
+          </div>
         </AdminSurface>
       </div>
-      <AdminDetailSheet open={open} title="System readiness" onClose={() => setOpen(false)}>
-        <div className="divide-y divide-[#f0f0f2]">
-          {readiness.map((item) => (
-            <ReadinessRow key={item.name} item={item} />
-          ))}
-        </div>
-        <div className="mt-3 flex gap-2 rounded-xl bg-[#fffaf0] p-3 text-xs text-[#6e6e73]">
-          <CircleAlert className="size-4 shrink-0 text-[#b87400]" />
-          <p>Secret dan raw provider payload tidak pernah ditampilkan.</p>
-        </div>
-      </AdminDetailSheet>
     </AdminShell>
   );
 }

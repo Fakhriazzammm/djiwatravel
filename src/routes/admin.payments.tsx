@@ -14,7 +14,7 @@ import {
   projectAdminPrivacy,
   projectAdminTitle,
 } from "@/lib/admin-display";
-import { AdminDetailSheet, AdminShell, AdminSurface, StatusPill } from "@/components/admin-shell";
+import { AdminShell, AdminSurface, StatusPill } from "@/components/admin-shell";
 
 const paymentSearch = z.object({
   q: z.string().default(""),
@@ -49,7 +49,6 @@ function AdminPayments() {
   const search = Route.useSearch();
   const [privateMode, setPrivateMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<(typeof result.rows)[number] | null>(null);
   const updateSearch = (patch: Record<string, string | number>) =>
     void router.navigate({ to: "/admin/payments", search: { ...search, ...patch } } as never);
   const setSort = (key: PaymentSortKey) =>
@@ -207,11 +206,9 @@ function AdminPayments() {
               </div>
               <div className="space-y-1.5 lg:hidden">
                 {result.rows.map((payment) => (
-                  <button
+                  <div
                     key={payment.detailHref}
-                    type="button"
-                    onClick={() => setSelectedPayment(payment)}
-                    className="block w-full rounded-xl border border-[#e5e5ea] p-2.5 text-left text-xs active:bg-[#f7f7f8]"
+                    className="block w-full rounded-xl border border-[#e5e5ea] p-2.5 text-left text-xs"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate font-semibold">
@@ -234,7 +231,7 @@ function AdminPayments() {
                     <p className="mt-1 truncate text-[10px] text-[#b00020]">
                       {payment.lastError ?? payment.eventType ?? "Reason unknown"}
                     </p>
-                  </button>
+                  </div>
                 ))}
               </div>
               <div className="hidden overflow-auto lg:block">
@@ -315,62 +312,6 @@ function AdminPayments() {
           </div>
         </AdminSurface>
       </div>
-      <AdminDetailSheet
-        open={Boolean(selectedPayment)}
-        title="Detail payment exception"
-        onClose={() => setSelectedPayment(null)}
-      >
-        {selectedPayment && (
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <b>{projectAdminIdentifier(selectedPayment.displayIdentifier, privateMode)}</b>
-              <StatusPill tone={selectedPayment.lastError ? "danger" : "warn"}>
-                {humanizeAdminStatus(selectedPayment.status)}
-              </StatusPill>
-            </div>
-            <dl className="divide-y rounded-xl bg-[#f7f7f8] px-3 text-xs">
-              <div className="flex justify-between gap-3 py-2">
-                <dt>Customer</dt>
-                <dd className="text-right">
-                  {projectAdminCustomer(selectedPayment.customer, privateMode).label}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3 py-2">
-                <dt>Paket</dt>
-                <dd className="text-right">
-                  {projectAdminPrivacy(selectedPayment.itemSummary ?? "—", privateMode)}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3 py-2">
-                <dt>Nominal</dt>
-                <dd className="text-right">{displayAmount(selectedPayment)}</dd>
-              </div>
-              <div className="flex justify-between gap-3 py-2">
-                <dt>Provider</dt>
-                <dd className="text-right">
-                  {projectAdminPrivacy(selectedPayment.paymentProviderLabel ?? "—", privateMode)}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3 py-2">
-                <dt>Reason</dt>
-                <dd className="max-w-[65%] text-right text-[#b00020]">
-                  {selectedPayment.lastError ?? selectedPayment.eventType ?? "—"}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3 py-2">
-                <dt>Updated</dt>
-                <dd className="text-right">{formatAdminDateTime(selectedPayment.updatedAt)}</dd>
-              </div>
-            </dl>
-            <Link
-              to={selectedPayment.detailHref as never}
-              className="block min-h-11 rounded-xl bg-[#0a84ff] px-3 py-3 text-center text-xs font-semibold text-white"
-            >
-              Buka detail order
-            </Link>
-          </div>
-        )}
-      </AdminDetailSheet>
     </AdminShell>
   );
 }
