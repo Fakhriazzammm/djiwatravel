@@ -149,9 +149,9 @@ function Finder() {
                     ) : (
                       <span
                         className="inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
-                        aria-label="Paket habis, saldo provider tidak mencukupi"
+                        aria-label="Paket sold dan tidak dapat dibeli"
                       >
-                        Sold — saldo provider tidak mencukupi
+                        Sold
                       </span>
                     )}
                   </div>
