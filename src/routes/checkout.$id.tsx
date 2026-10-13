@@ -193,8 +193,7 @@ function Checkout() {
       <StickyCta aboveTabBar={false}>
         {!pkg.sellable && (
           <p className="pb-2 text-center text-xs font-semibold text-destructive">
-            Paket ini sedang habis (sold out) karena stok provider kami belum mencukupi. Silakan
-            pilih paket lain.
+            Paket ini sedang tidak tersedia. Silakan pilih paket lain.
           </p>
         )}
         {!canPay && !submitting && pkg.sellable && (
