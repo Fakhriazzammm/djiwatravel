@@ -6,7 +6,11 @@ import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { getSellabilityState } from "@/lib/sellability.server";
-import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
+import {
+  packageCoverageLabel,
+  packageDataLabel,
+  packageDestinationLabel,
+} from "@/lib/package-copy";
 
 /** Cards rendered on the first paint; the rest are revealed on demand (see below). */
 export const PAGE_SIZE = 20;
@@ -117,7 +121,9 @@ function Destination() {
       <BackBar title={`${destination.flag} ${destination.nameId}`} />
       <h1 className="large-title">Paket eSIM untuk {destination.nameId}</h1>
       <p className="mt-2 inline-flex rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
-        {destination.region === "Regional" ? "Cakupan regional · beberapa negara" : "Cakupan negara · satu tujuan"}
+        {destination.region === "Regional"
+          ? "Cakupan regional · beberapa negara"
+          : "Cakupan negara · satu tujuan"}
       </p>
       {stale && (
         <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
@@ -161,15 +167,20 @@ function Destination() {
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {shown.map((pkg) => (
-              <article key={pkg.packageCode} className="rounded-2xl bg-surface p-4 shadow-sm">
+              <article
+                key={pkg.packageCode}
+                className={`rounded-2xl p-4 shadow-sm ${
+                  pkg.sellable ? "bg-surface" : "border border-red-200 bg-red-50/70"
+                }`}
+              >
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                   Paket internet
                 </p>
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
                   {!pkg.sellable && (
-                    <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                      Habis
+                    <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
+                      Sold
                     </span>
                   )}
                 </div>
@@ -190,10 +201,10 @@ function Destination() {
                   </Link>
                 ) : (
                   <span
-                    className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
-                    aria-label="Paket habis, stok provider belum tersedia"
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700"
+                    aria-label="Paket sold dan tidak dapat dibeli"
                   >
-                    Habis
+                    Sold
                   </span>
                 )}
               </article>

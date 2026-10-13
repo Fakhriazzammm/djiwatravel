@@ -116,14 +116,23 @@ function Finder() {
               {result.recommendations.map((item) => (
                 <article
                   key={item.packageCode}
-                  className="rounded-2xl border border-border bg-card p-4"
+                  className={`rounded-2xl border p-4 ${
+                    item.package.sellable ? "border-border bg-card" : "border-red-200 bg-red-50/70"
+                  }`}
                 >
                   <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                     {item.category.replace("_", " ")}
                   </p>
-                  <h2 className="mt-2 font-semibold leading-snug">
-                    {packageDestinationLabel(item.package)}
-                  </h2>
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="mt-2 font-semibold leading-snug">
+                      {packageDestinationLabel(item.package)}
+                    </h2>
+                    {!item.package.sellable && (
+                      <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
+                        Sold
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {packageDataLabel(item.package)} · {item.package.durationDays} hari masa aktif
                   </p>
