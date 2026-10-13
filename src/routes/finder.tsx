@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { TabBar } from "@/components/shell";
 import { useState } from "react";
 import { recommendPackages } from "@/lib/recommendation/recommend-packages.server";
+import { destinations } from "@/lib/catalog";
 import type { RecommendationPreferences } from "@/lib/recommendation/preferences";
 import {
   packageCoverageLabel,
@@ -9,9 +10,20 @@ import {
   packageDestinationLabel,
 } from "@/lib/package-copy";
 export const Route = createFileRoute("/finder")({ component: Finder });
+const DURATION_OPTIONS = [7, 15, 30, 60, 90, 180] as const;
+
+function formatBudget(value: number) {
+  return `Rp ${value.toLocaleString("id-ID")}`;
+}
+
+function parseBudget(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits ? Number(digits) : 0;
+}
 function rupiah(value: number) {
   return `Rp${value.toLocaleString("id-ID")}`;
 }
+
 function Finder() {
   const [destination, setDestination] = useState("JP");
   const [days, setDays] = useState(7);
@@ -56,23 +68,34 @@ function Finder() {
         >
           <label className="text-sm">
             Destinasi
-            <input
+            <select
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              placeholder="JP atau JP,KR"
               className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3"
-            />
+              aria-label="Pilih destinasi"
+            >
+              {destinations.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.flag} {item.nameId}
+                  {item.region === "Regional" ? " · Regional" : ""}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="text-sm">
-            Hari
-            <input
-              type="number"
-              min={1}
-              max={365}
+            Masa aktif
+            <select
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
               className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3"
-            />
+              aria-label="Pilih masa aktif"
+            >
+              {DURATION_OPTIONS.map((value) => (
+                <option key={value} value={value}>
+                  {value} hari
+                </option>
+              ))}
+            </select>
           </label>
           <label className="text-sm">
             Kebutuhan data
@@ -90,10 +113,11 @@ function Finder() {
           <label className="text-sm">
             Budget
             <input
-              type="number"
-              min={0}
-              value={budget}
-              onChange={(e) => setBudget(Number(e.target.value))}
+              type="text"
+              inputMode="numeric"
+              value={formatBudget(budget)}
+              onChange={(e) => setBudget(parseBudget(e.target.value))}
+              aria-label="Masukkan budget dalam Rupiah"
               className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3"
             />
           </label>
