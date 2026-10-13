@@ -94,6 +94,9 @@ describe("Travel Mayar finance settlement contract", () => {
       orderNumber: "TRV-1",
       amount: 125000,
       paidAt: 1791635715057,
+      // The gateway validates customerName with a helper that only accepts a string or null, so the
+      // key has to be present even when the customer is unknown (omitting it fails the settlement).
+      customerName: null,
       paymentGateway: { provider: "mayar", status: "paid", invoiceId: "inv-1", transactionId: "tx-1" },
     });
   });

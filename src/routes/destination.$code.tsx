@@ -5,6 +5,7 @@ import { getDest } from "@/lib/catalog";
 import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
+import { getSellabilityState } from "@/lib/sellability.server";
 import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
 
 /** Cards rendered on the first paint; the rest are revealed on demand (see below). */
@@ -61,12 +62,17 @@ export const Route = createFileRoute("/destination/$code")({
       getDest(params.code.toLowerCase());
     if (!destination) throw notFound();
     const catalog = await getResellerCatalog(destination.code);
+    const visible = filterPackagesByDestination(catalog.packages, destination.code);
+    // Balance-aware sellability: packages the provider balance cannot cover are marked sold out.
+    const sellability = await getSellabilityState(visible);
     // Only display fields are sent to the client: the full record carries our cost basis and
     // made this page ~680 KB (see lib/package-view.ts).
     return {
       destination,
-      packages: toViewPackages(filterPackagesByDestination(catalog.packages, destination.code)),
+      packages: toViewPackages(visible, sellability.hidden),
       stale: catalog.stale,
+      soldOut: sellability.hidden.size,
+      balanceUnknown: sellability.mode === "on" && sellability.snapshot.balanceUnits === null,
     };
   },
   head: ({ loaderData }) => {
@@ -101,7 +107,7 @@ function rupiah(value: number) {
 }
 
 function Destination() {
-  const { destination, packages, stale } = Route.useLoaderData();
+  const { destination, packages, stale, soldOut } = Route.useLoaderData();
   const [sort, setSort] = useState<SortKey>("recommended");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const sorted = useMemo(() => sortPackages(packages, sort), [packages, sort]);
@@ -116,6 +122,12 @@ function Destination() {
       {stale && (
         <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
           Menampilkan katalog tersimpan; harga mungkin belum terbaru.
+        </p>
+      )}
+      {soldOut > 0 && (
+        <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
+          {soldOut} paket bertanda <span className="font-semibold">Habis</span> karena stok provider
+          kami belum mencukupi. Paket lain tetap bisa dipesan.
         </p>
       )}
       {packages.length === 0 ? (
@@ -153,7 +165,14 @@ function Destination() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                   Paket internet
                 </p>
-                <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
+                  {!pkg.sellable && (
+                    <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                      Habis
+                    </span>
+                  )}
+                </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {packageDataLabel(pkg)} · {pkg.durationDays} hari masa aktif
                 </p>
@@ -161,13 +180,22 @@ function Destination() {
                   Cakupan: {packageCoverageLabel(pkg)}
                 </p>
                 <p className="mt-4 text-lg font-bold text-brand-red">{rupiah(pkg.priceIdr)}</p>
-                <Link
-                  to="/checkout/$id"
-                  params={{ id: pkg.packageCode }}
-                  className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
-                >
-                  Lihat detail &amp; pilih
-                </Link>
+                {pkg.sellable ? (
+                  <Link
+                    to="/checkout/$id"
+                    params={{ id: pkg.packageCode }}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
+                  >
+                    Lihat detail &amp; pilih
+                  </Link>
+                ) : (
+                  <span
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
+                    aria-label="Paket habis, stok provider belum tersedia"
+                  >
+                    Habis
+                  </span>
+                )}
               </article>
             ))}
           </div>

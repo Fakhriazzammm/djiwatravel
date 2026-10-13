@@ -5,6 +5,7 @@ import { db } from "@/db/client.server";
 import { customerOrders } from "../../drizzle/schema";
 import { settleVerifiedTravelPayment } from "@/lib/mayar-settlement.server";
 import { provisionSettledTravelOrder } from "@/lib/mayar-provisioning.server";
+import { refreshTravelOrderProvisioning } from "@/lib/esim-provisioning-refresh.server";
 import { validateTravelSettlementPreflight } from "@/lib/travel-settlement-preflight";
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -91,6 +92,9 @@ async function receive(request: Request) {
     invoiceId: payload.invoiceId,
     transactionId: payload.transactionId,
   });
+  // The provider only pushes profiles over its own webhook, which is not registered here, so also
+  // pull the profile for an order the provider already fulfilled.
+  await refreshTravelOrderProvisioning(payload.orderId).catch(() => undefined);
   try {
     const provisioning = await provisionSettledTravelOrder(payload.orderId);
     return json({ ok: true, duplicate: settlement.local.duplicate, provisioning });

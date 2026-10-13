@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createHmac, randomUUID } from "node:crypto";
 import { z } from "zod";
+import { RESELLER_CONFIG } from "./reseller-config";
 
 const BASE_URL = "https://api.esimaccess.com";
 const querySchema = z
@@ -75,4 +76,61 @@ export async function orderEsimAccessProfilesServer(data: z.infer<typeof orderSc
   // This function is intentionally server-only. Do not wrap provisioning in a
   // public createServerFn: callers must pass through the settled-order worker.
   return request("/api/v1/open/esim/order", data);
+}
+
+type ProviderPackageListItem = { packageCode?: string; price?: number };
+
+/** Reads the eSIM profiles the provider has issued for one provider order number. */
+export async function queryEsimAccessProfilesServer(input: { orderNo: string }) {
+  return request("/api/v1/open/esim/query", { pager: { pageNum: 1, pageSize: 20 }, orderNo: input.orderNo });
+}
+
+/**
+ * The provider rejects an order whose `price` no longer matches its catalogue
+ * ("the package`s price is expired, please update it"), so reprice every package against the
+ * live catalogue right before ordering. Unknown packages keep the stored price.
+ */
+export async function fetchEsimAccessPackagePrices(packageCodes: string[]): Promise<Record<string, number>> {
+  const prices: Record<string, number> = {};
+  for (const code of new Set(packageCodes.filter(Boolean))) {
+    try {
+      const payload = await request("/api/v1/open/package/list", { packageCode: code });
+      const list = (payload.obj as { packageList?: ProviderPackageListItem[] } | undefined)?.packageList
+        ?? (payload.data as { packageList?: ProviderPackageListItem[] } | undefined)?.packageList
+        ?? [];
+      const match = list.find((item) => String(item.packageCode ?? "") === code) ?? list[0];
+      const price = Number(match?.price);
+      if (Number.isFinite(price) && price >= 0) prices[code] = price;
+    } catch {
+      // Keep the stored price when the catalogue is unreachable.
+    }
+  }
+  return prices;
+}
+
+/** Provider balance in 1/10,000 USD units (193000 = US$19.30). */
+export type ProviderBalance = {
+  balanceUnits: number;
+  usd: number;
+  idrReference: number;
+  fxRateIdr: number;
+  fetchedAt: string;
+};
+
+export async function fetchEsimAccessBalanceServer(): Promise<ProviderBalance> {
+  const payload = await request("/api/v1/open/balance/query", {});
+  const obj = (payload.obj ?? payload.data) as { balance?: unknown } | undefined;
+  const balanceUnits = Number(obj?.balance);
+  if (!Number.isFinite(balanceUnits) || balanceUnits < 0) {
+    throw new Error("Saldo provider tidak terbaca");
+  }
+  const usd = balanceUnits / 10_000;
+  return {
+    balanceUnits,
+    usd,
+    // Indicative only: the reseller FX config is the reference, not an accounting rate.
+    idrReference: Math.round(usd * RESELLER_CONFIG.usdToIdr),
+    fxRateIdr: RESELLER_CONFIG.usdToIdr,
+    fetchedAt: new Date().toISOString(),
+  };
 }

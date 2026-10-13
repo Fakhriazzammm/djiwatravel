@@ -7,9 +7,12 @@ import { db } from "../db/client.server";
 import { GUEST_ACCESS_TTL_MS, hashGuestAccessToken, normalizeGuestWhatsapp } from "./guest-order-access.server";
 import { normalizeWhatsapp, WHATSAPP_PATTERN } from "./phone";
 import { getResellerCatalog } from "./reseller-catalog-cache";
+import { loadLiveResellerPackage } from "./esim-access-catalog";
+import { assertPackageSellableForOrder } from "./sellability.server";
 import { decryptEsimSecret } from "./esim-secret-crypto";
 import { readMayarSnapshot } from "./payment-snapshot";
 import { effectivePaymentStatus } from "./payment-expiry";
+import { refreshTravelOrderProvisioning } from "./esim-provisioning-refresh.server";
 
 const createGuestOrderSchema = z.object({
   packageCode: z.string().trim().min(1).max(160),
@@ -61,8 +64,15 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
     }
 
     const catalog = await getResellerCatalog();
-    const pkg = catalog.packages.find((item) => item.packageCode === data.packageCode);
+    // Always order against the provider's current price: a cached price can be stale by the time we
+    // invoice, and the provider refuses an order whose price no longer matches its catalogue. The
+    // cached catalogue stays as a fallback so a provider hiccup cannot block a visible package.
+    const live = await loadLiveResellerPackage(data.packageCode).catch(() => null);
+    const pkg = live ?? catalog.packages.find((item) => item.packageCode === data.packageCode);
     if (!pkg) throw new Error("Paket eSIM tidak ditemukan atau sudah tidak tersedia");
+    // Authoritative gate: the catalogue badge can be seconds stale, so re-check the balance here,
+    // before an order row or an invoice exists.
+    await assertPackageSellableForOrder(pkg);
     const price = pkg.sellingPrice;
     const id = randomUUID();
     const publicOrderCode = randomBytes(12).toString("hex").toUpperCase();
@@ -76,6 +86,8 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
       durationDays: pkg.durationDays,
       speed: pkg.speed ?? null,
       supportsTopUp: pkg.supportsTopUp,
+      // Stored so provisioning can always tell the provider price apart from the IDR cost.
+      providerPriceUnits: pkg.providerPriceUnits,
     };
 
     await db.transaction(async (tx) => {
@@ -144,6 +156,9 @@ export const getGuestOrders = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const records = await Promise.all(
       data.map(async ({ orderId, accessToken }) => {
+        // The provider webhook is not registered on this deployment, so pull the issued eSIM profile
+        // here: opening the order page is what turns PROVISIONING into READY for the customer.
+        await refreshTravelOrderProvisioning(orderId).catch(() => undefined);
         const accessTokenHash = hashGuestAccessToken(accessToken);
         const rows = await db
           .select({

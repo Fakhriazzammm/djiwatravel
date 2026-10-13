@@ -35,6 +35,8 @@ describe("toViewPackage", () => {
       unlimited: false,
       durationDays: 7,
       priceIdr: 15000,
+      // Sellability is a server decision; only the resulting boolean crosses over.
+      sellable: true,
     });
   });
 

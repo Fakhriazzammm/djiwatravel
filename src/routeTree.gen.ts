@@ -23,6 +23,8 @@ import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as AdminCatalogRouteImport } from './routes/admin.catalog'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
+import { Route as AdminFinanceRouteImport } from './routes/admin.finance'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
@@ -39,8 +41,11 @@ import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
 import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
+import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.topup'
+import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
+import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
 
@@ -112,6 +117,16 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
   id: '/admin/dashboard',
   path: '/admin/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminFinanceRoute = AdminFinanceRouteImport.update({
+  id: '/admin/finance',
+  path: '/admin/finance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
@@ -194,6 +209,11 @@ const ReceiptIdRoute = ReceiptIdRouteImport.update({
   path: '/receipt/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminOrdersIdRoute = AdminOrdersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminOrdersRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -204,6 +224,17 @@ const ApiDjiwaPayTopupRoute = ApiDjiwaPayTopupRouteImport.update({
   path: '/api/djiwa-pay/topup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTasksEsimSyncRoute = ApiTasksEsimSyncRouteImport.update({
+  id: '/api/tasks/esim-sync',
+  path: '/api/tasks/esim-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTasksFinanceReconcileRoute =
+  ApiTasksFinanceReconcileRouteImport.update({
+    id: '/api/tasks/finance-reconcile',
+    path: '/api/tasks/finance-reconcile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiWebhooksDjiwaTravelRoute = ApiWebhooksDjiwaTravelRouteImport.update({
   id: '/api/webhooks/djiwa-travel',
   path: '/api/webhooks/djiwa-travel',
@@ -230,7 +261,9 @@ export interface FileRoutesByFullPath {
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/dashboard': typeof AdminDashboardRoute
-  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/finance': typeof AdminFinanceRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/orders': typeof AdminOrdersRouteWithChildren
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
@@ -247,8 +280,11 @@ export interface FileRoutesByFullPath {
   '/receipt/$id': typeof ReceiptIdRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
+  '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
+  '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -266,7 +302,9 @@ export interface FileRoutesByTo {
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/dashboard': typeof AdminDashboardRoute
-  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/finance': typeof AdminFinanceRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/orders': typeof AdminOrdersRouteWithChildren
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
@@ -283,8 +321,11 @@ export interface FileRoutesByTo {
   '/receipt/$id': typeof ReceiptIdRoute
   '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
+  '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
+  '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -303,7 +344,9 @@ export interface FileRoutesById {
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/dashboard': typeof AdminDashboardRoute
-  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/finance': typeof AdminFinanceRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/orders': typeof AdminOrdersRouteWithChildren
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
@@ -320,8 +363,11 @@ export interface FileRoutesById {
   '/receipt/$id': typeof ReceiptIdRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
+  '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
+  '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -341,6 +387,8 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/customers'
     | '/admin/dashboard'
+    | '/admin/finance'
+    | '/admin/login'
     | '/admin/orders'
     | '/admin/overview'
     | '/admin/payments'
@@ -358,8 +406,11 @@ export interface FileRouteTypes {
     | '/receipt/$id'
     | '/admin/'
     | '/my-esim/'
+    | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
+    | '/api/tasks/esim-sync'
+    | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -377,6 +428,8 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/customers'
     | '/admin/dashboard'
+    | '/admin/finance'
+    | '/admin/login'
     | '/admin/orders'
     | '/admin/overview'
     | '/admin/payments'
@@ -394,8 +447,11 @@ export interface FileRouteTypes {
     | '/receipt/$id'
     | '/admin'
     | '/my-esim'
+    | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
+    | '/api/tasks/esim-sync'
+    | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   id:
@@ -413,6 +469,8 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/customers'
     | '/admin/dashboard'
+    | '/admin/finance'
+    | '/admin/login'
     | '/admin/orders'
     | '/admin/overview'
     | '/admin/payments'
@@ -430,8 +488,11 @@ export interface FileRouteTypes {
     | '/receipt/$id'
     | '/admin/'
     | '/my-esim/'
+    | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
+    | '/api/tasks/esim-sync'
+    | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesById: FileRoutesById
@@ -450,7 +511,9 @@ export interface RootRouteChildren {
   AdminCatalogRoute: typeof AdminCatalogRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
-  AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminFinanceRoute: typeof AdminFinanceRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  AdminOrdersRoute: typeof AdminOrdersRouteWithChildren
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminProvisioningRoute: typeof AdminProvisioningRoute
@@ -469,6 +532,8 @@ export interface RootRouteChildren {
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
+  ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
+  ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
   ApiWebhooksEsimAccessTokenRoute: typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -571,6 +636,20 @@ declare module '@tanstack/react-router' {
       path: '/admin/dashboard'
       fullPath: '/admin/dashboard'
       preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/finance': {
+      id: '/admin/finance'
+      path: '/admin/finance'
+      fullPath: '/admin/finance'
+      preLoaderRoute: typeof AdminFinanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/orders': {
@@ -685,6 +764,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReceiptIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/orders/$id': {
+      id: '/admin/orders/$id'
+      path: '/$id'
+      fullPath: '/admin/orders/$id'
+      preLoaderRoute: typeof AdminOrdersIdRouteImport
+      parentRoute: typeof AdminOrdersRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -697,6 +783,20 @@ declare module '@tanstack/react-router' {
       path: '/api/djiwa-pay/topup'
       fullPath: '/api/djiwa-pay/topup'
       preLoaderRoute: typeof ApiDjiwaPayTopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tasks/esim-sync': {
+      id: '/api/tasks/esim-sync'
+      path: '/api/tasks/esim-sync'
+      fullPath: '/api/tasks/esim-sync'
+      preLoaderRoute: typeof ApiTasksEsimSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tasks/finance-reconcile': {
+      id: '/api/tasks/finance-reconcile'
+      path: '/api/tasks/finance-reconcile'
+      fullPath: '/api/tasks/finance-reconcile'
+      preLoaderRoute: typeof ApiTasksFinanceReconcileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/webhooks/djiwa-travel': {
@@ -716,6 +816,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminOrdersRouteChildren {
+  AdminOrdersIdRoute: typeof AdminOrdersIdRoute
+}
+
+const AdminOrdersRouteChildren: AdminOrdersRouteChildren = {
+  AdminOrdersIdRoute: AdminOrdersIdRoute,
+}
+
+const AdminOrdersRouteWithChildren = AdminOrdersRoute._addFileChildren(
+  AdminOrdersRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CatalogRoute: CatalogRoute,
@@ -730,7 +842,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCatalogRoute: AdminCatalogRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDashboardRoute: AdminDashboardRoute,
-  AdminOrdersRoute: AdminOrdersRoute,
+  AdminFinanceRoute: AdminFinanceRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  AdminOrdersRoute: AdminOrdersRouteWithChildren,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminProvisioningRoute: AdminProvisioningRoute,
@@ -749,6 +863,8 @@ const rootRouteChildren: RootRouteChildren = {
   MyEsimIndexRoute: MyEsimIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
+  ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
+  ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
   ApiWebhooksEsimAccessTokenRoute: ApiWebhooksEsimAccessTokenRoute,
 }

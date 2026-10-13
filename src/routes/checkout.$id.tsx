@@ -3,7 +3,9 @@ import { QrCode, Landmark, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, BackBar, StickyCta, btnRed, group, label } from "@/components/shell";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
+import { loadLiveResellerPackage } from "@/lib/esim-access-catalog";
 import { resolveCheckoutPackage } from "@/lib/checkout-package";
+import { getSellabilityState } from "@/lib/sellability.server";
 import { rupiah } from "@/lib/pricing";
 import { createOrder } from "@/lib/orders";
 import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
@@ -15,11 +17,15 @@ import { toViewPackage } from "@/lib/package-view";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: async ({ params }) => {
+    // Price the page from the provider's current catalogue, so what the customer sees is what the
+    // order is created with (and what the provider will accept).
+    const live = await loadLiveResellerPackage(params.id).catch(() => null);
     const catalog = await getResellerCatalog();
-    const pkg = resolveCheckoutPackage(catalog.packages, params.id);
+    const pkg = live ?? resolveCheckoutPackage(catalog.packages, params.id);
     if (!pkg) throw notFound();
+    const sellability = await getSellabilityState([pkg]);
     // Display fields only: the full record carries our cost basis (lib/package-view.ts).
-    return { pkg: toViewPackage(pkg) };
+    return { pkg: toViewPackage(pkg, !sellability.hidden.has(pkg.packageCode)) };
   },
   head: () => ({
     meta: [
@@ -185,7 +191,13 @@ function Checkout() {
       </div>
 
       <StickyCta aboveTabBar={false}>
-        {!canPay && !submitting && (
+        {!pkg.sellable && (
+          <p className="pb-2 text-center text-xs font-semibold text-destructive">
+            Paket ini sedang habis (sold out) karena stok provider kami belum mencukupi. Silakan
+            pilih paket lain.
+          </p>
+        )}
+        {!canPay && !submitting && pkg.sellable && (
           <p className="pb-2 text-center text-xs text-muted-foreground">
             {valid
               ? "Lengkapi data pengiriman di Profil untuk checkout sebagai member."
@@ -193,11 +205,11 @@ function Checkout() {
           </p>
         )}
         <button
-          disabled={!canPay || submitting}
+          disabled={!canPay || submitting || !pkg.sellable}
           onClick={pay}
           className={`${btnRed} disabled:opacity-40`}
         >
-          {submitting ? "Mengalihkan ke Mayar…" : `Buat pesanan · ${rupiah(price)}`}
+          {submitting ? "Mengalihkan ke Mayar…" : pkg.sellable ? `Buat pesanan · ${rupiah(price)}` : "Habis"}
         </button>
       </StickyCta>
     </Page>
