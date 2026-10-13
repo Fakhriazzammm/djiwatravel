@@ -221,7 +221,7 @@ function AdminPayments() {
                 </tbody>
               </table>
             </div>
-            <div className="space-y-2 lg:hidden">
+            <div className="max-h-[42dvh] space-y-2 overflow-y-auto overscroll-contain lg:hidden">
               {result.rows.map((payment) => (
                 <Link
                   key={payment.detailHref}

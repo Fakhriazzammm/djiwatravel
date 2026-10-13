@@ -3,8 +3,16 @@ import { CreditCard, Gauge, ListChecks, Settings, ShieldCheck, Wallet } from "lu
 export const adminNavigation = [
   ["Dashboard", "/admin/dashboard", Gauge],
   ["Orders", "/admin/orders", ListChecks],
-  ["Payments", "/admin/payments", CreditCard],
+  ["Pembayaran", "/admin/payments", CreditCard],
   ["Keuangan", "/admin/finance", Wallet],
-  ["eSIM / Provisioning", "/admin/provisioning", ShieldCheck],
+  ["Provisioning", "/admin/provisioning", ShieldCheck],
   ["Settings", "/admin/settings", Settings],
 ] as const;
+
+export function isAdminNavigationActive(pathname: string, href: string) {
+  return (
+    pathname === href ||
+    (href !== "/admin/dashboard" && pathname.startsWith(`${href}/`)) ||
+    (href === "/admin/dashboard" && pathname === "/admin")
+  );
+}
