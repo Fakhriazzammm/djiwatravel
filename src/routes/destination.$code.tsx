@@ -12,6 +12,11 @@ import {
   packageDestinationLabel,
 } from "@/lib/package-copy";
 
+const REGIONAL_COVERAGE: Record<string, readonly string[]> = {
+  ASIA: ["CN", "HK", "JP", "KR", "MY", "SG", "TH", "TW"],
+  EU: ["EU"],
+};
+
 /** Cards rendered on the first paint; the rest are revealed on demand (see below). */
 export const PAGE_SIZE = 20;
 
@@ -65,8 +70,17 @@ export const Route = createFileRoute("/destination/$code")({
       getDest(params.code.toUpperCase()) ??
       getDest(params.code.toLowerCase());
     if (!destination) throw notFound();
-    const catalog = await getResellerCatalog(destination.code);
-    const visible = filterPackagesByDestination(catalog.packages, destination.code);
+    // Regional provider packages are represented by their member country codes. Querying the
+    // provider with the display code (for example ASIA) is rejected by some catalogue accounts,
+    // so read the already-authoritative full list and apply the regional coverage locally.
+    const catalog = await getResellerCatalog(
+      destination.region === "Regional" ? undefined : destination.code,
+    );
+    const visible = filterPackagesByDestination(
+      catalog.packages,
+      destination.code,
+      REGIONAL_COVERAGE[destination.code] ?? [],
+    );
     // Balance-aware sellability: packages the provider balance cannot cover are marked sold out.
     const sellability = await getSellabilityState(visible);
     // Only display fields are sent to the client: the full record carries our cost basis and
