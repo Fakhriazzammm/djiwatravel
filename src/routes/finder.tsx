@@ -15,12 +15,9 @@ function rupiah(value: number) {
 function Finder() {
   const [destination, setDestination] = useState("JP");
   const [days, setDays] = useState(7);
-  const [dataNeed, setDataNeed] =
-    useState<RecommendationPreferences["dataNeed"]>("medium");
+  const [dataNeed, setDataNeed] = useState<RecommendationPreferences["dataNeed"]>("medium");
   const [budget, setBudget] = useState(200000);
-  const [result, setResult] = useState<Awaited<
-    ReturnType<typeof recommendPackages>
-  > | null>(null);
+  const [result, setResult] = useState<Awaited<ReturnType<typeof recommendPackages>> | null>(null);
   const [loading, setLoading] = useState(false);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -81,11 +78,7 @@ function Finder() {
             Kebutuhan data
             <select
               value={dataNeed}
-              onChange={(e) =>
-                setDataNeed(
-                  e.target.value as RecommendationPreferences["dataNeed"],
-                )
-              }
+              onChange={(e) => setDataNeed(e.target.value as RecommendationPreferences["dataNeed"])}
               className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3"
             >
               <option value="low">Hemat</option>
@@ -132,37 +125,43 @@ function Finder() {
                     {packageDestinationLabel(item.package)}
                   </h2>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {packageDataLabel(item.package)} ·{" "}
-                    {item.package.durationDays} hari masa aktif
+                    {packageDataLabel(item.package)} · {item.package.durationDays} hari masa aktif
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">
                     Cakupan: {packageCoverageLabel(item.package)}
                   </p>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Harga paket
-                  </p>
-                  <p className="text-lg font-bold">
-                    {rupiah(item.package.priceIdr)}
-                  </p>
+                  <p className="mt-3 text-xs text-muted-foreground">Harga paket</p>
+                  <p className="text-lg font-bold">{rupiah(item.package.priceIdr)}</p>
                   <ul className="mt-3 list-disc pl-5 text-xs text-muted-foreground">
                     {item.reasons.map((reason) => (
                       <li key={reason}>{reason}</li>
                     ))}
                   </ul>
-                  <Link
-                    to="/checkout/$id"
-                    params={{ id: item.packageCode }}
-                    className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
-                  >
-                    Lihat detail &amp; pilih
-                  </Link>
+                  <div className="mt-4">
+                    {item.package.sellable ? (
+                      <Link
+                        to="/checkout/$id"
+                        params={{ id: item.packageCode }}
+                        className="inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
+                      >
+                        Lihat detail &amp; pilih
+                      </Link>
+                    ) : (
+                      <span
+                        className="inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
+                        aria-label="Paket habis, saldo provider tidak mencukupi"
+                      >
+                        Sold — saldo provider tidak mencukupi
+                      </span>
+                    )}
+                  </div>
                 </article>
               ))}
             </div>
             {result.recommendations.length === 0 && (
               <p className="mt-4 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
-                Belum ada paket yang cocok. Coba naikkan budget atau pilih
-                kebutuhan data yang lebih rendah.
+                Belum ada paket yang cocok. Coba naikkan budget atau pilih kebutuhan data yang lebih
+                rendah.
               </p>
             )}
           </section>
