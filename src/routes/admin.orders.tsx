@@ -10,13 +10,7 @@ import {
   projectAdminCustomer,
   projectAdminPrivacy,
 } from "@/lib/admin-display";
-import {
-  AdminDetailSheet,
-  AdminShell,
-  AdminSurface,
-  SectionHeading,
-  StatusPill,
-} from "@/components/admin-shell";
+import { AdminDetailSheet, AdminShell, AdminSurface, StatusPill } from "@/components/admin-shell";
 export const Route = createFileRoute("/admin/orders")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
@@ -29,69 +23,79 @@ function AdminOrders() {
   const [listOpen, setListOpen] = useState(false);
   const newest = orders[0];
   const card = (order: (typeof orders)[number]) => (
-    <Link to={order.detailHref as never} className="block rounded-xl bg-[#f7f7f8] p-2.5 text-xs">
+    <Link
+      to={order.detailHref as never}
+      className="block rounded-xl bg-[#f7f7f8] p-2.5 text-xs active:bg-[#ececf0]"
+    >
       <div className="flex items-center justify-between gap-2">
         <b className="truncate">{projectAdminPrivacy(order.displayIdentifier, privateMode)}</b>
         <StatusPill>{humanizeAdminStatus(order.status)}</StatusPill>
       </div>
-      <p className="mt-1 truncate text-[#6e6e73]">
-        {projectAdminCustomer(order.customer, privateMode).label} ·{" "}
-        {projectAdminAmount(order.totalAmount, order.currencyCode, privateMode)}
-      </p>
-      <p className="mt-1 text-[11px] text-[#8e8e93]">{formatAdminDateTime(order.updatedAt)}</p>
+      <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-[#6e6e73]">
+        <span className="truncate">{projectAdminCustomer(order.customer, privateMode).label}</span>
+        <span className="truncate text-right">
+          {projectAdminAmount(order.totalAmount, order.currencyCode, privateMode)}
+        </span>
+        <span className="truncate">
+          {projectAdminPrivacy(order.itemSummary ?? "Paket —", privateMode)}
+        </span>
+        <span className="truncate text-right">
+          eSIM {humanizeAdminStatus(order.provisioningStatus)}
+        </span>
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#8e8e93]">
+        <span className="truncate">
+          {projectAdminPrivacy(order.paymentProviderLabel ?? "Payment —", privateMode)}
+        </span>
+        <span className="shrink-0">{formatAdminDateTime(order.updatedAt)}</span>
+      </div>
     </Link>
   );
   return (
     <AdminShell title="Orders" subtitle="Daftar order Travel">
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <SectionHeading
-            title="Ringkasan order"
-            detail="Customer dan payment tetap diproyeksikan aman."
-          />
-          <div className="flex items-center gap-1">
-            <StatusPill>{privateMode ? "••••" : orders.length} total</StatusPill>
-            <button
-              type="button"
-              onClick={() => setPrivateMode((v) => !v)}
-              aria-pressed={privateMode}
-              className="min-h-11 min-w-11 rounded-xl border bg-white p-2"
-            >
-              {privateMode ? (
-                <EyeOff className="mx-auto size-4" />
-              ) : (
-                <Eye className="mx-auto size-4" />
-              )}
-            </button>
-          </div>
-        </div>
         <AdminSurface className="p-3">
-          {newest ? (
-            <div className="grid gap-2 sm:grid-cols-3">
-              <div>
-                <p className="text-[11px] text-[#6e6e73]">Order terbaru</p>
-                {card(newest)}
-              </div>
-              <div>
-                <p className="text-[11px] text-[#6e6e73]">Status</p>
-                <p className="mt-2 text-lg font-bold">{humanizeAdminStatus(newest.status)}</p>
-                <p className="text-[11px] text-[#6e6e73]">
-                  eSIM {humanizeAdminStatus(newest.provisioningStatus)}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] text-[#6e6e73]">Tindakan</p>
-                <button
-                  type="button"
-                  onClick={() => setListOpen(true)}
-                  className="mt-2 min-h-11 rounded-xl bg-[#0a84ff] px-3 text-xs font-semibold text-white"
-                >
-                  Lihat semua order
-                </button>
-              </div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6e6e73]">
+                Monitoring order
+              </p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums">
+                {privateMode ? "••••" : orders.length}{" "}
+                <span className="text-xs font-medium text-[#6e6e73]">total</span>
+              </p>
             </div>
+            <div className="flex items-center gap-1">
+              <StatusPill>{newest ? humanizeAdminStatus(newest.status) : "Kosong"}</StatusPill>
+              <button
+                type="button"
+                onClick={() => setPrivateMode((v) => !v)}
+                aria-label="Mode privasi"
+                aria-pressed={privateMode}
+                className="min-h-11 min-w-11 rounded-xl border bg-white p-2"
+              >
+                {privateMode ? (
+                  <EyeOff className="mx-auto size-4" />
+                ) : (
+                  <Eye className="mx-auto size-4" />
+                )}
+              </button>
+            </div>
+          </div>
+          {newest ? (
+            <>
+              <p className="mt-3 text-[11px] font-medium text-[#6e6e73]">Order terbaru</p>
+              <div className="mt-1">{card(newest)}</div>
+              <button
+                type="button"
+                onClick={() => setListOpen(true)}
+                className="mt-2 min-h-11 w-full rounded-xl bg-[#0a84ff] px-3 text-xs font-semibold text-white active:bg-[#006fe6]"
+              >
+                Lihat semua order
+              </button>
+            </>
           ) : (
-            <div className="flex items-center gap-3 py-4 text-sm text-[#6e6e73]">
+            <div className="mt-3 flex items-center gap-3 text-sm text-[#6e6e73]">
               <ClipboardList className="size-5" />
               Belum ada order dari database Travel.
             </div>
