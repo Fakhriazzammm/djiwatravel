@@ -124,8 +124,8 @@ export function AdminShell({
     menuTriggerRef.current?.focus();
   }, []);
   useEffect(() => {
-    if (open) closeMenu();
-  }, [location.pathname, open, closeMenu]);
+    setOpen(false);
+  }, [location.pathname]);
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
