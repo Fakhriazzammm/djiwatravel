@@ -235,7 +235,9 @@ function AdminPayments() {
                         {humanizeAdminStatus(payment.status)}
                       </p>
                       <p className="mt-1 text-[#6b6b72]">
-                        {privateMode ? "••••" : payment.customer.label} · {displayAmount(payment)}
+                        {projectAdminCustomer(payment.customer, privateMode).label}
+                        {" · "}
+                        {displayAmount(payment)}
                       </p>
                     </div>
                     <CreditCard className="size-4 text-[#b87400]" />
