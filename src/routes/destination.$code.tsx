@@ -125,7 +125,7 @@ function rupiah(value: number) {
 }
 
 function Destination() {
-  const { destination, packages, stale, soldOut } = Route.useLoaderData();
+  const { destination, packages, stale } = Route.useLoaderData();
   const [sort, setSort] = useState<SortKey>("recommended");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const sorted = useMemo(() => sortPackages(packages, sort), [packages, sort]);
@@ -142,12 +142,6 @@ function Destination() {
       {stale && (
         <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
           Menampilkan katalog tersimpan; harga mungkin belum terbaru.
-        </p>
-      )}
-      {soldOut > 0 && (
-        <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
-          {soldOut} paket bertanda <span className="font-semibold">Habis</span> karena stok provider
-          kami belum mencukupi. Paket lain tetap bisa dipesan.
         </p>
       )}
       {packages.length === 0 ? (
