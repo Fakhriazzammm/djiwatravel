@@ -1,5 +1,5 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { BackBar, Page } from "@/components/shell";
 import { getDest } from "@/lib/catalog";
 import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
@@ -80,7 +80,7 @@ const BASE_URL = "https://djiwatravel.com";
 export const Route = createFileRoute("/destination/$code")({
   // Same reseller read as Explore: keep the result warm so opening a country from the
   // destination list or the home cards does not pay for it twice.
-  staleTime: 60_000,
+  staleTime: 0,
   loader: async ({ params }) => {
     const destination =
       getDest(params.code) ??
@@ -140,11 +140,19 @@ function rupiah(value: number) {
 }
 
 function Destination() {
+  const router = useRouter();
   const { destination, packages, stale } = Route.useLoaderData();
   const [sort, setSort] = useState<SortKey>("recommended");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const sorted = useMemo(() => sortPackages(packages, sort), [packages, sort]);
   const shown = sorted.slice(0, visible);
+
+  // The first SSR payload can arrive before the provider balance read completes. Revalidate once on
+  // mount so direct entry and client-side navigation converge without requiring a browser refresh.
+  useEffect(() => {
+    void router.invalidate();
+  }, [router]);
+
   return (
     <Page>
       <BackBar title={`${destination.flag} ${destination.nameId}`} />
