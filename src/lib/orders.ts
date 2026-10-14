@@ -100,6 +100,10 @@ export function useOrders() {
 
 type InvoiceInput = Parameters<typeof createMayarInvoice>[0]["data"];
 
+function isMayarDuplicateError(error: unknown) {
+  return error instanceof Error && /duplicate request|tunggu.*menit/i.test(error.message);
+}
+
 /**
  * Invoice creation talks to an external provider over the public internet, so a single slow or
  * dropped request used to leave the customer with an order and no way to pay. Retries are safe:
@@ -115,6 +119,9 @@ export async function createInvoiceWithRetry(
       return await createMayarInvoice({ data: input });
     } catch (error) {
       lastError = error;
+      if (isMayarDuplicateError(error)) {
+        throw new Error("Pembayaran sedang diproses. Tunggu sekitar 1 menit sebelum mencoba lagi.");
+      }
       if (attempt < attempts) {
         await new Promise((resolve) => setTimeout(resolve, attempt * 1_200));
       }
@@ -129,7 +136,6 @@ export async function createInvoiceWithRetry(
  * open (the access token already lives in this browser).
  */
 export async function ensurePaymentLink(order: Order): Promise<string | null> {
-
   const accessToken = guestAccessTokenFor(order.id);
   if (!accessToken) return null;
   const invoice = await rebuildMayarInvoice({ data: { orderId: order.id, accessToken } });
@@ -162,9 +168,7 @@ function readGuestAccess(): Record<string, string> {
 /** Access token for one guest order, used to re-verify its payment server-side. */
 export function guestAccessTokenFor(orderId: string): string | undefined {
   const token = readGuestAccess()[orderId];
-  return typeof token === "string" && token.length >= 32 && token.length <= 256
-    ? token
-    : undefined;
+  return typeof token === "string" && token.length >= 32 && token.length <= 256 ? token : undefined;
 }
 
 export function hasGuestOrderAccess(orderId: string): boolean {
@@ -262,7 +266,12 @@ const patch = (id: string, p: Partial<Order>) =>
 
 export function cancelOrder(id: string) {
   const o = read().find((x) => x.id === id);
-  if (!o || effectivePaymentStatus(o.status, o.paymentExpiresAt) === "EXPIRED" || !["ORDER_CREATED", "WAITING_PAYMENT"].includes(o.status)) return false;
+  if (
+    !o ||
+    effectivePaymentStatus(o.status, o.paymentExpiresAt) === "EXPIRED" ||
+    !["ORDER_CREATED", "WAITING_PAYMENT"].includes(o.status)
+  )
+    return false;
   patch(id, { status: "CANCELLED" });
   return true;
 }
@@ -279,8 +288,8 @@ export function refreshExpiredOrders(now = Date.now()) {
     effectivePaymentStatus(o.status, o.paymentExpiresAt, now) === "EXPIRED"
       ? { ...o, status: "EXPIRED" as const }
       : o.expiresAt && o.expiresAt <= now && ["READY", "INSTALLED"].includes(o.status)
-      ? { ...o, status: "EXPIRED" as const }
-      : o,
+        ? { ...o, status: "EXPIRED" as const }
+        : o,
   );
   write(changed);
 }

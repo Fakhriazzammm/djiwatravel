@@ -8,7 +8,11 @@ import { resolveCheckoutPackage } from "@/lib/checkout-package";
 import { getSellabilityState } from "@/lib/sellability.server";
 import { rupiah } from "@/lib/pricing";
 import { createOrder } from "@/lib/orders";
-import { packageCoverageLabel, packageDataLabel, packageDestinationLabel } from "@/lib/package-copy";
+import {
+  packageCoverageLabel,
+  packageDataLabel,
+  packageDestinationLabel,
+} from "@/lib/package-copy";
 import { getBetterAuthSession, type BetterAuthUser } from "@/lib/better-auth-client";
 import { isCustomerProfileComplete } from "@/lib/customer-profile";
 import { formatWhatsapp, isValidWhatsapp, normalizeWhatsapp } from "@/lib/phone";
@@ -56,19 +60,23 @@ function Checkout() {
   const [user, setUser] = useState<BetterAuthUser | null>(null);
   const [memberProfileReady, setMemberProfileReady] = useState(false);
   useEffect(() => {
-    void getBetterAuthSession().then((session) => {
-      const nextUser = session?.user ?? null;
-      setUser(nextUser);
-      if (nextUser) {
-        void loadCustomerProfile().then((saved) => {
-          if (saved) {
-            setEmail(saved.email);
-            setWa(saved.whatsapp);
-          }
-          setMemberProfileReady(Boolean(saved && isCustomerProfileComplete(saved)));
-        }).catch(() => setMemberProfileReady(false));
-      }
-    }).catch(() => setUser(null));
+    void getBetterAuthSession()
+      .then((session) => {
+        const nextUser = session?.user ?? null;
+        setUser(nextUser);
+        if (nextUser) {
+          void loadCustomerProfile()
+            .then((saved) => {
+              if (saved) {
+                setEmail(saved.email);
+                setWa(saved.whatsapp);
+              }
+              setMemberProfileReady(Boolean(saved && isCustomerProfileComplete(saved)));
+            })
+            .catch(() => setMemberProfileReady(false));
+        }
+      })
+      .catch(() => setUser(null));
   }, []);
   const valid = isCustomerProfileComplete({ email, whatsapp: wa });
   const canPay = valid && (!user || memberProfileReady);
@@ -92,8 +100,13 @@ function Checkout() {
         return;
       }
       nav({ to: "/order/$id", params: { id: o.id } });
-    } catch {
-      setError("Pesanan belum dapat disimpan. Coba kembali beberapa saat lagi.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setError(
+        message.includes("sedang diproses")
+          ? message
+          : "Pesanan belum dapat disimpan. Coba kembali beberapa saat lagi.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -116,11 +129,13 @@ function Checkout() {
       <div className="flex items-center gap-3 rounded-2xl bg-surface p-4">
         <span className="shrink-0 text-3xl">🌐</span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Paket internet</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+            Paket internet
+          </p>
           <p className="font-semibold">{packageDestinationLabel(pkg)}</p>
           <p className="text-sm text-muted-foreground">
             {packageDataLabel(pkg)} · {pkg.durationDays} hari masa aktif
-            </p>
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">Cakupan: {packageCoverageLabel(pkg)}</p>
         </div>
         <p className="shrink-0 font-bold">{rupiah(price)}</p>
@@ -131,7 +146,9 @@ function Checkout() {
         <div className="mb-3 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-3 text-sm">
           <p className="font-semibold">Lengkapi profil untuk checkout sebagai member</p>
           <p className="mt-1 text-muted-foreground">Guest checkout tetap tersedia tanpa akun.</p>
-          <Link to="/profile" className="mt-2 inline-flex font-semibold text-brand-red">Lengkapi data di Profil →</Link>
+          <Link to="/profile" className="mt-2 inline-flex font-semibold text-brand-red">
+            Lengkapi data di Profil →
+          </Link>
         </div>
       )}
       <div className={group}>
@@ -162,8 +179,8 @@ function Checkout() {
         </p>
       )}
       <p className="mt-2 px-1 text-xs text-muted-foreground">
-        {user ? "Masuk sebagai member." : "Tanpa perlu daftar akun."} Boleh ketik 0812… — kami
-        ubah otomatis ke format 62….
+        {user ? "Masuk sebagai member." : "Tanpa perlu daftar akun."} Boleh ketik 0812… — kami ubah
+        otomatis ke format 62….
       </p>
 
       <h2 className={`${label} mt-6`}>Pembayaran</h2>
@@ -208,7 +225,11 @@ function Checkout() {
           onClick={pay}
           className={`${btnRed} disabled:opacity-40`}
         >
-          {submitting ? "Mengalihkan ke Mayar…" : pkg.sellable ? `Buat pesanan · ${rupiah(price)}` : "Habis"}
+          {submitting
+            ? "Mengalihkan ke Mayar…"
+            : pkg.sellable
+              ? `Buat pesanan · ${rupiah(price)}`
+              : "Habis"}
         </button>
       </StickyCta>
     </Page>
