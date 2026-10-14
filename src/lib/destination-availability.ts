@@ -1,4 +1,5 @@
 import { destinations, type Destination } from "./catalog";
+import { filterPackagesByDestination, type DestinationPackage } from "./reseller-catalog-view";
 
 /**
  * Destination availability rules, kept free of any provider/runtime dependency so they can be unit
@@ -82,4 +83,38 @@ export function regionalCoverage(
     .map((candidate) => candidate.code.toUpperCase());
   for (const code of dynamic) seedSet.add(code);
   return [...seedSet];
+}
+
+/**
+ * Whether a display destination currently has something we can sell.
+ *
+ * Matching a package by its literal location code alone hides every regional destination: provider
+ * regional bundles list their member countries (DE, FR, …) and never carry a literal "EU"/"ASIA"
+ * code, so the region is reached through `regionalCoverage` instead. Listing and opening a
+ * destination must agree, so this is the single rule both call.
+ */
+export function isDestinationSellable(
+  destination: Pick<Destination, "code" | "region">,
+  sellablePackages: readonly DestinationPackage[],
+  available?: DestinationAvailability,
+): boolean {
+  const coverage = regionalCoverage(destination, available);
+  return filterPackagesByDestination(sellablePackages, destination.code, coverage).length > 0;
+}
+
+/**
+ * The destinations to list, in seeded display order.
+ *
+ * A degraded or empty read returns the whole list on purpose: an unreadable catalogue must not
+ * produce an empty storefront (each destination pages re-validates what it can actually sell).
+ */
+export function listableDestinations(
+  sellablePackages: readonly DestinationPackage[],
+  available: DestinationAvailability,
+  destinationsToList: readonly Destination[] = destinations,
+): Destination[] {
+  if (available.degraded || available.codes.length === 0) return [...destinationsToList];
+  return destinationsToList.filter((destination) =>
+    isDestinationSellable(destination, sellablePackages, available),
+  );
 }

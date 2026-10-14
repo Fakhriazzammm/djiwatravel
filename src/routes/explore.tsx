@@ -2,10 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Page, group } from "@/components/shell";
-import { destinations, search } from "@/lib/catalog";
+import { search } from "@/lib/catalog";
 import { isRecommendablePackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { getSellabilityState } from "@/lib/sellability.server";
+import { listableDestinations } from "@/lib/destination-availability";
 import { finderCtaCopy } from "@/lib/finder-form";
 
 export const Route = createFileRoute("/explore")({
@@ -17,21 +18,21 @@ export const Route = createFileRoute("/explore")({
     const packages = catalog.packages.filter(isRecommendablePackage);
     // A destination only belongs in Explore when it currently has something we can actually sell.
     const sellability = await getSellabilityState(packages);
+    const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
     const codes = new Set<string>();
-    for (const pkg of packages) {
-      if (sellability.hidden.has(pkg.packageCode)) continue;
+    for (const pkg of sellable) {
       for (const code of pkg.locationCodes) {
         const normalized = code.trim().toUpperCase();
         if (normalized) codes.add(normalized);
       }
     }
-    const available = destinations.filter((destination) =>
-      codes.has(destination.code.toUpperCase()),
-    );
-    // A provider hiccup must not empty the list; the seeded list is the safe fallback.
-    return available.length > 0
-      ? available
-      : destinations.filter((destination) => destination.region !== "Regional");
+    // Regional bundles list their member countries instead of a literal EU/ASIA code, so the list
+    // rule is shared with the destination page rather than matched by hand here.
+    return listableDestinations(sellable, {
+      codes: [...codes].sort(),
+      source: catalog.stale ? "cached" : "live",
+      degraded: false,
+    });
   },
   head: () => ({
     meta: [

@@ -4,6 +4,8 @@ import { destinations } from "@/lib/catalog";
 import {
   destinationForCode,
   filterDestinationsByAvailability,
+  isDestinationSellable,
+  listableDestinations,
   regionalCoverage,
   type DestinationAvailability,
 } from "@/lib/destination-availability";
@@ -69,5 +71,52 @@ describe("regional coverage", () => {
 
   it("has no coverage for a non-regional destination", () => {
     expect(regionalCoverage({ code: "JP", region: "Asia" }, live(["JP"]))).toEqual([]);
+  });
+});
+
+describe("listable destinations", () => {
+  // Shapes taken from the real catalogue: an Asia bundle lists its member countries, a Europe bundle
+  // carries the literal EU code. Neither ever carries the display code ASIA.
+  const bundles = [
+    { locationCodes: ["JP", "KR"] },
+    { locationCodes: ["SG"] },
+    { locationCodes: ["EU"] },
+  ];
+
+  it("lists a regional destination whose member countries are sellable", () => {
+    const codes = listableDestinations(bundles, live(["JP", "KR", "SG"])).map((d) => d.code);
+    expect(codes).toContain("ASIA");
+  });
+
+  it("lists a regional destination that carries its own literal code", () => {
+    const codes = listableDestinations(bundles, live(["EU"])).map((d) => d.code);
+    expect(codes).toContain("EU");
+  });
+
+  it("hides a destination with nothing sellable instead of advertising it", () => {
+    const onlyJapan = [{ locationCodes: ["JP"] }];
+    const codes = listableDestinations(onlyJapan, live(["JP"])).map((d) => d.code);
+    expect(codes).toContain("JP");
+    expect(codes).not.toContain("SG");
+    expect(codes).not.toContain("US");
+  });
+
+  it("fails open on a degraded read so regional entries never vanish with the rest", () => {
+    const listed = listableDestinations([], degraded);
+    expect(listed.length).toBe(destinations.length);
+    const codes = listed.map((d) => d.code);
+    expect(codes).toContain("ASIA");
+    expect(codes).toContain("EU");
+  });
+
+  it("answers per destination, leaving fail-open to the list rule", () => {
+    const availability = live(["JP", "KR"]);
+    expect(isDestinationSellable({ code: "ASIA", region: "Regional" }, bundles, availability)).toBe(
+      true,
+    );
+    expect(isDestinationSellable({ code: "JP", region: "Asia" }, bundles, availability)).toBe(true);
+    expect(isDestinationSellable({ code: "US", region: "Amerika" }, bundles, availability)).toBe(
+      false,
+    );
   });
 });
