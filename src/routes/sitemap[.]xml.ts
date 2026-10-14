@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { destinations } from "@/lib/catalog";
+import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
 
 const BASE_URL = "https://djiwatravel.com";
 
@@ -29,12 +30,21 @@ function urlEntry(path: string, priority: string, changefreq: string) {
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
-      GET: () => {
+      GET: async () => {
+        // Only advertise destinations that actually have a sellable package; a sitemap full of
+        // "belum ada paket live" pages hurts search quality. A degraded provider read keeps the
+        // full list rather than publishing an almost-empty sitemap.
+        const availability = await getSellableDestinationCodes(5_000);
+        const indexed = availability.degraded
+          ? destinations
+          : destinations.filter((destination) =>
+              availability.codes.includes(destination.code.toUpperCase()),
+            );
         const entries = [
           ...STATIC_PATHS.map(({ path, priority, changefreq }) =>
             urlEntry(path, priority, changefreq),
           ),
-          ...destinations.map((destination) =>
+          ...indexed.map((destination) =>
             urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
           ),
         ];

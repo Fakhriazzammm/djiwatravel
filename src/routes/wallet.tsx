@@ -6,6 +6,9 @@ import { Page, SectionTitle, Wordmark } from "@/components/shell";
 import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
 import { FixedLayer } from "@/components/motion-primitives";
 import { PendingSpinner } from "@/components/route-loading";
+import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
+import { getCustomerAppConfig } from "@/lib/customer-app-config.server";
+import { DEFAULT_TOPUP_PRESETS, DEFAULT_MINIMUM_TOPUP } from "@/lib/customer-app-config";
 
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { getCustomerWallet, type CustomerWalletResponse, type CustomerWalletLedgerEntry } from "@/lib/customer-wallet.server";
@@ -15,6 +18,7 @@ import {
   QUICK_ACTION_SUPPORT_COPY,
   quickActionSoonCopy,
   WALLET_ACTIONS,
+  type WalletQuickAction,
 } from "@/lib/wallet-quick-actions";
 
 export const Route = createFileRoute("/wallet")({
@@ -36,9 +40,31 @@ export function Wallet() {
   const { user, loading: authLoading } = useBetterAuthUser();
   const [data, setData] = useState<CustomerWalletResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const walletLoadingLabel = useStagedLabel(loading, ACTION_STAGES.walletLoad);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
+  // Presets and which quick actions are live come from the server; the shipped defaults render
+  // immediately so the screen never waits on the config round-trip.
+  const [walletActions, setWalletActions] = useState<readonly WalletQuickAction[]>(WALLET_ACTIONS);
+  const [topupPresets, setTopupPresets] = useState<readonly number[]>(DEFAULT_TOPUP_PRESETS);
+  const [topupMinimum, setTopupMinimum] = useState(DEFAULT_MINIMUM_TOPUP);
+  useEffect(() => {
+    let cancelled = false;
+    void getCustomerAppConfig()
+      .then((config) => {
+        if (cancelled) return;
+        if (config.walletActions.length > 0) setWalletActions(config.walletActions);
+        if (config.topup.presets.length > 0) setTopupPresets(config.topup.presets);
+        if (config.topup.minimum >= DEFAULT_MINIMUM_TOPUP) setTopupMinimum(config.topup.minimum);
+      })
+      .catch(() => {
+        // Keep the shipped defaults; a config failure must not disable top up.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupPending, setTopupPending] = useState<{ amount: number; startedAt: number; creditedBefore: number } | null>(null);
   const [topupVerifiedAmount, setTopupVerifiedAmount] = useState(0);
@@ -183,7 +209,7 @@ export function Wallet() {
 
           <section className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5" aria-label="Aksi cepat">
             <div className="grid grid-cols-4 gap-2" aria-label="Aksi cepat">
-              {WALLET_ACTIONS.map((action) => (
+              {walletActions.map((action) => (
                 <button
                   key={action.label}
                   type="button"
@@ -201,8 +227,8 @@ export function Wallet() {
 
           {topupPending && <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950" role="status" aria-live="polite"><p className="text-sm font-bold">Menunggu konfirmasi pembayaran</p><p className="mt-1 text-xs leading-5 text-emerald-800">Pembayaran sedang diverifikasi. Wallet akan diperbarui otomatis setelah konfirmasi diterima.</p></section>}
           {topupVerifiedAmount > 0 && !topupPending && <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950" role="status"><p className="text-sm font-bold">Top up berhasil</p><p className="mt-1 text-xs leading-5 text-emerald-800">Wallet bertambah {rupiah(topupVerifiedAmount)} dan sudah dikonfirmasi.</p></section>}
-          {topupTimedOut && !topupPending && <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status"><p className="text-sm font-bold">Pembayaran sedang diverifikasi</p><p className="mt-1 text-xs leading-5 text-amber-900">Wallet belum berubah. Jangan membuat top up baru; cek kembali setelah beberapa saat.</p><button type="button" onClick={() => void checkWalletAgain()} disabled={loading} className="tap mt-3 min-h-11 rounded-xl bg-amber-600 px-3 text-xs font-bold text-white disabled:opacity-60">{loading ? "Memuat Wallet..." : "Cek saldo lagi"}</button></section>}
-          <DjiwaPayTopup userId={user.id} open={topupOpen} onOpenChange={setTopupOpen} creditedBefore={Number(wallet.total_credited)} onSubmitted={(pending) => { setTopupTimedOut(false); setTopupVerifiedAmount(0); setTopupPending(pending); }} />
+          {topupTimedOut && !topupPending && <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status"><p className="text-sm font-bold">Pembayaran sedang diverifikasi</p><p className="mt-1 text-xs leading-5 text-amber-900">Wallet belum berubah. Jangan membuat top up baru; cek kembali setelah beberapa saat.</p><button type="button" onClick={() => void checkWalletAgain()} disabled={loading} className="tap mt-3 min-h-11 rounded-xl bg-amber-600 px-3 text-xs font-bold text-white disabled:opacity-60">{loading ? walletLoadingLabel : "Cek saldo lagi"}</button></section>}
+          <DjiwaPayTopup userId={user.id} open={topupOpen} onOpenChange={setTopupOpen} creditedBefore={Number(wallet.total_credited)} presets={topupPresets} minimum={topupMinimum} onSubmitted={(pending) => { setTopupTimedOut(false); setTopupVerifiedAmount(0); setTopupPending(pending); }} />
 
           <section className="mt-7" aria-labelledby="wallet-history-title">
             <SectionTitle action={<span className="text-xs font-normal normal-case">{data.ledger.length} transaksi</span>}>

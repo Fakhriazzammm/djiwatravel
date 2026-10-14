@@ -46,7 +46,7 @@ describe("Djiwa Travel Isi Saldo sheet", () => {
     expect(screen.getByRole("button", { name: "Lanjutkan" })).toBeDisabled();
   });
 
-  it("persists the pending marker before redirecting to Mayar", async () => {
+  it("persists the pending marker, shows the opening stage, then redirects", async () => {
     vi.mocked(beginDjiwaPayTopup).mockResolvedValue({ topup_id: "t1", invoice_id: "i1", invoice_url: "https://payments.example/i1", status: "pending" });
     const assign = vi.fn();
     Object.defineProperty(window, "location", { configurable: true, value: { assign } });
@@ -57,7 +57,10 @@ describe("Djiwa Travel Isi Saldo sheet", () => {
     const marker = JSON.parse(window.sessionStorage.getItem(`${TOPUP_PENDING_KEY}:user-1`) ?? "null");
     expect(marker).toEqual(expect.objectContaining({ amount: 50_000, creditedBefore: 25_000 }));
     expect(screen.getByText("Tunggu sebentar")).toBeInTheDocument();
-    expect(assign).toHaveBeenCalledWith("https://payments.example/i1");
+    // The "opening" stage must be rendered before the browser leaves, otherwise the customer only
+    // ever sees "Menyiapkan…" flash by.
+    await waitFor(() => expect(screen.getByText("Membuka halaman pembayaran")).toBeInTheDocument());
+    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://payments.example/i1"));
   });
 
   it("does not create an invoice below the minimum", () => {

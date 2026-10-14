@@ -2,6 +2,9 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { BackBar, Page } from "@/components/shell";
 import { getDest } from "@/lib/catalog";
+import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
+import { regionalCoverage as extendRegionalCoverage } from "@/lib/destination-availability";
+import { destinationOgImage } from "@/lib/destination-artwork";
 import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
@@ -16,6 +19,21 @@ const REGIONAL_COVERAGE: Record<string, readonly string[]> = {
   ASIA: ["CN", "HK", "JP", "KR", "MY", "SG", "TH", "TW"],
   EU: ["EU"],
 };
+
+/**
+ * Regional coverage is seeded from `destinations` metadata but extended with every catalogued
+ * country of the same region that is currently sellable, so the list follows the provider
+ * catalogue instead of drifting from it. A degraded read keeps the seed list.
+ */
+async function coverageFor(destination: { code: string; region: string }) {
+  const seed = REGIONAL_COVERAGE[destination.code.toUpperCase()] ?? [];
+  if (destination.region !== "Regional") return seed;
+  const availability = await getSellableDestinationCodes(1_500);
+  return extendRegionalCoverage(
+    { code: destination.code, region: destination.region },
+    availability,
+  );
+}
 
 /** Cards rendered on the first paint; the rest are revealed on demand (see below). */
 export const PAGE_SIZE = 20;
@@ -56,8 +74,7 @@ export function sortPackages(packages: ViewPackage[], key: SortKey): ViewPackage
   }
 }
 
-/** Destination pages that ship a social share image; everything else falls back to the default. */
-const OG_PHOTO_CODES = new Set(["jp", "kr", "sg", "th"]);
+/** Destination pages that ship a social share image; see lib/destination-artwork.ts. */
 const BASE_URL = "https://djiwatravel.com";
 
 export const Route = createFileRoute("/destination/$code")({
@@ -79,7 +96,7 @@ export const Route = createFileRoute("/destination/$code")({
     const visible = filterPackagesByDestination(
       catalog.packages,
       destination.code,
-      REGIONAL_COVERAGE[destination.code] ?? [],
+      await coverageFor(destination),
     );
     // Balance-aware sellability: packages the provider balance cannot cover are marked sold out.
     const sellability = await getSellabilityState(visible);
@@ -101,9 +118,7 @@ export const Route = createFileRoute("/destination/$code")({
       ? `Paket eSIM ${loaderData.destination.nameId} untuk traveler Indonesia. Aktif otomatis, bayar QRIS atau VA.`
       : "Paket eSIM untuk traveler Indonesia. Aktif otomatis, bayar QRIS atau VA.";
     const code = loaderData?.destination.code.toLowerCase() ?? "";
-    const image = OG_PHOTO_CODES.has(code)
-      ? `${BASE_URL}/og/${code}.jpg`
-      : `${BASE_URL}/og/default.png`;
+    const image = destinationOgImage(code, BASE_URL);
     return {
       meta: [
         { title },

@@ -8,17 +8,24 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { getTravelFinanceReport, submitTravelExpense } from "@/lib/admin-finance.server";
 import { formatAdminDateTime } from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
-
-const PERIODS = [
-  { days: 30, label: "30 hari" },
-  { days: 90, label: "90 hari" },
-  { days: 365, label: "1 tahun" },
-] as const;
+import {
+  DEFAULT_REPORT_DAYS,
+  MAX_REPORT_DAYS,
+  MIN_REPORT_DAYS,
+  REPORT_PERIODS,
+} from "@/lib/report-periods";
 
 export const Route = createFileRoute("/admin/finance")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
-  validateSearch: z.object({ days: z.coerce.number().int().min(1).max(366).default(30) }),
+  validateSearch: z.object({
+    days: z.coerce
+      .number()
+      .int()
+      .min(MIN_REPORT_DAYS)
+      .max(MAX_REPORT_DAYS)
+      .default(DEFAULT_REPORT_DAYS),
+  }),
   loaderDeps: ({ search }) => ({ days: search.days }),
   loader: ({ deps }) => getTravelFinanceReport({ data: deps }),
   component: AdminFinance,
@@ -119,7 +126,7 @@ function AdminFinance() {
     >
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2" role="group" aria-label="Periode laporan">
-          {PERIODS.map((option) => (
+          {REPORT_PERIODS.map((option) => (
             <button
               key={option.days}
               type="button"

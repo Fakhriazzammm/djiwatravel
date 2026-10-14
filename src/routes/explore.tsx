@@ -3,7 +3,10 @@ import { Search, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Page, group } from "@/components/shell";
 import { destinations, search } from "@/lib/catalog";
+import { isRecommendablePackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
+import { getSellabilityState } from "@/lib/sellability.server";
+import { finderCtaCopy } from "@/lib/finder-form";
 
 export const Route = createFileRoute("/explore")({
   // Explore is the only package list now, so it carries the catalog's caching: one
@@ -11,10 +14,24 @@ export const Route = createFileRoute("/explore")({
   staleTime: 60_000,
   loader: async () => {
     const catalog = await getResellerCatalog();
-    const codes = new Set(
-      catalog.packages.flatMap((pkg) => pkg.locationCodes.map((code) => code.toUpperCase())),
+    const packages = catalog.packages.filter(isRecommendablePackage);
+    // A destination only belongs in Explore when it currently has something we can actually sell.
+    const sellability = await getSellabilityState(packages);
+    const codes = new Set<string>();
+    for (const pkg of packages) {
+      if (sellability.hidden.has(pkg.packageCode)) continue;
+      for (const code of pkg.locationCodes) {
+        const normalized = code.trim().toUpperCase();
+        if (normalized) codes.add(normalized);
+      }
+    }
+    const available = destinations.filter((destination) =>
+      codes.has(destination.code.toUpperCase()),
     );
-    return destinations.filter((destination) => codes.has(destination.code.toUpperCase()));
+    // A provider hiccup must not empty the list; the seeded list is the safe fallback.
+    return available.length > 0
+      ? available
+      : destinations.filter((destination) => destination.region !== "Regional");
   },
   head: () => ({
     meta: [
@@ -53,9 +70,7 @@ function Explore() {
       >
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold">Bingung pilih paket?</p>
-          <p className="truncate text-[12px] text-muted-foreground">
-            Jawab 3 pertanyaan, kami urutkan yang paling cocok
-          </p>
+          <p className="truncate text-[12px] text-muted-foreground">{finderCtaCopy()}</p>
         </div>
         <ChevronRight className="size-5 shrink-0 text-brand-red" />
       </Link>

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { signInGoogle } from "@/lib/better-auth-client";
+import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => ({
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/admin/login")({
 function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const googleLabel = useStagedLabel(loading, ACTION_STAGES.auth);
 
   async function continueWithGoogle() {
     setLoading(true);
@@ -39,7 +41,7 @@ function AdminLogin() {
           disabled={loading}
           className="mt-6 min-h-11 w-full rounded-xl bg-[#1f2d5c] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
         >
-          {loading ? "Menghubungkan…" : "Lanjutkan dengan Google"}
+          {loading ? googleLabel : "Lanjutkan dengan Google"}
         </button>
         {error && (
           <p role="alert" className="mt-3 text-sm text-red-700">

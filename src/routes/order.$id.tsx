@@ -24,6 +24,7 @@ import {
   writeNotifyPreference,
 } from "@/lib/esim-notify";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
+import { paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
 
 /**
@@ -61,13 +62,15 @@ function OrderPage() {
   }, []);
 
   const [linkBusy, setLinkBusy] = useState(false);
+  const [linkStage, setLinkStage] = useState<PaymentProgressStage>("idle");
   const [linkNote, setLinkNote] = useState("");
   const linkAttempted = useRef(false);
 
-  /** Rebuilds the Mayar link for an order that was created while checkout failed. */
+  /** Rebuilds the payment link for an order that was created while checkout failed. */
   const buildLink = async () => {
     if (!current) return;
     setLinkBusy(true);
+    setLinkStage("preparing");
     setLinkNote("");
     try {
       const url = await ensurePaymentLink(current);
@@ -75,6 +78,7 @@ function OrderPage() {
     } catch {
       setLinkNote("Belum bisa membuat link pembayaran. Coba lagi sebentar lagi.");
     } finally {
+      setLinkStage("idle");
       setLinkBusy(false);
     }
   };
@@ -120,7 +124,7 @@ function OrderPage() {
         setCheckNote(
           result.settled
             ? "Pembayaran terverifikasi. eSIM sedang disiapkan…"
-            : "Pembayaran belum kami terima. Selesaikan dulu di Mayar, lalu cek lagi.",
+            : "Pembayaran belum kami terima. Selesaikan dulu pembayarannya, lalu cek lagi.",
         );
       return result.settled;
     } catch {
@@ -183,7 +187,7 @@ function OrderPage() {
 
   if (!orders)
     return (
-      <Page tabs={false}>
+      <Page>
         <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
       </Page>
     );
@@ -202,7 +206,7 @@ function OrderPage() {
 
   if (o.status === "ORDER_CREATED" || o.status === "WAITING_PAYMENT") {
     return (
-      <Page tabs={false}>
+      <Page>
         <p className="pt-8 text-center text-sm text-muted-foreground">Pesanan tersimpan</p>
         <h1 className="mt-1 text-center text-3xl font-bold">{rupiah(o.amount)}</h1>
         <div className="mt-6 rounded-2xl bg-surface p-5">
@@ -222,8 +226,8 @@ function OrderPage() {
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {o.paymentUrl
-              ? "Setelah membayar di Mayar, kamu otomatis kembali ke halaman ini dan eSIM langsung muncul."
-              : "Tagihan Mayar belum terbentuk. Tekan tombol di bawah untuk membuatnya."}
+              ? "Setelah membayar, kamu otomatis kembali ke halaman ini dan eSIM langsung muncul."
+              : "Tagihan pembayaran belum terbentuk. Tekan tombol di bawah untuk membuatnya."}
           </p>
           {o.paymentUrl ? (
             <a href={o.paymentUrl} target="_blank" rel="noreferrer" className={`${btnRed} mt-4 block`}>
@@ -236,7 +240,7 @@ function OrderPage() {
               onClick={() => void buildLink()}
               className={`${btnRed} mt-4 block w-full disabled:opacity-50`}
             >
-              {linkBusy ? "Membuat link pembayaran…" : "Buat link pembayaran"}
+              {linkBusy ? paymentProgressLabel(linkStage) : "Buat link pembayaran"}
             </button>
           )}
           {linkNote && <p className="mt-2 text-xs text-destructive">{linkNote}</p>}
@@ -268,7 +272,7 @@ function OrderPage() {
 
   if (o.status === "PAID" || o.status === "PROVISIONING") {
     return (
-      <Page tabs={false}>
+      <Page>
         <div className="flex min-h-[55vh] flex-col items-center justify-center text-center">
           <Loader2 className="size-10 animate-spin text-brand-red" />
           <h1 className="mt-6 text-2xl font-bold">Pembayaran diterima</h1>
@@ -298,7 +302,7 @@ function OrderPage() {
 
   if (o.status === "PROVISIONING_FAILED" || o.status === "REFUNDED") {
     return (
-      <Page tabs={false}>
+      <Page>
         <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
           <AlertCircle className="size-12 text-brand-red" />
           <h1 className="mt-6 text-2xl font-bold">
@@ -321,7 +325,7 @@ function OrderPage() {
 
   if (o.status === "CANCELLED" || o.status === "EXPIRED") {
     return (
-      <Page tabs={false}>
+      <Page>
         <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
           <AlertCircle className="size-12 text-muted-foreground" />
           <h1 className="mt-6 text-2xl font-bold">
@@ -341,7 +345,7 @@ function OrderPage() {
   const esim = o.esim!;
   if (view === "qr")
     return (
-      <Page tabs={false}>
+      <Page>
         <button
           onClick={() => setView("main")}
           className="flex h-11 items-center text-[16px] text-brand-red"
@@ -356,7 +360,7 @@ function OrderPage() {
     );
   if (view === "guide")
     return (
-      <Page tabs={false}>
+      <Page>
         <button
           onClick={() => setView("main")}
           className="flex h-11 items-center text-[16px] text-brand-red"
@@ -369,7 +373,7 @@ function OrderPage() {
     );
 
   return (
-    <Page tabs={false}>
+    <Page>
       <div className="flex flex-col items-center pt-12 text-center">
         <div className="animate-pop flex size-20 items-center justify-center rounded-full bg-success">
           <Check className="size-10 text-primary-foreground" strokeWidth={3} />

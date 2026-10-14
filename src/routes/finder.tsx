@@ -3,6 +3,8 @@ import { TabBar } from "@/components/shell";
 import { useState } from "react";
 import { recommendPackages } from "@/lib/recommendation/recommend-packages.server";
 import { destinations } from "@/lib/catalog";
+import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
+import { DURATION_OPTIONS } from "@/lib/finder-form";
 import type { RecommendationPreferences } from "@/lib/recommendation/preferences";
 import {
   packageCoverageLabel,
@@ -10,7 +12,6 @@ import {
   packageDestinationLabel,
 } from "@/lib/package-copy";
 export const Route = createFileRoute("/finder")({ component: Finder });
-const DURATION_OPTIONS = [7, 15, 30, 60, 90, 180] as const;
 
 function formatBudget(value: number) {
   return `Rp ${value.toLocaleString("id-ID")}`;
@@ -31,6 +32,7 @@ function Finder() {
   const [budget, setBudget] = useState(200000);
   const [result, setResult] = useState<Awaited<ReturnType<typeof recommendPackages>> | null>(null);
   const [loading, setLoading] = useState(false);
+  const loadingLabel = useStagedLabel(loading, ACTION_STAGES.search);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
@@ -125,7 +127,7 @@ function Finder() {
             disabled={loading}
             className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground sm:col-span-4"
           >
-            {loading ? "Mencari..." : "Tampilkan rekomendasi"}
+            {loading ? loadingLabel : "Tampilkan rekomendasi"}
           </button>
         </form>
         {result && (

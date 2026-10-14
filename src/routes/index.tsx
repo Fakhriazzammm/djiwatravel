@@ -4,15 +4,11 @@ import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations, search } from "@/lib/catalog";
+import { getHomeDestinationFeed } from "@/lib/destination-availability.server";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
-import jp from "@/assets/dest-jp.jpg";
-import sg from "@/assets/dest-sg.jpg";
-import th from "@/assets/dest-th.jpg";
-import kr from "@/assets/dest-kr.jpg";
-
-const photos: Record<string, string> = { JP: jp, SG: sg, TH: th, KR: kr };
+import { destinationPhoto } from "@/lib/destination-artwork";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,6 +48,23 @@ function Home() {
   const orders = useOrders();
   const { user, loading } = useBetterAuthUser();
   useEffect(() => setHello(greeting()), []);
+
+  // The seeded row paints immediately; the live (sellable-only) row replaces it when it arrives so
+  // the first paint never blocks on the reseller provider.
+  const [popular, setPopular] = useState(() => destinations.filter((d) => d.popular));
+  useEffect(() => {
+    let cancelled = false;
+    void getHomeDestinationFeed()
+      .then((feed) => {
+        if (!cancelled && feed.popular.length > 0) setPopular(feed.popular);
+      })
+      .catch(() => {
+        // Keep the seeded row: an unavailable catalogue must not blank the home page.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const active = orders?.find((o) => o.status === "READY" || o.status === "INSTALLED");
   const activeName = active?.packageName ?? active?.packageId;
   const activeLocation = active?.locationCodes?.join(", ") || "Regional";
@@ -146,18 +159,18 @@ function Home() {
             Destinasi Populer
           </SectionTitle>
           <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4">
-            {destinations
-              .filter((d) => d.popular)
-              .map((d) => (
+            {popular.map((d) => {
+              const photo = destinationPhoto(d.code);
+              return (
                 <Link
                   key={d.code}
                   to="/destination/$code"
                   params={{ code: d.code.toLowerCase() }}
                   className="tap relative aspect-[4/5] w-[31%] min-w-28 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary"
                 >
-                  {photos[d.code] ? (
+                  {photo ? (
                     <img
-                      src={photos[d.code]}
+                      src={photo}
                       alt={d.nameId}
                       loading="lazy"
                       width={736}
@@ -165,7 +178,10 @@ function Home() {
                       className="absolute inset-0 size-full object-cover"
                     />
                   ) : (
-                    <span className="absolute inset-0 flex items-center justify-center pb-8 text-5xl">
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/12 to-secondary pb-10 text-5xl"
+                    >
                       {d.flag}
                     </span>
                   )}
@@ -178,7 +194,8 @@ function Home() {
                     </p>
                   </div>
                 </Link>
-              ))}
+              );
+            })}
           </div>
         </Reveal>
 

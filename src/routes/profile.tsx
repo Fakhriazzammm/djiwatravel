@@ -10,6 +10,7 @@ import { rupiah } from "@/lib/pricing";
 import { validateCustomerProfile, type CustomerProfileDraft } from "@/lib/customer-profile";
 import { loadCustomerProfile, saveCustomerProfile } from "@/lib/customer-profile-client";
 import { DjiwaPayTopup } from "@/components/djiwa-pay-topup";
+import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 
 export const Route = createFileRoute("/profile")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -35,6 +36,7 @@ function Profile() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const profileSaveLabel = useStagedLabel(savingProfile, ACTION_STAGES.profileSave);
   const [profileError, setProfileError] = useState<string | null>(null);
   useEffect(() => {
     if (!user) {
@@ -144,7 +146,7 @@ function Profile() {
                 onClick={submitProfile}
                 className="h-11 flex-1 rounded-xl bg-primary font-semibold text-primary-foreground disabled:opacity-50"
               >
-                {savingProfile ? "Menyimpan…" : "Simpan data"}
+                {savingProfile ? profileSaveLabel : "Simpan data"}
               </button>
               {profileSaved && (
                 <button

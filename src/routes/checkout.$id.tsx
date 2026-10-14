@@ -18,6 +18,7 @@ import { isCustomerProfileComplete } from "@/lib/customer-profile";
 import { formatWhatsapp, isValidWhatsapp, normalizeWhatsapp } from "@/lib/phone";
 import { loadCustomerProfile } from "@/lib/customer-profile-client";
 import { toViewPackage } from "@/lib/package-view";
+import { nextFrame, paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: async ({ params }) => {
@@ -57,9 +58,7 @@ function Checkout() {
   const [method, setMethod] = useState<"qris" | "va">("qris");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [paymentProgress, setPaymentProgress] = useState<"idle" | "preparing" | "redirecting">(
-    "idle",
-  );
+  const [paymentProgress, setPaymentProgress] = useState<PaymentProgressStage>("idle");
   const [user, setUser] = useState<BetterAuthUser | null>(null);
   const [memberProfileReady, setMemberProfileReady] = useState(false);
   useEffect(() => {
@@ -97,11 +96,11 @@ function Checkout() {
         whatsapp: normalizeWhatsapp(wa),
         method,
       });
-      // Go straight to Mayar: leaving the customer on the order screen when a
+      // Go straight to the payment page: leaving the customer on the order screen when a
       // payment link already exists is a dead end they asked us to remove.
       if (o.paymentUrl) {
         setPaymentProgress("redirecting");
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await nextFrame();
         window.location.assign(o.paymentUrl);
         return;
       }
@@ -121,7 +120,7 @@ function Checkout() {
   const input =
     "w-full bg-transparent h-12 px-4 text-[16px] outline-none placeholder:text-muted-foreground";
   return (
-    <Page tabs={false}>
+    <Page>
       <BackBar title="Checkout" />
       {error && (
         <p
@@ -213,7 +212,7 @@ function Checkout() {
         ))}
       </div>
 
-      <StickyCta aboveTabBar={false}>
+      <StickyCta aboveTabBar>
         {!pkg.sellable && (
           <p className="pb-2 text-center text-xs font-semibold text-destructive">
             Paket ini sedang tidak tersedia. Silakan pilih paket lain.
@@ -232,9 +231,7 @@ function Checkout() {
           className={`${btnRed} disabled:opacity-40`}
         >
           {submitting
-            ? paymentProgress === "redirecting"
-              ? "Membuka halaman pembayaran…"
-              : "Menyiapkan pembayaran…"
+            ? paymentProgressLabel(paymentProgress)
             : pkg.sellable
               ? `Buat pesanan · ${rupiah(price)}`
               : "Habis"}

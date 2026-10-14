@@ -8,6 +8,7 @@ import { ReceiptLine, ReceiptPrinter, ReceiptRule } from "@/components/receipt-p
 import { ManualDetails } from "@/components/esim-install";
 import { guestAccessTokenFor, hasGuestOrderAccess, refreshOrdersFromServer, useOrders, type Order } from "@/lib/orders";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
+import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import {
   downloadReceiptPdf,
@@ -77,6 +78,8 @@ function ReceiptPage() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [checkingPayment, setCheckingPayment] = useState(false);
+  const pdfLabel = useStagedLabel(busy, ACTION_STAGES.receiptExport);
+  const checkingLabel = useStagedLabel(checkingPayment, ACTION_STAGES.paymentCheck);
 
   // A refresh from the server can carry newer status, so settle once on arrival.
   useEffect(() => {
@@ -128,14 +131,14 @@ function ReceiptPage() {
 
   if (!orders)
     return (
-      <Page tabs={false}>
+      <Page>
         <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
       </Page>
     );
 
   if (!order)
     return (
-      <Page tabs={false}>
+      <Page>
         <div className="mt-24 text-center">
           <p className="text-muted-foreground">Struk tidak ditemukan di perangkat ini.</p>
           <Link to="/my-esim" className={`${btnRed} mt-6`}>
@@ -165,7 +168,7 @@ function ReceiptPage() {
   };
 
   return (
-    <Page tabs={false}>
+    <Page>
       <div className="print-hide flex items-center justify-between pt-2">
         <Link
           to={ready ? "/my-esim/$id" : "/order/$id"}
@@ -196,7 +199,7 @@ function ReceiptPage() {
               className={`${btnRed} inline-flex items-center justify-center gap-2 disabled:opacity-50`}
             >
               <FileText className="size-4" aria-hidden="true" />
-              {busy ? "Menyiapkan PDF…" : "Unduh PDF"}
+              {busy ? pdfLabel : "Unduh PDF"}
             </button>
             <button
               type="button"
@@ -209,7 +212,7 @@ function ReceiptPage() {
             {note && <p className="text-xs text-destructive">{note}</p>}
             {(order.status === "ORDER_CREATED" || order.status === "WAITING_PAYMENT") && (
               <button type="button" disabled={checkingPayment} onClick={() => void retryPaymentCheck()} className={`${btnSoft} disabled:opacity-50`}>
-                {checkingPayment ? "Memeriksa pembayaran…" : "Cek ulang pembayaran"}
+                {checkingPayment ? checkingLabel : "Cek ulang pembayaran"}
               </button>
             )}
           </div>
