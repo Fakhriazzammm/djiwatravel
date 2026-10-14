@@ -101,6 +101,7 @@ function Checkout() {
       // payment link already exists is a dead end they asked us to remove.
       if (o.paymentUrl) {
         setPaymentProgress("redirecting");
+        await new Promise((resolve) => setTimeout(resolve, 150));
         window.location.assign(o.paymentUrl);
         return;
       }
