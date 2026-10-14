@@ -57,6 +57,9 @@ function Checkout() {
   const [method, setMethod] = useState<"qris" | "va">("qris");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [paymentProgress, setPaymentProgress] = useState<"idle" | "preparing" | "redirecting">(
+    "idle",
+  );
   const [user, setUser] = useState<BetterAuthUser | null>(null);
   const [memberProfileReady, setMemberProfileReady] = useState(false);
   useEffect(() => {
@@ -84,6 +87,7 @@ function Checkout() {
   const pay = async () => {
     if (submitting) return;
     setSubmitting(true);
+    setPaymentProgress("preparing");
     setError("");
     try {
       const o = await createOrder({
@@ -96,6 +100,7 @@ function Checkout() {
       // Go straight to Mayar: leaving the customer on the order screen when a
       // payment link already exists is a dead end they asked us to remove.
       if (o.paymentUrl) {
+        setPaymentProgress("redirecting");
         window.location.assign(o.paymentUrl);
         return;
       }
@@ -226,7 +231,9 @@ function Checkout() {
           className={`${btnRed} disabled:opacity-40`}
         >
           {submitting
-            ? "Mengalihkan ke Mayar…"
+            ? paymentProgress === "redirecting"
+              ? "Membuka halaman pembayaran…"
+              : "Menyiapkan pembayaran…"
             : pkg.sellable
               ? `Buat pesanan · ${rupiah(price)}`
               : "Habis"}
