@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { destinations } from "@/lib/catalog";
-import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
+import { getListableDestinations } from "@/lib/destination-availability.server";
 
 const BASE_URL = "https://djiwatravel.com";
 
@@ -33,13 +32,9 @@ export const Route = createFileRoute("/sitemap.xml")({
       GET: async () => {
         // Only advertise destinations that actually have a sellable package; a sitemap full of
         // "belum ada paket live" pages hurts search quality. A degraded provider read keeps the
-        // full list rather than publishing an almost-empty sitemap.
-        const availability = await getSellableDestinationCodes(5_000);
-        const indexed = availability.degraded
-          ? destinations
-          : destinations.filter((destination) =>
-              availability.codes.includes(destination.code.toUpperCase()),
-            );
+        // full list rather than publishing an almost-empty sitemap. The list rule is shared with
+        // Explore so a regional destination (Asia) is indexed exactly when it is listed.
+        const indexed = await getListableDestinations(5_000);
         const entries = [
           ...STATIC_PATHS.map(({ path, priority, changefreq }) =>
             urlEntry(path, priority, changefreq),

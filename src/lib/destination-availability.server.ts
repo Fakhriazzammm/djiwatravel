@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { destinations, type Destination } from "./catalog";
 import {
   filterDestinationsByAvailability,
+  listableDestinations,
   type AvailabilitySource,
   type DestinationAvailability,
 } from "./destination-availability";
@@ -68,6 +69,38 @@ export async function getSellableDestinationCodes(
     };
   } catch {
     return { codes: [], source: "fallback", degraded: true };
+  }
+}
+
+/**
+ * The destination list a page should show.
+ *
+ * This is the same rule that gates a destination page, so anything we list can actually be opened
+ * (regional destinations included, through their coverage). A degraded read returns the seeded list
+ * rather than an empty storefront.
+ */
+export async function getListableDestinations(deadlineMs = 2_000): Promise<Destination[]> {
+  try {
+    const catalog = await withDeadline(getResellerCatalog(), deadlineMs);
+    if (!catalog) return [...destinations];
+    const packages = catalog.packages.filter(isRecommendablePackage);
+    if (packages.length === 0) return [...destinations];
+    const sellability = await getSellabilityState(packages);
+    const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
+    const codes = new Set<string>();
+    for (const pkg of sellable) {
+      for (const code of pkg.locationCodes) {
+        const normalized = code.trim().toUpperCase();
+        if (normalized) codes.add(normalized);
+      }
+    }
+    return listableDestinations(sellable, {
+      codes: [...codes].sort(),
+      source: catalog.stale ? "cached" : "live",
+      degraded: false,
+    });
+  } catch {
+    return [...destinations];
   }
 }
 
