@@ -1,5 +1,7 @@
+import cn from "@/assets/dest-cn.png";
 import jp from "@/assets/dest-jp.jpg";
 import kr from "@/assets/dest-kr.jpg";
+import sa from "@/assets/dest-sa.png";
 import sg from "@/assets/dest-sg.jpg";
 import th from "@/assets/dest-th.jpg";
 
@@ -12,8 +14,10 @@ import th from "@/assets/dest-th.jpg";
  * the destination code.
  */
 export const DESTINATION_PHOTOS: Record<string, string> = {
+  CN: cn,
   JP: jp,
   KR: kr,
+  SA: sa,
   SG: sg,
   TH: th,
 };
