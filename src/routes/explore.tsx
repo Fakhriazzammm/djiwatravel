@@ -8,9 +8,12 @@ import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { getSellabilityState } from "@/lib/sellability.server";
 import { listableDestinations } from "@/lib/destination-availability";
 import { finderCtaCopy } from "@/lib/finder-form";
-import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
-
-const EXPLORE_LOADER_DEADLINE_MS = 2_500;
+import {
+  EXPLORE_LOADER_DEADLINE_MS,
+  EXPLORE_RECOVERY_DEADLINE_MS,
+  exploreAvailability,
+  loadExploreAvailability,
+} from "@/lib/explore-availability";
 
 function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -32,44 +35,44 @@ export const Route = createFileRoute("/explore")({
   // Explore is the only package list now, so it carries the catalog's caching: one
   // expensive reseller read, reused for a minute so coming back is instant.
   staleTime: 60_000,
-  loader: async () => {
-    try {
-      // Bound this route independently of the provider's longer cache timeout so a slow provider
-      // cannot leave the global transition loader on screen indefinitely.
-      const catalog = await withDeadline(getResellerCatalog(), EXPLORE_LOADER_DEADLINE_MS);
-      const packages = catalog.packages.filter(isRecommendablePackage);
-      // Balance lookup is another remote dependency; bound it separately so the route cannot remain
-      // pending after the provider catalogue itself has already resolved.
-      const sellability = await withDeadline(
-        getSellabilityState(packages),
-        EXPLORE_LOADER_DEADLINE_MS,
-      );
-      const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
-      if (sellable.length === 0) {
-        return exploreAvailability([], catalog.stale ? "cached" : "live");
-      }
-      const codes = new Set<string>();
-      for (const pkg of sellable) {
-        for (const code of pkg.locationCodes) {
-          const normalized = code.trim().toUpperCase();
-          if (normalized) codes.add(normalized);
+  loader: async () =>
+    // The provider read is bounded by its own budget; a slow-but-healthy read recovers on its own
+    // instead of being reported as a failure the customer has to retry by hand.
+    loadExploreAvailability({
+      deadlineMs: EXPLORE_LOADER_DEADLINE_MS,
+      recoveryDeadlineMs: EXPLORE_RECOVERY_DEADLINE_MS,
+      attempt: async (timeoutMs) => {
+        const catalog = await withDeadline(getResellerCatalog(), timeoutMs);
+        const packages = catalog.packages.filter(isRecommendablePackage);
+        // Balance lookup is another remote dependency; bounded by the same budget.
+        const sellability = await withDeadline(
+          getSellabilityState(packages),
+          timeoutMs,
+        );
+        const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
+        const source = catalog.stale ? "cached" : "live";
+        if (sellable.length === 0) {
+          return exploreAvailability([], source);
         }
-      }
-      // Regional bundles list their member countries instead of a literal EU/ASIA code, so the list
-      // rule is shared with the destination page rather than matched by hand here.
-      return exploreAvailability(
-        listableDestinations(sellable, {
-          codes: [...codes].sort(),
-          source: catalog.stale ? "cached" : "live",
-          degraded: false,
-        }),
-        catalog.stale ? "cached" : "live",
-      );
-    } catch {
-      // Keep the provider error out of the browser, but make the failed load actionable.
-      return exploreErrorState();
-    }
-  },
+        const codes = new Set<string>();
+        for (const pkg of sellable) {
+          for (const code of pkg.locationCodes) {
+            const normalized = code.trim().toUpperCase();
+            if (normalized) codes.add(normalized);
+          }
+        }
+        // Regional bundles list their member countries instead of a literal EU/ASIA code, so the
+        // list rule is shared with the destination page rather than matched by hand here.
+        return exploreAvailability(
+          listableDestinations(sellable, {
+            codes: [...codes].sort(),
+            source,
+            degraded: false,
+          }),
+          source,
+        );
+      },
+    }),
   head: () => ({
     meta: [
       { title: "Cari destinasi — Djiwa Travel" },
@@ -80,6 +83,15 @@ export const Route = createFileRoute("/explore")({
     ],
     links: [{ rel: "canonical", href: "https://djiwatravel.com/explore" }],
   }),
+  // A cold provider read can legitimately take a few seconds; say so instead of showing a gap.
+  pendingComponent: () => (
+    <Page>
+      <h1 className="large-title pt-4">Explore</h1>
+      <p className="mt-6 text-sm text-muted-foreground" role="status">
+        Memuat katalog…
+      </p>
+    </Page>
+  ),
   component: Explore,
 });
 

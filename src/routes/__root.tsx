@@ -12,6 +12,7 @@ import { NavProgress } from "../components/nav-progress";
 import { AppSplash } from "../components/app-splash";
 import { TransitionLoader } from "../components/transition-loader";
 import { easeIos } from "../lib/motion";
+import { warmResellerCatalog } from "../lib/explore-warm";
 import { trackAnalytics } from "../lib/analytics";
 
 function NotFoundComponent() {
@@ -97,11 +98,25 @@ function RootComponent() {
         <AppSplash />
         {/* Later page changes get one centred loader. */}
         <TransitionLoader />
+        <CatalogWarmup />
         <AnalyticsPageView />
         <AnimatedOutlet />
       </MotionConfig>
     </QueryClientProvider>
   );
+}
+
+/**
+ * One fire-and-forget catalogue warm per app boot, so opening Explore or a destination page
+ * usually finds a warm cache instead of paying for the cold provider read.
+ */
+function CatalogWarmup() {
+  useEffect(() => {
+    void warmResellerCatalog().catch(() => {
+      // A warm-up failure must never affect the page: the routes load the catalogue themselves.
+    });
+  }, []);
+  return null;
 }
 
 function AnalyticsPageView() {

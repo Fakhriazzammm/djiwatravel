@@ -241,7 +241,7 @@ function Destination() {
                   <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
                   {!pkg.sellable && (
                     <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
-                      Sold
+                      Habis
                     </span>
                   )}
                 </div>
@@ -263,9 +263,9 @@ function Destination() {
                 ) : (
                   <span
                     className="inline-flex w-full items-center justify-center rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700"
-                    aria-label="Paket sold dan tidak dapat dibeli"
+                    aria-label="Paket habis dan tidak dapat dibeli"
                   >
-                    Sold
+                    Habis
                   </span>
                 )}
               </article>
