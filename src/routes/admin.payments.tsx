@@ -14,7 +14,7 @@ import {
   projectAdminPrivacy,
   projectAdminTitle,
 } from "@/lib/admin-display";
-import { AdminShell, AdminSurface, StatusPill } from "@/components/admin-shell";
+import { AdminShell, AdminStatStrip, AdminSurface, StatusPill } from "@/components/admin-shell";
 
 const paymentSearch = z.object({
   q: z.string().default(""),
@@ -142,18 +142,19 @@ function AdminPayments() {
               </button>
             </div>
           </div>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
-            {[
-              ["Ditampilkan", result.rows.length],
-              ["Halaman", result.page + 1],
-              ["Filter", search.status === "ALL" ? "Semua" : humanizeAdminStatus(search.status)],
-              ["Sort", humanizeAdminStatus(search.sort)],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-[#f7f7f8] px-2.5 py-2">
-                <span className="block text-[#6e6e73]">{label}</span>
-                <b className="mt-0.5 block truncate">{value}</b>
-              </div>
-            ))}
+          <div className="mt-2">
+            <AdminStatStrip
+              columns={4}
+              items={[
+                { label: "Ditampilkan", value: String(result.rows.length) },
+                { label: "Halaman", value: String(result.page + 1) },
+                {
+                  label: "Filter",
+                  value: search.status === "ALL" ? "Semua" : humanizeAdminStatus(search.status),
+                },
+                { label: "Sort", value: humanizeAdminStatus(search.sort) },
+              ]}
+            />
           </div>
         </AdminSurface>
         <AdminSurface className="p-2.5">
