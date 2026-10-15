@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 
 import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
+import { FixedLayer } from "@/components/motion-primitives";
 import { formatAdminDateTime } from "@/lib/admin-display";
 import { readAdminCatalogPage } from "@/lib/admin-catalog.server";
 import { validatePriceRuleInput } from "@/lib/price-rules";
@@ -604,6 +605,7 @@ function AdminCatalogPage() {
 
       {/* Filter sheet: the toolbar keeps only search on mobile, so the list starts higher */}
       {filtersOpen && (
+        <FixedLayer>
         <div className="fixed inset-0 z-50 flex items-end bg-black/25" role="dialog" aria-modal="true" aria-label="Filter katalog">
           <button type="button" aria-label="Tutup filter" className="absolute inset-0 h-full w-full cursor-default" onClick={() => setFiltersOpen(false)} />
           <div className="relative z-10 w-full rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl">
@@ -660,10 +662,12 @@ function AdminCatalogPage() {
             </div>
           </div>
         </div>
+        </FixedLayer>
       )}
 
       {/* Rules + history sheet: reachable from the toolbar, never behind a scroll */}
       {rulesOpen && (
+        <FixedLayer>
         <div className="fixed inset-0 z-50 flex items-end bg-black/25" role="dialog" aria-modal="true" aria-label="Aturan harga">
           <button type="button" aria-label="Tutup aturan" className="absolute inset-0 h-full w-full cursor-default" onClick={() => setRulesOpen(false)} />
           <div className="relative z-10 max-h-[78dvh] w-full overflow-auto rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl lg:left-[272px]">
@@ -718,10 +722,12 @@ function AdminCatalogPage() {
             )}
           </div>
         </div>
+        </FixedLayer>
       )}
 
       {/* Editor: two compact rows (~100px) so the list stays visible while pricing */}
       {editorOpen && (
+        <FixedLayer>
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.06] bg-white/95 px-2.5 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur lg:left-[272px]">
           <div className="mx-auto max-w-[1360px] space-y-1.5">
             <div className="flex items-center gap-1.5 overflow-x-auto text-[12px]">
@@ -787,6 +793,7 @@ function AdminCatalogPage() {
             )}
           </div>
         </div>
+        </FixedLayer>
       )}
     </AdminShell>
   );
