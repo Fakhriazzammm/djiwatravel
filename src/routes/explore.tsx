@@ -1,20 +1,54 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Search, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Page, group } from "@/components/shell";
 import { destinations, search } from "@/lib/catalog";
+import { isRecommendablePackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
+import { getSellabilityState } from "@/lib/sellability.server";
+import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
+
+const EXPLORE_LOADER_DEADLINE_MS = 2_500;
+
+function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Explore catalog deadline exceeded")), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 export const Route = createFileRoute("/explore")({
   // Explore is the only package list now, so it carries the catalog's caching: one
   // expensive reseller read, reused for a minute so coming back is instant.
   staleTime: 60_000,
   loader: async () => {
-    const catalog = await getResellerCatalog();
-    const codes = new Set(
-      catalog.packages.flatMap((pkg) => pkg.locationCodes.map((code) => code.toUpperCase())),
-    );
-    return destinations.filter((destination) => codes.has(destination.code.toUpperCase()));
+    try {
+      const catalog = await withDeadline(getResellerCatalog(), EXPLORE_LOADER_DEADLINE_MS);
+      const packages = catalog.packages.filter(isRecommendablePackage);
+      const sellability = await withDeadline(
+        getSellabilityState(packages),
+        EXPLORE_LOADER_DEADLINE_MS,
+      );
+      const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
+      const codes = new Set(
+        sellable.flatMap((pkg) => pkg.locationCodes.map((code) => code.trim().toUpperCase())),
+      );
+      return exploreAvailability(
+        destinations.filter((destination) => codes.has(destination.code.toUpperCase())),
+        catalog.stale ? "cached" : "live",
+      );
+    } catch {
+      return exploreErrorState();
+    }
   },
   head: () => ({
     meta: [
@@ -28,10 +62,11 @@ export const Route = createFileRoute("/explore")({
 });
 
 function Explore() {
+  const router = useRouter();
   const available = Route.useLoaderData();
   const [q, setQ] = useState("");
   const res = search(q).filter((destination) =>
-    available.some((item) => item.code === destination.code),
+    available.destinations.some((item) => item.code === destination.code),
   );
   return (
     <Page>
@@ -59,10 +94,30 @@ function Explore() {
         </div>
         <ChevronRight className="size-5 shrink-0 text-brand-red" />
       </Link>
-      {res.length === 0 ? (
-        <p className="mt-16 text-center text-muted-foreground">
-          Belum ada untuk “{q}”. Coba nama negara lain.
+      {available.source === "error" && (
+        <div role="alert" className="mt-4 rounded-2xl bg-surface p-5 text-center shadow-sm">
+          <p className="font-semibold">Explore belum dapat dimuat</p>
+          <p className="mt-2 text-sm text-muted-foreground">{available.errorMessage} Tidak ada paket yang dibuat-buat.</p>
+          <button
+            type="button"
+            onClick={() => void router.invalidate()}
+            className="mt-4 min-h-11 rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
+          >
+            Coba lagi
+          </button>
+        </div>
+      )}
+      {available.source === "cached" && (
+        <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
+          Menampilkan katalog tersimpan; harga mungkin belum terbaru.
         </p>
+      )}
+      {res.length === 0 ? (
+        available.source === "error" ? null : (
+          <p className="mt-16 text-center text-muted-foreground">
+            Belum ada untuk “{q}”. Coba nama negara lain.
+          </p>
+        )
       ) : (
         <div className={`${group} mt-4`}>
           {res.map((d) => (
