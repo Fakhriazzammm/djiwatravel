@@ -19,8 +19,27 @@ export const Route = createFileRoute("/panduan/")({
         content: "Tips praktis eSIM dan internet untuk perjalanan dari Indonesia.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${BASE_URL}/panduan` },
+      { property: "og:image", content: `${BASE_URL}/og/default.png` },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Panduan Travel — Djiwa Travel" },
+      { name: "twitter:description", content: "Tips praktis eSIM dan internet untuk perjalanan dari Indonesia." },
+      { name: "twitter:image", content: `${BASE_URL}/og/default.png` },
     ],
     links: [{ rel: "canonical", href: `${BASE_URL}/panduan` }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Beranda", item: BASE_URL },
+            { "@type": "ListItem", position: 2, name: "Panduan Travel", item: `${BASE_URL}/panduan` },
+          ],
+        }),
+      },
+    ],
   }),
   component: TravelGuideIndex,
 });

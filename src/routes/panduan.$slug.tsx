@@ -22,7 +22,6 @@ export const Route = createFileRoute("/panduan/$slug")({
       dateModified: loaderData.updatedAt,
       inLanguage: "id-ID",
       mainEntityOfPage: { "@type": "WebPage", "@id": url },
-      author: { "@type": "Organization", name: "Djiwa Travel", url: BASE_URL },
       publisher: { "@type": "Organization", name: "Djiwa Travel", url: BASE_URL },
     };
     const breadcrumbSchema = {
@@ -45,6 +44,8 @@ export const Route = createFileRoute("/panduan/$slug")({
         { property: "og:locale", content: "id_ID" },
         { property: "og:image", content: `${BASE_URL}/og/default.png` },
         { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: loaderData.title },
+        { name: "twitter:description", content: loaderData.description },
         { name: "twitter:image", content: `${BASE_URL}/og/default.png` },
       ],
       links: [{ rel: "canonical", href: url }],
@@ -69,7 +70,7 @@ function TravelGuideDetail() {
         <h1 className="large-title mt-2">{guide.heading}</h1>
         <p className="mt-3 text-[15px] leading-7 text-muted-foreground">{guide.description}</p>
         <p className="mt-3 text-xs text-muted-foreground">
-          {guide.readTime} · Diperbarui {guide.updatedAt}
+          {guide.readTime} · Terbit {guide.publishedAt} · Diperbarui {guide.updatedAt}
         </p>
         <div className="mt-8 space-y-5 text-[15px] leading-7 text-foreground">
           {guide.paragraphs.map((paragraph) => (

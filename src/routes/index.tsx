@@ -28,8 +28,36 @@ export const Route = createFileRoute("/")({
         content: "eSIM internasional untuk traveler Indonesia. Bayar QRIS, langsung online.",
       },
       { property: "og:url", content: "https://djiwatravel.com/" },
+      { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://djiwatravel.com/og/default.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Djiwa Travel — Mau pergi ke mana?" },
+      { name: "twitter:description", content: "eSIM internasional untuk traveler Indonesia. Bayar QRIS, langsung online." },
+      { name: "twitter:image", content: "https://djiwatravel.com/og/default.png" },
     ],
     links: [{ rel: "canonical", href: "https://djiwatravel.com/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              name: "Djiwa Travel",
+              url: "https://djiwatravel.com/",
+              logo: "https://djiwatravel.com/icon-512.png",
+            },
+            {
+              "@type": "WebSite",
+              name: "Djiwa Travel",
+              url: "https://djiwatravel.com/",
+              inLanguage: "id-ID",
+            },
+          ],
+        }),
+      },
+    ],
   }),
   component: Home,
 });
