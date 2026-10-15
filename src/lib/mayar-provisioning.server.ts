@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { db } from "@/db/client.server";
 import { fetchEsimAccessPackagePrices, orderEsimAccessProfilesServer } from "./esim-access";
 
@@ -29,11 +30,27 @@ export async function provisionSettledTravelOrder(orderId: string) {
     throw new Error("order_not_settled");
   }
   const current = existing.rows[0] as { id?: string; status?: string; provider_transaction_id?: string | null } | undefined;
-  if (current?.status === "READY" || current?.status === "PROVISIONING") return { started: false, status: current.status };
+  if (current?.status === "READY") return { started: false, status: current.status };
   const itemsResult = await db.execute(sql`select provider_package_code, quantity, provider_unit_cost, package_snapshot from public.customer_order_items where order_id = ${orderId}::uuid order by id`);
   const items = itemsResult.rows as unknown as OrderItem[];
   if (items.length === 0) throw new Error("order_items_not_found");
   const transactionId = current?.provider_transaction_id || `DJIWA-${orderId}`;
+  // Claim before reading live prices or calling the provider. A unique order row alone does not
+  // serialize two workers: both can observe FAILED and race into the same provider request.
+  const leaseOwner = randomUUID();
+  await db.execute(sql`insert into public.esim_provisioning_orders(order_id, provider, provider_transaction_id, status, request_fingerprint, attempt_count, provisioning_attempts, updated_at)
+    values (${orderId}::uuid, 'esimaccess', ${transactionId}, 'PENDING', ${transactionId}, 0, 0, now())
+    on conflict (order_id) do nothing`);
+  const claim = await db.execute(sql`update public.esim_provisioning_orders
+    set status = 'PROVISIONING', lease_owner = ${leaseOwner}, lease_expires_at = now() + interval '5 minutes',
+        provider_transaction_id = coalesce(provider_transaction_id, ${transactionId}),
+        attempt_count = attempt_count + 1, provisioning_attempts = provisioning_attempts + 1,
+        last_provisioning_error = null, updated_at = now()
+    where order_id = ${orderId}::uuid
+      and status <> 'READY'
+      and (status <> 'PROVISIONING' or lease_expires_at is null or lease_expires_at < now())
+    returning id`);
+  if (claim.rows.length === 0) return { started: false, status: "PROVISIONING" };
   // Reprice against the live catalogue first: the provider rejects a stale price outright.
   const livePrices = await fetchEsimAccessPackagePrices(items.map((item) => item.provider_package_code));
   const packageInfoList = items.map((item) => {
@@ -42,9 +59,6 @@ export async function provisionSettledTravelOrder(orderId: string) {
     const providerPrice = Number(livePrices[item.provider_package_code] ?? storedPrice);
     return { packageCode: item.provider_package_code, count: Number(item.quantity), ...(Number.isFinite(providerPrice) && providerPrice >= 0 ? { price: providerPrice } : {}) };
   });
-  await db.execute(sql`insert into public.esim_provisioning_orders(order_id, provider, provider_transaction_id, status, request_fingerprint, attempt_count, provisioning_attempts, updated_at)
-    values (${orderId}::uuid, 'esimaccess', ${transactionId}, 'PROVISIONING', ${transactionId}, 1, 1, now())
-    on conflict (order_id) do update set status = 'PROVISIONING', provider_transaction_id = coalesce(public.esim_provisioning_orders.provider_transaction_id, excluded.provider_transaction_id), attempt_count = public.esim_provisioning_orders.attempt_count + 1, provisioning_attempts = public.esim_provisioning_orders.provisioning_attempts + 1, last_provisioning_error = null, updated_at = now()`);
   await db.execute(sql`update public.customer_orders set status = 'PROVISIONING', updated_at = now() where id = ${orderId}::uuid and status in ('PAYMENT_CONFIRMED','PROVISIONING_FAILED')`);
   try {
     const response = await orderEsimAccessProfilesServer({ transactionId, packageInfoList }) as ProviderResponse;
@@ -60,12 +74,12 @@ export async function provisionSettledTravelOrder(orderId: string) {
       throw new Error(`esim_access_order_failed:${detail}`);
     }
     const mapped = providerResult(response);
-    await db.execute(sql`update public.esim_provisioning_orders set provider_order_no = ${mapped.providerOrderNo}, provider_status = ${mapped.providerStatus}, last_provider_response = ${JSON.stringify(response)}::jsonb, updated_at = now() where order_id = ${orderId}::uuid`);
+    await db.execute(sql`update public.esim_provisioning_orders set provider_order_no = ${mapped.providerOrderNo}, provider_status = ${mapped.providerStatus}, last_provider_response = ${JSON.stringify(response)}::jsonb, lease_owner = null, lease_expires_at = null, updated_at = now() where order_id = ${orderId}::uuid and lease_owner = ${leaseOwner}`);
     return { started: true, status: "PROVISIONING", providerOrderNo: mapped.providerOrderNo };
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 500) : "provider_order_failed";
     console.error("[esim] provisioning failed", { orderId, message });
-    await db.execute(sql`update public.esim_provisioning_orders set status = 'FAILED', last_provisioning_error = ${message}, updated_at = now() where order_id = ${orderId}::uuid`);
+    await db.execute(sql`update public.esim_provisioning_orders set status = 'FAILED', last_provisioning_error = ${message}, lease_owner = null, lease_expires_at = null, updated_at = now() where order_id = ${orderId}::uuid and lease_owner = ${leaseOwner}`);
     await db.execute(sql`update public.customer_orders set status = 'PROVISIONING_FAILED', updated_at = now() where id = ${orderId}::uuid and status = 'PROVISIONING'`);
     throw error;
   }

@@ -137,6 +137,8 @@ export const esimProvisioningOrders = pgTable("esim_provisioning_orders", {
 	providerStatus: text("provider_status"),
 	provisioningAttempts: integer("provisioning_attempts").default(0).notNull(),
 	lastProvisioningError: text("last_provisioning_error"),
+	leaseOwner: text("lease_owner"),
+	leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	foreignKey({
 			columns: [table.orderId],

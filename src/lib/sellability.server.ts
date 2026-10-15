@@ -6,6 +6,7 @@ import {
   type BalanceSnapshot,
   type SellabilityMode,
   type SellablePackage,
+  checkoutSellabilityDecision,
 } from "./sellability";
 
 /**
@@ -116,22 +117,18 @@ export async function getSellabilityState<T extends SellablePackage>(
  * package whose provider price we cannot cover.
  */
 export async function assertPackageSellableForOrder(pkg: SellablePackage): Promise<void> {
-  const state = await getSellabilityState([pkg]);
-  if (state.mode === "shadow") {
-    if (state.hiddenCount > 0) {
-      console.warn("[travel] sellability shadow: order yang akan diblokir", {
-        packageCode: pkg.packageCode,
-        balanceUnits: state.snapshot.balanceUnits,
-        balanceSource: state.snapshot.source,
-      });
-    }
-    return;
+  // Catalog reads intentionally degrade safely, but checkout is a payment authority boundary.
+  // Never create an order when the provider balance is unknown, regardless of display mode.
+  const snapshot = await getBalanceSnapshot();
+  const decision = checkoutSellabilityDecision(pkg, snapshot);
+  if (!decision.ok && decision.reason === "balance_unknown") {
+    throw new Error("Checkout sementara tidak tersedia karena saldo provider belum terverifikasi.");
   }
-  if (state.hiddenCount > 0) {
+  if (!decision.ok) {
     console.warn("[travel] paket diblokir karena saldo provider tidak cukup", {
       packageCode: pkg.packageCode,
-      balanceUnits: state.snapshot.balanceUnits,
-      balanceSource: state.snapshot.source,
+      balanceUnits: snapshot.balanceUnits,
+      balanceSource: snapshot.source,
     });
     throw new Error("Paket ini sedang habis (sold out). Silakan pilih paket lain.");
   }
