@@ -202,35 +202,6 @@ function Home() {
           </div>
         </Reveal>
 
-        <Reveal as="section" className="mt-7" aria-labelledby="home-guides-title">
-          <SectionTitle action={<Link to="/panduan">Lihat semua ›</Link>}>
-            <span id="home-guides-title">Panduan Travel</span>
-          </SectionTitle>
-          <div className="grid gap-2">
-            {featuredGuides.map((guide) => (
-              <Link
-                key={guide.slug}
-                to="/panduan/$slug"
-                params={{ slug: guide.slug }}
-                aria-label={`Baca panduan: ${guide.title}`}
-                className="tap flex min-h-11 items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-bold uppercase tracking-wide text-brand-red">
-                    {guide.eyebrow}
-                  </span>
-                  <span className="mt-0.5 block text-[14px] font-semibold leading-snug">
-                    {guide.title}
-                  </span>
-                </span>
-                <ChevronRight
-                  className="size-5 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-              </Link>
-            ))}
-          </div>
-        </Reveal>
 
         <Reveal as="section" className="mt-7">
           <SectionTitle>Kebutuhan Perjalananmu</SectionTitle>
@@ -306,6 +277,36 @@ function Home() {
             </Link>
           </Reveal>
         )}
+
+        <Reveal as="section" className="mt-7" aria-labelledby="home-guides-title">
+          <SectionTitle action={<Link to="/panduan">Lihat semua ›</Link>}>
+            <span id="home-guides-title">Panduan Travel</span>
+          </SectionTitle>
+          <div className="grid gap-2">
+            {featuredGuides.map((guide) => (
+              <Link
+                key={guide.slug}
+                to="/panduan/$slug"
+                params={{ slug: guide.slug }}
+                aria-label={`Baca panduan: ${guide.title}`}
+                className="tap flex min-h-11 items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-bold uppercase tracking-wide text-brand-red">
+                    {guide.eyebrow}
+                  </span>
+                  <span className="mt-0.5 block text-[14px] font-semibold leading-snug">
+                    {guide.title}
+                  </span>
+                </span>
+                <ChevronRight
+                  className="size-5 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </Link>
+            ))}
+          </div>
+        </Reveal>
       </Stagger>
     </Page>
   );
