@@ -2,6 +2,7 @@ import { Menu, X } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { adminNavigation, isAdminNavigationActive } from "@/components/admin-navigation";
+import { FixedLayer } from "@/components/motion-primitives";
 
 const adminUi = {
   canvas: "bg-[#f2f2f7] text-[#17181a]",
@@ -100,6 +101,10 @@ export function AdminShell({
   }, [open]);
   return (
     <div className={`min-h-screen ${adminUi.canvas}`}>
+      {/* The page body is wrapped in an animating transition, so chrome that must hug the
+          viewport has to leave that subtree — otherwise `position: fixed` anchors to the
+          page box and the drawer/backdrop slide away with the content. */}
+      <FixedLayer>
       <aside
         id="admin-mobile-drawer"
         aria-label="Navigasi admin"
@@ -151,6 +156,7 @@ export function AdminShell({
           onClick={closeMenu}
         />
       )}
+      </FixedLayer>
       <main className="lg:pl-[272px]">
         <header className="sticky top-0 z-30 border-b border-black/[0.06] bg-[#f2f2f7]/95 px-3 py-2 backdrop-blur sm:px-5 lg:py-3">
           <div className="mx-auto flex max-w-[1360px] items-center gap-3">
@@ -262,6 +268,7 @@ export function AdminSheet({
 }) {
   if (!open) return null;
   return (
+    <FixedLayer>
     <div className="fixed inset-0 z-50 flex items-end bg-black/25" role="dialog" aria-modal="true" aria-label={title}>
       <button
         type="button"
@@ -288,6 +295,7 @@ export function AdminSheet({
         {footer}
       </div>
     </div>
+    </FixedLayer>
   );
 }
 
