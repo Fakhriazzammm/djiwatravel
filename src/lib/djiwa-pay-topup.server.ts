@@ -6,6 +6,7 @@ import {
   resolveCanonicalCustomerIdentity as fetchCanonicalCustomerIdentity,
   type CanonicalCustomerIdentity,
 } from "./customer-profile.server";
+import { DJIWA_TRAVEL_SOURCE_APP } from "./wallet-scope";
 
 const topupInputSchema = z.object({
   amount: z.number().finite(),
@@ -84,6 +85,9 @@ export function canonicalTopupPayload(input: { amount: number; idempotencyKey: s
     // The canonical source id was resolved and ownership-validated server-side.
     sourceId: input.canonicalCustomerIdentity.sourceId,
     email: input.canonicalCustomerIdentity.email,
+    // Server-resolved provenance so the canonical service can attribute this
+    // top-up to Djiwa Travel; never taken from the browser.
+    sourceApp: DJIWA_TRAVEL_SOURCE_APP,
     origin: publicOrigin(),
   } as const;
 }
