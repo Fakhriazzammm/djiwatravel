@@ -14,13 +14,7 @@ import {
   projectAdminIdentifier,
   projectAdminTitle,
 } from "@/lib/admin-display";
-import {
-  AdminDetailSheet,
-  AdminShell,
-  AdminSurface,
-  SectionHeading,
-  StatusPill,
-} from "@/components/admin-shell";
+import { AdminDetailSheet, AdminShell, AdminStatStrip, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/dashboard")({
   beforeLoad: () => requireAdmin(),
@@ -113,24 +107,26 @@ function AdminDashboard() {
             </button>
           </div>
         </div>
-        <AdminSurface className="overflow-hidden">
-          <div className="grid grid-cols-2 divide-x divide-y divide-black/[0.06] sm:grid-cols-3 lg:grid-cols-6">
-            {[
-              ["Orders", data.counts.total],
-              ["Dibayar", data.counts.paid],
-              ["Pengecualian", data.counts.paymentExceptions],
-              ["eSIM siap", data.counts.provisioningReady],
-              ["Belum siap", data.counts.paidNotReady],
-              ["Gross IDR", data.counts.grossIdr],
-            ].map(([label, value]) => (
-              <div key={label} className="min-h-[70px] p-2.5">
-                <p className="text-[11px] leading-4 text-[#6e6e73]">{label}</p>
-                <p className="mt-1 text-[20px] font-bold tabular-nums">
-                  {label === "Gross IDR" ? amount(value as number) : count(value as number)}
-                </p>
-              </div>
-            ))}
-          </div>
+        <AdminSurface className="p-2.5">
+          <AdminStatStrip
+            columns={6}
+            items={[
+              { label: "Orders", value: count(data.counts.total) },
+              { label: "Dibayar", value: count(data.counts.paid) },
+              {
+                label: "Pengecualian",
+                value: count(data.counts.paymentExceptions),
+                tone: data.counts.paymentExceptions > 0 ? "warn" : "neutral",
+              },
+              { label: "eSIM siap", value: count(data.counts.provisioningReady) },
+              {
+                label: "Belum siap",
+                value: count(data.counts.paidNotReady),
+                tone: data.counts.paidNotReady > 0 ? "warn" : "neutral",
+              },
+              { label: "Gross IDR", value: amount(data.counts.grossIdr) },
+            ]}
+          />
         </AdminSurface>
         <AdminSurface className="p-3">
           <div className="flex items-center justify-between gap-2">
