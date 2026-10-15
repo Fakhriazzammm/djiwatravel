@@ -10,6 +10,7 @@ import { validatePriceRuleInput } from "@/lib/price-rules";
 import {
   applyCataloguePricing,
   previewCataloguePricing,
+  setPackagePriceInline,
   readPriceRuleHistory,
   rollbackPricingBatch,
   type PriceRuleEventView,
@@ -98,6 +99,8 @@ function AdminCatalogPage() {
   const [history, setHistory] = useState<PriceRuleEventView[] | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [editing, setEditing] = useState<{ packageCode: string; name: string; sellingPriceIdr: number } | null>(null);
+  const [inline, setInline] = useState<{ packageCode: string; mode: "percent" | "price"; value: string } | null>(null);
+  const [inlineBusy, setInlineBusy] = useState(false);
 
   const markupInput = useMemo(() => {
     const parsedPercent = markupPercent.trim() === "" ? null : Number(markupPercent.replace(",", "."));
@@ -206,6 +209,31 @@ function AdminCatalogPage() {
       setNotice({ tone: "danger", text: error instanceof Error ? error.message : "Rollback gagal." });
     } finally {
       setBusy(false);
+    }
+  };
+
+  const saveInline = async () => {
+    if (!inline) return;
+    const value = Number(inline.value.replace(",", "."));
+    if (!Number.isFinite(value)) {
+      setNotice({ tone: "danger", text: "Angka tidak valid." });
+      return;
+    }
+    setInlineBusy(true);
+    try {
+      const result = await setPackagePriceInline({
+        data: { packageCode: inline.packageCode, mode: inline.mode, value } as never,
+      });
+      setInline(null);
+      setNotice({
+        tone: "good",
+        text: `${result.packageCode}: ${idr(result.beforePriceIdr)} → ${idr(result.afterPriceIdr)} tersimpan.`,
+      });
+      await router.invalidate();
+    } catch (error) {
+      setNotice({ tone: "danger", text: error instanceof Error ? error.message : "Gagal menyimpan harga." });
+    } finally {
+      setInlineBusy(false);
     }
   };
 
@@ -341,6 +369,7 @@ function AdminCatalogPage() {
           <span className="text-[#6e6e73]">
             {selectionCount} dipilih dari {slice.filteredCount} hasil filter (total {slice.totalCount} paket, batas {data.maxBatch}/aksi)
           </span>
+          <span className="text-[#8e8e93]">· tap harga jual / margin di baris untuk ubah cepat (Enter simpan, Esc batal)</span>
         </div>
 
         {/* Desktop table (one screen: only this body scrolls) */}
@@ -387,9 +416,55 @@ function AdminCatalogPage() {
                       <p className="text-[11px] text-[#8e8e93]">{idr(row.providerCostIdr)}</p>
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums">
-                      {row.markupPercent}%{row.fixedMarkupIdr > 0 ? ` + ${idr(row.fixedMarkupIdr)}` : ""}
+                      {inline?.packageCode === row.packageCode && inline.mode === "percent" ? (
+                        <input
+                          autoFocus
+                          value={inline.value}
+                          onChange={(event) => setInline({ ...inline, value: event.target.value })}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") void saveInline();
+                            if (event.key === "Escape") setInline(null);
+                          }}
+                          inputMode="decimal"
+                          aria-label={`Profit persen ${row.packageCode}`}
+                          className="w-20 rounded-lg border border-[#0a67c7] px-1.5 py-0.5 text-right text-[12px] tabular-nums outline-none"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setInline({ packageCode: row.packageCode, mode: "percent", value: String(row.markupPercent) })}
+                          className="underline decoration-dotted decoration-[#0a67c7] underline-offset-2"
+                          aria-label={`Ubah profit ${row.packageCode}`}
+                        >
+                          {row.markupPercent}%{row.fixedMarkupIdr > 0 ? ` + ${idr(row.fixedMarkupIdr)}` : ""}
+                        </button>
+                      )}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{idr(row.sellingPriceIdr)}</td>
+                    <td className="px-2 py-1.5 text-right font-semibold tabular-nums">
+                      {inline?.packageCode === row.packageCode && inline.mode === "price" ? (
+                        <input
+                          autoFocus
+                          value={inline.value}
+                          onChange={(event) => setInline({ ...inline, value: event.target.value })}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") void saveInline();
+                            if (event.key === "Escape") setInline(null);
+                          }}
+                          inputMode="numeric"
+                          aria-label={`Harga jual ${row.packageCode}`}
+                          className="w-24 rounded-lg border border-[#0a67c7] px-1.5 py-0.5 text-right text-[12px] tabular-nums outline-none"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setInline({ packageCode: row.packageCode, mode: "price", value: String(row.sellingPriceIdr) })}
+                          className="underline decoration-dotted decoration-[#0a67c7] underline-offset-2"
+                          aria-label={`Ubah harga jual ${row.packageCode}`}
+                        >
+                          {idr(row.sellingPriceIdr)}
+                        </button>
+                      )}
+                    </td>
                     <td className={`px-2 py-1.5 text-right tabular-nums ${row.marginIdr < 0 ? "text-[#c7352d]" : "text-[#1f6b34]"}`}>
                       <p>{idr(row.marginIdr)}</p>
                       <p className="text-[11px]">{percent(row.marginPercent)}</p>
@@ -429,7 +504,7 @@ function AdminCatalogPage() {
           </div>
         </AdminSurface>
 
-        {/* Mobile list (one screen: only this list scrolls) */}
+        {/* Mobile list: price and profit are editable in place, the rest of the row opens the sheet */}
         <div className="md:hidden">
           <AdminSurface className="max-h-[calc(100dvh-19rem)] divide-y divide-[#f0f0f2] overflow-auto p-0">
             {slice.rows.map((row) => (
@@ -441,27 +516,56 @@ function AdminCatalogPage() {
                   aria-label={`Pilih ${row.packageCode}`}
                   className="mt-1 size-4"
                 />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditing({ packageCode: row.packageCode, name: row.name, sellingPriceIdr: row.sellingPriceIdr });
-                    setSelected(new Set([row.packageCode]));
-                    setScopeAllFiltered(false);
-                    setMarkupPercent(String(row.markupPercent));
-                    setMarkupFixed(row.fixedMarkupIdr > 0 ? String(row.fixedMarkupIdr) : "");
-                    setReason("");
-                    setPreview(null);
-      setShowPreview(false);
-                  }}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <p className="truncate text-[13px] font-semibold">{row.name}</p>
-                  <p className="truncate text-[11px] text-[#8e8e93]">{row.packageCode} · {dataLabel(row.volumeBytes)} · {row.durationDays} hari</p>
-                  <p className="mt-0.5 text-[12px] tabular-nums">
-                    US${(row.providerPriceUnits / 10_000).toFixed(2)} → <b>{idr(row.sellingPriceIdr)}</b>{" "}
-                    <span className={row.marginIdr < 0 ? "text-[#c7352d]" : "text-[#1f6b34]"}>{percent(row.marginPercent)}</span>
-                  </p>
-                </button>
+                <div className="min-w-0 flex-1">
+                  <button type="button" onClick={() => openEditor(row)} className="block w-full text-left">
+                    <p className="truncate text-[13px] font-semibold">{row.name}</p>
+                    <p className="truncate text-[11px] text-[#8e8e93]">{row.packageCode} · {dataLabel(row.volumeBytes)} · {row.durationDays} hari</p>
+                  </button>
+                  {inline?.packageCode === row.packageCode ? (
+                    <div className="mt-1 flex items-center gap-1 text-[12px]">
+                      <span className="text-[#8e8e93]">{inline.mode === "price" ? "Rp" : "%"}</span>
+                      <input
+                        autoFocus
+                        value={inline.value}
+                        onChange={(event) => setInline({ ...inline, value: event.target.value })}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") void saveInline();
+                          if (event.key === "Escape") setInline(null);
+                        }}
+                        inputMode="decimal"
+                        aria-label={inline.mode === "price" ? "Harga jual" : "Profit persen"}
+                        className="w-24 rounded-lg border border-[#0a67c7] px-1.5 py-0.5 text-[12px] tabular-nums outline-none"
+                      />
+                      <button type="button" onClick={() => void saveInline()} disabled={inlineBusy} className="min-h-7 rounded-lg bg-[#0a67c7] px-2 text-[11px] font-semibold text-white disabled:opacity-40">
+                        {inlineBusy ? "…" : "Simpan"}
+                      </button>
+                      <button type="button" onClick={() => setInline(null)} className="min-h-7 rounded-lg border border-black/[0.06] px-2 text-[11px] font-semibold">
+                        Batal
+                      </button>
+                      <span className="text-[11px] text-[#8e8e93]">Enter simpan</span>
+                    </div>
+                  ) : (
+                    <p className="mt-0.5 text-[12px] tabular-nums">
+                      US${(row.providerPriceUnits / 10_000).toFixed(2)} →{" "}
+                      <button
+                        type="button"
+                        onClick={() => setInline({ packageCode: row.packageCode, mode: "price", value: String(row.sellingPriceIdr) })}
+                        className="font-semibold underline decoration-dotted decoration-[#0a67c7] underline-offset-2"
+                        aria-label={`Ubah harga jual ${row.packageCode}`}
+                      >
+                        {idr(row.sellingPriceIdr)}
+                      </button>{" "}
+                      <button
+                        type="button"
+                        onClick={() => setInline({ packageCode: row.packageCode, mode: "percent", value: String(row.markupPercent) })}
+                        className={`underline decoration-dotted underline-offset-2 ${row.marginIdr < 0 ? "text-[#c7352d]" : "text-[#1f6b34]"}`}
+                        aria-label={`Ubah profit ${row.packageCode}`}
+                      >
+                        {percent(row.marginPercent)}
+                      </button>
+                    </p>
+                  )}
+                </div>
                 <StatusCell affordable={row.affordable} />
               </div>
             ))}

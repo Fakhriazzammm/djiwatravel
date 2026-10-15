@@ -453,4 +453,113 @@ export const readPriceRuleHistory = createServerFn({ method: "GET" })
     });
   });
 
+const inlinePriceSchema = z.object({
+  packageCode: z.string().trim().min(1).max(120),
+  mode: z.enum(["percent", "price"]),
+  value: z.number().finite(),
+});
+
+export type InlinePriceResult = {
+  packageCode: string;
+  beforePriceIdr: number;
+  afterPriceIdr: number;
+  pinned: { markupPercent: number; fixedMarkupIdr: number };
+  batchId: string;
+};
+
+/**
+ * Direct in-row price edit: "make this package's selling price exactly this".
+ *
+ * Both markup fields are pinned for the package so the result cannot be moved by a country or
+ * global rule: a percentage edit also writes a nominal 0, and a price edit also writes a
+ * percentage 0. Without that, a leftover country-level nominal rule would silently add to the
+ * price the operator just typed. The audit reason is generated with the before/after values, so a
+ * quick edit still leaves a reviewable trail.
+ */
+export const setPackagePriceInline = createServerFn({ method: "POST" })
+  .validator((data: unknown) => inlinePriceSchema.parse(data))
+  .handler(async ({ data }): Promise<InlinePriceResult> => {
+    await requireAdmin();
+    const actor = await currentActor();
+    const rules = await getActivePriceRules();
+    const snapshot = await getBalanceSnapshot();
+    const catalog = await getResellerCatalog();
+    const row = buildAdminCatalogRows(catalog.packages, {
+      rules,
+      balanceUnits: snapshot.balanceUnits,
+      usdToIdr: RESELLER_CONFIG.usdToIdr,
+    }).find((candidate) => candidate.packageCode.toUpperCase() === data.packageCode.trim().toUpperCase());
+    if (!row) throw new Error(`Paket ${data.packageCode} tidak ditemukan di katalog provider.`);
+
+    let pinned: { markupPercent: number; fixedMarkupIdr: number };
+    if (data.mode === "percent") {
+      if (!Number.isFinite(data.value) || data.value < 0 || data.value > 500) {
+        throw new Error("Profit persen harus angka 0–500.");
+      }
+      pinned = { markupPercent: Math.round(data.value * 100) / 100, fixedMarkupIdr: 0 };
+    } else {
+      if (!Number.isFinite(data.value) || data.value <= 0) throw new Error("Harga jual harus angka lebih dari 0.");
+      const fixed = Math.round(data.value) - row.providerCostIdr;
+      if (fixed < 0) {
+        throw new Error(`Harga jual ${Math.round(data.value)} di bawah harga provider (${row.providerCostIdr}).`);
+      }
+      pinned = { markupPercent: 0, fixedMarkupIdr: fixed };
+    }
+
+    const proposal = previewPriceRule({
+      rows: [
+        {
+          packageCode: row.packageCode,
+          name: row.name,
+          providerPriceUnits: row.providerPriceUnits,
+          sellingPriceIdr: row.sellingPriceIdr,
+        },
+      ],
+      markupPercent: pinned.markupPercent,
+      fixedMarkupIdr: pinned.fixedMarkupIdr,
+      usdToIdr: RESELLER_CONFIG.usdToIdr,
+      roundingIdr: RESELLER_CONFIG.roundingIdr,
+      balanceUnits: snapshot.balanceUnits,
+    });
+    if (proposal.summary.lossMaking > 0) throw new Error("Harga jual tidak boleh di bawah harga provider.");
+    const afterPriceIdr = proposal.rows[0]?.afterPriceIdr ?? row.sellingPriceIdr;
+
+    const batchId = globalThis.crypto.randomUUID();
+    const reason = `Edit cepat ${row.packageCode}: harga ${row.sellingPriceIdr} → ${afterPriceIdr} (${pinned.markupPercent}% + ${pinned.fixedMarkupIdr})`;
+
+    await db.transaction(async (tx) => {
+      await writeScopeRule(tx, {
+        scopeType: "package",
+        scopeKey: row.packageCode,
+        markupType: "percentage",
+        markupValue: pinned.markupPercent,
+        actor,
+        reason,
+        batchId,
+        batchMode: "single",
+      });
+      await writeScopeRule(tx, {
+        scopeType: "package",
+        scopeKey: row.packageCode,
+        markupType: "fixed",
+        markupValue: pinned.fixedMarkupIdr,
+        actor,
+        reason,
+        batchId,
+        batchMode: "single",
+      });
+    });
+
+    clearResellerCatalogCache();
+    await refreshPriceRuleSnapshot();
+
+    return {
+      packageCode: row.packageCode,
+      beforePriceIdr: row.sellingPriceIdr,
+      afterPriceIdr,
+      pinned,
+      batchId,
+    };
+  });
+
 export { priceRuleDefaults };
