@@ -5,7 +5,6 @@ import { Page, group } from "@/components/shell";
 import { search } from "@/lib/catalog";
 import { isRecommendablePackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
-import { getSellabilityState } from "@/lib/sellability.server";
 import { listableDestinations } from "@/lib/destination-availability";
 import { finderCtaCopy } from "@/lib/finder-form";
 import {
@@ -44,18 +43,15 @@ export const Route = createFileRoute("/explore")({
       attempt: async (timeoutMs) => {
         const catalog = await withDeadline(getResellerCatalog(), timeoutMs);
         const packages = catalog.packages.filter(isRecommendablePackage);
-        // Balance lookup is another remote dependency; bounded by the same budget.
-        const sellability = await withDeadline(
-          getSellabilityState(packages),
-          timeoutMs,
-        );
-        const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
         const source = catalog.stale ? "cached" : "live";
-        if (sellable.length === 0) {
+        if (packages.length === 0) {
           return exploreAvailability([], source);
         }
+        // Destinations are listed from the whole catalogue: a country whose packages are all
+        // unaffordable right now must stay visible, and the destination page marks the individual
+        // packages instead of the country silently disappearing from Explore.
         const codes = new Set<string>();
-        for (const pkg of sellable) {
+        for (const pkg of packages) {
           for (const code of pkg.locationCodes) {
             const normalized = code.trim().toUpperCase();
             if (normalized) codes.add(normalized);
@@ -64,7 +60,7 @@ export const Route = createFileRoute("/explore")({
         // Regional bundles list their member countries instead of a literal EU/ASIA code, so the
         // list rule is shared with the destination page rather than matched by hand here.
         return exploreAvailability(
-          listableDestinations(sellable, {
+          listableDestinations(packages, {
             codes: [...codes].sort(),
             source,
             degraded: false,

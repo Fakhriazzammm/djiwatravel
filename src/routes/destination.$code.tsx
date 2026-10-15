@@ -8,7 +8,7 @@ import { destinationOgImage } from "@/lib/destination-artwork";
 import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
-import { getSellabilityState } from "@/lib/sellability.server";
+import { readSellability } from "@/lib/sellability-api";
 import {
   packageCoverageLabel,
   packageDataLabel,
@@ -99,16 +99,31 @@ export const Route = createFileRoute("/destination/$code")({
       destination.code,
       await coverageFor(destination),
     );
-    // Balance-aware sellability: packages the provider balance cannot cover are marked sold out.
-    const sellability = await getSellabilityState(visible);
+    // Balance-aware sellability, read through a server function so a client-side navigation and
+    // the server-rendered page agree on what is actually available.
+    const sellability = await readSellability({
+      data: {
+        packages: visible.map((pkg) => ({
+          packageCode: pkg.packageCode,
+          providerPriceUnits: pkg.providerPriceUnits,
+        })),
+      },
+    });
+    const balanceUnknown = sellability.mode === "on" && !sellability.balanceKnown;
+    // When the balance cannot be read we must not advertise availability we cannot honour, but we
+    // say so neutrally: the customer never learns why.
+    const unavailable = balanceUnknown
+      ? new Set(visible.map((pkg) => pkg.packageCode))
+      : new Set(sellability.hidden);
     // Only display fields are sent to the client: the full record carries our cost basis and
     // made this page ~680 KB (see lib/package-view.ts).
     return {
       destination,
-      packages: toViewPackages(visible, sellability.hidden),
+      packages: toViewPackages(visible, unavailable),
       stale: catalog.stale,
-      soldOut: sellability.hidden.size,
-      balanceUnknown: sellability.mode === "on" && sellability.snapshot.balanceUnits === null,
+      soldOut: unavailable.size,
+      balanceUnknown,
+      stockPending: balanceUnknown,
     };
   },
   head: ({ loaderData }) => {
@@ -168,7 +183,7 @@ function rupiah(value: number) {
 
 function Destination() {
   const router = useRouter();
-  const { destination, packages, stale } = Route.useLoaderData();
+  const { destination, packages, stale, stockPending } = Route.useLoaderData();
   const [sort, setSort] = useState<SortKey>("recommended");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const sorted = useMemo(() => sortPackages(packages, sort), [packages, sort]);
@@ -192,6 +207,11 @@ function Destination() {
           ? "Cakupan regional · beberapa negara"
           : "Cakupan negara · satu tujuan"}
       </p>
+      {stockPending && (
+        <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground" role="status">
+          Stok sedang diperbarui. Coba lagi sebentar lagi.
+        </p>
+      )}
       {stale && (
         <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
           Menampilkan katalog tersimpan; harga mungkin belum terbaru.
@@ -239,7 +259,7 @@ function Destination() {
                 </p>
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
-                  {!pkg.sellable && (
+                  {!pkg.sellable && !stockPending && (
                     <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
                       Habis
                     </span>
@@ -260,6 +280,13 @@ function Destination() {
                   >
                     Lihat detail &amp; pilih
                   </Link>
+                ) : stockPending ? (
+                  <span
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
+                    aria-label="Paket belum dapat dipesan saat ini"
+                  >
+                    Belum tersedia
+                  </span>
                 ) : (
                   <span
                     className="inline-flex w-full items-center justify-center rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700"
