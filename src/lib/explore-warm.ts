@@ -1,19 +1,30 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import { refreshPriceRuleSnapshot } from "./price-rules.server";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 
 /**
- * Warms the catalogue cache once per app boot so opening Explore — or any destination page —
- * usually finds an already-populated cache instead of paying for a cold provider read.
+ * Warms the server-side caches once per app boot so opening Explore — or any destination page —
+ * usually finds an already-populated catalogue, and so catalogue prices are normalised with the
+ * operator's active price rules instead of the reseller defaults.
  *
- * Read-only and idempotent: the cache itself single-flights and rate-limits provider reads, so
- * repeated calls cost nothing until its TTL lapses.
+ * Read-only and idempotent: the catalogue cache single-flights and rate-limits provider reads, and
+ * the rule snapshot is a small table. Each warm-up is isolated so a failure in one never hides the
+ * other or affects the page that triggered it.
  */
 export const warmResellerCatalog = createServerFn({ method: "POST" }).handler(async () => {
+  let packages = 0;
+  let rules = 0;
   try {
     const catalog = await getResellerCatalog();
-    return { warmed: true, packages: catalog.packages.length };
+    packages = catalog.packages.length;
   } catch {
-    return { warmed: false, packages: 0 };
+    // A catalogue warm-up failure must never affect the page: the routes load it themselves.
   }
+  try {
+    rules = (await refreshPriceRuleSnapshot()).length;
+  } catch {
+    // Without rules the reseller defaults still apply, which is the pre-workspace behaviour.
+  }
+  return { warmed: packages > 0, packages, rules };
 });
