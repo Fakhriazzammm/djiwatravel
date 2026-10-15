@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, History, Percent, RefreshCw, RotateCcw, Search, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, History, Percent, RefreshCw, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { z } from "zod";
@@ -92,9 +92,11 @@ function AdminCatalogPage() {
   const [markupFixed, setMarkupFixed] = useState<string>("");
   const [reason, setReason] = useState("");
   const [preview, setPreview] = useState<PricingPreviewResult | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ tone: "good" | "danger"; text: string } | null>(null);
   const [history, setHistory] = useState<PriceRuleEventView[] | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [editing, setEditing] = useState<{ packageCode: string; name: string; sellingPriceIdr: number } | null>(null);
 
   const markupInput = useMemo(() => {
@@ -110,6 +112,7 @@ function AdminCatalogPage() {
   const reasonOk = reason.trim().length >= 4;
   const selectionCount = scopeAllFiltered ? slice.filteredCount : selected.size;
   const bulkReady = markupProblems.length === 0 && reasonOk && selectionCount > 0 && !busy;
+  const editorOpen = selectionCount > 0 || editing !== null;
 
   const navigate = (next: Partial<z.infer<typeof searchSchema>>) =>
     void router.navigate({ to: "/admin/catalog", search: { ...search, ...next } } as never);
@@ -119,6 +122,7 @@ function AdminCatalogPage() {
     try {
       await router.invalidate();
       setPreview(null);
+      setShowPreview(false);
     } finally {
       setBusy(false);
     }
@@ -168,6 +172,7 @@ function AdminCatalogPage() {
       setSelected(new Set());
       setScopeAllFiltered(false);
       setPreview(null);
+      setShowPreview(false);
       setReason("");
       setHistory(null);
       await router.invalidate();
@@ -219,7 +224,7 @@ function AdminCatalogPage() {
 
   return (
     <AdminShell title="Katalog & Pricing" subtitle="Monitor katalog provider, saldo, dan profit">
-      <div className={`space-y-2 ${selectionCount > 0 || editing ? "pb-40" : ""}`}>
+      <div className={`space-y-2 ${editorOpen ? "pb-32" : ""}`}>
         {/* KPI strip — one screen, no cards maze */}
         <AdminSurface className="p-2.5">
           <div className="grid grid-cols-2 gap-y-2 divide-[#f0f0f2] sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
@@ -274,6 +279,16 @@ function AdminCatalogPage() {
             <option value="100">100 baris</option>
             <option value="200">200 baris</option>
           </select>
+          {/* Rules live in a sheet so nobody scrolls to the end of a 3.184-row catalogue to read them. */}
+          <button
+            type="button"
+            onClick={() => { setRulesOpen(true); setHistory(null); }}
+            className="flex min-h-11 items-center gap-1.5 rounded-xl border border-black/[0.06] bg-white px-3 text-[13px] font-semibold shadow-sm"
+          >
+            <SlidersHorizontal className="size-4" />
+            Aturan
+            <span className="rounded-full bg-[#eaf3ff] px-1.5 text-[11px] font-bold text-[#0a67c7]">{data.rules.length}</span>
+          </button>
           <button type="button" onClick={refresh} disabled={busy} aria-label="Segarkan katalog" className="min-h-11 min-w-11 rounded-xl border border-black/[0.06] bg-white p-2 shadow-sm">
             <RefreshCw className={`mx-auto size-4 ${busy ? "animate-spin" : ""} motion-reduce:animate-none`} />
           </button>
@@ -393,6 +408,7 @@ function AdminCatalogPage() {
                           setMarkupFixed(row.fixedMarkupIdr > 0 ? String(row.fixedMarkupIdr) : "");
                           setReason("");
                           setPreview(null);
+      setShowPreview(false);
                         }}
                         className="min-h-8 rounded-lg border border-black/[0.06] px-2 text-[12px] font-semibold"
                       >
@@ -435,6 +451,7 @@ function AdminCatalogPage() {
                     setMarkupFixed(row.fixedMarkupIdr > 0 ? String(row.fixedMarkupIdr) : "");
                     setReason("");
                     setPreview(null);
+      setShowPreview(false);
                   }}
                   className="min-w-0 flex-1 text-left"
                 >
@@ -468,89 +485,108 @@ function AdminCatalogPage() {
           </div>
         </div>
 
-        {/* Active rules */}
-        <AdminSurface className="p-3">
-          <div className="flex items-center justify-between gap-2">
-            <SectionHeading title="Aturan harga aktif" detail="Package mengalahkan negara, negara mengalahkan global; profit persen dan nominal digabung." />
-            <button type="button" onClick={loadHistory} disabled={busy} className="min-h-9 shrink-0 rounded-xl border border-black/[0.06] px-2.5 text-[12px] font-semibold">
-              <History className="mr-1 inline size-3.5" /> Riwayat
-            </button>
-          </div>
-          {data.rules.length === 0 ? (
-            <p className="mt-2 text-[12px] text-[#6e6e73]">
-              Belum ada aturan tersimpan. Harga memakai default server: {data.defaults.markupPercent}% + {idr(data.defaults.fixedMarkupIdr)} (kurs {idr(data.defaults.usdToIdr)}/US$, pembulatan {idr(data.defaults.roundingIdr)}).
-            </p>
-          ) : (
-            <ul className="mt-2 divide-y divide-[#f0f0f2] text-[12px]">
-              {data.rules.map((rule) => (
-                <li key={rule.id} className="flex flex-wrap items-center gap-2 py-1.5">
-                  <span className="font-semibold uppercase">{rule.scopeType}</span>
-                  <span>{rule.scopeKey ?? "semua paket"}</span>
-                  <span className="text-[#6e6e73]">
-                    {rule.markupType === "percentage" ? `${rule.markupValue}%` : idr(rule.markupValue)}
-                  </span>
-                  <span className="text-[11px] text-[#8e8e93]">v{rule.version} · {rule.createdBy ?? "—"} · {formatAdminDateTime(rule.effectiveFrom)}</span>
-                  {rule.reason && <span className="truncate text-[11px] text-[#8e8e93]">· {rule.reason}</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-          {history && (
-            <ul className="mt-3 divide-y divide-[#f0f0f2] text-[12px]">
-              {history.map((event) => (
-                <li key={event.id} className="flex flex-wrap items-center gap-2 py-1.5">
-                  <StatusPill tone={event.action === "rolled_back" ? "warn" : "neutral"}>{event.action}</StatusPill>
-                  <span className="uppercase">{event.scopeType}</span>
-                  <span>{event.scopeKey ?? "semua"}</span>
-                  <span className="text-[#6e6e73]">
-                    {event.markupType === "percentage" ? `${event.beforeValue ?? "—"}% → ${event.afterValue ?? "—"}%` : `${idr(event.beforeValue)} → ${idr(event.afterValue)}`}
-                  </span>
-                  <span className="text-[11px] text-[#8e8e93]">{event.actorId} · {formatAdminDateTime(event.createdAt)} · {event.reason}</span>
-                  {event.batchId && event.action === "bulk_applied" && (
-                    <button type="button" onClick={() => rollback(event.batchId as string)} disabled={busy} className="min-h-8 rounded-lg border border-[#e5e5ea] px-2 font-semibold">
-                      <RotateCcw className="mr-1 inline size-3.5" /> Batalkan batch
-                    </button>
-                  )}
-                </li>
-              ))}
-              {history.length === 0 && <li className="py-2 text-[#6e6e73]">Belum ada riwayat perubahan.</li>}
-            </ul>
-          )}
-        </AdminSurface>
       </div>
 
-      {/* Bulk / single editor bar */}
-      {(selectionCount > 0 || editing) && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.06] bg-white/95 p-2.5 pb-[max(10px,env(safe-area-inset-bottom))] backdrop-blur lg:left-[272px]">
-          <div className="mx-auto max-w-[1360px] space-y-2">
-            <div className="flex flex-wrap items-center gap-2 text-[12px]">
-              <span className="font-semibold">{editing ? `Edit ${editing.name}` : `${selectionCount} paket dipilih`}</span>
-              <label className="flex min-h-9 items-center gap-1 rounded-xl border border-black/[0.06] px-2">
+      {/* Rules + history sheet: reachable from the toolbar, never behind a scroll */}
+      {rulesOpen && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/25" role="dialog" aria-modal="true" aria-label="Aturan harga">
+          <button type="button" aria-label="Tutup aturan" className="absolute inset-0 h-full w-full cursor-default" onClick={() => setRulesOpen(false)} />
+          <div className="relative z-10 max-h-[78dvh] w-full overflow-auto rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl lg:left-[272px]">
+            <div className="flex items-center justify-between gap-2">
+              <SectionHeading title="Aturan harga aktif" detail="Package mengalahkan negara, negara mengalahkan global; persen dan nominal digabung." />
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button type="button" onClick={loadHistory} disabled={busy} className="min-h-9 rounded-xl border border-black/[0.06] px-2.5 text-[12px] font-semibold">
+                  <History className="mr-1 inline size-3.5" /> Riwayat
+                </button>
+                <button type="button" onClick={() => setRulesOpen(false)} aria-label="Tutup" className="min-h-9 min-w-9 rounded-xl border border-black/[0.06]">
+                  <X className="mx-auto size-4" />
+                </button>
+              </div>
+            </div>
+            {data.rules.length === 0 ? (
+              <p className="mt-2 text-[12px] text-[#6e6e73]">
+                Belum ada aturan tersimpan. Harga memakai default server: {data.defaults.markupPercent}% + {idr(data.defaults.fixedMarkupIdr)} (kurs {idr(data.defaults.usdToIdr)}/US$, pembulatan {idr(data.defaults.roundingIdr)}).
+              </p>
+            ) : (
+              <ul className="mt-2 divide-y divide-[#f0f0f2] text-[12px]">
+                {data.rules.map((rule) => (
+                  <li key={rule.id} className="flex flex-wrap items-center gap-2 py-1.5">
+                    <span className="font-semibold uppercase">{rule.scopeType}</span>
+                    <span>{rule.scopeKey ?? "semua paket"}</span>
+                    <span className="text-[#6e6e73]">{rule.markupType === "percentage" ? `${rule.markupValue}%` : idr(rule.markupValue)}</span>
+                    <span className="text-[11px] text-[#8e8e93]">v{rule.version} · {rule.createdBy ?? "—"} · {formatAdminDateTime(rule.effectiveFrom)}</span>
+                    {rule.reason && <span className="truncate text-[11px] text-[#8e8e93]">· {rule.reason}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {history && (
+              <ul className="mt-3 divide-y divide-[#f0f0f2] text-[12px]">
+                {history.map((event) => (
+                  <li key={event.id} className="flex flex-wrap items-center gap-2 py-1.5">
+                    <StatusPill tone={event.action === "rolled_back" ? "warn" : "neutral"}>{event.action}</StatusPill>
+                    <span className="uppercase">{event.scopeType}</span>
+                    <span>{event.scopeKey ?? "semua"}</span>
+                    <span className="text-[#6e6e73]">
+                      {event.markupType === "percentage" ? `${event.beforeValue ?? "—"}% → ${event.afterValue ?? "—"}%` : `${idr(event.beforeValue)} → ${idr(event.afterValue)}`}
+                    </span>
+                    <span className="text-[11px] text-[#8e8e93]">{event.actorId} · {formatAdminDateTime(event.createdAt)} · {event.reason}</span>
+                    {event.batchId && event.action === "bulk_applied" && (
+                      <button type="button" onClick={() => rollback(event.batchId as string)} disabled={busy} className="min-h-8 rounded-lg border border-[#e5e5ea] px-2 font-semibold">
+                        <RotateCcw className="mr-1 inline size-3.5" /> Batalkan batch
+                      </button>
+                    )}
+                  </li>
+                ))}
+                {history.length === 0 && <li className="py-2 text-[#6e6e73]">Belum ada riwayat perubahan.</li>}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Editor: two compact rows (~100px) so the list stays visible while pricing */}
+      {editorOpen && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.06] bg-white/95 px-2.5 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur lg:left-[272px]">
+          <div className="mx-auto max-w-[1360px] space-y-1.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto text-[12px]">
+              <span className="shrink-0 font-semibold">{editing ? editing.packageCode : `${selectionCount} dipilih`}</span>
+              <label className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-black/[0.06] px-2">
                 <Percent className="size-3.5 text-[#8e8e93]" />
-                <input value={markupPercent} onChange={(event) => setMarkupPercent(event.target.value)} inputMode="decimal" placeholder="profit %" aria-label="Profit persen" className="w-20 bg-transparent text-[12px] outline-none" />
+                <input value={markupPercent} onChange={(event) => setMarkupPercent(event.target.value)} inputMode="decimal" placeholder="profit %" aria-label="Profit persen" className="w-16 bg-transparent text-[12px] outline-none" />
               </label>
-              <label className="flex min-h-9 items-center gap-1 rounded-xl border border-black/[0.06] px-2">
+              <label className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-black/[0.06] px-2">
                 <span className="text-[#8e8e93]">Rp</span>
-                <input value={markupFixed} onChange={(event) => setMarkupFixed(event.target.value)} inputMode="numeric" placeholder="profit nominal" aria-label="Profit nominal" className="w-28 bg-transparent text-[12px] outline-none" />
+                <input value={markupFixed} onChange={(event) => setMarkupFixed(event.target.value)} inputMode="numeric" placeholder="nominal" aria-label="Profit nominal" className="w-20 bg-transparent text-[12px] outline-none" />
               </label>
-              <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="alasan perubahan (wajib)" aria-label="Alasan perubahan" className="min-h-9 min-w-40 flex-1 rounded-xl border border-black/[0.06] px-2 text-[12px] outline-none" />
-              <button type="button" onClick={runPreview} disabled={!bulkReady} className="min-h-9 rounded-xl border border-black/[0.06] px-3 font-semibold disabled:opacity-40">
+              <button type="button" onClick={runPreview} disabled={!bulkReady} className="min-h-9 shrink-0 rounded-xl border border-black/[0.06] px-2.5 font-semibold disabled:opacity-40">
                 Preview Δ
               </button>
-              <button type="button" onClick={runApply} disabled={!bulkReady || !preview} className="min-h-9 rounded-xl bg-[#0a67c7] px-3 font-semibold text-white disabled:opacity-40">
+              <button type="button" onClick={runApply} disabled={!bulkReady || !preview} className="min-h-9 shrink-0 rounded-xl bg-[#0a67c7] px-3 font-semibold text-white disabled:opacity-40">
                 Terapkan
               </button>
-              <button
-                type="button"
-                onClick={() => { setSelected(new Set()); setScopeAllFiltered(false); setEditing(null); setPreview(null); }}
-                className="min-h-9 rounded-xl border border-black/[0.06] px-3 font-semibold"
-              >
+              {preview && (
+                <button type="button" onClick={() => setShowPreview((v) => !v)} aria-expanded={showPreview} className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-black/[0.06] px-2 font-semibold">
+                  Detail {showPreview ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
+                </button>
+              )}
+              <button type="button" onClick={() => { setSelected(new Set()); setScopeAllFiltered(false); setEditing(null); }} className="ml-auto min-h-9 shrink-0 rounded-xl border border-black/[0.06] px-2.5 font-semibold">
                 Tutup
               </button>
             </div>
-            {markupProblems.length > 0 && <p className="text-[11px] text-[#9a6100]">{markupProblems.join(" ")}</p>}
-            {!reasonOk && selectionCount > 0 && <p className="text-[11px] text-[#9a6100]">Alasan minimal 4 karakter (wajib untuk audit).</p>}
-            {preview && (
+            <input
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="alasan perubahan (wajib, untuk audit)"
+              aria-label="Alasan perubahan"
+              className="min-h-9 w-full rounded-xl border border-black/[0.06] px-2 text-[12px] outline-none"
+            />
+            {(markupProblems.length > 0 || !reasonOk) && (
+              <p className="text-[11px] text-[#9a6100]">
+                {[...markupProblems, ...(reasonOk ? [] : ["Alasan minimal 4 karakter (wajib untuk audit)."])].join(" ")}
+              </p>
+            )}
+            {preview && showPreview && (
               <div className="max-h-40 overflow-auto rounded-xl bg-[#f7f7f8] p-2 text-[11.5px]">
                 <p className="font-semibold">
                   {preview.summary.affected} paket · naik {preview.summary.increased} · turun {preview.summary.decreased} · tetap {preview.summary.unchanged} · margin total {idr(preview.summary.marginIdrDelta)} · margin rata-rata {preview.summary.averageAfterMarginPercent.toFixed(1)}%
