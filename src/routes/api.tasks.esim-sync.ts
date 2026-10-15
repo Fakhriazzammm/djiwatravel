@@ -1,10 +1,13 @@
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual, randomUUID } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   refreshTravelOrderProvisioning,
   activeProvisioningOrderIds,
 } from "@/lib/esim-provisioning-refresh.server";
 import { sweepPendingProviderPayments } from "@/lib/mayar-settlement-sweep.server";
+import { drainFinanceOutbox } from "@/lib/finance-outbox.server";
+import { sweepExpiredOrders } from "@/lib/order-expiry-worker.server";
+import { TRAVEL_TASK_WORKER, recordFailure, recordSuccess } from "@/lib/worker-heartbeat.server";
 
 /**
  * Scheduled travel recovery task.
@@ -66,6 +69,29 @@ async function run(request: Request) {
       });
     }
   }
+
+  // Drain the finance outbox: a settled order whose ledger entry never posted is retryable work,
+  // and this is the only place that repairs it.
+  const finance = await drainFinanceOutbox(randomUUID()).catch((error) => {
+    console.error("[travel] finance outbox drain failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+    return { posted: 0, failed: 0, deadLetter: 0 };
+  });
+
+  // Mark unpaid orders past their window EXPIRED so they stop looking like in-flight payments.
+  const expiry = await sweepExpiredOrders().catch((error) => {
+    console.error("[travel] expiry sweep failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+    return { scanned: 0, expired: 0, skipped: 0 };
+  });
+
+  // Liveness last, and only on a clean run: a heartbeat written by a failing worker would claim
+  // health it does not have.
+  if (failed.length === 0) await recordSuccess(TRAVEL_TASK_WORKER).catch(() => undefined);
+  else await recordFailure(TRAVEL_TASK_WORKER, `${failed.length} order(s) failed`).catch(() => undefined);
+
   return json({
     ok: true,
     settlement,
@@ -73,6 +99,8 @@ async function run(request: Request) {
     ready,
     pending,
     failed: failed.length,
+    finance,
+    expiry,
   });
 }
 

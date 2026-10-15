@@ -87,7 +87,7 @@ function Detail() {
             Kami dapat mencoba memproses pesanan ini kembali tanpa membuat order ganda.
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Provisioning otomatis belum diaktifkan.
+            Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan.
           </p>
         </div>
       )}

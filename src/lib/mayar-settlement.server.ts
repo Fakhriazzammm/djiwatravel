@@ -8,6 +8,7 @@ import { fetchMayarTransaction, type MayarTransaction } from "./mayar-gateway";
 import { provisionSettledTravelOrder } from "./mayar-provisioning.server";
 import { readMayarSnapshot, toIsoTimestamp } from "./payment-snapshot";
 import { assertPaymentNotExpired } from "./payment-expiry";
+import { enqueueFinancePosting } from "./finance-outbox.server";
 
 const verifySchema = z.object({
   orderId: z.string().uuid(),
@@ -23,7 +24,7 @@ const SETTLED_STATUSES = new Set([
   "INSTALLED",
 ]);
 
-type TravelFinanceGatewayPayload = {
+export type TravelFinanceGatewayPayload = {
   orderId: string;
   orderNumber: string;
   amount: number;
@@ -182,8 +183,9 @@ export async function settleVerifiedTravelPayment(input: {
 }) {
   const gatewayPayload = buildTravelFinanceGatewayPayload(input);
   // Mayar is the source of truth that the money arrived, so the customer's order must settle even
-  // when the finance hand-off is unavailable. The failure is recorded on the settlement event
-  // instead of blocking the paid order (and its eSIM provisioning) forever.
+  // when the finance hand-off is unavailable. The failure is recorded on the settlement event and
+  // queued in the finance outbox instead of blocking the paid order (and its eSIM provisioning)
+  // forever — an unposted ledger entry has to be retryable, not a silent gap.
   let finance: TravelFinanceGatewayResponse | undefined;
   let financeError: string | undefined;
   try {
@@ -203,7 +205,24 @@ export async function settleVerifiedTravelPayment(input: {
     ...(financeError ? { financeError } : {}),
   };
   const local = await settleLocalPayment(localInput);
-  return { ...(finance ? { finance } : {}), ...(financeError ? { financeError } : {}), local };
+  // Queue the obligation whenever the direct posting did not succeed. Idempotent on (order,
+  // purpose), so a redelivery or a second settlement cannot create a duplicate posting.
+  let outboxQueued = false;
+  if (!finance) {
+    const queued = await enqueueFinancePosting({
+      orderId: input.orderId,
+      transactionId: input.transactionId,
+      amount: input.amount,
+      payload: gatewayPayload,
+    }).catch(() => ({ created: false, status: undefined as string | undefined }));
+    outboxQueued = queued.created;
+  }
+  return {
+    ...(finance ? { finance } : {}),
+    ...(financeError ? { financeError } : {}),
+    ...(outboxQueued ? { financeOutboxQueued: true } : {}),
+    local,
+  };
 }
 
 function verifiedPaidAt(transaction: MayarTransaction) {

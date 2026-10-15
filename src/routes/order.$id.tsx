@@ -313,7 +313,7 @@ function OrderPage() {
         </div>
         {o.status !== "REFUNDED" && (
           <p className="mt-4 text-sm text-muted-foreground">
-            Provisioning otomatis belum diaktifkan.
+            Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan.
           </p>
         )}
         <a href={SUPPORT_WHATSAPP_URL} className={`${btnSoft} mt-3`}>

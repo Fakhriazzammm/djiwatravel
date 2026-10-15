@@ -5,7 +5,7 @@ import { signOutBetterAuth } from "@/lib/better-auth-client";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { Page, Wordmark, group, row, label } from "@/components/shell";
 import { CustomerAuth } from "@/components/customer-auth";
-import { useOrders } from "@/lib/orders";
+import { claimGuestOrders, useOrders } from "@/lib/orders";
 import { rupiah } from "@/lib/pricing";
 import { validateCustomerProfile, type CustomerProfileDraft } from "@/lib/customer-profile";
 import { loadCustomerProfile, saveCustomerProfile } from "@/lib/customer-profile-client";
@@ -39,6 +39,32 @@ function Profile() {
   const [savingProfile, setSavingProfile] = useState(false);
   const profileSaveLabel = useStagedLabel(savingProfile, ACTION_STAGES.profileSave);
   const [profileError, setProfileError] = useState<string | null>(null);
+  // Guest orders bought on this device are imported once the customer signs in, so the same account
+  // sees them on every other device too.
+  const [claimingOrders, setClaimingOrders] = useState(false);
+  const [claimedCount, setClaimedCount] = useState(0);
+  useEffect(() => {
+    if (!user) {
+      setClaimedCount(0);
+      return;
+    }
+    let active = true;
+    setClaimingOrders(true);
+    void claimGuestOrders()
+      .then((result) => {
+        if (active) setClaimedCount(result.claimed);
+      })
+      .catch(() => {
+        // A failed import must not block the profile page; the next visit retries it.
+        if (active) setClaimedCount(0);
+      })
+      .finally(() => {
+        if (active) setClaimingOrders(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user]);
   useEffect(() => {
     if (!user) {
       setProfileSaved(false);
@@ -185,6 +211,14 @@ function Profile() {
       </div>
 
       <h2 className={`${label} mt-6`}>Riwayat Pesanan</h2>
+      {claimingOrders && (
+        <p className="px-1 pb-2 text-xs text-muted-foreground">Menyiapkan riwayat pesananmu…</p>
+      )}
+      {!claimingOrders && claimedCount > 0 && (
+        <p className="px-1 pb-2 text-xs text-success">
+          {claimedCount} pesanan berhasil disimpan ke akunmu.
+        </p>
+      )}
       <div className={group}>
         {orders.length === 0 && (
           <p className="px-4 py-3.5 text-muted-foreground">Belum ada pesanan.</p>
