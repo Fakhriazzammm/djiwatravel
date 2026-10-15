@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { destinations } from "@/lib/catalog";
+          ...travelGuideSlugs.map((slug) => urlEntry(`/panduan/${slug}`, "0.7", "monthly")),
+          ...destinations.map((destination) =>
+            urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
+          ),
 
 const BASE_URL = "https://djiwatravel.com";
 
@@ -8,6 +11,7 @@ const BASE_URL = "https://djiwatravel.com";
 const STATIC_PATHS: Array<{ path: string; priority: string; changefreq: string }> = [
   { path: "/", priority: "1.0", changefreq: "daily" },
   { path: "/explore", priority: "0.9", changefreq: "daily" },
+  { path: "/panduan", priority: "0.8", changefreq: "weekly" },
   { path: "/profile", priority: "0.3", changefreq: "monthly" },
 ];
 
@@ -34,7 +38,12 @@ export const Route = createFileRoute("/sitemap.xml")({
           ...STATIC_PATHS.map(({ path, priority, changefreq }) =>
             urlEntry(path, priority, changefreq),
           ),
+<<<<<<< HEAD
           ...destinations.map((destination) =>
+=======
+          ...travelGuideSlugs.map((slug) => urlEntry(`/panduan/${slug}`, "0.7", "monthly")),
+          ...indexed.map((destination) =>
+>>>>>>> 60c2974b (feat(seo): add Indonesian travel guides)
             urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
           ),
         ];
