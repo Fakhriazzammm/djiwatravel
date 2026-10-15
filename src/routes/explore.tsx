@@ -10,11 +10,14 @@ import { listableDestinations } from "@/lib/destination-availability";
 import { finderCtaCopy } from "@/lib/finder-form";
 import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
 
-const EXPLORE_LOADER_DEADLINE_MS = 2_500;
+const EXPLORE_CATALOG_DEADLINE_MS = 8_500;
+const EXPLORE_BALANCE_DEADLINE_MS = 2_500;
+const EXPLORE_LOG_INTERVAL_MS = 60_000;
+const lastExploreLogAt = new Map<string, number>();
 
-function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+function withDeadline<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Explore catalog deadline exceeded")), timeoutMs);
+    const timer = setTimeout(() => reject(new Error(`${label} deadline exceeded`)), timeoutMs);
     promise.then(
       (value) => {
         clearTimeout(timer);
@@ -28,48 +31,79 @@ function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   });
 }
 
+function logExploreFailure(kind: "catalog" | "balance", error: unknown) {
+  const now = Date.now();
+  const lastLoggedAt = lastExploreLogAt.get(kind) ?? 0;
+  if (now - lastLoggedAt < EXPLORE_LOG_INTERVAL_MS) return;
+  lastExploreLogAt.set(kind, now);
+  const reason = error instanceof Error && error.message.includes("deadline") ? "deadline" : "provider";
+  console.warn(`[travel] explore ${kind} load failed`, { reason });
+}
+
+type ExploreLoaderDeps = {
+  getCatalog?: typeof getResellerCatalog;
+  getSellability?: typeof getSellabilityState;
+  catalogDeadlineMs?: number;
+  balanceDeadlineMs?: number;
+};
+
+export async function loadExploreAvailability({
+  getCatalog = getResellerCatalog,
+  getSellability = getSellabilityState,
+  catalogDeadlineMs = EXPLORE_CATALOG_DEADLINE_MS,
+  balanceDeadlineMs = EXPLORE_BALANCE_DEADLINE_MS,
+}: ExploreLoaderDeps = {}) {
+  let catalog;
+  try {
+    // Match the provider cache's 8 second timeout; the small margin avoids a same-tick race.
+    catalog = await withDeadline(getCatalog(), catalogDeadlineMs, "Explore catalog");
+  } catch (error) {
+    logExploreFailure("catalog", error);
+    return exploreErrorState();
+  }
+
+  const packages = catalog.packages.filter(isRecommendablePackage);
+  let hidden = new Set<string>();
+  try {
+    // Balance is display enrichment only. If it is slow, keep the truthful provider catalogue visible.
+    const sellability = await withDeadline(
+      getSellability(packages),
+      balanceDeadlineMs,
+      "Explore balance",
+    );
+    hidden = sellability.hidden;
+  } catch (error) {
+    logExploreFailure("balance", error);
+  }
+
+  const sellable = packages.filter((pkg) => !hidden.has(pkg.packageCode));
+  if (sellable.length === 0) {
+    return exploreAvailability([], catalog.stale ? "cached" : "live");
+  }
+  const codes = new Set<string>();
+  for (const pkg of sellable) {
+    for (const code of pkg.locationCodes) {
+      const normalized = code.trim().toUpperCase();
+      if (normalized) codes.add(normalized);
+    }
+  }
+  // Regional bundles list their member countries instead of a literal EU/ASIA code, so the list
+  // rule is shared with the destination page rather than matched by hand here.
+  return exploreAvailability(
+    listableDestinations(sellable, {
+      codes: [...codes].sort(),
+      source: catalog.stale ? "cached" : "live",
+      degraded: false,
+    }),
+    catalog.stale ? "cached" : "live",
+  );
+}
+
 export const Route = createFileRoute("/explore")({
   // Explore is the only package list now, so it carries the catalog's caching: one
   // expensive reseller read, reused for a minute so coming back is instant.
   staleTime: 60_000,
-  loader: async () => {
-    try {
-      // Bound this route independently of the provider's longer cache timeout so a slow provider
-      // cannot leave the global transition loader on screen indefinitely.
-      const catalog = await withDeadline(getResellerCatalog(), EXPLORE_LOADER_DEADLINE_MS);
-      const packages = catalog.packages.filter(isRecommendablePackage);
-      // Balance lookup is another remote dependency; bound it separately so the route cannot remain
-      // pending after the provider catalogue itself has already resolved.
-      const sellability = await withDeadline(
-        getSellabilityState(packages),
-        EXPLORE_LOADER_DEADLINE_MS,
-      );
-      const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
-      if (sellable.length === 0) {
-        return exploreAvailability([], catalog.stale ? "cached" : "live");
-      }
-      const codes = new Set<string>();
-      for (const pkg of sellable) {
-        for (const code of pkg.locationCodes) {
-          const normalized = code.trim().toUpperCase();
-          if (normalized) codes.add(normalized);
-        }
-      }
-      // Regional bundles list their member countries instead of a literal EU/ASIA code, so the list
-      // rule is shared with the destination page rather than matched by hand here.
-      return exploreAvailability(
-        listableDestinations(sellable, {
-          codes: [...codes].sort(),
-          source: catalog.stale ? "cached" : "live",
-          degraded: false,
-        }),
-        catalog.stale ? "cached" : "live",
-      );
-    } catch {
-      // Keep the provider error out of the browser, but make the failed load actionable.
-      return exploreErrorState();
-    }
-  },
+  loader: () => loadExploreAvailability(),
   head: () => ({
     meta: [
       { title: "Cari destinasi — Djiwa Travel" },
