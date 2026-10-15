@@ -98,6 +98,7 @@ function AdminCatalogPage() {
   const [notice, setNotice] = useState<{ tone: "good" | "danger"; text: string } | null>(null);
   const [history, setHistory] = useState<PriceRuleEventView[] | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [editing, setEditing] = useState<{ packageCode: string; name: string; sellingPriceIdr: number } | null>(null);
   const [inline, setInline] = useState<{ packageCode: string; mode: "percent" | "price"; value: string } | null>(null);
   const [inlineBusy, setInlineBusy] = useState(false);
@@ -255,7 +256,7 @@ function AdminCatalogPage() {
       <div className={`space-y-2 ${editorOpen ? "pb-32" : ""}`}>
         {/* KPI strip — one screen, no cards maze */}
         <AdminSurface className="p-2.5">
-          <div className="grid grid-cols-2 gap-y-2 divide-[#f0f0f2] sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
+          <div className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-y-2 sm:divide-[#f0f0f2] sm:px-0 sm:pb-0 lg:grid-cols-5 lg:divide-x">
             <Kpi label="Saldo provider" value={usd(balance.usd)} detail={balance.idrReference === null ? "belum terbaca" : idr(balance.idrReference)} tone={balance.state === "ok" ? (balance.usd !== null && balance.usd < 5 ? "warn" : "good") : "warn"} />
             <Kpi label="Plafon per paket" value={balance.sellableCeilingUsd === null ? "—" : `US$${balance.sellableCeilingUsd.toFixed(2)}`} detail={balance.sellableCeilingUsd === null ? "saldo belum terbaca" : idr(balance.sellableCeilingUsd * balance.fxRateIdr)} />
             <Kpi label="Paket" value={String(kpi.totalPackages)} detail={`${kpi.filteredPackages} setelah filter`} />
@@ -284,14 +285,14 @@ function AdminCatalogPage() {
               </button>
             )}
           </label>
-          <button type="button" onClick={() => navigate({ q: qDraft, page: 1 })} className="hidden min-h-11 rounded-xl border border-black/[0.06] bg-white px-3 text-[13px] font-semibold shadow-sm sm:block">
+          <button type="button" onClick={() => navigate({ q: qDraft, page: 1 })} className="hidden hidden min-h-11 rounded-xl border border-black/[0.06] bg-white px-3 text-[13px] font-semibold shadow-sm sm:block">
             Cari
           </button>
           <select
             aria-label="Filter status saldo"
             value={search.status}
             onChange={(event) => navigate({ status: event.target.value as StatusFilter, page: 1 })}
-            className="min-h-11 rounded-xl border border-black/[0.06] bg-white px-2 text-[13px] shadow-sm"
+            className="hidden min-h-11 rounded-xl border border-black/[0.06] bg-white px-2 text-[13px] shadow-sm sm:block"
           >
             <option value="all">Semua paket</option>
             <option value="unaffordable">Melebihi saldo</option>
@@ -301,12 +302,21 @@ function AdminCatalogPage() {
             aria-label="Jumlah baris"
             value={String(search.pageSize)}
             onChange={(event) => navigate({ pageSize: Number(event.target.value) as 50, page: 1 })}
-            className="min-h-11 rounded-xl border border-black/[0.06] bg-white px-2 text-[13px] shadow-sm"
+            className="hidden min-h-11 rounded-xl border border-black/[0.06] bg-white px-2 text-[13px] shadow-sm sm:block"
           >
             <option value="50">50 baris</option>
             <option value="100">100 baris</option>
             <option value="200">200 baris</option>
           </select>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className="flex min-h-11 items-center gap-1.5 rounded-xl border border-black/[0.06] bg-white px-3 text-[13px] font-semibold shadow-sm sm:hidden"
+          >
+            <SlidersHorizontal className="size-4" />
+            Filter
+            {(search.status !== "all" || search.pageSize !== 50) && <span className="size-1.5 rounded-full bg-[#0a67c7]" />}
+          </button>
           {/* Rules live in a sheet so nobody scrolls to the end of a 3.184-row catalogue to read them. */}
           <button
             type="button"
@@ -328,7 +338,7 @@ function AdminCatalogPage() {
         </div>
 
         {/* Source / freshness chips */}
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#6e6e73]">
+        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[11px] text-[#6e6e73] sm:flex-wrap sm:overflow-visible">
           <StatusPill tone={meta.stale ? "warn" : "good"}>
             {meta.stale ? "Katalog tersimpan (stale)" : meta.source === "provider" ? "Katalog live" : "Cache katalog"}
           </StatusPill>
@@ -367,9 +377,10 @@ function AdminCatalogPage() {
             </button>
           )}
           <span className="text-[#6e6e73]">
-            {selectionCount} dipilih dari {slice.filteredCount} hasil filter (total {slice.totalCount} paket, batas {data.maxBatch}/aksi)
+            <span className="sm:hidden">{selectionCount} dipilih · {slice.filteredCount} hasil</span>
+            <span className="hidden sm:inline">{selectionCount} dipilih dari {slice.filteredCount} hasil filter (total {slice.totalCount} paket, batas {data.maxBatch}/aksi)</span>
           </span>
-          <span className="text-[#8e8e93]">· tap harga jual / margin di baris untuk ubah cepat (Enter simpan, Esc batal)</span>
+          <span className="hidden text-[#8e8e93] sm:inline">· tap harga jual / margin di baris untuk ubah cepat (Enter simpan, Esc batal)</span>
         </div>
 
         {/* Desktop table (one screen: only this body scrolls) */}
@@ -506,7 +517,7 @@ function AdminCatalogPage() {
 
         {/* Mobile list: price and profit are editable in place, the rest of the row opens the sheet */}
         <div className="md:hidden">
-          <AdminSurface className="max-h-[calc(100dvh-19rem)] divide-y divide-[#f0f0f2] overflow-auto p-0">
+          <AdminSurface className="max-h-[calc(100dvh-13rem)] divide-y divide-[#f0f0f2] overflow-auto p-0">
             {slice.rows.map((row) => (
               <div key={row.packageCode} className={`flex items-start gap-2 px-3 py-2 ${selected.has(row.packageCode) ? "bg-[#eaf3ff]" : ""}`}>
                 <input
@@ -590,6 +601,66 @@ function AdminCatalogPage() {
         </div>
 
       </div>
+
+      {/* Filter sheet: the toolbar keeps only search on mobile, so the list starts higher */}
+      {filtersOpen && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/25" role="dialog" aria-modal="true" aria-label="Filter katalog">
+          <button type="button" aria-label="Tutup filter" className="absolute inset-0 h-full w-full cursor-default" onClick={() => setFiltersOpen(false)} />
+          <div className="relative z-10 w-full rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl">
+            <div className="flex items-center justify-between gap-2">
+              <SectionHeading title="Filter & urutan" detail={`Berlaku ke seluruh ${slice.totalCount} paket, bukan hanya halaman ini.`} />
+              <button type="button" onClick={() => setFiltersOpen(false)} aria-label="Tutup" className="min-h-9 min-w-9 shrink-0 rounded-xl border border-black/[0.06]">
+                <X className="mx-auto size-4" />
+              </button>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+              <label className="space-y-1">
+                <span className="text-[#6e6e73]">Status saldo</span>
+                <select value={search.status} onChange={(event) => navigate({ status: event.target.value as StatusFilter, page: 1 })} className="min-h-10 w-full rounded-xl border border-black/[0.06] px-2">
+                  <option value="all">Semua paket</option>
+                  <option value="unaffordable">Melebihi saldo</option>
+                  <option value="affordable">Masih bisa dijual</option>
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="text-[#6e6e73]">Baris per halaman</span>
+                <select value={String(search.pageSize)} onChange={(event) => navigate({ pageSize: Number(event.target.value) as 50, page: 1 })} className="min-h-10 w-full rounded-xl border border-black/[0.06] px-2">
+                  <option value="50">50 baris</option>
+                  <option value="100">100 baris</option>
+                  <option value="200">200 baris</option>
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="text-[#6e6e73]">Urut berdasarkan</span>
+                <select value={search.sortKey} onChange={(event) => navigate({ sortKey: event.target.value as "name" })} className="min-h-10 w-full rounded-xl border border-black/[0.06] px-2">
+                  <option value="providerCost">HPP</option>
+                  <option value="sellingPrice">Harga jual</option>
+                  <option value="marginPercent">Margin %</option>
+                  <option value="name">Nama paket</option>
+                  <option value="durationDays">Durasi</option>
+                  <option value="volumeBytes">Kuota</option>
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="text-[#6e6e73]">Arah</span>
+                <select value={search.sortDir} onChange={(event) => navigate({ sortDir: event.target.value as "asc" | "desc" })} className="min-h-10 w-full rounded-xl border border-black/[0.06] px-2">
+                  <option value="asc">Kecil → besar</option>
+                  <option value="desc">Besar → kecil</option>
+                </select>
+              </label>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p className="text-[11px] text-[#6e6e73]">
+                {meta.stale ? "Katalog tersimpan (stale)" : meta.source === "provider" ? "Katalog live" : "Cache katalog"} · disinkron {meta.syncedAt ? formatAdminDateTime(meta.syncedAt) : "—"}
+                {meta.freshnessAgeSeconds !== null ? ` · umur ${meta.freshnessAgeSeconds}s` : ""} · {slice.filteredCount} hasil
+              </p>
+              <button type="button" onClick={() => setFiltersOpen(false)} className="min-h-9 shrink-0 rounded-xl bg-[#0a67c7] px-3 text-[12px] font-semibold text-white">
+                Terapkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rules + history sheet: reachable from the toolbar, never behind a scroll */}
       {rulesOpen && (
@@ -723,7 +794,7 @@ function AdminCatalogPage() {
 
 function Kpi({ label, value, detail, tone = "neutral" }: { label: string; value: string; detail?: string; tone?: "neutral" | "good" | "warn" }) {
   return (
-    <div className="px-2.5 py-1">
+    <div className="shrink-0 snap-start px-2 py-0.5 sm:min-w-0 sm:px-2.5 sm:py-1">
       <p className="text-[11px] text-[#6e6e73]">{label}</p>
       <p className={`text-base font-semibold tabular-nums tracking-tight ${tone === "warn" ? "text-[#9a6100]" : tone === "good" ? "text-[#1f6b34]" : ""}`}>{value}</p>
       {detail && <p className="truncate text-[11px] text-[#8e8e93]">{detail}</p>}
