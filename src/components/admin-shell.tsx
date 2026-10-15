@@ -188,6 +188,112 @@ export function AdminShell({
   );
 }
 
+export type AdminStatItem = {
+  label: string;
+  value: ReactNode;
+  detail?: string;
+  tone?: "neutral" | "good" | "warn" | "danger";
+};
+
+/**
+ * Ringkasan status admin. Di mobile menjadi satu strip yang bisa di-swipe supaya daftar utama
+ * tetap terlihat tanpa scroll; di sm+ kembali menjadi grid dengan pemisah.
+ */
+export function AdminStatStrip({
+  items,
+  columns = 3,
+  className = "",
+}: {
+  items: AdminStatItem[];
+  columns?: 3 | 4 | 5 | 6;
+  className?: string;
+}) {
+  const cols = {
+    3: "sm:grid-cols-3",
+    4: "sm:grid-cols-4",
+    5: "sm:grid-cols-5",
+    6: "sm:grid-cols-6",
+  }[columns];
+  return (
+    <div
+      className={`-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:grid sm:gap-y-2 sm:divide-x sm:divide-y sm:divide-black/[0.06] sm:px-0 sm:pb-0 ${cols} ${className}`}
+    >
+      {items.map((item) => (
+        <div key={item.label} className="shrink-0 snap-start px-2 py-0.5 sm:min-w-0 sm:px-2.5 sm:py-1.5">
+          <p className="whitespace-nowrap text-[11px] text-[#6e6e73]">{item.label}</p>
+          <p
+            className={`text-base font-semibold tabular-nums tracking-tight ${
+              item.tone === "warn"
+                ? "text-[#9a6100]"
+                : item.tone === "danger"
+                  ? "text-[#c7352d]"
+                  : item.tone === "good"
+                    ? "text-[#1f6b34]"
+                    : ""
+            }`}
+          >
+            {item.value}
+          </p>
+          {item.detail && <p className="whitespace-nowrap text-[11px] text-[#8e8e93]">{item.detail}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Bottom sheet standar admin. Dipakai untuk filter/aturan supaya kontrol tidak perlu diletakkan
+ * di ujung halaman yang panjang dan tidak menutupi daftar saat tidak dipakai.
+ */
+export function AdminSheet({
+  open,
+  title,
+  detail,
+  onClose,
+  children,
+  footer,
+}: {
+  open: boolean;
+  title: string;
+  detail?: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/25" role="dialog" aria-modal="true" aria-label={title}>
+      <button
+        type="button"
+        aria-label={`Tutup ${title}`}
+        className="absolute inset-0 h-full w-full cursor-default"
+        onClick={onClose}
+      />
+      <div className="relative z-10 max-h-[78dvh] w-full overflow-auto rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl lg:left-[272px]">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="font-semibold">{title}</h2>
+            {detail && <p className="mt-0.5 text-xs text-[#6e6e73]">{detail}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup"
+            className="min-h-9 min-w-9 shrink-0 rounded-xl border border-black/[0.06]"
+          >
+            <X className="mx-auto size-4" />
+          </button>
+        </div>
+        <div className="mt-2">{children}</div>
+        {footer}
+      </div>
+    </div>
+  );
+}
+
+/** Anggaran tinggi agar tabel/daftar jadi satu-satunya area yang menggulir di layar kecil. */
+export const ADMIN_LIST_HEIGHT = "max-h-[calc(100dvh-13rem)] md:max-h-[calc(100vh-19rem)] overflow-auto";
+
 export function AdminPageState({
   title = "Data belum tersambung",
   detail = "Read model operasional belum tersedia. Tidak ada angka atau record contoh yang ditampilkan.",
