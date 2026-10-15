@@ -12,6 +12,7 @@ import { NavProgress } from "../components/nav-progress";
 import { AppSplash } from "../components/app-splash";
 import { TransitionLoader } from "../components/transition-loader";
 import { easeIos } from "../lib/motion";
+import { trackAnalytics } from "../lib/analytics";
 
 function NotFoundComponent() {
   return (
@@ -96,10 +97,19 @@ function RootComponent() {
         <AppSplash />
         {/* Later page changes get one centred loader. */}
         <TransitionLoader />
+        <AnalyticsPageView />
         <AnimatedOutlet />
       </MotionConfig>
     </QueryClientProvider>
   );
+}
+
+function AnalyticsPageView() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  useEffect(() => {
+    trackAnalytics("page_view", pathname);
+  }, [pathname]);
+  return null;
 }
 
 /**

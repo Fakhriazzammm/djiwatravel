@@ -14,6 +14,7 @@ import {
   packageDataLabel,
   packageDestinationLabel,
 } from "@/lib/package-copy";
+import { trackAnalytics } from "@/lib/analytics";
 
 const REGIONAL_COVERAGE: Record<string, readonly string[]> = {
   ASIA: ["CN", "HK", "JP", "KR", "MY", "SG", "TH", "TW"],
@@ -119,6 +120,29 @@ export const Route = createFileRoute("/destination/$code")({
       : "Paket eSIM untuk traveler Indonesia. Aktif otomatis, bayar QRIS atau VA.";
     const code = loaderData?.destination.code.toLowerCase() ?? "";
     const image = destinationOgImage(code, BASE_URL);
+    const sellablePackages = loaderData?.packages.filter((pkg) => pkg.sellable) ?? [];
+    const productSchema = sellablePackages.map((pkg) => ({
+      "@type": "Product",
+      name: packageDestinationLabel(pkg),
+      description: `${packageDataLabel(pkg)} untuk ${packageCoverageLabel(pkg)} selama ${pkg.durationDays} hari.`,
+      sku: pkg.packageCode,
+      brand: { "@type": "Brand", name: "Djiwa Travel" },
+      offers: {
+        "@type": "Offer",
+        url: `${BASE_URL}/checkout/${encodeURIComponent(pkg.packageCode)}`,
+        priceCurrency: "IDR",
+        price: pkg.priceIdr,
+        availability: "https://schema.org/InStock",
+      },
+    }));
+    const breadcrumbSchema = {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Beranda", item: BASE_URL },
+        { "@type": "ListItem", position: 2, name: "Explore", item: `${BASE_URL}/explore` },
+        ...(loaderData ? [{ "@type": "ListItem", position: 3, name: loaderData.destination.nameId, item: `${BASE_URL}/destination/${code}` }] : []),
+      ],
+    };
     return {
       meta: [
         { title },
@@ -130,6 +154,9 @@ export const Route = createFileRoute("/destination/$code")({
         ...(code ? [{ property: "og:url", content: `${BASE_URL}/destination/${code}` }] : []),
       ],
       links: code ? [{ rel: "canonical", href: `${BASE_URL}/destination/${code}` }] : [],
+      scripts: loaderData
+        ? [{ type: "application/ld+json", children: JSON.stringify({ "@context": "https://schema.org", "@graph": [breadcrumbSchema, ...productSchema] }) }]
+        : [],
     };
   },
   component: Destination,
@@ -150,8 +177,11 @@ function Destination() {
   // The first SSR payload can arrive before the provider balance read completes. Revalidate once on
   // mount so direct entry and client-side navigation converge without requiring a browser refresh.
   useEffect(() => {
+    trackAnalytics("destination_view", `/destination/${destination.code.toLowerCase()}`, {
+      destination: destination.code.toLowerCase(),
+    });
     void router.invalidate();
-  }, [router]);
+  }, [router, destination.code]);
 
   return (
     <Page>

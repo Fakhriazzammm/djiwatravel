@@ -11,6 +11,7 @@ export const Route = createFileRoute("/my-esim/")({
       { name: "description", content: "Semua eSIM perjalananmu di satu tempat." },
       { property: "og:title", content: "My eSIM — Djiwa Travel" },
       { property: "og:description", content: "Semua eSIM perjalananmu di satu tempat." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: MyEsim,

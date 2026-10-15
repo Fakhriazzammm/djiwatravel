@@ -10,7 +10,6 @@ const STATIC_PATHS: Array<{ path: string; priority: string; changefreq: string }
   { path: "/", priority: "1.0", changefreq: "daily" },
   { path: "/explore", priority: "0.9", changefreq: "daily" },
   { path: "/panduan", priority: "0.8", changefreq: "weekly" },
-  { path: "/profile", priority: "0.3", changefreq: "monthly" },
 ];
 
 function urlEntry(path: string, priority: string, changefreq: string) {

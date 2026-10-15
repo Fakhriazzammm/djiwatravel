@@ -22,6 +22,7 @@ export const Route = createFileRoute("/profile")({
       { name: "description", content: "Akun, riwayat pesanan, dan bantuan Djiwa Travel." },
       { property: "og:title", content: "Profil — Djiwa Travel" },
       { property: "og:description", content: "Akun, riwayat pesanan, dan bantuan Djiwa Travel." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: Profile,

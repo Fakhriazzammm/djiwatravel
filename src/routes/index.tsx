@@ -27,7 +27,9 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "eSIM internasional untuk traveler Indonesia. Bayar QRIS, langsung online.",
       },
+      { property: "og:url", content: "https://djiwatravel.com/" },
     ],
+    links: [{ rel: "canonical", href: "https://djiwatravel.com/" }],
   }),
   component: Home,
 });

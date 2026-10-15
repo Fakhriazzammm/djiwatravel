@@ -26,6 +26,7 @@ export const Route = createFileRoute("/wallet")({
     meta: [
       { title: "Wallet — Djiwa Travel" },
       { name: "description", content: "Kelola Wallet Djiwa Travel dan lihat riwayat transaksi." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: Wallet,

@@ -6,12 +6,25 @@ import { destinations } from "@/lib/catalog";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 import { DURATION_OPTIONS } from "@/lib/finder-form";
 import type { RecommendationPreferences } from "@/lib/recommendation/preferences";
+import { trackAnalytics } from "@/lib/analytics";
 import {
   packageCoverageLabel,
   packageDataLabel,
   packageDestinationLabel,
 } from "@/lib/package-copy";
-export const Route = createFileRoute("/finder")({ component: Finder });
+export const Route = createFileRoute("/finder")({
+  head: () => ({
+    meta: [
+      { title: "Cari paket eSIM — Djiwa Travel" },
+      { name: "description", content: "Jawab beberapa pertanyaan untuk menemukan paket eSIM yang cocok." },
+      { property: "og:title", content: "Cari paket eSIM — Djiwa Travel" },
+      { property: "og:description", content: "Temukan paket eSIM berdasarkan tujuan, durasi, kebutuhan data, dan budget." },
+      { property: "og:url", content: "https://djiwatravel.com/finder" },
+    ],
+    links: [{ rel: "canonical", href: "https://djiwatravel.com/finder" }],
+  }),
+  component: Finder,
+});
 
 function formatBudget(value: number) {
   return `Rp ${value.toLocaleString("id-ID")}`;
@@ -48,6 +61,11 @@ function Finder() {
       };
       const next = await recommendPackages({ data: preferences });
       setResult(next);
+      trackAnalytics("finder_submit", "/finder", {
+        durationDays: days,
+        dataNeed,
+        budgetBand: budget < 100000 ? "under_100k" : budget < 300000 ? "100k_300k" : "300k_plus",
+      });
     } finally {
       setLoading(false);
     }
