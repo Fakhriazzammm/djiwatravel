@@ -53,13 +53,13 @@ function AdminOrders() {
   return (
     <AdminShell title="Orders" subtitle="Daftar order Travel">
       <div className="space-y-2">
-        <AdminSurface className="p-3">
+        <AdminSurface className="p-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6e6e73]">
                 Monitoring order
               </p>
-              <p className="mt-0.5 text-lg font-bold tabular-nums">
+              <p className="mt-0.5 text-base font-bold tabular-nums">
                 {privateMode ? "••••" : orders.length}{" "}
                 <span className="text-xs font-medium text-[#6e6e73]">total</span>
               </p>
@@ -83,11 +83,19 @@ function AdminOrders() {
           </div>
           {newest ? (
             <>
-              <p className="mt-3 text-[11px] font-medium text-[#6e6e73]">Order terbaru</p>
-              <div className="mt-1">{card(newest)}</div>
-              <p className="mt-2 text-[11px] text-[#6e6e73]">
-                Semua order tampil di bawah untuk monitoring langsung.
-              </p>
+              <div className="hidden lg:block">
+                <p className="mt-3 text-[11px] font-medium text-[#6e6e73]">Order terbaru</p>
+                <div className="mt-1">{card(newest)}</div>
+                <p className="mt-2 text-[11px] text-[#6e6e73]">
+                  Semua order tampil di bawah untuk monitoring langsung.
+                </p>
+              </div>
+              <details className="mt-2 lg:hidden">
+                <summary className="cursor-pointer text-[11px] font-medium text-[#6e6e73]">
+                  Order terbaru · {humanizeAdminStatus(newest.status)}
+                </summary>
+                <div className="mt-1">{card(newest)}</div>
+              </details>
             </>
           ) : (
             <div className="mt-3 flex items-center gap-3 text-sm text-[#6e6e73]">
