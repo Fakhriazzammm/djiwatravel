@@ -7,25 +7,28 @@ import { maskEmail, maskWhatsapp, toAdminCustomer } from "@/lib/admin-display";
 
 const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "utf8");
 
+// Routes that must stay as guarded redirects. "catalog" was promoted to a first-class
+// workspace (Katalog & Pricing), so it is no longer part of this list.
 const legacyRoutes = [
   "analytics",
   "customers",
   "refunds",
   "support",
-  "catalog",
   "index",
   "overview",
 ];
 
 describe("simplified admin P0 scope", () => {
   it("keeps only curated destinations and never re-exposes legacy routes", () => {
-    // "Keuangan" (the Travel finance book) is a deliberate addition on top of the P0 five;
-    // what this guards is that no legacy destination creeps back into the sidebar.
+    // "Keuangan" (the Travel finance book) and "Katalog" (Katalog & Pricing) are deliberate
+    // additions on top of the P0 five; what this guards is that no legacy destination creeps
+    // back into the sidebar.
     expect(adminNavigation.map(([label]) => label)).toEqual([
       "Dashboard",
       "Orders",
       "Pembayaran",
       "Keuangan",
+      "Katalog",
       "Provisioning",
       "Settings",
     ]);

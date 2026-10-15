@@ -12,6 +12,7 @@ describe("admin UI contracts", () => {
       "/admin/orders",
       "/admin/payments",
       "/admin/finance",
+      "/admin/catalog",
       "/admin/provisioning",
       "/admin/settings",
     ]);
@@ -50,7 +51,8 @@ describe("admin UI contracts", () => {
     }
   });
   it("keeps aliases guarded and explicit", () => {
-    for (const name of ["analytics", "catalog", "customers", "overview", "refunds", "support"]) {
+    // "catalog" is a real workspace now, so it is asserted by admin-p0-scope instead.
+    for (const name of ["analytics", "customers", "overview", "refunds", "support"]) {
       const source = read(`routes/admin.${name}.tsx`);
       expect(source).toContain("requireAdmin");
       expect(source).toContain('to: "/admin/dashboard"');
