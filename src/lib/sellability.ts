@@ -15,8 +15,9 @@ export const SELLABILITY_BUFFER = 0.15;
 export type SellabilityMode = "off" | "shadow" | "on";
 
 /**
- * `off` is the default so merely deploying this code changes nothing for customers.
- * `shadow` computes and logs the decision without changing what is shown.
+ * Production must explicitly set TRAVEL_SELLABILITY_MODE=on in the server runtime. The source
+ * default remains `off` for previews and rollback safety; `shadow` computes and logs the decision
+ * without changing what is shown.
  */
 export function sellabilityMode(raw: string | undefined = process.env["TRAVEL_SELLABILITY_MODE"]): SellabilityMode {
   const value = (raw ?? "").trim().toLowerCase();
@@ -31,6 +32,23 @@ export type BalanceSnapshot = {
 };
 
 export type SellablePackage = { packageCode: string; providerPriceUnits: number };
+
+export type CheckoutSellabilityDecision =
+  | { ok: true }
+  | { ok: false; reason: "balance_unknown" | "provider_cost_unaffordable" | "provider_cost_invalid" };
+
+/** Strict checkout decision; unlike catalog display, unknown balance is never sellable. */
+export function checkoutSellabilityDecision(
+  pkg: SellablePackage,
+  snapshot: BalanceSnapshot,
+  buffer = SELLABILITY_BUFFER,
+): CheckoutSellabilityDecision {
+  if (snapshot.balanceUnits === null || !Number.isFinite(snapshot.balanceUnits)) return { ok: false, reason: "balance_unknown" };
+  if (!Number.isFinite(pkg.providerPriceUnits) || pkg.providerPriceUnits <= 0) return { ok: false, reason: "provider_cost_invalid" };
+  return snapshot.balanceUnits >= requiredUnits(pkg.providerPriceUnits, buffer)
+    ? { ok: true }
+    : { ok: false, reason: "provider_cost_unaffordable" };
+}
 
 /** Balance we must hold to sell this package, including price headroom. */
 export function requiredUnits(providerPriceUnits: number, buffer = SELLABILITY_BUFFER): number {
