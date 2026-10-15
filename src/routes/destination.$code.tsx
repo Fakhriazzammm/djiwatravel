@@ -124,12 +124,6 @@ function Destination() {
           Menampilkan katalog tersimpan; harga mungkin belum terbaru.
         </p>
       )}
-      {soldOut > 0 && (
-        <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
-          {soldOut} paket bertanda <span className="font-semibold">Habis</span> karena stok provider
-          kami belum mencukupi. Paket lain tetap bisa dipesan.
-        </p>
-      )}
       {packages.length === 0 ? (
         <p className="mt-8 rounded-xl bg-surface p-4 text-sm text-muted-foreground">
           Belum ada paket live untuk destinasi ini. Lihat semua paket yang tersedia di katalog.
