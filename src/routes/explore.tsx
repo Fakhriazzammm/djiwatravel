@@ -38,8 +38,12 @@ export const Route = createFileRoute("/explore")({
       // cannot leave the global transition loader on screen indefinitely.
       const catalog = await withDeadline(getResellerCatalog(), EXPLORE_LOADER_DEADLINE_MS);
       const packages = catalog.packages.filter(isRecommendablePackage);
-      // A destination only belongs in Explore when it currently has something we can actually sell.
-      const sellability = await getSellabilityState(packages);
+      // Balance lookup is another remote dependency; bound it separately so the route cannot remain
+      // pending after the provider catalogue itself has already resolved.
+      const sellability = await withDeadline(
+        getSellabilityState(packages),
+        EXPLORE_LOADER_DEADLINE_MS,
+      );
       const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
       if (sellable.length === 0) {
         return exploreAvailability([], catalog.stale ? "cached" : "live");
