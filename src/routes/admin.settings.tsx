@@ -1,7 +1,7 @@
 import { CircleAlert, Database, Server } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
-import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
+import { AdminShell, AdminStatStrip, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { getAdminReadiness } from "@/lib/admin-readiness.server";
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
@@ -24,21 +24,15 @@ function AdminSettings() {
             {ready}/{readiness.length} ready
           </StatusPill>
         </div>
-        <AdminSurface className="p-3">
-          <div className="grid grid-cols-2 divide-x divide-black/[0.06] sm:grid-cols-3">
-            <div className="p-2">
-              <p className="text-[11px] text-[#6e6e73]">Ready</p>
-              <b className="text-xl">{ready}</b>
-            </div>
-            <div className="p-2">
-              <p className="text-[11px] text-[#6e6e73]">Belum tersedia</p>
-              <b className="text-xl">{readiness.length - ready}</b>
-            </div>
-            <div className="p-2">
-              <p className="text-[11px] text-[#6e6e73]">Last check</p>
-              <b className="mt-1 block text-sm">Live</b>
-            </div>
-          </div>
+        <AdminSurface className="p-2.5">
+          <AdminStatStrip
+            columns={3}
+            items={[
+              { label: "Ready", value: String(ready), tone: ready === readiness.length ? "good" : "warn" },
+              { label: "Belum tersedia", value: String(readiness.length - ready) },
+              { label: "Last check", value: "Live" },
+            ]}
+          />
         </AdminSurface>
         <AdminSurface className="p-3">
           <div className="divide-y divide-[#f0f0f2]">
