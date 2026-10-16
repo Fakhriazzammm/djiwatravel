@@ -10,6 +10,7 @@ import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { destinationPhoto } from "@/lib/destination-artwork";
 import { travelGuides } from "@/lib/travel-guides";
+import { TrustLinks } from "@/components/public-trust";
 
 const featuredGuides = travelGuides.slice(0, 3);
 
@@ -308,6 +309,21 @@ function Home() {
           </Reveal>
         )}
 
+        <Reveal className="block">
+          <Link
+            to="/esim-untuk-traveler-indonesia"
+            className="tap mt-7 flex items-center gap-3 rounded-2xl bg-surface p-4 shadow-sm"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">Panduan eSIM untuk traveler Indonesia</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Pelajari cara memilih paket sesuai destinasi dan perjalananmu.
+              </p>
+            </div>
+            <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+          </Link>
+        </Reveal>
+
         <Reveal as="section" className="mt-7" aria-labelledby="home-guides-title">
           <SectionTitle action={<Link to="/panduan">Lihat semua ›</Link>}>
             <span id="home-guides-title">Panduan Travel</span>
@@ -338,6 +354,7 @@ function Home() {
           </div>
         </Reveal>
       </Stagger>
+      <TrustLinks />
     </Page>
   );
 }

@@ -10,12 +10,19 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BantuanEsimRouteImport } from './routes/bantuan-esim'
 import { Route as CatalogRouteImport } from './routes/catalog'
+import { Route as EsimUntukTravelerIndonesiaRouteImport } from './routes/esim-untuk-traveler-indonesia'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
+import { Route as KebijakanPrivasiRouteImport } from './routes/kebijakan-privasi'
+import { Route as KebijakanRefundRouteImport } from './routes/kebijakan-refund'
+import { Route as KontakRouteImport } from './routes/kontak'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SyaratKetentuanRouteImport } from './routes/syarat-ketentuan'
+import { Route as TentangDjiwaTravelRouteImport } from './routes/tentang-djiwa-travel'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
@@ -56,11 +63,22 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BantuanEsimRoute = BantuanEsimRouteImport.update({
+  id: '/bantuan-esim',
+  path: '/bantuan-esim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CatalogRoute = CatalogRouteImport.update({
   id: '/catalog',
   path: '/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EsimUntukTravelerIndonesiaRoute =
+  EsimUntukTravelerIndonesiaRouteImport.update({
+    id: '/esim-untuk-traveler-indonesia',
+    path: '/esim-untuk-traveler-indonesia',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ExploreRoute = ExploreRouteImport.update({
   id: '/explore',
   path: '/explore',
@@ -69,6 +87,21 @@ const ExploreRoute = ExploreRouteImport.update({
 const FinderRoute = FinderRouteImport.update({
   id: '/finder',
   path: '/finder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KebijakanPrivasiRoute = KebijakanPrivasiRouteImport.update({
+  id: '/kebijakan-privasi',
+  path: '/kebijakan-privasi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KebijakanRefundRoute = KebijakanRefundRouteImport.update({
+  id: '/kebijakan-refund',
+  path: '/kebijakan-refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KontakRoute = KontakRouteImport.update({
+  id: '/kontak',
+  path: '/kontak',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LiveCatalogRoute = LiveCatalogRouteImport.update({
@@ -84,6 +117,16 @@ const ProfileRoute = ProfileRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SyaratKetentuanRoute = SyaratKetentuanRouteImport.update({
+  id: '/syarat-ketentuan',
+  path: '/syarat-ketentuan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TentangDjiwaTravelRoute = TentangDjiwaTravelRouteImport.update({
+  id: '/tentang-djiwa-travel',
+  path: '/tentang-djiwa-travel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WalletRoute = WalletRouteImport.update({
@@ -261,12 +304,19 @@ const ApiWebhooksEsimAccessTokenRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/bantuan-esim': typeof BantuanEsimRoute
   '/catalog': typeof CatalogRoute
+  '/esim-untuk-traveler-indonesia': typeof EsimUntukTravelerIndonesiaRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
+  '/kebijakan-privasi': typeof KebijakanPrivasiRoute
+  '/kebijakan-refund': typeof KebijakanRefundRoute
+  '/kontak': typeof KontakRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/syarat-ketentuan': typeof SyaratKetentuanRoute
+  '/tentang-djiwa-travel': typeof TentangDjiwaTravelRoute
   '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -304,12 +354,19 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/bantuan-esim': typeof BantuanEsimRoute
   '/catalog': typeof CatalogRoute
+  '/esim-untuk-traveler-indonesia': typeof EsimUntukTravelerIndonesiaRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
+  '/kebijakan-privasi': typeof KebijakanPrivasiRoute
+  '/kebijakan-refund': typeof KebijakanRefundRoute
+  '/kontak': typeof KontakRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/syarat-ketentuan': typeof SyaratKetentuanRoute
+  '/tentang-djiwa-travel': typeof TentangDjiwaTravelRoute
   '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -348,12 +405,19 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/bantuan-esim': typeof BantuanEsimRoute
   '/catalog': typeof CatalogRoute
+  '/esim-untuk-traveler-indonesia': typeof EsimUntukTravelerIndonesiaRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
+  '/kebijakan-privasi': typeof KebijakanPrivasiRoute
+  '/kebijakan-refund': typeof KebijakanRefundRoute
+  '/kontak': typeof KontakRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/syarat-ketentuan': typeof SyaratKetentuanRoute
+  '/tentang-djiwa-travel': typeof TentangDjiwaTravelRoute
   '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -393,12 +457,19 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/bantuan-esim'
     | '/catalog'
+    | '/esim-untuk-traveler-indonesia'
     | '/explore'
     | '/finder'
+    | '/kebijakan-privasi'
+    | '/kebijakan-refund'
+    | '/kontak'
     | '/live-catalog'
     | '/profile'
     | '/sitemap.xml'
+    | '/syarat-ketentuan'
+    | '/tentang-djiwa-travel'
     | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
@@ -436,12 +507,19 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/bantuan-esim'
     | '/catalog'
+    | '/esim-untuk-traveler-indonesia'
     | '/explore'
     | '/finder'
+    | '/kebijakan-privasi'
+    | '/kebijakan-refund'
+    | '/kontak'
     | '/live-catalog'
     | '/profile'
     | '/sitemap.xml'
+    | '/syarat-ketentuan'
+    | '/tentang-djiwa-travel'
     | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
@@ -479,12 +557,19 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/bantuan-esim'
     | '/catalog'
+    | '/esim-untuk-traveler-indonesia'
     | '/explore'
     | '/finder'
+    | '/kebijakan-privasi'
+    | '/kebijakan-refund'
+    | '/kontak'
     | '/live-catalog'
     | '/profile'
     | '/sitemap.xml'
+    | '/syarat-ketentuan'
+    | '/tentang-djiwa-travel'
     | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
@@ -523,12 +608,19 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BantuanEsimRoute: typeof BantuanEsimRoute
   CatalogRoute: typeof CatalogRoute
+  EsimUntukTravelerIndonesiaRoute: typeof EsimUntukTravelerIndonesiaRoute
   ExploreRoute: typeof ExploreRoute
   FinderRoute: typeof FinderRoute
+  KebijakanPrivasiRoute: typeof KebijakanPrivasiRoute
+  KebijakanRefundRoute: typeof KebijakanRefundRoute
+  KontakRoute: typeof KontakRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
   ProfileRoute: typeof ProfileRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SyaratKetentuanRoute: typeof SyaratKetentuanRoute
+  TentangDjiwaTravelRoute: typeof TentangDjiwaTravelRoute
   WalletRoute: typeof WalletRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
@@ -573,11 +665,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bantuan-esim': {
+      id: '/bantuan-esim'
+      path: '/bantuan-esim'
+      fullPath: '/bantuan-esim'
+      preLoaderRoute: typeof BantuanEsimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/catalog': {
       id: '/catalog'
       path: '/catalog'
       fullPath: '/catalog'
       preLoaderRoute: typeof CatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/esim-untuk-traveler-indonesia': {
+      id: '/esim-untuk-traveler-indonesia'
+      path: '/esim-untuk-traveler-indonesia'
+      fullPath: '/esim-untuk-traveler-indonesia'
+      preLoaderRoute: typeof EsimUntukTravelerIndonesiaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explore': {
@@ -592,6 +698,27 @@ declare module '@tanstack/react-router' {
       path: '/finder'
       fullPath: '/finder'
       preLoaderRoute: typeof FinderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kebijakan-privasi': {
+      id: '/kebijakan-privasi'
+      path: '/kebijakan-privasi'
+      fullPath: '/kebijakan-privasi'
+      preLoaderRoute: typeof KebijakanPrivasiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kebijakan-refund': {
+      id: '/kebijakan-refund'
+      path: '/kebijakan-refund'
+      fullPath: '/kebijakan-refund'
+      preLoaderRoute: typeof KebijakanRefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kontak': {
+      id: '/kontak'
+      path: '/kontak'
+      fullPath: '/kontak'
+      preLoaderRoute: typeof KontakRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/live-catalog': {
@@ -613,6 +740,20 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/syarat-ketentuan': {
+      id: '/syarat-ketentuan'
+      path: '/syarat-ketentuan'
+      fullPath: '/syarat-ketentuan'
+      preLoaderRoute: typeof SyaratKetentuanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tentang-djiwa-travel': {
+      id: '/tentang-djiwa-travel'
+      path: '/tentang-djiwa-travel'
+      fullPath: '/tentang-djiwa-travel'
+      preLoaderRoute: typeof TentangDjiwaTravelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wallet': {
@@ -870,12 +1011,19 @@ const AdminOrdersRouteWithChildren = AdminOrdersRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BantuanEsimRoute: BantuanEsimRoute,
   CatalogRoute: CatalogRoute,
+  EsimUntukTravelerIndonesiaRoute: EsimUntukTravelerIndonesiaRoute,
   ExploreRoute: ExploreRoute,
   FinderRoute: FinderRoute,
+  KebijakanPrivasiRoute: KebijakanPrivasiRoute,
+  KebijakanRefundRoute: KebijakanRefundRoute,
+  KontakRoute: KontakRoute,
   LiveCatalogRoute: LiveCatalogRoute,
   ProfileRoute: ProfileRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SyaratKetentuanRoute: SyaratKetentuanRoute,
+  TentangDjiwaTravelRoute: TentangDjiwaTravelRoute,
   WalletRoute: WalletRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,

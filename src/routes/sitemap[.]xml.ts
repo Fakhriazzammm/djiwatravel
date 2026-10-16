@@ -8,6 +8,13 @@ const BASE_URL = "https://djiwatravel.com";
 /** Public pages that should be indexed. Order matters only for readability. */
 const STATIC_PATHS: Array<{ path: string; priority: string; changefreq: string }> = [
   { path: "/", priority: "1.0", changefreq: "daily" },
+  { path: "/esim-untuk-traveler-indonesia", priority: "0.8", changefreq: "monthly" },
+  { path: "/tentang-djiwa-travel", priority: "0.6", changefreq: "monthly" },
+  { path: "/bantuan-esim", priority: "0.7", changefreq: "monthly" },
+  { path: "/kebijakan-refund", priority: "0.5", changefreq: "monthly" },
+  { path: "/syarat-ketentuan", priority: "0.5", changefreq: "monthly" },
+  { path: "/kebijakan-privasi", priority: "0.5", changefreq: "monthly" },
+  { path: "/kontak", priority: "0.6", changefreq: "monthly" },
   { path: "/explore", priority: "0.9", changefreq: "daily" },
   { path: "/panduan", priority: "0.8", changefreq: "weekly" },
 ];

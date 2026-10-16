@@ -52,6 +52,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "Djiwa Travel" },
+      { name: "google-site-verification", content: "BfdCUEfjXfCIxMExcD8jwOtUUTaUNw_rEa6mmjbZwZ0" },
       { title: "Djiwa Travel — eSIM untuk traveler Indonesia" },
       { name: "description", content: "Internet luar negeri yang simpel. Bayar pakai QRIS, eSIM langsung siap." },
       { property: "og:title", content: "Djiwa Travel — eSIM untuk traveler Indonesia" },
