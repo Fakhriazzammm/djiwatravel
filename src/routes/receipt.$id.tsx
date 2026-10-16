@@ -32,6 +32,7 @@ import {
   type TravelSnapshot,
 } from "@/lib/offline-travel-snapshot";
 import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
+import { reorderIntent } from "@/lib/travel-journey";
 
 export const Route = createFileRoute("/receipt/$id")({
   head: () => ({
@@ -171,6 +172,12 @@ function ReceiptPage() {
 
   const status = effectiveOrderStatus(order.status, order.expiresAt);
   const ready = status === "READY" || status === "INSTALLED";
+  // Mirrors the order detail entry point: another purchase is only offered once this
+  // order is settled. A pending or failed order needs support, not a second checkout.
+  const reorder =
+    ready || status === "EXPIRED"
+      ? reorderIntent({ packageId: order.packageId, status, locationCodes: order.locationCodes })
+      : null;
   const doc = buildReceiptDocument(order);
   const quota = order.volumeBytes == null
     ? "Unlimited"
@@ -323,6 +330,25 @@ function ReceiptPage() {
           supportBaseUrl={SUPPORT_WHATSAPP_URL}
         />
         <div className="mt-5 flex flex-col gap-2">
+          {reorder && (
+            <>
+              <Link to={reorder.href} params={{ id: reorder.packageId }} className={`${btnRed} text-center`}>
+                {reorder.label}
+              </Link>
+              {reorder.fallbackDestinationCode && (
+                <Link
+                  to="/destination/$code"
+                  params={{ code: reorder.fallbackDestinationCode }}
+                  className={`${btnSoft} text-center`}
+                >
+                  Lihat paket lain untuk {reorder.fallbackDestinationCode}
+                </Link>
+              )}
+              <p className="text-center text-[12px] text-muted-foreground">
+                Harga dan ketersediaan dicek ulang saat checkout, jadi selalu mengikuti katalog terbaru.
+              </p>
+            </>
+          )}
           <Link to="/order/$id" params={{ id: order.id }} className={btnSoft}>
             Buka status pesanan
           </Link>
