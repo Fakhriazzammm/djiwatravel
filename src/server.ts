@@ -3,12 +3,16 @@ import { canonicalRedirectUrl } from "./lib/canonical-host";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { prewarmResellerCatalog } from "./lib/reseller-catalog-cache";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+
+// Warm the browse catalog without delaying the first HTML response.
+void prewarmResellerCatalog();
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
