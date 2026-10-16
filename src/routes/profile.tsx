@@ -120,13 +120,15 @@ function Profile() {
           </div>
           {user ? (
             <button
-              className="tap rounded-xl p-2 text-muted-foreground"
-              aria-label="Keluar"
+              type="button"
+              className="tap inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-background px-2.5 text-xs font-semibold text-muted-foreground"
+              aria-label="Logout"
               onClick={() => {
                 void signOutBetterAuth().then(() => setUser(null));
               }}
             >
-              <LogOut className="size-5" />
+              <LogOut className="size-4" aria-hidden="true" />
+              <span>Logout</span>
             </button>
           ) : null}
         </div>
