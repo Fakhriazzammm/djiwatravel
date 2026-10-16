@@ -1,8 +1,9 @@
-import { Menu, X } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { adminNavigation, isAdminNavigationActive } from "@/components/admin-navigation";
 import { FixedLayer } from "@/components/motion-primitives";
+import { signOutBetterAuth } from "@/lib/better-auth-client";
 
 const adminUi = {
   canvas: "bg-[#f2f2f7] text-[#17181a]",
@@ -77,6 +78,7 @@ export function AdminShell({
   subtitle?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const location = useLocation();
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => {
@@ -99,6 +101,16 @@ export function AdminShell({
     else document.body.classList.remove("overflow-hidden");
     return () => document.body.classList.remove("overflow-hidden");
   }, [open]);
+  const handleLogout = useCallback(async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOutBetterAuth();
+      window.location.assign("/admin/login");
+    } catch {
+      setSigningOut(false);
+    }
+  }, [signingOut]);
   return (
     <div className={`min-h-screen ${adminUi.canvas}`}>
       {/* The page body is wrapped in an animating transition, so chrome that must hug the
@@ -182,6 +194,16 @@ export function AdminShell({
               <div className="size-9 rounded-full bg-[#17181a] text-center text-xs font-bold leading-9 text-white">
                 AD
               </div>
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                disabled={signingOut}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-white px-2.5 text-xs font-semibold text-[#4b5563] transition-colors hover:bg-[#f5f5f7] disabled:cursor-wait disabled:opacity-60"
+                aria-label="Logout"
+              >
+                <LogOut className="size-3.5" aria-hidden="true" />
+                {signingOut ? "Keluar…" : "Logout"}
+              </button>
             </div>
           </div>
         </header>
