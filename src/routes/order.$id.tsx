@@ -28,6 +28,8 @@ import { paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-p
 import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
 import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
+import { TravelTimeline } from "@/components/travel-timeline";
+import { activationTimeline } from "@/lib/travel-journey";
 
 /**
  * Support channel. Kept as one constant so every entry point points at the same place, and so
@@ -53,6 +55,7 @@ function OrderPage() {
   const [view, setView] = useState<"main" | "qr" | "guide">("main");
   const [checking, setChecking] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
   const [checkNote, setCheckNote] = useState("");
   const [notifyReady, setNotifyReady] = useState(false);
   const [notifyBusy, setNotifyBusy] = useState(false);
@@ -62,6 +65,20 @@ function OrderPage() {
   useEffect(() => {
     if (!notificationsSupported()) return;
     setNotifyReady(readNotifyPreference() && notificationPermission() === "granted");
+  }, []);
+
+  // One settle-on-arrival read, so the activation timeline can state when the status was last
+  // confirmed instead of implying freshness from the order creation time.
+  useEffect(() => {
+    let cancelled = false;
+    void refreshOrdersFromServer()
+      .then(() => {
+        if (!cancelled) setSyncedAt(Date.now());
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const [linkBusy, setLinkBusy] = useState(false);
@@ -281,6 +298,14 @@ function OrderPage() {
           <h1 className="mt-6 text-2xl font-bold">Pembayaran diterima</h1>
           <p className="mt-2 text-muted-foreground">Sedang menyiapkan eSIM kamu…</p>
         </div>
+        <TravelTimeline
+          timeline={activationTimeline(o.status)}
+          lastSyncedAt={syncedAt}
+          onRefresh={async () => {
+            await refreshOrdersFromServer();
+            setSyncedAt(Date.now());
+          }}
+        />
         {notificationsSupported() && (
           <button
             type="button"
@@ -408,7 +433,17 @@ function OrderPage() {
           {quotaLabel} · {durationLabel}
         </p>
       </div>
-      <div className="mt-10 space-y-3">
+      <div className="mt-8">
+        <TravelTimeline
+          timeline={activationTimeline(o.status)}
+          lastSyncedAt={syncedAt}
+          onRefresh={async () => {
+            await refreshOrdersFromServer();
+            setSyncedAt(Date.now());
+          }}
+        />
+      </div>
+      <div className="mt-8 space-y-3">
         <a
           href={`https://esimsetup.apple.com/esim_qrcode_provisioning?carddata=${encodeURIComponent(esim.lpa)}`}
           className={btnRed}
