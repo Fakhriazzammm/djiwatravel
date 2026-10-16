@@ -12,6 +12,7 @@ import { NavProgress } from "../components/nav-progress";
 import { AppSplash } from "../components/app-splash";
 import { TransitionLoader } from "../components/transition-loader";
 import { easeIos } from "../lib/motion";
+import { googleAnalyticsHeadScripts } from "../lib/google-analytics";
 
 function NotFoundComponent() {
   return (
@@ -70,6 +71,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&display=swap" },
     ],
+    scripts: googleAnalyticsHeadScripts,
   }),
   shellComponent: RootShell,
   component: RootComponent,
