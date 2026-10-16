@@ -239,6 +239,18 @@ function AdminCatalogPage() {
     }
   };
 
+  const startQuickBulk = (percentValue: number) => {
+    setSelected(new Set());
+    setScopeAllFiltered(true);
+    setEditing(null);
+    setMarkupPercent(String(percentValue));
+    setMarkupFixed("");
+    setReason(`Penyesuaian profit bulk menjadi ${percentValue}% untuk seluruh hasil filter.`);
+    setPreview(null);
+    setShowPreview(false);
+    setNotice(null);
+  };
+
   const toggleRow = (code: string) => {
     setScopeAllFiltered(false);
     setSelected((current) => {
@@ -357,6 +369,16 @@ function AdminCatalogPage() {
 
         {/* Selection helpers */}
         <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
+          {slice.filteredCount > 0 && (
+            <button
+              type="button"
+              onClick={() => startQuickBulk(30)}
+              className="min-h-9 rounded-xl bg-[#0a67c7] px-2.5 font-semibold text-white shadow-sm"
+              aria-label={`Atur profit 30 persen untuk ${slice.filteredCount} hasil filter`}
+            >
+              30% semua hasil filter
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -374,7 +396,7 @@ function AdminCatalogPage() {
               aria-pressed={scopeAllFiltered}
               className={`min-h-9 rounded-xl border px-2.5 font-semibold ${scopeAllFiltered ? "border-[#0a67c7] bg-[#eaf3ff] text-[#0a67c7]" : "border-black/[0.06] bg-white"}`}
             >
-              {scopeAllFiltered ? "Batalkan seluruh hasil filter" : `Pilih seluruh hasil filter (${slice.filteredCount})`}
+              {scopeAllFiltered ? "Batalkan seluruh hasil filter" : `Pilih semua hasil filter (${slice.filteredCount})`}
             </button>
           )}
           <span className="text-[#6e6e73]">
