@@ -33,5 +33,5 @@ export function destinationOgImage(code: string, baseUrl: string): string {
   const normalized = code.trim().toLowerCase();
   return DESTINATION_OG_CODES.has(normalized)
     ? `${baseUrl}/og/${normalized}.jpg`
-    : `${baseUrl}/og/default.png`;
+    : `${baseUrl}/icon-512.png`;
 }

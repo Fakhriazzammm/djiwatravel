@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { getListableDestinations } from "@/lib/destination-availability.server";
 import { travelGuideSlugs } from "@/lib/travel-guides";
+import { getIndexablePlans } from "@/lib/seo-indexability.server";
 
 const BASE_URL = "https://djiwatravel.com";
 
@@ -31,11 +32,10 @@ export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        // Only advertise destinations that actually have a sellable package; a sitemap full of
-        // "belum ada paket live" pages hurts search quality. A degraded provider read keeps the
-        // full list rather than publishing an almost-empty sitemap. The list rule is shared with
-        // Explore so a regional destination (Asia) is indexed exactly when it is listed.
-        const indexed = await getListableDestinations(5_000);
+        const [indexed, plans] = await Promise.all([
+          getListableDestinations(5_000),
+          getIndexablePlans(5_000).catch(() => []),
+        ]);
         const entries = [
           ...STATIC_PATHS.map(({ path, priority, changefreq }) =>
             urlEntry(path, priority, changefreq),
@@ -43,6 +43,9 @@ export const Route = createFileRoute("/sitemap.xml")({
           ...travelGuideSlugs.map((slug) => urlEntry(`/panduan/${slug}`, "0.7", "monthly")),
           ...indexed.map((destination) =>
             urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
+          ),
+          ...plans.map(({ package: plan }) =>
+            urlEntry(`/plan/${encodeURIComponent(plan.packageCode)}`, "0.9", "weekly"),
           ),
         ];
         const body = [

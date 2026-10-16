@@ -43,9 +43,9 @@ export const Route = createFileRoute("/panduan/$slug")({
         { property: "og:type", content: "article" },
         { property: "og:url", content: url },
         { property: "og:locale", content: "id_ID" },
-        { property: "og:image", content: `${BASE_URL}/og/default.png` },
+        { property: "og:image", content: `${BASE_URL}/icon-512.png` },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:image", content: `${BASE_URL}/og/default.png` },
+        { name: "twitter:image", content: `${BASE_URL}/icon-512.png` },
       ],
       links: [{ rel: "canonical", href: url }],
       scripts: [
