@@ -26,6 +26,8 @@ import {
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
 import { paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
+import { TravelSupportDialog } from "@/components/travel-support-dialog";
+import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
 
 /**
  * Support channel. Kept as one constant so every entry point points at the same place, and so
@@ -50,6 +52,7 @@ function OrderPage() {
   const orders = useOrders();
   const [view, setView] = useState<"main" | "qr" | "guide">("main");
   const [checking, setChecking] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [checkNote, setCheckNote] = useState("");
   const [notifyReady, setNotifyReady] = useState(false);
   const [notifyBusy, setNotifyBusy] = useState(false);
@@ -316,9 +319,27 @@ function OrderPage() {
             Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan.
           </p>
         )}
-        <a href={SUPPORT_WHATSAPP_URL} className={`${btnSoft} mt-3`}>
+        <button type="button" onClick={() => setSupportOpen(true)} className={`${btnSoft} mt-3`}>
           Hubungi Support
-        </a>
+        </button>
+        <TravelSupportDialog
+          open={supportOpen}
+          onClose={() => setSupportOpen(false)}
+          topics={supportTopicsFor(o.status)}
+          contextFor={(topic) =>
+            buildSupportContext({
+              topic,
+              status: o.status,
+              orderId: o.id,
+              orderCode: o.publicOrderCode ?? null,
+              packageName,
+              destination: locationLabel,
+              iccid: o.esim?.iccid ?? null,
+              lastSyncedAt: null,
+            })
+          }
+          supportBaseUrl={SUPPORT_WHATSAPP_URL}
+        />
       </Page>
     );
   }
@@ -334,8 +355,11 @@ function OrderPage() {
           <p className="mt-2 text-muted-foreground">
             Silakan pilih paket eSIM lain jika ingin melanjutkan perjalanan.
           </p>
-          <Link to="/explore" className={`${btnPrimary} mt-6`}>
-            Lihat paket eSIM
+          <Link to="/checkout/$id" params={{ id: o.packageId }} className={`${btnRed} mt-6`}>
+            Beli lagi paket ini
+          </Link>
+          <Link to="/explore" className={`${btnSoft} mt-2`}>
+            Lihat paket eSIM lain
           </Link>
         </div>
       </Page>
@@ -410,6 +434,9 @@ function OrderPage() {
       >
         <Receipt className="size-4" aria-hidden="true" />
         Struk &amp; panduan pasang
+      </Link>
+      <Link to="/checkout/$id" params={{ id: o.packageId }} className={`${btnSoft} mt-3`}>
+        Beli lagi paket ini
       </Link>
       <a
         href={SUPPORT_WHATSAPP_URL}

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, ChevronRight, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { signOutBetterAuth } from "@/lib/better-auth-client";
+import { clearTravelLocalData } from "@/lib/travel-local-data";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { Page, Wordmark, group, row, label } from "@/components/shell";
 import { CustomerAuth } from "@/components/customer-auth";
@@ -124,7 +125,11 @@ function Profile() {
               className="tap inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-background px-2.5 text-xs font-semibold text-muted-foreground"
               aria-label="Logout"
               onClick={() => {
-                void signOutBetterAuth().then(() => setUser(null));
+                void signOutBetterAuth().then(() => {
+                  // Sign-out is the moment another customer could pick up this device.
+                  clearTravelLocalData();
+                  setUser(null);
+                });
               }}
             >
               <LogOut className="size-4" aria-hidden="true" />

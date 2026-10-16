@@ -1,12 +1,42 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, QrCode, Plus, Headphones } from "lucide-react";
-import { Page, BackBar, group, row } from "@/components/shell";
+import { Page, BackBar, btnRed, btnSoft, group, row } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
 import { rupiah } from "@/lib/pricing";
-import { cancelOrder, hasGuestOrderAccess, markInstalled, useOrders } from "@/lib/orders";
+import {
+  cancelOrder,
+  hasGuestOrderAccess,
+  markInstalled,
+  refreshOrdersFromServer,
+  useOrders,
+} from "@/lib/orders";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
+import { TravelTimeline } from "@/components/travel-timeline";
+import { TravelChecklist } from "@/components/travel-checklist";
+import { TravelUsageCard } from "@/components/travel-usage-card";
+import { TravelSupportDialog } from "@/components/travel-support-dialog";
+import { OfflineSnapshotBanner } from "@/components/offline-snapshot-banner";
+import { readTripPlan, setChecklistItem, writeDepartureDate } from "@/lib/travel-checklist-store";
+import {
+  buildTravelSnapshot,
+  clearTravelSnapshot,
+  isSnapshotStale,
+  readTravelSnapshot,
+  writeTravelSnapshot,
+  type TravelSnapshot,
+} from "@/lib/offline-travel-snapshot";
+import {
+  activationTimeline,
+  buildTravelChecklist,
+  calendarDaysUntil,
+  checklistProgress,
+  parseDepartureDate,
+  reorderIntent,
+  usageView,
+} from "@/lib/travel-journey";
+import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
 
 /** Support channel; single place to swap in a real number. */
 
@@ -29,7 +59,39 @@ function Detail() {
   const [tab, setTab] = useState<"none" | "install" | "topup">("none");
   const [tech, setTech] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [trip, setTrip] = useState(() => readTripPlan(id));
+  const [snapshot, setSnapshot] = useState<TravelSnapshot | null>(() => readTravelSnapshot(id));
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [syncFailed, setSyncFailed] = useState(false);
   const o = hasGuestOrderAccess(id) ? orders?.find((x) => x.id === id) : undefined;
+
+  // The route parameter can change without remounting, so re-read the device-scoped data.
+  useEffect(() => {
+    setTrip(readTripPlan(id));
+    setSnapshot(readTravelSnapshot(id));
+  }, [id]);
+
+  /**
+   * Keeps the offline copy in step with the last authorized read. Written only after the
+   * order was actually available, so a failed read never overwrites a good snapshot.
+   */
+  useEffect(() => {
+    if (!o) return;
+    const next = buildTravelSnapshot(o);
+    if (writeTravelSnapshot(next)) setSnapshot(next);
+    setLastSyncedAt(next.savedAt);
+  }, [o?.id, o?.status, o?.expiresAt, o?.esim?.lpa, o?.usedGb]);
+
+  const refreshStatus = async () => {
+    setSyncFailed(false);
+    try {
+      await refreshOrdersFromServer();
+      setLastSyncedAt(Date.now());
+    } catch {
+      setSyncFailed(true);
+    }
+  };
   if (!orders)
     return (
       <Page>
@@ -50,8 +112,36 @@ function Detail() {
   const durationDays = o.durationDays ?? 0;
   const quotaLabel =
     o.volumeBytes == null ? "Unlimited" : `${(o.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
-  const total = o.volumeBytes == null ? null : o.volumeBytes / 1_000_000_000;
-  const left = total === null ? null : total - (o.usedGb ?? 0);
+  const timeline = activationTimeline(status);
+  const usage = usageView({
+    volumeBytes: o.volumeBytes ?? null,
+    usedGb: o.usedGb ?? null,
+    active: canInstall,
+  });
+  const checklist = buildTravelChecklist({
+    departureDate: trip.departureDate,
+    completed: trip.completed,
+  });
+  const progress = checklistProgress(checklist);
+  const departureAt = parseDepartureDate(trip.departureDate);
+  const daysUntil = departureAt === null ? null : calendarDaysUntil(departureAt);
+  const reorder = reorderIntent({
+    packageId: o.packageId,
+    status,
+    locationCodes: o.locationCodes,
+  });
+  const supportTopics = supportTopicsFor(status, { quotaLow: usage.low, hasQr: Boolean(o.esim) });
+  const supportContextFor = (topic: (typeof supportTopics)[number]) =>
+    buildSupportContext({
+      topic,
+      status,
+      orderId: o.id,
+      orderCode: o.publicOrderCode ?? null,
+      packageName,
+      destination: locationLabel,
+      iccid: o.esim?.iccid ?? null,
+      lastSyncedAt,
+    });
   const exp = new Date(o.createdAt + durationDays * 864e5).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "long",
@@ -60,25 +150,12 @@ function Detail() {
   return (
     <Page>
       <BackBar title={`🌐 ${packageName}`} />
-      <div className="rounded-2xl bg-surface p-5">
-        <p className="text-sm text-muted-foreground">Status eSIM</p>
-        <p className="text-xl font-bold">{ORDER_STATUS_LABEL[status]}</p>
-        <p className="mt-4 text-sm text-muted-foreground">Kuota tersisa</p>
-        <p className="text-3xl font-bold">
-          {canInstall ? (left !== null ? `${left.toFixed(1)} GB` : "Unlimited") : "Belum aktif"}
-        </p>
-        {total && left !== null && (
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${(left / total) * 100}%` }}
-            />
-          </div>
-        )}
-        {canInstall && left !== null && left < 1 && (
-          <p className="mt-2 text-sm text-brand-red">Kuotamu hampir habis.</p>
-        )}
-      </div>
+      <TravelTimeline
+        timeline={timeline}
+        lastSyncedAt={lastSyncedAt}
+        syncFailed={syncFailed}
+        onRefresh={refreshStatus}
+      />
 
       {status === "PROVISIONING_FAILED" && (
         <div className="mt-4 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-4">
@@ -109,6 +186,48 @@ function Detail() {
         ))}
       </div>
 
+      <div className="mt-4">
+        <TravelUsageCard view={usage} />
+      </div>
+
+      <div className="mt-4">
+        <Link to={reorder.href} params={{ id: reorder.packageId }} className={btnRed}>
+          {reorder.label}
+        </Link>
+        {reorder.fallbackDestinationCode && (
+          <Link
+            to="/destination/$code"
+            params={{ code: reorder.fallbackDestinationCode }}
+            className={`${btnSoft} mt-2 text-center`}
+          >
+            Lihat paket lain untuk {reorder.fallbackDestinationCode}
+          </Link>
+        )}
+        <p className="mt-2 text-center text-[12px] text-muted-foreground">
+          Harga dan ketersediaan dicek ulang saat checkout, jadi selalu mengikuti katalog terbaru.
+        </p>
+      </div>
+
+      <div className="mt-4">
+        <TravelChecklist
+          items={checklist}
+          departureDate={trip.departureDate}
+          daysUntil={daysUntil}
+          progress={progress}
+          onSetDepartureDate={(value) => setTrip(writeDepartureDate(id, value))}
+          onToggle={(key, done) => setTrip(setChecklistItem(id, key, done))}
+        />
+      </div>
+
+      <OfflineSnapshotBanner
+        snapshot={snapshot}
+        stale={snapshot ? isSnapshotStale(snapshot) : false}
+        onClear={() => {
+          clearTravelSnapshot(id);
+          setSnapshot(null);
+        }}
+      />
+
       <div className="mt-4 grid grid-cols-3 gap-2">
         {[
           {
@@ -129,7 +248,7 @@ function Detail() {
             id: "support",
             l: "Support",
             i: Headphones,
-            on: () => window.open(SUPPORT_WHATSAPP_URL, "_blank"),
+            on: () => setSupportOpen(true),
           },
         ].map(({ id, l, i: I, on, off }) => (
           <button
@@ -167,6 +286,13 @@ function Detail() {
           <ManualDetails esim={o.esim} iccid />
         </div>
       )}
+      <TravelSupportDialog
+        open={supportOpen}
+        onClose={() => setSupportOpen(false)}
+        topics={supportTopics}
+        contextFor={supportContextFor}
+        supportBaseUrl={SUPPORT_WHATSAPP_URL}
+      />
       <Link to="/my-esim" className="sr-only">
         My eSIM
       </Link>
