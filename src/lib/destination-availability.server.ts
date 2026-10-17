@@ -8,8 +8,12 @@ import {
   type DestinationAvailability,
 } from "./destination-availability";
 import { isRecommendablePackage } from "./esim-access-catalog";
-import { getResellerCatalog } from "./reseller-catalog-cache";
+import { configureResellerCatalogCache, getResellerCatalog } from "./reseller-catalog-cache";
+import { createResellerCatalogFileStore } from "./reseller-catalog-file-store.server";
 import { getSellabilityState } from "./sellability.server";
+
+const catalogFileStore = createResellerCatalogFileStore();
+if (catalogFileStore) configureResellerCatalogCache({ store: catalogFileStore });
 
 /**
  * Reads the live reseller catalogue and answers "which destinations can we actually sell right now".
