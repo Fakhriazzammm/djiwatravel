@@ -4,6 +4,7 @@ import {
   filterPackagesByAvailability,
   PAGE_SIZE,
   sortPackages,
+  toggleComparisonSelection,
   type SortKey,
 } from "@/routes/destination.$code";
 import type { ViewPackage } from "@/lib/package-view";
@@ -87,6 +88,13 @@ describe("destination package sorting", () => {
     expect(filterPackagesByAvailability(pending, "available", true)).toEqual([]);
     expect(filterPackagesByAvailability(pending, "sold-out", true)).toEqual([]);
     expect(filterPackagesByAvailability(pending, "all", true)).toEqual(pending);
+  });
+
+  it("adds, removes, and caps comparison selections", () => {
+    expect(toggleComparisonSelection([], "a")).toEqual(["a"]);
+    expect(toggleComparisonSelection(["a"], "a")).toEqual([]);
+    expect(toggleComparisonSelection(["a", "b", "c"], "d")).toEqual(["a", "b", "c"]);
+    expect(toggleComparisonSelection(["a", "b"], "c")).toEqual(["a", "b", "c"]);
   });
 
   it("renders one screen of cards on the first paint", () => {

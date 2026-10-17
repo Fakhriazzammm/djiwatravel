@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { BackBar, Page } from "@/components/shell";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BackBar, Page, StickyCta } from "@/components/shell";
 import { getDest } from "@/lib/catalog";
 import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
 import { regionalCoverage as extendRegionalCoverage } from "@/lib/destination-availability";
@@ -48,6 +48,18 @@ export function filterPackagesByAvailability(
 ): ViewPackage[] {
   if (filter === "all" || stockPending) return filter === "all" ? [...packages] : [];
   return packages.filter((pkg) => (filter === "available" ? pkg.sellable : !pkg.sellable));
+}
+
+export function toggleComparisonSelection(
+  selectedCodes: readonly string[],
+  packageCode: string,
+  maxSelections = 3,
+): string[] {
+  if (selectedCodes.includes(packageCode)) {
+    return selectedCodes.filter((code) => code !== packageCode);
+  }
+  if (selectedCodes.length >= maxSelections) return [...selectedCodes];
+  return [...selectedCodes, packageCode];
 }
 
 function pricePerGb(pkg: ViewPackage): number {
@@ -224,6 +236,7 @@ function Destination() {
   const [sort, setSort] = useState<SortKey>("recommended");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
+  const comparisonRef = useRef<HTMLElement>(null);
   const filteredPackages = useMemo(
     () => filterPackagesByAvailability(packages, availability, stockPending),
     [packages, availability, stockPending],
@@ -249,14 +262,13 @@ function Destination() {
   const selectedPackages = selectedCodes
     .map((code) => packages.find((pkg) => pkg.packageCode === code))
     .filter((pkg): pkg is ViewPackage => Boolean(pkg?.sellable));
+  useEffect(() => {
+    setSelectedCodes([]);
+    setVisible(PAGE_SIZE);
+  }, [destination.code]);
   const toggleComparison = (pkg: ViewPackage) => {
     if (!pkg.sellable) return;
-    setSelectedCodes((current) => {
-      if (current.includes(pkg.packageCode))
-        return current.filter((code) => code !== pkg.packageCode);
-      if (current.length >= 3) return current;
-      return [...current, pkg.packageCode];
-    });
+    setSelectedCodes((current) => toggleComparisonSelection(current, pkg.packageCode));
   };
   return (
     <Page>
@@ -416,7 +428,8 @@ function Destination() {
           )}
           {selectedPackages.length > 0 && (
             <section
-              className="mt-6 rounded-2xl bg-surface p-4 shadow-sm"
+              ref={comparisonRef}
+              className="mt-6 scroll-mt-4 rounded-2xl bg-surface p-4 shadow-sm"
               aria-labelledby="comparison-title"
             >
               <div className="flex items-center justify-between gap-3">
@@ -445,6 +458,13 @@ function Destination() {
                       {selectedPackages.map((pkg) => (
                         <th scope="col" key={pkg.packageCode} className="px-2 py-2 font-semibold">
                           {pkg.name}
+                          <Link
+                            to="/checkout/$id"
+                            params={{ id: pkg.packageCode }}
+                            className="mt-1 block text-xs font-semibold text-primary underline"
+                          >
+                            Pilih paket
+                          </Link>
                         </th>
                       ))}
                     </tr>
@@ -486,6 +506,30 @@ function Destination() {
             </button>
           )}
         </>
+      )}
+      {selectedPackages.length > 0 && (
+        <StickyCta>
+          <div className="flex items-center gap-3 pb-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-foreground">
+                {selectedPackages.length} paket dipilih
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {selectedPackages.map((pkg) => pkg.name).join(" · ")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                comparisonRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+              className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"
+              aria-label={`Buka perbandingan ${selectedPackages.length} paket`}
+            >
+              Bandingkan
+            </button>
+          </div>
+        </StickyCta>
       )}
     </Page>
   );
