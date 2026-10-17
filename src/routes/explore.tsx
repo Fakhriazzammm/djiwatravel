@@ -56,8 +56,19 @@ export const Route = createFileRoute("/explore")({
       { name: "description", content: "Cari eSIM untuk negara atau wilayah tujuanmu." },
       { property: "og:title", content: "Cari destinasi — Djiwa Travel" },
       { property: "og:description", content: "Cari eSIM untuk negara atau wilayah tujuanmu." },
+      { property: "og:url", content: "https://djiwatravel.com/explore" },
     ],
+    links: [{ rel: "canonical", href: "https://djiwatravel.com/explore" }],
   }),
+  // A cold provider read can legitimately take a few seconds; say so instead of showing a gap.
+  pendingComponent: () => (
+    <Page>
+      <h1 className="large-title pt-4">Explore</h1>
+      <p className="mt-6 text-sm text-muted-foreground" role="status">
+        Memuat katalog…
+      </p>
+    </Page>
+  ),
   component: Explore,
 });
 
@@ -88,9 +99,7 @@ function Explore() {
       >
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold">Bingung pilih paket?</p>
-          <p className="truncate text-[12px] text-muted-foreground">
-            Jawab 3 pertanyaan, kami urutkan yang paling cocok
-          </p>
+          <p className="truncate text-[12px] text-muted-foreground">{finderCtaCopy()}</p>
         </div>
         <ChevronRight className="size-5 shrink-0 text-brand-red" />
       </Link>

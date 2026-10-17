@@ -8,6 +8,7 @@ import { ReceiptLine, ReceiptPrinter, ReceiptRule } from "@/components/receipt-p
 import { ManualDetails } from "@/components/esim-install";
 import { guestAccessTokenFor, hasGuestOrderAccess, refreshOrdersFromServer, useOrders, type Order } from "@/lib/orders";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
+import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import {
   downloadReceiptPdf,
@@ -20,6 +21,18 @@ import {
 } from "@/lib/receipt-print";
 import { rupiah } from "@/lib/pricing";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
+import { OfflineSnapshotBanner } from "@/components/offline-snapshot-banner";
+import { TravelSupportDialog } from "@/components/travel-support-dialog";
+import {
+  buildTravelSnapshot,
+  clearTravelSnapshot,
+  isSnapshotStale,
+  readTravelSnapshot,
+  writeTravelSnapshot,
+  type TravelSnapshot,
+} from "@/lib/offline-travel-snapshot";
+import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
+import { reorderIntent } from "@/lib/travel-journey";
 
 export const Route = createFileRoute("/receipt/$id")({
   head: () => ({
@@ -77,6 +90,10 @@ function ReceiptPage() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [checkingPayment, setCheckingPayment] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [snapshot, setSnapshot] = useState<TravelSnapshot | null>(() => readTravelSnapshot(id));
+  const pdfLabel = useStagedLabel(busy, ACTION_STAGES.receiptExport);
+  const checkingLabel = useStagedLabel(checkingPayment, ACTION_STAGES.paymentCheck);
 
   // A refresh from the server can carry newer status, so settle once on arrival.
   useEffect(() => {
@@ -84,6 +101,14 @@ function ReceiptPage() {
   }, []);
 
   const order = hasGuestOrderAccess(id) ? orders?.find((x) => x.id === id) : undefined;
+
+  // The receipt and the QR are exactly what a customer needs with no connection, so keep a
+  // device-local copy in step with the last authorized read.
+  useEffect(() => {
+    if (!order) return;
+    const next = buildTravelSnapshot(order);
+    if (writeTravelSnapshot(next)) setSnapshot(next);
+  }, [order?.id, order?.status, order?.expiresAt, order?.esim?.lpa]);
 
   // Mayar may settle shortly after the redirect. Poll only while pending, stop on
   // terminal state, and keep a manual retry available instead of looping forever.
@@ -128,14 +153,14 @@ function ReceiptPage() {
 
   if (!orders)
     return (
-      <Page tabs={false}>
+      <Page>
         <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
       </Page>
     );
 
   if (!order)
     return (
-      <Page tabs={false}>
+      <Page>
         <div className="mt-24 text-center">
           <p className="text-muted-foreground">Struk tidak ditemukan di perangkat ini.</p>
           <Link to="/my-esim" className={`${btnRed} mt-6`}>
@@ -147,6 +172,12 @@ function ReceiptPage() {
 
   const status = effectiveOrderStatus(order.status, order.expiresAt);
   const ready = status === "READY" || status === "INSTALLED";
+  // Mirrors the order detail entry point: another purchase is only offered once this
+  // order is settled. A pending or failed order needs support, not a second checkout.
+  const reorder =
+    ready || status === "EXPIRED"
+      ? reorderIntent({ packageId: order.packageId, status, locationCodes: order.locationCodes })
+      : null;
   const doc = buildReceiptDocument(order);
   const quota = order.volumeBytes == null
     ? "Unlimited"
@@ -165,7 +196,7 @@ function ReceiptPage() {
   };
 
   return (
-    <Page tabs={false}>
+    <Page>
       <div className="print-hide flex items-center justify-between pt-2">
         <Link
           to={ready ? "/my-esim/$id" : "/order/$id"}
@@ -196,7 +227,7 @@ function ReceiptPage() {
               className={`${btnRed} inline-flex items-center justify-center gap-2 disabled:opacity-50`}
             >
               <FileText className="size-4" aria-hidden="true" />
-              {busy ? "Menyiapkan PDF…" : "Unduh PDF"}
+              {busy ? pdfLabel : "Unduh PDF"}
             </button>
             <button
               type="button"
@@ -209,7 +240,7 @@ function ReceiptPage() {
             {note && <p className="text-xs text-destructive">{note}</p>}
             {(order.status === "ORDER_CREATED" || order.status === "WAITING_PAYMENT") && (
               <button type="button" disabled={checkingPayment} onClick={() => void retryPaymentCheck()} className={`${btnSoft} disabled:opacity-50`}>
-                {checkingPayment ? "Memeriksa pembayaran…" : "Cek ulang pembayaran"}
+                {checkingPayment ? checkingLabel : "Cek ulang pembayaran"}
               </button>
             )}
           </div>
@@ -252,6 +283,15 @@ function ReceiptPage() {
         </p>
       </ReceiptPrinter>
 
+      <OfflineSnapshotBanner
+        snapshot={snapshot}
+        stale={snapshot ? isSnapshotStale(snapshot) : false}
+        onClear={() => {
+          clearTravelSnapshot(id);
+          setSnapshot(null);
+        }}
+      />
+
       {/* Installation tutorial travels with the receipt. */}
       <section className="mt-8 rounded-2xl bg-surface p-5">
         <h2 className="text-base font-semibold">Cara pasang eSIM</h2>
@@ -271,13 +311,50 @@ function ReceiptPage() {
             );
           })}
         </ol>
+        <TravelSupportDialog
+          open={supportOpen}
+          onClose={() => setSupportOpen(false)}
+          topics={supportTopicsFor(status, { hasQr: Boolean(order.esim) })}
+          contextFor={(topic) =>
+            buildSupportContext({
+              topic,
+              status,
+              orderId: order.id,
+              orderCode: order.publicOrderCode ?? null,
+              packageName: order.packageName ?? order.packageId,
+              destination: order.locationCodes?.join(", ") || "Regional",
+              iccid: order.esim?.iccid ?? null,
+              lastSyncedAt: snapshot?.savedAt ?? null,
+            })
+          }
+          supportBaseUrl={SUPPORT_WHATSAPP_URL}
+        />
         <div className="mt-5 flex flex-col gap-2">
+          {reorder && (
+            <>
+              <Link to={reorder.href} params={{ id: reorder.packageId }} className={`${btnRed} text-center`}>
+                {reorder.label}
+              </Link>
+              {reorder.fallbackDestinationCode && (
+                <Link
+                  to="/destination/$code"
+                  params={{ code: reorder.fallbackDestinationCode }}
+                  className={`${btnSoft} text-center`}
+                >
+                  Lihat paket lain untuk {reorder.fallbackDestinationCode}
+                </Link>
+              )}
+              <p className="text-center text-[12px] text-muted-foreground">
+                Harga dan ketersediaan dicek ulang saat checkout, jadi selalu mengikuti katalog terbaru.
+              </p>
+            </>
+          )}
           <Link to="/order/$id" params={{ id: order.id }} className={btnSoft}>
             Buka status pesanan
           </Link>
-          <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noreferrer" className={`${btnSoft} text-center`}>
+          <button type="button" onClick={() => setSupportOpen(true)} className={`${btnSoft} text-center`}>
             Butuh bantuan? Hubungi support
-          </a>
+          </button>
         </div>
       </section>
     </Page>

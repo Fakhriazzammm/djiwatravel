@@ -1,7 +1,10 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { BackBar, Page } from "@/components/shell";
 import { getDest } from "@/lib/catalog";
+import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
+import { regionalCoverage as extendRegionalCoverage } from "@/lib/destination-availability";
+import { destinationOgImage } from "@/lib/destination-artwork";
 import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
@@ -51,32 +54,55 @@ export function sortPackages(packages: ViewPackage[], key: SortKey): ViewPackage
   }
 }
 
-/** Destination pages that ship a social share image; everything else falls back to the default. */
-const OG_PHOTO_CODES = new Set(["jp", "kr", "sg", "th"]);
+/** Destination pages that ship a social share image; see lib/destination-artwork.ts. */
 const BASE_URL = "https://djiwatravel.com";
 
 export const Route = createFileRoute("/destination/$code")({
   // Same reseller read as Explore: keep the result warm so opening a country from the
   // destination list or the home cards does not pay for it twice.
-  staleTime: 60_000,
+  staleTime: 0,
   loader: async ({ params }) => {
     const destination =
       getDest(params.code) ??
       getDest(params.code.toUpperCase()) ??
       getDest(params.code.toLowerCase());
     if (!destination) throw notFound();
-    const catalog = await getResellerCatalog(destination.code);
-    const visible = filterPackagesByDestination(catalog.packages, destination.code);
-    // Balance-aware sellability: packages the provider balance cannot cover are marked sold out.
-    const sellability = await getSellabilityState(visible);
+    // Regional provider packages are represented by their member country codes. Querying the
+    // provider with the display code (for example ASIA) is rejected by some catalogue accounts,
+    // so read the already-authoritative full list and apply the regional coverage locally.
+    const catalog = await getResellerCatalog(
+      destination.region === "Regional" ? undefined : destination.code,
+    );
+    const visible = filterPackagesByDestination(
+      catalog.packages,
+      destination.code,
+      await coverageFor(destination),
+    );
+    // Balance-aware sellability, read through a server function so a client-side navigation and
+    // the server-rendered page agree on what is actually available.
+    const sellability = await readSellability({
+      data: {
+        packages: visible.map((pkg) => ({
+          packageCode: pkg.packageCode,
+          providerPriceUnits: pkg.providerPriceUnits,
+        })),
+      },
+    });
+    const balanceUnknown = sellability.mode === "on" && !sellability.balanceKnown;
+    // When the balance cannot be read we must not advertise availability we cannot honour, but we
+    // say so neutrally: the customer never learns why.
+    const unavailable = balanceUnknown
+      ? new Set(visible.map((pkg) => pkg.packageCode))
+      : new Set(sellability.hidden);
     // Only display fields are sent to the client: the full record carries our cost basis and
     // made this page ~680 KB (see lib/package-view.ts).
     return {
       destination,
-      packages: toViewPackages(visible, sellability.hidden),
+      packages: toViewPackages(visible, unavailable),
       stale: catalog.stale,
-      soldOut: sellability.hidden.size,
-      balanceUnknown: sellability.mode === "on" && sellability.snapshot.balanceUnits === null,
+      soldOut: unavailable.size,
+      balanceUnknown,
+      stockPending: balanceUnknown,
     };
   },
   head: ({ loaderData }) => {
@@ -87,9 +113,30 @@ export const Route = createFileRoute("/destination/$code")({
       ? `Paket eSIM ${loaderData.destination.nameId} untuk traveler Indonesia. Aktif otomatis, bayar QRIS atau VA.`
       : "Paket eSIM untuk traveler Indonesia. Aktif otomatis, bayar QRIS atau VA.";
     const code = loaderData?.destination.code.toLowerCase() ?? "";
-    const image = OG_PHOTO_CODES.has(code)
-      ? `${BASE_URL}/og/${code}.jpg`
-      : `${BASE_URL}/og/default.png`;
+    const image = destinationOgImage(code, BASE_URL);
+    const sellablePackages = loaderData?.packages.filter((pkg) => pkg.sellable) ?? [];
+    const productSchema = sellablePackages.map((pkg) => ({
+      "@type": "Product",
+      name: packageDestinationLabel(pkg),
+      description: `${packageDataLabel(pkg)} untuk ${packageCoverageLabel(pkg)} selama ${pkg.durationDays} hari.`,
+      sku: pkg.packageCode,
+      brand: { "@type": "Brand", name: "Djiwa Travel" },
+      offers: {
+        "@type": "Offer",
+        url: `${BASE_URL}/checkout/${encodeURIComponent(pkg.packageCode)}`,
+        priceCurrency: "IDR",
+        price: pkg.priceIdr,
+        availability: "https://schema.org/InStock",
+      },
+    }));
+    const breadcrumbSchema = {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Beranda", item: BASE_URL },
+        { "@type": "ListItem", position: 2, name: "Explore", item: `${BASE_URL}/explore` },
+        ...(loaderData ? [{ "@type": "ListItem", position: 3, name: loaderData.destination.nameId, item: `${BASE_URL}/destination/${code}` }] : []),
+      ],
+    };
     return {
       meta: [
         { title },
@@ -101,6 +148,9 @@ export const Route = createFileRoute("/destination/$code")({
         ...(code ? [{ property: "og:url", content: `${BASE_URL}/destination/${code}` }] : []),
       ],
       links: code ? [{ rel: "canonical", href: `${BASE_URL}/destination/${code}` }] : [],
+      scripts: loaderData
+        ? [{ type: "application/ld+json", children: JSON.stringify({ "@context": "https://schema.org", "@graph": [breadcrumbSchema, ...productSchema] }) }]
+        : [],
     };
   },
   component: Destination,
@@ -111,7 +161,8 @@ function rupiah(value: number) {
 }
 
 function Destination() {
-  const { destination, packages, stale, soldOut } = Route.useLoaderData();
+  const router = useRouter();
+  const { destination, packages, stale, stockPending } = Route.useLoaderData();
   const [sort, setSort] = useState<SortKey>("recommended");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
@@ -138,6 +189,11 @@ function Destination() {
           ? "Cakupan regional · beberapa negara"
           : "Cakupan negara · satu tujuan"}
       </p>
+      {stockPending && (
+        <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground" role="status">
+          Stok sedang diperbarui. Coba lagi sebentar lagi.
+        </p>
+      )}
       {stale && (
         <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
           Menampilkan katalog tersimpan; harga mungkin belum terbaru.
@@ -174,14 +230,19 @@ function Destination() {
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {shown.map((pkg) => (
-              <article key={pkg.packageCode} className="rounded-2xl bg-surface p-4 shadow-sm">
+              <article
+                key={pkg.packageCode}
+                className={`rounded-2xl p-4 shadow-sm ${
+                  pkg.sellable ? "bg-surface" : "border border-red-200 bg-red-50/70"
+                }`}
+              >
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                   Paket internet
                 </p>
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
-                  {!pkg.sellable && (
-                    <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                  {!pkg.sellable && !stockPending && (
+                    <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
                       Habis
                     </span>
                   )}
@@ -214,10 +275,17 @@ function Destination() {
                   >
                     Lihat detail &amp; pilih
                   </Link>
+                ) : stockPending ? (
+                  <span
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
+                    aria-label="Paket belum dapat dipesan saat ini"
+                  >
+                    Belum tersedia
+                  </span>
                 ) : (
                   <span
-                    className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
-                    aria-label="Paket habis, stok provider belum tersedia"
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700"
+                    aria-label="Paket habis dan tidak dapat dibeli"
                   >
                     Habis
                   </span>

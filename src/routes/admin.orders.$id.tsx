@@ -67,7 +67,7 @@ function AdminOrderDetail() {
   return (
     <AdminShell
       title="Detail order"
-      subtitle={`Order ${projectAdminIdentifier(order.displayIdentifier, privateMode)} · data sensitif tetap masked.`}
+      subtitle={`Order ${projectAdminIdentifier(order.displayIdentifier, privateMode)}`}
     >
       <Link
         to="/admin/orders"
@@ -90,7 +90,7 @@ function AdminOrderDetail() {
             title="Lifecycle timeline"
             detail="Status berasal dari order, payment webhook, provisioning, dan provider webhook yang tersedia."
           />
-          <ol className="mt-6 space-y-5">
+          <ol className="mt-6 max-h-[42dvh] space-y-5 overflow-y-auto overscroll-contain lg:max-h-none">
             {milestones.map((step) => (
               <li key={step.label} className="flex items-center gap-3">
                 <span
@@ -184,7 +184,7 @@ function AdminOrderDetail() {
       </div>
       <section className="mt-4 rounded-2xl border border-[#e5e5ea] bg-white p-5">
         <SectionHeading title="Order items" detail="Snapshot harga dan paket dari order." />
-        <div className="mt-4 divide-y">
+        <div className="mt-4 max-h-56 divide-y overflow-y-auto overscroll-contain lg:max-h-none">
           {order.items.map((item, index) => (
             <div key={`${item.packageName}-${index}`} className="flex justify-between py-3 text-sm">
               <span>
@@ -210,7 +210,7 @@ function AdminOrderDetail() {
         {order.payment.webhooks.length === 0 ? (
           <p className="mt-4 text-sm text-[#6b6b72]">No payment webhook evidence recorded.</p>
         ) : (
-          <div className="mt-4 divide-y">
+          <div className="mt-4 max-h-56 divide-y overflow-y-auto overscroll-contain lg:max-h-none">
             {order.payment.webhooks.map((event) => (
               <div key={`${event.eventType}-${event.createdAt}`} className="py-3 text-sm">
                 <p className="font-semibold">

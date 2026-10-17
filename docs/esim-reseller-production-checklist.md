@@ -20,6 +20,9 @@
 5. Fund the eSIM Access account and run one controlled provider order with a small package.
 6. Apply migrations `001_esim_reseller.sql` and `002_reseller_payment_auth.sql` after backup and verify RLS/service-role behavior.
 7. Verify payment webhook replay, amount mismatch, provider timeout, refund, and encrypted profile readback.
+8. Set the server runtime variable `TRAVEL_SELLABILITY_MODE=on` before production traffic. The source
+   default is `off` for preview/rollback safety; unknown provider balance remains fail-open and checkout
+   remains the authoritative gate.
 
 ## Safety gates
 

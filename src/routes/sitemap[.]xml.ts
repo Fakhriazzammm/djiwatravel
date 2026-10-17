@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { destinations } from "@/lib/catalog";
+import { getListableDestinations } from "@/lib/destination-availability.server";
+import { travelGuideSlugs } from "@/lib/travel-guides";
+import { getIndexablePlans } from "@/lib/seo-indexability.server";
 
 const BASE_URL = "https://djiwatravel.com";
 
@@ -8,7 +10,7 @@ const BASE_URL = "https://djiwatravel.com";
 const STATIC_PATHS: Array<{ path: string; priority: string; changefreq: string }> = [
   { path: "/", priority: "1.0", changefreq: "daily" },
   { path: "/explore", priority: "0.9", changefreq: "daily" },
-  { path: "/profile", priority: "0.3", changefreq: "monthly" },
+  { path: "/panduan", priority: "0.8", changefreq: "weekly" },
 ];
 
 function urlEntry(path: string, priority: string, changefreq: string) {
@@ -29,13 +31,21 @@ function urlEntry(path: string, priority: string, changefreq: string) {
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
-      GET: () => {
+      GET: async () => {
+        const [indexed, plans] = await Promise.all([
+          getListableDestinations(5_000),
+          getIndexablePlans(5_000).catch(() => []),
+        ]);
         const entries = [
           ...STATIC_PATHS.map(({ path, priority, changefreq }) =>
             urlEntry(path, priority, changefreq),
           ),
-          ...destinations.map((destination) =>
+          ...travelGuideSlugs.map((slug) => urlEntry(`/panduan/${slug}`, "0.7", "monthly")),
+          ...indexed.map((destination) =>
             urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
+          ),
+          ...plans.map(({ package: plan }) =>
+            urlEntry(`/plan/${encodeURIComponent(plan.packageCode)}`, "0.9", "weekly"),
           ),
         ];
         const body = [

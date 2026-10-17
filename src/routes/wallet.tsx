@@ -6,15 +6,20 @@ import { Page, SectionTitle, Wordmark } from "@/components/shell";
 import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
 import { FixedLayer } from "@/components/motion-primitives";
 import { PendingSpinner } from "@/components/route-loading";
+import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
+import { getCustomerAppConfig } from "@/lib/customer-app-config.server";
+import { DEFAULT_TOPUP_PRESETS, DEFAULT_MINIMUM_TOPUP } from "@/lib/customer-app-config";
 
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { getCustomerWallet, type CustomerWalletResponse, type CustomerWalletLedgerEntry } from "@/lib/customer-wallet.server";
 import { groupWalletLedger, ledgerStatusLabel, walletStatusLabel } from "@/lib/customer-wallet-view";
+import { WALLET_SCOPES, WALLET_SCOPE_LABELS, type WalletScope } from "@/lib/wallet-scope";
 import { rupiah } from "@/lib/pricing";
 import {
   QUICK_ACTION_SUPPORT_COPY,
   quickActionSoonCopy,
   WALLET_ACTIONS,
+  type WalletQuickAction,
 } from "@/lib/wallet-quick-actions";
 
 export const Route = createFileRoute("/wallet")({
@@ -22,6 +27,7 @@ export const Route = createFileRoute("/wallet")({
     meta: [
       { title: "Wallet — Djiwa Travel" },
       { name: "description", content: "Kelola Wallet Djiwa Travel dan lihat riwayat transaksi." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: Wallet,
@@ -36,9 +42,32 @@ export function Wallet() {
   const { user, loading: authLoading } = useBetterAuthUser();
   const [data, setData] = useState<CustomerWalletResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const walletLoadingLabel = useStagedLabel(loading, ACTION_STAGES.walletLoad);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const [scope, setScope] = useState<WalletScope>("all");
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
+  // Presets and which quick actions are live come from the server; the shipped defaults render
+  // immediately so the screen never waits on the config round-trip.
+  const [walletActions, setWalletActions] = useState<readonly WalletQuickAction[]>(WALLET_ACTIONS);
+  const [topupPresets, setTopupPresets] = useState<readonly number[]>(DEFAULT_TOPUP_PRESETS);
+  const [topupMinimum, setTopupMinimum] = useState(DEFAULT_MINIMUM_TOPUP);
+  useEffect(() => {
+    let cancelled = false;
+    void getCustomerAppConfig()
+      .then((config) => {
+        if (cancelled) return;
+        if (config.walletActions.length > 0) setWalletActions(config.walletActions);
+        if (config.topup.presets.length > 0) setTopupPresets(config.topup.presets);
+        if (config.topup.minimum >= DEFAULT_MINIMUM_TOPUP) setTopupMinimum(config.topup.minimum);
+      })
+      .catch(() => {
+        // Keep the shipped defaults; a config failure must not disable top up.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupPending, setTopupPending] = useState<{ amount: number; startedAt: number; creditedBefore: number } | null>(null);
   const [topupVerifiedAmount, setTopupVerifiedAmount] = useState(0);
@@ -61,7 +90,7 @@ export function Wallet() {
     setLoading(true);
     setError(null);
     try {
-      const next = await getCustomerWallet();
+      const next = await getCustomerWallet({ data: { scope } });
       setData(next);
       return next;
     } catch (cause) {
@@ -70,7 +99,7 @@ export function Wallet() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, scope]);
 
   useEffect(() => { void loadWallet(); }, [loadWallet]);
 
@@ -183,7 +212,7 @@ export function Wallet() {
 
           <section className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5" aria-label="Aksi cepat">
             <div className="grid grid-cols-4 gap-2" aria-label="Aksi cepat">
-              {WALLET_ACTIONS.map((action) => (
+              {walletActions.map((action) => (
                 <button
                   key={action.label}
                   type="button"
@@ -201,14 +230,29 @@ export function Wallet() {
 
           {topupPending && <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950" role="status" aria-live="polite"><p className="text-sm font-bold">Menunggu konfirmasi pembayaran</p><p className="mt-1 text-xs leading-5 text-emerald-800">Pembayaran sedang diverifikasi. Wallet akan diperbarui otomatis setelah konfirmasi diterima.</p></section>}
           {topupVerifiedAmount > 0 && !topupPending && <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950" role="status"><p className="text-sm font-bold">Top up berhasil</p><p className="mt-1 text-xs leading-5 text-emerald-800">Wallet bertambah {rupiah(topupVerifiedAmount)} dan sudah dikonfirmasi.</p></section>}
-          {topupTimedOut && !topupPending && <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status"><p className="text-sm font-bold">Pembayaran sedang diverifikasi</p><p className="mt-1 text-xs leading-5 text-amber-900">Wallet belum berubah. Jangan membuat top up baru; cek kembali setelah beberapa saat.</p><button type="button" onClick={() => void checkWalletAgain()} disabled={loading} className="tap mt-3 min-h-11 rounded-xl bg-amber-600 px-3 text-xs font-bold text-white disabled:opacity-60">{loading ? "Memuat Wallet..." : "Cek saldo lagi"}</button></section>}
-          <DjiwaPayTopup userId={user.id} open={topupOpen} onOpenChange={setTopupOpen} creditedBefore={Number(wallet.total_credited)} onSubmitted={(pending) => { setTopupTimedOut(false); setTopupVerifiedAmount(0); setTopupPending(pending); }} />
+          {topupTimedOut && !topupPending && <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status"><p className="text-sm font-bold">Pembayaran sedang diverifikasi</p><p className="mt-1 text-xs leading-5 text-amber-900">Wallet belum berubah. Jangan membuat top up baru; cek kembali setelah beberapa saat.</p><button type="button" onClick={() => void checkWalletAgain()} disabled={loading} className="tap mt-3 min-h-11 rounded-xl bg-amber-600 px-3 text-xs font-bold text-white disabled:opacity-60">{loading ? walletLoadingLabel : "Cek saldo lagi"}</button></section>}
+          <DjiwaPayTopup userId={user.id} open={topupOpen} onOpenChange={setTopupOpen} creditedBefore={Number(wallet.total_credited)} presets={topupPresets} minimum={topupMinimum} onSubmitted={(pending) => { setTopupTimedOut(false); setTopupVerifiedAmount(0); setTopupPending(pending); }} />
 
           <section className="mt-7" aria-labelledby="wallet-history-title">
             <SectionTitle action={<span className="text-xs font-normal normal-case">{data.ledger.length} transaksi</span>}>
               <span id="wallet-history-title" tabIndex={-1}>Riwayat Wallet</span>
             </SectionTitle>
-            {groups.length === 0 ? <p className="rounded-2xl bg-surface px-4 py-5 text-sm text-muted-foreground">Belum ada transaksi Wallet.</p> : <div className="space-y-5">{groups.map((group) => <div key={group.key}><h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</h3><div className="overflow-hidden rounded-2xl bg-surface">{group.entries.map((entry) => <LedgerRow key={String(entry.id)} entry={entry} visible={visible} />)}</div></div>)}</div>}
+            <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filter riwayat Wallet">
+              {WALLET_SCOPES.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={scope === option}
+                  onClick={() => setScope(option)}
+                  disabled={loading}
+                  className={`tap min-h-11 rounded-full border px-3.5 text-xs font-semibold disabled:opacity-60 ${scope === option ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground"}`}
+                >
+                  {WALLET_SCOPE_LABELS[option]}
+                </button>
+              ))}
+            </div>
+            {scope === "djiwa-travel" && <p className="mt-2 text-xs leading-5 text-muted-foreground">Menampilkan transaksi yang tercatat berasal dari Djiwa Travel. Transaksi tanpa keterangan asal aplikasi tidak ditampilkan.</p>}
+            {groups.length === 0 ? <p className="mt-3 rounded-2xl bg-surface px-4 py-5 text-sm text-muted-foreground">{scope === "djiwa-travel" ? "Belum ada transaksi Djiwa Travel yang tercatat." : "Belum ada transaksi Wallet."}</p> : <div className="mt-3 space-y-5">{groups.map((group) => <div key={group.key}><h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</h3><div className="overflow-hidden rounded-2xl bg-surface">{group.entries.map((entry) => <LedgerRow key={String(entry.id)} entry={entry} visible={visible} />)}</div></div>)}</div>}
           </section>
         </>
       )}

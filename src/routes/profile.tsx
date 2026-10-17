@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, ChevronRight, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { signOutBetterAuth } from "@/lib/better-auth-client";
+import { clearTravelLocalData } from "@/lib/travel-local-data";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { Page, Wordmark, group, row, label } from "@/components/shell";
 import { CustomerAuth } from "@/components/customer-auth";
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/profile")({
       { name: "description", content: "Akun, riwayat pesanan, dan bantuan Djiwa Travel." },
       { property: "og:title", content: "Profil — Djiwa Travel" },
       { property: "og:description", content: "Akun, riwayat pesanan, dan bantuan Djiwa Travel." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: Profile,
@@ -35,6 +37,7 @@ function Profile() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const profileSaveLabel = useStagedLabel(savingProfile, ACTION_STAGES.profileSave);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [orderFilter, setOrderFilter] = useState<"ALL" | "PENDING" | "READY" | "TERMINAL">("ALL");
   const filteredOrders = orders.filter((o) => {
@@ -99,13 +102,19 @@ function Profile() {
           </div>
           {user ? (
             <button
-              className="tap rounded-xl p-2 text-muted-foreground"
-              aria-label="Keluar"
+              type="button"
+              className="tap inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-background px-2.5 text-xs font-semibold text-muted-foreground"
+              aria-label="Logout"
               onClick={() => {
-                void signOutBetterAuth().then(() => setUser(null));
+                void signOutBetterAuth().then(() => {
+                  // Sign-out is the moment another customer could pick up this device.
+                  clearTravelLocalData();
+                  setUser(null);
+                });
               }}
             >
-              <LogOut className="size-5" />
+              <LogOut className="size-4" aria-hidden="true" />
+              <span>Logout</span>
             </button>
           ) : null}
         </div>
@@ -152,7 +161,7 @@ function Profile() {
                 onClick={submitProfile}
                 className="h-11 flex-1 rounded-xl bg-primary font-semibold text-primary-foreground disabled:opacity-50"
               >
-                {savingProfile ? "Menyimpan…" : "Simpan data"}
+                {savingProfile ? profileSaveLabel : "Simpan data"}
               </button>
               {profileSaved && (
                 <button

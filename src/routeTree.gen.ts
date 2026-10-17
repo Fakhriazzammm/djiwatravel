@@ -44,6 +44,8 @@ import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
 import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
+import { Route as PanduanIndexRouteImport } from './routes/panduan.index'
+import { Route as PanduanSlugRouteImport } from './routes/panduan.$slug'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
 import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
 import { Route as RefundOrderRouteImport } from './routes/refund.$order'
@@ -231,6 +233,16 @@ const OrderIdRoute = OrderIdRouteImport.update({
   path: '/order/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PanduanIndexRoute = PanduanIndexRouteImport.update({
+  id: '/panduan/',
+  path: '/panduan/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PanduanSlugRoute = PanduanSlugRouteImport.update({
+  id: '/panduan/$slug',
+  path: '/panduan/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlanIdRoute = PlanIdRouteImport.update({
   id: '/plan/$id',
   path: '/plan/$id',
@@ -318,11 +330,13 @@ export interface FileRoutesByFullPath {
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
+  '/panduan/$slug': typeof PanduanSlugRoute
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
+  '/panduan/': typeof PanduanIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
@@ -365,11 +379,13 @@ export interface FileRoutesByTo {
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
+  '/panduan/$slug': typeof PanduanSlugRoute
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
   '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
+  '/panduan': typeof PanduanIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
@@ -413,11 +429,13 @@ export interface FileRoutesById {
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
+  '/panduan/$slug': typeof PanduanSlugRoute
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
+  '/panduan/': typeof PanduanIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
@@ -462,11 +480,13 @@ export interface FileRouteTypes {
     | '/destination/$code'
     | '/my-esim/$id'
     | '/order/$id'
+    | '/panduan/$slug'
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
     | '/admin/'
     | '/my-esim/'
+    | '/panduan/'
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
@@ -509,11 +529,13 @@ export interface FileRouteTypes {
     | '/destination/$code'
     | '/my-esim/$id'
     | '/order/$id'
+    | '/panduan/$slug'
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
     | '/admin'
     | '/my-esim'
+    | '/panduan'
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
@@ -556,11 +578,13 @@ export interface FileRouteTypes {
     | '/destination/$code'
     | '/my-esim/$id'
     | '/order/$id'
+    | '/panduan/$slug'
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
     | '/admin/'
     | '/my-esim/'
+    | '/panduan/'
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
@@ -604,11 +628,13 @@ export interface RootRouteChildren {
   DestinationCodeRoute: typeof DestinationCodeRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
   OrderIdRoute: typeof OrderIdRoute
+  PanduanSlugRoute: typeof PanduanSlugRoute
   PlanIdRoute: typeof PlanIdRoute
   ReceiptIdRoute: typeof ReceiptIdRoute
   RefundOrderRoute: typeof RefundOrderRoute
   AdminIndexRoute: typeof AdminIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
+  PanduanIndexRoute: typeof PanduanIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
@@ -864,6 +890,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/panduan/': {
+      id: '/panduan/'
+      path: '/panduan'
+      fullPath: '/panduan/'
+      preLoaderRoute: typeof PanduanIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/panduan/$slug': {
+      id: '/panduan/$slug'
+      path: '/panduan/$slug'
+      fullPath: '/panduan/$slug'
+      preLoaderRoute: typeof PanduanSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/plan/$id': {
       id: '/plan/$id'
       path: '/plan/$id'
@@ -983,11 +1023,13 @@ const rootRouteChildren: RootRouteChildren = {
   DestinationCodeRoute: DestinationCodeRoute,
   MyEsimIdRoute: MyEsimIdRoute,
   OrderIdRoute: OrderIdRoute,
+  PanduanSlugRoute: PanduanSlugRoute,
   PlanIdRoute: PlanIdRoute,
   ReceiptIdRoute: ReceiptIdRoute,
   RefundOrderRoute: RefundOrderRoute,
   AdminIndexRoute: AdminIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
+  PanduanIndexRoute: PanduanIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,

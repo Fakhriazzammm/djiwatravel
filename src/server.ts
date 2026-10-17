@@ -3,12 +3,30 @@ import { canonicalRedirectUrl } from "./lib/canonical-host";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import {
+  prewarmResellerCatalog,
+  configureResellerCatalogCache,
+} from "./lib/reseller-catalog-cache";
+import { createResellerCatalogFileStore } from "./lib/reseller-catalog-file-store.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+
+const catalogFileStore = createResellerCatalogFileStore();
+if (catalogFileStore) {
+  (
+    globalThis as typeof globalThis & {
+      __djiwa_reseller_catalog_store__?: typeof catalogFileStore;
+    }
+  ).__djiwa_reseller_catalog_store__ = catalogFileStore;
+  configureResellerCatalogCache({ store: catalogFileStore });
+}
+
+// Warm the browse catalog without delaying the first HTML response.
+void prewarmResellerCatalog();
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {

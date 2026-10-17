@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import type { EsimProfile } from "./providers";
 import { createGuestOrderDraft, getGuestOrders } from "./guest-orders.server";
+import { claimGuestOrderForMember, getMemberOrders } from "./member-orders.server";
 import { rebuildMayarInvoice } from "./mayar-gateway";
 import { createMayarInvoice } from "./mayar-gateway";
 import { mapGuestOrderRecord } from "./guest-order-view";
@@ -41,9 +42,12 @@ export type Order = {
   usedGb?: number;
   providerOrderNo?: string;
   priceSnapshot?: { amountIdr: number; capturedAt: number; currency: "IDR"; packageId: string };
+  /** True when this order came from the verified member read path rather than a local guest token. */
+  fromMemberAccount?: boolean;
 };
 
 const KEY = "djiwa.orders";
+let memberOrderCache: Order[] = [];
 const read = (): Order[] => {
   try {
     return JSON.parse(localStorage.getItem(KEY) || "[]");
@@ -57,7 +61,7 @@ const write = (o: Order[]) => {
 };
 
 /** Pulls the authoritative server state for every stored guest credential. */
-export async function refreshOrdersFromServer(): Promise<void> {
+export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => void): Promise<void> {
   const credentials = Object.entries(readGuestAccess())
     .filter(
       ([orderId, token]) =>
@@ -70,35 +74,103 @@ export async function refreshOrdersFromServer(): Promise<void> {
     )
     .slice(0, 20)
     .map(([orderId, accessToken]) => ({ orderId, accessToken }));
-  if (!credentials.length) return;
-  try {
-    const records = await getGuestOrders({ data: credentials });
-    const remote = records.map(mapGuestOrderRecord);
-    const current = read().filter((order) => hasGuestOrderAccess(order.id));
-    const byId = new Map(remote.map((order) => [order.id, order]));
-    const merged = current.map((order) => byId.get(order.id) ?? order);
-    for (const order of remote) {
-      if (!current.some((existing) => existing.id === order.id)) merged.unshift(order);
-    }
-    write(merged);
-  } catch {
-    // Keep the local order cache available while the server is unreachable.
+
+  // Member reads are independent of the guest list: a signed-in customer must see their orders even
+  // on a device that never held a guest token. An unauthenticated caller simply gets [].
+  const [guestResult, memberResult] = await Promise.allSettled([
+    credentials.length ? getGuestOrders({ data: credentials }) : Promise.resolve([]),
+    getMemberOrders(),
+  ]);
+
+  const guestRemote = guestResult.status === "fulfilled" ? guestResult.value.map(mapGuestOrderRecord) : [];
+  const memberRemote: Order[] = memberResult.status === "fulfilled"
+    ? memberResult.value.map((record) => ({ ...mapGuestOrderRecord(record), fromMemberAccount: true }))
+    : [];
+
+  if (guestResult.status === "rejected" && memberResult.status === "rejected") return;
+
+  const current = read();
+  const guestById = new Map(guestRemote.map((order) => [order.id, order]));
+  const memberById = new Map(memberRemote.map((order) => [order.id, order]));
+
+  // The server copy wins over the local cache, and an order owned by the account is not shown twice.
+  const seen = new Set<string>();
+  const merged: Order[] = [];
+  for (const order of current) {
+    if (seen.has(order.id)) continue;
+    if (!hasGuestOrderAccess(order.id) && !memberById.has(order.id)) continue;
+    seen.add(order.id);
+    merged.push(memberById.get(order.id) ?? guestById.get(order.id) ?? order);
   }
+  for (const order of [...memberRemote, ...guestRemote]) {
+    if (seen.has(order.id)) continue;
+    seen.add(order.id);
+    merged.unshift(order);
+  }
+  write(merged);
+  onMerged?.(merged);
+}
+
+/**
+ * Import the guest orders bought on this device into the signed-in account.
+ *
+ * The guest access token is what proves the purchase, and it is verified server-side by hash
+ * comparison. Nothing is claimed by matching an email. The server refuses an order that already
+ * belongs to a different account, and re-claiming is a no-op, so this is safe to call on every
+ * profile visit.
+ */
+export async function claimGuestOrders(): Promise<{ claimed: number; already: number }> {
+  const credentials = Object.entries(readGuestAccess())
+    .filter(
+      ([orderId, token]) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId) &&
+        typeof token === "string" &&
+        token.length >= 32 &&
+        token.length <= 256,
+    )
+    .slice(0, 20)
+    .map(([orderId, accessToken]) => ({ orderId, accessToken }));
+  if (!credentials.length) return { claimed: 0, already: 0 };
+
+  let claimed = 0;
+  let already = 0;
+  for (const credential of credentials) {
+    try {
+      const result = await claimGuestOrderForMember({ data: credential });
+      if (result.claimed) claimed += 1;
+      else if (result.reason === "already_member") already += 1;
+    } catch {
+      // Already-owned, unverified, or a transient failure: none of these should stop the loop, and
+      // the next profile visit retries.
+    }
+  }
+  if (claimed > 0) await refreshOrdersFromServer();
+  return { claimed, already };
 }
 
 export function useOrders() {
   const [orders, set] = useState<Order[] | null>(null);
   useEffect(() => {
+    let active = true;
     const f = () => set(read().filter((order) => hasGuestOrderAccess(order.id)));
     f();
     window.addEventListener("djiwa-orders", f);
-    void refreshOrdersFromServer();
-    return () => window.removeEventListener("djiwa-orders", f);
+    // Pull both ownership paths: guest orders held by this browser and every order owned by the
+    // verified session, so a signed-in customer sees the same list on any device.
+    void refreshOrdersFromServer(active ? (merged) => set(merged) : undefined);
+    return () => {
+      active = false;
+      window.removeEventListener("djiwa-orders", f);
+    };
   }, []);
   return orders;
 }
 
 type InvoiceInput = Parameters<typeof createMayarInvoice>[0]["data"];
+
+function isMayarDuplicateError(error: unknown) {
+  return error instanceof Error && /duplicate request|tunggu.*menit/i.test(error.message);
+}
 
 /**
  * Invoice creation talks to an external provider over the public internet, so a single slow or
@@ -115,6 +187,9 @@ export async function createInvoiceWithRetry(
       return await createMayarInvoice({ data: input });
     } catch (error) {
       lastError = error;
+      if (isMayarDuplicateError(error)) {
+        throw new Error("Pembayaran sedang diproses. Tunggu sekitar 1 menit sebelum mencoba lagi.");
+      }
       if (attempt < attempts) {
         await new Promise((resolve) => setTimeout(resolve, attempt * 1_200));
       }
@@ -129,7 +204,6 @@ export async function createInvoiceWithRetry(
  * open (the access token already lives in this browser).
  */
 export async function ensurePaymentLink(order: Order): Promise<string | null> {
-
   const accessToken = guestAccessTokenFor(order.id);
   if (!accessToken) return null;
   const invoice = await rebuildMayarInvoice({ data: { orderId: order.id, accessToken } });
@@ -162,9 +236,7 @@ function readGuestAccess(): Record<string, string> {
 /** Access token for one guest order, used to re-verify its payment server-side. */
 export function guestAccessTokenFor(orderId: string): string | undefined {
   const token = readGuestAccess()[orderId];
-  return typeof token === "string" && token.length >= 32 && token.length <= 256
-    ? token
-    : undefined;
+  return typeof token === "string" && token.length >= 32 && token.length <= 256 ? token : undefined;
 }
 
 export function hasGuestOrderAccess(orderId: string): boolean {
@@ -262,7 +334,12 @@ const patch = (id: string, p: Partial<Order>) =>
 
 export function cancelOrder(id: string) {
   const o = read().find((x) => x.id === id);
-  if (!o || effectivePaymentStatus(o.status, o.paymentExpiresAt) === "EXPIRED" || !["ORDER_CREATED", "WAITING_PAYMENT"].includes(o.status)) return false;
+  if (
+    !o ||
+    effectivePaymentStatus(o.status, o.paymentExpiresAt) === "EXPIRED" ||
+    !["ORDER_CREATED", "WAITING_PAYMENT"].includes(o.status)
+  )
+    return false;
   patch(id, { status: "CANCELLED" });
   return true;
 }
@@ -279,8 +356,8 @@ export function refreshExpiredOrders(now = Date.now()) {
     effectivePaymentStatus(o.status, o.paymentExpiresAt, now) === "EXPIRED"
       ? { ...o, status: "EXPIRED" as const }
       : o.expiresAt && o.expiresAt <= now && ["READY", "INSTALLED"].includes(o.status)
-      ? { ...o, status: "EXPIRED" as const }
-      : o,
+        ? { ...o, status: "EXPIRED" as const }
+        : o,
   );
   write(changed);
 }

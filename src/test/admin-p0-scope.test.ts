@@ -7,6 +7,8 @@ import { maskEmail, maskWhatsapp, toAdminCustomer } from "@/lib/admin-display";
 
 const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "utf8");
 
+// Routes that must stay as guarded redirects. "catalog" was promoted to a first-class
+// workspace (Katalog & Pricing), so it is no longer part of this list.
 const legacyRoutes = [
   "analytics",
   "customers",
@@ -17,8 +19,9 @@ const legacyRoutes = [
 
 describe("simplified admin P0 scope", () => {
   it("keeps only curated destinations and never re-exposes legacy routes", () => {
-    // "Keuangan" (the Travel finance book) is a deliberate addition on top of the P0 five;
-    // what this guards is that no legacy destination creeps back into the sidebar.
+    // "Keuangan" (the Travel finance book) and "Katalog" (Katalog & Pricing) are deliberate
+    // additions on top of the P0 five; what this guards is that no legacy destination creeps
+    // back into the sidebar.
     expect(adminNavigation.map(([label]) => label)).toEqual([
       "Dashboard",
       "Orders",
@@ -26,7 +29,8 @@ describe("simplified admin P0 scope", () => {
       "Refunds",
       "Support",
       "Keuangan",
-      "eSIM / Provisioning",
+      "Katalog",
+      "Provisioning",
       "Settings",
     ]);
     const visibleHrefs = adminNavigation.map(([, href]) => href);
@@ -69,7 +73,7 @@ describe("simplified admin P0 scope", () => {
 
   it("describes successful dashboard data as realtime database data", () => {
     const source = read("routes/admin.dashboard.tsx");
-    expect(source).toContain("Data realtime dari database Travel");
+    expect(source).toContain("Ringkasan operasional Djiwa Travel");
     expect(source).not.toContain("Read model operasional belum tersedia");
   });
 

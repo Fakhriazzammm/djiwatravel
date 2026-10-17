@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { parseCanonicalWalletResponse, classifyCanonicalWalletError, canonicalWalletPayload } from "@/lib/customer-wallet.server";
+import { parseCanonicalWalletResponse, classifyCanonicalWalletError, canonicalWalletPayload, type CustomerWalletLedgerEntry } from "@/lib/customer-wallet.server";
 import { groupWalletLedger, ledgerStatusLabel } from "@/lib/customer-wallet-view";
+import { filterLedgerByScope, parseWalletScope, normalizeSourceApp, WALLET_SCOPE_LABELS } from "@/lib/wallet-scope";
 import { quickActionSoonCopy, WALLET_ACTIONS, QUICK_ACTION_SUPPORT_COPY } from "@/lib/wallet-quick-actions";
 
 const wallet = {
@@ -13,9 +14,9 @@ const wallet = {
   status: "active" as const,
   updated_at: "2026-10-01T00:00:00.000Z",
 };
-const entry = (id: string, created_at: string, direction: "credit" | "debit" = "credit") => ({
+const entry = (id: string, created_at: string, direction: "credit" | "debit" = "credit"): CustomerWalletLedgerEntry => ({
   id, amount: 10000, direction, balance_after: 120000, status: "posted", transaction_type: "top_up",
-  reference_type: "invoice", reference_id: id, note: null, created_at,
+  reference_type: "invoice", reference_id: id, note: null, created_at, source_app: null,
 });
 
 describe("canonical customer Wallet adapter", () => {
@@ -39,6 +40,25 @@ describe("canonical customer Wallet adapter", () => {
       sourceId: "customer-1",
       email: "A@EXAMPLE.COM",
     });
+  });
+
+  it("parses an absent or blank canonical source_app without inventing provenance", () => {
+    const response = parseCanonicalWalletResponse({
+      wallet,
+      ledger: [entry("legacy", "2026-10-01T10:00:00Z"), { ...entry("travel", "2026-10-02T10:00:00Z"), source_app: "djiwa-travel" }],
+    }, "customer-1");
+    expect(response.ledger.map((row) => normalizeSourceApp(row.source_app))).toEqual([null, "djiwa-travel"]);
+  });
+
+  it("keeps only canonical Djiwa Travel provenance in the Travel scope", () => {
+    const ledger = [
+      { ...entry("travel", "2026-10-01T10:00:00Z"), source_app: "djiwa-travel" },
+      { ...entry("other", "2026-10-02T10:00:00Z"), source_app: "djiwa-tentram" },
+      entry("unattributed", "2026-10-03T10:00:00Z"),
+    ];
+    expect(filterLedgerByScope(ledger, "all")).toHaveLength(3);
+    expect(filterLedgerByScope(ledger, "djiwa-travel").map((row) => row.id)).toEqual(["travel"]);
+    expect(WALLET_SCOPE_LABELS["djiwa-travel"]).toBe("Djiwa Travel");
   });
 });
 

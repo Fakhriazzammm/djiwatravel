@@ -25,7 +25,12 @@ import {
   writeNotifyPreference,
 } from "@/lib/esim-notify";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
+import { paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
+import { TravelSupportDialog } from "@/components/travel-support-dialog";
+import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
+import { TravelTimeline } from "@/components/travel-timeline";
+import { activationTimeline } from "@/lib/travel-journey";
 
 /**
  * Support channel. Kept as one constant so every entry point points at the same place, and so
@@ -50,6 +55,8 @@ function OrderPage() {
   const orders = useOrders();
   const [view, setView] = useState<"main" | "qr" | "guide">("main");
   const [checking, setChecking] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
   const [checkNote, setCheckNote] = useState("");
   const [notifyReady, setNotifyReady] = useState(false);
   const [notifyBusy, setNotifyBusy] = useState(false);
@@ -61,14 +68,30 @@ function OrderPage() {
     setNotifyReady(readNotifyPreference() && notificationPermission() === "granted");
   }, []);
 
+  // One settle-on-arrival read, so the activation timeline can state when the status was last
+  // confirmed instead of implying freshness from the order creation time.
+  useEffect(() => {
+    let cancelled = false;
+    void refreshOrdersFromServer()
+      .then(() => {
+        if (!cancelled) setSyncedAt(Date.now());
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [linkBusy, setLinkBusy] = useState(false);
+  const [linkStage, setLinkStage] = useState<PaymentProgressStage>("idle");
   const [linkNote, setLinkNote] = useState("");
   const linkAttempted = useRef(false);
 
-  /** Rebuilds the Mayar link for an order that was created while checkout failed. */
+  /** Rebuilds the payment link for an order that was created while checkout failed. */
   const buildLink = async () => {
     if (!current) return;
     setLinkBusy(true);
+    setLinkStage("preparing");
     setLinkNote("");
     try {
       const url = await ensurePaymentLink(current);
@@ -76,6 +99,7 @@ function OrderPage() {
     } catch {
       setLinkNote("Belum bisa membuat link pembayaran. Coba lagi sebentar lagi.");
     } finally {
+      setLinkStage("idle");
       setLinkBusy(false);
     }
   };
@@ -121,7 +145,7 @@ function OrderPage() {
         setCheckNote(
           result.settled
             ? "Pembayaran terverifikasi. eSIM sedang disiapkan…"
-            : "Pembayaran belum kami terima. Selesaikan dulu di Mayar, lalu cek lagi.",
+            : "Pembayaran belum kami terima. Selesaikan dulu pembayarannya, lalu cek lagi.",
         );
       return result.settled;
     } catch {
@@ -184,7 +208,7 @@ function OrderPage() {
 
   if (!orders)
     return (
-      <Page tabs={false}>
+      <Page>
         <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
       </Page>
     );
@@ -203,7 +227,7 @@ function OrderPage() {
 
   if (o.status === "ORDER_CREATED" || o.status === "WAITING_PAYMENT") {
     return (
-      <Page tabs={false}>
+      <Page>
         <p className="pt-8 text-center text-sm text-muted-foreground">Pesanan tersimpan</p>
         <h1 className="mt-1 text-center text-3xl font-bold">{rupiah(o.amount)}</h1>
         <div className="mt-6 rounded-2xl bg-surface p-5">
@@ -224,8 +248,8 @@ function OrderPage() {
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {o.paymentUrl
-              ? "Setelah membayar di Mayar, kamu otomatis kembali ke halaman ini dan eSIM langsung muncul."
-              : "Tagihan Mayar belum terbentuk. Tekan tombol di bawah untuk membuatnya."}
+              ? "Setelah membayar, kamu otomatis kembali ke halaman ini dan eSIM langsung muncul."
+              : "Tagihan pembayaran belum terbentuk. Tekan tombol di bawah untuk membuatnya."}
           </p>
           {o.paymentUrl ? (
             <a href={o.paymentUrl} target="_blank" rel="noreferrer" className={`${btnRed} mt-4 block`}>
@@ -238,7 +262,7 @@ function OrderPage() {
               onClick={() => void buildLink()}
               className={`${btnRed} mt-4 block w-full disabled:opacity-50`}
             >
-              {linkBusy ? "Membuat link pembayaran…" : "Buat link pembayaran"}
+              {linkBusy ? paymentProgressLabel(linkStage) : "Buat link pembayaran"}
             </button>
           )}
           {linkNote && <p className="mt-2 text-xs text-destructive">{linkNote}</p>}
@@ -277,6 +301,14 @@ function OrderPage() {
           <h1 className="mt-6 text-2xl font-bold">Pembayaran diterima</h1>
           <p className="mt-2 text-muted-foreground">Sedang menyiapkan eSIM kamu…</p>
         </div>
+        <TravelTimeline
+          timeline={activationTimeline(o.status)}
+          lastSyncedAt={syncedAt}
+          onRefresh={async () => {
+            await refreshOrdersFromServer();
+            setSyncedAt(Date.now());
+          }}
+        />
         {notificationsSupported() && (
           <button
             type="button"
@@ -313,12 +345,30 @@ function OrderPage() {
         </div>
         {o.status !== "REFUNDED" && (
           <p className="mt-4 text-sm text-muted-foreground">
-            Provisioning otomatis belum diaktifkan.
+            Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan.
           </p>
         )}
-        <a href={SUPPORT_WHATSAPP_URL} className={`${btnSoft} mt-3`}>
+        <button type="button" onClick={() => setSupportOpen(true)} className={`${btnSoft} mt-3`}>
           Hubungi Support
-        </a>
+        </button>
+        <TravelSupportDialog
+          open={supportOpen}
+          onClose={() => setSupportOpen(false)}
+          topics={supportTopicsFor(o.status)}
+          contextFor={(topic) =>
+            buildSupportContext({
+              topic,
+              status: o.status,
+              orderId: o.id,
+              orderCode: o.publicOrderCode ?? null,
+              packageName,
+              destination: locationLabel,
+              iccid: o.esim?.iccid ?? null,
+              lastSyncedAt: null,
+            })
+          }
+          supportBaseUrl={SUPPORT_WHATSAPP_URL}
+        />
       </Page>
     );
   }
@@ -335,8 +385,11 @@ function OrderPage() {
           <p className="mt-2 text-muted-foreground">
             Silakan pilih paket eSIM lain jika ingin melanjutkan perjalanan.
           </p>
-          <Link to="/explore" className={`${btnPrimary} mt-6`}>
-            Lihat paket eSIM
+          <Link to="/checkout/$id" params={{ id: o.packageId }} className={`${btnRed} mt-6`}>
+            Beli lagi paket ini
+          </Link>
+          <Link to="/explore" className={`${btnSoft} mt-2`}>
+            Lihat paket eSIM lain
           </Link>
         </div>
       </Page>
@@ -346,7 +399,7 @@ function OrderPage() {
   const esim = o.esim!;
   if (view === "qr")
     return (
-      <Page tabs={false}>
+      <Page>
         <button
           onClick={() => setView("main")}
           className="flex h-11 items-center text-[16px] text-brand-red"
@@ -361,7 +414,7 @@ function OrderPage() {
     );
   if (view === "guide")
     return (
-      <Page tabs={false}>
+      <Page>
         <button
           onClick={() => setView("main")}
           className="flex h-11 items-center text-[16px] text-brand-red"
@@ -386,7 +439,17 @@ function OrderPage() {
           {quotaLabel} · {durationLabel}
         </p>
       </div>
-      <div className="mt-10 space-y-3">
+      <div className="mt-8">
+        <TravelTimeline
+          timeline={activationTimeline(o.status)}
+          lastSyncedAt={syncedAt}
+          onRefresh={async () => {
+            await refreshOrdersFromServer();
+            setSyncedAt(Date.now());
+          }}
+        />
+      </div>
+      <div className="mt-8 space-y-3">
         <a
           href={`https://esimsetup.apple.com/esim_qrcode_provisioning?carddata=${encodeURIComponent(esim.lpa)}`}
           className={btnRed}
@@ -412,6 +475,9 @@ function OrderPage() {
       >
         <Receipt className="size-4" aria-hidden="true" />
         Struk &amp; panduan pasang
+      </Link>
+      <Link to="/checkout/$id" params={{ id: o.packageId }} className={`${btnSoft} mt-3`}>
+        Beli lagi paket ini
       </Link>
       <a
         href={SUPPORT_WHATSAPP_URL}

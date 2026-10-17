@@ -2,6 +2,7 @@ import { Delete, LoaderCircle, Wallet, X } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { beginDjiwaPayTopup } from "@/lib/djiwa-pay-topup-client";
+import { nextFrame, paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
 import { rupiah } from "@/lib/pricing";
 import { FixedLayer } from "@/components/motion-primitives";
 
@@ -21,37 +22,45 @@ export function DjiwaPayTopup({
   onOpenChange,
   creditedBefore,
   onSubmitted,
+  presets = PRESETS,
+  minimum = MINIMUM_AMOUNT,
 }: {
   userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   creditedBefore: number;
   onSubmitted?: (pending: { amount: number; startedAt: number; creditedBefore: number }) => void;
+  /** Nominal cepat, disediakan server agar operasional bisa mengubah tanpa deploy. */
+  presets?: readonly number[];
+  minimum?: number;
 }) {
   const reduceMotion = useReducedMotion();
   const [amount, setAmount] = useState("0");
   const [busy, setBusy] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
+  const [stage, setStage] = useState<PaymentProgressStage>("idle");
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
     if (busy) return;
     const parsed = Number(amount);
-    if (!Number.isSafeInteger(parsed) || parsed < MINIMUM_AMOUNT) {
-      setError("Minimal isi saldo Rp1.000.");
+    if (!Number.isSafeInteger(parsed) || parsed < minimum) {
+      setError(`Minimal isi saldo ${rupiah(minimum)}.`);
       return;
     }
     setError(null);
     setBusy(true);
-    setRedirecting(true);
+    setStage("preparing");
     try {
       const invoice = await beginDjiwaPayTopup(parsed, userId);
       const pending = { amount: parsed, startedAt: Date.now(), creditedBefore };
       window.sessionStorage.setItem(`${TOPUP_PENDING_KEY}:${userId}`, JSON.stringify(pending));
       onSubmitted?.(pending);
+      setStage("redirecting");
+      // Let the "opening" stage render before the browser leaves this page.
+      await nextFrame();
       window.location.assign(invoice.invoice_url);
     } catch (cause) {
-      setRedirecting(false);
+      setStage("idle");
       setBusy(false);
       setError(cause instanceof Error ? cause.message : "Top up gagal. Coba lagi.");
     }
@@ -68,13 +77,13 @@ export function DjiwaPayTopup({
           <div className="mx-auto h-1.5 w-11 rounded-full bg-muted" aria-hidden="true" />
           <div className="mt-3 flex items-center justify-between"><button type="button" onClick={close} disabled={busy} aria-label="Tutup Isi Saldo" className="tap flex h-11 w-11 items-center justify-center rounded-full bg-background shadow-sm disabled:opacity-50"><X className="size-5" /></button><h2 id="djiwa-pay-topup-title" className="text-base font-bold">Isi Saldo</h2><span className="w-11" aria-hidden="true" /></div>
           <div className="mt-3 divide-y divide-border rounded-2xl bg-background px-3"><div className="flex min-h-14 items-center justify-between"><div><p className="text-[10px] font-semibold text-muted-foreground">Dari</p><p className="text-sm font-semibold">Wallet Djiwa Travel</p></div><Wallet className="size-5 text-primary" aria-hidden="true" /></div><div className="flex min-h-14 items-center justify-between"><div><p className="text-[10px] font-semibold text-muted-foreground">Ke</p><p className="text-sm font-semibold">Wallet Djiwa Pay</p></div><Wallet className="size-5 text-primary" aria-hidden="true" /></div></div>
-          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nominal cepat</p><div className="mt-2 grid grid-cols-4 gap-1.5" aria-label="Preset nominal isi saldo">{PRESETS.map((preset) => <button key={preset} type="button" aria-pressed={amount === String(preset)} disabled={busy} onClick={() => { setAmount(String(preset)); setError(null); }} className={`tap min-h-11 rounded-xl border px-1 text-[10px] font-bold disabled:opacity-60 ${amount === String(preset) ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"}`}>{rupiah(preset)}</button>)}</div>
+          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nominal cepat</p><div className="mt-2 grid grid-cols-4 gap-1.5" aria-label="Preset nominal isi saldo">{presets.map((preset) => <button key={preset} type="button" aria-pressed={amount === String(preset)} disabled={busy} onClick={() => { setAmount(String(preset)); setError(null); }} className={`tap min-h-11 rounded-xl border px-1 text-[10px] font-bold disabled:opacity-60 ${amount === String(preset) ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"}`}>{rupiah(preset)}</button>)}</div>
           <div className="mt-4 text-center"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Nominal isi saldo</p><p className="mt-1 min-h-[48px] text-[34px] font-bold tracking-tight">{rupiah(Number(amount) || 0)}</p><p className="mt-1 text-[11px] text-muted-foreground">Minimal isi saldo Rp1.000</p></div>
           <div className="mx-auto mt-3 grid w-full max-w-[300px] grid-cols-3 gap-1.5" aria-label="Keypad nominal isi saldo">{KEYS.map((key, index) => key ? <button key={key} type="button" disabled={busy} aria-label={key === "delete" ? "Hapus satu angka" : `Angka ${key}`} onClick={() => { setAmount((value) => amountAfterKey(value, key)); setError(null); }} className="tap flex h-12 items-center justify-center rounded-2xl text-[22px] font-semibold disabled:opacity-50">{key === "delete" ? <Delete className="size-5" aria-hidden="true" /> : key}</button> : <span key={`empty-${index}`} aria-hidden="true" />)}</div>
-          <div aria-live="polite" className="mt-2 min-h-5 text-center">{error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}</div><button type="button" disabled={busy || !Number.isSafeInteger(Number(amount)) || Number(amount) < MINIMUM_AMOUNT} onClick={() => void submit()} className="tap mt-2 min-h-12 w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Menyiapkan pembayaran..." : "Lanjutkan"}</button>
+          <div aria-live="polite" className="mt-2 min-h-5 text-center">{error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}</div><button type="button" disabled={busy || !Number.isSafeInteger(Number(amount)) || Number(amount) < minimum} onClick={() => void submit()} className="tap mt-2 min-h-12 w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50">{busy ? paymentProgressLabel(stage) : "Lanjutkan"}</button>
         </motion.section>
       </motion.div>
-      {redirecting && <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-slate-950/60 px-5 backdrop-blur-sm"><section role="status" aria-live="polite" aria-labelledby="djiwa-pay-redirect-title" className="w-full max-w-sm rounded-[28px] bg-surface p-6 text-center shadow-xl"><LoaderCircle aria-hidden="true" className="mx-auto size-9 animate-spin text-primary motion-reduce:animate-none" /><h2 id="djiwa-pay-redirect-title" className="mt-4 text-xl font-bold">Tunggu sebentar</h2><p className="mt-2 text-sm">Anda akan diarahkan ke pembayaran Djiwa Pay</p><p className="mt-3 text-xs text-muted-foreground">Menyiapkan halaman pembayaran Mayar...</p></section></div>}
+      {stage !== "idle" && <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-slate-950/60 px-5 backdrop-blur-sm"><section role="status" aria-live="polite" aria-labelledby="djiwa-pay-redirect-title" className="w-full max-w-sm rounded-[28px] bg-surface p-6 text-center shadow-xl"><LoaderCircle aria-hidden="true" className="mx-auto size-9 animate-spin text-primary motion-reduce:animate-none" /><h2 id="djiwa-pay-redirect-title" className="mt-4 text-xl font-bold">Tunggu sebentar</h2><p className="mt-2 text-sm">{stage === "redirecting" ? "Membuka halaman pembayaran" : "Menyiapkan pembayaran Djiwa Pay"}</p><p className="mt-3 text-xs text-muted-foreground">{stage === "redirecting" ? "Jangan tutup halaman ini." : "Mohon tunggu sebentar…"}</p></section></div>}
       </>
     </FixedLayer>
   );

@@ -5,6 +5,7 @@ import {
   canRetryMayarIntent,
   findMayarInvoiceRecord,
 } from "../lib/mayar-gateway";
+import { decidePendingSettlement, providerPaidAtMs } from "../lib/mayar-settlement-sweep.server";
 
 // A live 400 "extraData Validation Error" from Mayar meant every checkout died at the invoice
 // step, so this pins the exact payload shape the provider accepts.
@@ -133,5 +134,41 @@ describe("Mayar intent reconciliation", () => {
         6,
       ),
     ).toBe(true);
+  });
+});
+
+describe("provider-confirmed payment sweep", () => {
+  it("settles only a paid transaction with the exact local amount", () => {
+    expect(
+      decidePendingSettlement({
+        localAmount: 15000,
+        providerStatus: "PAID",
+        providerAmount: 15000,
+        providerPaidAtMs: 1760265345012,
+      }),
+    ).toEqual({ action: "settle", amount: 15000, paidAt: 1760265345012 });
+  });
+
+  it("keeps unpaid and mismatched transactions fail-closed", () => {
+    expect(
+      decidePendingSettlement({
+        localAmount: 15000,
+        providerStatus: "pending",
+        providerAmount: 15000,
+        providerPaidAtMs: 1,
+      }),
+    ).toEqual({ action: "skip", reason: "not_paid" });
+    expect(
+      decidePendingSettlement({
+        localAmount: 15000,
+        providerStatus: "paid",
+        providerAmount: 14000,
+        providerPaidAtMs: 1,
+      }),
+    ).toEqual({ action: "skip", reason: "amount_mismatch" });
+  });
+
+  it("normalizes provider epoch milliseconds", () => {
+    expect(providerPaidAtMs({ updatedAt: 1760265345012 })).toBe(1760265345012);
   });
 });

@@ -1,9 +1,8 @@
 import { CircleAlert, Database, Server } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
-import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
+import { AdminShell, AdminStatStrip, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { getAdminReadiness } from "@/lib/admin-readiness.server";
-
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
@@ -12,48 +11,61 @@ export const Route = createFileRoute("/admin/settings")({
 });
 function AdminSettings() {
   const { readiness } = Route.useLoaderData();
+  const ready = readiness.filter((x) => x.ready).length;
   return (
-    <AdminShell
-      title="Settings"
-      subtitle="Readiness sistem saja. Credential, secret, pricing, dan maintenance dikelola di server/platform."
-    >
-      <AdminPageState
-        title="Server readiness"
-        detail="Status berikut dibaca server-side dari konfigurasi readiness. Secret tidak pernah dikirim ke browser."
-      />
-      <section className="mt-6 rounded-2xl border border-[#e5e5ea] bg-white p-5">
-        <SectionHeading
-          title="System readiness"
-          detail="Tidak ada credential atau konfigurasi bisnis yang dapat diedit di sini."
-        />
-        <div className="mt-5 divide-y divide-[#f0f0f2]">
-          {readiness.map((item) => (
-            <div key={item.name} className="flex min-h-16 items-center gap-3 py-3">
-              <span className="rounded-xl bg-[#f4f4f5] p-2">
-                {item.ready ? (
-                  <Database className="size-4 text-[#248a3d]" />
-                ) : (
-                  <Server className="size-4 text-[#8a8a91]" />
-                )}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{item.name}</p>
-                <p className="mt-1 text-xs text-[#8a8a91]">{item.detail}</p>
-              </div>
-              <StatusPill tone={item.ready ? "good" : "warn"}>
-                {item.ready ? "Ready" : "Belum tersedia"}
-              </StatusPill>
-            </div>
-          ))}
+    <AdminShell title="Settings" subtitle="Server readiness">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <SectionHeading
+            title="System readiness"
+            detail="Credential, secret, pricing, dan maintenance tetap di server."
+          />
+          <StatusPill tone={ready === readiness.length ? "good" : "warn"}>
+            {ready}/{readiness.length} ready
+          </StatusPill>
         </div>
-      </section>
-      <section className="mt-4 flex gap-3 rounded-2xl border border-[#e5e5ea] bg-white p-5 text-sm text-[#6b6b72]">
-        <CircleAlert className="size-5 shrink-0 text-[#b87400]" />
-        <p>
-          Error terakhir dan correlation ID hanya ditampilkan setelah observability read model
-          tersedia. Secret dan raw provider payload tidak pernah ditampilkan.
-        </p>
-      </section>
+        <AdminSurface className="p-2.5">
+          <AdminStatStrip
+            columns={3}
+            items={[
+              { label: "Ready", value: String(ready), tone: ready === readiness.length ? "good" : "warn" },
+              { label: "Belum tersedia", value: String(readiness.length - ready) },
+              { label: "Last check", value: "Live" },
+            ]}
+          />
+        </AdminSurface>
+        <AdminSurface className="p-3">
+          <div className="divide-y divide-[#f0f0f2]">
+            {readiness.map((item) => (
+              <ReadinessRow key={item.name} item={item} />
+            ))}
+          </div>
+          <div className="mt-3 flex gap-2 rounded-xl bg-[#fffaf0] p-3 text-xs text-[#6e6e73]">
+            <CircleAlert className="size-4 shrink-0 text-[#b87400]" />
+            <p>Secret dan raw provider payload tidak pernah ditampilkan.</p>
+          </div>
+        </AdminSurface>
+      </div>
     </AdminShell>
+  );
+}
+function ReadinessRow({ item }: { item: { name: string; ready: boolean; detail: string } }) {
+  return (
+    <div className="flex min-h-14 items-center gap-3 py-2">
+      <span className="rounded-xl bg-[#f7f7f8] p-2">
+        {item.ready ? (
+          <Database className="size-4 text-[#248a3d]" />
+        ) : (
+          <Server className="size-4 text-[#8e8e93]" />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold">{item.name}</p>
+        <p className="truncate text-xs text-[#8e8e93]">{item.detail}</p>
+      </div>
+      <StatusPill tone={item.ready ? "good" : "warn"}>
+        {item.ready ? "Ready" : "Belum tersedia"}
+      </StatusPill>
+    </div>
   );
 }

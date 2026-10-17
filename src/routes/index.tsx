@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations, search } from "@/lib/catalog";
+import { getHomeDestinationFeed } from "@/lib/destination-availability.server";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
-import jp from "@/assets/dest-jp.jpg";
-import sg from "@/assets/dest-sg.jpg";
-import th from "@/assets/dest-th.jpg";
-import kr from "@/assets/dest-kr.jpg";
+import { destinationPhoto } from "@/lib/destination-artwork";
+import { travelGuides } from "@/lib/travel-guides";
+import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
-const photos: Record<string, string> = { JP: jp, SG: sg, TH: th, KR: kr };
+const featuredGuides = travelGuides.slice(0, 3);
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,7 +28,10 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "eSIM internasional untuk traveler Indonesia. Bayar QRIS, langsung online.",
       },
+      { property: "og:url", content: "https://djiwatravel.com/" },
     ],
+    links: [{ rel: "canonical", href: "https://djiwatravel.com/" }],
+    scripts: [jsonLdScript(organizationJsonLd()), jsonLdScript(websiteJsonLd())],
   }),
   component: Home,
 });
@@ -52,6 +55,23 @@ function Home() {
   const orders = useOrders();
   const { user, loading } = useBetterAuthUser();
   useEffect(() => setHello(greeting()), []);
+
+  // The seeded row paints immediately; the live (sellable-only) row replaces it when it arrives so
+  // the first paint never blocks on the reseller provider.
+  const [popular, setPopular] = useState(() => destinations.filter((d) => d.popular));
+  useEffect(() => {
+    let cancelled = false;
+    void getHomeDestinationFeed()
+      .then((feed) => {
+        if (!cancelled && feed.popular.length > 0) setPopular(feed.popular);
+      })
+      .catch(() => {
+        // Keep the seeded row: an unavailable catalogue must not blank the home page.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const active = orders?.find((o) => o.status === "READY" || o.status === "INSTALLED");
   const activeName = active?.packageName ?? active?.packageId;
   const activeLocation = active?.locationCodes?.join(", ") || "Regional";
@@ -82,7 +102,9 @@ function Home() {
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold">
               {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
             </span>
-            <span className="max-w-[6.5rem] truncate text-[14px] font-semibold text-foreground">{accountLabel}</span>
+            <span className="max-w-[6.5rem] truncate text-[14px] font-semibold text-foreground">
+              {accountLabel}
+            </span>
           </Link>
         ) : (
           <CustomerAuth
@@ -110,32 +132,79 @@ function Home() {
       </button>
 
       {searchOpen && (
-        <div className="fixed inset-0 z-50 flex items-end bg-foreground/30 p-3 sm:items-center sm:justify-center" role="presentation" onClick={() => setSearchOpen(false)}>
-          <section role="dialog" aria-modal="true" aria-labelledby="home-search-title" className="w-full max-w-lg rounded-3xl bg-background p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-foreground/30 p-3 sm:items-center sm:justify-center"
+          role="presentation"
+          onClick={() => setSearchOpen(false)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="home-search-title"
+            className="w-full max-w-lg rounded-3xl bg-background p-5 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between gap-3">
-              <h2 id="home-search-title" className="text-lg font-bold">Cari destinasi</h2>
-              <button type="button" aria-label="Tutup pencarian" onClick={() => setSearchOpen(false)} className="tap rounded-full p-2"><X className="size-5" /></button>
+              <h2 id="home-search-title" className="text-lg font-bold">
+                Cari destinasi
+              </h2>
+              <button
+                type="button"
+                aria-label="Tutup pencarian"
+                onClick={() => setSearchOpen(false)}
+                className="tap rounded-full p-2"
+              >
+                <X className="size-5" />
+              </button>
             </div>
             <label className="mt-4 flex h-11 items-center gap-2 rounded-xl bg-surface px-3 shadow-sm">
               <Search className="size-5 text-muted-foreground" />
-              <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Jepang, Korea, Eropa…" className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground" />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Jepang, Korea, Eropa…"
+                className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
+              />
             </label>
             <div className="mt-4 max-h-[min(55vh,24rem)] overflow-y-auto">
               {search(query).length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">Belum ada destinasi untuk “{query}”. Coba nama negara lain.</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Belum ada destinasi untuk “{query}”. Coba nama negara lain.
+                </p>
               ) : (
                 <div className="divide-y divide-border rounded-2xl bg-surface">
                   {search(query).map((destination) => (
-                    <Link key={destination.code} to="/destination/$code" params={{ code: destination.code.toLowerCase() }} onClick={() => setSearchOpen(false)} className="tap flex items-center gap-3 px-4 py-3">
+                    <Link
+                      key={destination.code}
+                      to="/destination/$code"
+                      params={{ code: destination.code.toLowerCase() }}
+                      onClick={() => setSearchOpen(false)}
+                      className="tap flex items-center gap-3 px-4 py-3"
+                    >
                       <span className="text-2xl">{destination.flag}</span>
-                      <span className="min-w-0 flex-1"><span className="block font-medium">{destination.nameId}</span><span className="block text-xs text-muted-foreground">{destination.region === "Regional" ? "Paket regional" : "Paket negara"}</span></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium">{destination.nameId}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {destination.region === "Regional" ? "Paket regional" : "Paket negara"}
+                        </span>
+                      </span>
                       <ChevronRight className="size-5 text-muted-foreground" />
                     </Link>
                   ))}
                 </div>
               )}
             </div>
-            <button type="button" onClick={() => { setSearchOpen(false); void nav({ to: "/explore" }); }} className="mt-4 w-full rounded-xl bg-secondary px-4 py-3 text-sm font-semibold">Lihat semua destinasi</button>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchOpen(false);
+                void nav({ to: "/explore" });
+              }}
+              className="mt-4 w-full rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
+            >
+              Lihat semua destinasi
+            </button>
           </section>
         </div>
       )}
@@ -146,18 +215,18 @@ function Home() {
             Destinasi Populer
           </SectionTitle>
           <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4">
-            {destinations
-              .filter((d) => d.popular)
-              .map((d) => (
+            {popular.map((d) => {
+              const photo = destinationPhoto(d.code);
+              return (
                 <Link
                   key={d.code}
                   to="/destination/$code"
                   params={{ code: d.code.toLowerCase() }}
                   className="tap relative aspect-[4/5] w-[31%] min-w-28 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary"
                 >
-                  {photos[d.code] ? (
+                  {photo ? (
                     <img
-                      src={photos[d.code]}
+                      src={photo}
                       alt={d.nameId}
                       loading="lazy"
                       width={736}
@@ -165,7 +234,10 @@ function Home() {
                       className="absolute inset-0 size-full object-cover"
                     />
                   ) : (
-                    <span className="absolute inset-0 flex items-center justify-center pb-8 text-5xl">
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/12 to-secondary pb-10 text-5xl"
+                    >
                       {d.flag}
                     </span>
                   )}
@@ -178,7 +250,8 @@ function Home() {
                     </p>
                   </div>
                 </Link>
-              ))}
+              );
+            })}
           </div>
         </Reveal>
 
@@ -256,6 +329,36 @@ function Home() {
             </Link>
           </Reveal>
         )}
+
+        <Reveal as="section" className="mt-7" aria-labelledby="home-guides-title">
+          <SectionTitle action={<Link to="/panduan">Lihat semua ›</Link>}>
+            <span id="home-guides-title">Panduan Travel</span>
+          </SectionTitle>
+          <div className="grid gap-2">
+            {featuredGuides.map((guide) => (
+              <Link
+                key={guide.slug}
+                to="/panduan/$slug"
+                params={{ slug: guide.slug }}
+                aria-label={`Baca panduan: ${guide.title}`}
+                className="tap flex min-h-11 items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-bold uppercase tracking-wide text-brand-red">
+                    {guide.eyebrow}
+                  </span>
+                  <span className="mt-0.5 block text-[14px] font-semibold leading-snug">
+                    {guide.title}
+                  </span>
+                </span>
+                <ChevronRight
+                  className="size-5 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </Link>
+            ))}
+          </div>
+        </Reveal>
       </Stagger>
     </Page>
   );

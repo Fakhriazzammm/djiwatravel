@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireBetterAuthUser, resolveCanonicalCustomerIdentity, type CanonicalCustomerIdentity } from "./customer-profile.server";
+import { filterLedgerByScope, parseWalletScope, type WalletScope } from "./wallet-scope";
 
 const walletSchema = z.object({
   customer_id: z.string(),
@@ -25,6 +26,11 @@ const ledgerEntrySchema = z.object({
   reference_id: z.string().nullable(),
   note: z.string().nullable(),
   created_at: z.string(),
+  /**
+   * Canonical app provenance. Nullable/absent for historical rows — absent
+   * values stay unattributed and are never inferred from note, amount or date.
+   */
+  source_app: z.string().nullable().optional(),
 });
 
 const walletResponseSchema = z.object({
@@ -78,35 +84,59 @@ export function classifyCanonicalWalletError(status: number, raw: unknown) {
   return "Saldo Djiwa Pay belum dapat dimuat. Coba lagi.";
 }
 
-export function canonicalWalletPayload(identity: CanonicalCustomerIdentity) {
-  return { action: "get", sourceId: identity.sourceId, email: identity.email } as const;
+export function canonicalWalletPayload(identity: CanonicalCustomerIdentity, scope: WalletScope = "all") {
+  return scope === "all"
+    // Keep the historical payload byte-identical when no scope is requested.
+    ? ({ action: "get", sourceId: identity.sourceId, email: identity.email } as const)
+    // The canonical service expects the validated app scope under `sourceApp`.
+    : ({ action: "get", sourceId: identity.sourceId, email: identity.email, sourceApp: scope } as const);
 }
 
-export async function readCanonicalWalletForRequest(request: Request) {
+export async function readCanonicalWalletForRequest(request: Request, scopeInput: unknown = "all") {
+  // Validate the requested scope before any network call; an unknown scope fails closed.
+  const scope = parseWalletScope(scopeInput);
   const cookie = request.headers.get("cookie");
   const user = await requireBetterAuthUser(cookie ?? "");
   const identity = await resolveCanonicalCustomerIdentity(user.email, cookie ?? undefined);
   const response = await fetch(canonicalWalletUrl(), {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify(canonicalWalletPayload(identity)),
+    body: JSON.stringify(canonicalWalletPayload(identity, scope)),
   });
   const raw = await response.json().catch(() => null);
   if (!response.ok) {
     throw new Error(classifyCanonicalWalletError(response.status, raw));
   }
-  return parseCanonicalWalletResponse(raw, identity.sourceId);
+  const parsed = parseCanonicalWalletResponse(raw, identity.sourceId);
+  // The canonical service owns provenance; project fail-closed so unattributed
+  // rows never appear in the Djiwa Travel scope.
+  return { ...parsed, ledger: filterLedgerByScope(parsed.ledger, scope) };
 }
 
-export const getCustomerWallet = createServerFn({ method: "GET" }).handler(async () => {
-  return readCanonicalWalletForRequest(new Request("https://djiwatravel.com/api/customer-wallet", {
-    headers: { cookie: getRequestHeader("cookie") ?? "" },
-  }));
-});
+/**
+ * Server boundary for the browser-supplied scope: the value is only ever an
+ * allow-listed request scope. Provenance (`source_app`) never crosses this
+ * boundary in either direction, so any extra browser field is dropped.
+ */
+export function walletScopeInput(data: unknown = {}): { scope: WalletScope } {
+  const scope = data && typeof data === "object" && !Array.isArray(data)
+    ? (data as Record<string, unknown>)["scope"]
+    : undefined;
+  return { scope: parseWalletScope(scope) };
+}
+
+export const getCustomerWallet = createServerFn({ method: "GET" })
+  .validator(walletScopeInput)
+  .handler(async ({ data }) => {
+    return readCanonicalWalletForRequest(new Request("https://djiwatravel.com/api/customer-wallet", {
+      headers: { cookie: getRequestHeader("cookie") ?? "" },
+    }), data.scope);
+  });
 
 export const customerWalletContract = {
   auth: "Better Auth session and canonical customer profile are required",
   identity: "sourceId is resolved server-side and never accepted from the browser",
-  read: "POST { action: get, sourceId, email } to the configured canonical wallet endpoint",
+  scope: "The history scope is an allow-listed enum validated server-side; provenance (source_app) is never accepted from the browser",
+  read: "POST { action: get, sourceId, email } to the configured canonical wallet endpoint; app scope only when a non-default scope is requested",
   settlement: "pending invoices never change wallet balance until canonical settlement",
 } as const;

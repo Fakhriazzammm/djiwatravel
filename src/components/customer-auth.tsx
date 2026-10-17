@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { signInGoogle, type BetterAuthUser } from "@/lib/better-auth-client";
+import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 
 const button = "tap min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50";
 
@@ -27,6 +28,7 @@ export function CustomerAuth({
 function AuthChoice() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const googleLabel = useStagedLabel(googleLoading, ACTION_STAGES.auth);
 
   async function googleLogin() {
     setGoogleLoading(true);
@@ -48,7 +50,7 @@ function AuthChoice() {
             <path fill="#FBBC05" d="M6.4 13.92a6 6 0 0 1 0-3.84V7.49H3.06a10 10 0 0 0 0 9.02l3.34-2.59Z" />
             <path fill="#EA4335" d="M12 5.96c1.47 0 2.79.51 3.82 1.51l2.87-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.94 5.49l3.34 2.59C7.19 7.72 9.4 5.96 12 5.96Z" />
           </svg>
-          {googleLoading ? "Menghubungkan…" : "Lanjutkan dengan Google"}
+          {googleLoading ? googleLabel : "Lanjutkan dengan Google"}
         </button>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       </div>

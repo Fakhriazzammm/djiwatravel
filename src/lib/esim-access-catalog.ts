@@ -1,4 +1,6 @@
 import { queryEsimAccessPackages } from "./esim-access";
+import { getPriceRuleSnapshot } from "./price-rules-snapshot";
+import { resolvePricingRule } from "./price-rules";
 import { calculateSellingPrice, type PriceBreakdown } from "./reseller-pricing";
 
 type ProviderPackage = {
@@ -37,6 +39,8 @@ export type ResellerCatalogPackage = {
   durationDays: number;
   providerPriceUnits: number;
   sellingPrice: PriceBreakdown;
+  /** Which price rule answered for this package; `default` means the reseller fallback. */
+  pricingSource?: "package" | "country" | "global" | "default";
   speed?: string;
   supportsTopUp: boolean;
   /** Explicit provider signals only; absent signals remain unknown. */
@@ -54,6 +58,12 @@ export function normalizeEsimAccessPackage(
     .map((v) => v.trim().toUpperCase())
     .filter(Boolean);
   const providerPriceUnits = pkg.price ?? 0;
+  // Every catalogue price follows the operator's active price rules. With no rule loaded this is
+  // exactly the previous behaviour: the reseller defaults answer and the numbers do not move.
+  const pricing = resolvePricingRule(
+    { packageCode: pkg.packageCode, locationCodes },
+    getPriceRuleSnapshot(),
+  );
   return {
     provider: "esimaccess",
     packageCode: pkg.packageCode,
@@ -63,7 +73,12 @@ export function normalizeEsimAccessPackage(
     volumeBytes: pkg.volume ?? 0,
     durationDays: pkg.duration ?? 0,
     providerPriceUnits,
-    sellingPrice: calculateSellingPrice({ providerPriceUnits }),
+    sellingPrice: calculateSellingPrice({
+      providerPriceUnits,
+      markupPercent: pricing.markupPercent,
+      fixedMarkupIdr: pricing.fixedMarkupIdr,
+    }),
+    pricingSource: pricing.source,
     ...(pkg.speed == null ? {} : { speed: pkg.speed }),
     supportsTopUp: (pkg.supportTopUpType ?? 1) > 1,
     ...(typeof pkg["unlimited"] === "boolean"

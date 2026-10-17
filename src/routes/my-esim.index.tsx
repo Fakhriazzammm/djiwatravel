@@ -3,6 +3,19 @@ import { ReceiptText } from "lucide-react";
 import { Page, Wordmark, btnPrimary } from "@/components/shell";
 import { useOrders, type Order } from "@/lib/orders";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
+import { activationTimeline, type ActivationStageState } from "@/lib/travel-journey";
+
+/**
+ * Compact form of the activation timeline. The full card lives on the detail page; here the
+ * card only needs to answer "where is my eSIM now" without pushing the list apart.
+ * Colour alone never carries the meaning: the headline sentence states it in words too.
+ */
+const STAGE_SEGMENT: Record<ActivationStageState, string> = {
+  done: "bg-success",
+  current: "bg-primary",
+  todo: "bg-secondary",
+  failed: "bg-brand-red",
+};
 
 export const Route = createFileRoute("/my-esim/")({
   head: () => ({
@@ -11,6 +24,7 @@ export const Route = createFileRoute("/my-esim/")({
       { name: "description", content: "Semua eSIM perjalananmu di satu tempat." },
       { property: "og:title", content: "My eSIM — Djiwa Travel" },
       { property: "og:description", content: "Semua eSIM perjalananmu di satu tempat." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: MyEsim,
@@ -26,6 +40,8 @@ export function EsimCard({ o }: { o: Order }) {
   const pct = total && left !== null ? Math.round((left / total) * 100) : 100;
   const status = effectiveOrderStatus(o.status, o.expiresAt);
   const ready = status === "READY" || status === "INSTALLED";
+  const timeline = activationTimeline(status);
+  const doneStages = timeline.stages.filter((stage) => stage.state === "done").length;
   return (
     // The wrapper keeps the receipt link outside the card link, so no nested anchors.
     <div className="rounded-2xl bg-surface p-5">
@@ -48,6 +64,21 @@ export function EsimCard({ o }: { o: Order }) {
             {ORDER_STATUS_LABEL[status]}
           </span>
         </div>
+        {!ready && (
+          <div className="mt-3">
+            <div className="flex gap-1" aria-hidden="true">
+              {timeline.stages.map((stage) => (
+                <span
+                  key={stage.id}
+                  className={`h-1.5 flex-1 rounded-full ${STAGE_SEGMENT[stage.state]}`}
+                />
+              ))}
+            </div>
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              {timeline.headline} · {doneStages} dari {timeline.stages.length} tahap
+            </p>
+          </div>
+        )}
         {ready && (
           <>
             <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary">
