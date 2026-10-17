@@ -14,8 +14,12 @@ import { isCustomerProfileComplete } from "@/lib/customer-profile";
 import { formatWhatsapp, isValidWhatsapp, normalizeWhatsapp } from "@/lib/phone";
 import { loadCustomerProfile } from "@/lib/customer-profile-client";
 import { toViewPackage } from "@/lib/package-view";
+import { CatalogRoutePending } from "@/components/route-loading";
 
 export const Route = createFileRoute("/checkout/$id")({
+  pendingMs: 0,
+  pendingMinMs: 320,
+  pendingComponent: CatalogRoutePending,
   loader: async ({ params }) => {
     // Price the page from the provider's current catalogue, so what the customer sees is what the
     // order is created with (and what the provider will accept).

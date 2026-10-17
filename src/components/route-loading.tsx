@@ -128,6 +128,15 @@ export function RoutePendingScreen({
   );
 }
 
+export function CatalogRoutePending() {
+  return (
+    <RoutePendingScreen
+      label="Menyiapkan paket internet…"
+      hint="Memastikan katalog dan ketersediaan paket terbaru."
+    />
+  );
+}
+
 /**
  * Router-wide pending UI. The customer tab bar stays mounted so a tab switch never drops
  * the bottom navigation mid-load; admin routes run their own shell, so they get the

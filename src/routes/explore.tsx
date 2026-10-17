@@ -7,6 +7,7 @@ import { isRecommendablePackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { getSellabilityState } from "@/lib/sellability.server";
 import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
+import { CatalogRoutePending } from "@/components/route-loading";
 
 const EXPLORE_LOADER_DEADLINE_MS = 2_500;
 
@@ -30,6 +31,9 @@ export const Route = createFileRoute("/explore")({
   // Explore is the only package list now, so it carries the catalog's caching: one
   // expensive reseller read, reused for a minute so coming back is instant.
   staleTime: 60_000,
+  pendingMs: 0,
+  pendingMinMs: 320,
+  pendingComponent: CatalogRoutePending,
   loader: async () => {
     try {
       const catalog = await withDeadline(getResellerCatalog(), EXPLORE_LOADER_DEADLINE_MS);

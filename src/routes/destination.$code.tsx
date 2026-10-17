@@ -11,6 +11,7 @@ import {
   packageDataLabel,
   packageDestinationLabel,
 } from "@/lib/package-copy";
+import { CatalogRoutePending } from "@/components/route-loading";
 
 /** Cards rendered on the first paint; the rest are revealed on demand (see below). */
 export const PAGE_SIZE = 20;
@@ -59,6 +60,9 @@ export const Route = createFileRoute("/destination/$code")({
   // Same reseller read as Explore: keep the result warm so opening a country from the
   // destination list or the home cards does not pay for it twice.
   staleTime: 60_000,
+  pendingMs: 0,
+  pendingMinMs: 320,
+  pendingComponent: CatalogRoutePending,
   loader: async ({ params }) => {
     const destination =
       getDest(params.code) ??
