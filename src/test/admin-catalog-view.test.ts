@@ -11,7 +11,12 @@ import {
 } from "@/lib/admin-catalog-view";
 import type { PriceRule } from "@/lib/price-rules";
 
-function pkg(code: string, providerPriceUnits: number, priceIdr: number, locationCodes: string[]): CatalogRowSource {
+function pkg(
+  code: string,
+  providerPriceUnits: number,
+  priceIdr: number,
+  locationCodes: string[],
+): CatalogRowSource {
   return {
     packageCode: code,
     name: `Paket ${code}`,

@@ -117,57 +117,57 @@ export function AdminShell({
           viewport has to leave that subtree — otherwise `position: fixed` anchors to the
           page box and the drawer/backdrop slide away with the content. */}
       <FixedLayer>
-      <aside
-        id="admin-mobile-drawer"
-        aria-label="Navigasi admin"
-        className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-black/[0.06] bg-white p-4 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0a84ff]">
-              Djiwa Travel
-            </p>
-            <h2 className="mt-1 text-lg font-bold">Admin console</h2>
+        <aside
+          id="admin-mobile-drawer"
+          aria-label="Navigasi admin"
+          className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-black/[0.06] bg-white p-4 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0a84ff]">
+                Djiwa Travel
+              </p>
+              <h2 className="mt-1 text-lg font-bold">Admin console</h2>
+            </div>
+            <button
+              type="button"
+              onClick={closeMenu}
+              className="min-h-11 min-w-11 rounded-xl p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] lg:hidden"
+              aria-label="Tutup menu"
+            >
+              <X className="mx-auto size-5" />
+            </button>
           </div>
+          <nav className="mt-7 space-y-1" aria-label="Menu admin">
+            {adminNavigation.map(([label, href, Icon]) => {
+              const active = isAdminNavigationActive(location.pathname, href);
+              return (
+                <Link
+                  key={href}
+                  to={href as never}
+                  onClick={closeMenu}
+                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors motion-reduce:transition-none ${active ? "bg-[#eaf3ff] text-[#0a67c7]" : "text-[#6e6e73] hover:bg-[#f5f5f7]"}`}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <Icon className="size-4" strokeWidth={1.8} />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="absolute bottom-5 left-4 right-4 rounded-2xl bg-[#f7f7f8] p-3 text-xs text-[#6e6e73]">
+            <p className="font-semibold text-[#17181a]">Mode operasional</p>
+            <p className="mt-1">Data mengikuti readiness server.</p>
+          </div>
+        </aside>
+        {open && (
           <button
             type="button"
+            aria-label="Tutup sidebar"
+            className="fixed inset-0 z-40 bg-black/20 lg:hidden"
             onClick={closeMenu}
-            className="min-h-11 min-w-11 rounded-xl p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] lg:hidden"
-            aria-label="Tutup menu"
-          >
-            <X className="mx-auto size-5" />
-          </button>
-        </div>
-        <nav className="mt-7 space-y-1" aria-label="Menu admin">
-          {adminNavigation.map(([label, href, Icon]) => {
-            const active = isAdminNavigationActive(location.pathname, href);
-            return (
-              <Link
-                key={href}
-                to={href as never}
-                onClick={closeMenu}
-                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors motion-reduce:transition-none ${active ? "bg-[#eaf3ff] text-[#0a67c7]" : "text-[#6e6e73] hover:bg-[#f5f5f7]"}`}
-                aria-current={active ? "page" : undefined}
-              >
-                <Icon className="size-4" strokeWidth={1.8} />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="absolute bottom-5 left-4 right-4 rounded-2xl bg-[#f7f7f8] p-3 text-xs text-[#6e6e73]">
-          <p className="font-semibold text-[#17181a]">Mode operasional</p>
-          <p className="mt-1">Data mengikuti readiness server.</p>
-        </div>
-      </aside>
-      {open && (
-        <button
-          type="button"
-          aria-label="Tutup sidebar"
-          className="fixed inset-0 z-40 bg-black/20 lg:hidden"
-          onClick={closeMenu}
-        />
-      )}
+          />
+        )}
       </FixedLayer>
       <main className="lg:pl-[272px]">
         <header className="sticky top-0 z-30 border-b border-black/[0.06] bg-[#f2f2f7]/95 px-3 py-2 backdrop-blur sm:px-5 lg:py-3">
@@ -247,7 +247,10 @@ export function AdminStatStrip({
       className={`-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:grid sm:gap-y-2 sm:divide-x sm:divide-y sm:divide-black/[0.06] sm:px-0 sm:pb-0 ${cols} ${className}`}
     >
       {items.map((item) => (
-        <div key={item.label} className="shrink-0 snap-start px-2 py-0.5 sm:min-w-0 sm:px-2.5 sm:py-1.5">
+        <div
+          key={item.label}
+          className="shrink-0 snap-start px-2 py-0.5 sm:min-w-0 sm:px-2.5 sm:py-1.5"
+        >
           <p className="whitespace-nowrap text-[11px] text-[#6e6e73]">{item.label}</p>
           <p
             className={`text-base font-semibold tabular-nums tracking-tight ${
@@ -262,7 +265,9 @@ export function AdminStatStrip({
           >
             {item.value}
           </p>
-          {item.detail && <p className="whitespace-nowrap text-[11px] text-[#8e8e93]">{item.detail}</p>}
+          {item.detail && (
+            <p className="whitespace-nowrap text-[11px] text-[#8e8e93]">{item.detail}</p>
+          )}
         </div>
       ))}
     </div>
@@ -291,38 +296,44 @@ export function AdminSheet({
   if (!open) return null;
   return (
     <FixedLayer>
-    <div className="fixed inset-0 z-50 flex items-end bg-black/25" role="dialog" aria-modal="true" aria-label={title}>
-      <button
-        type="button"
-        aria-label={`Tutup ${title}`}
-        className="absolute inset-0 h-full w-full cursor-default"
-        onClick={onClose}
-      />
-      <div className="relative z-10 max-h-[78dvh] w-full overflow-auto rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl lg:left-[272px]">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="font-semibold">{title}</h2>
-            {detail && <p className="mt-0.5 text-xs text-[#6e6e73]">{detail}</p>}
+      <div
+        className="fixed inset-0 z-50 flex items-end bg-black/25"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
+        <button
+          type="button"
+          aria-label={`Tutup ${title}`}
+          className="absolute inset-0 h-full w-full cursor-default"
+          onClick={onClose}
+        />
+        <div className="relative z-10 max-h-[78dvh] w-full overflow-auto rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl lg:left-[272px]">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="font-semibold">{title}</h2>
+              {detail && <p className="mt-0.5 text-xs text-[#6e6e73]">{detail}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Tutup"
+              className="min-h-9 min-w-9 shrink-0 rounded-xl border border-black/[0.06]"
+            >
+              <X className="mx-auto size-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup"
-            className="min-h-9 min-w-9 shrink-0 rounded-xl border border-black/[0.06]"
-          >
-            <X className="mx-auto size-4" />
-          </button>
+          <div className="mt-2">{children}</div>
+          {footer}
         </div>
-        <div className="mt-2">{children}</div>
-        {footer}
       </div>
-    </div>
     </FixedLayer>
   );
 }
 
 /** Anggaran tinggi agar tabel/daftar jadi satu-satunya area yang menggulir di layar kecil. */
-export const ADMIN_LIST_HEIGHT = "max-h-[calc(100dvh-13rem)] md:max-h-[calc(100vh-19rem)] overflow-auto";
+export const ADMIN_LIST_HEIGHT =
+  "max-h-[calc(100dvh-13rem)] md:max-h-[calc(100vh-19rem)] overflow-auto";
 
 export function AdminPageState({
   title = "Data belum tersambung",

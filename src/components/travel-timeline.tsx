@@ -125,8 +125,8 @@ export function TravelTimeline({
 
       {syncFailed && (
         <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-[12px] text-muted-foreground">
-          Status terbaru belum dapat dikonfirmasi. Yang tampil di sini adalah data terakhir yang kami
-          terima.
+          Status terbaru belum dapat dikonfirmasi. Yang tampil di sini adalah data terakhir yang
+          kami terima.
         </p>
       )}
     </section>

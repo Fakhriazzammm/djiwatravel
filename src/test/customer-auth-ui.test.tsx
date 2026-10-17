@@ -17,12 +17,16 @@ describe("Customer Google authentication", () => {
   it("starts OAuth with the public origin callback", async () => {
     vi.mocked(signInGoogle).mockResolvedValue(undefined);
     fireEvent.click(openGoogleAuth());
-    await waitFor(() => expect(signInGoogle).toHaveBeenCalledWith(`${window.location.origin}/profile`));
+    await waitFor(() =>
+      expect(signInGoogle).toHaveBeenCalledWith(`${window.location.origin}/profile`),
+    );
   });
 
   it("shows a user-visible error when OAuth initiation fails", async () => {
     vi.mocked(signInGoogle).mockRejectedValue(new Error("oauth unavailable"));
     fireEvent.click(openGoogleAuth());
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Google gagal. Coba lagi."));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("Google gagal. Coba lagi."),
+    );
   });
 });

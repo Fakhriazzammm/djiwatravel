@@ -5,7 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui,
+    sans-serif;
   --font-brand: "Nunito", -apple-system, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -65,8 +67,12 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
-  html { -webkit-tap-highlight-color: transparent; }
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -75,27 +81,63 @@
   }
 }
 
-@utility safe-top { padding-top: max(env(safe-area-inset-top), 0.75rem); }
-@utility safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+@utility safe-top {
+  padding-top: max(env(safe-area-inset-top), 0.75rem);
+}
+@utility safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
 @utility no-scrollbar {
   scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
-@utility large-title { font-size: 1.75rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; }
-@utility tap { transition: transform 120ms ease; &:active { transform: scale(0.97); } }
-@keyframes pop { 0% { transform: scale(.6); opacity: 0 } 60% { transform: scale(1.08); opacity: 1 } 100% { transform: scale(1) } }
-@utility animate-pop { animation: pop 500ms cubic-bezier(.2,.9,.3,1.2) both; }
+@utility large-title {
+  font-size: 1.75rem;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+@utility tap {
+  transition: transform 120ms ease;
+  &:active {
+    transform: scale(0.97);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@utility animate-pop {
+  animation: pop 500ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
 
 /* Press feedback for coarse (touch) input only. Pointer-precise devices get the
    same effect from motion's `pressable` spring, and `:active` alone would fight it. */
 @media (hover: none) {
-  .tap:active { transform: scale(0.96); }
+  .tap:active {
+    transform: scale(0.96);
+  }
 }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+}
 
 /* Respect the user's reduced-motion preference across the whole app. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -105,9 +147,21 @@ html { scroll-behavior: smooth; }
 
 /* Invoice printing: keep only the invoice card on paper. */
 @media print {
-  body { background: white !important; }
-  nav, .print-button, a, button:not(.invoice-card button) { display: none !important; }
-  .invoice-card { display: block !important; margin: 0 !important; border: 1px solid #d7d7dc; box-shadow: none; }
+  body {
+    background: white !important;
+  }
+  nav,
+  .print-button,
+  a,
+  button:not(.invoice-card button) {
+    display: none !important;
+  }
+  .invoice-card {
+    display: block !important;
+    margin: 0 !important;
+    border: 1px solid #d7d7dc;
+    box-shadow: none;
+  }
 }
 
 /* One loading UI at a time. The page-change overlay is opaque, and while it owns the screen the
@@ -118,9 +172,24 @@ html[data-route-transition="1"] [data-testid="route-pending"] {
 
 /* Printing the receipt: only the paper survives, everything interactive is dropped. */
 @media print {
-  .print-hide { display: none !important; }
-  body { background: #fff !important; }
-  .receipt-output { height: auto !important; overflow: visible !important; width: 100% !important; padding: 0 !important; }
-  [data-testid="receipt-paper"] { box-shadow: none !important; clip-path: none !important; min-height: 0 !important; }
-  [data-receipt-stage] { display: block !important; }
+  .print-hide {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .receipt-output {
+    height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+  [data-testid="receipt-paper"] {
+    box-shadow: none !important;
+    clip-path: none !important;
+    min-height: 0 !important;
+  }
+  [data-receipt-stage] {
+    display: block !important;
+  }
 }

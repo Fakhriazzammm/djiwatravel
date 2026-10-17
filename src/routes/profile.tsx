@@ -11,10 +11,11 @@ import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import { rupiah } from "@/lib/pricing";
 import { validateCustomerProfile, type CustomerProfileDraft } from "@/lib/customer-profile";
 import { loadCustomerProfile, saveCustomerProfile } from "@/lib/customer-profile-client";
+import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 
 export const Route = createFileRoute("/profile")({
   validateSearch: (search: Record<string, unknown>) => ({
-    admin: search["admin"] === "unauthorized" ? "unauthorized" as const : undefined,
+    admin: search["admin"] === "unauthorized" ? ("unauthorized" as const) : undefined,
   }),
   head: () => ({
     meta: [
@@ -43,8 +44,17 @@ function Profile() {
   const filteredOrders = orders.filter((o) => {
     const status = effectiveOrderStatus(o.status, o.expiresAt);
     if (orderFilter === "READY") return status === "READY" || status === "INSTALLED";
-    if (orderFilter === "TERMINAL") return ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
-    if (orderFilter === "PENDING") return !["READY", "INSTALLED", "EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
+    if (orderFilter === "TERMINAL")
+      return ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
+    if (orderFilter === "PENDING")
+      return ![
+        "READY",
+        "INSTALLED",
+        "EXPIRED",
+        "REFUNDED",
+        "CANCELLED",
+        "PROVISIONING_FAILED",
+      ].includes(status);
     return true;
   });
   useEffect(() => {
@@ -85,7 +95,10 @@ function Profile() {
     <Page>
       <h1 className="large-title pt-4">Profil</h1>
       {admin === "unauthorized" && (
-        <div role="alert" className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+        <div
+          role="alert"
+          className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+        >
           Area admin membutuhkan akun admin yang diizinkan. Kamu tetap berada di area traveler.
         </div>
       )}
@@ -198,10 +211,26 @@ function Profile() {
       </div>
 
       <h2 className={`${label} mt-6`}>Riwayat Pesanan</h2>
-      <div className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-secondary p-1" role="group" aria-label="Filter status pesanan">
+      <div
+        className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-secondary p-1"
+        role="group"
+        aria-label="Filter status pesanan"
+      >
         {(["ALL", "PENDING", "READY", "TERMINAL"] as const).map((filter) => (
-          <button key={filter} type="button" aria-pressed={orderFilter === filter} onClick={() => setOrderFilter(filter)} className={`rounded-lg px-2 py-2 text-xs font-semibold ${orderFilter === filter ? "bg-background shadow-sm" : "text-muted-foreground"}`}>
-            {filter === "ALL" ? "Semua" : filter === "PENDING" ? "Menunggu" : filter === "READY" ? "Siap" : "Selesai"}
+          <button
+            key={filter}
+            type="button"
+            aria-pressed={orderFilter === filter}
+            onClick={() => setOrderFilter(filter)}
+            className={`rounded-lg px-2 py-2 text-xs font-semibold ${orderFilter === filter ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+          >
+            {filter === "ALL"
+              ? "Semua"
+              : filter === "PENDING"
+                ? "Menunggu"
+                : filter === "READY"
+                  ? "Siap"
+                  : "Selesai"}
           </button>
         ))}
       </div>
@@ -218,7 +247,10 @@ function Profile() {
                   #{o.publicOrderCode ?? o.id.slice(0, 8)}
                 </span>
               </span>
-              <span className="text-right text-xs text-muted-foreground"><span className="block">{rupiah(o.amount)}</span>{ORDER_STATUS_LABEL[effectiveOrderStatus(o.status, o.expiresAt)]}</span>
+              <span className="text-right text-xs text-muted-foreground">
+                <span className="block">{rupiah(o.amount)}</span>
+                {ORDER_STATUS_LABEL[effectiveOrderStatus(o.status, o.expiresAt)]}
+              </span>
             </Link>
           );
         })}

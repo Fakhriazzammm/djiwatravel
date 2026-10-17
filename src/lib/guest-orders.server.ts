@@ -2,9 +2,19 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { customerOrderItems, customerOrders, guestOrderAccess, esimProvisioningOrders, esimProfiles } from "../../drizzle/schema";
+import {
+  customerOrderItems,
+  customerOrders,
+  guestOrderAccess,
+  esimProvisioningOrders,
+  esimProfiles,
+} from "../../drizzle/schema";
 import { db } from "../db/client.server";
-import { GUEST_ACCESS_TTL_MS, hashGuestAccessToken, normalizeGuestWhatsapp } from "./guest-order-access.server";
+import {
+  GUEST_ACCESS_TTL_MS,
+  hashGuestAccessToken,
+  normalizeGuestWhatsapp,
+} from "./guest-order-access.server";
 import { normalizeWhatsapp, WHATSAPP_PATTERN } from "./phone";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 import { loadLiveResellerPackage } from "./esim-access-catalog";
@@ -43,7 +53,10 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
       .limit(1);
     if (previous[0]) {
       const guest = await db
-        .select({ accessTokenHash: guestOrderAccess.accessTokenHash, expiresAt: guestOrderAccess.expiresAt })
+        .select({
+          accessTokenHash: guestOrderAccess.accessTokenHash,
+          expiresAt: guestOrderAccess.expiresAt,
+        })
         .from(guestOrderAccess)
         .where(eq(guestOrderAccess.orderId, previous[0].id))
         .limit(1);
@@ -57,7 +70,9 @@ export const createGuestOrderDraft = createServerFn({ method: "POST" })
         status: previous[0].status,
         amount: Number(previous[0].totalAmount),
         createdAtMs: new Date(previous[0].createdAt).getTime(),
-        paymentExpiresAtMs: previous[0].paymentExpiresAt ? new Date(previous[0].paymentExpiresAt).getTime() : null,
+        paymentExpiresAtMs: previous[0].paymentExpiresAt
+          ? new Date(previous[0].paymentExpiresAt).getTime()
+          : null,
         packageCode: data.packageCode,
         accessToken: data.accessToken,
       };
@@ -205,13 +220,18 @@ export const getGuestOrders = createServerFn({ method: "POST" })
         // returning customer still gets their payment link after a reload.
         const paymentUrl = readMayarSnapshot(row.priceSnapshot).paymentUrl;
         const qrPayload = row.qrPayloadEncrypted ? decryptEsimSecret(row.qrPayloadEncrypted) : "";
-        const activationCode = row.activationCodeEncrypted ? decryptEsimSecret(row.activationCodeEncrypted) : (qrPayload.split("$")[2] ?? "");
-        const esim = row.installable === true && row.iccid && (qrPayload || activationCode) ? {
-          iccid: row.iccid,
-          smdp: qrPayload.startsWith("LPA:") ? (qrPayload.split("$")[1] ?? "") : "",
-          activationCode,
-          lpa: qrPayload,
-        } : undefined;
+        const activationCode = row.activationCodeEncrypted
+          ? decryptEsimSecret(row.activationCodeEncrypted)
+          : (qrPayload.split("$")[2] ?? "");
+        const esim =
+          row.installable === true && row.iccid && (qrPayload || activationCode)
+            ? {
+                iccid: row.iccid,
+                smdp: qrPayload.startsWith("LPA:") ? (qrPayload.split("$")[1] ?? "") : "",
+                activationCode,
+                lpa: qrPayload,
+              }
+            : undefined;
         return {
           id: row.id,
           publicOrderCode: row.publicOrderCode,
@@ -223,7 +243,9 @@ export const getGuestOrders = createServerFn({ method: "POST" })
             : row.expiresAt
               ? new Date(row.expiresAt).getTime()
               : null,
-          paymentExpiresAtMs: row.paymentExpiresAt ? new Date(row.paymentExpiresAt).getTime() : null,
+          paymentExpiresAtMs: row.paymentExpiresAt
+            ? new Date(row.paymentExpiresAt).getTime()
+            : null,
           packageCode: row.packageCode,
           paymentMethod: row.paymentMethod === "va" ? "va" : "qris",
           paymentProvider: row.paymentProvider,

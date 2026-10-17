@@ -8,8 +8,7 @@ import {
 } from "./recommendation-config";
 
 /** Tuning lives in recommendation-config.ts so it is not hardcoded in the ranking logic. */
-export const RECOMMENDATION_WEIGHTS: RecommendationWeights =
-  RECOMMENDATION_CONFIG.weights;
+export const RECOMMENDATION_WEIGHTS: RecommendationWeights = RECOMMENDATION_CONFIG.weights;
 export type PackageRecommendation = {
   packageCode: string;
   rank: number;
@@ -42,13 +41,9 @@ export function rankPackages(
     preferences,
   );
   if (!eligible.length || !Number.isFinite(limit) || limit < 1) return [];
-  const prices = eligible.map(
-    ({ package: pkg }) => pkg.sellingPrice.sellingPriceIdr,
-  );
+  const prices = eligible.map(({ package: pkg }) => pkg.sellingPrice.sellingPriceIdr);
   const perGb = (pkg: ResellerCatalogPackage) =>
-    pkg.unlimited === true
-      ? undefined
-      : pkg.sellingPrice.sellingPriceIdr / (pkg.volumeBytes / 1e9);
+    pkg.unlimited === true ? undefined : pkg.sellingPrice.sellingPriceIdr / (pkg.volumeBytes / 1e9);
   const perDay = (pkg: ResellerCatalogPackage) =>
     pkg.sellingPrice.sellingPriceIdr / pkg.durationDays;
   const minPrice = Math.min(...prices);
@@ -56,9 +51,7 @@ export function rankPackages(
     perGb(pkg) == null ? [] : [perGb(pkg)!],
   );
   const minGbPrice = gbPrices.length ? Math.min(...gbPrices) : undefined;
-  const minDayPrice = Math.min(
-    ...eligible.map(({ package: pkg }) => perDay(pkg)),
-  );
+  const minDayPrice = Math.min(...eligible.map(({ package: pkg }) => perDay(pkg)));
   const scored = eligible
     .map(({ package: pkg, destinationFit }) => {
       const durationFit = preferences.durationDays
@@ -76,10 +69,7 @@ export function rankPackages(
       const priceFit = minPrice / pkg.sellingPrice.sellingPriceIdr;
       const gbPrice = perGb(pkg);
       // Unlimited has no measurable price/GB; do not assign it a fictitious zero unit cost.
-      const gbValue =
-        gbPrice == null || minGbPrice == null
-          ? undefined
-          : minGbPrice / gbPrice;
+      const gbValue = gbPrice == null || minGbPrice == null ? undefined : minGbPrice / gbPrice;
       const dayValue = minDayPrice / perDay(pkg);
       const features = pkg.supportsTopUp ? 1 : 0;
       const reliability = pkg.reliabilityScore;
@@ -101,9 +91,7 @@ export function rankPackages(
           RECOMMENDATION_WEIGHTS.reliability,
         ],
       ];
-      const known = terms.filter(
-        (term): term is [number, number] => term[0] != null,
-      );
+      const known = terms.filter((term): term is [number, number] => term[0] != null);
       const score =
         known.reduce((sum, [fit, weight]) => sum + fit * weight, 0) /
         known.reduce((sum, [, weight]) => sum + weight, 0);
@@ -112,25 +100,21 @@ export function rankPackages(
         durationFit === 1
           ? "Durasi sesuai perjalanan"
           : "Durasi mencakup perjalanan dengan masa aktif tambahan",
-        dataFit === 1
-          ? "Kuota memenuhi kebutuhan"
-          : "Kuota di bawah kebutuhan perkiraan",
+        dataFit === 1 ? "Kuota memenuhi kebutuhan" : "Kuota di bawah kebutuhan perkiraan",
       ];
       if (pkg.supportsTopUp) reasons.push("Mendukung top-up");
       return {
         pkg,
         score,
         reasons,
-        value:
-          (priceFit + dayValue + (gbValue ?? 0)) / (gbValue == null ? 2 : 3),
+        value: (priceFit + dayValue + (gbValue ?? 0)) / (gbValue == null ? 2 : 3),
         flexibility: durationFit + (pkg.supportsTopUp ? 0.5 : 0),
       };
     })
     .sort(
       (a, b) =>
         b.score - a.score ||
-        a.pkg.sellingPrice.sellingPriceIdr -
-          b.pkg.sellingPrice.sellingPriceIdr ||
+        a.pkg.sellingPrice.sellingPriceIdr - b.pkg.sellingPrice.sellingPriceIdr ||
         compareCodes(a.pkg.packageCode, b.pkg.packageCode),
     );
   const bestMatch = scored[0];
@@ -152,23 +136,21 @@ export function rankPackages(
   const mostFlexible = pickBy((item) => item.flexibility);
   if (mostFlexible) assigned.set(mostFlexible.pkg.packageCode, "most_flexible");
   // "popular" is never inferred: the provider exposes no popularity signal.
-  return scored
-    .slice(0, Math.floor(limit))
-    .map(({ pkg, score, reasons }, index) => ({
+  return scored.slice(0, Math.floor(limit)).map(({ pkg, score, reasons }, index) => ({
+    packageCode: pkg.packageCode,
+    rank: index + 1,
+    score: Number(score.toFixed(4)),
+    category: assigned.get(pkg.packageCode) ?? "best_match",
+    reasons,
+    package: {
       packageCode: pkg.packageCode,
-      rank: index + 1,
-      score: Number(score.toFixed(4)),
-      category: assigned.get(pkg.packageCode) ?? "best_match",
-      reasons,
-      package: {
-        packageCode: pkg.packageCode,
-        name: pkg.name,
-        locationCodes: pkg.locationCodes,
-        volumeBytes: pkg.volumeBytes,
-        durationDays: pkg.durationDays,
-        sellingPrice: pkg.sellingPrice,
-        supportsTopUp: pkg.supportsTopUp,
-        ...(pkg.unlimited == null ? {} : { unlimited: pkg.unlimited }),
-      },
-    }));
+      name: pkg.name,
+      locationCodes: pkg.locationCodes,
+      volumeBytes: pkg.volumeBytes,
+      durationDays: pkg.durationDays,
+      sellingPrice: pkg.sellingPrice,
+      supportsTopUp: pkg.supportsTopUp,
+      ...(pkg.unlimited == null ? {} : { unlimited: pkg.unlimited }),
+    },
+  }));
 }

@@ -14,13 +14,16 @@ export async function receive(request: Request) {
     return json(await createDjiwaPayTopupForRequest(request));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Top up gagal. Coba lagi.";
-    const status = message === "Autentikasi diperlukan"
-      ? 401
-      : error instanceof CanonicalIdentityConfigurationError
-        ? 503
-        : 400;
+    const status =
+      message === "Autentikasi diperlukan"
+        ? 401
+        : error instanceof CanonicalIdentityConfigurationError
+          ? 503
+          : 400;
     return json({ error: message }, status);
   }
 }
 
-export const Route = createFileRoute("/api/djiwa-pay/topup")({ server: { handlers: { POST: ({ request }) => receive(request) } } });
+export const Route = createFileRoute("/api/djiwa-pay/topup")({
+  server: { handlers: { POST: ({ request }) => receive(request) } },
+});

@@ -6,7 +6,13 @@ import { QRCodeSVG } from "qrcode.react";
 import { Page, btnRed, btnSoft } from "@/components/shell";
 import { ReceiptLine, ReceiptPrinter, ReceiptRule } from "@/components/receipt-printer";
 import { ManualDetails } from "@/components/esim-install";
-import { guestAccessTokenFor, hasGuestOrderAccess, refreshOrdersFromServer, useOrders, type Order } from "@/lib/orders";
+import {
+  guestAccessTokenFor,
+  hasGuestOrderAccess,
+  refreshOrdersFromServer,
+  useOrders,
+  type Order,
+} from "@/lib/orders";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
@@ -45,13 +51,13 @@ export const Route = createFileRoute("/receipt/$id")({
   component: ReceiptPage,
 });
 
-
 function buildReceiptDocument(order: Order): ReceiptDocument {
   const status = effectiveOrderStatus(order.status, order.expiresAt);
   const ready = status === "READY" || status === "INSTALLED";
-  const quota = order.volumeBytes == null
-    ? "Unlimited"
-    : `${(order.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
+  const quota =
+    order.volumeBytes == null
+      ? "Unlimited"
+      : `${(order.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
   const code = order.publicOrderCode ?? order.id.slice(0, 8).toUpperCase();
 
   const fields = [
@@ -132,7 +138,10 @@ function ReceiptPage() {
       timer = window.setTimeout(() => void poll(), Math.min(1000 * 2 ** attempts, 8000));
     };
     void poll();
-    return () => { cancelled = true; if (timer) window.clearTimeout(timer); };
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
   }, [id, order?.id, order?.status]);
 
   const retryPaymentCheck = async () => {
@@ -143,7 +152,11 @@ function ReceiptPage() {
     try {
       const result = await verifyMayarPayment({ data: { orderId: id, accessToken: token } });
       await refreshOrdersFromServer();
-      setNote(result.settled ? "Pembayaran terverifikasi. Status diperbarui." : "Pembayaran masih menunggu verifikasi.");
+      setNote(
+        result.settled
+          ? "Pembayaran terverifikasi. Status diperbarui."
+          : "Pembayaran masih menunggu verifikasi.",
+      );
     } catch {
       setNote("Belum bisa memeriksa pembayaran. Coba lagi nanti.");
     } finally {
@@ -179,9 +192,10 @@ function ReceiptPage() {
       ? reorderIntent({ packageId: order.packageId, status, locationCodes: order.locationCodes })
       : null;
   const doc = buildReceiptDocument(order);
-  const quota = order.volumeBytes == null
-    ? "Unlimited"
-    : `${(order.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
+  const quota =
+    order.volumeBytes == null
+      ? "Unlimited"
+      : `${(order.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
 
   const savePdf = async () => {
     setBusy(true);
@@ -205,7 +219,10 @@ function ReceiptPage() {
         >
           <ArrowLeft className="size-4" aria-hidden="true" /> Kembali
         </Link>
-        <Link to="/my-esim" className="flex h-11 items-center text-sm font-semibold text-muted-foreground">
+        <Link
+          to="/my-esim"
+          className="flex h-11 items-center text-sm font-semibold text-muted-foreground"
+        >
           My eSIM
         </Link>
       </div>
@@ -239,7 +256,12 @@ function ReceiptPage() {
             </button>
             {note && <p className="text-xs text-destructive">{note}</p>}
             {(order.status === "ORDER_CREATED" || order.status === "WAITING_PAYMENT") && (
-              <button type="button" disabled={checkingPayment} onClick={() => void retryPaymentCheck()} className={`${btnSoft} disabled:opacity-50`}>
+              <button
+                type="button"
+                disabled={checkingPayment}
+                onClick={() => void retryPaymentCheck()}
+                className={`${btnSoft} disabled:opacity-50`}
+              >
                 {checkingPayment ? checkingLabel : "Cek ulang pembayaran"}
               </button>
             )}
@@ -251,14 +273,20 @@ function ReceiptPage() {
           Struk pembayaran
         </p>
         <ReceiptRule />
-        <ReceiptLine label="Kode pesanan" value={order.publicOrderCode ?? order.id.slice(0, 8).toUpperCase()} />
+        <ReceiptLine
+          label="Kode pesanan"
+          value={order.publicOrderCode ?? order.id.slice(0, 8).toUpperCase()}
+        />
         <ReceiptLine label="Tanggal" value={formatReceiptDate(order.createdAt)} />
         <ReceiptLine label="Status" value={ORDER_STATUS_LABEL[status]} />
         <ReceiptRule />
         <ReceiptLine label="Paket" value={order.packageName ?? order.packageId} />
         <ReceiptLine label="Cakupan" value={order.locationCodes?.join(", ") || "Regional"} />
         <ReceiptLine label="Kuota" value={quota} />
-        <ReceiptLine label="Masa aktif" value={order.durationDays ? `${order.durationDays} hari` : "-"} />
+        <ReceiptLine
+          label="Masa aktif"
+          value={order.durationDays ? `${order.durationDays} hari` : "-"}
+        />
         <ReceiptRule />
         <ReceiptLine label="Metode" value={order.method === "qris" ? "QRIS" : "Virtual Account"} />
         {order.email && <ReceiptLine label="Email" value={order.email} />}
@@ -332,7 +360,11 @@ function ReceiptPage() {
         <div className="mt-5 flex flex-col gap-2">
           {reorder && (
             <>
-              <Link to={reorder.href} params={{ id: reorder.packageId }} className={`${btnRed} text-center`}>
+              <Link
+                to={reorder.href}
+                params={{ id: reorder.packageId }}
+                className={`${btnRed} text-center`}
+              >
                 {reorder.label}
               </Link>
               {reorder.fallbackDestinationCode && (
@@ -345,14 +377,19 @@ function ReceiptPage() {
                 </Link>
               )}
               <p className="text-center text-[12px] text-muted-foreground">
-                Harga dan ketersediaan dicek ulang saat checkout, jadi selalu mengikuti katalog terbaru.
+                Harga dan ketersediaan dicek ulang saat checkout, jadi selalu mengikuti katalog
+                terbaru.
               </p>
             </>
           )}
           <Link to="/order/$id" params={{ id: order.id }} className={btnSoft}>
             Buka status pesanan
           </Link>
-          <button type="button" onClick={() => setSupportOpen(true)} className={`${btnSoft} text-center`}>
+          <button
+            type="button"
+            onClick={() => setSupportOpen(true)}
+            className={`${btnSoft} text-center`}
+          >
             Butuh bantuan? Hubungi support
           </button>
         </div>

@@ -100,7 +100,12 @@ describe("usageView", () => {
   });
 
   it("computes remaining quota from provider numbers", () => {
-    const view = usageView({ volumeBytes: 10_000_000_000, usedGb: 2.5, active: true, measuredAt: 1 });
+    const view = usageView({
+      volumeBytes: 10_000_000_000,
+      usedGb: 2.5,
+      active: true,
+      measuredAt: 1,
+    });
     expect(view.kind).toBe("measured");
     expect(view.totalBytes).toBe(10_000_000_000);
     expect(view.usedBytes).toBe(2_500_000_000);

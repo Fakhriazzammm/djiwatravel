@@ -15,15 +15,21 @@ describe("transition loader visibility", () => {
   });
 
   it("stays visible for the whole minimum window", () => {
-    expect(transitionVisible({ stillLoading: false, sinceChangeMs: TRANSITION_MIN_VISIBLE_MS - 1 })).toBe(true);
+    expect(
+      transitionVisible({ stillLoading: false, sinceChangeMs: TRANSITION_MIN_VISIBLE_MS - 1 }),
+    ).toBe(true);
   });
 
   it("hides once the window has passed and nothing is loading", () => {
-    expect(transitionVisible({ stillLoading: false, sinceChangeMs: TRANSITION_MIN_VISIBLE_MS })).toBe(false);
+    expect(
+      transitionVisible({ stillLoading: false, sinceChangeMs: TRANSITION_MIN_VISIBLE_MS }),
+    ).toBe(false);
   });
 
   it("keeps showing while the next page is still loading", () => {
-    expect(transitionVisible({ stillLoading: true, sinceChangeMs: TRANSITION_MIN_VISIBLE_MS * 5 })).toBe(true);
+    expect(
+      transitionVisible({ stillLoading: true, sinceChangeMs: TRANSITION_MIN_VISIBLE_MS * 5 }),
+    ).toBe(true);
   });
 });
 

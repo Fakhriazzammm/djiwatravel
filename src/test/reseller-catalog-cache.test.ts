@@ -145,7 +145,7 @@ describe("reseller catalog cache", () => {
   });
 
   it("times out provider reads and does not return a stale snapshot past the window", async () => {
-    let now = 1_000;
+    const now = 1_000;
     configureResellerCatalogCache({ now: () => now, providerTimeoutMs: 10 });
     loadResellerCatalog.mockReturnValue(new Promise(() => undefined));
     const pending = getResellerCatalog().catch((error) => error as Error);

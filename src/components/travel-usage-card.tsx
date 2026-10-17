@@ -13,10 +13,14 @@ export function TravelUsageCard({ view }: { view: UsageView }) {
         <h2 className="text-base font-semibold">Pemakaian kuota</h2>
       </div>
 
-      {view.kind === "measured" && view.remainingBytes !== null && view.remainingPercent !== null ? (
+      {view.kind === "measured" &&
+      view.remainingBytes !== null &&
+      view.remainingPercent !== null ? (
         <>
           <p className="mt-3 text-3xl font-bold">{formatGb(view.remainingBytes)}</p>
-          <p className="text-sm text-muted-foreground">tersisa dari {formatGb(view.totalBytes ?? 0)}</p>
+          <p className="text-sm text-muted-foreground">
+            tersisa dari {formatGb(view.totalBytes ?? 0)}
+          </p>
 
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
             <div
@@ -51,11 +55,13 @@ export function TravelUsageCard({ view }: { view: UsageView }) {
           Pembacaan penyedia {measuredAtLabel}
         </p>
       )}
-      {view.kind === "measured" && view.remainingPercent !== null && view.remainingPercent > LOW_QUOTA_PERCENT && (
-        <p className="mt-3 text-[12px] text-muted-foreground">
-          Angka ini dari penyedia eSIM, bukan perkiraan aplikasi.
-        </p>
-      )}
+      {view.kind === "measured" &&
+        view.remainingPercent !== null &&
+        view.remainingPercent > LOW_QUOTA_PERCENT && (
+          <p className="mt-3 text-[12px] text-muted-foreground">
+            Angka ini dari penyedia eSIM, bukan perkiraan aplikasi.
+          </p>
+        )}
     </section>
   );
 }

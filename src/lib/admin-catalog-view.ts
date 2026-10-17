@@ -50,12 +50,7 @@ export type AdminCatalogRow = {
 export type AdminCatalogStatusFilter = "all" | "unaffordable" | "affordable";
 export type AdminCatalogFilter = { q: string; status: AdminCatalogStatusFilter };
 export type AdminCatalogSortKey =
-  | "name"
-  | "providerCost"
-  | "sellingPrice"
-  | "marginPercent"
-  | "durationDays"
-  | "volumeBytes";
+  "name" | "providerCost" | "sellingPrice" | "marginPercent" | "durationDays" | "volumeBytes";
 export type AdminCatalogSortDir = "asc" | "desc";
 
 export type BuildRowsOptions = {
@@ -99,7 +94,10 @@ export function buildAdminCatalogRows(
       marginIdr,
       marginPercent: providerCostIdr > 0 ? (marginIdr / providerCostIdr) * 100 : 0,
       requiredUnitsNeeded: requiredUnits(pkg.providerPriceUnits, buffer),
-      affordable: options.balanceUnits === null ? null : options.balanceUnits >= requiredUnits(pkg.providerPriceUnits, buffer),
+      affordable:
+        options.balanceUnits === null
+          ? null
+          : options.balanceUnits >= requiredUnits(pkg.providerPriceUnits, buffer),
     } satisfies AdminCatalogRow;
   });
 }
@@ -194,10 +192,12 @@ export function summarizeActiveRules(
   defaults: PricingDefaults = priceRuleDefaults(),
 ): AdminCatalogRuleSummary {
   const global = rules.filter((rule) => rule.scopeType === "global");
-  const newest = [...rules].sort((a, b) => Date.parse(b.effectiveFrom) - Date.parse(a.effectiveFrom))[0] ?? null;
+  const newest =
+    [...rules].sort((a, b) => Date.parse(b.effectiveFrom) - Date.parse(a.effectiveFrom))[0] ?? null;
   return {
     globalPercent:
-      global.find((rule) => rule.markupType === "percentage")?.markupValue ?? defaults.markupPercent,
+      global.find((rule) => rule.markupType === "percentage")?.markupValue ??
+      defaults.markupPercent,
     globalFixedIdr:
       global.find((rule) => rule.markupType === "fixed")?.markupValue ?? defaults.fixedMarkupIdr,
     countryCount: rules.filter((rule) => rule.scopeType === "country").length,
@@ -231,7 +231,9 @@ export function summarizeAdminCatalog(
     affordableCount: allRows.filter((row) => row.affordable === true).length,
     unknownBalanceCount: allRows.filter((row) => row.affordable === null).length,
     averageMarginPercent:
-      margins.length === 0 ? null : margins.reduce((total, value) => total + value, 0) / margins.length,
+      margins.length === 0
+        ? null
+        : margins.reduce((total, value) => total + value, 0) / margins.length,
     cheapestSellingPriceIdr: prices.length === 0 ? null : Math.min(...prices),
     priciestSellingPriceIdr: prices.length === 0 ? null : Math.max(...prices),
   };

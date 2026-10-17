@@ -18,12 +18,29 @@ describe("eSIM operational lifecycle", () => {
       currentStatus: "RELEASED",
       attempts: 3,
       sleep: vi.fn(async () => undefined),
-      query: async () => { calls += 1; if (calls < 3) throw new Error("timeout"); return { orderNo: "P-1", iccid: "8988", status: "ENABLED" }; },
+      query: async () => {
+        calls += 1;
+        if (calls < 3) throw new Error("timeout");
+        return { orderNo: "P-1", iccid: "8988", status: "ENABLED" };
+      },
     });
     expect(calls).toBe(3);
-    expect(result).toMatchObject({ status: "ENABLED", providerOrderNo: "P-1", iccid: "8988", attempts: 3, changed: true });
+    expect(result).toMatchObject({
+      status: "ENABLED",
+      providerOrderNo: "P-1",
+      iccid: "8988",
+      attempts: 3,
+      changed: true,
+    });
   });
   it("fails closed after retry budget", async () => {
-    await expect(withRetry(async () => { throw new Error("timeout"); }, { attempts: 2, sleep: async () => undefined })).rejects.toThrow("Provider tidak merespons");
+    await expect(
+      withRetry(
+        async () => {
+          throw new Error("timeout");
+        },
+        { attempts: 2, sleep: async () => undefined },
+      ),
+    ).rejects.toThrow("Provider tidak merespons");
   });
 });

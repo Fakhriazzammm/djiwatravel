@@ -47,7 +47,7 @@ export type Order = {
 };
 
 const KEY = "djiwa.orders";
-let memberOrderCache: Order[] = [];
+const memberOrderCache: Order[] = [];
 const read = (): Order[] => {
   try {
     return JSON.parse(localStorage.getItem(KEY) || "[]");
@@ -82,10 +82,15 @@ export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => vo
     getMemberOrders(),
   ]);
 
-  const guestRemote = guestResult.status === "fulfilled" ? guestResult.value.map(mapGuestOrderRecord) : [];
-  const memberRemote: Order[] = memberResult.status === "fulfilled"
-    ? memberResult.value.map((record) => ({ ...mapGuestOrderRecord(record), fromMemberAccount: true }))
-    : [];
+  const guestRemote =
+    guestResult.status === "fulfilled" ? guestResult.value.map(mapGuestOrderRecord) : [];
+  const memberRemote: Order[] =
+    memberResult.status === "fulfilled"
+      ? memberResult.value.map((record) => ({
+          ...mapGuestOrderRecord(record),
+          fromMemberAccount: true,
+        }))
+      : [];
 
   if (guestResult.status === "rejected" && memberResult.status === "rejected") return;
 
@@ -123,7 +128,9 @@ export async function claimGuestOrders(): Promise<{ claimed: number; already: nu
   const credentials = Object.entries(readGuestAccess())
     .filter(
       ([orderId, token]) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId) &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          orderId,
+        ) &&
         typeof token === "string" &&
         token.length >= 32 &&
         token.length <= 256,

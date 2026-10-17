@@ -112,8 +112,7 @@ function refresh(key: string, loader: () => Promise<ResellerCatalogPackage[]>) {
   const current = inflight.get(key);
   if (current) return current;
   const startedAt = configured.now();
-  let pending: Promise<ResellerCatalogCacheEntry>;
-  pending = withTimeout(loader())
+  const pending: Promise<ResellerCatalogCacheEntry> = withTimeout(loader())
     .then((packages) => {
       const entry = { packages, syncedAt: configured.now() };
       configured.store.set(key, entry);

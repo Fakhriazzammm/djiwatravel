@@ -1,7 +1,13 @@
 import { CircleAlert, Database, Server } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
-import { AdminShell, AdminStatStrip, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
+import {
+  AdminShell,
+  AdminStatStrip,
+  AdminSurface,
+  SectionHeading,
+  StatusPill,
+} from "@/components/admin-shell";
 import { getAdminReadiness } from "@/lib/admin-readiness.server";
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
@@ -28,7 +34,11 @@ function AdminSettings() {
           <AdminStatStrip
             columns={3}
             items={[
-              { label: "Ready", value: String(ready), tone: ready === readiness.length ? "good" : "warn" },
+              {
+                label: "Ready",
+                value: String(ready),
+                tone: ready === readiness.length ? "good" : "warn",
+              },
               { label: "Belum tersedia", value: String(readiness.length - ready) },
               { label: "Last check", value: "Live" },
             ]}

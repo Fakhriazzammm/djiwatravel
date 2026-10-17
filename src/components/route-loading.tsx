@@ -54,7 +54,13 @@ function PendingCard({ index, reduce }: { index: number; reduce: boolean }) {
 }
 
 /** Card-grid placeholder, reused by routes that want a shape-matching skeleton. */
-export function SkeletonCards({ count = 6, className = "" }: { count?: number; className?: string }) {
+export function SkeletonCards({
+  count = 6,
+  className = "",
+}: {
+  count?: number;
+  className?: string;
+}) {
   const reduce = useReducedMotion();
   return (
     <div
@@ -70,8 +76,15 @@ export function SkeletonCards({ count = 6, className = "" }: { count?: number; c
 }
 
 /** Brand spinner: a rotating ring around a solid dot, static when motion is reduced. */
-export function PendingSpinner({ reduce, className = "size-12" }: { reduce: boolean; className?: string }) {
-  const ring = "absolute inset-0 rounded-full border-2 border-brand-red border-b-transparent border-r-transparent";
+export function PendingSpinner({
+  reduce,
+  className = "size-12",
+}: {
+  reduce: boolean;
+  className?: string;
+}) {
+  const ring =
+    "absolute inset-0 rounded-full border-2 border-brand-red border-b-transparent border-r-transparent";
   return (
     <span className={`relative flex ${className} items-center justify-center`} aria-hidden="true">
       <span className="absolute inset-0 rounded-full border-2 border-border" />
@@ -134,6 +147,8 @@ export function RoutePendingScreen({
  * skeleton alone.
  */
 export function DefaultRoutePending() {
-  const isAdmin = useRouterState({ select: (state) => state.location.pathname.startsWith("/admin") });
+  const isAdmin = useRouterState({
+    select: (state) => state.location.pathname.startsWith("/admin"),
+  });
   return <RoutePendingScreen chrome={isAdmin ? null : <TabBar />} />;
 }

@@ -55,7 +55,10 @@ export function priceRuleDefaults(): PricingDefaults {
   return { ...RESELLER_DEFAULTS };
 }
 
-export function normalizeScopeKey(scopeType: PriceRuleScope, scopeKey: string | null): string | null {
+export function normalizeScopeKey(
+  scopeType: PriceRuleScope,
+  scopeKey: string | null,
+): string | null {
   if (scopeType === "global") return null;
   const value = (scopeKey ?? "").trim().toUpperCase();
   return value === "" ? null : value;
@@ -102,14 +105,20 @@ export function resolvePricingRule(
       if (rule.scopeType !== scope || !ruleMatchesTarget(rule, target)) continue;
       if (rule.markupType === "percentage" && !percentRule) {
         percentRule = rule;
-        if (source === "default" || SCOPE_ORDER.indexOf(scope) < SCOPE_ORDER.indexOf(source as PriceRuleScope)) {
+        if (
+          source === "default" ||
+          SCOPE_ORDER.indexOf(scope) < SCOPE_ORDER.indexOf(source as PriceRuleScope)
+        ) {
           source = scope;
         }
         continue;
       }
       if (rule.markupType === "fixed" && !fixedRule) {
         fixedRule = rule;
-        if (source === "default" || SCOPE_ORDER.indexOf(scope) < SCOPE_ORDER.indexOf(source as PriceRuleScope)) {
+        if (
+          source === "default" ||
+          SCOPE_ORDER.indexOf(scope) < SCOPE_ORDER.indexOf(source as PriceRuleScope)
+        ) {
           source = scope;
         }
       }
@@ -231,7 +240,9 @@ export function previewPriceRule(input: PricePreviewInput): {
       afterMarginPercent: providerCostIdr > 0 ? (afterMarginIdr / providerCostIdr) * 100 : 0,
       lossMaking: afterPriceIdr <= providerCostIdr,
       affordableAfter:
-        input.balanceUnits === null ? null : input.balanceUnits >= requiredUnits(row.providerPriceUnits, buffer),
+        input.balanceUnits === null
+          ? null
+          : input.balanceUnits >= requiredUnits(row.providerPriceUnits, buffer),
     } satisfies PricePreviewRow;
   });
 
@@ -242,9 +253,14 @@ export function previewPriceRule(input: PricePreviewInput): {
     unchanged: rows.filter((row) => row.afterPriceIdr === row.beforePriceIdr).length,
     lossMaking: rows.filter((row) => row.lossMaking).length,
     becomesUnaffordable: rows.filter((row) => row.affordableAfter === false).length,
-    marginIdrDelta: rows.reduce((total, row) => total + (row.afterMarginIdr - row.beforeMarginIdr), 0),
+    marginIdrDelta: rows.reduce(
+      (total, row) => total + (row.afterMarginIdr - row.beforeMarginIdr),
+      0,
+    ),
     averageAfterMarginPercent:
-      rows.length === 0 ? 0 : rows.reduce((total, row) => total + row.afterMarginPercent, 0) / rows.length,
+      rows.length === 0
+        ? 0
+        : rows.reduce((total, row) => total + row.afterMarginPercent, 0) / rows.length,
   };
 
   return { rows, summary };

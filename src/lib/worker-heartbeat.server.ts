@@ -39,9 +39,15 @@ export type WorkerHealth = {
   healthy: boolean;
 };
 
-export async function readWorkerHealth(workerName: string, nowMs = Date.now()): Promise<WorkerHealth> {
-  const result = await db.execute(sql`select last_heartbeat_at, last_success_at from public.worker_heartbeats where worker_name = ${workerName} limit 1`);
-  const row = result.rows[0] as { last_heartbeat_at?: string | null; last_success_at?: string | null } | undefined;
+export async function readWorkerHealth(
+  workerName: string,
+  nowMs = Date.now(),
+): Promise<WorkerHealth> {
+  const result = await db.execute(
+    sql`select last_heartbeat_at, last_success_at from public.worker_heartbeats where worker_name = ${workerName} limit 1`,
+  );
+  const row = result.rows[0] as
+    { last_heartbeat_at?: string | null; last_success_at?: string | null } | undefined;
   const lastHeartbeatAt = row?.last_heartbeat_at ?? null;
   const heartbeatMs = lastHeartbeatAt ? Date.parse(lastHeartbeatAt) : null;
   return {

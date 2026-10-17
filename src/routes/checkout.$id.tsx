@@ -151,7 +151,11 @@ function Checkout() {
         <div className="mb-3 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-3 text-sm">
           <p className="font-semibold">Lengkapi profil untuk checkout sebagai member</p>
           <p className="mt-1 text-muted-foreground">Guest checkout tetap tersedia tanpa akun.</p>
-          <Link to="/profile" className="mt-2 inline-flex font-semibold text-brand-red">
+          <Link
+            to="/profile"
+            search={{ admin: undefined }}
+            className="mt-2 inline-flex font-semibold text-brand-red"
+          >
             Lengkapi data di Profil →
           </Link>
         </div>

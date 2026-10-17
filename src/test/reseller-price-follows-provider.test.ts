@@ -25,12 +25,22 @@ describe("reseller price follows the provider price", () => {
     const cheaper = normalizeEsimAccessPackage(providerPackage(5000));
     const pricier = normalizeEsimAccessPackage(providerPackage(9000));
     expect(pricier.providerPriceUnits).toBe(9000);
-    expect(pricier.sellingPrice.providerCostIdr).toBeGreaterThan(cheaper.sellingPrice.providerCostIdr);
-    expect(pricier.sellingPrice.sellingPriceIdr).toBeGreaterThan(cheaper.sellingPrice.sellingPriceIdr);
+    expect(pricier.sellingPrice.providerCostIdr).toBeGreaterThan(
+      cheaper.sellingPrice.providerCostIdr,
+    );
+    expect(pricier.sellingPrice.sellingPriceIdr).toBeGreaterThan(
+      cheaper.sellingPrice.sellingPriceIdr,
+    );
   });
 
   it("never invents a price from a missing provider price", () => {
-    const pkg = normalizeEsimAccessPackage({ packageCode: "JC063", name: "Japan", volume: 1, duration: 7, location: "JP" });
+    const pkg = normalizeEsimAccessPackage({
+      packageCode: "JC063",
+      name: "Japan",
+      volume: 1,
+      duration: 7,
+      location: "JP",
+    });
     expect(pkg.providerPriceUnits).toBe(0);
     expect(pkg.sellingPrice.providerCostIdr).toBe(0);
   });

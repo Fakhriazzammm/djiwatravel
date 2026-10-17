@@ -6,4 +6,6 @@ export const aiConfig = {
   timeoutMs: Number(process.env["OPENROUTER_TIMEOUT_MS"] ?? 12000),
   maxTokens: Number(process.env["OPENROUTER_MAX_TOKENS"] ?? 500),
 };
-export function isAIConfigured() { return Boolean(aiConfig.enabled && aiConfig.apiKey && aiConfig.model); }
+export function isAIConfigured() {
+  return Boolean(aiConfig.enabled && aiConfig.apiKey && aiConfig.model);
+}

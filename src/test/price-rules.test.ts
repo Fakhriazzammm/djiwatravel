@@ -31,7 +31,12 @@ const NOW = Date.parse("2026-10-15T12:00:00.000Z");
 
 describe("resolvePricingRule", () => {
   it("falls back to the reseller defaults when no rule exists", () => {
-    const resolved = resolvePricingRule({ packageCode: "JC181", locationCodes: ["JP"] }, [], undefined, NOW);
+    const resolved = resolvePricingRule(
+      { packageCode: "JC181", locationCodes: ["JP"] },
+      [],
+      undefined,
+      NOW,
+    );
     expect(resolved.source).toBe("default");
     expect(resolved.markupPercent).toBe(25);
     expect(resolved.fixedMarkupIdr).toBe(0);
@@ -43,8 +48,20 @@ describe("resolvePricingRule", () => {
       { packageCode: "JC181", locationCodes: ["JP"] },
       [
         rule({ id: "global", scopeType: "global", markupType: "percentage", markupValue: 25 }),
-        rule({ id: "country", scopeType: "country", scopeKey: "JP", markupType: "percentage", markupValue: 30 }),
-        rule({ id: "package", scopeType: "package", scopeKey: "JC181", markupType: "percentage", markupValue: 40 }),
+        rule({
+          id: "country",
+          scopeType: "country",
+          scopeKey: "JP",
+          markupType: "percentage",
+          markupValue: 30,
+        }),
+        rule({
+          id: "package",
+          scopeType: "package",
+          scopeKey: "JC181",
+          markupType: "percentage",
+          markupValue: 40,
+        }),
       ],
       undefined,
       NOW,
@@ -58,8 +75,19 @@ describe("resolvePricingRule", () => {
     const resolved = resolvePricingRule(
       { packageCode: "JC181", locationCodes: ["JP"] },
       [
-        rule({ id: "global-percent", scopeType: "global", markupType: "percentage", markupValue: 20 }),
-        rule({ id: "country-fixed", scopeType: "country", scopeKey: "JP", markupType: "fixed", markupValue: 20_000 }),
+        rule({
+          id: "global-percent",
+          scopeType: "global",
+          markupType: "percentage",
+          markupValue: 20,
+        }),
+        rule({
+          id: "country-fixed",
+          scopeType: "country",
+          scopeKey: "JP",
+          markupType: "fixed",
+          markupValue: 20_000,
+        }),
       ],
       undefined,
       NOW,
@@ -103,8 +131,12 @@ describe("validatePriceRuleInput", () => {
   });
 
   it("rejects out-of-range and negative values", () => {
-    expect(validatePriceRuleInput({ markupPercent: 800, fixedMarkupIdr: null }).length).toBeGreaterThan(0);
-    expect(validatePriceRuleInput({ markupPercent: null, fixedMarkupIdr: -1 }).length).toBeGreaterThan(0);
+    expect(
+      validatePriceRuleInput({ markupPercent: 800, fixedMarkupIdr: null }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      validatePriceRuleInput({ markupPercent: null, fixedMarkupIdr: -1 }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("accepts a valid percentage plus nominal pair", () => {
@@ -113,7 +145,12 @@ describe("validatePriceRuleInput", () => {
 });
 
 describe("previewPriceRule", () => {
-  const row = { packageCode: "JC181", name: "Asia-20 20GB", providerPriceUnits: 420_000, sellingPriceIdr: 893_000 };
+  const row = {
+    packageCode: "JC181",
+    name: "Asia-20 20GB",
+    providerPriceUnits: 420_000,
+    sellingPriceIdr: 893_000,
+  };
 
   it("computes the new price and margin from that row's own provider cost", () => {
     const { rows, summary } = previewPriceRule({

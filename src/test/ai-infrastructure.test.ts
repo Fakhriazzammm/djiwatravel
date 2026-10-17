@@ -28,9 +28,18 @@ describe("AI infrastructure", () => {
   it("stores and filters insights in memory", async () => {
     const repo = new InMemoryAIInsightRepository();
     const insight = AIInsightSchema.parse({
-      id: "i1", module: "payments", title: "Review", summary: "Review payment",
-      severity: "medium", recommendation: "Manual review", evidence: [], confidence: 0.8,
-      isPreview: true, generatedAt: new Date().toISOString(), model: "mock", requestId: "r1",
+      id: "i1",
+      module: "payments",
+      title: "Review",
+      summary: "Review payment",
+      severity: "medium",
+      recommendation: "Manual review",
+      evidence: [],
+      confidence: 0.8,
+      isPreview: true,
+      generatedAt: new Date().toISOString(),
+      model: "mock",
+      requestId: "r1",
     });
     await repo.save(insight);
     expect((await repo.list("payments")).length).toBe(1);

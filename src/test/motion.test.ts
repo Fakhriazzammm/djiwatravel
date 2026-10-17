@@ -1,11 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 
-import {
-  consumeNavDirection,
-  enterFrom,
-  resolveNavDirection,
-  resetNavMemory,
-} from "@/lib/motion";
+import { consumeNavDirection, enterFrom, resolveNavDirection, resetNavMemory } from "@/lib/motion";
 
 describe("resolveNavDirection", () => {
   it("treats the first render and same-path re-renders as initial", () => {

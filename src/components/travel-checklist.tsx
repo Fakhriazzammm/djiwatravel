@@ -56,7 +56,9 @@ export function TravelChecklist({
             id="departure-date"
             type="date"
             value={departureDate ?? ""}
-            onChange={(event) => onSetDepartureDate(event.target.value === "" ? null : event.target.value)}
+            onChange={(event) =>
+              onSetDepartureDate(event.target.value === "" ? null : event.target.value)
+            }
             className="h-11 flex-1 rounded-xl bg-secondary px-3 text-[14px]"
           />
           {departureDate && (
@@ -98,7 +100,9 @@ export function TravelChecklist({
                 />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    <span className={`text-[14px] font-medium ${done ? "text-muted-foreground line-through" : ""}`}>
+                    <span
+                      className={`text-[14px] font-medium ${done ? "text-muted-foreground line-through" : ""}`}
+                    >
                       {item.label}
                     </span>
                     {item.milestone && (
@@ -107,10 +111,14 @@ export function TravelChecklist({
                       </span>
                     )}
                   </span>
-                  <span className="mt-0.5 block text-[12px] text-muted-foreground">{item.hint}</span>
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">
+                    {item.hint}
+                  </span>
                   <span className="sr-only">{STATE_LABEL[item.state]}</span>
                 </span>
-                {done && <Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />}
+                {done && (
+                  <Check className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+                )}
               </label>
             </li>
           );

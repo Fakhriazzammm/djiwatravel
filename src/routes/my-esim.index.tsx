@@ -45,11 +45,7 @@ export function EsimCard({ o }: { o: Order }) {
   return (
     // The wrapper keeps the receipt link outside the card link, so no nested anchors.
     <div className="rounded-2xl bg-surface p-5">
-      <Link
-        to={ready ? "/my-esim/$id" : "/order/$id"}
-        params={{ id: o.id }}
-        className="tap block"
-      >
+      <Link to={ready ? "/my-esim/$id" : "/order/$id"} params={{ id: o.id }} className="tap block">
         <div className="flex items-center gap-3">
           <span className="text-3xl">🌐</span>
           <div className="flex-1">
@@ -116,16 +112,22 @@ function MyEsim() {
   const pending =
     orders?.filter((o) => {
       const status = effectiveOrderStatus(o.status, o.expiresAt);
-      return status !== "READY" && status !== "INSTALLED" && !["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
+      return (
+        status !== "READY" &&
+        status !== "INSTALLED" &&
+        !["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status)
+      );
     }) ?? [];
-  const expired = orders?.filter((o) => {
-    const status = effectiveOrderStatus(o.status, o.expiresAt);
-    return status === "EXPIRED";
-  }) ?? [];
-  const closed = orders?.filter((o) => {
-    const status = effectiveOrderStatus(o.status, o.expiresAt);
-    return status === "REFUNDED" || status === "CANCELLED" || status === "PROVISIONING_FAILED";
-  }) ?? [];
+  const expired =
+    orders?.filter((o) => {
+      const status = effectiveOrderStatus(o.status, o.expiresAt);
+      return status === "EXPIRED";
+    }) ?? [];
+  const closed =
+    orders?.filter((o) => {
+      const status = effectiveOrderStatus(o.status, o.expiresAt);
+      return status === "REFUNDED" || status === "CANCELLED" || status === "PROVISIONING_FAILED";
+    }) ?? [];
   return (
     <Page>
       <h1 className="large-title pt-4">My eSIM</h1>

@@ -8,5 +8,7 @@ export type InstallableProfile = {
 /** READY is a fulfillment claim, not merely a provider status. */
 export function isInstallableProfile(profile: InstallableProfile | null | undefined) {
   if (!profile?.iccid) return false;
-  return Boolean(profile.qrPayloadEncrypted || (profile.smdpAddress && profile.activationCodeEncrypted));
+  return Boolean(
+    profile.qrPayloadEncrypted || (profile.smdpAddress && profile.activationCodeEncrypted),
+  );
 }

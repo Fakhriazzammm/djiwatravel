@@ -66,7 +66,10 @@ export function ReceiptPrinter({
             {complete ? (
               <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden="true" />
             ) : (
-              <Loader2 className="size-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <Loader2
+                className="size-4 shrink-0 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
             )}
             <p
               aria-live="polite"
@@ -108,13 +111,23 @@ export function ReceiptPrinter({
         </motion.div>
       </div>
 
-      {footer ? <div className={cn("mt-2 flex w-full flex-col items-stretch gap-2")}>{footer}</div> : null}
+      {footer ? (
+        <div className={cn("mt-2 flex w-full flex-col items-stretch gap-2")}>{footer}</div>
+      ) : null}
     </section>
   );
 }
 
 /** One dotted-key line of the receipt. */
-export function ReceiptLine({ label, value, strong }: { label: string; value: ReactNode; strong?: boolean }) {
+export function ReceiptLine({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: ReactNode;
+  strong?: boolean;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className="text-muted-foreground">{label}</span>

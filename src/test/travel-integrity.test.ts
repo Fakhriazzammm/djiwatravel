@@ -7,9 +7,18 @@ import { isInstallableProfile } from "@/lib/esim-readiness";
 
 describe("travel payment/provisioning integrity", () => {
   it("reuses a durable payment claim instead of creating another invoice", () => {
-    const existing = { orderId: "o1", provider: "mayar", idempotencyKey: "o1", status: "UNKNOWN" as const, amount: 1000, currency: "IDR" };
+    const existing = {
+      orderId: "o1",
+      provider: "mayar",
+      idempotencyKey: "o1",
+      status: "UNKNOWN" as const,
+      amount: 1000,
+      currency: "IDR",
+    };
     expect(claimPaymentIntent(existing, { ...existing }).action).toBe("reuse");
-    expect(markProviderTimeout({ ...existing, status: "REQUESTING" })).toMatchObject({ status: "UNKNOWN" });
+    expect(markProviderTimeout({ ...existing, status: "REQUESTING" })).toMatchObject({
+      status: "UNKNOWN",
+    });
   });
 
   it("expires only unpaid orders and leaves READY/INSTALLED on activation expiry", () => {
@@ -25,10 +34,15 @@ describe("travel payment/provisioning integrity", () => {
     // the production boundaries until the migration-backed integration harness is available.
     const root = process.cwd();
     const gateway = readFileSync(resolve(root, "src/lib/mayar-gateway.ts"), "utf8");
-    const webhook = readFileSync(resolve(root, "src/routes/api.webhooks.esim-access.$token.ts"), "utf8");
+    const webhook = readFileSync(
+      resolve(root, "src/routes/api.webhooks.esim-access.$token.ts"),
+      "utf8",
+    );
     expect(gateway.match(/createMayarInvoiceForOrder\(/g)?.length).toBeGreaterThanOrEqual(3);
     expect(gateway).toContain("on conflict (order_id, provider) do nothing returning id");
-    expect(webhook).not.toContain("set status = 'READY', updated_at = now() where id = ${row.order_id}");
+    expect(webhook).not.toContain(
+      "set status = 'READY', updated_at = now() where id = ${row.order_id}",
+    );
     expect(webhook).toContain("installable = true");
   });
 

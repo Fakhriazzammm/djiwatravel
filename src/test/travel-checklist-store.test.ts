@@ -17,7 +17,11 @@ beforeEach(() => {
 
 describe("trip plan store", () => {
   it("returns an empty plan for an unknown order", () => {
-    expect(readTripPlan(ORDER_A)).toEqual({ departureDate: null, completed: {}, updatedAt: expect.any(Number) });
+    expect(readTripPlan(ORDER_A)).toEqual({
+      departureDate: null,
+      completed: {},
+      updatedAt: expect.any(Number),
+    });
   });
 
   it("scopes one plan per order so orders never share a checklist", () => {

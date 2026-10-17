@@ -68,7 +68,12 @@ export type AdminCatalogPayload = {
     generatedAt: string;
     freshnessAgeSeconds: number | null;
   };
-  defaults: { markupPercent: number; fixedMarkupIdr: number; usdToIdr: number; roundingIdr: number };
+  defaults: {
+    markupPercent: number;
+    fixedMarkupIdr: number;
+    usdToIdr: number;
+    roundingIdr: number;
+  };
   maxBatch: number;
 };
 
@@ -139,9 +144,15 @@ export const readAdminCatalogPage = createServerFn({ method: "POST" })
         idrReference: usd === null ? null : Math.round(usd * RESELLER_CONFIG.usdToIdr),
         fxRateIdr: RESELLER_CONFIG.usdToIdr,
         source: snapshot.source,
-        capturedAt: snapshot.capturedAtMs === null ? null : new Date(snapshot.capturedAtMs).toISOString(),
+        capturedAt:
+          snapshot.capturedAtMs === null ? null : new Date(snapshot.capturedAtMs).toISOString(),
         sellableCeilingUsd: affordableCeilingUsd(snapshot),
-        sellabilityMode: process.env["TRAVEL_SELLABILITY_MODE"] === "on" ? "on" : process.env["TRAVEL_SELLABILITY_MODE"] === "shadow" ? "shadow" : "off",
+        sellabilityMode:
+          process.env["TRAVEL_SELLABILITY_MODE"] === "on"
+            ? "on"
+            : process.env["TRAVEL_SELLABILITY_MODE"] === "shadow"
+              ? "shadow"
+              : "off",
       },
       meta: {
         source: catalog.source,
@@ -149,7 +160,9 @@ export const readAdminCatalogPage = createServerFn({ method: "POST" })
         stale: catalog.stale,
         generatedAt: new Date(generatedAt).toISOString(),
         freshnessAgeSeconds:
-          catalog.syncedAt === null ? null : Math.max(0, Math.round((generatedAt - catalog.syncedAt) / 1000)),
+          catalog.syncedAt === null
+            ? null
+            : Math.max(0, Math.round((generatedAt - catalog.syncedAt) / 1000)),
       },
       defaults: {
         markupPercent: RESELLER_CONFIG.markupPercent,

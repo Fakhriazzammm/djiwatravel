@@ -1,8 +1,5 @@
 export type AnalyticsEventName =
-  | "page_view"
-  | "destination_view"
-  | "finder_submit"
-  | "checkout_start";
+  "page_view" | "destination_view" | "finder_submit" | "checkout_start";
 
 export type AnalyticsEvent = {
   name: AnalyticsEventName;
@@ -19,7 +16,13 @@ export type AnalyticsEvent = {
 
 const SESSION_KEY = "djiwa.analytics.session";
 const ATTRIBUTION_KEY = "djiwa.analytics.attribution";
-const PUBLIC_PATHS = [/^\/$/, /^\/explore\/?$/, /^\/finder\/?$/, /^\/destination\/[a-z0-9-]+\/?$/, /^\/panduan(?:\/.*)?$/];
+const PUBLIC_PATHS = [
+  /^\/$/,
+  /^\/explore\/?$/,
+  /^\/finder\/?$/,
+  /^\/destination\/[a-z0-9-]+\/?$/,
+  /^\/panduan(?:\/.*)?$/,
+];
 
 function isBrowser() {
   return typeof window !== "undefined";

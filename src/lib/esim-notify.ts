@@ -59,9 +59,7 @@ export function notificationPermission(): NotificationPermission | "unsupported"
 export async function enableEsimNotifications(): Promise<boolean> {
   if (!notificationsSupported()) return false;
   const permission =
-    Notification.permission === "granted"
-      ? "granted"
-      : await Notification.requestPermission();
+    Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (permission !== "granted") return false;
   try {
     await navigator.serviceWorker.register(ESIM_NOTIFY_SW_URL, { scope: "/" });

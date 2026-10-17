@@ -8,7 +8,12 @@ import { routeTree } from "@/routeTree.gen";
 // redirects (bookmarks, shared links, search results) instead of 404ing or rendering a
 // second package list, and Explore's loader must not be needed for this test.
 vi.mock("@/lib/reseller-catalog-cache", () => ({
-  getResellerCatalog: vi.fn(async () => ({ packages: [], syncedAt: null, stale: false, source: "cache" })),
+  getResellerCatalog: vi.fn(async () => ({
+    packages: [],
+    syncedAt: null,
+    stale: false,
+    source: "cache",
+  })),
   clearResellerCatalogCache: vi.fn(),
 }));
 

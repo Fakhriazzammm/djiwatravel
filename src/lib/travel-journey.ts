@@ -11,13 +11,7 @@ import type { OrderStatus } from "./orders";
 export type ActivationStageId = "payment" | "processing" | "ready" | "active";
 export type ActivationStageState = "done" | "current" | "todo" | "failed";
 export type ActivationState =
-  | "in_progress"
-  | "ready"
-  | "active"
-  | "expired"
-  | "failed"
-  | "cancelled"
-  | "refunded";
+  "in_progress" | "ready" | "active" | "expired" | "failed" | "cancelled" | "refunded";
 
 export type ActivationStage = {
   id: ActivationStageId;
@@ -339,7 +333,11 @@ export function parseDepartureDate(value: string | null | undefined): number | n
   const timestamp = new Date(year, month - 1, day).getTime();
   if (!Number.isFinite(timestamp)) return null;
   const parsed = new Date(timestamp);
-  if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) {
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
     return null;
   }
   return timestamp;

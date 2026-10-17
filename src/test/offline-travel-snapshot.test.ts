@@ -75,10 +75,15 @@ describe("travel snapshot", () => {
   it("keeps snapshots separated per order", () => {
     writeTravelSnapshot(buildTravelSnapshot(order(), 1_000));
     writeTravelSnapshot(
-      buildTravelSnapshot(order({ id: "dddddddd-4444-4444-8444-dddddddddddd", packageName: "Korea 3GB" }), 1_000),
+      buildTravelSnapshot(
+        order({ id: "dddddddd-4444-4444-8444-dddddddddddd", packageName: "Korea 3GB" }),
+        1_000,
+      ),
     );
     expect(readTravelSnapshot(ORDER_ID)?.packageName).toBe("Jepang 5GB");
-    expect(readTravelSnapshot("dddddddd-4444-4444-8444-dddddddddddd")?.packageName).toBe("Korea 3GB");
+    expect(readTravelSnapshot("dddddddd-4444-4444-8444-dddddddddddd")?.packageName).toBe(
+      "Korea 3GB",
+    );
   });
 
   it("refuses a malformed or version-mismatched payload", () => {
@@ -87,13 +92,25 @@ describe("travel snapshot", () => {
 
     localStorage.setItem(
       snapshotKey(ORDER_ID),
-      JSON.stringify({ version: SNAPSHOT_VERSION + 1, orderId: ORDER_ID, savedAt: 1, packageName: "x", amount: 1 }),
+      JSON.stringify({
+        version: SNAPSHOT_VERSION + 1,
+        orderId: ORDER_ID,
+        savedAt: 1,
+        packageName: "x",
+        amount: 1,
+      }),
     );
     expect(readTravelSnapshot(ORDER_ID)).toBeNull();
 
     localStorage.setItem(
       snapshotKey(ORDER_ID),
-      JSON.stringify({ version: SNAPSHOT_VERSION, orderId: "other-order", savedAt: 1, packageName: "x", amount: 1 }),
+      JSON.stringify({
+        version: SNAPSHOT_VERSION,
+        orderId: "other-order",
+        savedAt: 1,
+        packageName: "x",
+        amount: 1,
+      }),
     );
     expect(readTravelSnapshot(ORDER_ID)).toBeNull();
   });

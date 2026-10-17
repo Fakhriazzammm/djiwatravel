@@ -9,9 +9,29 @@ describe("Better Auth email requests", () => {
     await signUpEmail("Traveler", "a@example.com", "password");
     await getBetterAuthSession();
     const base = "/api/auth";
-    expect(fetch).toHaveBeenNthCalledWith(1, `${base}/sign-in/email`, expect.objectContaining({ method: "POST", credentials: "include", body: JSON.stringify({ email: "a@example.com", password: "password" }) }));
-    expect(fetch).toHaveBeenNthCalledWith(2, `${base}/sign-up/email`, expect.objectContaining({ method: "POST", credentials: "include", body: JSON.stringify({ name: "Traveler", email: "a@example.com", password: "password" }) }));
-    expect(fetch).toHaveBeenNthCalledWith(3, `${base}/get-session`, expect.objectContaining({ credentials: "include" }));
-    expect(fetch.mock.calls[2][1].method).toBeUndefined();
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      `${base}/sign-in/email`,
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ email: "a@example.com", password: "password" }),
+      }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      `${base}/sign-up/email`,
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ name: "Traveler", email: "a@example.com", password: "password" }),
+      }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      `${base}/get-session`,
+      expect.objectContaining({ credentials: "include" }),
+    );
+    expect(fetch.mock.calls[2]?.[1]?.method).toBeUndefined();
   });
 });

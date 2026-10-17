@@ -2,16 +2,36 @@ import { createHmac, createHash, timingSafeEqual } from "node:crypto";
 import { appendFile, chmod, mkdir, readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createFileRoute } from "@tanstack/react-router";
-import { InMemoryWebhookDedupe, mapProviderStatus, normalizeUsagePayload, type ProviderWebhook } from "@/lib/esim-access-webhooks";
+import {
+  InMemoryWebhookDedupe,
+  mapProviderStatus,
+  normalizeUsagePayload,
+  type ProviderWebhook,
+} from "@/lib/esim-access-webhooks";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client.server";
 import { protectProviderProfile } from "@/lib/esim-profile-protection";
 
-const allowedTypes = new Set(["ORDER_STATUS", "ESIM_STATUS", "DATA_USAGE", "VALIDITY_USAGE", "SMDP_EVENT"]);
+const allowedTypes = new Set([
+  "ORDER_STATUS",
+  "ESIM_STATUS",
+  "DATA_USAGE",
+  "VALIDITY_USAGE",
+  "SMDP_EVENT",
+]);
 const allowedContentKeys = [
-  "orderNo", "transactionId", "orderStatus", "esimStatus", "smdpStatus",
-  "totalVolume", "orderUsage", "remain", "durationUnit", "totalDuration",
-  "expiredTime", "packageCode",
+  "orderNo",
+  "transactionId",
+  "orderStatus",
+  "esimStatus",
+  "smdpStatus",
+  "totalVolume",
+  "orderUsage",
+  "remain",
+  "durationUnit",
+  "totalDuration",
+  "expiredTime",
+  "packageCode",
 ] as const;
 const dedupe = new InMemoryWebhookDedupe();
 const persistedFingerprints = new Set<string>();
@@ -33,7 +53,7 @@ function isValidToken(provided: string, secret: string) {
 
 function recordOf(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : null;
 }
 
@@ -46,7 +66,9 @@ function scalar(value: unknown): string | number | undefined {
 function normalizeEvent(raw: unknown, secret: string): ProviderWebhook | null {
   const input = recordOf(raw);
   if (!input) return null;
-  const notifyType = String(input["notifyType"] ?? "").trim().toUpperCase();
+  const notifyType = String(input["notifyType"] ?? "")
+    .trim()
+    .toUpperCase();
   if (!allowedTypes.has(notifyType)) return null;
   const sourceContent = recordOf(input["content"]) ?? {};
   const content: Record<string, unknown> = {};
@@ -85,7 +107,9 @@ function fromQuery(url: URL) {
   };
 }
 
-async function parseRequest(request: Request): Promise<unknown | "probe" | "too-large" | "invalid"> {
+async function parseRequest(
+  request: Request,
+): Promise<unknown | "probe" | "too-large" | "invalid"> {
   if (request.method === "GET") {
     const url = new URL(request.url);
     return url.searchParams.has("notifyType") ? fromQuery(url) : "probe";
@@ -96,7 +120,11 @@ async function parseRequest(request: Request): Promise<unknown | "probe" | "too-
   if (new TextEncoder().encode(text).byteLength > 32_768) return "too-large";
   if (!text.trim()) return "invalid";
   if (request.headers.get("content-type")?.includes("application/json")) {
-    try { return JSON.parse(text); } catch { return "invalid"; }
+    try {
+      return JSON.parse(text);
+    } catch {
+      return "invalid";
+    }
   }
   const params = new URLSearchParams(text);
   if (params.has("notifyType")) {
@@ -116,7 +144,9 @@ async function loadPersistedReceipts(file: string) {
           const stored = JSON.parse(line) as { fingerprint?: string; event?: ProviderWebhook };
           if (stored.fingerprint) persistedFingerprints.add(stored.fingerprint);
           if (stored.event) dedupe.remember(stored.event);
-        } catch { /* Ignore a partial/corrupt trailing receipt; future receipts remain processable. */ }
+        } catch {
+          /* Ignore a partial/corrupt trailing receipt; future receipts remain processable. */
+        }
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -128,7 +158,9 @@ async function loadPersistedReceipts(file: string) {
 function eventTimestamp(value: string | undefined): string | null {
   if (!value) return null;
   const number = Number(value);
-  const date = Number.isFinite(number) ? new Date(number < 10_000_000_000 ? number * 1000 : number) : new Date(value);
+  const date = Number.isFinite(number)
+    ? new Date(number < 10_000_000_000 ? number * 1000 : number)
+    : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
@@ -136,7 +168,8 @@ async function receive(request: Request, token: string) {
   const secret = process.env["ESIM_ACCESS_SECRET_KEY"];
   if (!secret) return json({ error: "webhook_unconfigured" }, 503);
   if (!isValidToken(token, secret)) return json({ error: "not_found" }, 404);
-  if (request.method === "HEAD") return new Response(null, { status: 200, headers: { "Cache-Control": "no-store" } });
+  if (request.method === "HEAD")
+    return new Response(null, { status: 200, headers: { "Cache-Control": "no-store" } });
 
   const parsed = await parseRequest(request);
   if (parsed === "probe") return json({ ok: true, endpoint: "esim-access-webhook" });
@@ -145,7 +178,9 @@ async function receive(request: Request, token: string) {
   const event = normalizeEvent(parsed, secret);
   if (!event) return json({ error: "unsupported_or_invalid_event" }, 400);
 
-  const file = process.env["ESIM_ACCESS_WEBHOOK_LOG_PATH"] || "/var/lib/djiwatravel/esim-access-webhooks.jsonl";
+  const file =
+    process.env["ESIM_ACCESS_WEBHOOK_LOG_PATH"] ||
+    "/var/lib/djiwatravel/esim-access-webhooks.jsonl";
   await mkdir(dirname(file), { recursive: true, mode: 0o700 });
   await loadPersistedReceipts(file);
   if (dedupe.has(event)) return json({ ok: true, duplicate: true });
@@ -164,7 +199,8 @@ async function receive(request: Request, token: string) {
     const usage = normalizeUsagePayload(event.notifyType, content);
     const providerEventAt = eventTimestamp(event.eventGenerateTime);
     const providerOrderNo = typeof content["orderNo"] === "string" ? content["orderNo"] : null;
-    const providerTransactionId = typeof content["transactionId"] === "string" ? content["transactionId"] : null;
+    const providerTransactionId =
+      typeof content["transactionId"] === "string" ? content["transactionId"] : null;
     const rawStatus = content["esimStatus"] ?? content["smdpStatus"] ?? content["orderStatus"];
     const profileStatus = mapProviderStatus(rawStatus);
     const providerStatus = rawStatus == null ? null : String(rawStatus).slice(0, 80);
@@ -178,13 +214,17 @@ async function receive(request: Request, token: string) {
       returning order_id, status`);
     for (const row of result.rows as Array<{ order_id?: string; status?: string }>) {
       if (row.order_id && row.status === "FAILED") {
-        await db.execute(sql`update public.customer_orders set status = 'PROVISIONING_FAILED', updated_at = now() where id = ${row.order_id}::uuid and status = 'PROVISIONING'`);
+        await db.execute(
+          sql`update public.customer_orders set status = 'PROVISIONING_FAILED', updated_at = now() where id = ${row.order_id}::uuid and status = 'PROVISIONING'`,
+        );
       }
     }
     const rawInput = recordOf(parsed);
     const rawContent = recordOf(rawInput?.["content"]);
     if (rawContent?.["iccid"]) {
-      const profileLookup = await db.execute(sql`select id from public.esim_provisioning_orders where (${providerOrderNo} is not null and provider_order_no = ${providerOrderNo}) or (${providerTransactionId} is not null and provider_transaction_id = ${providerTransactionId}) limit 1`);
+      const profileLookup = await db.execute(
+        sql`select id from public.esim_provisioning_orders where (${providerOrderNo} is not null and provider_order_no = ${providerOrderNo}) or (${providerTransactionId} is not null and provider_transaction_id = ${providerTransactionId}) limit 1`,
+      );
       const provisioningOrderId = (profileLookup.rows[0] as { id?: string } | undefined)?.id;
       if (provisioningOrderId) {
         try {
@@ -193,8 +233,12 @@ async function receive(request: Request, token: string) {
             values (${provisioningOrderId}::uuid, ${protectedProfile.iccid}, ${protectedProfile.activationCodeEncrypted ?? null}, ${protectedProfile.qrPayloadEncrypted ?? null}, ${protectedProfile.status}, ${Boolean(protectedProfile.qrPayloadEncrypted)}, ${JSON.stringify({ notifyId: event.notifyId })}::jsonb, now())
             on conflict (iccid) do update set activation_code_encrypted = excluded.activation_code_encrypted, qr_payload_encrypted = excluded.qr_payload_encrypted, installable = excluded.installable, profile_status = excluded.profile_status, updated_at = now()`);
           if (protectedProfile.qrPayloadEncrypted) {
-            await db.execute(sql`update public.esim_provisioning_orders set status = 'READY', updated_at = now() where id = ${provisioningOrderId}::uuid and status in ('PROVISIONING','PENDING')`);
-            await db.execute(sql`update public.customer_orders set status = 'READY', esim_activation_expires_at = coalesce(esim_activation_expires_at, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = (select order_id from public.esim_provisioning_orders where id = ${provisioningOrderId}::uuid) and status in ('PROVISIONING','PAYMENT_CONFIRMED')`);
+            await db.execute(
+              sql`update public.esim_provisioning_orders set status = 'READY', updated_at = now() where id = ${provisioningOrderId}::uuid and status in ('PROVISIONING','PENDING')`,
+            );
+            await db.execute(
+              sql`update public.customer_orders set status = 'READY', esim_activation_expires_at = coalesce(esim_activation_expires_at, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = (select order_id from public.esim_provisioning_orders where id = ${provisioningOrderId}::uuid) and status in ('PROVISIONING','PAYMENT_CONFIRMED')`,
+            );
           }
         } catch {
           // Status reconciliation remains valid even when a provider payload has no installable profile.

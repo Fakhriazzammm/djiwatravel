@@ -23,10 +23,12 @@ function secretMatches(supplied: string, configured: string) {
 
 async function run(request: Request) {
   if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405);
-  if (request.headers.get("origin") || request.headers.get("referer")) return json({ error: "server_only" }, 403);
+  if (request.headers.get("origin") || request.headers.get("referer"))
+    return json({ error: "server_only" }, 403);
   const configured = (process.env["FINANCE_RECONCILE_TASK_SECRET"] ?? "").trim();
   if (!configured) return json({ error: "task_not_configured" }, 503);
-  if (!secretMatches((request.headers.get(TASK_SECRET_HEADER) ?? "").trim(), configured)) return json({ error: "unauthorized" }, 401);
+  if (!secretMatches((request.headers.get(TASK_SECRET_HEADER) ?? "").trim(), configured))
+    return json({ error: "unauthorized" }, 401);
 
   try {
     const report = await reconcileTravelFinance(14);

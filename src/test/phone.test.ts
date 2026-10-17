@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  formatWhatsapp,
-  isValidWhatsapp,
-  normalizeWhatsapp,
-  WHATSAPP_PATTERN,
-} from "@/lib/phone";
+import { formatWhatsapp, isValidWhatsapp, normalizeWhatsapp, WHATSAPP_PATTERN } from "@/lib/phone";
 
 // Customers type the local form and the stack stores the international one; these cases pin
 // the conversion so checkout, profile and the server schema cannot disagree.

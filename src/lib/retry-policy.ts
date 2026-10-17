@@ -62,13 +62,18 @@ export function isDue(nextRetryAtMs: number | null | undefined, nowMs: number): 
 /** Worker liveness: a heartbeat older than the window means the worker is not dependable. */
 export const HEARTBEAT_WINDOW_MS = 5 * 60_000;
 
-export function isWorkerStale(lastHeartbeatAtMs: number | null | undefined, nowMs: number, windowMs = HEARTBEAT_WINDOW_MS): boolean {
+export function isWorkerStale(
+  lastHeartbeatAtMs: number | null | undefined,
+  nowMs: number,
+  windowMs = HEARTBEAT_WINDOW_MS,
+): boolean {
   if (lastHeartbeatAtMs == null || !Number.isFinite(lastHeartbeatAtMs)) return true;
   return nowMs - lastHeartbeatAtMs > windowMs;
 }
 
 /** Safe, bounded error summary: never persist provider payloads or secrets in the admin view. */
 export function safeErrorSummary(error: unknown, maxLength = 200): string {
-  const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "unknown_error";
+  const raw =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "unknown_error";
   return raw.replace(/[\r\n\t]+/g, " ").slice(0, maxLength);
 }

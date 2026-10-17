@@ -33,7 +33,8 @@ export async function recordWebhookReceipt(input: {
   payload: unknown;
   rawBody: string;
 }): Promise<boolean> {
-  const inserted = await db.execute(sql`insert into public.webhook_inbox(provider, event_id, event_type, payload_hash, payload, status, attempt_count, received_at, updated_at)
+  const inserted =
+    await db.execute(sql`insert into public.webhook_inbox(provider, event_id, event_type, payload_hash, payload, status, attempt_count, received_at, updated_at)
     values (${input.provider}, ${input.eventId}, ${input.eventType}, ${payloadHash(input.rawBody)}, ${JSON.stringify(input.payload)}::jsonb, 'RECEIVED', 0, now(), now())
     on conflict (provider, event_id) do nothing
     returning id`);
@@ -65,7 +66,14 @@ export async function claimWebhookReceipt(leaseOwner: string, leaseSeconds = 60)
     )
     returning id, provider, event_id, event_type, payload, attempt_count`);
   return claimed.rows[0] as
-    | { id: string; provider: string; event_id: string; event_type: string; payload: unknown; attempt_count: number }
+    | {
+        id: string;
+        provider: string;
+        event_id: string;
+        event_type: string;
+        payload: unknown;
+        attempt_count: number;
+      }
     | undefined;
 }
 

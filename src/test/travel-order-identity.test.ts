@@ -3,17 +3,25 @@ import { claimGuestOrder, dedupeOrdersById, orderOwnership } from "@/lib/travel-
 
 describe("order ownership", () => {
   it("grants member access only to the verified session subject", () => {
-    expect(orderOwnership({ customerAuthSubject: "subject-a" }, { authSubject: "subject-a" })).toBe("member");
-    expect(orderOwnership({ customerAuthSubject: "subject-a" }, { authSubject: "subject-b" })).toBe("none");
+    expect(orderOwnership({ customerAuthSubject: "subject-a" }, { authSubject: "subject-a" })).toBe(
+      "member",
+    );
+    expect(orderOwnership({ customerAuthSubject: "subject-a" }, { authSubject: "subject-b" })).toBe(
+      "none",
+    );
   });
 
   it("keeps the guest token path separate from member ownership", () => {
-    expect(orderOwnership({ customerAuthSubject: null }, { guestTokenVerified: true })).toBe("guest");
+    expect(orderOwnership({ customerAuthSubject: null }, { guestTokenVerified: true })).toBe(
+      "guest",
+    );
     expect(orderOwnership({ customerAuthSubject: null }, {})).toBe("none");
   });
 
   it("never treats a browser-supplied subject as ownership without a verified session", () => {
-    expect(orderOwnership({ customerAuthSubject: "subject-a" }, { authSubject: "  " })).toBe("none");
+    expect(orderOwnership({ customerAuthSubject: "subject-a" }, { authSubject: "  " })).toBe(
+      "none",
+    );
     expect(orderOwnership({ customerAuthSubject: "" }, { authSubject: "" })).toBe("none");
   });
 });
@@ -27,18 +35,28 @@ describe("guest order claim", () => {
   });
 
   it("refuses a claim without a verified token", () => {
-    expect(claimGuestOrder({ authSubject: "subject-a", guestTokenVerified: false }).claim).toBe(false);
+    expect(claimGuestOrder({ authSubject: "subject-a", guestTokenVerified: false }).claim).toBe(
+      false,
+    );
   });
 
   it("refuses to move an order already owned by another account", () => {
     expect(
-      claimGuestOrder({ authSubject: "subject-b", guestTokenVerified: true, orderSubject: "subject-a" }),
+      claimGuestOrder({
+        authSubject: "subject-b",
+        guestTokenVerified: true,
+        orderSubject: "subject-a",
+      }),
     ).toEqual({ claim: false, reason: "owned_by_other" });
   });
 
   it("is idempotent: re-claiming an owned order does not duplicate it", () => {
     expect(
-      claimGuestOrder({ authSubject: "subject-a", guestTokenVerified: true, orderSubject: "subject-a" }),
+      claimGuestOrder({
+        authSubject: "subject-a",
+        guestTokenVerified: true,
+        orderSubject: "subject-a",
+      }),
     ).toEqual({ claim: false, reason: "already_member" });
   });
 

@@ -32,9 +32,12 @@ export function expiryDecision(
 
   if (candidate.paymentExpiresAt != null) {
     const raw = candidate.paymentExpiresAt;
-    const at = raw instanceof Date ? raw.getTime() : typeof raw === "number" ? raw : Date.parse(String(raw));
+    const at =
+      raw instanceof Date ? raw.getTime() : typeof raw === "number" ? raw : Date.parse(String(raw));
     if (!Number.isFinite(at)) return { expire: false, reason: "no_window" };
-    return at <= nowMs ? { expire: true, reason: "payment_window_elapsed" } : { expire: false, reason: "not_due" };
+    return at <= nowMs
+      ? { expire: true, reason: "payment_window_elapsed" }
+      : { expire: false, reason: "not_due" };
   }
 
   // A draft with no window at all is exempt from the window rule, but an abandoned draft still

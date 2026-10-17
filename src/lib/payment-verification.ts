@@ -14,7 +14,10 @@
 
 export type DirectVerification =
   | { state: "verified"; amount: number }
-  | { state: "rejected"; reason: "not_paid" | "amount_mismatch" | "invalid_amount" | "unknown_transaction" }
+  | {
+      state: "rejected";
+      reason: "not_paid" | "amount_mismatch" | "invalid_amount" | "unknown_transaction";
+    }
   | { state: "unavailable"; reason: string };
 
 export type PaymentAuthorityDecision =
@@ -30,7 +33,8 @@ export function decidePaymentAuthority(
     if (!Number.isSafeInteger(verification.amount) || verification.amount <= 0) {
       return { settle: false, reason: "verified_amount_invalid" };
     }
-    if (verification.amount !== callback.amount) return { settle: false, reason: "amount_mismatch" };
+    if (verification.amount !== callback.amount)
+      return { settle: false, reason: "amount_mismatch" };
     return { settle: true, authority: "provider_direct" };
   }
   if (verification.state === "rejected") return { settle: false, reason: verification.reason };
@@ -41,13 +45,20 @@ export function decidePaymentAuthority(
   return { settle: true, authority: "signed_callback", warning };
 }
 
-export function verificationFromTransaction(transaction: {
-  status?: string;
-  amount?: number;
-} | null | undefined): DirectVerification {
+export function verificationFromTransaction(
+  transaction:
+    | {
+        status?: string;
+        amount?: number;
+      }
+    | null
+    | undefined,
+): DirectVerification {
   if (!transaction) return { state: "rejected", reason: "unknown_transaction" };
-  if (String(transaction.status ?? "").toLowerCase() !== "paid") return { state: "rejected", reason: "not_paid" };
+  if (String(transaction.status ?? "").toLowerCase() !== "paid")
+    return { state: "rejected", reason: "not_paid" };
   const amount = Number(transaction.amount);
-  if (!Number.isSafeInteger(amount) || amount <= 0) return { state: "rejected", reason: "invalid_amount" };
+  if (!Number.isSafeInteger(amount) || amount <= 0)
+    return { state: "rejected", reason: "invalid_amount" };
   return { state: "verified", amount };
 }

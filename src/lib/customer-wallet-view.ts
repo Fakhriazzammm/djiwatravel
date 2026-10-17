@@ -23,7 +23,10 @@ export function ledgerStatusLabel(status: string): string {
   return labels[status.toLowerCase()] ?? status;
 }
 
-export function groupWalletLedger(entries: CustomerWalletLedgerEntry[], locale = "id-ID"): WalletLedgerGroup[] {
+export function groupWalletLedger(
+  entries: CustomerWalletLedgerEntry[],
+  locale = "id-ID",
+): WalletLedgerGroup[] {
   const sorted = [...entries].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
@@ -31,7 +34,11 @@ export function groupWalletLedger(entries: CustomerWalletLedgerEntry[], locale =
   for (const entry of sorted) {
     const date = new Date(entry.created_at);
     const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-    const label = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(date);
+    const label = new Intl.DateTimeFormat(locale, {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(date);
     const group = groups.get(key) ?? { key, label, entries: [] };
     group.entries.push(entry);
     groups.set(key, group);

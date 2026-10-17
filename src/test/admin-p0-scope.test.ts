@@ -9,13 +9,7 @@ const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "u
 
 // Routes that must stay as guarded redirects. "catalog" was promoted to a first-class
 // workspace (Katalog & Pricing), so it is no longer part of this list.
-const legacyRoutes = [
-  "analytics",
-  "customers",
-  "catalog",
-  "index",
-  "overview",
-];
+const legacyRoutes = ["analytics", "customers", "index", "overview"];
 
 describe("simplified admin P0 scope", () => {
   it("keeps only curated destinations and never re-exposes legacy routes", () => {

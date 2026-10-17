@@ -18,9 +18,15 @@ type TravelSettlementPreflightInput = {
   paidAt: string;
 };
 
-export function validateTravelSettlementPreflight(input: TravelSettlementPreflightInput): string | null {
+export function validateTravelSettlementPreflight(
+  input: TravelSettlementPreflightInput,
+): string | null {
   const totalAmount = Number(input.totalAmount);
-  if (!Number.isSafeInteger(totalAmount) || totalAmount <= 0 || input.payloadAmount !== totalAmount) {
+  if (
+    !Number.isSafeInteger(totalAmount) ||
+    totalAmount <= 0 ||
+    input.payloadAmount !== totalAmount
+  ) {
     return "amount_mismatch";
   }
   if (input.paymentReference && input.paymentReference !== input.payloadInvoiceId) {

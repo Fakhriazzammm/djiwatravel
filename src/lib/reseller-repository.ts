@@ -1,8 +1,26 @@
 import type { ResellerCatalogPackage } from "./esim-access-catalog";
 import type { ResellerOrderStatus } from "./reseller-order";
 
-export type ResellerOrderRecord = { id: string; status: ResellerOrderStatus; totalAmount: number; currency: "IDR"; idempotencyKey: string; packageCode: string; createdAt: number; priceSnapshot?: Record<string, number | string>; providerOrderNo?: string; providerStatus?: string; expiresAt?: number };
-export type EsimProfileRecord = { orderId: string; iccid: string; status: string; qrPayloadEncrypted?: string; activationCodeEncrypted?: string };
+export type ResellerOrderRecord = {
+  id: string;
+  status: ResellerOrderStatus;
+  totalAmount: number;
+  currency: "IDR";
+  idempotencyKey: string;
+  packageCode: string;
+  createdAt: number;
+  priceSnapshot?: Record<string, number | string>;
+  providerOrderNo?: string;
+  providerStatus?: string;
+  expiresAt?: number;
+};
+export type EsimProfileRecord = {
+  orderId: string;
+  iccid: string;
+  status: string;
+  qrPayloadEncrypted?: string;
+  activationCodeEncrypted?: string;
+};
 
 export interface ResellerRepository {
   upsertPackages(packages: ResellerCatalogPackage[]): Promise<void>;
@@ -22,14 +40,20 @@ export class InMemoryResellerRepository implements ResellerRepository {
   private readonly profiles = new Map<string, EsimProfileRecord>();
   private readonly webhooks = new Set<string>();
 
-  async upsertPackages(packages: ResellerCatalogPackage[]) { for (const pkg of packages) this.packages.set(pkg.packageCode, pkg); }
+  async upsertPackages(packages: ResellerCatalogPackage[]) {
+    for (const pkg of packages) this.packages.set(pkg.packageCode, pkg);
+  }
   async listPackages(locationCode?: string) {
     const all = [...this.packages.values()];
-    return locationCode ? all.filter((pkg) => pkg.locationCodes.includes(locationCode.toUpperCase())) : all;
+    return locationCode
+      ? all.filter((pkg) => pkg.locationCodes.includes(locationCode.toUpperCase()))
+      : all;
   }
   async createOrder(order: ResellerOrderRecord) {
-    if ([...this.orders.values()].some((item) => item.idempotencyKey === order.idempotencyKey)) throw new Error("Order idempotency key sudah digunakan");
-    this.orders.set(order.id, order); return order;
+    if ([...this.orders.values()].some((item) => item.idempotencyKey === order.idempotencyKey))
+      throw new Error("Order idempotency key sudah digunakan");
+    this.orders.set(order.id, order);
+    return order;
   }
   async updateOrderStatus(id: string, status: ResellerOrderStatus) {
     const order = this.orders.get(id);
@@ -38,8 +62,16 @@ export class InMemoryResellerRepository implements ResellerRepository {
     this.orders.set(id, updated);
     return updated;
   }
-  async getOrder(id: string) { return this.orders.get(id) ?? null; }
-  async saveProfile(profile: EsimProfileRecord) { this.profiles.set(profile.iccid, profile); }
-  async hasWebhookFingerprint(fingerprint: string) { return this.webhooks.has(fingerprint); }
-  async rememberWebhookFingerprint(fingerprint: string) { this.webhooks.add(fingerprint); }
+  async getOrder(id: string) {
+    return this.orders.get(id) ?? null;
+  }
+  async saveProfile(profile: EsimProfileRecord) {
+    this.profiles.set(profile.iccid, profile);
+  }
+  async hasWebhookFingerprint(fingerprint: string) {
+    return this.webhooks.has(fingerprint);
+  }
+  async rememberWebhookFingerprint(fingerprint: string) {
+    this.webhooks.add(fingerprint);
+  }
 }

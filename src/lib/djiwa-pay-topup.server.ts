@@ -71,13 +71,17 @@ export async function resolveVerifiedCanonicalCustomerIdentity(
   cookie?: string | null,
 ): Promise<CanonicalCustomerIdentity> {
   try {
-    return await fetchCanonicalCustomerIdentity(user.email, cookie);
+    return await fetchCanonicalCustomerIdentity(user.email, cookie ?? undefined);
   } catch {
     throw new CanonicalIdentityConfigurationError();
   }
 }
 
-export function canonicalTopupPayload(input: { amount: number; idempotencyKey: string; canonicalCustomerIdentity: CanonicalCustomerIdentity }) {
+export function canonicalTopupPayload(input: {
+  amount: number;
+  idempotencyKey: string;
+  canonicalCustomerIdentity: CanonicalCustomerIdentity;
+}) {
   return {
     action: "topup",
     amount: validateTopupAmount(input.amount),
@@ -112,9 +116,10 @@ async function createDjiwaPayTopupForAuthenticatedUser(
   });
   const raw = await response.json().catch(() => null);
   if (!response.ok) {
-    const message = raw && typeof raw === "object" && "error" in raw && typeof raw.error === "string"
-      ? raw.error
-      : "Top up belum dapat dibuat. Coba lagi.";
+    const message =
+      raw && typeof raw === "object" && "error" in raw && typeof raw.error === "string"
+        ? raw.error
+        : "Top up belum dapat dibuat. Coba lagi.";
     throw new Error(message);
   }
   return parseCanonicalTopupResponse(raw);
@@ -136,12 +141,14 @@ export async function createDjiwaPayTopupForRequest(request: Request) {
 
 export const createDjiwaPayTopup = createServerFn({ method: "POST" })
   .validator(topupInputSchema)
-  .handler(({ data }) => createDjiwaPayTopupForCookie(getRequestHeader("cookie"), data));
+  .handler(({ data }) => createDjiwaPayTopupForCookie(getRequestHeader("cookie") ?? null, data));
 
 export const djiwaPayTopupContract = {
   auth: "Better Auth session is required; sourceId and email are never accepted from the browser",
-  canonicalIdentity: "A verified per-user server-side mapping is required; Better Auth user.id is never used as sourceId",
-  canonicalIdentityContract: "DJIWA_PAY_CUSTOMER_SOURCE_ID names a resolved mapping contract only, never a shared env value or browser input",
+  canonicalIdentity:
+    "A verified per-user server-side mapping is required; Better Auth user.id is never used as sourceId",
+  canonicalIdentityContract:
+    "DJIWA_PAY_CUSTOMER_SOURCE_ID names a resolved mapping contract only, never a shared env value or browser input",
   canonicalEndpoint: "DJIWA_PAY_CUSTOMER_WALLET_URL (HTTPS only), server-side only",
   canonicalAction: "POST { action: topup, sourceId, email, amount, idempotencyKey, origin }",
   settlement: "pending until the canonical Mayar webhook settles customer_wallet_topups",

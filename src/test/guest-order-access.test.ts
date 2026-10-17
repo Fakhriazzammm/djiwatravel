@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { GUEST_ACCESS_TTL_MS, hashGuestAccessToken, isGuestAccessExpired, normalizeGuestWhatsapp, SUPPORT_WHATSAPP_URL } from "../lib/guest-order-access.server";
+import {
+  GUEST_ACCESS_TTL_MS,
+  hashGuestAccessToken,
+  isGuestAccessExpired,
+  normalizeGuestWhatsapp,
+  SUPPORT_WHATSAPP_URL,
+} from "../lib/guest-order-access.server";
 import { hasGuestOrderAccess } from "../lib/orders";
 
 describe("hashGuestAccessToken", () => {

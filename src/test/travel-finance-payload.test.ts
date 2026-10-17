@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildTravelFinanceGatewayPayload, parseTravelFinanceGatewayResponse } from "../lib/mayar-settlement.server";
+import {
+  buildTravelFinanceGatewayPayload,
+  parseTravelFinanceGatewayResponse,
+} from "../lib/mayar-settlement.server";
 
 // The finance gateway validates `customerName` with a helper that accepts only a string or null:
 // omitting the key made every settlement fail with invalid_request, so the key must always exist.
@@ -29,14 +32,23 @@ describe("travel finance settlement payload", () => {
 
   it("sends only the allowlisted gateway identifiers", () => {
     const payload = buildTravelFinanceGatewayPayload({ ...base, customerName: null });
-    expect(Object.keys(payload.paymentGateway).sort()).toEqual(["invoiceId", "provider", "status", "transactionId"]);
+    expect(Object.keys(payload.paymentGateway).sort()).toEqual([
+      "invoiceId",
+      "provider",
+      "status",
+      "transactionId",
+    ]);
     expect(payload.amount).toBe(15_000);
   });
 
   it("accepts the gateway answer shapes it documents", () => {
-    expect(parseTravelFinanceGatewayResponse({ ok: true, dedup: true })).toEqual({ ok: true, dedup: true });
-    expect(parseTravelFinanceGatewayResponse({ ok: true, dedup: false, sourceId: "fin_mayar_abc" }))
-      .toEqual({ ok: true, dedup: false, sourceId: "fin_mayar_abc" });
+    expect(parseTravelFinanceGatewayResponse({ ok: true, dedup: true })).toEqual({
+      ok: true,
+      dedup: true,
+    });
+    expect(
+      parseTravelFinanceGatewayResponse({ ok: true, dedup: false, sourceId: "fin_mayar_abc" }),
+    ).toEqual({ ok: true, dedup: false, sourceId: "fin_mayar_abc" });
     expect(() => parseTravelFinanceGatewayResponse({ dedup: true })).toThrow();
   });
 });

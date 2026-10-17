@@ -29,24 +29,16 @@ const codeNames: Record<string, string> = {
 };
 function localizedCountryName(code: string) {
   const normalized = code.trim().toUpperCase();
-  return (
-    codeNames[code] ??
-    codeNames[normalized] ??
-    regionNames?.of(normalized) ??
-    "Negara lain"
-  );
+  return codeNames[code] ?? codeNames[normalized] ?? regionNames?.of(normalized) ?? "Negara lain";
 }
 function trimPrefix(name: string) {
-  return name
-    .replace(/\s+\d+(?:\.\d+)?\s*(?:GB|MB|KB)\s+\d+\s*Days?\s*$/i, "")
-    .trim();
+  return name.replace(/\s+\d+(?:\.\d+)?\s*(?:GB|MB|KB)\s+\d+\s*Days?\s*$/i, "").trim();
 }
 export function packageDataLabel(
   pkg: Pick<ResellerCatalogPackage, "name" | "volumeBytes" | "unlimited">,
 ) {
   if (pkg.unlimited === true) return "Data unlimited";
-  if (!Number.isFinite(pkg.volumeBytes) || pkg.volumeBytes <= 0)
-    return "Kuota belum tersedia";
+  if (!Number.isFinite(pkg.volumeBytes) || pkg.volumeBytes <= 0) return "Kuota belum tersedia";
   const gb = pkg.volumeBytes / 1_000_000_000;
   return gb >= 1
     ? `${Math.round(gb)} GB data`
@@ -57,16 +49,13 @@ export function packageDestinationLabel(
 ) {
   const prefix = trimPrefix(pkg.name);
   const localizedPrefix = codeNames[prefix] ?? prefix;
-  if (localizedPrefix && !/^global\d*$/i.test(localizedPrefix))
-    return localizedPrefix;
+  if (localizedPrefix && !/^global\d*$/i.test(localizedPrefix)) return localizedPrefix;
   const names = pkg.locationCodes.map(localizedCountryName).filter(Boolean);
   if (names.length === 1) return names[0];
   if (names.length > 1) return `Regional · ${names.length} negara`;
   return "Internasional";
 }
-export function packageCoverageLabel(
-  pkg: Pick<ResellerCatalogPackage, "locationCodes">,
-) {
+export function packageCoverageLabel(pkg: Pick<ResellerCatalogPackage, "locationCodes">) {
   const names = pkg.locationCodes.map(localizedCountryName).filter(Boolean);
   if (names.length === 0) return "Cakupan internasional";
   if (names.length <= 3) return names.join(", ");

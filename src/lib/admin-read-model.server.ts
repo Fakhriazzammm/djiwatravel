@@ -475,7 +475,9 @@ async function loadAdminProviderBalance(fxRateIdr: number): Promise<ProviderBala
       idrReference: null,
       fxRateIdr,
       fetchedAt: null,
-      error: classifyAdminError(error instanceof Error ? error.message : String(error)) ?? "processing_failed",
+      error:
+        classifyAdminError(error instanceof Error ? error.message : String(error)) ??
+        "processing_failed",
       sellableCeilingUsd: null,
       sellabilityMode: mode,
     };

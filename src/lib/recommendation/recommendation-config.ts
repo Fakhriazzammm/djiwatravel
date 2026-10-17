@@ -67,16 +67,14 @@ function readPositiveNumber(name: string): number | undefined {
 function isValidWeights(value: unknown): value is RecommendationWeights {
   if (typeof value !== "object" || value == null) return false;
   const candidate = value as Record<string, unknown>;
-  const resolved = RECOMMENDATION_WEIGHT_KEYS.map((key) => candidate[key]);
-  const sum = resolved.reduce(
+  const resolved: unknown[] = RECOMMENDATION_WEIGHT_KEYS.map((key) => candidate[key]);
+  const sum = resolved.reduce<number>(
     (total, item) => total + (typeof item === "number" && Number.isFinite(item) ? item : 0),
     0,
   );
   return (
     sum > 0 &&
-    resolved.every(
-      (item) => typeof item === "number" && Number.isFinite(item) && item >= 0,
-    )
+    resolved.every((item) => typeof item === "number" && Number.isFinite(item) && item >= 0)
   );
 }
 
@@ -107,8 +105,7 @@ export const RECOMMENDATION_CONFIG = {
     high: resolveTarget("high"),
   } satisfies DataNeedTargets,
   budgetCeilingFactor:
-    readPositiveNumber("RECOMMENDATION_BUDGET_CEILING_FACTOR") ??
-    DEFAULT_BUDGET_CEILING_FACTOR,
+    readPositiveNumber("RECOMMENDATION_BUDGET_CEILING_FACTOR") ?? DEFAULT_BUDGET_CEILING_FACTOR,
   defaultLimit: readPositiveNumber("RECOMMENDATION_LIMIT") ?? DEFAULT_LIMIT,
 } as const;
 

@@ -32,8 +32,18 @@ export function formatReceiptAmount(amountIdr: number): string {
 /** "10 Oktober 2026, 21:04 WIB" — stable between server and client, no locale surprises. */
 export function formatReceiptDate(timestampMs: number): string {
   const months = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
   ];
   // WIB is a fixed +07:00 offset, so this stays correct without a timezone database.
   const wib = new Date(timestampMs + 7 * 60 * 60 * 1000);

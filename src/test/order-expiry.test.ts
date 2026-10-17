@@ -16,7 +16,13 @@ describe("order expiry", () => {
   });
 
   it("never expires a settled order, even when the payment window has passed", () => {
-    for (const status of ["PAYMENT_CONFIRMED", "PROVISIONING", "PROVISIONING_FAILED", "READY", "INSTALLED"]) {
+    for (const status of [
+      "PAYMENT_CONFIRMED",
+      "PROVISIONING",
+      "PROVISIONING_FAILED",
+      "READY",
+      "INSTALLED",
+    ]) {
       expect(expiryDecision({ status, paymentExpiresAt: now - 1 }, now), status).toEqual({
         expire: false,
         reason: "settled",
@@ -26,7 +32,9 @@ describe("order expiry", () => {
 
   it("leaves already-resolved orders alone", () => {
     for (const status of ["CANCELLED", "REFUNDED", "EXPIRED"]) {
-      expect(expiryDecision({ status, paymentExpiresAt: now - 1 }, now).reason, status).toBe("terminal");
+      expect(expiryDecision({ status, paymentExpiresAt: now - 1 }, now).reason, status).toBe(
+        "terminal",
+      );
     }
   });
 
@@ -39,7 +47,9 @@ describe("order expiry", () => {
   });
 
   it("refuses to expire on an unparseable window", () => {
-    expect(expiryDecision({ status: "DRAFT", paymentExpiresAt: "not-a-date" }, now).reason).toBe("no_window");
+    expect(expiryDecision({ status: "DRAFT", paymentExpiresAt: "not-a-date" }, now).reason).toBe(
+      "no_window",
+    );
   });
 
   it("scans only unpaid orders with an elapsed window", () => {

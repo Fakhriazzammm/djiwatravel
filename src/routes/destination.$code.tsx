@@ -8,7 +8,7 @@ import { destinationOgImage } from "@/lib/destination-artwork";
 import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
-import { getSellabilityState } from "@/lib/sellability.server";
+import { readSellability } from "@/lib/sellability-api";
 import {
   packageCoverageLabel,
   packageDataLabel,
@@ -57,6 +57,21 @@ export function sortPackages(packages: ViewPackage[], key: SortKey): ViewPackage
 /** Destination pages that ship a social share image; see lib/destination-artwork.ts. */
 const BASE_URL = "https://djiwatravel.com";
 
+const REGIONAL_COVERAGE: Record<string, readonly string[]> = {
+  ASIA: ["CN", "HK", "JP", "KR", "MY", "SG", "TH", "TW"],
+  EU: ["EU"],
+};
+
+async function coverageFor(destination: { code: string; region: string }) {
+  const seed = REGIONAL_COVERAGE[destination.code.toUpperCase()] ?? [];
+  if (destination.region !== "Regional") return seed;
+  const availability = await getSellableDestinationCodes(1_500);
+  return extendRegionalCoverage(
+    { code: destination.code, region: destination.region },
+    availability,
+  );
+}
+
 export const Route = createFileRoute("/destination/$code")({
   // Same reseller read as Explore: keep the result warm so opening a country from the
   // destination list or the home cards does not pay for it twice.
@@ -93,7 +108,7 @@ export const Route = createFileRoute("/destination/$code")({
     // say so neutrally: the customer never learns why.
     const unavailable = balanceUnknown
       ? new Set(visible.map((pkg) => pkg.packageCode))
-      : new Set(sellability.hidden);
+      : new Set<string>(sellability.hidden);
     // Only display fields are sent to the client: the full record carries our cost basis and
     // made this page ~680 KB (see lib/package-view.ts).
     return {
@@ -134,7 +149,16 @@ export const Route = createFileRoute("/destination/$code")({
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Beranda", item: BASE_URL },
         { "@type": "ListItem", position: 2, name: "Explore", item: `${BASE_URL}/explore` },
-        ...(loaderData ? [{ "@type": "ListItem", position: 3, name: loaderData.destination.nameId, item: `${BASE_URL}/destination/${code}` }] : []),
+        ...(loaderData
+          ? [
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: loaderData.destination.nameId,
+                item: `${BASE_URL}/destination/${code}`,
+              },
+            ]
+          : []),
       ],
     };
     return {
@@ -149,7 +173,15 @@ export const Route = createFileRoute("/destination/$code")({
       ],
       links: code ? [{ rel: "canonical", href: `${BASE_URL}/destination/${code}` }] : [],
       scripts: loaderData
-        ? [{ type: "application/ld+json", children: JSON.stringify({ "@context": "https://schema.org", "@graph": [breadcrumbSchema, ...productSchema] }) }]
+        ? [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@graph": [breadcrumbSchema, ...productSchema],
+              }),
+            },
+          ]
         : [],
     };
   },

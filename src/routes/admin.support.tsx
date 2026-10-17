@@ -35,13 +35,17 @@ function AdminSupport() {
             {cases.map((item) => (
               <article key={item.id} className="py-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-semibold">{item.caseCode} · {item.subject}</h2>
+                  <h2 className="font-semibold">
+                    {item.caseCode} · {item.subject}
+                  </h2>
                   <StatusPill>{humanizeAdminStatus(item.status)}</StatusPill>
                   <StatusPill tone={item.priority === "high" ? "danger" : "warn"}>
                     {humanizeAdminStatus(item.priority)}
                   </StatusPill>
                 </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-[#3f3f46]">{item.description}</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-[#3f3f46]">
+                  {item.description}
+                </p>
                 <p className="mt-2 text-xs text-[#6b6b72]">
                   {item.category} · {item.orderId ? `Order ${item.orderId} · ` : ""}
                   Update {formatAdminDateTime(item.updatedAt)}

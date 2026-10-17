@@ -118,6 +118,7 @@ function RefundPage() {
       <header className="flex h-14 items-center gap-3">
         <Link
           to="/profile"
+          search={{ admin: undefined }}
           aria-label="Kembali ke profil"
           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-brand-red"
         >
@@ -230,6 +231,7 @@ function RefundPage() {
       )}
       <Link
         to="/profile"
+        search={{ admin: undefined }}
         className="mt-8 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2"
       >
         Kembali ke profil

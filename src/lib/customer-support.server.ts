@@ -21,7 +21,28 @@ const replySchema = z.object({
 const inputSchema = z.discriminatedUnion("action", [createSchema, replySchema]);
 const fingerprint = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
-const safeCase = (r: any) => ({
+type SupportCaseRow = {
+  id: string;
+  public_case_code: string;
+  category: string;
+  subject: string;
+  description: string;
+  status: string;
+  priority: string;
+  order_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type SupportMessageRow = {
+  id: string;
+  case_id: string;
+  author_type: string;
+  body: string;
+  created_at: string;
+};
+
+const safeCase = (r: SupportCaseRow) => ({
   id: r.id,
   public_case_code: r.public_case_code,
   category: r.category,
@@ -33,7 +54,7 @@ const safeCase = (r: any) => ({
   created_at: r.created_at,
   updated_at: r.updated_at,
 });
-const safeMessage = (r: any) => ({
+const safeMessage = (r: SupportMessageRow) => ({
   id: r.id,
   case_id: r.case_id,
   author_type: r.author_type,

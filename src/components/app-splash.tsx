@@ -62,7 +62,9 @@ export function AppSplash() {
         <PendingSpinner reduce={!!reduce} className="size-14" />
         <div className="flex flex-col gap-1">
           <p className="text-[15px] font-semibold text-foreground">Menyiapkan Djiwa Travel…</p>
-          <p className="text-[13px] text-muted-foreground">Sebentar ya, paket eSIM sedang dimuat.</p>
+          <p className="text-[13px] text-muted-foreground">
+            Sebentar ya, paket eSIM sedang dimuat.
+          </p>
         </div>
       </div>
     </>

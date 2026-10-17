@@ -47,10 +47,12 @@ const isTabPath = (pathname: string) =>
   TAB_PATHS.some((tab) =>
     tab === "/" ? pathname === "/" : pathname === tab || pathname.startsWith(`${tab}/`),
   );
-const isTopLevelTab = (pathname: string) => TAB_PATHS.includes(pathname as (typeof TAB_PATHS)[number]);
+const isTopLevelTab = (pathname: string) =>
+  TAB_PATHS.includes(pathname as (typeof TAB_PATHS)[number]);
 const sameTab = (a: string, b: string) =>
   TAB_PATHS.some((tab) => {
-    const matches = (path: string) => (tab === "/" ? path === "/" : path === tab || path.startsWith(`${tab}/`));
+    const matches = (path: string) =>
+      tab === "/" ? path === "/" : path === tab || path.startsWith(`${tab}/`);
     return matches(a) && matches(b);
   });
 

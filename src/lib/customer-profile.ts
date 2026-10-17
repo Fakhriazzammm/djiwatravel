@@ -29,5 +29,3 @@ export function normalizeCustomerProfile(draft: CustomerProfileDraft): CustomerP
 export function isCustomerProfileComplete(draft: CustomerProfileDraft) {
   return Object.keys(validateCustomerProfile(draft)).length === 0;
 }
-
-

@@ -7,7 +7,10 @@ import { db } from "../db/client.server";
 
 const profileInputSchema = z.object({
   email: z.string().trim().email().max(254),
-  whatsapp: z.string().trim().regex(/^62\d{7,13}$/, "Nomor WhatsApp harus diawali 62"),
+  whatsapp: z
+    .string()
+    .trim()
+    .regex(/^62\d{7,13}$/, "Nomor WhatsApp harus diawali 62"),
 });
 
 type BetterAuthSession = {
@@ -35,7 +38,9 @@ export function normalizeCustomerWhatsapp(value: string) {
   return normalized;
 }
 
-export async function requireBetterAuthUser(cookie = getRequestHeader("cookie")): Promise<AuthenticatedUser> {
+export async function requireBetterAuthUser(
+  cookie = getRequestHeader("cookie"),
+): Promise<AuthenticatedUser> {
   if (!cookie) throw new Error("Autentikasi diperlukan");
   const response = await fetch("https://auth.zantara.id/api/auth/get-session", {
     headers: { cookie, origin: "https://djiwatravel.com" },
@@ -69,9 +74,15 @@ export async function resolveCanonicalCustomerIdentity(
   } catch {
     throw new Error("Profil customer canonical tidak valid");
   }
-  const sourceId = typeof payload?.customer?.source_id === "string" ? payload.customer.source_id.trim() : "";
-  const profileEmail = typeof payload?.customer?.email === "string" ? payload.customer.email.trim() : "";
-  if (!sourceId || !profileEmail || profileEmail.toLowerCase() !== authenticatedEmail.trim().toLowerCase()) {
+  const sourceId =
+    typeof payload?.customer?.source_id === "string" ? payload.customer.source_id.trim() : "";
+  const profileEmail =
+    typeof payload?.customer?.email === "string" ? payload.customer.email.trim() : "";
+  if (
+    !sourceId ||
+    !profileEmail ||
+    profileEmail.toLowerCase() !== authenticatedEmail.trim().toLowerCase()
+  ) {
     throw new Error("Profil customer canonical tidak valid");
   }
   return { sourceId, email: profileEmail };

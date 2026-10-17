@@ -97,7 +97,8 @@ export function buildTravelFinanceGatewayPayload(input: {
 }
 
 export function parseTravelFinanceGatewayResponse(value: unknown): TravelFinanceGatewayResponse {
-  if (!value || typeof value !== "object") throw new Error("Travel finance settlement response is invalid");
+  if (!value || typeof value !== "object")
+    throw new Error("Travel finance settlement response is invalid");
   const body = value as Record<string, unknown>;
   if (body["ok"] !== true || typeof body["dedup"] !== "boolean") {
     throw new Error("Travel finance settlement response is invalid");
@@ -105,16 +106,26 @@ export function parseTravelFinanceGatewayResponse(value: unknown): TravelFinance
   if (body["sourceId"] !== undefined && typeof body["sourceId"] !== "string") {
     throw new Error("Travel finance settlement response is invalid");
   }
-  return { ok: true, dedup: body["dedup"], ...(typeof body["sourceId"] === "string" ? { sourceId: body["sourceId"] } : {}) };
+  return {
+    ok: true,
+    dedup: body["dedup"],
+    ...(typeof body["sourceId"] === "string" ? { sourceId: body["sourceId"] } : {}),
+  };
 }
 
-export async function postTravelFinanceSettlement(payload: TravelFinanceGatewayPayload): Promise<TravelFinanceGatewayResponse> {
+export async function postTravelFinanceSettlement(
+  payload: TravelFinanceGatewayPayload,
+): Promise<TravelFinanceGatewayResponse> {
   const { url, secret } = configuredFinanceGateway();
   let response: Response;
   try {
     response = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json", "x-djiwa-travel-settlement-secret": secret },
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        "x-djiwa-travel-settlement-secret": secret,
+      },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(15_000),
     });
@@ -142,21 +153,31 @@ async function settleLocalPayment(input: {
   financeError?: string;
 }) {
   return db.transaction(async (tx) => {
-    const rows = await tx.execute(sql`select status, total_amount, payment_reference from public.customer_orders where id = ${input.orderId}::uuid for update`);
-    const order = rows.rows[0] as { status: string; total_amount: string | number; payment_reference: string | null } | undefined;
+    const rows = await tx.execute(
+      sql`select status, total_amount, payment_reference from public.customer_orders where id = ${input.orderId}::uuid for update`,
+    );
+    const order = rows.rows[0] as
+      | { status: string; total_amount: string | number; payment_reference: string | null }
+      | undefined;
     if (!order) throw new Error("order_not_found");
-    if (order.payment_reference && input.invoiceId && order.payment_reference !== input.invoiceId) throw new Error("invoice_mismatch");
+    if (order.payment_reference && input.invoiceId && order.payment_reference !== input.invoiceId)
+      throw new Error("invoice_mismatch");
     if (Number(order.total_amount) !== input.amount) throw new Error("amount_mismatch");
-    if (!["ORDER_CREATED", "PAYMENT_PENDING", ...SETTLED_STATUSES].includes(order.status)) throw new Error("invalid_order_status");
+    if (!["ORDER_CREATED", "PAYMENT_PENDING", ...SETTLED_STATUSES].includes(order.status))
+      throw new Error("invalid_order_status");
 
-    const existing = await tx.execute(sql`select id from public.payment_webhook_events where provider = 'mayar' and provider_event_id = ${input.eventId} limit 1`);
+    const existing = await tx.execute(
+      sql`select id from public.payment_webhook_events where provider = 'mayar' and provider_event_id = ${input.eventId} limit 1`,
+    );
     if (existing.rows.length > 0) return { duplicate: true, status: order.status };
 
     await tx.execute(sql`insert into public.payment_webhook_events(provider, provider_event_id, event_type, order_id, status, amount, currency_code, payload, processed_at, processing_error)
       values ('mayar', ${input.eventId}, 'payment.received', ${input.orderId}::uuid, 'PAID', ${input.amount}, 'IDR', ${JSON.stringify(input.gatewayPayload)}::jsonb, now(), ${input.financeError ?? null})`);
     if (SETTLED_STATUSES.has(order.status)) return { duplicate: true, status: order.status };
 
-    await tx.execute(sql`update public.customer_orders set status = 'PAYMENT_CONFIRMED', payment_provider = 'mayar', payment_reference = coalesce(${input.invoiceId ?? ""}, payment_reference), paid_at = ${input.paidAt}::timestamptz, updated_at = now() where id = ${input.orderId}::uuid`);
+    await tx.execute(
+      sql`update public.customer_orders set status = 'PAYMENT_CONFIRMED', payment_provider = 'mayar', payment_reference = coalesce(${input.invoiceId ?? ""}, payment_reference), paid_at = ${input.paidAt}::timestamptz, updated_at = now() where id = ${input.orderId}::uuid`,
+    );
     return { duplicate: false, status: "PAYMENT_CONFIRMED" };
   });
 }
@@ -191,8 +212,12 @@ export async function settleVerifiedTravelPayment(input: {
   try {
     finance = await postTravelFinanceSettlement(gatewayPayload);
   } catch (error) {
-    financeError = error instanceof Error ? error.message.slice(0, 200) : "finance_settlement_failed";
-    console.error("[travel] finance settlement unavailable, settling locally", { orderId: input.orderId, financeError });
+    financeError =
+      error instanceof Error ? error.message.slice(0, 200) : "finance_settlement_failed";
+    console.error("[travel] finance settlement unavailable, settling locally", {
+      orderId: input.orderId,
+      financeError,
+    });
   }
   const localInput = {
     eventId: `mayar:${input.transactionId}`,
@@ -241,7 +266,13 @@ export const verifyMayarPayment = createServerFn({ method: "POST" })
       .select({ order: customerOrders })
       .from(customerOrders)
       .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
-      .where(and(eq(customerOrders.id, data.orderId), eq(guestOrderAccess.accessTokenHash, accessHash), gt(guestOrderAccess.expiresAt, new Date().toISOString())))
+      .where(
+        and(
+          eq(customerOrders.id, data.orderId),
+          eq(guestOrderAccess.accessTokenHash, accessHash),
+          gt(guestOrderAccess.expiresAt, new Date().toISOString()),
+        ),
+      )
       .limit(1);
     const order = rows[0]?.order;
     if (!order) throw new Error("Pesanan tidak ditemukan");
@@ -251,7 +282,12 @@ export const verifyMayarPayment = createServerFn({ method: "POST" })
       assertPaymentNotExpired(order.status, order.paymentExpiresAt);
       return { status: order.status, settled: false, reason: "invoice_not_created" as const };
     }
-    if (SETTLED_STATUSES.has(order.status)) return { status: order.status, settled: true, provisioning: await startProvisioning(order.id) };
+    if (SETTLED_STATUSES.has(order.status))
+      return {
+        status: order.status,
+        settled: true,
+        provisioning: await startProvisioning(order.id),
+      };
 
     const transaction = await fetchMayarTransaction(mayar.transactionId);
     if (String(transaction.status ?? "").toLowerCase() !== "paid") {
@@ -262,7 +298,13 @@ export const verifyMayarPayment = createServerFn({ method: "POST" })
     }
     const amount = Number(transaction.amount);
     const expectedAmount = Number(order.totalAmount);
-    if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isSafeInteger(expectedAmount) || amount !== expectedAmount) return { status: order.status, settled: false, reason: "amount_mismatch" as const };
+    if (
+      !Number.isSafeInteger(amount) ||
+      amount <= 0 ||
+      !Number.isSafeInteger(expectedAmount) ||
+      amount !== expectedAmount
+    )
+      return { status: order.status, settled: false, reason: "amount_mismatch" as const };
 
     const result = await settleVerifiedTravelPayment({
       orderId: order.id,
@@ -272,5 +314,10 @@ export const verifyMayarPayment = createServerFn({ method: "POST" })
       transactionId: mayar.transactionId,
       ...(mayar.invoiceId ? { invoiceId: mayar.invoiceId } : {}),
     });
-    return { status: result.local.status, settled: true, duplicate: result.local.duplicate, provisioning: await startProvisioning(order.id) };
+    return {
+      status: result.local.status,
+      settled: true,
+      duplicate: result.local.duplicate,
+      provisioning: await startProvisioning(order.id),
+    };
   });

@@ -15,4 +15,8 @@ async function receive(request: Request) {
   }
 }
 
-export const Route = createFileRoute("/api/customer-profile")({ server: { handlers: { GET: ({ request }) => receive(request), POST: ({ request }) => receive(request) } } });
+export const Route = createFileRoute("/api/customer-profile")({
+  server: {
+    handlers: { GET: ({ request }) => receive(request), POST: ({ request }) => receive(request) },
+  },
+});

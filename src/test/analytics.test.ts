@@ -3,7 +3,11 @@ import { buildAnalyticsEvent, isAnalyticsPublicPath } from "@/lib/analytics";
 
 beforeEach(() => {
   window.sessionStorage.clear();
-  window.history.replaceState({}, "", "/explore?utm_source=newsletter&utm_medium=email&utm_campaign=october");
+  window.history.replaceState(
+    {},
+    "",
+    "/explore?utm_source=newsletter&utm_medium=email&utm_campaign=october",
+  );
 });
 
 describe("privacy-safe analytics attribution", () => {
@@ -21,7 +25,13 @@ describe("privacy-safe analytics attribution", () => {
   });
 
   it("rejects account, order, checkout, and eSIM paths", () => {
-    for (const path of ["/profile", "/wallet", "/order/order-1", "/checkout/pkg-1", "/my-esim/pkg-1"]) {
+    for (const path of [
+      "/profile",
+      "/wallet",
+      "/order/order-1",
+      "/checkout/pkg-1",
+      "/my-esim/pkg-1",
+    ]) {
       expect(isAnalyticsPublicPath(path)).toBe(false);
       expect(buildAnalyticsEvent("page_view", path)).toBeNull();
     }

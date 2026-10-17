@@ -94,7 +94,8 @@ export async function refreshPriceRuleSnapshot(): Promise<PriceRule[]> {
 
 /** Rules for catalogue normalisation: the snapshot while it is fresh, a database read otherwise. */
 export async function getActivePriceRules(): Promise<PriceRule[]> {
-  if (isPriceRuleSnapshotLoaded() && priceRuleSnapshotAgeMs() < 30_000) return [...getPriceRuleSnapshot()];
+  if (isPriceRuleSnapshotLoaded() && priceRuleSnapshotAgeMs() < 30_000)
+    return [...getPriceRuleSnapshot()];
   return refreshPriceRuleSnapshot();
 }
 
@@ -190,7 +191,11 @@ export const previewCataloguePricing = createServerFn({ method: "POST" })
     await requireAdmin();
     const rules = await getActivePriceRules();
     const snapshot = await getBalanceSnapshot();
-    const { targets, allRows } = await resolveSelection(data.selection, rules, snapshot.balanceUnits);
+    const { targets, allRows } = await resolveSelection(
+      data.selection,
+      rules,
+      snapshot.balanceUnits,
+    );
 
     const preview = previewPriceRule({
       rows: targets.map((row) => ({
@@ -236,7 +241,7 @@ async function writeScopeRule(
     sql`select id::text as id, coalesce(version, 1)::int as version, markup_value::text as markup_value
         from esim_price_rules
         where provider = 'esimaccess' and active
-          and scope_type = ${params.scopeType} and coalesce(scope_key, '*') = ${scopeKey ?? '*'}
+          and scope_type = ${params.scopeType} and coalesce(scope_key, '*') = ${scopeKey ?? "*"}
           and markup_type = ${params.markupType}
         order by effective_from desc limit 1`,
   );
@@ -246,7 +251,7 @@ async function writeScopeRule(
   await tx.execute(
     sql`update esim_price_rules set active = false, effective_until = now()
         where provider = 'esimaccess' and active
-          and scope_type = ${params.scopeType} and coalesce(scope_key, '*') = ${scopeKey ?? '*'}
+          and scope_type = ${params.scopeType} and coalesce(scope_key, '*') = ${scopeKey ?? "*"}
           and markup_type = ${params.markupType}`,
   );
 
@@ -295,7 +300,11 @@ export const applyCataloguePricing = createServerFn({ method: "POST" })
     const actor = await currentActor();
     const rules = await getActivePriceRules();
     const snapshot = await getBalanceSnapshot();
-    const { targets, allRows } = await resolveSelection(data.selection, rules, snapshot.balanceUnits);
+    const { targets, allRows } = await resolveSelection(
+      data.selection,
+      rules,
+      snapshot.balanceUnits,
+    );
 
     // Money guardrail: a bulk action must never silently sell below our own provider cost.
     const preview = previewPriceRule({
@@ -319,11 +328,16 @@ export const applyCataloguePricing = createServerFn({ method: "POST" })
 
     const scopes = planBulkScopes(targets, allRows, data.scopeTarget);
     const fields: { markupType: PriceRuleMarkupType; value: number }[] = [];
-    if (data.markup.markupPercent !== null) fields.push({ markupType: "percentage", value: data.markup.markupPercent });
-    if (data.markup.fixedMarkupIdr !== null) fields.push({ markupType: "fixed", value: data.markup.fixedMarkupIdr });
+    if (data.markup.markupPercent !== null)
+      fields.push({ markupType: "percentage", value: data.markup.markupPercent });
+    if (data.markup.fixedMarkupIdr !== null)
+      fields.push({ markupType: "fixed", value: data.markup.fixedMarkupIdr });
 
     const batchId = globalThis.crypto.randomUUID();
-    const batchMode = scopes.countryScopes.length + scopes.packageScopes.length > 1 || targets.length > 1 ? "bulk" : "single";
+    const batchMode =
+      scopes.countryScopes.length + scopes.packageScopes.length > 1 || targets.length > 1
+        ? "bulk"
+        : "single";
 
     await db.transaction(async (tx) => {
       const groups: { scopeType: PriceRuleScope; keys: (string | null)[] }[] = [
@@ -356,7 +370,9 @@ export const applyCataloguePricing = createServerFn({ method: "POST" })
       affectedPackages: targets.length,
       countryRules: scopes.countryScopes.length,
       packageRules: scopes.packageScopes.length,
-      fields: fields.map((field) => (field.markupType === "percentage" ? `profit ${field.value}%` : `profit Rp${field.value}`)),
+      fields: fields.map((field) =>
+        field.markupType === "percentage" ? `profit ${field.value}%` : `profit Rp${field.value}`,
+      ),
       catalogueCacheCleared: true,
       snapshotRules: refreshed.length,
     };
@@ -424,7 +440,9 @@ export type PriceRuleEventView = {
 };
 
 export const readPriceRuleHistory = createServerFn({ method: "GET" })
-  .validator((data: unknown) => z.object({ limit: z.number().int().min(1).max(50).default(12) }).parse(data ?? {}))
+  .validator((data: unknown) =>
+    z.object({ limit: z.number().int().min(1).max(50).default(12) }).parse(data ?? {}),
+  )
   .handler(async ({ data }): Promise<PriceRuleEventView[]> => {
     await requireAdmin();
     const result = await db.execute(
@@ -443,8 +461,10 @@ export const readPriceRuleHistory = createServerFn({ method: "GET" })
         scopeType: text(row, "scope_type") ?? "global",
         scopeKey: text(row, "scope_key"),
         markupType: text(row, "markup_type"),
-        beforeValue: before && Number.isFinite(Number(before.markupValue)) ? Number(before.markupValue) : null,
-        afterValue: after && Number.isFinite(Number(after.markupValue)) ? Number(after.markupValue) : null,
+        beforeValue:
+          before && Number.isFinite(Number(before.markupValue)) ? Number(before.markupValue) : null,
+        afterValue:
+          after && Number.isFinite(Number(after.markupValue)) ? Number(after.markupValue) : null,
         actorId: text(row, "actor_id") ?? "unknown",
         reason: text(row, "reason") ?? "",
         batchId: text(row, "batch_id"),
@@ -488,7 +508,9 @@ export const setPackagePriceInline = createServerFn({ method: "POST" })
       rules,
       balanceUnits: snapshot.balanceUnits,
       usdToIdr: RESELLER_CONFIG.usdToIdr,
-    }).find((candidate) => candidate.packageCode.toUpperCase() === data.packageCode.trim().toUpperCase());
+    }).find(
+      (candidate) => candidate.packageCode.toUpperCase() === data.packageCode.trim().toUpperCase(),
+    );
     if (!row) throw new Error(`Paket ${data.packageCode} tidak ditemukan di katalog provider.`);
 
     let pinned: { markupPercent: number; fixedMarkupIdr: number };
@@ -498,10 +520,13 @@ export const setPackagePriceInline = createServerFn({ method: "POST" })
       }
       pinned = { markupPercent: Math.round(data.value * 100) / 100, fixedMarkupIdr: 0 };
     } else {
-      if (!Number.isFinite(data.value) || data.value <= 0) throw new Error("Harga jual harus angka lebih dari 0.");
+      if (!Number.isFinite(data.value) || data.value <= 0)
+        throw new Error("Harga jual harus angka lebih dari 0.");
       const fixed = Math.round(data.value) - row.providerCostIdr;
       if (fixed < 0) {
-        throw new Error(`Harga jual ${Math.round(data.value)} di bawah harga provider (${row.providerCostIdr}).`);
+        throw new Error(
+          `Harga jual ${Math.round(data.value)} di bawah harga provider (${row.providerCostIdr}).`,
+        );
       }
       pinned = { markupPercent: 0, fixedMarkupIdr: fixed };
     }
@@ -521,7 +546,8 @@ export const setPackagePriceInline = createServerFn({ method: "POST" })
       roundingIdr: RESELLER_CONFIG.roundingIdr,
       balanceUnits: snapshot.balanceUnits,
     });
-    if (proposal.summary.lossMaking > 0) throw new Error("Harga jual tidak boleh di bawah harga provider.");
+    if (proposal.summary.lossMaking > 0)
+      throw new Error("Harga jual tidak boleh di bawah harga provider.");
     const afterPriceIdr = proposal.rows[0]?.afterPriceIdr ?? row.sellingPriceIdr;
 
     const batchId = globalThis.crypto.randomUUID();

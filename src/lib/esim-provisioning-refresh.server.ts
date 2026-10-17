@@ -15,13 +15,16 @@ type ProviderRecord = Record<string, unknown>;
 
 /** The provider nests the list under an unknown key, so take the first array of records it returns. */
 export function firstProviderRecordList(payload: unknown): ProviderRecord[] {
-  const root = (payload as { obj?: unknown; data?: unknown } | null)?.obj
-    ?? (payload as { data?: unknown } | null)?.data
-    ?? payload;
+  const root =
+    (payload as { obj?: unknown; data?: unknown } | null)?.obj ??
+    (payload as { data?: unknown } | null)?.data ??
+    payload;
   if (!root || typeof root !== "object") return [];
   for (const value of Object.values(root as Record<string, unknown>)) {
     if (Array.isArray(value)) {
-      return value.filter((item): item is ProviderRecord => Boolean(item) && typeof item === "object");
+      return value.filter(
+        (item): item is ProviderRecord => Boolean(item) && typeof item === "object",
+      );
     }
   }
   return [];
@@ -39,7 +42,8 @@ function firstNumber(record: ProviderRecord, keys: string[]) {
   for (const key of keys) {
     const value = record[key];
     if (typeof value === "number" && Number.isFinite(value)) return value;
-    if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
+    if (typeof value === "string" && value.trim() && Number.isFinite(Number(value)))
+      return Number(value);
   }
   return undefined;
 }
@@ -55,20 +59,30 @@ export function providerTimestamp(value: string | undefined): string | null {
  * `force` is for the scheduled sync, which must refresh status/usage/expiry on every run. The order
  * page keeps the cheap path: once an installable profile exists it is served from our own database.
  */
-export async function refreshTravelOrderProvisioning(orderId: string, options: { force?: boolean } = {}): Promise<{ status: string; installable: boolean }> {
-  const provisioningRows = await db.execute(sql`select id, provider_order_no from public.esim_provisioning_orders where order_id = ${orderId}::uuid limit 1`);
-  const provisioning = provisioningRows.rows[0] as { id?: string; provider_order_no?: string | null } | undefined;
+export async function refreshTravelOrderProvisioning(
+  orderId: string,
+  options: { force?: boolean } = {},
+): Promise<{ status: string; installable: boolean }> {
+  const provisioningRows = await db.execute(
+    sql`select id, provider_order_no from public.esim_provisioning_orders where order_id = ${orderId}::uuid limit 1`,
+  );
+  const provisioning = provisioningRows.rows[0] as
+    { id?: string; provider_order_no?: string | null } | undefined;
   const provisioningOrderId = String(provisioning?.id ?? "");
   const providerOrderNo = String(provisioning?.provider_order_no ?? "");
-  if (!provisioningOrderId || !providerOrderNo) return { status: "NO_PROVIDER_ORDER", installable: false };
+  if (!provisioningOrderId || !providerOrderNo)
+    return { status: "NO_PROVIDER_ORDER", installable: false };
 
-  const installed = await db.execute(sql`select id from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true limit 1`);
+  const installed = await db.execute(
+    sql`select id from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true limit 1`,
+  );
   const alreadyInstallable = installed.rows.length > 0;
   if (alreadyInstallable && !options.force) return { status: "READY", installable: true };
 
   const payload = await queryEsimAccessProfilesServer({ orderNo: providerOrderNo });
   const records = firstProviderRecordList(payload);
-  if (records.length === 0) return { status: alreadyInstallable ? "READY" : "PENDING", installable: alreadyInstallable };
+  if (records.length === 0)
+    return { status: alreadyInstallable ? "READY" : "PENDING", installable: alreadyInstallable };
 
   let installable = alreadyInstallable;
   let providerStatus: string | undefined;
@@ -78,7 +92,8 @@ export async function refreshTravelOrderProvisioning(orderId: string, options: {
     // The provider answers `ac` with a complete "LPA:1$smdp$code" string, so it doubles as the QR payload.
     const activationCode = firstString(record, ["ac", "activationCode", "qrCode"]);
     providerStatus = firstString(record, ["esimStatus", "smdpStatus"]) ?? providerStatus;
-    expiresAtIso = providerTimestamp(firstString(record, ["expiredTime", "expirationTime"])) ?? expiresAtIso;
+    expiresAtIso =
+      providerTimestamp(firstString(record, ["expiredTime", "expirationTime"])) ?? expiresAtIso;
     if (!iccid || !activationCode) continue;
     const status = firstString(record, ["smdpStatus", "esimStatus", "status"]) ?? "RELEASED";
     const protectedProfile = protectProviderProfile(provisioningOrderId, {
@@ -94,12 +109,19 @@ export async function refreshTravelOrderProvisioning(orderId: string, options: {
   }
 
   if (providerStatus) {
-    await db.execute(sql`update public.esim_provisioning_orders set provider_status = ${providerStatus}, updated_at = now() where id = ${provisioningOrderId}::uuid`);
+    await db.execute(
+      sql`update public.esim_provisioning_orders set provider_status = ${providerStatus}, updated_at = now() where id = ${provisioningOrderId}::uuid`,
+    );
   }
-  const usageRecord = records.find((record) => firstNumber(record, ["totalVolume"]) !== undefined) ?? records[0] ?? {};
+  const usageRecord =
+    records.find((record) => firstNumber(record, ["totalVolume"]) !== undefined) ??
+    records[0] ??
+    {};
   const totalVolume = firstNumber(usageRecord, ["totalVolume"]) ?? null;
   const orderUsage = firstNumber(usageRecord, ["orderUsage"]) ?? null;
-  const remain = firstNumber(usageRecord, ["remain"]) ?? (totalVolume !== null && orderUsage !== null ? Math.max(totalVolume - orderUsage, 0) : null);
+  const remain =
+    firstNumber(usageRecord, ["remain"]) ??
+    (totalVolume !== null && orderUsage !== null ? Math.max(totalVolume - orderUsage, 0) : null);
   // A synthetic receipt records usage/validity where the provider webhook would have written it.
   const syncId = `sync:${providerOrderNo}:${new Date().toISOString().slice(0, 13)}`;
   await db.execute(sql`insert into public.provider_webhook_events(
@@ -113,12 +135,18 @@ export async function refreshTravelOrderProvisioning(orderId: string, options: {
     ) on conflict do nothing`);
 
   if (!installable) return { status: "PENDING", installable: false };
-  await db.execute(sql`update public.esim_provisioning_orders set status = 'READY', last_provisioning_error = null, updated_at = now() where id = ${provisioningOrderId}::uuid and status in ('PROVISIONING','PENDING')`);
-  await db.execute(sql`update public.customer_orders set status = 'READY', esim_activation_expires_at = coalesce(esim_activation_expires_at, ${expiresAtIso}::timestamptz, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = ${orderId}::uuid and status in ('PROVISIONING','PAYMENT_CONFIRMED','PROVISIONING_FAILED')`);
+  await db.execute(
+    sql`update public.esim_provisioning_orders set status = 'READY', last_provisioning_error = null, updated_at = now() where id = ${provisioningOrderId}::uuid and status in ('PROVISIONING','PENDING')`,
+  );
+  await db.execute(
+    sql`update public.customer_orders set status = 'READY', esim_activation_expires_at = coalesce(esim_activation_expires_at, ${expiresAtIso}::timestamptz, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = ${orderId}::uuid and status in ('PROVISIONING','PAYMENT_CONFIRMED','PROVISIONING_FAILED')`,
+  );
   // The activation window is provider truth, so keep it on every run — an order that is already
   // READY is skipped by the transition above and would otherwise never learn its expiry.
   if (expiresAtIso) {
-    await db.execute(sql`update public.customer_orders set esim_activation_expires_at = ${expiresAtIso}::timestamptz, updated_at = now() where id = ${orderId}::uuid and (esim_activation_expires_at is null or esim_activation_expires_at <> ${expiresAtIso}::timestamptz)`);
+    await db.execute(
+      sql`update public.customer_orders set esim_activation_expires_at = ${expiresAtIso}::timestamptz, updated_at = now() where id = ${orderId}::uuid and (esim_activation_expires_at is null or esim_activation_expires_at <> ${expiresAtIso}::timestamptz)`,
+    );
   }
   return { status: "READY", installable: true };
 }

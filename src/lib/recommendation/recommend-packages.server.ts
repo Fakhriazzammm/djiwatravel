@@ -4,10 +4,7 @@ import { toViewPackage } from "@/lib/package-view";
 import { getSellabilityState } from "@/lib/sellability.server";
 import { filterPackages } from "./package-filter";
 import { rankPackages } from "./package-ranker";
-import {
-  normalizePreferences,
-  recommendationPreferencesSchema,
-} from "./preferences";
+import { normalizePreferences, recommendationPreferencesSchema } from "./preferences";
 export const recommendPackages = createServerFn({ method: "POST" })
   .validator(recommendationPreferencesSchema)
   .handler(async ({ data }) => {

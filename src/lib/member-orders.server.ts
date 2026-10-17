@@ -1,7 +1,14 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { customerOrderItems, customerOrders, esimProfiles, esimProvisioningOrders, guestOrderAccess, orderClaimEvents } from "../../drizzle/schema";
+import {
+  customerOrderItems,
+  customerOrders,
+  esimProfiles,
+  esimProvisioningOrders,
+  guestOrderAccess,
+  orderClaimEvents,
+} from "../../drizzle/schema";
 import { db } from "../db/client.server";
 import { requireBetterAuthUser } from "./customer-profile.server";
 import { decryptEsimSecret } from "./esim-secret-crypto";
@@ -19,7 +26,10 @@ import type { GuestOrderRecord } from "./guest-order-view";
  * satisfy it. Deliberately not exported as a general "does this look like mine" helper: every
  * caller must pass a subject it obtained server-side.
  */
-export function memberOrderBelongsToUser(order: { customerAuthSubject: string | null }, authSubject: string) {
+export function memberOrderBelongsToUser(
+  order: { customerAuthSubject: string | null },
+  authSubject: string,
+) {
   const subject = (authSubject ?? "").trim();
   return Boolean(subject) && order.customerAuthSubject === subject;
 }
@@ -60,7 +70,9 @@ function memberOrderRows(authSubject: string) {
     .orderBy(customerOrders.createdAt);
 }
 
-function toGuestOrderRecord(row: Awaited<ReturnType<typeof memberOrderRows>>[number]): GuestOrderRecord {
+function toGuestOrderRecord(
+  row: Awaited<ReturnType<typeof memberOrderRows>>[number],
+): GuestOrderRecord {
   const snapshot = (row.packageSnapshot ?? {}) as Record<string, unknown>;
   const paymentUrl = readMayarSnapshot(row.priceSnapshot).paymentUrl;
   const qrPayload = row.qrPayloadEncrypted ? decryptEsimSecret(row.qrPayloadEncrypted) : "";
@@ -77,7 +89,9 @@ function toGuestOrderRecord(row: Awaited<ReturnType<typeof memberOrderRows>>[num
     // shorten how long the eSIM stays valid.
     expiresAtMs: row.activationProfileExpiresAt
       ? new Date(row.activationProfileExpiresAt).getTime()
-      : row.expiresAt ? new Date(row.expiresAt).getTime() : null,
+      : row.expiresAt
+        ? new Date(row.expiresAt).getTime()
+        : null,
     paymentExpiresAtMs: row.paymentExpiresAt ? new Date(row.paymentExpiresAt).getTime() : null,
     packageCode: row.packageCode,
     paymentMethod: row.paymentMethod ?? "qris",
@@ -87,19 +101,23 @@ function toGuestOrderRecord(row: Awaited<ReturnType<typeof memberOrderRows>>[num
     ...(row.providerOrderNo ? { providerOrderNo: row.providerOrderNo } : {}),
     // eSIM secrets are only decrypted for rows the member read path already proved belong to the
     // caller, and only once the profile is installable.
-    ...(row.installable && row.iccid && (qrPayload || activationCode) ? {
-      esim: {
-        iccid: row.iccid,
-        smdp: qrPayload.startsWith("LPA:") ? (qrPayload.split("$")[1] ?? "") : "",
-        activationCode,
-        lpa: qrPayload,
-      },
-    } : {}),
+    ...(row.installable && row.iccid && (qrPayload || activationCode)
+      ? {
+          esim: {
+            iccid: row.iccid,
+            smdp: qrPayload.startsWith("LPA:") ? (qrPayload.split("$")[1] ?? "") : "",
+            activationCode,
+            lpa: qrPayload,
+          },
+        }
+      : {}),
     packageSnapshot: {
       // `noPropertyAccessFromIndexSignature` is on, and the snapshot is a JSON column, so every read
       // goes through a bracket access after an explicit type check.
       name: typeof snapshot["name"] === "string" ? snapshot["name"] : row.packageCode,
-      locationCodes: Array.isArray(snapshot["locationCodes"]) ? snapshot["locationCodes"].filter((v): v is string => typeof v === "string") : [],
+      locationCodes: Array.isArray(snapshot["locationCodes"])
+        ? snapshot["locationCodes"].filter((v): v is string => typeof v === "string")
+        : [],
       durationDays: typeof snapshot["durationDays"] === "number" ? snapshot["durationDays"] : 0,
       volumeBytes: typeof snapshot["volumeBytes"] === "number" ? snapshot["volumeBytes"] : null,
       supportsTopUp: snapshot["supportsTopUp"] === true,
@@ -118,9 +136,11 @@ export const getMemberOrders = createServerFn({ method: "GET" }).handler(async (
   const user = await requireBetterAuthUser();
   const rows = await memberOrderRows(user.id);
 
-  await Promise.all(rows
-    .filter((row) => row.status === "PAID" || row.status === "PROVISIONING")
-    .map((row) => refreshTravelOrderProvisioning(row.id).catch(() => undefined)));
+  await Promise.all(
+    rows
+      .filter((row) => row.status === "PAID" || row.status === "PROVISIONING")
+      .map((row) => refreshTravelOrderProvisioning(row.id).catch(() => undefined)),
+  );
 
   const refreshed = rows.length ? await memberOrderRows(user.id) : rows;
   return refreshed.map(toGuestOrderRecord);

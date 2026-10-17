@@ -1,5 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, BellRing, Check, Loader2, AlertCircle, Printer, Receipt, RefreshCw } from "lucide-react";
+import {
+  Bell,
+  BellRing,
+  Check,
+  Loader2,
+  AlertCircle,
+  Printer,
+  Receipt,
+  RefreshCw,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Page, btnPrimary, btnRed, btnSoft } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
@@ -252,7 +261,12 @@ function OrderPage() {
               : "Tagihan pembayaran belum terbentuk. Tekan tombol di bawah untuk membuatnya."}
           </p>
           {o.paymentUrl ? (
-            <a href={o.paymentUrl} target="_blank" rel="noreferrer" className={`${btnRed} mt-4 block`}>
+            <a
+              href={o.paymentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={`${btnRed} mt-4 block`}
+            >
               Lanjutkan pembayaran
             </a>
           ) : (
@@ -494,13 +508,29 @@ function OrderPage() {
 
 const TIMELINE_STEPS: OrderStatus[] = ["ORDER_CREATED", "PAID", "PROVISIONING", "READY"];
 
-function OrderTimeline({ status, expiresAt }: { status: OrderStatus; expiresAt: number | undefined }) {
+function OrderTimeline({
+  status,
+  expiresAt,
+}: {
+  status: OrderStatus;
+  expiresAt: number | undefined;
+}) {
   const effective = effectiveOrderStatus(status, expiresAt);
   const terminal = ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(effective);
-  const currentIndex = effective === "INSTALLED" ? 3 : effective === "WAITING_PAYMENT" ? 0 : TIMELINE_STEPS.indexOf(effective);
+  const currentIndex =
+    effective === "INSTALLED"
+      ? 3
+      : effective === "WAITING_PAYMENT"
+        ? 0
+        : TIMELINE_STEPS.indexOf(effective);
   return (
-    <section aria-label="Tahapan pesanan" className="mt-5 rounded-2xl border border-border bg-surface p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status pesanan</p>
+    <section
+      aria-label="Tahapan pesanan"
+      className="mt-5 rounded-2xl border border-border bg-surface p-4"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Status pesanan
+      </p>
       {terminal ? (
         <p className="mt-2 text-sm font-semibold">{ORDER_STATUS_LABEL[effective]}</p>
       ) : (
@@ -509,11 +539,21 @@ function OrderTimeline({ status, expiresAt }: { status: OrderStatus; expiresAt: 
             const done = index <= currentIndex;
             return (
               <li key={step} className="text-center text-[11px] leading-tight">
-                <span className={`mx-auto flex size-6 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-brand-red text-white" : "bg-secondary text-muted-foreground"}`}>
+                <span
+                  className={`mx-auto flex size-6 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-brand-red text-white" : "bg-secondary text-muted-foreground"}`}
+                >
                   {index + 1}
                 </span>
-                <span className={`mt-1 block ${done ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                  {step === "ORDER_CREATED" ? "Dibuat" : step === "PAID" ? "Dibayar" : step === "PROVISIONING" ? "Disiapkan" : "Siap"}
+                <span
+                  className={`mt-1 block ${done ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                >
+                  {step === "ORDER_CREATED"
+                    ? "Dibuat"
+                    : step === "PAID"
+                      ? "Dibayar"
+                      : step === "PROVISIONING"
+                        ? "Disiapkan"
+                        : "Siap"}
                 </span>
               </li>
             );
@@ -531,7 +571,9 @@ function InvoiceCard({ order }: { order: Order }) {
     <section className="invoice-card mt-6 rounded-2xl bg-surface p-4 text-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invoice</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Invoice
+          </p>
           <p className="mt-1 font-semibold">Djiwa Travel</p>
           <p className="text-muted-foreground">#{order.publicOrderCode ?? order.id.slice(0, 8)}</p>
         </div>

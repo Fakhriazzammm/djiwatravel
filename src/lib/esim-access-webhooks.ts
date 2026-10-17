@@ -1,13 +1,32 @@
 import { createHash } from "node:crypto";
 
-export type EsimProfileStatus = "RELEASED" | "ENABLED" | "IN_USE" | "USED_UP" | "SUSPENDED" | "REVOKED" | "CANCELLED" | "UNKNOWN";
-export type ProviderWebhook = { notifyId: string; notifyType: string; eventGenerateTime?: string; content?: Record<string, unknown> };
+export type EsimProfileStatus =
+  "RELEASED" | "ENABLED" | "IN_USE" | "USED_UP" | "SUSPENDED" | "REVOKED" | "CANCELLED" | "UNKNOWN";
+export type ProviderWebhook = {
+  notifyId: string;
+  notifyType: string;
+  eventGenerateTime?: string;
+  content?: Record<string, unknown>;
+};
 
-const rank: Record<EsimProfileStatus, number> = { UNKNOWN: 0, RELEASED: 1, ENABLED: 2, IN_USE: 3, USED_UP: 4, SUSPENDED: 4, CANCELLED: 5, REVOKED: 5 };
+const rank: Record<EsimProfileStatus, number> = {
+  UNKNOWN: 0,
+  RELEASED: 1,
+  ENABLED: 2,
+  IN_USE: 3,
+  USED_UP: 4,
+  SUSPENDED: 4,
+  CANCELLED: 5,
+  REVOKED: 5,
+};
 
 function stable(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${JSON.stringify(k)}:${stable(v)}`).join(",")}}`;
+  if (value && typeof value === "object")
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${JSON.stringify(k)}:${stable(v)}`)
+      .join(",")}}`;
   return JSON.stringify(value);
 }
 
@@ -17,7 +36,16 @@ export function webhookFingerprint(event: ProviderWebhook) {
 
 export function mapProviderStatus(value: unknown): EsimProfileStatus {
   const status = String(value ?? "").toUpperCase();
-  if (status === "ENABLED" || status === "IN_USE" || status === "USED_UP" || status === "SUSPENDED" || status === "REVOKED" || status === "CANCELLED" || status === "RELEASED") return status;
+  if (
+    status === "ENABLED" ||
+    status === "IN_USE" ||
+    status === "USED_UP" ||
+    status === "SUSPENDED" ||
+    status === "REVOKED" ||
+    status === "CANCELLED" ||
+    status === "RELEASED"
+  )
+    return status;
   return "UNKNOWN";
 }
 
@@ -31,7 +59,12 @@ export type NormalizedUsage = {
 };
 
 function finiteNumber(value: unknown): number | undefined {
-  const number = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
+  const number =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : NaN;
   return Number.isFinite(number) ? number : undefined;
 }
 
@@ -47,7 +80,10 @@ function normalizedTimestamp(value: unknown): string | undefined {
   return undefined;
 }
 
-export function normalizeUsagePayload(notifyType: string, content: Record<string, unknown>): NormalizedUsage {
+export function normalizeUsagePayload(
+  notifyType: string,
+  content: Record<string, unknown>,
+): NormalizedUsage {
   if (notifyType === "DATA_USAGE") {
     const dataUsage: NonNullable<NormalizedUsage["dataUsage"]> = {};
     const totalVolume = finiteNumber(content["totalVolume"]);
@@ -73,6 +109,10 @@ export function normalizeUsagePayload(notifyType: string, content: Record<string
 
 export class InMemoryWebhookDedupe {
   private readonly seen = new Set<string>();
-  has(event: ProviderWebhook) { return this.seen.has(webhookFingerprint(event)); }
-  remember(event: ProviderWebhook) { this.seen.add(webhookFingerprint(event)); }
+  has(event: ProviderWebhook) {
+    return this.seen.has(webhookFingerprint(event));
+  }
+  remember(event: ProviderWebhook) {
+    this.seen.add(webhookFingerprint(event));
+  }
 }

@@ -35,7 +35,9 @@ export function progressPhase(input: {
 }
 
 export function NavProgress() {
-  const pending = useRouterState({ select: (state) => state.isLoading || state.status === "pending" });
+  const pending = useRouterState({
+    select: (state) => state.isLoading || state.status === "pending",
+  });
   const reduce = useReducedMotion();
   const [phase, setPhase] = useState<ProgressPhase>("hidden");
   const pendingSince = useRef<number | null>(null);
@@ -50,7 +52,8 @@ export function NavProgress() {
         const startedAt = pendingSince.current;
         if (startedAt === null) return;
         const pendingForMs = now() - startedAt;
-        if (pendingForMs >= PROGRESS_SHOW_DELAY_MS && visibleSince.current === null) visibleSince.current = now();
+        if (pendingForMs >= PROGRESS_SHOW_DELAY_MS && visibleSince.current === null)
+          visibleSince.current = now();
         const visibleForMs = visibleSince.current === null ? -1 : now() - visibleSince.current;
         setPhase(progressPhase({ stillPending: true, pendingForMs, visibleForMs }));
       };

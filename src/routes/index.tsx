@@ -95,6 +95,7 @@ function Home() {
         {loading ? null : user ? (
           <Link
             to="/profile"
+            search={{ admin: undefined }}
             aria-label="Buka profil akun"
             data-testid="header-account"
             className="tap flex min-w-0 shrink-0 items-center gap-2 rounded-full bg-surface px-3 py-1.5 shadow-sm"
@@ -110,7 +111,7 @@ function Home() {
           <CustomerAuth
             size="compact"
             onAuthenticated={() => {
-              void nav({ to: "/profile" });
+              void nav({ to: "/profile", search: { admin: undefined } });
             }}
           />
         )}

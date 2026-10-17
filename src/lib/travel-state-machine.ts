@@ -37,10 +37,18 @@ export function toTravelLifecycle(
   status: OrderStatus,
   input: boolean | TravelLifecycleInput = {},
 ): TravelLifecycle {
-  const { paymentExpired = false, provisioningStatus, attemptCount, maxAttempts = MAX_PROVISIONING_ATTEMPTS } =
-    normalizeInput(input);
+  const {
+    paymentExpired = false,
+    provisioningStatus,
+    attemptCount,
+    maxAttempts = MAX_PROVISIONING_ATTEMPTS,
+  } = normalizeInput(input);
 
-  if (status === "EXPIRED" || (paymentExpired && ["ORDER_CREATED", "WAITING_PAYMENT"].includes(status))) return "EXPIRED";
+  if (
+    status === "EXPIRED" ||
+    (paymentExpired && ["ORDER_CREATED", "WAITING_PAYMENT"].includes(status))
+  )
+    return "EXPIRED";
   if (status === "ORDER_CREATED" || status === "WAITING_PAYMENT") return "PAYMENT_PENDING";
   if (status === "PAID") return "PAYMENT_CONFIRMED";
   if (status === "PROVISIONING") return "PROVISIONING";
@@ -48,7 +56,8 @@ export function toTravelLifecycle(
   if (status === "PROVISIONING_FAILED") {
     const attempts = Number(attemptCount ?? 0);
     const exhausted = Number.isFinite(attempts) && attempts >= maxAttempts;
-    const terminal = provisioningStatus === "REVIEW_REQUIRED" || provisioningStatus === "FAILED_TERMINAL";
+    const terminal =
+      provisioningStatus === "REVIEW_REQUIRED" || provisioningStatus === "FAILED_TERMINAL";
     // A provider refusal that exhausted its attempts, or one explicitly parked for review, is a
     // support case; anything else is still retryable.
     return exhausted || terminal ? "FAILED_REVIEW" : "RETRYING";
@@ -62,11 +71,32 @@ export function isSettledLifecycle(lifecycle: TravelLifecycle) {
 }
 
 export const TRAVEL_LIFECYCLE_COPY: Record<TravelLifecycle, { title: string; action: string }> = {
-  PAYMENT_PENDING: { title: "Menunggu pembayaran", action: "Selesaikan pembayaran sebelum kedaluwarsa." },
-  PAYMENT_CONFIRMED: { title: "Pembayaran terverifikasi", action: "eSIM sedang dimasukkan ke antrean proses." },
-  PROVISIONING: { title: "eSIM sedang disiapkan", action: "Tidak perlu membayar lagi. Kami memperbarui status secara berkala." },
-  RETRYING: { title: "Kami mencoba lagi", action: "Provider belum merespons; pesanan tetap aman dan akan dicoba kembali." },
-  READY: { title: "eSIM siap dipasang", action: "Gunakan QR atau detail manual untuk memasang eSIM." },
-  FAILED_REVIEW: { title: "Perlu bantuan support", action: "Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan." },
-  EXPIRED: { title: "Pesanan kedaluwarsa", action: "Buat pesanan baru jika belum ada pembayaran yang berhasil." },
+  PAYMENT_PENDING: {
+    title: "Menunggu pembayaran",
+    action: "Selesaikan pembayaran sebelum kedaluwarsa.",
+  },
+  PAYMENT_CONFIRMED: {
+    title: "Pembayaran terverifikasi",
+    action: "eSIM sedang dimasukkan ke antrean proses.",
+  },
+  PROVISIONING: {
+    title: "eSIM sedang disiapkan",
+    action: "Tidak perlu membayar lagi. Kami memperbarui status secara berkala.",
+  },
+  RETRYING: {
+    title: "Kami mencoba lagi",
+    action: "Provider belum merespons; pesanan tetap aman dan akan dicoba kembali.",
+  },
+  READY: {
+    title: "eSIM siap dipasang",
+    action: "Gunakan QR atau detail manual untuk memasang eSIM.",
+  },
+  FAILED_REVIEW: {
+    title: "Perlu bantuan support",
+    action: "Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan.",
+  },
+  EXPIRED: {
+    title: "Pesanan kedaluwarsa",
+    action: "Buat pesanan baru jika belum ada pembayaran yang berhasil.",
+  },
 };

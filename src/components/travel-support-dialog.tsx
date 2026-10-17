@@ -76,7 +76,12 @@ export function TravelSupportDialog({
 
   return (
     <FixedLayer>
-      <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true" aria-label="Bantuan pesanan">
+      <div
+        className="fixed inset-0 z-50 flex items-end justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Bantuan pesanan"
+      >
         <button
           type="button"
           aria-label="Tutup bantuan"
@@ -135,8 +140,8 @@ export function TravelSupportDialog({
 
             {suppressed && (
               <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-[12px] text-muted-foreground">
-                Kamu baru saja mengirim topik ini. Kirim ulang hanya kalau percakapan sebelumnya tidak
-                terbuka.
+                Kamu baru saja mengirim topik ini. Kirim ulang hanya kalau percakapan sebelumnya
+                tidak terbuka.
               </p>
             )}
           </div>

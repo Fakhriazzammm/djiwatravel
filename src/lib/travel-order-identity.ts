@@ -21,9 +21,13 @@ export type OrderOwnershipInput = {
 
 export type OrderOwnershipVerdict = "member" | "guest" | "none";
 
-export function orderOwnership(order: OrderOwnershipShape, input: OrderOwnershipInput): OrderOwnershipVerdict {
+export function orderOwnership(
+  order: OrderOwnershipShape,
+  input: OrderOwnershipInput,
+): OrderOwnershipVerdict {
   const subject = typeof input.authSubject === "string" ? input.authSubject.trim() : "";
-  const owned = typeof order.customerAuthSubject === "string" ? order.customerAuthSubject.trim() : "";
+  const owned =
+    typeof order.customerAuthSubject === "string" ? order.customerAuthSubject.trim() : "";
   if (subject && owned && subject === owned) return "member";
   if (input.guestTokenVerified === true) return "guest";
   return "none";
@@ -60,7 +64,9 @@ export function claimGuestOrder(input: ClaimInput): ClaimDecision {
 }
 
 /** Merge member and guest reads without ever showing the same order twice. */
-export function dedupeOrdersById<T extends { id: string }>(...lists: Array<readonly T[] | undefined>): T[] {
+export function dedupeOrdersById<T extends { id: string }>(
+  ...lists: Array<readonly T[] | undefined>
+): T[] {
   const seen = new Set<string>();
   const merged: T[] = [];
   for (const list of lists) {

@@ -96,7 +96,8 @@ export function parseTravelFinanceReport(value: unknown): TravelFinanceReport {
   const rawRecent = body["recent"];
   const rawCategories = body["byCategory"];
   const rawDaily = body["daily"];
-  if (!Array.isArray(rawRecent) || !Array.isArray(rawCategories) || !Array.isArray(rawDaily)) fail();
+  if (!Array.isArray(rawRecent) || !Array.isArray(rawCategories) || !Array.isArray(rawDaily))
+    fail();
 
   return {
     days: readAmount(body["days"]),
@@ -163,7 +164,11 @@ export async function fetchTravelFinanceReport(days = 30): Promise<TravelFinance
 }
 
 export const travelExpenseInputSchema = z.object({
-  externalId: z.string().min(8).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/),
+  externalId: z
+    .string()
+    .min(8)
+    .max(64)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/),
   amount: z.number().int().min(1).max(1_000_000_000),
   category: z.string().trim().min(1).max(60),
   description: z.string().trim().min(1).max(200),

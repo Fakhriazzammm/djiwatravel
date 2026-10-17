@@ -34,7 +34,10 @@ describe("travel lifecycle", () => {
       toTravelLifecycle("PROVISIONING_FAILED", { attemptCount: MAX_PROVISIONING_ATTEMPTS }),
     ).toBe("FAILED_REVIEW");
     expect(
-      toTravelLifecycle("PROVISIONING_FAILED", { attemptCount: 1, provisioningStatus: "REVIEW_REQUIRED" }),
+      toTravelLifecycle("PROVISIONING_FAILED", {
+        attemptCount: 1,
+        provisioningStatus: "REVIEW_REQUIRED",
+      }),
     ).toBe("FAILED_REVIEW");
   });
 

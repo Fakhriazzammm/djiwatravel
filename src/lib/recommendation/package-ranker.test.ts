@@ -53,9 +53,7 @@ describe("deterministic package recommendations", () => {
       { ...valid, durationDays: 0 },
       pkg("unknown-data", 100000, 0),
     ];
-    expect(ranked([...invalid, valid]).map((item) => item.packageCode)).toEqual(
-      ["valid"],
-    );
+    expect(ranked([...invalid, valid]).map((item) => item.packageCode)).toEqual(["valid"]);
     expect(
       rankPackages(
         invalid.map((package_) => ({ package: package_, destinationFit: 1 })),
@@ -71,15 +69,9 @@ describe("deterministic package recommendations", () => {
       }),
     ).toEqual([]);
     expect(ranked([pkg("short", 100000, 3e9, 6)])).toEqual([]);
-    expect(
-      filterPackages([pkg("over")], { ...prefs, budgetIdr: 99999 }),
-    ).toEqual([]);
-    expect(
-      filterPackages([pkg("zero-budget")], { ...prefs, budgetIdr: 0 }),
-    ).toEqual([]);
-    expect(
-      filterPackages([pkg("no-top-up")], { ...prefs, needsTopUp: true }),
-    ).toEqual([]);
+    expect(filterPackages([pkg("over")], { ...prefs, budgetIdr: 99999 })).toEqual([]);
+    expect(filterPackages([pkg("zero-budget")], { ...prefs, budgetIdr: 0 })).toEqual([]);
+    expect(filterPackages([pkg("no-top-up")], { ...prefs, needsTopUp: true })).toEqual([]);
   });
   it("never infers unlimited from zero data or marketing names", () => {
     const unknown = { ...pkg("Unlimited", 100000, 0) };
@@ -94,32 +86,23 @@ describe("deterministic package recommendations", () => {
     expect(packageDataLabel(explicit)).toBe("Data unlimited");
   });
   it("uses total price and normalized GB/day value without a budget", () => {
-    expect(
-      ranked([pkg("costly", 200000), pkg("value", 100000)])[0]!.packageCode,
-    ).toBe("value");
-    expect(
-      ranked([pkg("small", 100000, 3e9), pkg("more-data", 100000, 6e9)])[0]
-        .packageCode,
-    ).toBe("more-data");
+    expect(ranked([pkg("costly", 200000), pkg("value", 100000)])[0]!.packageCode).toBe("value");
+    expect(ranked([pkg("small", 100000, 3e9), pkg("more-data", 100000, 6e9)])[0]!.packageCode).toBe(
+      "more-data",
+    );
     expect(
       ranked([pkg("short", 100000, 3e9, 7), pkg("long", 100000, 3e9, 14)], {
         destinations: ["JP"],
         dataNeed: "medium",
       })[0]!.packageCode,
     ).toBe("long");
-    expect(
-      ranked([pkg("too-small", 50000, 1e9), pkg("fit", 100000)])[0]!
-        .packageCode,
-    ).toBe("fit");
+    expect(ranked([pkg("too-small", 50000, 1e9), pkg("fit", 100000)])[0]!.packageCode).toBe("fit");
   });
   it("uses exact duration fit and explicit flexibility and reliability", () => {
-    expect(
-      ranked([pkg("long", 100000, 3e9, 30), pkg("fit")])[0]!.packageCode,
-    ).toBe("fit");
-    expect(
-      ranked([{ ...pkg("flex"), supportsTopUp: true }, pkg("plain")])[0]
-        .packageCode,
-    ).toBe("flex");
+    expect(ranked([pkg("long", 100000, 3e9, 30), pkg("fit")])[0]!.packageCode).toBe("fit");
+    expect(ranked([{ ...pkg("flex"), supportsTopUp: true }, pkg("plain")])[0]!.packageCode).toBe(
+      "flex",
+    );
     expect(
       ranked([
         { ...pkg("reliable"), reliabilityScore: 1 },
@@ -127,9 +110,9 @@ describe("deterministic package recommendations", () => {
       ])[0]!.packageCode,
     ).toBe("reliable");
     expect(ranked([{ ...pkg("unavailable"), available: false }])).toEqual([]);
-    expect(
-      ranked([{ ...pkg("unknown"), reliabilityScore: NaN }])[0]!.score,
-    ).toBe(ranked([pkg("unknown")])[0]!.score);
+    expect(ranked([{ ...pkg("unknown"), reliabilityScore: NaN }])[0]!.score).toBe(
+      ranked([pkg("unknown")])[0]!.score,
+    );
   });
   it("assigns each category label at most once and never invents popularity", () => {
     const packages = [
@@ -140,30 +123,21 @@ describe("deterministic package recommendations", () => {
     ];
     const result = ranked(packages);
     expect(result[0]!.category).toBe("best_match");
-    const counts = (category: string) =>
-      result.filter((item) => item.category === category).length;
+    const counts = (category: string) => result.filter((item) => item.category === category).length;
     expect(counts("best_value")).toBeLessThanOrEqual(1);
     expect(counts("most_flexible")).toBeLessThanOrEqual(1);
     expect(counts("popular")).toBe(0);
-    expect(
-      result.filter((item) => item.category === "best_match").length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(result.filter((item) => item.category === "best_match").length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
   it("keeps score order, deterministic ties and limits, without inventing popularity", () => {
     const packages = [pkg("B"), pkg("A"), pkg("C")];
-    expect(ranked(packages).map((item) => item.packageCode)).toEqual([
-      "A",
-      "B",
-      "C",
-    ]);
+    expect(ranked(packages).map((item) => item.packageCode)).toEqual(["A", "B", "C"]);
     expect(ranked([...packages].reverse())).toEqual(ranked(packages));
     expect(ranked(packages, prefs, 1)).toHaveLength(1);
     expect(ranked(packages, prefs, 0)).toEqual([]);
-    expect(ranked(packages).some((item) => item.category === "popular")).toBe(
-      false,
-    );
-    expect(ranked(packages)[0]!.package.sellingPrice).toBe(
-      packages[1]!.sellingPrice,
-    );
+    expect(ranked(packages).some((item) => item.category === "popular")).toBe(false);
+    expect(ranked(packages)[0]!.package.sellingPrice).toBe(packages[1]!.sellingPrice);
   });
 });

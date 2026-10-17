@@ -48,8 +48,18 @@ describe("travel book url", () => {
 describe("parseTravelFinanceReport", () => {
   it("accepts a well-formed gateway report", () => {
     const report = parseTravelFinanceReport(VALID_REPORT);
-    expect(report.totals).toEqual({ income: 15000, expense: 12500, net: 2500, incomeCount: 1, expenseCount: 1 });
-    expect(report.recent[0]).toMatchObject({ sourceId: "trav_exp_qa", txType: "expense", amount: 12500 });
+    expect(report.totals).toEqual({
+      income: 15000,
+      expense: 12500,
+      net: 2500,
+      incomeCount: 1,
+      expenseCount: 1,
+    });
+    expect(report.recent[0]).toMatchObject({
+      sourceId: "trav_exp_qa",
+      txType: "expense",
+      amount: 12500,
+    });
     expect(report.daily[0]?.day).toBe("2026-10-13");
   });
 
@@ -70,7 +80,12 @@ describe("parseTravelFinanceReport", () => {
 });
 
 describe("travelExpenseInputSchema", () => {
-  const base = { externalId: "0f9a1b2c-3d4e", amount: 150000, category: "Top-up", description: "Isi saldo" };
+  const base = {
+    externalId: "0f9a1b2c-3d4e",
+    amount: 150000,
+    category: "Top-up",
+    description: "Isi saldo",
+  };
 
   it("accepts a normal admin expense", () => {
     expect(travelExpenseInputSchema.parse(base).amount).toBe(150000);
@@ -84,6 +99,8 @@ describe("travelExpenseInputSchema", () => {
 
   it("rejects a missing or malformed idempotency key", () => {
     expect(() => travelExpenseInputSchema.parse({ ...base, externalId: "short" })).toThrow();
-    expect(() => travelExpenseInputSchema.parse({ ...base, externalId: "bad id with spaces" })).toThrow();
+    expect(() =>
+      travelExpenseInputSchema.parse({ ...base, externalId: "bad id with spaces" }),
+    ).toThrow();
   });
 });

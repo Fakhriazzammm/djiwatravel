@@ -1,4 +1,14 @@
-import { CreditCard, Gauge, LifeBuoy, ListChecks, RotateCcw, Settings, ShieldCheck, Wallet } from "lucide-react";
+import {
+  CreditCard,
+  Gauge,
+  LifeBuoy,
+  ListChecks,
+  RotateCcw,
+  Settings,
+  ShieldCheck,
+  Tags,
+  Wallet,
+} from "lucide-react";
 
 export const adminNavigation = [
   ["Dashboard", "/admin/dashboard", Gauge],

@@ -42,32 +42,59 @@ function verifySignature(rawBody: string, request: Request) {
   const signature = request.headers.get("x-djiwa-signature") || "";
   const timestampSeconds = Number(timestamp);
   if (!secret || !/^\d+$/.test(timestamp) || !Number.isSafeInteger(timestampSeconds)) return false;
-  if (Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds) > REPLAY_WINDOW_SECONDS) return false;
+  if (Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds) > REPLAY_WINDOW_SECONDS)
+    return false;
   const expected = createHmac("sha256", secret).update(`${timestamp}.${rawBody}`).digest("hex");
   return safeEqual(signature, expected);
 }
 
 function parsePayload(rawBody: string): TravelPaymentPayload | null {
   const value = JSON.parse(rawBody) as Partial<TravelPaymentPayload>;
-  if (value.app !== "djiwa-travel" || value.status !== "PAID" || value.currency !== "IDR") return null;
-  if (typeof value.eventId !== "string" || !value.eventId || typeof value.orderId !== "string" || !value.orderId) return null;
-  if (typeof value.invoiceId !== "string" || !value.invoiceId || typeof value.transactionId !== "string" || !value.transactionId) return null;
-  if (typeof value.amountIdr !== "number" || !Number.isSafeInteger(value.amountIdr) || value.amountIdr <= 0 || typeof value.paidAt !== "string") return null;
+  if (value.app !== "djiwa-travel" || value.status !== "PAID" || value.currency !== "IDR")
+    return null;
+  if (
+    typeof value.eventId !== "string" ||
+    !value.eventId ||
+    typeof value.orderId !== "string" ||
+    !value.orderId
+  )
+    return null;
+  if (
+    typeof value.invoiceId !== "string" ||
+    !value.invoiceId ||
+    typeof value.transactionId !== "string" ||
+    !value.transactionId
+  )
+    return null;
+  if (
+    typeof value.amountIdr !== "number" ||
+    !Number.isSafeInteger(value.amountIdr) ||
+    value.amountIdr <= 0 ||
+    typeof value.paidAt !== "string"
+  )
+    return null;
   return value as TravelPaymentPayload;
 }
 
 async function receive(request: Request) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const contentType = request.headers.get("content-type") || "";
-  if (!contentType.toLowerCase().includes("application/json")) return json({ error: "Unsupported media type" }, 415);
+  if (!contentType.toLowerCase().includes("application/json"))
+    return json({ error: "Unsupported media type" }, 415);
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > MAX_BODY_BYTES) return json({ error: "Payload too large" }, 413);
   const rawBody = await request.text();
-  if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) return json({ error: "Payload too large" }, 413);
-  if ((request.headers.get("x-djiwa-source") || "") !== "djiwa-tentram") return json({ error: "Unauthorized" }, 401);
+  if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES)
+    return json({ error: "Payload too large" }, 413);
+  if ((request.headers.get("x-djiwa-source") || "") !== "djiwa-tentram")
+    return json({ error: "Unauthorized" }, 401);
   if (!verifySignature(rawBody, request)) return json({ error: "Unauthorized" }, 401);
   let payload: TravelPaymentPayload | null;
-  try { payload = parsePayload(rawBody); } catch { payload = null; }
+  try {
+    payload = parsePayload(rawBody);
+  } catch {
+    payload = null;
+  }
   if (!payload) return json({ error: "Invalid payment payload" }, 400);
 
   // Record the receipt before doing any work: a restart between here and the writes below would
@@ -82,13 +109,17 @@ async function receive(request: Request) {
   }).catch(() => true);
   if (!firstReceipt) return json({ ok: true, duplicate: true, reason: "already_received" });
 
-  const orderRows = await db.select({
-    publicOrderCode: customerOrders.publicOrderCode,
-    status: customerOrders.status,
-    totalAmount: customerOrders.totalAmount,
-    paymentReference: customerOrders.paymentReference,
-    priceSnapshot: customerOrders.priceSnapshot,
-  }).from(customerOrders).where(eq(customerOrders.id, payload.orderId)).limit(1);
+  const orderRows = await db
+    .select({
+      publicOrderCode: customerOrders.publicOrderCode,
+      status: customerOrders.status,
+      totalAmount: customerOrders.totalAmount,
+      paymentReference: customerOrders.paymentReference,
+      priceSnapshot: customerOrders.priceSnapshot,
+    })
+    .from(customerOrders)
+    .where(eq(customerOrders.id, payload.orderId))
+    .limit(1);
   const order = orderRows[0];
   if (!order) return json({ error: "Order not found" }, 404);
   const preflightError = validateTravelSettlementPreflight({
@@ -146,13 +177,16 @@ async function receive(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "provisioning_failed";
-    return json({
-      ok: true,
-      duplicate: settlement.local.duplicate,
-      provisioning: { started: false, status: "PROVISIONING_FAILED" },
-      warning: message.slice(0, 200),
-      ...(authorityWarning ? { authority: "signed_callback", authorityWarning } : {}),
-    }, 202);
+    return json(
+      {
+        ok: true,
+        duplicate: settlement.local.duplicate,
+        provisioning: { started: false, status: "PROVISIONING_FAILED" },
+        warning: message.slice(0, 200),
+        ...(authorityWarning ? { authority: "signed_callback", authorityWarning } : {}),
+      },
+      202,
+    );
   }
 }
 
@@ -165,4 +199,6 @@ function readMayarTransactionId(priceSnapshot: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-export const Route = createFileRoute("/api/webhooks/djiwa-travel")({ server: { handlers: { POST: ({ request }) => receive(request) } } });
+export const Route = createFileRoute("/api/webhooks/djiwa-travel")({
+  server: { handlers: { POST: ({ request }) => receive(request) } },
+});

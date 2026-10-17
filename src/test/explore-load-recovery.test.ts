@@ -42,7 +42,9 @@ describe("Explore loader recovery", () => {
   });
 
   it("does not touch the provider twice when the first attempt succeeds", async () => {
-    const attempt = vi.fn().mockResolvedValue(exploreAvailability(destinations.slice(0, 1), "cached"));
+    const attempt = vi
+      .fn()
+      .mockResolvedValue(exploreAvailability(destinations.slice(0, 1), "cached"));
 
     const state = await loadExploreAvailability({ attempt });
 

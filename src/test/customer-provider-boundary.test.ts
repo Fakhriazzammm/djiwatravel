@@ -20,9 +20,7 @@ describe("customer provider boundary", () => {
       seen.add(file);
       expect(file).not.toMatch(/\/ai\/|mcp|recommendation-explanation/);
       const source = readFileSync(file, "utf8");
-      for (const match of source.matchAll(
-        /(?:from\s*|import\s*\(\s*)["']([^"']+)["']/g,
-      )) {
+      for (const match of source.matchAll(/(?:from\s*|import\s*\(\s*)["']([^"']+)["']/g)) {
         const specifier = match[1]!;
         const target = specifier.startsWith("@/")
           ? path.join(root, specifier.slice(2))

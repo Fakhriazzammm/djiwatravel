@@ -14,7 +14,18 @@ const pushSchema = z.object({
   endpoint: z.string().url().max(2048),
   keys: z.record(z.string()).optional(),
 });
-const safe = (r: any) => ({
+type CustomerNotificationRow = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  action_href: string | null;
+  created_at: string;
+  expires_at: string | null;
+  read_at: string | null;
+};
+
+const safe = (r: CustomerNotificationRow) => ({
   id: r.id,
   type: r.type,
   title: r.title,

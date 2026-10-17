@@ -16,9 +16,15 @@ export const Route = createFileRoute("/finder")({
   head: () => ({
     meta: [
       { title: "Cari paket eSIM — Djiwa Travel" },
-      { name: "description", content: "Jawab beberapa pertanyaan untuk menemukan paket eSIM yang cocok." },
+      {
+        name: "description",
+        content: "Jawab beberapa pertanyaan untuk menemukan paket eSIM yang cocok.",
+      },
       { property: "og:title", content: "Cari paket eSIM — Djiwa Travel" },
-      { property: "og:description", content: "Temukan paket eSIM berdasarkan tujuan, durasi, kebutuhan data, dan budget." },
+      {
+        property: "og:description",
+        content: "Temukan paket eSIM berdasarkan tujuan, durasi, kebutuhan data, dan budget.",
+      },
       { property: "og:url", content: "https://djiwatravel.com/finder" },
     ],
     links: [{ rel: "canonical", href: "https://djiwatravel.com/finder" }],

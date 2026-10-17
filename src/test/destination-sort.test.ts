@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import { PAGE_SIZE, sortPackages, type SortKey } from "@/routes/destination.$code";
 import type { ViewPackage } from "@/lib/package-view";
 
-function pkg(code: string, priceIdr: number, volumeBytes: number, durationDays: number): ViewPackage {
+function pkg(
+  code: string,
+  priceIdr: number,
+  volumeBytes: number,
+  durationDays: number,
+): ViewPackage {
   return {
     packageCode: code,
     name: code,

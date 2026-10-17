@@ -11,12 +11,7 @@ import { ORDER_STATUS_LABEL } from "./esim-status";
  * ------------------------------------------------------------------ */
 
 export type SupportCategory =
-  | "payment"
-  | "provisioning"
-  | "activation"
-  | "connectivity"
-  | "quota"
-  | "receipt";
+  "payment" | "provisioning" | "activation" | "connectivity" | "quota" | "receipt";
 
 export type SupportTopic = {
   id: string;
@@ -223,7 +218,11 @@ function readLog(now: number): Record<string, number> {
     if (typeof parsed !== "object" || parsed === null) return {};
     const log: Record<string, number> = {};
     for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "number" && Number.isFinite(value) && now - value < SUPPORT_SEND_WINDOW_MS) {
+      if (
+        typeof value === "number" &&
+        Number.isFinite(value) &&
+        now - value < SUPPORT_SEND_WINDOW_MS
+      ) {
         log[key] = value;
       }
     }

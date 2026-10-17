@@ -17,17 +17,29 @@ export function canSendLifecycleMessage(consent: Consent, message: LifecycleMess
 
 export function normalizeCampaignAttribution(input: Record<string, string | null | undefined>) {
   const out: Record<string, string> = {};
-  for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "referrer", "landing_path"] as const) {
+  for (const key of [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "referrer",
+    "landing_path",
+  ] as const) {
     const value = input[key]?.trim();
     if (value) out[key] = value.slice(0, 100);
   }
   return out;
 }
 
-export function referralRewardEligibility(input: { installationConfirmed: boolean; fraudHold: boolean; rewardLedgerEnabled: boolean }) {
+export function referralRewardEligibility(input: {
+  installationConfirmed: boolean;
+  fraudHold: boolean;
+  rewardLedgerEnabled: boolean;
+}) {
   // Never promise a payout before the installation event and a fraud-controlled ledger exist.
   if (!input.rewardLedgerEnabled) return { eligible: false, reason: "ledger_not_enabled" as const };
   if (input.fraudHold) return { eligible: false, reason: "fraud_hold" as const };
-  if (!input.installationConfirmed) return { eligible: false, reason: "installation_not_confirmed" as const };
+  if (!input.installationConfirmed)
+    return { eligible: false, reason: "installation_not_confirmed" as const };
   return { eligible: true, reason: "eligible" as const };
 }

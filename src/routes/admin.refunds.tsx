@@ -48,17 +48,30 @@ function AdminRefunds() {
                 {refunds.map((item) => (
                   <tr key={item.id} className="border-b align-top last:border-0">
                     <td className="p-3">
-                      <Link to={`/admin/orders/${item.orderId}` as never} className="font-semibold text-[#0a67c7]">
+                      <Link
+                        to={`/admin/orders/${item.orderId}` as never}
+                        className="font-semibold text-[#0a67c7]"
+                      >
                         {item.orderCode}
                       </Link>
                       <div className="mt-1 font-mono text-[11px] text-[#8a8a91]">{item.id}</div>
                     </td>
-                    <td className="p-3"><StatusPill tone={item.status === "REFUNDED" ? "good" : "warn"}>{humanizeAdminStatus(item.status)}</StatusPill></td>
+                    <td className="p-3">
+                      <StatusPill tone={item.status === "REFUNDED" ? "good" : "warn"}>
+                        {humanizeAdminStatus(item.status)}
+                      </StatusPill>
+                    </td>
                     <td className="p-3">{humanizeAdminStatus(item.orderStatus)}</td>
-                    <td className="p-3">{projectAdminAmount(item.amount, item.currencyCode, false)}</td>
+                    <td className="p-3">
+                      {projectAdminAmount(item.amount, item.currencyCode, false)}
+                    </td>
                     <td className="p-3">{item.eventCount}</td>
-                    <td className="p-3 text-xs text-[#6b6b72]">{formatAdminDateTime(item.updatedAt)}</td>
-                    <td className="max-w-[240px] p-3 text-xs text-[#b00020]">{item.providerError ?? "No provider result recorded"}</td>
+                    <td className="p-3 text-xs text-[#6b6b72]">
+                      {formatAdminDateTime(item.updatedAt)}
+                    </td>
+                    <td className="max-w-[240px] p-3 text-xs text-[#b00020]">
+                      {item.providerError ?? "No provider result recorded"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

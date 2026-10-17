@@ -29,6 +29,6 @@ describe("customer profile input contract", () => {
     expect(isBetterAuthUserId("has spaces and is long enough")).toBe(false);
     expect(isBetterAuthUserId(undefined)).toBe(false);
     expect(isBetterAuthUserId(null)).toBe(false);
-    expect(isBetterAuthUserId(12345678901234567)).toBe(false);
+    expect(isBetterAuthUserId(12345)).toBe(false);
   });
 });

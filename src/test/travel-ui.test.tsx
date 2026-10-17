@@ -36,7 +36,9 @@ function order(): Order {
 
 describe("TravelTimeline", () => {
   it("shows the failed stage for a failed provisioning order", () => {
-    render(<TravelTimeline timeline={activationTimeline("PROVISIONING_FAILED")} lastSyncedAt={null} />);
+    render(
+      <TravelTimeline timeline={activationTimeline("PROVISIONING_FAILED")} lastSyncedAt={null} />,
+    );
     expect(screen.getByTestId("travel-timeline")).toBeInTheDocument();
     expect(screen.getByText("Pemrosesan belum berhasil")).toBeInTheDocument();
     expect(screen.getByText("Pembayaran")).toBeInTheDocument();

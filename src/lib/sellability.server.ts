@@ -100,7 +100,13 @@ export async function getSellabilityState<T extends SellablePackage>(
         wouldHide: partition.hiddenCount,
       });
     }
-    return { mode, snapshot, hidden: new Set<string>(), hiddenCount: partition.hiddenCount, sellableCount: packages.length };
+    return {
+      mode,
+      snapshot,
+      hidden: new Set<string>(),
+      hiddenCount: partition.hiddenCount,
+      sellableCount: packages.length,
+    };
   }
 
   return {

@@ -1,7 +1,4 @@
-import {
-  isRecommendablePackage,
-  type ResellerCatalogPackage,
-} from "@/lib/esim-access-catalog";
+import { isRecommendablePackage, type ResellerCatalogPackage } from "@/lib/esim-access-catalog";
 import type { RecommendationPreferences } from "./preferences";
 import { RECOMMENDATION_CONFIG } from "./recommendation-config";
 
@@ -20,13 +17,10 @@ export function filterPackages(
   if (!wanted.size) return [];
   return packages.flatMap((pkg) => {
     if (!isRecommendablePackage(pkg)) return [];
-    const locations = new Set(
-      pkg.locationCodes.map((v) => v.trim().toUpperCase()),
-    );
+    const locations = new Set(pkg.locationCodes.map((v) => v.trim().toUpperCase()));
     // Every requested destination must be covered by a single recommended package.
     if (![...wanted].every((v) => locations.has(v))) return [];
-    if (preferences.durationDays && pkg.durationDays < preferences.durationDays)
-      return [];
+    if (preferences.durationDays && pkg.durationDays < preferences.durationDays) return [];
     if (
       preferences.budgetIdr != null &&
       pkg.sellingPrice.sellingPriceIdr >
@@ -34,8 +28,7 @@ export function filterPackages(
     )
       return [];
     if (preferences.needsTopUp && !pkg.supportsTopUp) return [];
-    if (preferences.dataNeed === "unlimited" && pkg.unlimited !== true)
-      return [];
+    if (preferences.dataNeed === "unlimited" && pkg.unlimited !== true) return [];
     return [{ package: pkg, destinationFit: 1 }];
   });
 }

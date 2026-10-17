@@ -71,7 +71,12 @@ const knownStatuses = new Set<GuestOrderStatus>([
 
 export function mapGuestOrderRecord(record: GuestOrderRecord): GuestOrderView {
   const serverStatus = effectivePaymentStatus(record.status, record.paymentExpiresAtMs);
-  const normalizedStatus = serverStatus === "PAYMENT_PENDING" ? "WAITING_PAYMENT" : serverStatus === "PAYMENT_CONFIRMED" ? "PAID" : serverStatus;
+  const normalizedStatus =
+    serverStatus === "PAYMENT_PENDING"
+      ? "WAITING_PAYMENT"
+      : serverStatus === "PAYMENT_CONFIRMED"
+        ? "PAID"
+        : serverStatus;
   const status = knownStatuses.has(normalizedStatus as GuestOrderStatus)
     ? (normalizedStatus as GuestOrderStatus)
     : "ORDER_CREATED";

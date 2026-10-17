@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  isWaitingForEsim,
-  readyNotificationCopy,
-  shouldNotifyReady,
-} from "@/lib/esim-notify";
+import { isWaitingForEsim, readyNotificationCopy, shouldNotifyReady } from "@/lib/esim-notify";
 
 // The notification is the only thing standing between "paid but silent" and a customer who knows
 // the eSIM is usable, so the trigger conditions are pinned here.

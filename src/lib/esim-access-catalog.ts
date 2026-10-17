@@ -50,9 +50,7 @@ export type ResellerCatalogPackage = {
   providerSnapshot: ProviderPackage;
 };
 
-export function normalizeEsimAccessPackage(
-  pkg: ProviderPackage,
-): ResellerCatalogPackage {
+export function normalizeEsimAccessPackage(pkg: ProviderPackage): ResellerCatalogPackage {
   const locationCodes = (pkg.location ?? pkg.locationCode ?? "")
     .split(",")
     .map((v) => v.trim().toUpperCase())
@@ -81,12 +79,8 @@ export function normalizeEsimAccessPackage(
     pricingSource: pricing.source,
     ...(pkg.speed == null ? {} : { speed: pkg.speed }),
     supportsTopUp: (pkg.supportTopUpType ?? 1) > 1,
-    ...(typeof pkg["unlimited"] === "boolean"
-      ? { unlimited: pkg["unlimited"] }
-      : {}),
-    ...(typeof pkg["available"] === "boolean"
-      ? { available: pkg["available"] }
-      : {}),
+    ...(typeof pkg["unlimited"] === "boolean" ? { unlimited: pkg["unlimited"] } : {}),
+    ...(typeof pkg["available"] === "boolean" ? { available: pkg["available"] } : {}),
     ...(typeof pkg["reliabilityScore"] === "number" &&
     Number.isFinite(pkg["reliabilityScore"]) &&
     pkg["reliabilityScore"] >= 0 &&
@@ -134,8 +128,7 @@ export function isRecommendablePackage(pkg: ResellerCatalogPackage): boolean {
     Number.isFinite(pkg.durationDays) &&
     pkg.durationDays > 0 &&
     pkg.locationCodes.some((code) => code.trim().length > 0) &&
-    (pkg.unlimited === true ||
-      (Number.isFinite(pkg.volumeBytes) && pkg.volumeBytes > 0)) &&
+    (pkg.unlimited === true || (Number.isFinite(pkg.volumeBytes) && pkg.volumeBytes > 0)) &&
     pkg.available !== false
   );
 }
@@ -147,7 +140,9 @@ export function isRecommendablePackage(pkg: ResellerCatalogPackage): boolean {
  * matches its catalogue, so the price the customer pays — and the price we send back to the
  * provider — is always derived from this live read.
  */
-export async function loadLiveResellerPackage(packageCode: string): Promise<ResellerCatalogPackage | null> {
+export async function loadLiveResellerPackage(
+  packageCode: string,
+): Promise<ResellerCatalogPackage | null> {
   const response = await queryEsimAccessPackages({ data: { packageCode } });
   const payload = response as PackageListResponse;
   const packages = payload.obj?.packageList ?? payload.data?.packageList ?? [];

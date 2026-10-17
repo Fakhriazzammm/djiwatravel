@@ -5,8 +5,9 @@ import { ledgerStatusUrl, parseLedgerStatus } from "../lib/travel-finance-reconc
 // configure, so a host change cannot silently point reconciliation at a different finance stack.
 describe("travel finance ledger status url", () => {
   it("derives the status endpoint from the settlement endpoint", () => {
-    expect(ledgerStatusUrl("https://supabase.yumme.id/functions/v1/travel-finance-settlement"))
-      .toBe("https://supabase.yumme.id/functions/v1/travel-finance-ledger-status");
+    expect(
+      ledgerStatusUrl("https://supabase.yumme.id/functions/v1/travel-finance-settlement"),
+    ).toBe("https://supabase.yumme.id/functions/v1/travel-finance-ledger-status");
   });
 
   it("refuses a url it does not recognise instead of guessing a sibling path", () => {
@@ -18,13 +19,21 @@ describe("travel finance ledger status url", () => {
 // an already recorded payment or hide a genuinely lost one.
 describe("travel finance ledger status response", () => {
   it("reports which settled orders the ledger does not hold", () => {
-    const result = parseLedgerStatus(["order-a", "order-b"], { ok: true, checked: 2, found: 1, missing: ["order-b"] });
+    const result = parseLedgerStatus(["order-a", "order-b"], {
+      ok: true,
+      checked: 2,
+      found: 1,
+      missing: ["order-b"],
+    });
     expect(result.missing).toEqual(["order-b"]);
     expect(result.found).toEqual(["order-a"]);
   });
 
   it("ignores ids it never asked about", () => {
-    const result = parseLedgerStatus(["order-a"], { ok: true, missing: ["order-a", "order-injected"] });
+    const result = parseLedgerStatus(["order-a"], {
+      ok: true,
+      missing: ["order-a", "order-injected"],
+    });
     expect(result.missing).toEqual(["order-a"]);
   });
 

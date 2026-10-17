@@ -101,7 +101,9 @@ function AdminProvisioning() {
           </div>
           <div className="mt-2 flex items-center justify-between gap-2 text-xs">
             <span>
-              {queue.length ? `Terbaru ${formatAdminDateTime(queue[0].updatedAt)}` : "Queue kosong"}
+              {queue.length
+                ? `Terbaru ${formatAdminDateTime(queue[0]?.updatedAt ?? "")}`
+                : "Queue kosong"}
             </span>
             <button
               type="button"

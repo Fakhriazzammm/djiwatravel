@@ -19,7 +19,10 @@ export const TRANSITION_MIN_VISIBLE_MS = 320;
 export const TRANSITION_TICK_MS = 40;
 
 /** Pure: visible while a load runs, and always for the minimum window after a page change. */
-export function transitionVisible(input: { stillLoading: boolean; sinceChangeMs: number }): boolean {
+export function transitionVisible(input: {
+  stillLoading: boolean;
+  sinceChangeMs: number;
+}): boolean {
   return input.stillLoading || input.sinceChangeMs < TRANSITION_MIN_VISIBLE_MS;
 }
 
@@ -45,7 +48,9 @@ export function setTransitionActive(
 
 export function TransitionLoader() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const loading = useRouterState({ select: (state) => state.isLoading || state.status === "pending" });
+  const loading = useRouterState({
+    select: (state) => state.isLoading || state.status === "pending",
+  });
   const reduce = useReducedMotion();
   const [visible, setVisible] = useState(false);
   const changedAt = useRef<number | null>(null);
@@ -71,7 +76,9 @@ export function TransitionLoader() {
         setVisible(false);
         return;
       }
-      if (!transitionVisible({ stillLoading: loading, sinceChangeMs: performance.now() - startedAt })) {
+      if (
+        !transitionVisible({ stillLoading: loading, sinceChangeMs: performance.now() - startedAt })
+      ) {
         changedAt.current = null;
         setVisible(false);
       }

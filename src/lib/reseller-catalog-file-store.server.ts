@@ -12,7 +12,7 @@ type SnapshotFile = Record<string, ResellerCatalogCacheEntry>;
  * The file is never served publicly and writes are atomic.
  */
 export function createResellerCatalogFileStore(
-  filePath = process.env.RESELLER_CATALOG_CACHE_FILE,
+  filePath = process.env["RESELLER_CATALOG_CACHE_FILE"],
 ): ResellerCatalogCacheStore | undefined {
   if (!filePath) return undefined;
 

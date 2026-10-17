@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 
 import { Wallet } from "@/routes/wallet";
 import { getCustomerWallet } from "@/lib/customer-wallet.server";
@@ -8,8 +9,8 @@ import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 vi.mock("@/lib/customer-wallet.server", () => ({ getCustomerWallet: vi.fn() }));
 vi.mock("@/lib/use-better-auth-user", () => ({ useBetterAuthUser: vi.fn() }));
 vi.mock("@/components/shell", () => ({
-  Page: ({ children }: { children: unknown }) => <div>{children}</div>,
-  SectionTitle: ({ children }: { children: unknown }) => <h2>{children}</h2>,
+  Page: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SectionTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
   Wordmark: () => <img alt="Djiwa Travel" />,
 }));
 

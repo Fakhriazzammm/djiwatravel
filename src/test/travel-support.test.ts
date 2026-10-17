@@ -20,7 +20,9 @@ function messageLines(message: string): string[] {
 }
 
 function context(topicId: string) {
-  const topic = supportTopicsFor("READY").find((entry) => entry.id === topicId) ?? supportTopicsFor("READY")[0]!;
+  const topic =
+    supportTopicsFor("READY").find((entry) => entry.id === topicId) ??
+    supportTopicsFor("READY")[0]!;
   return buildSupportContext({
     topic,
     status: "READY",
@@ -52,12 +54,20 @@ describe("support topics", () => {
   });
 
   it("only offers the quota topic when the balance is actually low", () => {
-    expect(supportTopicsFor("READY", { quotaLow: false }).map((t) => t.id)).not.toContain("quota_low");
+    expect(supportTopicsFor("READY", { quotaLow: false }).map((t) => t.id)).not.toContain(
+      "quota_low",
+    );
     expect(supportTopicsFor("READY", { quotaLow: true }).map((t) => t.id)).toContain("quota_low");
   });
 
   it("always returns at least one topic", () => {
-    for (const status of ["ORDER_CREATED", "PROVISIONING_FAILED", "EXPIRED", "CANCELLED", "REFUNDED"] as const) {
+    for (const status of [
+      "ORDER_CREATED",
+      "PROVISIONING_FAILED",
+      "EXPIRED",
+      "CANCELLED",
+      "REFUNDED",
+    ] as const) {
       expect(supportTopicsFor(status).length).toBeGreaterThan(0);
     }
   });
@@ -98,7 +108,9 @@ describe("support payload redaction", () => {
       destination: "JP",
     });
     expect(built.esimReference).toBeNull();
-    expect(messageLines(supportMessage(built)).some((line) => line.startsWith("eSIM:"))).toBe(false);
+    expect(messageLines(supportMessage(built)).some((line) => line.startsWith("eSIM:"))).toBe(
+      false,
+    );
   });
 
   it("encodes the message into the support URL", () => {

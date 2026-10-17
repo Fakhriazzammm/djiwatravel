@@ -19,7 +19,9 @@ export type SellabilityMode = "off" | "shadow" | "on";
  * default remains `off` for previews and rollback safety; `shadow` computes and logs the decision
  * without changing what is shown.
  */
-export function sellabilityMode(raw: string | undefined = process.env["TRAVEL_SELLABILITY_MODE"]): SellabilityMode {
+export function sellabilityMode(
+  raw: string | undefined = process.env["TRAVEL_SELLABILITY_MODE"],
+): SellabilityMode {
   const value = (raw ?? "").trim().toLowerCase();
   return value === "on" || value === "shadow" ? value : "off";
 }
@@ -35,7 +37,10 @@ export type SellablePackage = { packageCode: string; providerPriceUnits: number 
 
 export type CheckoutSellabilityDecision =
   | { ok: true }
-  | { ok: false; reason: "balance_unknown" | "provider_cost_unaffordable" | "provider_cost_invalid" };
+  | {
+      ok: false;
+      reason: "balance_unknown" | "provider_cost_unaffordable" | "provider_cost_invalid";
+    };
 
 /** Strict checkout decision; unlike catalog display, unknown balance is never sellable. */
 export function checkoutSellabilityDecision(
@@ -43,8 +48,10 @@ export function checkoutSellabilityDecision(
   snapshot: BalanceSnapshot,
   buffer = SELLABILITY_BUFFER,
 ): CheckoutSellabilityDecision {
-  if (snapshot.balanceUnits === null || !Number.isFinite(snapshot.balanceUnits)) return { ok: false, reason: "balance_unknown" };
-  if (!Number.isFinite(pkg.providerPriceUnits) || pkg.providerPriceUnits <= 0) return { ok: false, reason: "provider_cost_invalid" };
+  if (snapshot.balanceUnits === null || !Number.isFinite(snapshot.balanceUnits))
+    return { ok: false, reason: "balance_unknown" };
+  if (!Number.isFinite(pkg.providerPriceUnits) || pkg.providerPriceUnits <= 0)
+    return { ok: false, reason: "provider_cost_invalid" };
   return snapshot.balanceUnits >= requiredUnits(pkg.providerPriceUnits, buffer)
     ? { ok: true }
     : { ok: false, reason: "provider_cost_unaffordable" };
@@ -93,7 +100,10 @@ export function partitionSellability<T extends SellablePackage>(
 }
 
 /** Highest price we can still sell at the current balance — the number admins act on. */
-export function affordableCeilingUsd(snapshot: BalanceSnapshot, buffer = SELLABILITY_BUFFER): number | null {
+export function affordableCeilingUsd(
+  snapshot: BalanceSnapshot,
+  buffer = SELLABILITY_BUFFER,
+): number | null {
   if (snapshot.balanceUnits === null || !Number.isFinite(snapshot.balanceUnits)) return null;
   return snapshot.balanceUnits / 10_000 / (1 + buffer);
 }

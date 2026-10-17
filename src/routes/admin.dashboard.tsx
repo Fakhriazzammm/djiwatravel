@@ -14,7 +14,14 @@ import {
   projectAdminIdentifier,
   projectAdminTitle,
 } from "@/lib/admin-display";
-import { AdminDetailSheet, AdminShell, AdminStatStrip, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
+import {
+  AdminDetailSheet,
+  AdminShell,
+  AdminStatStrip,
+  AdminSurface,
+  SectionHeading,
+  StatusPill,
+} from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/dashboard")({
   beforeLoad: () => requireAdmin(),

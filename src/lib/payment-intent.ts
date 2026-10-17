@@ -1,10 +1,5 @@
 export type PaymentIntentStatus =
-  | "CLAIMED"
-  | "REQUESTING"
-  | "PROVIDER_CONFIRMED"
-  | "UNKNOWN"
-  | "FAILED"
-  | "EXPIRED";
+  "CLAIMED" | "REQUESTING" | "PROVIDER_CONFIRMED" | "UNKNOWN" | "FAILED" | "EXPIRED";
 
 export type PaymentIntentRecord = {
   orderId: string;
@@ -32,6 +27,9 @@ export function canCreateProviderInvoice(intent: PaymentIntentRecord) {
   return !intent.providerInvoiceId && ["CLAIMED", "REQUESTING", "UNKNOWN"].includes(intent.status);
 }
 
-export function markProviderTimeout(intent: PaymentIntentRecord, message = "provider_timeout"): PaymentIntentRecord {
+export function markProviderTimeout(
+  intent: PaymentIntentRecord,
+  message = "provider_timeout",
+): PaymentIntentRecord {
   return { ...intent, status: "UNKNOWN", lastError: message };
 }

@@ -11,13 +11,19 @@ import {
 } from "@/lib/sellability";
 import { toViewPackage, toViewPackages } from "@/lib/package-view";
 
-const live = (balanceUnits: number | null, source: BalanceSnapshot["source"] = "live"): BalanceSnapshot => ({
+const live = (
+  balanceUnits: number | null,
+  source: BalanceSnapshot["source"] = "live",
+): BalanceSnapshot => ({
   balanceUnits,
   capturedAtMs: balanceUnits === null ? null : Date.now(),
   source,
 });
 
-const pkg = (packageCode: string, providerPriceUnits: number) => ({ packageCode, providerPriceUnits });
+const pkg = (packageCode: string, providerPriceUnits: number) => ({
+  packageCode,
+  providerPriceUnits,
+});
 
 /** The provider balance the production account actually holds, in 1/10,000 USD units. */
 const REAL_BALANCE = 193_000; // US$19.30
@@ -131,7 +137,16 @@ describe("view packages carry the sold-out flag", () => {
   it("never leaks the cost basis to the browser payload", () => {
     const view = toViewPackage(source);
     expect(Object.keys(view).sort()).toEqual(
-      ["packageCode", "name", "locationCodes", "volumeBytes", "unlimited", "durationDays", "priceIdr", "sellable"].sort(),
+      [
+        "packageCode",
+        "name",
+        "locationCodes",
+        "volumeBytes",
+        "unlimited",
+        "durationDays",
+        "priceIdr",
+        "sellable",
+      ].sort(),
     );
   });
 });

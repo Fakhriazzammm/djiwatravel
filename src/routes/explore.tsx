@@ -6,13 +6,15 @@ import { destinations, search } from "@/lib/catalog";
 import { isRecommendablePackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { getSellabilityState } from "@/lib/sellability.server";
-import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
-
-const EXPLORE_LOADER_DEADLINE_MS = 2_500;
+import { exploreAvailability, loadExploreAvailability } from "@/lib/explore-availability";
+import { finderCtaCopy } from "@/lib/finder-form";
 
 function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Explore catalog deadline exceeded")), timeoutMs);
+    const timer = setTimeout(
+      () => reject(new Error("Explore catalog deadline exceeded")),
+      timeoutMs,
+    );
     promise.then(
       (value) => {
         clearTimeout(timer);
@@ -31,24 +33,21 @@ export const Route = createFileRoute("/explore")({
   // expensive reseller read, reused for a minute so coming back is instant.
   staleTime: 60_000,
   loader: async () => {
-    try {
-      const catalog = await withDeadline(getResellerCatalog(), EXPLORE_LOADER_DEADLINE_MS);
-      const packages = catalog.packages.filter(isRecommendablePackage);
-      const sellability = await withDeadline(
-        getSellabilityState(packages),
-        EXPLORE_LOADER_DEADLINE_MS,
-      );
-      const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
-      const codes = new Set(
-        sellable.flatMap((pkg) => pkg.locationCodes.map((code) => code.trim().toUpperCase())),
-      );
-      return exploreAvailability(
-        destinations.filter((destination) => codes.has(destination.code.toUpperCase())),
-        catalog.stale ? "cached" : "live",
-      );
-    } catch {
-      return exploreErrorState();
-    }
+    return loadExploreAvailability({
+      attempt: async (timeoutMs) => {
+        const catalog = await withDeadline(getResellerCatalog(), timeoutMs);
+        const packages = catalog.packages.filter(isRecommendablePackage);
+        const sellability = await withDeadline(getSellabilityState(packages), timeoutMs);
+        const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
+        const codes = new Set(
+          sellable.flatMap((pkg) => pkg.locationCodes.map((code) => code.trim().toUpperCase())),
+        );
+        return exploreAvailability(
+          destinations.filter((destination) => codes.has(destination.code.toUpperCase())),
+          catalog.stale ? "cached" : "live",
+        );
+      },
+    });
   },
   head: () => ({
     meta: [
@@ -82,7 +81,9 @@ function Explore() {
   return (
     <Page>
       <h1 className="large-title pt-4">Explore</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Paket negara untuk satu tujuan, atau paket regional untuk beberapa negara sekaligus.</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Paket negara untuk satu tujuan, atau paket regional untuk beberapa negara sekaligus.
+      </p>
       <label className="mt-3 flex h-11 items-center gap-2 rounded-xl bg-surface px-3 shadow-sm">
         <Search className="size-5 text-muted-foreground" />
         <input
@@ -106,7 +107,9 @@ function Explore() {
       {available.source === "error" && (
         <div role="alert" className="mt-4 rounded-2xl bg-surface p-5 text-center shadow-sm">
           <p className="font-semibold">Explore belum dapat dimuat</p>
-          <p className="mt-2 text-sm text-muted-foreground">{available.errorMessage} Tidak ada paket yang dibuat-buat.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {available.errorMessage} Tidak ada paket yang dibuat-buat.
+          </p>
           <button
             type="button"
             onClick={() => void router.invalidate()}
@@ -139,7 +142,11 @@ function Explore() {
               <span className="shrink-0 text-2xl">{d.flag}</span>
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{d.nameId}</p>
-                <p className="text-[12px] text-muted-foreground">{d.region === "Regional" ? "Paket regional · beberapa negara" : "Paket negara · satu tujuan"}</p>
+                <p className="text-[12px] text-muted-foreground">
+                  {d.region === "Regional"
+                    ? "Paket regional · beberapa negara"
+                    : "Paket negara · satu tujuan"}
+                </p>
               </div>
               <ChevronRight className="size-5 text-muted-foreground" />
             </Link>

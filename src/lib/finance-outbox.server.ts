@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
 import { db } from "../db/client.server";
 import { retryDecision, safeErrorSummary } from "./retry-policy";
-import { postTravelFinanceSettlement, type TravelFinanceGatewayPayload } from "./mayar-settlement.server";
+import {
+  postTravelFinanceSettlement,
+  type TravelFinanceGatewayPayload,
+} from "./mayar-settlement.server";
 
 /**
  * Finance posting outbox.
@@ -30,12 +33,15 @@ export async function enqueueFinancePosting(input: {
   payload: TravelFinanceGatewayPayload;
 }) {
   const key = financeIdempotencyKey(input.orderId, input.transactionId);
-  const inserted = await db.execute(sql`insert into public.finance_outbox(order_id, purpose, idempotency_key, status, amount, currency_code, payload, attempt_count, next_retry_at, created_at, updated_at)
+  const inserted =
+    await db.execute(sql`insert into public.finance_outbox(order_id, purpose, idempotency_key, status, amount, currency_code, payload, attempt_count, next_retry_at, created_at, updated_at)
     values (${input.orderId}::uuid, 'SETTLEMENT', ${key}, 'PENDING', ${input.amount}, 'IDR', ${JSON.stringify(input.payload)}::jsonb, 0, now(), now(), now())
     on conflict (order_id, purpose) do nothing
     returning id`);
   if (inserted.rows.length > 0) return { created: true };
-  const existing = await db.execute(sql`select status from public.finance_outbox where order_id = ${input.orderId}::uuid and purpose = 'SETTLEMENT' limit 1`);
+  const existing = await db.execute(
+    sql`select status from public.finance_outbox where order_id = ${input.orderId}::uuid and purpose = 'SETTLEMENT' limit 1`,
+  );
   const status = String((existing.rows[0] as { status?: string } | undefined)?.status ?? "");
   // A posted entry is final; nothing to do and nothing to retry.
   return { created: false, status };
@@ -84,7 +90,11 @@ export async function processFinancePosting(row: {
       await db.execute(sql`update public.finance_outbox
         set status = 'DEAD_LETTER', last_error_safe = ${summary}, lease_owner = null, locked_until = null, updated_at = now()
         where id = ${row.id}::uuid`);
-      console.error("[travel] finance outbox dead-lettered", { outboxId: row.id, orderId: row.payload.orderId, summary });
+      console.error("[travel] finance outbox dead-lettered", {
+        outboxId: row.id,
+        orderId: row.payload.orderId,
+        summary,
+      });
       return { posted: false, deadLetter: true };
     }
     await db.execute(sql`update public.finance_outbox

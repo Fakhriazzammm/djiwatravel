@@ -67,15 +67,11 @@ describe("direct provider catalog", () => {
       volume: 3e9,
     };
     const recommendable = (patch: Record<string, unknown>) =>
-      isRecommendablePackage(
-        normalizeEsimAccessPackage({ ...valid, ...patch }),
-      );
+      isRecommendablePackage(normalizeEsimAccessPackage({ ...valid, ...patch }));
     expect(recommendable({})).toBe(true);
     expect(recommendable({ price: 0 })).toBe(false);
     expect(recommendable({ duration: 0 })).toBe(false);
-    expect(recommendable({ locationCode: undefined, location: undefined })).toBe(
-      false,
-    );
+    expect(recommendable({ locationCode: undefined, location: undefined })).toBe(false);
     expect(recommendable({ volume: 0 })).toBe(false);
     expect(recommendable({ volume: 0, unlimited: true })).toBe(true);
     expect(recommendable({ available: false })).toBe(false);

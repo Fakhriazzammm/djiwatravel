@@ -90,7 +90,10 @@ async function run(request: Request) {
   // Liveness last, and only on a clean run: a heartbeat written by a failing worker would claim
   // health it does not have.
   if (failed.length === 0) await recordSuccess(TRAVEL_TASK_WORKER).catch(() => undefined);
-  else await recordFailure(TRAVEL_TASK_WORKER, `${failed.length} order(s) failed`).catch(() => undefined);
+  else
+    await recordFailure(TRAVEL_TASK_WORKER, `${failed.length} order(s) failed`).catch(
+      () => undefined,
+    );
 
   return json({
     ok: true,

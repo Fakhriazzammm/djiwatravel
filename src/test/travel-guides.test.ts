@@ -19,7 +19,7 @@ describe("travel guide SEO registry", () => {
   });
 
   it("resolves known slugs and rejects unknown input", () => {
-    expect(getTravelGuide(travelGuideSlugs[0])).toBe(travelGuides[0]);
+    expect(getTravelGuide(travelGuideSlugs[0]!)).toBe(travelGuides[0]);
     expect(getTravelGuide("tidak-ada")).toBeUndefined();
     expect(getTravelGuide("<script>alert(1)</script>")).toBeUndefined();
   });

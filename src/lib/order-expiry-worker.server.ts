@@ -23,7 +23,10 @@ export type ExpirySweepResult = {
 /** Unpaid statuses only — the guard that keeps expiry away from settled money. */
 const EXPIRABLE_STATUSES = ["DRAFT", "ORDER_CREATED", "PAYMENT_PENDING"] as const;
 
-export async function sweepExpiredOrders(limit = 200, nowMs = Date.now()): Promise<ExpirySweepResult> {
+export async function sweepExpiredOrders(
+  limit = 200,
+  nowMs = Date.now(),
+): Promise<ExpirySweepResult> {
   const candidates = await db.execute(sql`select id, status, payment_expires_at, created_at
     from public.customer_orders
     where status = any(${sql.raw(`array['${EXPIRABLE_STATUSES.join("','")}']::text[]`)})

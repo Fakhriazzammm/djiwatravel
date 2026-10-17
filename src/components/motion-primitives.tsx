@@ -2,7 +2,14 @@ import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { consumeNavDirection, easeIos, enterFrom, springIos, springSnappy, staggerContainer } from "@/lib/motion";
+import {
+  consumeNavDirection,
+  easeIos,
+  enterFrom,
+  springIos,
+  springSnappy,
+  staggerContainer,
+} from "@/lib/motion";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 12 },
@@ -88,7 +95,12 @@ export function Stagger({
   const enabled = useEntranceAnimations();
   if (!enabled) return <div className={className}>{children}</div>;
   return (
-    <motion.div className={className} variants={staggerContainer(step)} initial="hidden" animate="show">
+    <motion.div
+      className={className}
+      variants={staggerContainer(step)}
+      initial="hidden"
+      animate="show"
+    >
       {children}
     </motion.div>
   );

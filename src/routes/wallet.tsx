@@ -11,8 +11,16 @@ import { getCustomerAppConfig } from "@/lib/customer-app-config.server";
 import { DEFAULT_TOPUP_PRESETS, DEFAULT_MINIMUM_TOPUP } from "@/lib/customer-app-config";
 
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
-import { getCustomerWallet, type CustomerWalletResponse, type CustomerWalletLedgerEntry } from "@/lib/customer-wallet.server";
-import { groupWalletLedger, ledgerStatusLabel, walletStatusLabel } from "@/lib/customer-wallet-view";
+import {
+  getCustomerWallet,
+  type CustomerWalletResponse,
+  type CustomerWalletLedgerEntry,
+} from "@/lib/customer-wallet.server";
+import {
+  groupWalletLedger,
+  ledgerStatusLabel,
+  walletStatusLabel,
+} from "@/lib/customer-wallet-view";
 import { WALLET_SCOPES, WALLET_SCOPE_LABELS, type WalletScope } from "@/lib/wallet-scope";
 import { rupiah } from "@/lib/pricing";
 import {
@@ -69,7 +77,11 @@ export function Wallet() {
     };
   }, []);
   const [topupOpen, setTopupOpen] = useState(false);
-  const [topupPending, setTopupPending] = useState<{ amount: number; startedAt: number; creditedBefore: number } | null>(null);
+  const [topupPending, setTopupPending] = useState<{
+    amount: number;
+    startedAt: number;
+    creditedBefore: number;
+  } | null>(null);
   const [topupVerifiedAmount, setTopupVerifiedAmount] = useState(0);
   const [topupTimedOut, setTopupTimedOut] = useState(false);
 
@@ -85,8 +97,8 @@ export function Wallet() {
     else setQuickActionDialog(label);
   }
 
-  const loadWallet = useCallback(async () => {
-    if (!user) return;
+  const loadWallet = useCallback(async (): Promise<CustomerWalletResponse | null> => {
+    if (!user) return null;
     setLoading(true);
     setError(null);
     try {
@@ -96,12 +108,15 @@ export function Wallet() {
     } catch (cause) {
       setData(null);
       setError(cause instanceof Error ? cause.message : "Wallet belum dapat dimuat. Coba lagi.");
+      return null;
     } finally {
       setLoading(false);
     }
   }, [user, scope]);
 
-  useEffect(() => { void loadWallet(); }, [loadWallet]);
+  useEffect(() => {
+    void loadWallet();
+  }, [loadWallet]);
 
   const topupPendingKey = user ? `${TOPUP_PENDING_KEY}:${user.id}` : TOPUP_PENDING_KEY;
   useEffect(() => {
@@ -109,14 +124,28 @@ export function Wallet() {
     try {
       const raw = window.sessionStorage.getItem(topupPendingKey);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as { amount?: number; startedAt?: number; creditedBefore?: number };
-      if (Number.isFinite(parsed.amount) && Number.isFinite(parsed.startedAt) && Date.now() - Number(parsed.startedAt) < 10 * 60_000) {
-        setTopupPending({ amount: Number(parsed.amount), startedAt: Number(parsed.startedAt), creditedBefore: Number(parsed.creditedBefore ?? 0) });
+      const parsed = JSON.parse(raw) as {
+        amount?: number;
+        startedAt?: number;
+        creditedBefore?: number;
+      };
+      if (
+        Number.isFinite(parsed.amount) &&
+        Number.isFinite(parsed.startedAt) &&
+        Date.now() - Number(parsed.startedAt) < 10 * 60_000
+      ) {
+        setTopupPending({
+          amount: Number(parsed.amount),
+          startedAt: Number(parsed.startedAt),
+          creditedBefore: Number(parsed.creditedBefore ?? 0),
+        });
       } else {
         window.sessionStorage.removeItem(topupPendingKey);
         setTopupTimedOut(true);
       }
-    } catch { /* Abaikan session marker yang rusak. */ }
+    } catch {
+      /* Abaikan session marker yang rusak. */
+    }
   }, [topupPendingKey, user]);
 
   useEffect(() => {
@@ -126,7 +155,10 @@ export function Wallet() {
       try {
         const latest = await loadWallet();
         if (!active) return;
-        if (Number(latest?.wallet?.total_credited ?? 0) >= topupPending.creditedBefore + topupPending.amount) {
+        if (
+          Number(latest?.wallet?.total_credited ?? 0) >=
+          topupPending.creditedBefore + topupPending.amount
+        ) {
           setTopupVerifiedAmount(topupPending.amount);
           setTopupPending(null);
           window.sessionStorage.removeItem(topupPendingKey);
@@ -135,16 +167,25 @@ export function Wallet() {
           setTopupTimedOut(true);
           window.sessionStorage.removeItem(topupPendingKey);
         }
-      } catch { /* Keep the truthful pending state when a read is temporarily unavailable. */ }
+      } catch {
+        /* Keep the truthful pending state when a read is temporarily unavailable. */
+      }
     };
     void verify();
     const timer = window.setInterval(() => void verify(), 7_000);
-    return () => { active = false; window.clearInterval(timer); };
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, [loadWallet, topupPending, topupPendingKey]);
 
   async function checkWalletAgain() {
     setTopupTimedOut(false);
-    try { await loadWallet(); } finally { setTopupTimedOut(true); }
+    try {
+      await loadWallet();
+    } finally {
+      setTopupTimedOut(true);
+    }
   }
 
   const groups = useMemo(() => groupWalletLedger(data?.ledger ?? []), [data?.ledger]);
@@ -164,7 +205,9 @@ export function Wallet() {
     <Page>
       <header className="flex items-center justify-between pt-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-red">Djiwa Travel</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-red">
+            Djiwa Travel
+          </p>
           <h1 className="mt-1 text-[28px] font-bold tracking-tight">Wallet</h1>
         </div>
         <button
@@ -178,39 +221,80 @@ export function Wallet() {
         </button>
       </header>
 
-      {!user ? <GuestState /> : error ? (
+      {!user ? (
+        <GuestState />
+      ) : error ? (
         <ErrorState message={error} onRetry={() => void loadWallet()} />
       ) : !wallet ? (
         <EmptyState />
       ) : (
         <>
-          <section className="relative mt-5 overflow-hidden rounded-[26px] bg-primary p-5 text-primary-foreground shadow-lg" aria-labelledby="wallet-card-title">
-            <div className="absolute -right-10 -top-12 size-40 rounded-full bg-white/10" aria-hidden="true" />
+          <section
+            className="relative mt-5 overflow-hidden rounded-[26px] bg-primary p-5 text-primary-foreground shadow-lg"
+            aria-labelledby="wallet-card-title"
+          >
+            <div
+              className="absolute -right-10 -top-12 size-40 rounded-full bg-white/10"
+              aria-hidden="true"
+            />
             <div className="relative">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p id="wallet-card-title" className="text-sm font-semibold text-primary-foreground/75">Wallet Djiwa Pay</p>
-                  <p className="mt-1 text-xs text-primary-foreground/65">IDR · {walletStatusLabel(wallet.status)}</p>
+                  <p
+                    id="wallet-card-title"
+                    className="text-sm font-semibold text-primary-foreground/75"
+                  >
+                    Wallet Djiwa Pay
+                  </p>
+                  <p className="mt-1 text-xs text-primary-foreground/65">
+                    IDR · {walletStatusLabel(wallet.status)}
+                  </p>
                 </div>
                 <WalletCards className="size-7" aria-hidden="true" />
               </div>
               <p className="mt-7 text-xs text-primary-foreground/70">Saldo tersedia</p>
               <div className="mt-1 flex items-center gap-2">
-                <p className="text-[30px] font-bold tracking-tight">{formatted(wallet.available_balance)}</p>
-                <button type="button" onClick={() => setVisible((current) => !current)} className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"}>
-                  {visible ? <EyeOff className="size-5" aria-hidden="true" /> : <Eye className="size-5" aria-hidden="true" />}
+                <p className="text-[30px] font-bold tracking-tight">
+                  {formatted(wallet.available_balance)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setVisible((current) => !current)}
+                  className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"}
+                >
+                  {visible ? (
+                    <EyeOff className="size-5" aria-hidden="true" />
+                  ) : (
+                    <Eye className="size-5" aria-hidden="true" />
+                  )}
                 </button>
               </div>
-              <p className="mt-4 text-xs text-primary-foreground/70">ID Wallet · {maskedId(wallet.customer_id, visible)}</p>
+              <p className="mt-4 text-xs text-primary-foreground/70">
+                ID Wallet · {maskedId(wallet.customer_id, visible)}
+              </p>
             </div>
           </section>
 
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <Summary label="Total masuk" value={formatted(wallet.total_credited)} icon={ArrowDownLeft} tone="text-emerald-700" />
-            <Summary label="Total digunakan" value={formatted(wallet.total_debited)} icon={ArrowUpRight} tone="text-brand-red" />
+            <Summary
+              label="Total masuk"
+              value={formatted(wallet.total_credited)}
+              icon={ArrowDownLeft}
+              tone="text-emerald-700"
+            />
+            <Summary
+              label="Total digunakan"
+              value={formatted(wallet.total_debited)}
+              icon={ArrowUpRight}
+              tone="text-brand-red"
+            />
           </div>
 
-          <section className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5" aria-label="Aksi cepat">
+          <section
+            className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5"
+            aria-label="Aksi cepat"
+          >
             <div className="grid grid-cols-4 gap-2" aria-label="Aksi cepat">
               {walletActions.map((action) => (
                 <button
@@ -222,22 +306,92 @@ export function Wallet() {
                 >
                   <img src={action.asset} alt="" className="size-9 object-contain" />
                   <span className="text-[11px] font-semibold leading-tight">{action.label}</span>
-                  {!action.supported && <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white ${action.badgeClass ?? "bg-secondary"}`}>Soon</span>}
+                  {!action.supported && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white ${action.badgeClass ?? "bg-secondary"}`}
+                    >
+                      Soon
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           </section>
 
-          {topupPending && <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950" role="status" aria-live="polite"><p className="text-sm font-bold">Menunggu konfirmasi pembayaran</p><p className="mt-1 text-xs leading-5 text-emerald-800">Pembayaran sedang diverifikasi. Wallet akan diperbarui otomatis setelah konfirmasi diterima.</p></section>}
-          {topupVerifiedAmount > 0 && !topupPending && <section className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950" role="status"><p className="text-sm font-bold">Top up berhasil</p><p className="mt-1 text-xs leading-5 text-emerald-800">Wallet bertambah {rupiah(topupVerifiedAmount)} dan sudah dikonfirmasi.</p></section>}
-          {topupTimedOut && !topupPending && <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status"><p className="text-sm font-bold">Pembayaran sedang diverifikasi</p><p className="mt-1 text-xs leading-5 text-amber-900">Wallet belum berubah. Jangan membuat top up baru; cek kembali setelah beberapa saat.</p><button type="button" onClick={() => void checkWalletAgain()} disabled={loading} className="tap mt-3 min-h-11 rounded-xl bg-amber-600 px-3 text-xs font-bold text-white disabled:opacity-60">{loading ? walletLoadingLabel : "Cek saldo lagi"}</button></section>}
-          <DjiwaPayTopup userId={user.id} open={topupOpen} onOpenChange={setTopupOpen} creditedBefore={Number(wallet.total_credited)} presets={topupPresets} minimum={topupMinimum} onSubmitted={(pending) => { setTopupTimedOut(false); setTopupVerifiedAmount(0); setTopupPending(pending); }} />
+          {topupPending && (
+            <section
+              className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
+              role="status"
+              aria-live="polite"
+            >
+              <p className="text-sm font-bold">Menunggu konfirmasi pembayaran</p>
+              <p className="mt-1 text-xs leading-5 text-emerald-800">
+                Pembayaran sedang diverifikasi. Wallet akan diperbarui otomatis setelah konfirmasi
+                diterima.
+              </p>
+            </section>
+          )}
+          {topupVerifiedAmount > 0 && !topupPending && (
+            <section
+              className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
+              role="status"
+            >
+              <p className="text-sm font-bold">Top up berhasil</p>
+              <p className="mt-1 text-xs leading-5 text-emerald-800">
+                Wallet bertambah {rupiah(topupVerifiedAmount)} dan sudah dikonfirmasi.
+              </p>
+            </section>
+          )}
+          {topupTimedOut && !topupPending && (
+            <section
+              className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950"
+              role="status"
+            >
+              <p className="text-sm font-bold">Pembayaran sedang diverifikasi</p>
+              <p className="mt-1 text-xs leading-5 text-amber-900">
+                Wallet belum berubah. Jangan membuat top up baru; cek kembali setelah beberapa saat.
+              </p>
+              <button
+                type="button"
+                onClick={() => void checkWalletAgain()}
+                disabled={loading}
+                className="tap mt-3 min-h-11 rounded-xl bg-amber-600 px-3 text-xs font-bold text-white disabled:opacity-60"
+              >
+                {loading ? walletLoadingLabel : "Cek saldo lagi"}
+              </button>
+            </section>
+          )}
+          <DjiwaPayTopup
+            userId={user.id}
+            open={topupOpen}
+            onOpenChange={setTopupOpen}
+            creditedBefore={Number(wallet.total_credited)}
+            presets={topupPresets}
+            minimum={topupMinimum}
+            onSubmitted={(pending) => {
+              setTopupTimedOut(false);
+              setTopupVerifiedAmount(0);
+              setTopupPending(pending);
+            }}
+          />
 
           <section className="mt-7" aria-labelledby="wallet-history-title">
-            <SectionTitle action={<span className="text-xs font-normal normal-case">{data.ledger.length} transaksi</span>}>
-              <span id="wallet-history-title" tabIndex={-1}>Riwayat Wallet</span>
+            <SectionTitle
+              action={
+                <span className="text-xs font-normal normal-case">
+                  {data.ledger.length} transaksi
+                </span>
+              }
+            >
+              <span id="wallet-history-title" tabIndex={-1}>
+                Riwayat Wallet
+              </span>
             </SectionTitle>
-            <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filter riwayat Wallet">
+            <div
+              className="mt-3 flex flex-wrap gap-2"
+              role="group"
+              aria-label="Filter riwayat Wallet"
+            >
               {WALLET_SCOPES.map((option) => (
                 <button
                   key={option}
@@ -251,8 +405,34 @@ export function Wallet() {
                 </button>
               ))}
             </div>
-            {scope === "djiwa-travel" && <p className="mt-2 text-xs leading-5 text-muted-foreground">Menampilkan transaksi yang tercatat berasal dari Djiwa Travel. Transaksi tanpa keterangan asal aplikasi tidak ditampilkan.</p>}
-            {groups.length === 0 ? <p className="mt-3 rounded-2xl bg-surface px-4 py-5 text-sm text-muted-foreground">{scope === "djiwa-travel" ? "Belum ada transaksi Djiwa Travel yang tercatat." : "Belum ada transaksi Wallet."}</p> : <div className="mt-3 space-y-5">{groups.map((group) => <div key={group.key}><h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</h3><div className="overflow-hidden rounded-2xl bg-surface">{group.entries.map((entry) => <LedgerRow key={String(entry.id)} entry={entry} visible={visible} />)}</div></div>)}</div>}
+            {scope === "djiwa-travel" && (
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Menampilkan transaksi yang tercatat berasal dari Djiwa Travel. Transaksi tanpa
+                keterangan asal aplikasi tidak ditampilkan.
+              </p>
+            )}
+            {groups.length === 0 ? (
+              <p className="mt-3 rounded-2xl bg-surface px-4 py-5 text-sm text-muted-foreground">
+                {scope === "djiwa-travel"
+                  ? "Belum ada transaksi Djiwa Travel yang tercatat."
+                  : "Belum ada transaksi Wallet."}
+              </p>
+            ) : (
+              <div className="mt-3 space-y-5">
+                {groups.map((group) => (
+                  <div key={group.key}>
+                    <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {group.label}
+                    </h3>
+                    <div className="overflow-hidden rounded-2xl bg-surface">
+                      {group.entries.map((entry) => (
+                        <LedgerRow key={String(entry.id)} entry={entry} visible={visible} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         </>
       )}
@@ -265,14 +445,40 @@ export function Wallet() {
               if (event.target === event.currentTarget) setQuickActionDialog(null);
             }}
           >
-            <div role="dialog" aria-modal="true" aria-labelledby="wallet-quick-action-dialog-title" className="w-full max-w-md rounded-3xl bg-surface p-5 shadow-xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Djiwa Pay</p>
-              <h2 id="wallet-quick-action-dialog-title" className="mt-1 text-xl font-bold">Segera Hadir</h2>
-              <p className="mt-2 text-sm leading-5 text-muted-foreground">
-                {quickActionDialog === "Bantuan" ? QUICK_ACTION_SUPPORT_COPY : quickActionSoonCopy(quickActionDialog)}
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="wallet-quick-action-dialog-title"
+              className="w-full max-w-md rounded-3xl bg-surface p-5 shadow-xl"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Djiwa Pay
               </p>
-              {quickActionDialog === "Bantuan" && <a className="mt-3 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="https://wa.me/6285156399831" target="_blank" rel="noreferrer">Hubungi customer service</a>}
-              <button type="button" className="mt-4 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setQuickActionDialog(null)}>Mengerti</button>
+              <h2 id="wallet-quick-action-dialog-title" className="mt-1 text-xl font-bold">
+                Segera Hadir
+              </h2>
+              <p className="mt-2 text-sm leading-5 text-muted-foreground">
+                {quickActionDialog === "Bantuan"
+                  ? QUICK_ACTION_SUPPORT_COPY
+                  : quickActionSoonCopy(quickActionDialog)}
+              </p>
+              {quickActionDialog === "Bantuan" && (
+                <a
+                  className="mt-3 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  href="https://wa.me/6285156399831"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Hubungi customer service
+                </a>
+              )}
+              <button
+                type="button"
+                className="mt-4 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => setQuickActionDialog(null)}
+              >
+                Mengerti
+              </button>
             </div>
           </div>
         </FixedLayer>
@@ -281,8 +487,24 @@ export function Wallet() {
   );
 }
 
-function Summary({ label, value, icon: Icon, tone }: { label: string; value: string; icon: typeof ArrowDownLeft; tone: string }) {
-  return <div className="rounded-2xl bg-surface p-3.5"><Icon className={`size-5 ${tone}`} aria-hidden="true" /><p className="mt-3 text-xs text-muted-foreground">{label}</p><p className="mt-1 truncate text-sm font-bold">{value}</p></div>;
+function Summary({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  icon: typeof ArrowDownLeft;
+  tone: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-surface p-3.5">
+      <Icon className={`size-5 ${tone}`} aria-hidden="true" />
+      <p className="mt-3 text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-sm font-bold">{value}</p>
+    </div>
+  );
 }
 
 function LedgerRow({ entry, visible }: { entry: CustomerWalletLedgerEntry; visible: boolean }) {
@@ -291,7 +513,25 @@ function LedgerRow({ entry, visible }: { entry: CustomerWalletLedgerEntry; visib
   const title = entry.note || entry.transaction_type;
   const reference = [entry.reference_type, entry.reference_id].filter(Boolean).join(" · ");
   const StatusIcon = credit ? ArrowDownLeft : ArrowUpRight;
-  return <div className="flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0"><span className={`flex size-9 shrink-0 items-center justify-center rounded-full ${credit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-brand-red"}`}><StatusIcon className="size-4" aria-hidden="true" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{title}</p><p className="truncate text-xs text-muted-foreground">{date.toLocaleDateString("id-ID")} · {ledgerStatusLabel(entry.status)}{reference ? ` · ${reference}` : ""}</p></div><p className={`shrink-0 text-sm font-bold ${credit ? "text-emerald-700" : "text-brand-red"}`}>{visible ? `${credit ? "+" : "−"}${rupiah(entry.amount)}` : "••••••"}</p></div>;
+  return (
+    <div className="flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0">
+      <span
+        className={`flex size-9 shrink-0 items-center justify-center rounded-full ${credit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-brand-red"}`}
+      >
+        <StatusIcon className="size-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">{title}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {date.toLocaleDateString("id-ID")} · {ledgerStatusLabel(entry.status)}
+          {reference ? ` · ${reference}` : ""}
+        </p>
+      </div>
+      <p className={`shrink-0 text-sm font-bold ${credit ? "text-emerald-700" : "text-brand-red"}`}>
+        {visible ? `${credit ? "+" : "−"}${rupiah(entry.amount)}` : "••••••"}
+      </p>
+    </div>
+  );
 }
 
 function WalletLoadingSplash() {
@@ -316,6 +556,41 @@ function WalletLoadingSplash() {
   );
 }
 
-function GuestState() { return <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm"><WalletCards className="mx-auto size-10 text-muted-foreground" aria-hidden="true" /><h2 className="mt-4 text-lg font-bold">Masuk untuk membuka Wallet</h2><p className="mt-2 text-sm leading-5 text-muted-foreground">Wallet tersedia untuk akun Djiwa Travel yang sudah masuk.</p></div>; }
-function EmptyState() { return <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm"><WalletCards className="mx-auto size-10 text-muted-foreground" aria-hidden="true" /><h2 className="mt-4 text-lg font-bold">Wallet belum tersedia</h2><p className="mt-2 text-sm leading-5 text-muted-foreground">Kami belum menemukan Wallet untuk akun ini. Coba segarkan atau hubungi bantuan jika akunmu sudah terdaftar.</p></div>; }
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) { return <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm"><h2 className="text-lg font-bold">Wallet belum dapat dimuat</h2><p className="mt-2 text-sm leading-5 text-muted-foreground">{message}</p><button type="button" onClick={onRetry} className="mt-5 min-h-11 rounded-xl bg-primary px-5 font-semibold text-primary-foreground">Coba lagi</button></div>; }
+function GuestState() {
+  return (
+    <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm">
+      <WalletCards className="mx-auto size-10 text-muted-foreground" aria-hidden="true" />
+      <h2 className="mt-4 text-lg font-bold">Masuk untuk membuka Wallet</h2>
+      <p className="mt-2 text-sm leading-5 text-muted-foreground">
+        Wallet tersedia untuk akun Djiwa Travel yang sudah masuk.
+      </p>
+    </div>
+  );
+}
+function EmptyState() {
+  return (
+    <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm">
+      <WalletCards className="mx-auto size-10 text-muted-foreground" aria-hidden="true" />
+      <h2 className="mt-4 text-lg font-bold">Wallet belum tersedia</h2>
+      <p className="mt-2 text-sm leading-5 text-muted-foreground">
+        Kami belum menemukan Wallet untuk akun ini. Coba segarkan atau hubungi bantuan jika akunmu
+        sudah terdaftar.
+      </p>
+    </div>
+  );
+}
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm">
+      <h2 className="text-lg font-bold">Wallet belum dapat dimuat</h2>
+      <p className="mt-2 text-sm leading-5 text-muted-foreground">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 min-h-11 rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
+      >
+        Coba lagi
+      </button>
+    </div>
+  );
+}

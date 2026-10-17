@@ -1,6 +1,9 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client.server";
-import { buildTravelFinanceGatewayPayload, postTravelFinanceSettlement } from "./mayar-settlement.server";
+import {
+  buildTravelFinanceGatewayPayload,
+  postTravelFinanceSettlement,
+} from "./mayar-settlement.server";
 
 /**
  * Reconciliation for the Travel finance book.
@@ -32,15 +35,20 @@ export type SettledTravelOrder = {
   transactionId?: string;
 };
 
-export function parseLedgerStatus(orderIds: string[], value: unknown): { found: string[]; missing: string[] } {
-  if (!value || typeof value !== "object") throw new Error("Travel finance ledger status response is invalid");
+export function parseLedgerStatus(
+  orderIds: string[],
+  value: unknown,
+): { found: string[]; missing: string[] } {
+  if (!value || typeof value !== "object")
+    throw new Error("Travel finance ledger status response is invalid");
   const body = value as Record<string, unknown>;
   if (body["ok"] !== true || !Array.isArray(body["missing"])) {
     throw new Error("Travel finance ledger status response is invalid");
   }
   const requested = new Set(orderIds);
-  const missing = (body["missing"] as unknown[])
-    .filter((item): item is string => typeof item === "string" && requested.has(item));
+  const missing = (body["missing"] as unknown[]).filter(
+    (item): item is string => typeof item === "string" && requested.has(item),
+  );
   return { found: orderIds.filter((orderId) => !missing.includes(orderId)), missing };
 }
 
@@ -53,11 +61,17 @@ function configuredLedgerStatus() {
   return { url: ledgerStatusUrl(url.toString()), secret };
 }
 
-export async function fetchLedgerStatus(orderIds: string[]): Promise<{ found: string[]; missing: string[] }> {
+export async function fetchLedgerStatus(
+  orderIds: string[],
+): Promise<{ found: string[]; missing: string[] }> {
   const { url, secret } = configuredLedgerStatus();
   const response = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json", "x-djiwa-travel-settlement-secret": secret },
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json",
+      "x-djiwa-travel-settlement-secret": secret,
+    },
     body: JSON.stringify({ orderIds }),
     signal: AbortSignal.timeout(15_000),
   });
@@ -66,7 +80,10 @@ export async function fetchLedgerStatus(orderIds: string[]): Promise<{ found: st
 }
 
 /** Orders whose payment settled locally, newest first. */
-export async function listSettledTravelOrders(days = 14, limit = 200): Promise<SettledTravelOrder[]> {
+export async function listSettledTravelOrders(
+  days = 14,
+  limit = 200,
+): Promise<SettledTravelOrder[]> {
   const rows = await db.execute(sql`select o.id, o.public_order_code, o.total_amount, o.paid_at,
       i.provider_invoice_id, i.provider_transaction_id
     from public.customer_orders o
@@ -81,7 +98,9 @@ export async function listSettledTravelOrders(days = 14, limit = 200): Promise<S
     amount: Math.round(Number(row["total_amount"] ?? 0)),
     paidAtMs: new Date(String(row["paid_at"])).getTime(),
     ...(row["provider_invoice_id"] ? { invoiceId: String(row["provider_invoice_id"]) } : {}),
-    ...(row["provider_transaction_id"] ? { transactionId: String(row["provider_transaction_id"]) } : {}),
+    ...(row["provider_transaction_id"]
+      ? { transactionId: String(row["provider_transaction_id"]) }
+      : {}),
   }));
 }
 
@@ -103,15 +122,17 @@ export async function reconcileTravelFinance(days = 14): Promise<ReconcileReport
   for (const order of orders) {
     if (!missing.has(order.orderId)) continue;
     try {
-      await postTravelFinanceSettlement(buildTravelFinanceGatewayPayload({
-        orderId: order.orderId,
-        orderNumber: order.orderNumber,
-        amount: order.amount,
-        paidAt: order.paidAtMs,
-        ...(order.invoiceId ? { invoiceId: order.invoiceId } : {}),
-        ...(order.transactionId ? { transactionId: order.transactionId } : {}),
-        customerName: null,
-      }));
+      await postTravelFinanceSettlement(
+        buildTravelFinanceGatewayPayload({
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          amount: order.amount,
+          paidAt: order.paidAtMs,
+          ...(order.invoiceId ? { invoiceId: order.invoiceId } : {}),
+          ...(order.transactionId ? { transactionId: order.transactionId } : {}),
+          customerName: null,
+        }),
+      );
       repaired += 1;
     } catch (error) {
       failed += 1;

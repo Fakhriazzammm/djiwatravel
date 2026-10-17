@@ -35,7 +35,9 @@ export const getTravelFinanceReport = createServerFn({ method: "GET" })
       return {
         state: "unavailable",
         report: null,
-        error: classifyAdminError(error instanceof Error ? error.message : String(error)) ?? "processing_failed",
+        error:
+          classifyAdminError(error instanceof Error ? error.message : String(error)) ??
+          "processing_failed",
       };
     }
   });
