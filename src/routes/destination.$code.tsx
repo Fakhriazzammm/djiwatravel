@@ -9,6 +9,7 @@ import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { readSellability } from "@/lib/sellability-api";
+import { z } from "zod";
 import {
   packageCoverageLabel,
   packageDataLabel,
@@ -27,6 +28,27 @@ export const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
   { key: "duration", label: "Masa aktif terlama" },
   { key: "value", label: "Paling hemat (Rp/GB)" },
 ];
+
+export type AvailabilityFilter = "all" | "available" | "sold-out";
+
+export const AVAILABILITY_OPTIONS: Array<{
+  key: AvailabilityFilter;
+  label: string;
+}> = [
+  { key: "all", label: "Semua" },
+  { key: "available", label: "Tersedia" },
+  { key: "sold-out", label: "Habis" },
+];
+
+/** Filters confirmed stock states without treating a pending balance read as sold out. */
+export function filterPackagesByAvailability(
+  packages: ViewPackage[],
+  filter: AvailabilityFilter,
+  stockPending = false,
+): ViewPackage[] {
+  if (filter === "all" || stockPending) return filter === "all" ? [...packages] : [];
+  return packages.filter((pkg) => (filter === "available" ? pkg.sellable : !pkg.sellable));
+}
 
 function pricePerGb(pkg: ViewPackage): number {
   const gb = pkg.volumeBytes / 1_000_000_000;
@@ -73,6 +95,9 @@ async function coverageFor(destination: { code: string; region: string }) {
 }
 
 export const Route = createFileRoute("/destination/$code")({
+  validateSearch: z.object({
+    availability: z.enum(["all", "available", "sold-out"]).default("all"),
+  }),
   // Same reseller read as Explore: keep the result warm so opening a country from the
   // destination list or the home cards does not pay for it twice.
   staleTime: 0,
@@ -195,11 +220,32 @@ function rupiah(value: number) {
 function Destination() {
   const router = useRouter();
   const { destination, packages, stale, stockPending } = Route.useLoaderData();
+  const { availability } = Route.useSearch();
   const [sort, setSort] = useState<SortKey>("recommended");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  const sorted = useMemo(() => sortPackages(packages, sort), [packages, sort]);
+  const filteredPackages = useMemo(
+    () => filterPackagesByAvailability(packages, availability, stockPending),
+    [packages, availability, stockPending],
+  );
+  const sorted = useMemo(() => sortPackages(filteredPackages, sort), [filteredPackages, sort]);
   const shown = sorted.slice(0, visible);
+  const availabilityCounts = useMemo(
+    () => ({
+      all: packages.length,
+      available: stockPending ? null : packages.filter((pkg) => pkg.sellable).length,
+      "sold-out": stockPending ? null : packages.filter((pkg) => !pkg.sellable).length,
+    }),
+    [packages, stockPending],
+  );
+  const setAvailability = (next: AvailabilityFilter) => {
+    setVisible(PAGE_SIZE);
+    void router.navigate({
+      to: "/destination/$code",
+      params: { code: destination.code },
+      search: { availability: next },
+    } as never);
+  };
   const selectedPackages = selectedCodes
     .map((code) => packages.find((pkg) => pkg.packageCode === code))
     .filter((pkg): pkg is ViewPackage => Boolean(pkg?.sellable));
@@ -237,6 +283,39 @@ function Destination() {
         </p>
       ) : (
         <>
+          <div className="mt-4">
+            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Ketersediaan paket
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {AVAILABILITY_OPTIONS.map((option) => {
+                const count = availabilityCounts[option.key];
+                const disabled = stockPending && option.key !== "all";
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    aria-pressed={availability === option.key}
+                    disabled={disabled}
+                    onClick={() => setAvailability(option.key)}
+                    className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
+                      availability === option.key
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {option.label}
+                    {count !== null && <span className="ml-1 opacity-75">({count})</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {stockPending && (
+              <p className="mt-2 px-1 text-xs text-muted-foreground">
+                Filter stok tersedia setelah status saldo provider diperbarui.
+              </p>
+            )}
+          </div>
           <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1">
             {SORT_OPTIONS.map((option) => (
               <button
@@ -260,71 +339,81 @@ function Destination() {
           <p className="mt-2 px-1 text-xs text-muted-foreground">
             Menampilkan {shown.length} dari {sorted.length} paket
           </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {shown.map((pkg) => (
-              <article
-                key={pkg.packageCode}
-                className={`rounded-2xl p-4 shadow-sm ${
-                  pkg.sellable ? "bg-surface" : "border border-red-200 bg-red-50/70"
-                }`}
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                  Paket internet
-                </p>
-                <div className="flex items-start justify-between gap-2">
-                  <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
-                  {!pkg.sellable && !stockPending && (
-                    <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
+          {filteredPackages.length === 0 ? (
+            <p className="mt-4 rounded-xl bg-surface p-4 text-sm text-muted-foreground">
+              {stockPending
+                ? "Status ketersediaan paket belum dapat dipastikan."
+                : availability === "available"
+                  ? "Belum ada paket yang tersedia untuk dibeli."
+                  : "Belum ada paket yang habis pada katalog ini."}
+            </p>
+          ) : (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {shown.map((pkg) => (
+                <article
+                  key={pkg.packageCode}
+                  className={`rounded-2xl p-4 shadow-sm ${
+                    pkg.sellable ? "bg-surface" : "border border-red-200 bg-red-50/70"
+                  }`}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                    Paket internet
+                  </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
+                    {!pkg.sellable && !stockPending && (
+                      <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
+                        Habis
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {packageDataLabel(pkg)} · {pkg.durationDays} hari masa aktif
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Cakupan: {packageCoverageLabel(pkg)}
+                  </p>
+                  <p className="mt-4 text-lg font-bold text-brand-red">{rupiah(pkg.priceIdr)}</p>
+                  <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={selectedCodes.includes(pkg.packageCode)}
+                      disabled={
+                        !pkg.sellable ||
+                        (selectedCodes.length >= 3 && !selectedCodes.includes(pkg.packageCode))
+                      }
+                      onChange={() => toggleComparison(pkg)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    Bandingkan paket
+                  </label>
+                  {pkg.sellable ? (
+                    <Link
+                      to="/checkout/$id"
+                      params={{ id: pkg.packageCode }}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
+                    >
+                      Lihat detail &amp; pilih
+                    </Link>
+                  ) : stockPending ? (
+                    <span
+                      className="inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
+                      aria-label="Paket belum dapat dipesan saat ini"
+                    >
+                      Belum tersedia
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex w-full items-center justify-center rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700"
+                      aria-label="Paket habis dan tidak dapat dibeli"
+                    >
                       Habis
                     </span>
                   )}
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {packageDataLabel(pkg)} · {pkg.durationDays} hari masa aktif
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Cakupan: {packageCoverageLabel(pkg)}
-                </p>
-                <p className="mt-4 text-lg font-bold text-brand-red">{rupiah(pkg.priceIdr)}</p>
-                <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={selectedCodes.includes(pkg.packageCode)}
-                    disabled={
-                      !pkg.sellable ||
-                      (selectedCodes.length >= 3 && !selectedCodes.includes(pkg.packageCode))
-                    }
-                    onChange={() => toggleComparison(pkg)}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  Bandingkan paket
-                </label>
-                {pkg.sellable ? (
-                  <Link
-                    to="/checkout/$id"
-                    params={{ id: pkg.packageCode }}
-                    className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
-                  >
-                    Lihat detail &amp; pilih
-                  </Link>
-                ) : stockPending ? (
-                  <span
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
-                    aria-label="Paket belum dapat dipesan saat ini"
-                  >
-                    Belum tersedia
-                  </span>
-                ) : (
-                  <span
-                    className="inline-flex w-full items-center justify-center rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700"
-                    aria-label="Paket habis dan tidak dapat dibeli"
-                  >
-                    Habis
-                  </span>
-                )}
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          )}
           {selectedPackages.length > 0 && (
             <section
               className="mt-6 rounded-2xl bg-surface p-4 shadow-sm"

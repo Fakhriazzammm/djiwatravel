@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { PAGE_SIZE, sortPackages, type SortKey } from "@/routes/destination.$code";
+import {
+  filterPackagesByAvailability,
+  PAGE_SIZE,
+  sortPackages,
+  type SortKey,
+} from "@/routes/destination.$code";
 import type { ViewPackage } from "@/lib/package-view";
 
 function pkg(
@@ -55,6 +60,33 @@ describe("destination package sorting", () => {
     const original = [...packages];
     sortPackages(packages, "price");
     expect(packages).toEqual(original);
+  });
+
+  it("filters confirmed available and sold-out packages", () => {
+    const soldOut: ViewPackage = { ...packages[0]!, sellable: false };
+
+    expect(filterPackagesByAvailability([...packages, soldOut], "all")).toHaveLength(4);
+    expect(
+      filterPackagesByAvailability([...packages, soldOut], "available").map(
+        (packageItem) => packageItem.packageCode,
+      ),
+    ).toEqual(["MID", "CHEAP", "BIG"]);
+    expect(
+      filterPackagesByAvailability([...packages, soldOut], "sold-out").map(
+        (packageItem) => packageItem.packageCode,
+      ),
+    ).toEqual(["MID"]);
+  });
+
+  it("does not classify pending stock as sold out", () => {
+    const pending: ViewPackage[] = packages.map((packageItem) => ({
+      ...packageItem,
+      sellable: false,
+    }));
+
+    expect(filterPackagesByAvailability(pending, "available", true)).toEqual([]);
+    expect(filterPackagesByAvailability(pending, "sold-out", true)).toEqual([]);
+    expect(filterPackagesByAvailability(pending, "all", true)).toEqual(pending);
   });
 
   it("renders one screen of cards on the first paint", () => {
