@@ -21,6 +21,7 @@ describe("admin support/refund operational read models", () => {
     const source = readFileSync(resolve(process.cwd(), "src/lib/admin-read-model.server.ts"), "utf8");
     expect(source).toContain("public.refund_requests");
     expect(source).toContain("public.refund_events");
+    expect(source).toContain("e.order_id = r.order_id");
     expect(source).not.toMatch(/MAYAR_API_KEY|refund.*fetch|fetch.*refund/i);
     expect(source).not.toMatch(/insert into public\.refund_requests|update public\.refund_requests/i);
   });
