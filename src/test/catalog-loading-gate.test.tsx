@@ -65,4 +65,10 @@ describe("customer catalog loading gate", () => {
       expect(source).toContain("pendingComponent: CatalogRoutePending");
     },
   );
+
+  it("reuses the global catalog on destination navigation", () => {
+    const destination = routeSource("destination.$code.tsx");
+    expect(destination).toContain("const catalog = await getResellerCatalog();");
+    expect(destination).not.toContain("getResellerCatalog(destination.code)");
+  });
 });

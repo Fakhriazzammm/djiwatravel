@@ -69,7 +69,9 @@ export const Route = createFileRoute("/destination/$code")({
       getDest(params.code.toUpperCase()) ??
       getDest(params.code.toLowerCase());
     if (!destination) throw notFound();
-    const catalog = await getResellerCatalog(destination.code);
+    // Reuse the global catalog warmed by Explore; filter locally so destination navigation
+    // does not trigger a second provider request for every country.
+    const catalog = await getResellerCatalog();
     const visible = filterPackagesByDestination(catalog.packages, destination.code);
     // Balance-aware sellability: packages the provider balance cannot cover are marked sold out.
     const sellability = await getSellabilityState(visible);
