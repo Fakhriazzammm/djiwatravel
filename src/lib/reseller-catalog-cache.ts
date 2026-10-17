@@ -34,6 +34,11 @@ const defaultStore: ResellerCatalogCacheStore = {
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_MAX_STALE_MS = 15 * 60 * 1000;
 const DEFAULT_PROVIDER_TIMEOUT_MS = 8_000;
+const SHARED_STORE_KEY = "__djiwa_reseller_catalog_store__";
+
+type SharedCatalogGlobal = typeof globalThis & {
+  [SHARED_STORE_KEY]?: ResellerCatalogCacheStore;
+};
 
 let configured = {
   store: defaultStore,
@@ -98,6 +103,11 @@ function findPackage(entry: ResellerCatalogCacheEntry | undefined, code: string)
   return entry?.packages.find((pkg) => pkg.packageCode === code);
 }
 
+function adoptSharedStore() {
+  const shared = (globalThis as SharedCatalogGlobal)[SHARED_STORE_KEY];
+  if (shared && configured.store === defaultStore) configured.store = shared;
+}
+
 function refresh(key: string, loader: () => Promise<ResellerCatalogPackage[]>) {
   const current = inflight.get(key);
   if (current) return current;
@@ -134,6 +144,7 @@ export function configureResellerCatalogCache(options: ResellerCatalogCacheOptio
 }
 
 export async function getResellerCatalog(locationCode?: string): Promise<CatalogRead> {
+  adoptSharedStore();
   const key = keyForLocation(locationCode);
   const current = configured.store.get(key);
   const state = freshness(current);
@@ -168,6 +179,7 @@ export async function getResellerPackage(
   packageCode: string,
   options: ResellerPackageLookupOptions = {},
 ): Promise<CatalogPackageRead> {
+  adoptSharedStore();
   const normalizedCode = packageCode.trim();
   const key = packageKey(normalizedCode);
   if (options.fresh) {

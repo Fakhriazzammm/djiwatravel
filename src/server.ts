@@ -16,7 +16,14 @@ type ServerEntry = {
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 const catalogFileStore = createResellerCatalogFileStore();
-if (catalogFileStore) configureResellerCatalogCache({ store: catalogFileStore });
+if (catalogFileStore) {
+  (
+    globalThis as typeof globalThis & {
+      __djiwa_reseller_catalog_store__?: typeof catalogFileStore;
+    }
+  ).__djiwa_reseller_catalog_store__ = catalogFileStore;
+  configureResellerCatalogCache({ store: catalogFileStore });
+}
 
 // Warm the browse catalog without delaying the first HTML response.
 void prewarmResellerCatalog();
