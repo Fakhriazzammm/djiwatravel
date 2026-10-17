@@ -3,13 +3,20 @@ import { canonicalRedirectUrl } from "./lib/canonical-host";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-import { prewarmResellerCatalog } from "./lib/reseller-catalog-cache";
+import {
+  prewarmResellerCatalog,
+  configureResellerCatalogCache,
+} from "./lib/reseller-catalog-cache";
+import { createResellerCatalogFileStore } from "./lib/reseller-catalog-file-store.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+
+const catalogFileStore = createResellerCatalogFileStore();
+if (catalogFileStore) configureResellerCatalogCache({ store: catalogFileStore });
 
 // Warm the browse catalog without delaying the first HTML response.
 void prewarmResellerCatalog();
