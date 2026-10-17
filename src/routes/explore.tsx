@@ -9,24 +9,6 @@ import { getSellabilityState } from "@/lib/sellability.server";
 import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
 import { CatalogRoutePending } from "@/components/route-loading";
 
-const EXPLORE_LOADER_DEADLINE_MS = 2_500;
-
-function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Explore catalog deadline exceeded")), timeoutMs);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-}
-
 export const Route = createFileRoute("/explore")({
   // Explore is the only package list now, so it carries the catalog's caching: one
   // expensive reseller read, reused for a minute so coming back is instant.
@@ -36,12 +18,9 @@ export const Route = createFileRoute("/explore")({
   pendingComponent: CatalogRoutePending,
   loader: async () => {
     try {
-      const catalog = await withDeadline(getResellerCatalog(), EXPLORE_LOADER_DEADLINE_MS);
+      const catalog = await getResellerCatalog();
       const packages = catalog.packages.filter(isRecommendablePackage);
-      const sellability = await withDeadline(
-        getSellabilityState(packages),
-        EXPLORE_LOADER_DEADLINE_MS,
-      );
+      const sellability = await getSellabilityState(packages);
       const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
       const codes = new Set(
         sellable.flatMap((pkg) => pkg.locationCodes.map((code) => code.trim().toUpperCase())),
