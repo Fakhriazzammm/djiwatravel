@@ -14,8 +14,10 @@ import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
@@ -33,7 +35,10 @@ import { Route as AdminRefundsRouteImport } from './routes/admin.refunds'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
+import { Route as ApiCustomerNotificationsRouteImport } from './routes/api.customer-notifications'
 import { Route as ApiCustomerProfileRouteImport } from './routes/api.customer-profile'
+import { Route as ApiCustomerRefundRouteImport } from './routes/api.customer-refund'
+import { Route as ApiCustomerSupportRouteImport } from './routes/api.customer-support'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
@@ -41,6 +46,7 @@ import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
 import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
+import { Route as RefundOrderRouteImport } from './routes/refund.$order'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.topup'
@@ -74,6 +80,11 @@ const LiveCatalogRoute = LiveCatalogRouteImport.update({
   path: '/live-catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -82,6 +93,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WalletRoute = WalletRouteImport.update({
@@ -169,9 +185,25 @@ const AdminTeamRoute = AdminTeamRouteImport.update({
   path: '/admin/team',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCustomerNotificationsRoute =
+  ApiCustomerNotificationsRouteImport.update({
+    id: '/api/customer-notifications',
+    path: '/api/customer-notifications',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCustomerProfileRoute = ApiCustomerProfileRouteImport.update({
   id: '/api/customer-profile',
   path: '/api/customer-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCustomerRefundRoute = ApiCustomerRefundRouteImport.update({
+  id: '/api/customer-refund',
+  path: '/api/customer-refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCustomerSupportRoute = ApiCustomerSupportRouteImport.update({
+  id: '/api/customer-support',
+  path: '/api/customer-support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutIdRoute = CheckoutIdRouteImport.update({
@@ -207,6 +239,11 @@ const PlanIdRoute = PlanIdRouteImport.update({
 const ReceiptIdRoute = ReceiptIdRouteImport.update({
   id: '/receipt/$id',
   path: '/receipt/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundOrderRoute = RefundOrderRouteImport.update({
+  id: '/refund/$order',
+  path: '/refund/$order',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminOrdersIdRoute = AdminOrdersIdRouteImport.update({
@@ -253,8 +290,10 @@ export interface FileRoutesByFullPath {
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
+  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/support': typeof SupportRoute
   '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -271,13 +310,17 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
   '/api/customer-profile': typeof ApiCustomerProfileRoute
+  '/api/customer-refund': typeof ApiCustomerRefundRoute
+  '/api/customer-support': typeof ApiCustomerSupportRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
+  '/refund/$order': typeof RefundOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
@@ -294,8 +337,10 @@ export interface FileRoutesByTo {
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
+  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/support': typeof SupportRoute
   '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -312,13 +357,17 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
   '/api/customer-profile': typeof ApiCustomerProfileRoute
+  '/api/customer-refund': typeof ApiCustomerRefundRoute
+  '/api/customer-support': typeof ApiCustomerSupportRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
+  '/refund/$order': typeof RefundOrderRoute
   '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
@@ -336,8 +385,10 @@ export interface FileRoutesById {
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
+  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/support': typeof SupportRoute
   '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -354,13 +405,17 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
   '/api/customer-profile': typeof ApiCustomerProfileRoute
+  '/api/customer-refund': typeof ApiCustomerRefundRoute
+  '/api/customer-support': typeof ApiCustomerSupportRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/order/$id': typeof OrderIdRoute
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
+  '/refund/$order': typeof RefundOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
@@ -379,8 +434,10 @@ export interface FileRouteTypes {
     | '/explore'
     | '/finder'
     | '/live-catalog'
+    | '/notifications'
     | '/profile'
     | '/sitemap.xml'
+    | '/support'
     | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
@@ -397,13 +454,17 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/support'
     | '/admin/team'
+    | '/api/customer-notifications'
     | '/api/customer-profile'
+    | '/api/customer-refund'
+    | '/api/customer-support'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
     | '/receipt/$id'
+    | '/refund/$order'
     | '/admin/'
     | '/my-esim/'
     | '/admin/orders/$id'
@@ -420,8 +481,10 @@ export interface FileRouteTypes {
     | '/explore'
     | '/finder'
     | '/live-catalog'
+    | '/notifications'
     | '/profile'
     | '/sitemap.xml'
+    | '/support'
     | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
@@ -438,13 +501,17 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/support'
     | '/admin/team'
+    | '/api/customer-notifications'
     | '/api/customer-profile'
+    | '/api/customer-refund'
+    | '/api/customer-support'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
     | '/receipt/$id'
+    | '/refund/$order'
     | '/admin'
     | '/my-esim'
     | '/admin/orders/$id'
@@ -461,8 +528,10 @@ export interface FileRouteTypes {
     | '/explore'
     | '/finder'
     | '/live-catalog'
+    | '/notifications'
     | '/profile'
     | '/sitemap.xml'
+    | '/support'
     | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
@@ -479,13 +548,17 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/support'
     | '/admin/team'
+    | '/api/customer-notifications'
     | '/api/customer-profile'
+    | '/api/customer-refund'
+    | '/api/customer-support'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
     | '/order/$id'
     | '/plan/$id'
     | '/receipt/$id'
+    | '/refund/$order'
     | '/admin/'
     | '/my-esim/'
     | '/admin/orders/$id'
@@ -503,8 +576,10 @@ export interface RootRouteChildren {
   ExploreRoute: typeof ExploreRoute
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
+  NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SupportRoute: typeof SupportRoute
   WalletRoute: typeof WalletRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
@@ -521,13 +596,17 @@ export interface RootRouteChildren {
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSupportRoute: typeof AdminSupportRoute
   AdminTeamRoute: typeof AdminTeamRoute
+  ApiCustomerNotificationsRoute: typeof ApiCustomerNotificationsRoute
   ApiCustomerProfileRoute: typeof ApiCustomerProfileRoute
+  ApiCustomerRefundRoute: typeof ApiCustomerRefundRoute
+  ApiCustomerSupportRoute: typeof ApiCustomerSupportRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
   OrderIdRoute: typeof OrderIdRoute
   PlanIdRoute: typeof PlanIdRoute
   ReceiptIdRoute: typeof ReceiptIdRoute
+  RefundOrderRoute: typeof RefundOrderRoute
   AdminIndexRoute: typeof AdminIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -575,6 +654,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LiveCatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -587,6 +673,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wallet': {
@@ -708,11 +801,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTeamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/customer-notifications': {
+      id: '/api/customer-notifications'
+      path: '/api/customer-notifications'
+      fullPath: '/api/customer-notifications'
+      preLoaderRoute: typeof ApiCustomerNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/customer-profile': {
       id: '/api/customer-profile'
       path: '/api/customer-profile'
       fullPath: '/api/customer-profile'
       preLoaderRoute: typeof ApiCustomerProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/customer-refund': {
+      id: '/api/customer-refund'
+      path: '/api/customer-refund'
+      fullPath: '/api/customer-refund'
+      preLoaderRoute: typeof ApiCustomerRefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/customer-support': {
+      id: '/api/customer-support'
+      path: '/api/customer-support'
+      fullPath: '/api/customer-support'
+      preLoaderRoute: typeof ApiCustomerSupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout/$id': {
@@ -762,6 +876,13 @@ declare module '@tanstack/react-router' {
       path: '/receipt/$id'
       fullPath: '/receipt/$id'
       preLoaderRoute: typeof ReceiptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund/$order': {
+      id: '/refund/$order'
+      path: '/refund/$order'
+      fullPath: '/refund/$order'
+      preLoaderRoute: typeof RefundOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/orders/$id': {
@@ -834,8 +955,10 @@ const rootRouteChildren: RootRouteChildren = {
   ExploreRoute: ExploreRoute,
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,
+  NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SupportRoute: SupportRoute,
   WalletRoute: WalletRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
@@ -852,13 +975,17 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSupportRoute: AdminSupportRoute,
   AdminTeamRoute: AdminTeamRoute,
+  ApiCustomerNotificationsRoute: ApiCustomerNotificationsRoute,
   ApiCustomerProfileRoute: ApiCustomerProfileRoute,
+  ApiCustomerRefundRoute: ApiCustomerRefundRoute,
+  ApiCustomerSupportRoute: ApiCustomerSupportRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
   MyEsimIdRoute: MyEsimIdRoute,
   OrderIdRoute: OrderIdRoute,
   PlanIdRoute: PlanIdRoute,
   ReceiptIdRoute: ReceiptIdRoute,
+  RefundOrderRoute: RefundOrderRoute,
   AdminIndexRoute: AdminIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

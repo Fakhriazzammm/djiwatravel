@@ -6,14 +6,14 @@ import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { Page, Wordmark, group, row, label } from "@/components/shell";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useOrders } from "@/lib/orders";
+import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import { rupiah } from "@/lib/pricing";
 import { validateCustomerProfile, type CustomerProfileDraft } from "@/lib/customer-profile";
 import { loadCustomerProfile, saveCustomerProfile } from "@/lib/customer-profile-client";
-import { DjiwaPayTopup } from "@/components/djiwa-pay-topup";
 
 export const Route = createFileRoute("/profile")({
   validateSearch: (search: Record<string, unknown>) => ({
-    admin: search.admin === "unauthorized" ? "unauthorized" as const : undefined,
+    admin: search["admin"] === "unauthorized" ? "unauthorized" as const : undefined,
   }),
   head: () => ({
     meta: [
@@ -36,6 +36,14 @@ function Profile() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [orderFilter, setOrderFilter] = useState<"ALL" | "PENDING" | "READY" | "TERMINAL">("ALL");
+  const filteredOrders = orders.filter((o) => {
+    const status = effectiveOrderStatus(o.status, o.expiresAt);
+    if (orderFilter === "READY") return status === "READY" || status === "INSTALLED";
+    if (orderFilter === "TERMINAL") return ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
+    if (orderFilter === "PENDING") return !["READY", "INSTALLED", "EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
+    return true;
+  });
   useEffect(() => {
     if (!user) {
       setProfileSaved(false);
@@ -178,15 +186,21 @@ function Profile() {
             </button>
           </div>
         )}
-        {user && <DjiwaPayTopup userId={user.id} />}
       </div>
 
       <h2 className={`${label} mt-6`}>Riwayat Pesanan</h2>
+      <div className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-secondary p-1" role="group" aria-label="Filter status pesanan">
+        {(["ALL", "PENDING", "READY", "TERMINAL"] as const).map((filter) => (
+          <button key={filter} type="button" aria-pressed={orderFilter === filter} onClick={() => setOrderFilter(filter)} className={`rounded-lg px-2 py-2 text-xs font-semibold ${orderFilter === filter ? "bg-background shadow-sm" : "text-muted-foreground"}`}>
+            {filter === "ALL" ? "Semua" : filter === "PENDING" ? "Menunggu" : filter === "READY" ? "Siap" : "Selesai"}
+          </button>
+        ))}
+      </div>
       <div className={group}>
-        {orders.length === 0 && (
+        {filteredOrders.length === 0 && (
           <p className="px-4 py-3.5 text-muted-foreground">Belum ada pesanan.</p>
         )}
-        {orders.map((o) => {
+        {filteredOrders.map((o) => {
           return (
             <Link key={o.id} to="/order/$id" params={{ id: o.id }} className={item}>
               <span className="min-w-0 truncate text-[14px]">
@@ -195,7 +209,7 @@ function Profile() {
                   #{o.publicOrderCode ?? o.id.slice(0, 8)}
                 </span>
               </span>
-              <span className="text-sm text-muted-foreground">{rupiah(o.amount)}</span>
+              <span className="text-right text-xs text-muted-foreground"><span className="block">{rupiah(o.amount)}</span>{ORDER_STATUS_LABEL[effectiveOrderStatus(o.status, o.expiresAt)]}</span>
             </Link>
           );
         })}

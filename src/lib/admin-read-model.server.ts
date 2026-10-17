@@ -308,6 +308,62 @@ export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(as
   }));
 });
 
+export const getAdminSupportCases = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin();
+  const result = await db.execute(sql`
+    select c.id, c.public_case_code, c.category, c.subject, c.description,
+           c.status, c.priority, c.order_id, c.created_at, c.updated_at,
+           m.body as latest_message, m.author_type as latest_author_type
+      from public.support_cases c
+      left join lateral (
+        select body, author_type from public.support_case_messages
+         where case_id = c.id order by created_at desc limit 1
+      ) m on true
+     order by c.updated_at desc limit ${LIMIT}
+  `);
+  return (result.rows as Row[]).map((row) => ({
+    id: text(row, "id")!,
+    caseCode: text(row, "public_case_code")!,
+    category: text(row, "category")!,
+    subject: text(row, "subject")!,
+    description: text(row, "description")!,
+    status: text(row, "status")!,
+    priority: text(row, "priority")!,
+    orderId: maskReference(text(row, "order_id")),
+    latestMessage: text(row, "latest_message"),
+    latestAuthorType: text(row, "latest_author_type"),
+    createdAt: text(row, "created_at")!,
+    updatedAt: text(row, "updated_at")!,
+  }));
+});
+
+export const getAdminRefundRequests = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin();
+  const result = await db.execute(sql`
+    select r.id, r.order_id, o.public_order_code, o.status as order_status,
+           o.currency_code, o.total_amount, r.status, r.eligibility_snapshot,
+           r.created_at, r.updated_at, r.provider_error,
+           (select count(*)::int from public.refund_events e where e.refund_request_id = r.id) as event_count
+      from public.refund_requests r
+      join public.customer_orders o on o.id = r.order_id
+     order by r.updated_at desc limit ${LIMIT}
+  `);
+  return (result.rows as Row[]).map((row) => ({
+    id: maskReference(text(row, "id")),
+    orderCode: maskReference(text(row, "public_order_code")),
+    orderId: text(row, "order_id")!,
+    orderStatus: text(row, "order_status")!,
+    status: text(row, "status")!,
+    currencyCode: text(row, "currency_code"),
+    amount: nullableNumber(row, "total_amount"),
+    eligibility: text(row, "eligibility_snapshot"),
+    providerError: safeError(row, "provider_error"),
+    eventCount: number(row, "event_count"),
+    createdAt: text(row, "created_at")!,
+    updatedAt: text(row, "updated_at")!,
+  }));
+});
+
 export const getAdminDashboard = createServerFn({ method: "GET" })
   .validator((data: { period?: "daily" | "weekly" | "monthly" } = {}) => ({
     period: data.period ?? "daily",

@@ -10,8 +10,6 @@ const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "u
 const legacyRoutes = [
   "analytics",
   "customers",
-  "refunds",
-  "support",
   "catalog",
   "index",
   "overview",
@@ -25,6 +23,8 @@ describe("simplified admin P0 scope", () => {
       "Dashboard",
       "Orders",
       "Payments",
+      "Refunds",
+      "Support",
       "Keuangan",
       "eSIM / Provisioning",
       "Settings",

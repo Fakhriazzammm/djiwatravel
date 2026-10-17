@@ -13,6 +13,7 @@ import {
   type Order,
   type OrderStatus,
 } from "@/lib/orders";
+import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import {
   enableEsimNotifications,
   isWaitingForEsim,
@@ -216,6 +217,7 @@ function OrderPage() {
             </p>
           )}
         </div>
+        <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
         <div className="mt-4 rounded-2xl border border-border p-4 text-center">
           <p className="font-semibold">
             {o.paymentUrl ? "Menunggu pembayaran" : "Menyiapkan tagihan pembayaran"}
@@ -269,6 +271,7 @@ function OrderPage() {
   if (o.status === "PAID" || o.status === "PROVISIONING") {
     return (
       <Page tabs={false}>
+        <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
         <div className="flex min-h-[55vh] flex-col items-center justify-center text-center">
           <Loader2 className="size-10 animate-spin text-brand-red" />
           <h1 className="mt-6 text-2xl font-bold">Pembayaran diterima</h1>
@@ -299,6 +302,7 @@ function OrderPage() {
   if (o.status === "PROVISIONING_FAILED" || o.status === "REFUNDED") {
     return (
       <Page tabs={false}>
+        <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
         <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
           <AlertCircle className="size-12 text-brand-red" />
           <h1 className="mt-6 text-2xl font-bold">
@@ -322,6 +326,7 @@ function OrderPage() {
   if (o.status === "CANCELLED" || o.status === "EXPIRED") {
     return (
       <Page tabs={false}>
+        <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
         <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
           <AlertCircle className="size-12 text-muted-foreground" />
           <h1 className="mt-6 text-2xl font-bold">
@@ -370,6 +375,7 @@ function OrderPage() {
 
   return (
     <Page tabs={false}>
+      <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
       <div className="flex flex-col items-center pt-12 text-center">
         <div className="animate-pop flex size-20 items-center justify-center rounded-full bg-success">
           <Check className="size-10 text-primary-foreground" strokeWidth={3} />
@@ -417,6 +423,39 @@ function OrderPage() {
       </a>
       <InvoiceCard order={o} />
     </Page>
+  );
+}
+
+const TIMELINE_STEPS: OrderStatus[] = ["ORDER_CREATED", "PAID", "PROVISIONING", "READY"];
+
+function OrderTimeline({ status, expiresAt }: { status: OrderStatus; expiresAt: number | undefined }) {
+  const effective = effectiveOrderStatus(status, expiresAt);
+  const terminal = ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(effective);
+  const currentIndex = effective === "INSTALLED" ? 3 : effective === "WAITING_PAYMENT" ? 0 : TIMELINE_STEPS.indexOf(effective);
+  return (
+    <section aria-label="Tahapan pesanan" className="mt-5 rounded-2xl border border-border bg-surface p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status pesanan</p>
+      {terminal ? (
+        <p className="mt-2 text-sm font-semibold">{ORDER_STATUS_LABEL[effective]}</p>
+      ) : (
+        <ol className="mt-3 grid grid-cols-4 gap-1">
+          {TIMELINE_STEPS.map((step, index) => {
+            const done = index <= currentIndex;
+            return (
+              <li key={step} className="text-center text-[11px] leading-tight">
+                <span className={`mx-auto flex size-6 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-brand-red text-white" : "bg-secondary text-muted-foreground"}`}>
+                  {index + 1}
+                </span>
+                <span className={`mt-1 block ${done ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                  {step === "ORDER_CREATED" ? "Dibuat" : step === "PAID" ? "Dibayar" : step === "PROVISIONING" ? "Disiapkan" : "Siap"}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      <p className="mt-2 text-xs text-muted-foreground">{ORDER_STATUS_LABEL[effective]}</p>
+    </section>
   );
 }
 
