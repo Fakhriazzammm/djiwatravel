@@ -38,12 +38,10 @@ export const Route = createFileRoute("/sitemap.xml")({
           ...STATIC_PATHS.map(({ path, priority, changefreq }) =>
             urlEntry(path, priority, changefreq),
           ),
-<<<<<<< HEAD
-          ...destinations.map((destination) =>
-=======
           ...travelGuideSlugs.map((slug) => urlEntry(`/panduan/${slug}`, "0.7", "monthly")),
-          ...indexed.map((destination) =>
->>>>>>> 60c2974b (feat(seo): add Indonesian travel guides)
+          ...destinations.map((destination) =>
+            urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
+          ),
             urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
           ),
         ];
