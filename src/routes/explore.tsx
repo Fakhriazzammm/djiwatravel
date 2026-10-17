@@ -2,17 +2,13 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Search, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Page, group } from "@/components/shell";
-import { search } from "@/lib/catalog";
+import { destinations, search } from "@/lib/catalog";
 import { isRecommendablePackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
-import { listableDestinations } from "@/lib/destination-availability";
-import { finderCtaCopy } from "@/lib/finder-form";
-import {
-  EXPLORE_LOADER_DEADLINE_MS,
-  EXPLORE_RECOVERY_DEADLINE_MS,
-  exploreAvailability,
-  loadExploreAvailability,
-} from "@/lib/explore-availability";
+import { getSellabilityState } from "@/lib/sellability.server";
+import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
+
+const EXPLORE_LOADER_DEADLINE_MS = 2_500;
 
 function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -34,41 +30,26 @@ export const Route = createFileRoute("/explore")({
   // Explore is the only package list now, so it carries the catalog's caching: one
   // expensive reseller read, reused for a minute so coming back is instant.
   staleTime: 60_000,
-  loader: async () =>
-    // The provider read is bounded by its own budget; a slow-but-healthy read recovers on its own
-    // instead of being reported as a failure the customer has to retry by hand.
-    loadExploreAvailability({
-      deadlineMs: EXPLORE_LOADER_DEADLINE_MS,
-      recoveryDeadlineMs: EXPLORE_RECOVERY_DEADLINE_MS,
-      attempt: async (timeoutMs) => {
-        const catalog = await withDeadline(getResellerCatalog(), timeoutMs);
-        const packages = catalog.packages.filter(isRecommendablePackage);
-        const source = catalog.stale ? "cached" : "live";
-        if (packages.length === 0) {
-          return exploreAvailability([], source);
-        }
-        // Destinations are listed from the whole catalogue: a country whose packages are all
-        // unaffordable right now must stay visible, and the destination page marks the individual
-        // packages instead of the country silently disappearing from Explore.
-        const codes = new Set<string>();
-        for (const pkg of packages) {
-          for (const code of pkg.locationCodes) {
-            const normalized = code.trim().toUpperCase();
-            if (normalized) codes.add(normalized);
-          }
-        }
-        // Regional bundles list their member countries instead of a literal EU/ASIA code, so the
-        // list rule is shared with the destination page rather than matched by hand here.
-        return exploreAvailability(
-          listableDestinations(packages, {
-            codes: [...codes].sort(),
-            source,
-            degraded: false,
-          }),
-          source,
-        );
-      },
-    }),
+  loader: async () => {
+    try {
+      const catalog = await withDeadline(getResellerCatalog(), EXPLORE_LOADER_DEADLINE_MS);
+      const packages = catalog.packages.filter(isRecommendablePackage);
+      const sellability = await withDeadline(
+        getSellabilityState(packages),
+        EXPLORE_LOADER_DEADLINE_MS,
+      );
+      const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
+      const codes = new Set(
+        sellable.flatMap((pkg) => pkg.locationCodes.map((code) => code.trim().toUpperCase())),
+      );
+      return exploreAvailability(
+        destinations.filter((destination) => codes.has(destination.code.toUpperCase())),
+        catalog.stale ? "cached" : "live",
+      );
+    } catch {
+      return exploreErrorState();
+    }
+  },
   head: () => ({
     meta: [
       { title: "Cari destinasi — Djiwa Travel" },

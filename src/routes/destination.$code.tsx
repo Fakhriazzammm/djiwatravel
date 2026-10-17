@@ -8,33 +8,12 @@ import { destinationOgImage } from "@/lib/destination-artwork";
 import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
-import { readSellability } from "@/lib/sellability-api";
+import { getSellabilityState } from "@/lib/sellability.server";
 import {
   packageCoverageLabel,
   packageDataLabel,
   packageDestinationLabel,
 } from "@/lib/package-copy";
-import { trackAnalytics } from "@/lib/analytics";
-
-const REGIONAL_COVERAGE: Record<string, readonly string[]> = {
-  ASIA: ["CN", "HK", "JP", "KR", "MY", "SG", "TH", "TW"],
-  EU: ["EU"],
-};
-
-/**
- * Regional coverage is seeded from `destinations` metadata but extended with every catalogued
- * country of the same region that is currently sellable, so the list follows the provider
- * catalogue instead of drifting from it. A degraded read keeps the seed list.
- */
-async function coverageFor(destination: { code: string; region: string }) {
-  const seed = REGIONAL_COVERAGE[destination.code.toUpperCase()] ?? [];
-  if (destination.region !== "Regional") return seed;
-  const availability = await getSellableDestinationCodes(1_500);
-  return extendRegionalCoverage(
-    { code: destination.code, region: destination.region },
-    availability,
-  );
-}
 
 /** Cards rendered on the first paint; the rest are revealed on demand (see below). */
 export const PAGE_SIZE = 20;
@@ -186,18 +165,21 @@ function Destination() {
   const { destination, packages, stale, stockPending } = Route.useLoaderData();
   const [sort, setSort] = useState<SortKey>("recommended");
   const [visible, setVisible] = useState(PAGE_SIZE);
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const sorted = useMemo(() => sortPackages(packages, sort), [packages, sort]);
   const shown = sorted.slice(0, visible);
-
-  // The first SSR payload can arrive before the provider balance read completes. Revalidate once on
-  // mount so direct entry and client-side navigation converge without requiring a browser refresh.
-  useEffect(() => {
-    trackAnalytics("destination_view", `/destination/${destination.code.toLowerCase()}`, {
-      destination: destination.code.toLowerCase(),
+  const selectedPackages = selectedCodes
+    .map((code) => packages.find((pkg) => pkg.packageCode === code))
+    .filter((pkg): pkg is ViewPackage => Boolean(pkg?.sellable));
+  const toggleComparison = (pkg: ViewPackage) => {
+    if (!pkg.sellable) return;
+    setSelectedCodes((current) => {
+      if (current.includes(pkg.packageCode))
+        return current.filter((code) => code !== pkg.packageCode);
+      if (current.length >= 3) return current;
+      return [...current, pkg.packageCode];
     });
-    void router.invalidate();
-  }, [router, destination.code]);
-
+  };
   return (
     <Page>
       <BackBar title={`${destination.flag} ${destination.nameId}`} />
@@ -272,6 +254,19 @@ function Destination() {
                   Cakupan: {packageCoverageLabel(pkg)}
                 </p>
                 <p className="mt-4 text-lg font-bold text-brand-red">{rupiah(pkg.priceIdr)}</p>
+                <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={selectedCodes.includes(pkg.packageCode)}
+                    disabled={
+                      !pkg.sellable ||
+                      (selectedCodes.length >= 3 && !selectedCodes.includes(pkg.packageCode))
+                    }
+                    onChange={() => toggleComparison(pkg)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  Bandingkan paket
+                </label>
                 {pkg.sellable ? (
                   <Link
                     to="/checkout/$id"
@@ -298,6 +293,68 @@ function Destination() {
               </article>
             ))}
           </div>
+          {selectedPackages.length > 0 && (
+            <section
+              className="mt-6 rounded-2xl bg-surface p-4 shadow-sm"
+              aria-labelledby="comparison-title"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h2 id="comparison-title" className="font-semibold">
+                  Bandingkan paket ({selectedPackages.length}/3)
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCodes([])}
+                  className="rounded-lg px-2 py-1 text-xs font-semibold text-primary underline"
+                >
+                  Hapus pilihan
+                </button>
+              </div>
+              <div
+                className="mt-3 overflow-x-auto"
+                tabIndex={0}
+                aria-label="Tabel perbandingan paket"
+              >
+                <table className="min-w-[36rem] w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground">
+                      <th scope="col" className="px-2 py-2 font-semibold">
+                        Detail
+                      </th>
+                      {selectedPackages.map((pkg) => (
+                        <th scope="col" key={pkg.packageCode} className="px-2 py-2 font-semibold">
+                          {pkg.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ["Destinasi", (pkg: ViewPackage) => packageDestinationLabel(pkg)],
+                      ["Data", (pkg: ViewPackage) => packageDataLabel(pkg)],
+                      ["Validitas", (pkg: ViewPackage) => `${pkg.durationDays} hari`],
+                      ["Cakupan", (pkg: ViewPackage) => packageCoverageLabel(pkg)],
+                      ["Harga", (pkg: ViewPackage) => rupiah(pkg.priceIdr)],
+                    ].map(([label, value]) => (
+                      <tr key={label as string} className="border-b border-border last:border-0">
+                        <th
+                          scope="row"
+                          className="whitespace-nowrap px-2 py-2 font-semibold text-muted-foreground"
+                        >
+                          {label as string}
+                        </th>
+                        {selectedPackages.map((pkg) => (
+                          <td key={pkg.packageCode} className="px-2 py-2 align-top">
+                            {(value as (pkg: ViewPackage) => string)(pkg)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
           {visible < sorted.length && (
             <button
               type="button"

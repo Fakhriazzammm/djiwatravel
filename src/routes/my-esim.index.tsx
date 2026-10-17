@@ -116,8 +116,16 @@ function MyEsim() {
   const pending =
     orders?.filter((o) => {
       const status = effectiveOrderStatus(o.status, o.expiresAt);
-      return status !== "READY" && status !== "INSTALLED" && status !== "REFUNDED";
+      return status !== "READY" && status !== "INSTALLED" && !["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
     }) ?? [];
+  const expired = orders?.filter((o) => {
+    const status = effectiveOrderStatus(o.status, o.expiresAt);
+    return status === "EXPIRED";
+  }) ?? [];
+  const closed = orders?.filter((o) => {
+    const status = effectiveOrderStatus(o.status, o.expiresAt);
+    return status === "REFUNDED" || status === "CANCELLED" || status === "PROVISIONING_FAILED";
+  }) ?? [];
   return (
     <Page>
       <h1 className="large-title pt-4">My eSIM</h1>
@@ -136,6 +144,8 @@ function MyEsim() {
         <>
           {ready.length > 0 && <Section title="Siap dipakai" items={ready} />}
           {pending.length > 0 && <Section title="Menunggu" items={pending} />}
+          {expired.length > 0 && <Section title="Kedaluwarsa" items={expired} />}
+          {closed.length > 0 && <Section title="Refund, dibatalkan, atau gagal" items={closed} />}
         </>
       )}
     </Page>

@@ -12,8 +12,7 @@ const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "u
 const legacyRoutes = [
   "analytics",
   "customers",
-  "refunds",
-  "support",
+  "catalog",
   "index",
   "overview",
 ];
@@ -26,7 +25,9 @@ describe("simplified admin P0 scope", () => {
     expect(adminNavigation.map(([label]) => label)).toEqual([
       "Dashboard",
       "Orders",
-      "Pembayaran",
+      "Payments",
+      "Refunds",
+      "Support",
       "Keuangan",
       "Katalog",
       "Provisioning",
