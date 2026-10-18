@@ -56,12 +56,24 @@ export function AdminDetailSheet({
   onClose: () => void;
   children: ReactNode;
 }) {
-  void open;
-  void onClose;
+  if (!open) return null;
   return (
-    <section className="mt-2 rounded-2xl border border-black/[0.06] bg-white p-3">
+    <section
+      role="dialog"
+      aria-modal="false"
+      aria-label={title}
+      className="mt-2 rounded-2xl border border-black/[0.06] bg-white p-3"
+    >
       <div className="mb-2 flex items-center justify-between gap-3">
         <h2 className="font-semibold">{title}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Tutup detail"
+          className="min-h-11 min-w-11 rounded-xl p-2 text-[#6e6e73] hover:bg-[#f5f5f7]"
+        >
+          <X className="mx-auto size-4" />
+        </button>
       </div>
       {children}
     </section>

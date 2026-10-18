@@ -10,6 +10,7 @@ import { fetchEsimAccessBalanceServer, type ProviderBalance } from "@/lib/esim-a
 import { affordableCeilingUsd, sellabilityMode, type BalanceSnapshot } from "@/lib/sellability";
 
 const LIMIT = 50;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Provider credit as shown to admins: never includes keys, only the balance and a reference rate. */
 export type ProviderBalanceView = {
@@ -90,11 +91,13 @@ export const getAdminOrders = createServerFn({ method: "GET" }).handler(async ()
     select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
            o.payment_provider, o.payment_reference, o.created_at, o.updated_at,
            p.status as provisioning_status,
-           a.email as customer_email, a.whatsapp as customer_whatsapp,
+           coalesce(cp.email, a.email) as customer_email,
+           coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp,
            items.item_summary
       from public.customer_orders o
       left join public.esim_provisioning_orders p on p.order_id = o.id
       left join public.guest_order_access a on a.order_id = o.id
+      left join public.customer_profiles cp on cp.auth_user_id = o.customer_auth_subject
       left join lateral (
         select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) as item_summary
           from public.customer_order_items where order_id = o.id
@@ -122,6 +125,7 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     await requireAdmin();
+    if (!UUID_RE.test(data.id)) return null;
     const orderResult = await db.execute(sql`
       select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
              o.payment_provider, o.payment_reference, o.paid_at, o.created_at, o.updated_at,
@@ -130,10 +134,12 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
              p.attempt_count, p.provisioning_attempts,
              p.last_provisioning_error, p.created_at as provisioning_created_at,
              p.updated_at as provisioning_updated_at,
-             a.email as customer_email, a.whatsapp as customer_whatsapp
+             coalesce(cp.email, a.email) as customer_email,
+             coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp
         from public.customer_orders o
         left join public.esim_provisioning_orders p on p.order_id = o.id
         left join public.guest_order_access a on a.order_id = o.id
+        left join public.customer_profiles cp on cp.auth_user_id = o.customer_auth_subject
        where o.id = ${data.id}::uuid
        limit 1
     `);
