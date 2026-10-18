@@ -343,7 +343,7 @@ export const getAdminRefundRequests = createServerFn({ method: "GET" }).handler(
     select r.id, r.order_id, o.public_order_code, o.status as order_status,
            o.currency_code, o.total_amount, r.status, r.eligibility_snapshot,
            r.created_at, r.updated_at, r.provider_error,
-           (select count(*)::int from public.refund_events e where e.refund_request_id = r.id) as event_count
+           (select count(*)::int from public.refund_events e where e.order_id = r.order_id) as event_count
       from public.refund_requests r
       join public.customer_orders o on o.id = r.order_id
      order by r.updated_at desc limit ${LIMIT}
