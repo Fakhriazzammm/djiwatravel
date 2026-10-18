@@ -27,10 +27,29 @@ describe("admin support/refund operational read models", () => {
       "utf8",
     );
     expect(source).toContain("public.refund_requests");
-    expect(source).toContain("public.refund_events");
+    expect(source).toContain("e.order_id = r.order_id");
+    expect(source).not.toContain("e.refund_request_id");
+    expect(source).toContain("await requireAdmin()");
     expect(source).not.toMatch(/MAYAR_API_KEY|refund.*fetch|fetch.*refund/i);
     expect(source).not.toMatch(
       /insert into public\.refund_requests|update public\.refund_requests/i,
     );
+  });
+
+  it("grants only read access to the admin support/refund tables", () => {
+    const migration = readFileSync(
+      resolve(process.cwd(), "migrations/013_admin_read_model_permissions.sql"),
+      "utf8",
+    );
+    expect(migration).toContain("GRANT SELECT ON TABLE");
+    for (const table of [
+      "public.support_cases",
+      "public.support_case_messages",
+      "public.refund_requests",
+      "public.refund_events",
+    ]) {
+      expect(migration).toContain(table);
+    }
+    expect(migration).not.toMatch(/INSERT|UPDATE|DELETE|TRUNCATE/i);
   });
 });
