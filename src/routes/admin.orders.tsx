@@ -1,5 +1,5 @@
 import { ClipboardList, Eye, EyeOff } from "lucide-react";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminOrders } from "@/lib/admin-read-model.server";
@@ -20,6 +20,10 @@ export const Route = createFileRoute("/admin/orders")({
 function AdminOrders() {
   const orders = Route.useLoaderData();
   const [privateMode, setPrivateMode] = useState(false);
+  const navigate = useNavigate();
+  const openOrder = (detailHref: string) => {
+    void navigate({ to: detailHref as never });
+  };
   const newest = orders[0];
   const card = (order: (typeof orders)[number]) => (
     <Link
@@ -120,7 +124,19 @@ function AdminOrders() {
               </thead>
               <tbody className="divide-y">
                 {orders.map((order) => (
-                  <tr key={order.detailHref}>
+                  <tr
+                    key={order.detailHref}
+                    tabIndex={0}
+                    role="link"
+                    onClick={() => openOrder(order.detailHref)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openOrder(order.detailHref);
+                      }
+                    }}
+                    className="cursor-pointer outline-none hover:bg-[#f7f7f8] focus-visible:bg-[#f7f7f8]"
+                  >
                     <td className="px-2.5 py-2">
                       <Link className="font-semibold text-[#0a67c7]" to={order.detailHref as never}>
                         {projectAdminPrivacy(order.displayIdentifier, privateMode)}

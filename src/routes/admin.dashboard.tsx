@@ -38,6 +38,7 @@ function AdminDashboard() {
   const router = useRouter();
   const period = data.period;
   const [privateMode, setPrivateMode] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const series = useMemo(() => data.daily, [data.daily]);
   const max = privateMode ? 1 : Math.max(...series.map((p) => p.count), 1);
@@ -217,7 +218,16 @@ function AdminDashboard() {
           </AdminSurface>
         </div>
       </div>
-      <AdminDetailSheet open title="Detail operasional" onClose={() => undefined}>
+      {!detailOpen && (
+        <button
+          type="button"
+          onClick={() => setDetailOpen(true)}
+          className="min-h-11 rounded-xl bg-white px-3 text-sm font-semibold shadow-sm"
+        >
+          Lihat detail operasional
+        </button>
+      )}
+      <AdminDetailSheet open={detailOpen} title="Detail operasional" onClose={() => setDetailOpen(false)}>
         <div className="space-y-2">
           {series.length ? (
             <div className="flex h-40 items-end gap-1 border-b border-black/[0.06]">

@@ -146,6 +146,13 @@ describe("admin browser DTO boundaries", () => {
     return (handler as (args: { data: object }) => Promise<unknown>)({ data });
   }
 
+  it("returns a deliberate not-found result for an invalid order id without querying SQL", async () => {
+    execute.mockResolvedValue({ rows: [] });
+    expect(await call(getAdminOrderDetail, { id: "not-a-uuid" })).toBeNull();
+    expect(execute).not.toHaveBeenCalled();
+    expect(requireAdmin).toHaveBeenCalledOnce();
+  });
+
   it("projects order lists without raw payment or provider fields", async () => {
     execute.mockResolvedValue({ rows: [row] });
     const orders = await call(getAdminOrders);
