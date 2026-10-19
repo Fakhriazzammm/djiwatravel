@@ -149,12 +149,6 @@ function Explore() {
           </button>
         </div>
       )}
-      {available.source === "cached" && (
-        <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
-          Menampilkan katalog tersimpan; harga mungkin belum terbaru.
-        </p>
-      )}
-
       <section className="mt-7">
         <ServiceSectionHeading title="Layanan perjalanan" detail="Pilih kebutuhanmu" />
         <ServiceCategoryGrid />
