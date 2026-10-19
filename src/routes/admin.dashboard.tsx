@@ -227,7 +227,11 @@ function AdminDashboard() {
           Lihat detail operasional
         </button>
       )}
-      <AdminDetailSheet open={detailOpen} title="Detail operasional" onClose={() => setDetailOpen(false)}>
+      <AdminDetailSheet
+        open={detailOpen}
+        title="Detail operasional"
+        onClose={() => setDetailOpen(false)}
+      >
         <div className="space-y-2">
           {series.length ? (
             <div className="flex h-40 items-end gap-1 border-b border-black/[0.06]">

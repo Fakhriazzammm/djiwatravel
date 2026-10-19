@@ -45,7 +45,7 @@ function OrderStatus() {
       setResult({
         orderId: data.orderId,
         accessToken: data.accessToken,
-        status: orders[0]?.status,
+        ...(orders[0]?.status ? { status: orders[0].status } : {}),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Data pesanan belum dapat diverifikasi.");

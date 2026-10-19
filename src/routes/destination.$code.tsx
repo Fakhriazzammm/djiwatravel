@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BackBar, Page, StickyCta } from "@/components/shell";
+import { DestinationServices } from "@/components/destination/destination-services";
 import { getDest } from "@/lib/catalog";
 import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
 import { regionalCoverage as extendRegionalCoverage } from "@/lib/destination-availability";
@@ -279,6 +280,7 @@ function Destination() {
           ? "Cakupan regional · beberapa negara"
           : "Cakupan negara · satu tujuan"}
       </p>
+      <DestinationServices destination={destination} />
       {stockPending && (
         <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground" role="status">
           Stok sedang diperbarui. Coba lagi sebentar lagi.

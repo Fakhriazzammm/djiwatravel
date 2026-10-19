@@ -1,13 +1,20 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Search, ChevronRight } from "lucide-react";
 import { useState } from "react";
-import { Page, group } from "@/components/shell";
+import { Page } from "@/components/shell";
 import { destinations, search } from "@/lib/catalog";
+import {
+  ServiceCategoryGrid,
+  ServiceSectionHeading,
+} from "@/components/explore/service-category-grid";
+import { DestinationCard } from "@/components/explore/destination-card";
+import { FeaturedServiceCard } from "@/components/explore/featured-service-card";
+import { AiTripPlannerCard } from "@/components/explore/ai-trip-planner-card";
+import { affiliateServices, activeAffiliateServices } from "@/lib/affiliate-services";
 import { isRecommendablePackage } from "@/lib/esim-access-catalog";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { getSellabilityState } from "@/lib/sellability.server";
 import { exploreAvailability, loadExploreAvailability } from "@/lib/explore-availability";
-import { finderCtaCopy } from "@/lib/finder-form";
 
 function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -51,10 +58,16 @@ export const Route = createFileRoute("/explore")({
   },
   head: () => ({
     meta: [
-      { title: "Cari destinasi — Djiwa Travel" },
-      { name: "description", content: "Cari eSIM untuk negara atau wilayah tujuanmu." },
-      { property: "og:title", content: "Cari destinasi — Djiwa Travel" },
-      { property: "og:description", content: "Cari eSIM untuk negara atau wilayah tujuanmu." },
+      { title: "Explore — Djiwa Travel" },
+      {
+        name: "description",
+        content: "Temukan destinasi dan kebutuhan perjalanan internasionalmu.",
+      },
+      { property: "og:title", content: "Explore — Djiwa Travel" },
+      {
+        property: "og:description",
+        content: "Temukan destinasi dan kebutuhan perjalanan internasionalmu.",
+      },
       { property: "og:url", content: "https://djiwatravel.com/explore" },
     ],
     links: [{ rel: "canonical", href: "https://djiwatravel.com/explore" }],
@@ -78,29 +91,48 @@ function Explore() {
   const res = search(q).filter((destination) =>
     available.destinations.some((item) => item.code === destination.code),
   );
+  const popular = destinations.filter(
+    (destination) => destination.popular && res.includes(destination),
+  );
+  const featured = popular.slice(0, 3);
+  const affiliates = activeAffiliateServices(affiliateServices);
   return (
     <Page>
-      <h1 className="large-title pt-4">Explore</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Paket negara untuk satu tujuan, atau paket regional untuk beberapa negara sekaligus.
-      </p>
-      <label className="mt-3 flex h-11 items-center gap-2 rounded-xl bg-surface px-3 shadow-sm">
-        <Search className="size-5 text-muted-foreground" />
+      <header className="pt-4">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-red">Djiwa Travel</p>
+        <h1 className="mt-1 large-title">Explore</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Mau pergi ke mana?</p>
+      </header>
+      <label className="mt-4 flex h-12 items-center gap-2 rounded-2xl bg-surface px-3 shadow-sm ring-1 ring-border/60 focus-within:ring-2 focus-within:ring-ring">
+        <Search className="size-5 text-muted-foreground" aria-hidden="true" />
         <input
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Jepang, Korea, Eropa…"
+          placeholder="Cari negara atau kota"
+          aria-label="Cari destinasi"
           className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
         />
+        {q && (
+          <button
+            type="button"
+            onClick={() => setQ("")}
+            aria-label="Hapus pencarian"
+            className="rounded-full px-2 text-lg text-muted-foreground"
+          >
+            ×
+          </button>
+        )}
       </label>
       <Link
         to="/finder"
         className="tap mt-3 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-3"
       >
         <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold">Bingung pilih paket?</p>
-          <p className="truncate text-[12px] text-muted-foreground">{finderCtaCopy()}</p>
+          <p className="text-[14px] font-semibold">Bingung pilih paket eSIM?</p>
+          <p className="truncate text-[12px] text-muted-foreground">
+            Temukan paket yang cocok untuk perjalananmu.
+          </p>
         </div>
         <ChevronRight className="size-5 shrink-0 text-brand-red" />
       </Link>
@@ -124,34 +156,48 @@ function Explore() {
           Menampilkan katalog tersimpan; harga mungkin belum terbaru.
         </p>
       )}
-      {res.length === 0 ? (
-        available.source === "error" ? null : (
-          <p className="mt-16 text-center text-muted-foreground">
-            Belum ada untuk “{q}”. Coba nama negara lain.
-          </p>
-        )
-      ) : (
-        <div className={`${group} mt-4`}>
-          {res.map((d) => (
-            <Link
-              key={d.code}
-              to="/destination/$code"
-              params={{ code: d.code.toLowerCase() }}
-              className="flex items-center gap-3 px-4 py-2.5 active:bg-secondary"
-            >
-              <span className="shrink-0 text-2xl">{d.flag}</span>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{d.nameId}</p>
-                <p className="text-[12px] text-muted-foreground">
-                  {d.region === "Regional"
-                    ? "Paket regional · beberapa negara"
-                    : "Paket negara · satu tujuan"}
-                </p>
-              </div>
-              <ChevronRight className="size-5 text-muted-foreground" />
-            </Link>
-          ))}
+
+      <section className="mt-7">
+        <ServiceSectionHeading title="Layanan perjalanan" detail="Pilih kebutuhanmu" />
+        <ServiceCategoryGrid />
+      </section>
+      <section className="mt-8">
+        <ServiceSectionHeading title="Destinasi populer" detail="Lihat semua" />
+        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 no-scrollbar">
+          {popular.length > 0 ? (
+            popular.map((destination) => (
+              <DestinationCard key={destination.code} destination={destination} available={true} />
+            ))
+          ) : (
+            <p className="rounded-2xl bg-surface p-4 text-sm text-muted-foreground">
+              Belum ada destinasi live dari katalog.
+            </p>
+          )}
         </div>
+      </section>
+      <section className="mt-8">
+        <ServiceSectionHeading title="Pilihan untukmu" />
+        <div className="space-y-3">
+          {featured.map((destination) => (
+            <FeaturedServiceCard key={destination.code} destination={destination} />
+          ))}
+          {affiliates.map((affiliate) => (
+            <FeaturedServiceCard key={affiliate.id} affiliate={affiliate} />
+          ))}
+          {featured.length === 0 && affiliates.length === 0 && (
+            <div className="rounded-2xl bg-surface p-4 text-sm text-muted-foreground">
+              Rekomendasi layanan akan tampil saat katalog tersedia.
+            </div>
+          )}
+        </div>
+      </section>
+      <section className="mt-8 pb-4">
+        <AiTripPlannerCard />
+      </section>
+      {res.length === 0 && available.source !== "error" && (
+        <p className="mb-6 text-center text-sm text-muted-foreground">
+          Belum ada destinasi untuk “{q}”. Coba nama negara lain.
+        </p>
       )}
     </Page>
   );
