@@ -4,7 +4,7 @@ import { assetForService } from "@/lib/explore-assets";
 import { serviceHref, serviceStatusLabel, visibleTravelServices } from "@/lib/travel-services";
 
 const tileClass =
-  "group relative flex min-h-[132px] flex-col items-center rounded-[22px] border border-black/[0.05] bg-gradient-to-b from-white via-white to-secondary/80 px-1.5 pb-2.5 pt-2 text-center shadow-[0_5px_0_rgba(30,41,59,0.06),0_10px_24px_rgba(30,41,59,0.08)] transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(30,41,59,0.07),0_14px_28px_rgba(30,41,59,0.11)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "group relative flex min-h-[132px] flex-col items-center rounded-2xl px-1.5 pb-2.5 pt-2 text-center transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function ServiceCategoryGrid() {
   return (
@@ -15,13 +15,12 @@ export function ServiceCategoryGrid() {
         const href = serviceHref(service);
         const content = (
           <>
-            <span className="relative flex size-[58px] items-center justify-center rounded-[19px] bg-gradient-to-br from-white via-secondary/80 to-secondary shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_4px_10px_rgba(30,41,59,0.12)] transition-transform duration-150 group-hover:-translate-y-0.5">
-              <span className="absolute inset-1 rounded-[15px] bg-gradient-to-br from-white/80 to-transparent" />
+            <span className="relative flex size-[74px] items-center justify-center transition-transform duration-150 group-hover:-translate-y-0.5">
               {asset.src ? (
                 <img
                   src={asset.src}
                   alt={asset.alt}
-                  className="relative size-[50px] object-contain drop-shadow-[0_4px_3px_rgba(30,41,59,0.18)]"
+                  className="relative size-[70px] object-contain"
                   loading="lazy"
                 />
               ) : (
