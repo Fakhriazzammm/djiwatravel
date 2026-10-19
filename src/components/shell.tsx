@@ -91,18 +91,20 @@ export function BackBar({ title }: { title?: string }) {
 export function StickyCta({
   children,
   aboveTabBar = true,
+  compact = false,
 }: {
   children: ReactNode;
   /** Set false on pages rendered with `Page tabs={false}` so the bar sits at the
    * bottom instead of floating where the tab bar would have been. */
   aboveTabBar?: boolean;
+  compact?: boolean;
 }) {
   return (
     <FixedLayer>
       <div
         className={`fixed inset-x-0 ${
           aboveTabBar ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]" : "bottom-0 safe-bottom"
-        } z-40 border-t bg-surface/95 px-4 pt-2.5 backdrop-blur-xl`}
+        } z-40 border-t bg-surface/95 px-4 ${compact ? "pt-1.5" : "pt-2.5"} backdrop-blur-xl`}
       >
         <div className="mx-auto max-w-md">{children}</div>
       </div>

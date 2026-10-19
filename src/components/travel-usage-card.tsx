@@ -2,12 +2,15 @@ import { AlertTriangle, Gauge } from "lucide-react";
 import { formatGb, LOW_QUOTA_PERCENT, type UsageView } from "@/lib/travel-journey";
 import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 
-export function TravelUsageCard({ view }: { view: UsageView }) {
+export function TravelUsageCard({ view, compact = false }: { view: UsageView; compact?: boolean }) {
   const measuredAtLabel =
     typeof view.measuredAt === "number" ? snapshotAgeLabel(view.measuredAt) : null;
 
   return (
-    <section className="rounded-2xl bg-surface p-5" data-testid="travel-usage">
+    <section
+      className={`rounded-2xl bg-surface ${compact ? "p-4" : "p-5"}`}
+      data-testid="travel-usage"
+    >
       <div className="flex items-center gap-2">
         <Gauge className="size-4 text-muted-foreground" aria-hidden="true" />
         <h2 className="text-base font-semibold">Pemakaian kuota</h2>
@@ -17,7 +20,9 @@ export function TravelUsageCard({ view }: { view: UsageView }) {
       view.remainingBytes !== null &&
       view.remainingPercent !== null ? (
         <>
-          <p className="mt-3 text-3xl font-bold">{formatGb(view.remainingBytes)}</p>
+          <p className={`${compact ? "text-2xl" : "text-3xl"} mt-3 font-bold`}>
+            {formatGb(view.remainingBytes)}
+          </p>
           <p className="text-sm text-muted-foreground">
             tersisa dari {formatGb(view.totalBytes ?? 0)}
           </p>
@@ -41,7 +46,7 @@ export function TravelUsageCard({ view }: { view: UsageView }) {
         </>
       ) : view.kind === "unlimited" ? (
         <>
-          <p className="mt-3 text-3xl font-bold">Unlimited</p>
+          <p className={`${compact ? "text-2xl" : "text-3xl"} mt-3 font-bold`}>Unlimited</p>
           <p className="text-sm text-muted-foreground">
             {view.usedBytes !== null ? `Terpakai ${formatGb(view.usedBytes)}` : view.note}
           </p>
