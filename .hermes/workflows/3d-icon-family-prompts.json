@@ -1,0 +1,80 @@
+{
+  "workflow": "3d-icon-asset-generation-workflow",
+  "version": "1.0.0",
+  "output": {
+    "format": "PNG",
+    "canvas": "1024x1024",
+    "background": "#FFFFFF",
+    "family_rule": "same isometric camera, object scale, margin, top-right soft light, semi-matte material, shadow direction, and muted-saturated palette"
+  },
+  "style_contract": {
+    "perspective": "isometric",
+    "composition": "1 central dominant object plus 1-3 supporting objects; 2-4 objects total; layered diagonal or symmetrical depth",
+    "lighting": "soft ambient light from subtle top-right/front-top; gentle shadows below and behind; mild edge illumination",
+    "material": "semi-matte to satin; smooth stylized-natural surfaces; light tactile variation; no hyper-realistic noise",
+    "render": "high-resolution Octane-style 3D; crisp edges; no outlines; clean readable shapes",
+    "palette": "naturalistic with slight saturation boost; harmonious muted tones; distinct colors per object",
+    "negative": "flat vector, 2D clipart, line icon, outline, CSS shadow, UI card, badge, border, frame, text, letters, numbers, logo, watermark, QR code, people, hands, faces, cropped object, busy background, checkerboard, transparent background"
+  },
+  "icons": [
+    {
+      "id": "esim",
+      "concept": "Travel eSIM",
+      "central_object": "upright modern smartphone showing a simple globe signal symbol with a small physical SIM card beside it",
+      "supporting_objects": ["small travel passport", "subtle location pin"]
+    },
+    {
+      "id": "attractions",
+      "concept": "Travel activities and attractions",
+      "central_object": "bright camping tent",
+      "supporting_objects": ["small campfire with soft flame", "rolled sleeping bag", "tiny mountain sign"]
+    },
+    {
+      "id": "transportation",
+      "concept": "Airport and local transportation",
+      "central_object": "friendly compact yellow taxi viewed isometrically",
+      "supporting_objects": ["small road sign", "travel suitcase"]
+    },
+    {
+      "id": "open-trip",
+      "concept": "Open trip group travel",
+      "central_object": "folded travel map with a raised compass",
+      "supporting_objects": ["small route pin", "compact airplane model"]
+    },
+    {
+      "id": "baggage",
+      "concept": "Baggage service",
+      "central_object": "premium orange hard-shell rolling suitcase",
+      "supporting_objects": ["small luggage tag", "folded travel strap"]
+    },
+    {
+      "id": "personal-shopper",
+      "concept": "Personal shopper and shopping assistance",
+      "central_object": "stylish reusable shopping bag",
+      "supporting_objects": ["small gift box", "shopping receipt without readable text"]
+    },
+    {
+      "id": "visa",
+      "concept": "Visa assistance",
+      "central_object": "closed blue passport with a gold embossed globe symbol but no letters",
+      "supporting_objects": ["small document sheet with abstract lines only", "round approval seal without text"]
+    },
+    {
+      "id": "travel-insurance",
+      "concept": "Travel insurance",
+      "central_object": "rounded teal protective shield",
+      "supporting_objects": ["small airplane silhouette", "compact medical cross badge without text"]
+    }
+  ],
+  "prompt_template": "Create a single premium isometric 3D icon for {{concept}}. The central object is {{central_object}}. Add only these supporting objects: {{supporting_objects}}. Use 2-4 readable objects total, a 1:1 square canvas, generous margins, a consistent isometric camera, and uniform object scale across the family. Layer the objects diagonally or symmetrically to create real spatial depth and slight elevation. Use soft ambient light from the upper-right/front-top, gentle shadows below and behind, mild edge illumination, semi-matte to satin materials, smooth stylized-natural surfaces, naturalistic colors with a slight saturation boost, harmonious muted contrast, distinct colors per object, high-resolution Octane-style 3D rendering, crisp edges with no outlines, pure flat white #FFFFFF background, premium friendly clean lifestyle/service tone. No text, letters, numbers, logos, watermark, QR code, UI card, border, frame, people, hands, faces, cropped objects, or busy background.",
+  "qa": [
+    "pure white corner pixels",
+    "1024x1024 output",
+    "2-4 objects only",
+    "same camera and scale as family",
+    "all objects fit within safe margins",
+    "no baked-in text or logos",
+    "readable at 24px and 48px",
+    "real artwork, not CSS or flat SVG"
+  ]
+}
