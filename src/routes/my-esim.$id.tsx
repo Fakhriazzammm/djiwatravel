@@ -1,16 +1,28 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronDown, QrCode, Plus, Headphones } from "lucide-react";
-import { Page, BackBar, btnRed, btnSoft, group, row } from "@/components/shell";
-import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
-import { rupiah } from "@/lib/pricing";
 import {
-  cancelOrder,
-  hasGuestOrderAccess,
-  markInstalled,
-  refreshOrdersFromServer,
-  useOrders,
-} from "@/lib/orders";
+  CheckCircle2,
+  ChevronDown,
+  Headphones,
+  Info,
+  Plus,
+  QrCode,
+  ShieldCheck,
+  Smartphone,
+  Wifi,
+} from "lucide-react";
+import {
+  BackBar,
+  Page,
+  SectionTitle,
+  StickyCta,
+  btnRed,
+  btnSoft,
+  group,
+  row,
+} from "@/components/shell";
+import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
+import { hasGuestOrderAccess, refreshOrdersFromServer, useOrders } from "@/lib/orders";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import { TravelTimeline } from "@/components/travel-timeline";
@@ -83,7 +95,7 @@ function Detail() {
     const next = buildTravelSnapshot(o);
     if (writeTravelSnapshot(next)) setSnapshot(next);
     setLastSyncedAt(next.savedAt);
-  }, [o?.id, o?.status, o?.expiresAt, o?.esim?.lpa, o?.usedGb]);
+  }, [o]);
 
   const refreshStatus = async () => {
     setSyncFailed(false);
@@ -108,6 +120,7 @@ function Detail() {
       </Page>
     );
   const status = effectiveOrderStatus(o.status, o.expiresAt);
+  const isReady = status === "READY";
   const canInstall = Boolean(o.esim) && (status === "READY" || status === "INSTALLED");
   const packageName = o.packageName ?? o.packageId;
   const locationLabel = o.locationCodes?.join(", ") || "Regional";
@@ -151,22 +164,50 @@ function Detail() {
 
   return (
     <Page>
-      <BackBar title={`🌐 ${packageName}`} />
-      <TravelTimeline
-        timeline={timeline}
-        lastSyncedAt={lastSyncedAt}
-        syncFailed={syncFailed}
-        onRefresh={refreshStatus}
-      />
+      <BackBar title="Detail eSIM" />
+
+      <section className="overflow-hidden rounded-[28px] bg-primary p-5 text-primary-foreground shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/65">
+              eSIM kamu
+            </p>
+            <h1 className="mt-2 text-[26px] font-bold leading-tight">{packageName}</h1>
+            <p className="mt-1 text-sm text-primary-foreground/75">
+              {locationLabel} · {quotaLabel} · {durationDays} hari
+            </p>
+          </div>
+          <div
+            className={`flex size-11 shrink-0 items-center justify-center rounded-2xl ${
+              isReady ? "bg-success/20 text-success" : "bg-white/10 text-white"
+            }`}
+          >
+            {isReady ? (
+              <CheckCircle2 className="size-6" strokeWidth={2.2} />
+            ) : (
+              <Smartphone className="size-6" strokeWidth={1.8} />
+            )}
+          </div>
+        </div>
+        <div className="mt-5 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-xl font-bold">{ORDER_STATUS_LABEL[status]}</p>
+            <p className="mt-1 text-[13px] text-primary-foreground/70">
+              {isReady
+                ? "Sudah siap dipasang di perangkatmu."
+                : "Kami akan memperbarui status secara otomatis."}
+            </p>
+          </div>
+          {canInstall && <Wifi className="size-7 text-primary-foreground/80" aria-hidden="true" />}
+        </div>
+      </section>
 
       {status === "PROVISIONING_FAILED" && (
         <div className="mt-4 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-4">
           <p className="font-semibold">Pemrosesan belum berhasil</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Kami dapat mencoba memproses pesanan ini kembali tanpa membuat order ganda.
-          </p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan.
+            Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan tanpa membuat
+            order ganda.
           </p>
         </div>
       )}
@@ -174,40 +215,65 @@ function Detail() {
         <p className="mt-3 text-center text-sm text-muted-foreground">{actionMessage}</p>
       )}
 
-      <div className={`${group} mt-4`}>
-        {[
-          ["Paket", `${quotaLabel} · ${durationDays} hari`],
-          ...(canInstall ? [["Berlaku sampai", `±${exp}`]] : []),
-          ["Status", ORDER_STATUS_LABEL[status]],
-          ["Destinasi", locationLabel],
-        ].map(([k, v]) => (
-          <div key={k} className={row}>
-            <span className="text-[14px] text-muted-foreground">{k}</span>
-            <span className="truncate text-[14px] font-medium">{v}</span>
+      {canInstall && o.esim && (
+        <section className="mt-4 rounded-3xl border border-brand-red/15 bg-brand-red-soft/45 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-red text-white">
+              <QrCode className="size-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-bold">Pasang eSIM sekarang</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Scan QR sebelum berangkat saat perangkat terhubung ke Wi-Fi.
+              </p>
+            </div>
           </div>
-        ))}
-      </div>
+          {tab !== "install" ? (
+            <button type="button" onClick={() => setTab("install")} className={`${btnRed} mt-4`}>
+              <QrCode className="size-5" aria-hidden="true" /> Tampilkan QR Code
+            </button>
+          ) : (
+            <div className="mt-4 space-y-5">
+              <EsimQr esim={o.esim} />
+              <InstallGuide />
+              <p className="flex items-start gap-2 text-[12px] text-muted-foreground">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+                QR dan kode aktivasi hanya untuk perangkatmu. Jangan bagikan ke orang lain.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="mt-4 rounded-2xl bg-surface p-4">
+        <SectionTitle>Ringkasan paket</SectionTitle>
+        <div className={group}>
+          {[
+            ["Paket", `${quotaLabel} · ${durationDays} hari`],
+            ...(canInstall ? [["Berlaku sampai", `±${exp}`]] : []),
+            ["Destinasi", locationLabel],
+            ["Status", ORDER_STATUS_LABEL[status]],
+          ].map(([k, v]) => (
+            <div key={k} className={row}>
+              <span className="text-[14px] text-muted-foreground">{k}</span>
+              <span className="truncate text-right text-[14px] font-medium">{v}</span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="mt-4">
         <TravelUsageCard view={usage} />
       </div>
 
       <div className="mt-4">
-        <Link to={reorder.href} params={{ id: reorder.packageId }} className={btnRed}>
-          {reorder.label}
-        </Link>
-        {reorder.fallbackDestinationCode && (
-          <Link
-            to="/destination/$code"
-            params={{ code: reorder.fallbackDestinationCode }}
-            className={`${btnSoft} mt-2 text-center`}
-          >
-            Lihat paket lain untuk {reorder.fallbackDestinationCode}
-          </Link>
-        )}
-        <p className="mt-2 text-center text-[12px] text-muted-foreground">
-          Harga dan ketersediaan dicek ulang saat checkout, jadi selalu mengikuti katalog terbaru.
-        </p>
+        <TravelTimeline
+          timeline={timeline}
+          lastSyncedAt={lastSyncedAt}
+          syncFailed={syncFailed}
+          onRefresh={refreshStatus}
+          compact
+        />
       </div>
 
       <div className="mt-4">
@@ -230,58 +296,46 @@ function Detail() {
         }}
       />
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        {[
-          {
-            id: "install",
-            l: "Instalasi",
-            i: QrCode,
-            on: () => setTab(tab === "install" ? "none" : "install"),
-            off: !canInstall,
-          },
-          {
-            id: "topup",
-            l: "Top Up",
-            i: Plus,
-            on: () => setTab(tab === "topup" ? "none" : "topup"),
-            off: true,
-          },
-          {
-            id: "support",
-            l: "Support",
-            i: Headphones,
-            on: () => setSupportOpen(true),
-          },
-        ].map(({ id, l, i: I, on, off }) => (
-          <button
-            key={id}
-            disabled={off}
-            onClick={on}
-            className={`tap flex h-[72px] flex-col items-center justify-center gap-1 rounded-2xl text-[12px] font-semibold disabled:opacity-40 ${tab === id ? "bg-brand-red-soft text-brand-red" : "bg-surface"}`}
-          >
-            <I className="size-5" strokeWidth={1.8} />
-            {l}
-          </button>
-        ))}
-      </div>
+      <section className="mt-4 rounded-2xl bg-surface p-4">
+        <SectionTitle>Butuh bantuan?</SectionTitle>
+        <button
+          type="button"
+          onClick={() => setSupportOpen(true)}
+          className={`${btnSoft} justify-between px-4`}
+        >
+          <span className="flex items-center gap-2">
+            <Headphones className="size-4" aria-hidden="true" /> Chat dengan support
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
+      </section>
 
-      {tab === "install" && canInstall && o.esim && (
-        <div className="mt-6 space-y-6">
-          <EsimQr esim={o.esim} />
-          <InstallGuide />
-        </div>
-      )}
-      {tab === "topup" && (
-        <div className="mt-6 rounded-2xl bg-surface p-4 text-sm text-muted-foreground">
-          Top up belum tersedia; pembayaran dan provisioning masih dinonaktifkan.
-        </div>
-      )}
+      <div className="mt-4">
+        <Link to={reorder.href} params={{ id: reorder.packageId }} className={btnSoft}>
+          <Plus className="size-4" aria-hidden="true" /> {reorder.label}
+        </Link>
+        {reorder.fallbackDestinationCode && (
+          <Link
+            to="/destination/$code"
+            params={{ code: reorder.fallbackDestinationCode }}
+            className={`${btnSoft} mt-2 text-center`}
+          >
+            Lihat paket lain untuk {reorder.fallbackDestinationCode}
+          </Link>
+        )}
+        <p className="mt-2 text-center text-[12px] text-muted-foreground">
+          Harga dan ketersediaan dicek ulang saat checkout.
+        </p>
+      </div>
 
       <button
         onClick={() => setTech(!tech)}
-        className="mt-6 flex h-11 w-full items-center justify-between rounded-2xl bg-surface px-4 text-[14px] text-muted-foreground"
+        className="mt-4 flex h-11 w-full items-center justify-between rounded-2xl bg-surface px-4 text-[14px] text-muted-foreground"
       >
-        Detail Teknis <ChevronDown className={`size-4 transition ${tech ? "rotate-180" : ""}`} />
+        <span className="flex items-center gap-2">
+          <Info className="size-4" /> Detail teknis
+        </span>
+        <ChevronDown className={`size-4 transition ${tech ? "rotate-180" : ""}`} />
       </button>
       {tech && o.esim && (
         <div className="mt-3">
@@ -295,6 +349,14 @@ function Detail() {
         contextFor={supportContextFor}
         supportBaseUrl={SUPPORT_WHATSAPP_URL}
       />
+      {canInstall && (
+        <StickyCta>
+          <button type="button" onClick={() => setTab("install")} className={btnRed}>
+            <QrCode className="size-5" aria-hidden="true" />
+            {tab === "install" ? "QR Code tampil di atas" : "Pasang eSIM sekarang"}
+          </button>
+        </StickyCta>
+      )}
       <Link to="/my-esim" className="sr-only">
         My eSIM
       </Link>

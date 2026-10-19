@@ -35,11 +35,13 @@ export function TravelTimeline({
   lastSyncedAt,
   syncFailed = false,
   onRefresh,
+  compact = false,
 }: {
   timeline: ActivationTimeline;
   lastSyncedAt?: number | null | undefined;
   syncFailed?: boolean | undefined;
   onRefresh?: (() => void | Promise<void>) | undefined;
+  compact?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState(0);
@@ -67,10 +69,32 @@ export function TravelTimeline({
   }
 
   return (
-    <section className="rounded-2xl bg-surface p-5" data-testid="travel-timeline">
-      <p className="text-sm text-muted-foreground">Status eSIM</p>
-      <p className={`text-xl font-bold ${HEADLINE_TONE[timeline.state]}`}>{timeline.headline}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{timeline.hint}</p>
+    <section
+      className={`rounded-2xl bg-surface ${compact ? "p-4" : "p-5"}`}
+      data-testid="travel-timeline"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
+            Status eSIM
+          </p>
+          <p className={`text-xl font-bold ${HEADLINE_TONE[timeline.state]}`}>
+            {timeline.headline}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{timeline.hint}</p>
+        </div>
+        {compact && timeline.canRefresh && onRefresh && (
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={busy || cooling}
+            className="tap flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl bg-secondary px-3 text-[12px] font-semibold disabled:opacity-50"
+          >
+            <RefreshCw className={busy ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
+            {busy ? "Cek…" : "Refresh"}
+          </button>
+        )}
+      </div>
 
       <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary">
         <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
@@ -110,7 +134,7 @@ export function TravelTimeline({
             ? `Terakhir diperbarui ${snapshotAgeLabel(lastSyncedAt)}`
             : "Belum pernah diperbarui"}
         </span>
-        {onRefresh && timeline.canRefresh && (
+        {!compact && onRefresh && timeline.canRefresh && (
           <button
             type="button"
             onClick={() => void refresh()}
