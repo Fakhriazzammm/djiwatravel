@@ -11,50 +11,17 @@ import { DestinationCard } from "@/components/explore/destination-card";
 import { FeaturedServiceCard } from "@/components/explore/featured-service-card";
 import { AiTripPlannerCard } from "@/components/explore/ai-trip-planner-card";
 import { affiliateServices, activeAffiliateServices } from "@/lib/affiliate-services";
-import { isRecommendablePackage } from "@/lib/esim-access-catalog";
-import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
-import { getSellabilityState } from "@/lib/sellability.server";
-import { exploreAvailability, loadExploreAvailability } from "@/lib/explore-availability";
-
-function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error("Explore catalog deadline exceeded")),
-      timeoutMs,
-    );
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-}
+import { getListableDestinations } from "@/lib/destination-availability.server";
+import { exploreAvailability } from "@/lib/explore-availability";
 
 export const Route = createFileRoute("/explore")({
-  // Explore is the only package list now, so it carries the catalog's caching: one
-  // expensive reseller read, reused for a minute so coming back is instant.
-  staleTime: 60_000,
+  // The resolver reuses the provider cache, handles regional coverage, and falls back to the
+  // seeded display list during a transient provider outage. Re-run when returning to Explore so a
+  // transient error from another route is never kept as the page's only state.
+  staleTime: 0,
   loader: async () => {
-    return loadExploreAvailability({
-      attempt: async (timeoutMs) => {
-        const catalog = await withDeadline(getResellerCatalog(), timeoutMs);
-        const packages = catalog.packages.filter(isRecommendablePackage);
-        const sellability = await withDeadline(getSellabilityState(packages), timeoutMs);
-        const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
-        const codes = new Set(
-          sellable.flatMap((pkg) => pkg.locationCodes.map((code) => code.trim().toUpperCase())),
-        );
-        return exploreAvailability(
-          destinations.filter((destination) => codes.has(destination.code.toUpperCase())),
-          catalog.stale ? "cached" : "live",
-        );
-      },
-    });
+    const available = await getListableDestinations();
+    return exploreAvailability(available, "live");
   },
   head: () => ({
     meta: [
