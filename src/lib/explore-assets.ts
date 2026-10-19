@@ -13,40 +13,44 @@ import {
 
 export type ExploreAsset = { src: string; alt: string; fallback: LucideIcon };
 
+const ASSET_VERSION = "adbc07b";
+
+const assetPath = (name: string) => `/assets/explore/services/${name}.svg?v=${ASSET_VERSION}`;
+
 export const exploreAssets: Record<string, ExploreAsset> = {
-  esim: { src: "/assets/explore/services/esim.svg", alt: "Ikon 3D eSIM", fallback: Smartphone },
+  esim: { src: assetPath("esim"), alt: "Ikon 3D eSIM", fallback: Smartphone },
   attractions: {
-    src: "/assets/explore/services/attractions.svg",
+    src: assetPath("attractions"),
     alt: "Ikon 3D aktivitas wisata",
     fallback: Ticket,
   },
   transportation: {
-    src: "/assets/explore/services/transportation.svg",
+    src: assetPath("transportation"),
     alt: "Ikon 3D transportasi",
     fallback: Plane,
   },
   "open-trip": {
-    src: "/assets/explore/services/open-trip.svg",
+    src: assetPath("open-trip"),
     alt: "Ikon 3D open trip",
     fallback: MapPin,
   },
   baggage: {
-    src: "/assets/explore/services/baggage.svg",
+    src: assetPath("baggage"),
     alt: "Ikon 3D bagasi",
     fallback: Luggage,
   },
   "personal-shopper": {
-    src: "/assets/explore/services/personal-shopper.svg",
+    src: assetPath("personal-shopper"),
     alt: "Ikon 3D titip belanja",
     fallback: ShoppingBag,
   },
   visa: {
-    src: "/assets/explore/services/visa.svg",
+    src: assetPath("visa"),
     alt: "Ikon 3D layanan visa",
     fallback: FileCheck2,
   },
   "travel-insurance": {
-    src: "/assets/explore/services/travel-insurance.svg",
+    src: assetPath("travel-insurance"),
     alt: "Ikon 3D asuransi perjalanan",
     fallback: ShieldCheck,
   },
