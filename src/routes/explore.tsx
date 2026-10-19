@@ -55,6 +55,7 @@ function Explore() {
   const router = useRouter();
   const available = Route.useLoaderData();
   const [q, setQ] = useState("");
+  const [searchMessage, setSearchMessage] = useState("");
   const res = search(q).filter((destination) =>
     available.destinations.some((item) => item.code === destination.code),
   );
@@ -70,12 +71,34 @@ function Explore() {
         <h1 className="mt-1 large-title">Explore</h1>
         <p className="mt-2 text-sm text-muted-foreground">Mau pergi ke mana?</p>
       </header>
-      <label className="mt-4 flex h-12 items-center gap-2 rounded-2xl bg-surface px-3 shadow-sm ring-1 ring-border/60 focus-within:ring-2 focus-within:ring-ring">
+      <form
+        className="mt-4 flex h-12 items-center gap-2 rounded-2xl bg-surface px-3 shadow-sm ring-1 ring-border/60 focus-within:ring-2 focus-within:ring-ring"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!q.trim()) {
+            setSearchMessage("Masukkan nama negara atau kota terlebih dahulu.");
+            return;
+          }
+          const destination = res[0];
+          if (!destination) {
+            setSearchMessage(`Destinasi “${q.trim()}” belum tersedia di katalog.`);
+            return;
+          }
+          setSearchMessage("");
+          void router.navigate({
+            to: "/destination/$code",
+            params: { code: destination.code.toLowerCase() },
+          });
+        }}
+      >
         <Search className="size-5 text-muted-foreground" aria-hidden="true" />
         <input
           autoFocus
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setSearchMessage("");
+          }}
           placeholder="Cari negara atau kota"
           aria-label="Cari destinasi"
           className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
@@ -83,14 +106,22 @@ function Explore() {
         {q && (
           <button
             type="button"
-            onClick={() => setQ("")}
+            onClick={() => {
+              setQ("");
+              setSearchMessage("");
+            }}
             aria-label="Hapus pencarian"
             className="rounded-full px-2 text-lg text-muted-foreground"
           >
             ×
           </button>
         )}
-      </label>
+      </form>
+      {searchMessage && (
+        <p className="mt-2 text-sm text-muted-foreground" role="status">
+          {searchMessage}
+        </p>
+      )}
       <Link
         to="/finder"
         className="tap mt-3 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-3"
