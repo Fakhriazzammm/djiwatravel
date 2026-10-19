@@ -1,4 +1,5 @@
 import { ArrowRight, Sparkles } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { destinations } from "@/lib/catalog";
 
@@ -39,15 +40,25 @@ export function AiTripPlannerCard() {
             {destinations
               .filter((item) => item.popular)
               .map((item) => (
-                <option key={item.code} value={item.nameId}>
+                <option key={item.code} value={item.code}>
                   {item.nameId}
                 </option>
               ))}
           </select>
           {destination && (
-            <p className="mt-2 text-xs text-primary-foreground/80">
-              Rencana awal untuk {destination} siap kamu lanjutkan dari layanan yang tersedia.
-            </p>
+            <>
+              <p className="mt-2 text-xs text-primary-foreground/80">
+                Rencana awal untuk {destinations.find((item) => item.code === destination)?.nameId}{" "}
+                siap kamu lanjutkan.
+              </p>
+              <Link
+                to="/destination/$code"
+                params={{ code: destination.toLowerCase() }}
+                className="mt-3 flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-sm font-semibold text-primary"
+              >
+                Lihat paket eSIM <ArrowRight className="ml-2 size-4" />
+              </Link>
+            </>
           )}
         </div>
       )}
