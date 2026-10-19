@@ -8,12 +8,12 @@
     "family_rule": "same isometric camera, object scale, margin, top-right soft light, semi-matte material, shadow direction, and muted-saturated palette"
   },
   "generation_provider": {
-    "adapter": "openai-image-via-codex-cli",
-    "requested_model": "OPENAI_IMAGE_MODEL_2_5",
-    "model_resolution_rule": "Resolve the exact image-capable model ID from the installed OpenAI/Codex configuration; do not invent a model name.",
-    "codex_cli_capability_note": "Codex CLI --image attaches input images; it is not itself an image-output command. The adapter must call an image-generation MCP/provider exposed to Codex, then download and verify the returned PNG.",
-    "codex_command_template": "codex exec --model ${CODEX_IMAGE_MODEL} --search --cd ${WORKSPACE} -- 'Use the configured image-generation MCP/provider to create the requested PNG. Return the verified local output path only after the provider reports completion.'",
-    "required_env": ["OPENAI_API_KEY or authenticated Codex session", "CODEX_IMAGE_MODEL", "IMAGE_GENERATION_MCP_OR_PROVIDER"],
+    "adapter": "codex-cli-image_gen.imagegen",
+    "requested_model": "codex-session-model (underlying image model not exposed)",
+    "model_resolution_rule": "Use an authenticated Codex model session that exposes image_gen.imagegen; do not invent a model ID.",
+    "codex_cli_capability_note": "Codex CLI exposes image_gen.imagegen in the authenticated session. The CLI --image flag is input attachment only; invoke image_gen.imagegen through codex exec and save the returned image as PNG.",
+    "codex_command_template": "codex exec --sandbox workspace-write --cd ${WORKSPACE} -- 'Use image_gen.imagegen with {prompt: PROMPT, transparent_background: false}; save the returned PNG to OUTPUT_PATH; verify dimensions and bytes.'",
+    "required_env": ["authenticated Codex ChatGPT session", "Codex model capacity", "image_gen.imagegen exposed"],
     "never_claim": "Do not claim generated assets until a real PNG is downloaded, file-identified, dimension-checked, and visually reviewed."
   },
   "style_contract": {
