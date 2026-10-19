@@ -64,7 +64,9 @@ function Detail() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncFailed, setSyncFailed] = useState(false);
-  const o = hasGuestOrderAccess(id) ? orders?.find((x) => x.id === id) : undefined;
+  const o = orders?.find(
+    (x) => x.id === id && (x.fromMemberAccount === true || hasGuestOrderAccess(id)),
+  );
 
   // The route parameter can change without remounting, so re-read the device-scoped data.
   useEffect(() => {
