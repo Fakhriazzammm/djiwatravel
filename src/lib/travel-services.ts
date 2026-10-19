@@ -17,7 +17,7 @@ export const travelServices: TravelServiceCategory[] = [
     description: "Internet saat tiba",
     icon: "esim",
     status: "ACTIVE",
-    href: "/explore",
+    href: "/finder",
     displayOrder: 1,
   },
   {
