@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { TabBar } from "@/components/shell";
+import { FixedLayer } from "@/components/motion-primitives";
 import { useState } from "react";
 import { recommendPackages } from "@/lib/recommendation/recommend-packages.server";
 import { destinations } from "@/lib/catalog";
@@ -226,7 +227,9 @@ function Finder() {
           </section>
         )}
       </main>
-      <TabBar />
+      <FixedLayer>
+        <TabBar />
+      </FixedLayer>
     </>
   );
 }
