@@ -6,7 +6,7 @@ import { assetForService } from "@/lib/explore-assets";
 import { serviceHref, serviceStatusLabel, visibleTravelServices } from "@/lib/travel-services";
 
 const tileClass =
-  "group relative flex min-h-[132px] flex-col items-center rounded-2xl px-1.5 pb-2.5 pt-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "group relative flex min-h-[108px] flex-col items-center rounded-2xl px-0.5 pb-2 pt-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const tileVariants = {
   hidden: { opacity: 0, y: 10, scale: 0.98 },
@@ -57,7 +57,7 @@ export function ServiceCategoryGrid() {
 
   return (
     <motion.div
-      className="grid grid-cols-4 gap-2.5"
+      className="grid grid-cols-4 gap-x-1.5 gap-y-1"
       variants={gridVariants}
       initial={mounted && !reduceMotion ? "hidden" : false}
       animate="show"
@@ -69,12 +69,12 @@ export function ServiceCategoryGrid() {
         const href = serviceHref(service);
         const content = (
           <>
-            <span className="relative flex size-[74px] items-center justify-center">
+            <span className="relative flex size-[56px] items-center justify-center">
               {asset.src ? (
                 <img
                   src={asset.src}
                   alt={asset.alt}
-                  className="relative size-[70px] object-contain"
+                  className="relative size-[54px] object-contain"
                   loading="eager"
                   decoding="async"
                   fetchPriority="high"
@@ -83,16 +83,16 @@ export function ServiceCategoryGrid() {
                 <Icon className="relative size-6 text-brand-red" aria-hidden="true" />
               )}
             </span>
-            <span className="mt-2 line-clamp-1 text-[11px] font-bold leading-tight">
+            <span className="mt-1.5 line-clamp-1 text-[10px] font-bold leading-tight">
               {service.label}
             </span>
             {service.status === "ACTIVE" ? (
-              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand-red-soft px-1.5 py-0.5 text-[9px] font-bold text-brand-red">
+              <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-brand-red-soft px-1.5 py-0.5 text-[8px] font-bold text-brand-red">
                 <span className="size-1.5 rounded-full bg-brand-red" aria-hidden="true" />
                 Tersedia
               </span>
             ) : (
-              <span className="mt-1 line-clamp-1 text-[9px] font-medium text-muted-foreground">
+              <span className="mt-0.5 line-clamp-1 text-[8px] font-medium text-muted-foreground">
                 {serviceStatusLabel[service.status]}
               </span>
             )}
