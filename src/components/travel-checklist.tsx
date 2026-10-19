@@ -16,6 +16,7 @@ export function TravelChecklist({
   progress,
   onSetDepartureDate,
   onToggle,
+  compact = false,
 }: {
   items: ChecklistItem[];
   departureDate: string | null;
@@ -23,9 +24,13 @@ export function TravelChecklist({
   progress: { done: number; total: number; percent: number };
   onSetDepartureDate: (value: string | null) => void;
   onToggle: (key: ChecklistKey, done: boolean) => void;
+  compact?: boolean;
 }) {
   return (
-    <section className="rounded-2xl bg-surface p-5" data-testid="travel-checklist">
+    <section
+      className={`rounded-2xl bg-surface ${compact ? "p-4" : "p-5"}`}
+      data-testid="travel-checklist"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">Persiapan perjalanan</h2>

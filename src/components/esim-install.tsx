@@ -5,13 +5,13 @@ import type { EsimProfile } from "@/lib/providers";
 import { group } from "./shell";
 import { maskSensitive } from "@/lib/sensitive-data";
 
-export function EsimQr({ esim }: { esim: EsimProfile }) {
+export function EsimQr({ esim, compact = false }: { esim: EsimProfile; compact?: boolean }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl bg-surface p-6">
-      <div className="rounded-xl bg-white p-3">
-        <QRCodeSVG value={esim.lpa} size={200} />
+    <div className={`flex flex-col items-center rounded-2xl bg-surface ${compact ? "p-4" : "p-6"}`}>
+      <div className="rounded-xl bg-white p-2">
+        <QRCodeSVG value={esim.lpa} size={compact ? 168 : 200} />
       </div>
-      <p className="mt-4 text-center text-sm text-muted-foreground">
+      <p className="mt-3 text-center text-[13px] text-muted-foreground">
         Scan QR ini untuk memasang eSIM
       </p>
     </div>

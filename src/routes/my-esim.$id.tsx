@@ -166,13 +166,13 @@ function Detail() {
     <Page>
       <BackBar title="Detail eSIM" />
 
-      <section className="overflow-hidden rounded-[28px] bg-primary p-5 text-primary-foreground shadow-sm">
+      <section className="overflow-hidden rounded-2xl bg-primary p-4 text-primary-foreground shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/65">
               eSIM kamu
             </p>
-            <h1 className="mt-2 text-[26px] font-bold leading-tight">{packageName}</h1>
+            <h1 className="mt-1 text-[23px] font-bold leading-tight">{packageName}</h1>
             <p className="mt-1 text-sm text-primary-foreground/75">
               {locationLabel} · {quotaLabel} · {durationDays} hari
             </p>
@@ -189,9 +189,9 @@ function Detail() {
             )}
           </div>
         </div>
-        <div className="mt-5 flex items-end justify-between gap-3">
+        <div className="mt-4 flex items-end justify-between gap-3">
           <div>
-            <p className="text-xl font-bold">{ORDER_STATUS_LABEL[status]}</p>
+            <p className="text-[18px] font-bold">{ORDER_STATUS_LABEL[status]}</p>
             <p className="mt-1 text-[13px] text-primary-foreground/70">
               {isReady
                 ? "Sudah siap dipasang di perangkatmu."
@@ -216,14 +216,14 @@ function Detail() {
       )}
 
       {canInstall && o.esim && (
-        <section className="mt-4 rounded-3xl border border-brand-red/15 bg-brand-red-soft/45 p-4">
+        <section className="mt-3 rounded-2xl border border-brand-red/15 bg-brand-red-soft/45 p-3">
           <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-red text-white">
-              <QrCode className="size-5" aria-hidden="true" />
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-red text-white">
+              <QrCode className="size-4" aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-bold">Pasang eSIM sekarang</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <h2 className="text-[16px] font-bold">Pasang eSIM sekarang</h2>
+              <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
                 Scan QR sebelum berangkat saat perangkat terhubung ke Wi-Fi.
               </p>
             </div>
@@ -234,7 +234,7 @@ function Detail() {
             </button>
           ) : (
             <div className="mt-4 space-y-5">
-              <EsimQr esim={o.esim} />
+              <EsimQr esim={o.esim} compact />
               <InstallGuide />
               <p className="flex items-start gap-2 text-[12px] text-muted-foreground">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
@@ -245,8 +245,10 @@ function Detail() {
         </section>
       )}
 
-      <section className="mt-4 rounded-2xl bg-surface p-4">
-        <SectionTitle>Ringkasan paket</SectionTitle>
+      <section className="mt-3 rounded-2xl bg-surface p-3">
+        <div className="mb-2 [&_h2]:text-[16px]">
+          <SectionTitle>Ringkasan paket</SectionTitle>
+        </div>
         <div className={group}>
           {[
             ["Paket", `${quotaLabel} · ${durationDays} hari`],
@@ -263,7 +265,7 @@ function Detail() {
       </section>
 
       <div className="mt-4">
-        <TravelUsageCard view={usage} />
+        <TravelUsageCard view={usage} compact />
       </div>
 
       <div className="mt-4">
@@ -284,6 +286,7 @@ function Detail() {
           progress={progress}
           onSetDepartureDate={(value) => setTrip(writeDepartureDate(id, value))}
           onToggle={(key, done) => setTrip(setChecklistItem(id, key, done))}
+          compact
         />
       </div>
 
@@ -350,7 +353,7 @@ function Detail() {
         supportBaseUrl={SUPPORT_WHATSAPP_URL}
       />
       {canInstall && (
-        <StickyCta>
+        <StickyCta compact>
           <button type="button" onClick={() => setTab("install")} className={btnRed}>
             <QrCode className="size-5" aria-hidden="true" />
             {tab === "install" ? "QR Code tampil di atas" : "Pasang eSIM sekarang"}
