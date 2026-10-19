@@ -256,14 +256,19 @@ function Profile() {
         })}
       </div>
 
-      <div className={`${group} mt-6`}>
-        {["Bantuan", "Syarat & Ketentuan", "Kebijakan Privasi"].map((l) => (
-          <div key={l} className={item}>
-            <span className="text-[14px]">{l}</span>
-            <ChevronRight className="size-5 text-muted-foreground" />
-          </div>
+      <nav aria-label="Bantuan dan kebijakan" className={`${group} mt-6`}>
+        {[
+          { label: "Cek status pesanan", to: "/order-status" as const },
+          { label: "Bantuan", to: "/support" as const },
+          { label: "Syarat & Ketentuan", to: "/terms" as const },
+          { label: "Kebijakan Privasi", to: "/privacy" as const },
+        ].map(({ label: linkLabel, to }) => (
+          <Link key={to} to={to} className={`${item} tap`}>
+            <span className="text-[14px]">{linkLabel}</span>
+            <ChevronRight className="size-5 text-muted-foreground" aria-hidden="true" />
+          </Link>
         ))}
-      </div>
+      </nav>
 
       <div className="mt-12 text-center">
         <Wordmark className="mx-auto h-16" />

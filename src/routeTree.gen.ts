@@ -15,9 +15,12 @@ import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as OrderStatusRouteImport } from './routes/order-status'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
@@ -39,6 +42,8 @@ import { Route as ApiCustomerNotificationsRouteImport } from './routes/api.custo
 import { Route as ApiCustomerProfileRouteImport } from './routes/api.customer-profile'
 import { Route as ApiCustomerRefundRouteImport } from './routes/api.customer-refund'
 import { Route as ApiCustomerSupportRouteImport } from './routes/api.customer-support'
+import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recovery'
+import { Route as ApiTravelWaitlistRouteImport } from './routes/api.travel-waitlist'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
@@ -87,6 +92,16 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrderStatusRoute = OrderStatusRouteImport.update({
+  id: '/order-status',
+  path: '/order-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -100,6 +115,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WalletRoute = WalletRouteImport.update({
@@ -208,6 +228,16 @@ const ApiCustomerSupportRoute = ApiCustomerSupportRouteImport.update({
   path: '/api/customer-support',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOrderRecoveryRoute = ApiOrderRecoveryRouteImport.update({
+  id: '/api/order-recovery',
+  path: '/api/order-recovery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTravelWaitlistRoute = ApiTravelWaitlistRouteImport.update({
+  id: '/api/travel-waitlist',
+  path: '/api/travel-waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutIdRoute = CheckoutIdRouteImport.update({
   id: '/checkout/$id',
   path: '/checkout/$id',
@@ -303,9 +333,12 @@ export interface FileRoutesByFullPath {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/notifications': typeof NotificationsRoute
+  '/order-status': typeof OrderStatusRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -326,6 +359,8 @@ export interface FileRoutesByFullPath {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/order-recovery': typeof ApiOrderRecoveryRoute
+  '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
@@ -352,9 +387,12 @@ export interface FileRoutesByTo {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/notifications': typeof NotificationsRoute
+  '/order-status': typeof OrderStatusRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -375,6 +413,8 @@ export interface FileRoutesByTo {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/order-recovery': typeof ApiOrderRecoveryRoute
+  '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
@@ -402,9 +442,12 @@ export interface FileRoutesById {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/notifications': typeof NotificationsRoute
+  '/order-status': typeof OrderStatusRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/wallet': typeof WalletRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -425,6 +468,8 @@ export interface FileRoutesById {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/order-recovery': typeof ApiOrderRecoveryRoute
+  '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
@@ -453,9 +498,12 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/notifications'
+    | '/order-status'
+    | '/privacy'
     | '/profile'
     | '/sitemap.xml'
     | '/support'
+    | '/terms'
     | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
@@ -476,6 +524,8 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/order-recovery'
+    | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
@@ -502,9 +552,12 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/notifications'
+    | '/order-status'
+    | '/privacy'
     | '/profile'
     | '/sitemap.xml'
     | '/support'
+    | '/terms'
     | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
@@ -525,6 +578,8 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/order-recovery'
+    | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
@@ -551,9 +606,12 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/notifications'
+    | '/order-status'
+    | '/privacy'
     | '/profile'
     | '/sitemap.xml'
     | '/support'
+    | '/terms'
     | '/wallet'
     | '/admin/analytics'
     | '/admin/audit-log'
@@ -574,6 +632,8 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/order-recovery'
+    | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
@@ -601,9 +661,12 @@ export interface RootRouteChildren {
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
   NotificationsRoute: typeof NotificationsRoute
+  OrderStatusRoute: typeof OrderStatusRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupportRoute: typeof SupportRoute
+  TermsRoute: typeof TermsRoute
   WalletRoute: typeof WalletRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
@@ -624,6 +687,8 @@ export interface RootRouteChildren {
   ApiCustomerProfileRoute: typeof ApiCustomerProfileRoute
   ApiCustomerRefundRoute: typeof ApiCustomerRefundRoute
   ApiCustomerSupportRoute: typeof ApiCustomerSupportRoute
+  ApiOrderRecoveryRoute: typeof ApiOrderRecoveryRoute
+  ApiTravelWaitlistRoute: typeof ApiTravelWaitlistRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
@@ -687,6 +752,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/order-status': {
+      id: '/order-status'
+      path: '/order-status'
+      fullPath: '/order-status'
+      preLoaderRoute: typeof OrderStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -706,6 +785,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wallet': {
@@ -855,6 +941,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCustomerSupportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/order-recovery': {
+      id: '/api/order-recovery'
+      path: '/api/order-recovery'
+      fullPath: '/api/order-recovery'
+      preLoaderRoute: typeof ApiOrderRecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/travel-waitlist': {
+      id: '/api/travel-waitlist'
+      path: '/api/travel-waitlist'
+      fullPath: '/api/travel-waitlist'
+      preLoaderRoute: typeof ApiTravelWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout/$id': {
       id: '/checkout/$id'
       path: '/checkout/$id'
@@ -996,9 +1096,12 @@ const rootRouteChildren: RootRouteChildren = {
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,
   NotificationsRoute: NotificationsRoute,
+  OrderStatusRoute: OrderStatusRoute,
+  PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupportRoute: SupportRoute,
+  TermsRoute: TermsRoute,
   WalletRoute: WalletRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
@@ -1019,6 +1122,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCustomerProfileRoute: ApiCustomerProfileRoute,
   ApiCustomerRefundRoute: ApiCustomerRefundRoute,
   ApiCustomerSupportRoute: ApiCustomerSupportRoute,
+  ApiOrderRecoveryRoute: ApiOrderRecoveryRoute,
+  ApiTravelWaitlistRoute: ApiTravelWaitlistRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
   MyEsimIdRoute: MyEsimIdRoute,

@@ -10,6 +10,7 @@ import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { destinationPhoto } from "@/lib/destination-artwork";
 import { travelGuides } from "@/lib/travel-guides";
+import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 
 const featuredGuides = travelGuides.slice(0, 3);
@@ -281,12 +282,13 @@ function Home() {
                   {body}
                 </Link>
               ) : (
-                <div
+                <TravelWaitlistCard
                   key={label}
-                  className={`${cls} border-2 border-transparent bg-surface text-muted-foreground`}
-                >
-                  {body}
-                </div>
+                  feature={label === "Bagasi" ? "bagasi" : "shopper"}
+                  label={label}
+                  sub={sub}
+                  icon={I}
+                />
               );
             })}
           </div>

@@ -18,6 +18,7 @@ import { isCustomerProfileComplete } from "@/lib/customer-profile";
 import { formatWhatsapp, isValidWhatsapp, normalizeWhatsapp } from "@/lib/phone";
 import { loadCustomerProfile } from "@/lib/customer-profile-client";
 import { toViewPackage } from "@/lib/package-view";
+import { DeviceCompatibility } from "@/components/device-compatibility";
 import { nextFrame, paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
 
 export const Route = createFileRoute("/checkout/$id")({
@@ -191,6 +192,7 @@ function Checkout() {
         {user ? "Masuk sebagai member." : "Tanpa perlu daftar akun."} Boleh ketik 0812… — kami ubah
         otomatis ke format 62….
       </p>
+      <DeviceCompatibility />
 
       <h2 className={`${label} mt-6`}>Pembayaran</h2>
       <div className={group}>

@@ -12,6 +12,7 @@ import {
   integer,
   bigint,
   index,
+  date,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -375,6 +376,57 @@ export const guestOrderAccess = pgTable(
       "guest_order_access_payment_method_check",
       sql`payment_method = ANY (ARRAY['qris'::text, 'va'::text])`,
     ),
+  ],
+);
+
+export const guestOrderRecoveryTokens = pgTable(
+  "guest_order_recovery_tokens",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    orderId: uuid("order_id").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+    attempts: integer().default(0).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true, mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("guest_order_recovery_tokens_token_hash_key").on(table.tokenHash),
+    index("guest_order_recovery_tokens_order_idx").on(table.orderId, table.createdAt),
+    index("guest_order_recovery_tokens_expiry_idx").on(table.expiresAt),
+    foreignKey({
+      columns: [table.orderId],
+      foreignColumns: [customerOrders.id],
+      name: "guest_order_recovery_tokens_order_id_fkey",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const travelWaitlistEntries = pgTable(
+  "travel_waitlist_entries",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    featureKey: text("feature_key").notNull(),
+    destination: text().notNull(),
+    travelDate: date("travel_date"),
+    email: text(),
+    whatsapp: text(),
+    consentAt: timestamp("consent_at", { withTimezone: true, mode: "string" }).notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("travel_waitlist_entries_dedupe_key").on(table.dedupeKey),
+    index("travel_waitlist_feature_created_idx").on(table.featureKey, table.createdAt),
+    check(
+      "travel_waitlist_feature_key_check",
+      sql`feature_key = ANY (ARRAY['bagasi'::text, 'shopper'::text])`,
+    ),
+    check("travel_waitlist_contact_check", sql`email IS NOT NULL OR whatsapp IS NOT NULL`),
   ],
 );
 

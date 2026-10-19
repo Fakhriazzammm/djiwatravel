@@ -246,6 +246,13 @@ export function guestAccessTokenFor(orderId: string): string | undefined {
   return typeof token === "string" && token.length >= 32 && token.length <= 256 ? token : undefined;
 }
 
+export function saveGuestAccess(orderId: string, accessToken: string): void {
+  if (!orderId || accessToken.length < 32) return;
+  const access = readGuestAccess();
+  access[orderId] = accessToken;
+  localStorage.setItem(ACCESS_KEY, JSON.stringify(access));
+}
+
 export function hasGuestOrderAccess(orderId: string): boolean {
   return guestAccessTokenFor(orderId) !== undefined;
 }

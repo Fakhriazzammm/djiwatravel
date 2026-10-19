@@ -1,11 +1,12 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
   customerOrderItems,
   customerOrders,
   guestOrderAccess,
+  guestOrderRecoveryTokens,
   esimProvisioningOrders,
   esimProfiles,
 } from "../../drizzle/schema";
@@ -204,11 +205,22 @@ export const getGuestOrders = createServerFn({ method: "POST" })
           .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
           .innerJoin(customerOrderItems, eq(customerOrderItems.orderId, customerOrders.id))
           .leftJoin(esimProvisioningOrders, eq(esimProvisioningOrders.orderId, customerOrders.id))
+          .leftJoin(
+            guestOrderRecoveryTokens,
+            eq(guestOrderRecoveryTokens.orderId, customerOrders.id),
+          )
           .leftJoin(esimProfiles, eq(esimProfiles.provisioningOrderId, esimProvisioningOrders.id))
           .where(
             and(
               eq(customerOrders.id, orderId),
-              eq(guestOrderAccess.accessTokenHash, accessTokenHash),
+              or(
+                eq(guestOrderAccess.accessTokenHash, accessTokenHash),
+                and(
+                  eq(guestOrderRecoveryTokens.tokenHash, accessTokenHash),
+                  gt(guestOrderRecoveryTokens.expiresAt, new Date().toISOString()),
+                  isNull(guestOrderRecoveryTokens.consumedAt),
+                ),
+              ),
               gt(guestOrderAccess.expiresAt, new Date().toISOString()),
             ),
           )
