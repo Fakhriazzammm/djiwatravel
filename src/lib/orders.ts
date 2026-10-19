@@ -159,7 +159,10 @@ export function useOrders() {
   const [orders, set] = useState<Order[] | null>(null);
   useEffect(() => {
     let active = true;
-    const f = () => set(read().filter((order) => hasGuestOrderAccess(order.id)));
+    const f = () =>
+      set(
+        read().filter((order) => order.fromMemberAccount === true || hasGuestOrderAccess(order.id)),
+      );
     f();
     window.addEventListener("djiwa-orders", f);
     // Pull both ownership paths: guest orders held by this browser and every order owned by the
