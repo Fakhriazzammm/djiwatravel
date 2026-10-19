@@ -52,10 +52,12 @@ function Finder() {
   const [budget, setBudget] = useState(200000);
   const [result, setResult] = useState<Awaited<ReturnType<typeof recommendPackages>> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const loadingLabel = useStagedLabel(loading, ACTION_STAGES.search);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
+    setErrorMessage("");
     try {
       const preferences = {
         destinations: destination
@@ -73,6 +75,11 @@ function Finder() {
         dataNeed,
         budgetBand: budget < 100000 ? "under_100k" : budget < 300000 ? "100k_300k" : "300k_plus",
       });
+    } catch {
+      setResult(null);
+      setErrorMessage(
+        "Rekomendasi belum bisa dimuat. Coba lagi sebentar; pilihanmu tetap tersimpan.",
+      );
     } finally {
       setLoading(false);
     }
@@ -155,6 +162,14 @@ function Finder() {
             {loading ? loadingLabel : "Tampilkan rekomendasi"}
           </button>
         </form>
+        {errorMessage && (
+          <div
+            role="alert"
+            className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          >
+            {errorMessage}
+          </div>
+        )}
         {result && (
           <section className="mt-6">
             <div className="rounded-xl border border-border bg-card p-4 text-sm">
