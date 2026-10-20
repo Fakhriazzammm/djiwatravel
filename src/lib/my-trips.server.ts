@@ -327,7 +327,17 @@ export async function addChecklistItem(input: unknown) {
   return result.rows[0];
 }
 
-export const getMyTrips = createServerFn({ method: "GET" }).handler(() => listTrips());
+export const getMyTrips = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    return await listTrips();
+  } catch (error) {
+    // My Trips is a read-only surface: an auth/database hiccup must not replace
+    // the whole page with the generic route error screen. Keep the failure
+    // observable in server logs and render the empty state as a safe fallback.
+    console.error("[my-trips] failed to load trips", error);
+    return [];
+  }
+});
 export const postTrip = createServerFn({ method: "POST" })
   .validator(tripSchema)
   .handler(({ data }) => createTrip(data));
