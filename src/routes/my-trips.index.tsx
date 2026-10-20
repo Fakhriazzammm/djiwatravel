@@ -34,10 +34,15 @@ export const Route = createFileRoute("/my-trips/")({
 const tabs = ["upcoming", "ongoing", "past"] as const;
 const tabLabels = { upcoming: "Akan datang", ongoing: "Berlangsung", past: "Selesai" };
 const statusLabels = { upcoming: "Akan datang", ongoing: "Sedang berjalan", past: "Selesai" };
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(
-    new Date(`${value}T00:00:00`),
-  );
+const formatDate = (value: string) => {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "Tanggal belum diatur";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+};
 const rupiah = (minor: number) =>
   new Intl.NumberFormat("id-ID", {
     style: "currency",
