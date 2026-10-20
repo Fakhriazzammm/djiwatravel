@@ -14,19 +14,45 @@ import { BackBar, Page, btnSoft, group, row } from "@/components/shell";
 import { getTrip, postChecklist, patchChecklist } from "@/lib/my-trips.server";
 
 export const Route = createFileRoute("/my-trips/$tripId")({
-  loader: ({ params }) => getTrip({ data: { tripId: params.tripId } }),
+  loader: async ({ params }) => {
+    try {
+      return await getTrip({ data: { tripId: params.tripId } });
+    } catch (error) {
+      console.error("[my-trips] failed to load trip detail", error);
+      return null;
+    }
+  },
   component: TripDetail,
+  errorComponent: TripDetailError,
 });
-const dateLabel = (value: string) =>
-  new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(
-    new Date(`${value}T00:00:00`),
+function TripDetailError() {
+  return (
+    <Page>
+      <BackBar title="My Trips" />
+      <section className="mt-8 rounded-2xl bg-surface p-5 text-center ring-1 ring-border/50">
+        <h1 className="text-lg font-semibold">Trip tidak dapat dimuat</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Silakan masuk terlebih dahulu atau kembali ke daftar perjalanan.
+        </p>
+        <Link to="/my-trips" className={`${btnSoft} mx-auto mt-5 inline-flex px-4`}>
+          Kembali ke My Trips
+        </Link>
+      </section>
+    </Page>
   );
+}
+const dateLabel = (value: string) => {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "Tanggal belum diatur";
+  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
+};
 const money = (minor: number, currency: string) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency, maximumFractionDigits: 0 }).format(
     minor / 100,
   );
 function TripDetail() {
   const data = Route.useLoaderData();
+  if (!data) return <TripDetailError />;
   const { trip: rawTrip, totals } = data;
   const trip = rawTrip as unknown as {
     id: string;
