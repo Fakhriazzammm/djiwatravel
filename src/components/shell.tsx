@@ -1,5 +1,5 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { Home, Compass, Smartphone, User, ChevronLeft, WalletCards } from "lucide-react";
+import { Home, Compass, BriefcaseBusiness, User, ChevronLeft, WalletCards } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import logo from "@/assets/logo.png";
@@ -9,7 +9,7 @@ import { FixedLayer } from "@/components/motion-primitives";
 const tabs = [
   { to: "/", label: "Home", icon: Home },
   { to: "/explore", label: "Explore", icon: Compass },
-  { to: "/my-esim", label: "My eSIM", icon: Smartphone },
+  { to: "/my-trips", label: "My Trips", icon: BriefcaseBusiness },
   { to: "/wallet", label: "Wallet", icon: WalletCards },
   { to: "/profile", label: "Profile", icon: User },
 ] as const;

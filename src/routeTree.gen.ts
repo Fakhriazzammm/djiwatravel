@@ -48,6 +48,9 @@ import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
 import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
+import { Route as MyTripsIndexRouteImport } from './routes/my-trips.index'
+import { Route as MyTripsTripIdRouteImport } from './routes/my-trips.$tripId'
+import { Route as MyTripsNewRouteImport } from './routes/my-trips.new'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as PanduanIndexRouteImport } from './routes/panduan.index'
 import { Route as PanduanSlugRouteImport } from './routes/panduan.$slug'
@@ -60,6 +63,7 @@ import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.top
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
+import { Route as MyTripsTripIdSectionRouteImport } from './routes/my-trips.$tripId.$section'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -258,6 +262,21 @@ const MyEsimIdRoute = MyEsimIdRouteImport.update({
   path: '/my-esim/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyTripsIndexRoute = MyTripsIndexRouteImport.update({
+  id: '/my-trips/',
+  path: '/my-trips/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyTripsTripIdRoute = MyTripsTripIdRouteImport.update({
+  id: '/my-trips/$tripId',
+  path: '/my-trips/$tripId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyTripsNewRoute = MyTripsNewRouteImport.update({
+  id: '/my-trips/new',
+  path: '/my-trips/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrderIdRoute = OrderIdRouteImport.update({
   id: '/order/$id',
   path: '/order/$id',
@@ -319,6 +338,11 @@ const ApiWebhooksDjiwaTravelRoute = ApiWebhooksDjiwaTravelRouteImport.update({
   path: '/api/webhooks/djiwa-travel',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyTripsTripIdSectionRoute = MyTripsTripIdSectionRouteImport.update({
+  id: '/$section',
+  path: '/$section',
+  getParentRoute: () => MyTripsTripIdRoute,
+} as any)
 const ApiWebhooksEsimAccessTokenRoute =
   ApiWebhooksEsimAccessTokenRouteImport.update({
     id: '/api/webhooks/esim-access/$token',
@@ -364,6 +388,8 @@ export interface FileRoutesByFullPath {
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
+  '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
+  '/my-trips/new': typeof MyTripsNewRoute
   '/order/$id': typeof OrderIdRoute
   '/panduan/$slug': typeof PanduanSlugRoute
   '/plan/$id': typeof PlanIdRoute
@@ -371,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/refund/$order': typeof RefundOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
+  '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -378,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
+  '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
 export interface FileRoutesByTo {
@@ -418,6 +446,8 @@ export interface FileRoutesByTo {
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
+  '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
+  '/my-trips/new': typeof MyTripsNewRoute
   '/order/$id': typeof OrderIdRoute
   '/panduan/$slug': typeof PanduanSlugRoute
   '/plan/$id': typeof PlanIdRoute
@@ -425,6 +455,7 @@ export interface FileRoutesByTo {
   '/refund/$order': typeof RefundOrderRoute
   '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
+  '/my-trips': typeof MyTripsIndexRoute
   '/panduan': typeof PanduanIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -432,6 +463,7 @@ export interface FileRoutesByTo {
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
+  '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
 export interface FileRoutesById {
@@ -473,6 +505,8 @@ export interface FileRoutesById {
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/my-esim/$id': typeof MyEsimIdRoute
+  '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
+  '/my-trips/new': typeof MyTripsNewRoute
   '/order/$id': typeof OrderIdRoute
   '/panduan/$slug': typeof PanduanSlugRoute
   '/plan/$id': typeof PlanIdRoute
@@ -480,6 +514,7 @@ export interface FileRoutesById {
   '/refund/$order': typeof RefundOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
+  '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -487,6 +522,7 @@ export interface FileRoutesById {
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
+  '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
 export interface FileRouteTypes {
@@ -529,6 +565,8 @@ export interface FileRouteTypes {
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
+    | '/my-trips/$tripId'
+    | '/my-trips/new'
     | '/order/$id'
     | '/panduan/$slug'
     | '/plan/$id'
@@ -536,6 +574,7 @@ export interface FileRouteTypes {
     | '/refund/$order'
     | '/admin/'
     | '/my-esim/'
+    | '/my-trips/'
     | '/panduan/'
     | '/admin/orders/$id'
     | '/api/auth/$'
@@ -543,6 +582,7 @@ export interface FileRouteTypes {
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
+    | '/my-trips/$tripId/$section'
     | '/api/webhooks/esim-access/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -583,6 +623,8 @@ export interface FileRouteTypes {
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
+    | '/my-trips/$tripId'
+    | '/my-trips/new'
     | '/order/$id'
     | '/panduan/$slug'
     | '/plan/$id'
@@ -590,6 +632,7 @@ export interface FileRouteTypes {
     | '/refund/$order'
     | '/admin'
     | '/my-esim'
+    | '/my-trips'
     | '/panduan'
     | '/admin/orders/$id'
     | '/api/auth/$'
@@ -597,6 +640,7 @@ export interface FileRouteTypes {
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
+    | '/my-trips/$tripId/$section'
     | '/api/webhooks/esim-access/$token'
   id:
     | '__root__'
@@ -637,6 +681,8 @@ export interface FileRouteTypes {
     | '/checkout/$id'
     | '/destination/$code'
     | '/my-esim/$id'
+    | '/my-trips/$tripId'
+    | '/my-trips/new'
     | '/order/$id'
     | '/panduan/$slug'
     | '/plan/$id'
@@ -644,6 +690,7 @@ export interface FileRouteTypes {
     | '/refund/$order'
     | '/admin/'
     | '/my-esim/'
+    | '/my-trips/'
     | '/panduan/'
     | '/admin/orders/$id'
     | '/api/auth/$'
@@ -651,6 +698,7 @@ export interface FileRouteTypes {
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
+    | '/my-trips/$tripId/$section'
     | '/api/webhooks/esim-access/$token'
   fileRoutesById: FileRoutesById
 }
@@ -692,6 +740,8 @@ export interface RootRouteChildren {
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
+  MyTripsTripIdRoute: typeof MyTripsTripIdRouteWithChildren
+  MyTripsNewRoute: typeof MyTripsNewRoute
   OrderIdRoute: typeof OrderIdRoute
   PanduanSlugRoute: typeof PanduanSlugRoute
   PlanIdRoute: typeof PlanIdRoute
@@ -699,6 +749,7 @@ export interface RootRouteChildren {
   RefundOrderRoute: typeof RefundOrderRoute
   AdminIndexRoute: typeof AdminIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
+  MyTripsIndexRoute: typeof MyTripsIndexRoute
   PanduanIndexRoute: typeof PanduanIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
@@ -983,6 +1034,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyEsimIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-trips/': {
+      id: '/my-trips/'
+      path: '/my-trips'
+      fullPath: '/my-trips/'
+      preLoaderRoute: typeof MyTripsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-trips/$tripId': {
+      id: '/my-trips/$tripId'
+      path: '/my-trips/$tripId'
+      fullPath: '/my-trips/$tripId'
+      preLoaderRoute: typeof MyTripsTripIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-trips/new': {
+      id: '/my-trips/new'
+      path: '/my-trips/new'
+      fullPath: '/my-trips/new'
+      preLoaderRoute: typeof MyTripsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/order/$id': {
       id: '/order/$id'
       path: '/order/$id'
@@ -1067,6 +1139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksDjiwaTravelRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-trips/$tripId/$section': {
+      id: '/my-trips/$tripId/$section'
+      path: '/$section'
+      fullPath: '/my-trips/$tripId/$section'
+      preLoaderRoute: typeof MyTripsTripIdSectionRouteImport
+      parentRoute: typeof MyTripsTripIdRoute
+    }
     '/api/webhooks/esim-access/$token': {
       id: '/api/webhooks/esim-access/$token'
       path: '/api/webhooks/esim-access/$token'
@@ -1087,6 +1166,18 @@ const AdminOrdersRouteChildren: AdminOrdersRouteChildren = {
 
 const AdminOrdersRouteWithChildren = AdminOrdersRoute._addFileChildren(
   AdminOrdersRouteChildren,
+)
+
+interface MyTripsTripIdRouteChildren {
+  MyTripsTripIdSectionRoute: typeof MyTripsTripIdSectionRoute
+}
+
+const MyTripsTripIdRouteChildren: MyTripsTripIdRouteChildren = {
+  MyTripsTripIdSectionRoute: MyTripsTripIdSectionRoute,
+}
+
+const MyTripsTripIdRouteWithChildren = MyTripsTripIdRoute._addFileChildren(
+  MyTripsTripIdRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
@@ -1127,6 +1218,8 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
   MyEsimIdRoute: MyEsimIdRoute,
+  MyTripsTripIdRoute: MyTripsTripIdRouteWithChildren,
+  MyTripsNewRoute: MyTripsNewRoute,
   OrderIdRoute: OrderIdRoute,
   PanduanSlugRoute: PanduanSlugRoute,
   PlanIdRoute: PlanIdRoute,
@@ -1134,6 +1227,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefundOrderRoute: RefundOrderRoute,
   AdminIndexRoute: AdminIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
+  MyTripsIndexRoute: MyTripsIndexRoute,
   PanduanIndexRoute: PanduanIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
