@@ -446,7 +446,7 @@ export const customerProfiles = pgTable(
   },
   (table) => [
     unique("customer_profiles_email_key").on(table.email),
-    check("customer_profiles_whatsapp_check", sql`whatsapp ~ '^[0-9]{9,15}$'`),
+    check("customer_profiles_whatsapp_check", sql`whatsapp ~ '^62[0-9]{7,13}$'`),
   ],
 );
 
