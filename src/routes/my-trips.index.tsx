@@ -11,6 +11,8 @@ import {
 import { useState } from "react";
 import { Page, btnRed, btnSoft, group, row } from "@/components/shell";
 import { getMyTrips } from "@/lib/my-trips.server";
+import { CustomerAuth } from "@/components/customer-auth";
+import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 
 export const Route = createFileRoute("/my-trips/")({
   loader: () => getMyTrips(),
@@ -45,6 +47,7 @@ const rupiah = (minor: number) =>
 
 function MyTrips() {
   const trips = Route.useLoaderData();
+  const { user, setUser, loading: authLoading } = useBetterAuthUser();
   const [active, setActive] = useState<(typeof tabs)[number]>("upcoming");
   const filtered = trips.filter((trip) => trip.status === active);
   return (
@@ -57,13 +60,15 @@ function MyTrips() {
           <h1 className="mt-1 large-title">My Trips</h1>
           <p className="mt-2 text-sm text-muted-foreground">Rencanakan perjalananmu.</p>
         </div>
-        <Link
-          to="/my-trips/new"
-          className="tap mt-1 flex size-11 items-center justify-center rounded-full bg-brand-red text-white"
-          aria-label="Buat perjalanan"
-        >
-          <Plus className="size-5" />
-        </Link>
+        {user && (
+          <Link
+            to="/my-trips/new"
+            className="tap mt-1 flex size-11 items-center justify-center rounded-full bg-brand-red text-white"
+            aria-label="Buat perjalanan"
+          >
+            <Plus className="size-5" />
+          </Link>
+        )}
       </header>
       <div
         className="mt-5 grid grid-cols-3 rounded-xl bg-secondary p-1"
@@ -85,13 +90,34 @@ function MyTrips() {
       {filtered.length === 0 ? (
         <div className="mt-20 text-center">
           <BriefcaseBusiness className="mx-auto size-12 text-muted-foreground" strokeWidth={1.4} />
-          <h2 className="mt-4 text-lg font-semibold">Belum ada perjalanan.</h2>
-          <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
-            Mulai rencanakan perjalanan pertamamu.
-          </p>
-          <Link to="/my-trips/new" className={`${btnRed} mx-auto mt-6 max-w-xs`}>
-            Buat Perjalanan
-          </Link>
+          {authLoading ? (
+            <>
+              <h2 className="mt-4 text-lg font-semibold">Memuat akun…</h2>
+              <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
+                Memeriksa sesi loginmu.
+              </p>
+            </>
+          ) : user ? (
+            <>
+              <h2 className="mt-4 text-lg font-semibold">Belum ada perjalanan.</h2>
+              <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
+                Mulai rencanakan perjalanan pertamamu.
+              </p>
+              <Link to="/my-trips/new" className={`${btnRed} mx-auto mt-6 max-w-xs`}>
+                Buat Perjalanan
+              </Link>
+            </>
+          ) : (
+            <>
+              <h2 className="mt-4 text-lg font-semibold">Masuk untuk melihat perjalanan.</h2>
+              <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
+                Login agar perjalananmu tersimpan dan bisa dikelola di sini.
+              </p>
+              <div className="mx-auto mt-6 max-w-xs">
+                <CustomerAuth onAuthenticated={setUser} />
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="mt-5 space-y-3">
