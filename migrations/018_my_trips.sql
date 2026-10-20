@@ -145,3 +145,20 @@ create table if not exists travel_trip_esims (
   linked_at timestamptz not null default now(),
   primary key (trip_id, esim_identity)
 );
+
+-- The application connects with a dedicated non-owner role on self-hosted Travel.
+-- Keep ownership in the migration runner while granting only CRUD access needed
+-- by the server functions.
+grant select, insert, update, delete on
+  travel_trips,
+  travel_budget_categories,
+  travel_expenses,
+  travel_itinerary_items,
+  travel_checklist_items,
+  travel_bookings,
+  travel_saved_places,
+  travel_documents,
+  travel_members,
+  travel_expense_shares,
+  travel_trip_esims
+  to djiwatravel_app;
