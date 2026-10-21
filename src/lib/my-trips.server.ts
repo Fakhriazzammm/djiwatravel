@@ -92,6 +92,8 @@ const checklistSchema = z.object({
   dueDate: z.string().date().optional(),
 });
 
+const bookingSchema = z.object({ tripId: z.string().uuid(), category: z.string().trim().max(80).optional(), title: z.string().trim().min(1).max(160), bookingDate: z.string().date().optional(), provider: z.string().trim().max(160).optional(), referenceNumber: z.string().trim().max(120).optional(), notes: z.string().trim().max(2000).optional() });
+
 const tripIdSchema = z.object({ tripId: z.string().uuid() });
 
 function statusFor(
@@ -324,6 +326,12 @@ export async function toggleChecklist(input: unknown) {
   return result.rows[0];
 }
 
+export async function addBooking(input: unknown) {
+  const data = bookingSchema.parse(input); const user = await requireBetterAuthUser(); await ownedTrip(data.tripId, user.id);
+  const result = await pool.query(`insert into travel_bookings (trip_id,category,title,booking_date,provider,reference_number,notes,status) values ($1,$2,$3,$4,$5,$6,$7,'planned') returning *`, [data.tripId, data.category ?? null, data.title, data.bookingDate ?? null, data.provider ?? null, data.referenceNumber ?? null, data.notes ?? null]);
+  return result.rows[0];
+}
+
 export async function addChecklistItem(input: unknown) {
   const data = checklistSchema.parse(input);
   const user = await requireBetterAuthUser();
@@ -361,6 +369,9 @@ export const postItinerary = createServerFn({ method: "POST" })
 export const postChecklist = createServerFn({ method: "POST" })
   .validator(checklistSchema)
   .handler(({ data }) => addChecklistItem(data));
+export const postBooking = createServerFn({ method: "POST" })
+  .validator(bookingSchema)
+  .handler(({ data }) => addBooking(data));
 export const patchChecklist = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), completed: z.boolean() }))
   .handler(({ data }) => toggleChecklist(data));

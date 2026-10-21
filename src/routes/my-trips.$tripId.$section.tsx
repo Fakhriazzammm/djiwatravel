@@ -3,6 +3,7 @@ import { useState } from "react";
 import { BackBar, Page } from "@/components/shell";
 import {
   getTrip,
+  postBooking,
   postChecklist,
   postExpense,
   postItinerary,
@@ -58,6 +59,11 @@ function TripSection() {
         title: String(form.get("title") ?? ""), location: String(form.get("location") ?? "") || undefined,
       }}); window.location.reload();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Agenda belum dapat disimpan."); setSaving(false); }
+  }
+  async function submitBooking(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(null); setSaving(true); const form = new FormData(event.currentTarget);
+    try { await postBooking({ data: { tripId, title: String(form.get("title") ?? ""), category: String(form.get("category") ?? "") || undefined, bookingDate: String(form.get("bookingDate") ?? "") || undefined, provider: String(form.get("provider") ?? "") || undefined, referenceNumber: String(form.get("referenceNumber") ?? "") || undefined }}); window.location.reload(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Booking belum dapat disimpan."); setSaving(false); }
   }
   async function submitChecklist(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(null); setSaving(true);
@@ -133,9 +139,7 @@ function TripSection() {
           </>
         )}
         {section === "bookings" && (
-          <div className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">
-            Booking belum memiliki form input. Tambahkan booking dari integrasi reservasi atau simpan detail manual setelah modul booking diaktifkan.
-          </div>
+          <><QuickForm onSubmit={submitBooking} saving={saving} submitLabel="Simpan booking"><input name="title" required placeholder="Judul booking" className="field" /><input name="category" placeholder="Kategori" className="field" /><input name="bookingDate" type="date" className="field" /><input name="provider" placeholder="Provider" className="field" /><input name="referenceNumber" placeholder="Nomor referensi" className="field" /></QuickForm><List title="Bookings manual" items={data.bookings.map((item) => `${item.title} · ${item.status}`)} empty="Belum ada booking manual." /></>
         )}
         {false && section === "bookings" && (
           <List
