@@ -47,6 +47,7 @@ const dateLabel = (value: string) => {
   if (Number.isNaN(date.getTime())) return "Tanggal belum diatur";
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
 };
+const statusLabel: Record<string, string> = { upcoming: "Segera berangkat", ongoing: "Sedang berjalan", past: "Selesai" };
 const money = (minor: number, currency: string) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency, maximumFractionDigits: 0 }).format(
     minor / 100,
@@ -88,6 +89,8 @@ function TripDetail() {
   const [error, setError] = useState<string | null>(null);
   const completed = checklist.filter((item) => item.is_completed).length;
   const progress = checklist.length ? Math.round((completed / checklist.length) * 100) : 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const nextAgenda = data.itinerary.find((item) => String(item.activity_date) >= today) ?? data.itinerary[0];
   async function toggle(id: string, value: boolean) {
     try {
       const updated = await patchChecklist({ data: { id, completed: value } });
@@ -118,7 +121,7 @@ function TripDetail() {
           <div>
             <h1 className="text-xl font-bold">{trip.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {trip.destination_name} · {trip.status}
+              {trip.destination_name} · {statusLabel[trip.status] ?? trip.status}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {dateLabel(String(trip.departure_date))} — {dateLabel(String(trip.return_date))}
@@ -176,7 +179,7 @@ function TripDetail() {
           </span>
         </div>
         <div className={group}>
-          {checklist.slice(0, 6).map((item) => (
+          {checklist.map((item) => (
             <label key={item.id} className={`${row} cursor-pointer`}>
               <span className="flex min-w-0 items-center gap-3">
                 <input
@@ -199,6 +202,7 @@ function TripDetail() {
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
               placeholder="Tambah checklist"
+              aria-label="Tambah checklist"
               className="min-w-0 flex-1 bg-transparent text-sm outline-none"
             />
           </form>
@@ -214,14 +218,14 @@ function TripDetail() {
       )}
       <section className="mt-6">
         <h2 className="mb-3 px-1 text-sm font-semibold text-muted-foreground">Agenda berikutnya</h2>
-        {data.itinerary[0] ? (
+        {nextAgenda ? (
           <div className="rounded-2xl bg-surface p-4">
             <p className="text-xs text-muted-foreground">
-              {dateLabel(String(data.itinerary[0].activity_date))}
+              {dateLabel(String(nextAgenda.activity_date))}
             </p>
-            <p className="mt-1 font-semibold">{data.itinerary[0].title}</p>
+            <p className="mt-1 font-semibold">{nextAgenda.title}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {data.itinerary[0].location || "Lokasi belum ditentukan"}
+              {nextAgenda.location || "Lokasi belum ditentukan"}
             </p>
           </div>
         ) : (
