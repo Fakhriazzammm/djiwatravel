@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   CalendarDays,
+  CalendarPlus,
   CheckSquare2,
   ChevronRight,
   CircleDollarSign,
@@ -50,6 +51,25 @@ const money = (minor: number, currency: string) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency, maximumFractionDigits: 0 }).format(
     minor / 100,
   );
+const googleCalendarDate = (value: string, addDay = false) => {
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return "";
+  if (addDay) date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10).replaceAll("-", "");
+};
+const googleCalendarUrl = (trip: { name: string; destination_name: string; departure_date: string; return_date: string }, details: string) => {
+  const start = googleCalendarDate(trip.departure_date);
+  const end = googleCalendarDate(trip.return_date, true);
+  if (!start || !end) return "https://calendar.google.com/calendar/u/0/r";
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `Djiwa Trip — ${trip.name}`,
+    dates: `${start}/${end}`,
+    location: trip.destination_name,
+    details,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+};
 function TripDetail() {
   const data = Route.useLoaderData();
   if (!data) return <TripDetailError />;
@@ -103,6 +123,18 @@ function TripDetail() {
             <p className="mt-1 text-xs text-muted-foreground">
               {dateLabel(String(trip.departure_date))} — {dateLabel(String(trip.return_date))}
             </p>
+            <a
+              href={googleCalendarUrl(
+                trip,
+                `Perjalanan ${trip.name} ke ${trip.destination_name}. Agenda dibuat dari Djiwa Travel.`,
+              )}
+              target="_blank"
+              rel="noreferrer"
+              className={`${btnSoft} mt-3 inline-flex min-h-10 px-3 text-xs font-semibold`}
+            >
+              <CalendarPlus className="size-4 text-brand-red" aria-hidden="true" />
+              Tambah ke Google Calendar
+            </a>
           </div>
         </div>
       </header>

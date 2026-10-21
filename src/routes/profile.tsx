@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, ChevronRight, LogOut } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { signOutBetterAuth } from "@/lib/better-auth-client";
 import { clearTravelLocalData } from "@/lib/travel-local-data";
@@ -209,6 +209,24 @@ function Profile() {
           </div>
         )}
       </div>
+
+      <section aria-labelledby="travel-calendar-heading" className="mt-5 overflow-hidden rounded-2xl bg-surface ring-1 ring-border/50">
+        <div className="flex items-center gap-3 p-4">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-red-soft text-brand-red">
+            <CalendarDays className="size-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 id="travel-calendar-heading" className="text-sm font-semibold">Jadwal My Trip</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Simpan rentang perjalanan ke Google Calendar dari detail trip.</p>
+          </div>
+        </div>
+        <div className="border-t border-border/60 px-4 py-3">
+          <Link to="/my-trips" className={`${row} tap min-h-11 rounded-xl bg-background px-3 text-sm font-semibold`}>
+            <span>Buka My Trips</span>
+            <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
 
       <h2 className={`${label} mt-6`}>Riwayat Pesanan</h2>
       <div
