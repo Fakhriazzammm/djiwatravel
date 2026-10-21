@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, ChevronRight, LogOut } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { signOutBetterAuth } from "@/lib/better-auth-client";
 import { clearTravelLocalData } from "@/lib/travel-local-data";
@@ -40,6 +40,9 @@ function Profile() {
   const [savingProfile, setSavingProfile] = useState(false);
   const profileSaveLabel = useStagedLabel(savingProfile, ACTION_STAGES.profileSave);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [calendarAccount, setCalendarAccount] = useState<string | null>(null);
+  const [calendarBusy, setCalendarBusy] = useState(false);
   const [orderFilter, setOrderFilter] = useState<"ALL" | "PENDING" | "READY" | "TERMINAL">("ALL");
   const filteredOrders = orders.filter((o) => {
     const status = effectiveOrderStatus(o.status, o.expiresAt);
@@ -61,8 +64,17 @@ function Profile() {
     if (!user) {
       setProfileSaved(false);
       setEditingProfile(false);
+      setCalendarConnected(false);
+      setCalendarAccount(null);
       return;
     }
+    void fetch("/api/google-calendar/status", { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((status: { connected?: boolean; accountEmail?: string | null } | null) => {
+        setCalendarConnected(Boolean(status?.connected));
+        setCalendarAccount(status?.accountEmail ?? null);
+      })
+      .catch(() => undefined);
     void loadCustomerProfile()
       .then((saved) => {
         setProfile(saved ?? { email: user.email ?? "", whatsapp: "" });
@@ -209,6 +221,40 @@ function Profile() {
           </div>
         )}
       </div>
+
+      <section aria-labelledby="travel-calendar-heading" className="mt-5 overflow-hidden rounded-2xl bg-surface ring-1 ring-border/50">
+        <div className="flex items-center gap-3 p-4">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-red-soft text-brand-red">
+            <CalendarDays className="size-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 id="travel-calendar-heading" className="text-sm font-semibold">Sinkronisasi jadwal trip</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Setiap item itinerary akan dibuat sebagai event dan otomatis diperbarui di Google Calendar.</p>
+            {calendarConnected && <p className="mt-1 text-xs font-medium text-success">Terhubung{calendarAccount ? ` · ${calendarAccount}` : ""}</p>}
+          </div>
+        </div>
+        <div className="border-t border-border/60 space-y-2 px-4 py-3">
+          <Link to="/my-trips" className={`${row} tap min-h-11 rounded-xl bg-background px-3 text-sm font-semibold`}>
+            <span>Buka My Trips</span>
+            <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+          </Link>
+          {user && !calendarConnected && (
+            <a href="/api/google-calendar/connect" className="tap flex min-h-11 items-center justify-center rounded-xl bg-brand-red px-3 text-sm font-semibold text-white">
+              Hubungkan Google Calendar
+            </a>
+          )}
+          {user && calendarConnected && (
+            <button type="button" disabled={calendarBusy} onClick={() => {
+              setCalendarBusy(true);
+              void fetch("/api/google-calendar/disconnect", { method: "POST", credentials: "include" })
+                .then(() => { setCalendarConnected(false); setCalendarAccount(null); })
+                .finally(() => setCalendarBusy(false));
+            }} className="tap flex min-h-11 w-full items-center justify-center rounded-xl bg-background px-3 text-sm font-semibold text-muted-foreground ring-1 ring-border/60 disabled:opacity-50">
+              {calendarBusy ? "Memutuskan…" : "Putuskan koneksi (event tetap ada)"}
+            </button>
+          )}
+        </div>
+      </section>
 
       <h2 className={`${label} mt-6`}>Riwayat Pesanan</h2>
       <div

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pool } from "@/db/client.server";
 import { requireBetterAuthUser } from "@/lib/customer-profile.server";
+import { syncItineraryItem } from "@/lib/google-calendar.server";
 
 const currencies = ["IDR", "JPY", "USD", "SGD", "KRW"] as const;
 const defaultCategories = [
@@ -302,7 +303,14 @@ export async function addItineraryItem(input: unknown) {
       data.activityCategory ?? null,
     ],
   );
-  return result.rows[0];
+  const item = result.rows[0];
+  try {
+    await syncItineraryItem(String(item.id), user.id);
+  } catch (error) {
+    // Calendar sync must never roll back a saved itinerary item.
+    console.error("[google-calendar] itinerary sync failed", error);
+  }
+  return item;
 }
 
 export async function toggleChecklist(input: unknown) {

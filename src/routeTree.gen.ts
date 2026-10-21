@@ -60,6 +60,10 @@ import { Route as RefundOrderRouteImport } from './routes/refund.$order'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.topup'
+import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api.google-calendar.callback'
+import { Route as ApiGoogleCalendarConnectRouteImport } from './routes/api.google-calendar.connect'
+import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api.google-calendar.disconnect'
+import { Route as ApiGoogleCalendarStatusRouteImport } from './routes/api.google-calendar.status'
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
@@ -322,6 +326,29 @@ const ApiDjiwaPayTopupRoute = ApiDjiwaPayTopupRouteImport.update({
   path: '/api/djiwa-pay/topup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGoogleCalendarCallbackRoute =
+  ApiGoogleCalendarCallbackRouteImport.update({
+    id: '/api/google-calendar/callback',
+    path: '/api/google-calendar/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGoogleCalendarConnectRoute =
+  ApiGoogleCalendarConnectRouteImport.update({
+    id: '/api/google-calendar/connect',
+    path: '/api/google-calendar/connect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGoogleCalendarDisconnectRoute =
+  ApiGoogleCalendarDisconnectRouteImport.update({
+    id: '/api/google-calendar/disconnect',
+    path: '/api/google-calendar/disconnect',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiGoogleCalendarStatusRoute = ApiGoogleCalendarStatusRouteImport.update({
+  id: '/api/google-calendar/status',
+  path: '/api/google-calendar/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTasksEsimSyncRoute = ApiTasksEsimSyncRouteImport.update({
   id: '/api/tasks/esim-sync',
   path: '/api/tasks/esim-sync',
@@ -402,6 +429,10 @@ export interface FileRoutesByFullPath {
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
+  '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
+  '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
+  '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -460,6 +491,10 @@ export interface FileRoutesByTo {
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
+  '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
+  '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
+  '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -519,6 +554,10 @@ export interface FileRoutesById {
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
+  '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
+  '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
+  '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -579,6 +618,10 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
+    | '/api/google-calendar/callback'
+    | '/api/google-calendar/connect'
+    | '/api/google-calendar/disconnect'
+    | '/api/google-calendar/status'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -637,6 +680,10 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
+    | '/api/google-calendar/callback'
+    | '/api/google-calendar/connect'
+    | '/api/google-calendar/disconnect'
+    | '/api/google-calendar/status'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -695,6 +742,10 @@ export interface FileRouteTypes {
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/topup'
+    | '/api/google-calendar/callback'
+    | '/api/google-calendar/connect'
+    | '/api/google-calendar/disconnect'
+    | '/api/google-calendar/status'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -753,6 +804,10 @@ export interface RootRouteChildren {
   PanduanIndexRoute: typeof PanduanIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
+  ApiGoogleCalendarCallbackRoute: typeof ApiGoogleCalendarCallbackRoute
+  ApiGoogleCalendarConnectRoute: typeof ApiGoogleCalendarConnectRoute
+  ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
+  ApiGoogleCalendarStatusRoute: typeof ApiGoogleCalendarStatusRoute
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
@@ -1118,6 +1173,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDjiwaPayTopupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/google-calendar/callback': {
+      id: '/api/google-calendar/callback'
+      path: '/api/google-calendar/callback'
+      fullPath: '/api/google-calendar/callback'
+      preLoaderRoute: typeof ApiGoogleCalendarCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-calendar/connect': {
+      id: '/api/google-calendar/connect'
+      path: '/api/google-calendar/connect'
+      fullPath: '/api/google-calendar/connect'
+      preLoaderRoute: typeof ApiGoogleCalendarConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-calendar/disconnect': {
+      id: '/api/google-calendar/disconnect'
+      path: '/api/google-calendar/disconnect'
+      fullPath: '/api/google-calendar/disconnect'
+      preLoaderRoute: typeof ApiGoogleCalendarDisconnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-calendar/status': {
+      id: '/api/google-calendar/status'
+      path: '/api/google-calendar/status'
+      fullPath: '/api/google-calendar/status'
+      preLoaderRoute: typeof ApiGoogleCalendarStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tasks/esim-sync': {
       id: '/api/tasks/esim-sync'
       path: '/api/tasks/esim-sync'
@@ -1231,6 +1314,10 @@ const rootRouteChildren: RootRouteChildren = {
   PanduanIndexRoute: PanduanIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
+  ApiGoogleCalendarCallbackRoute: ApiGoogleCalendarCallbackRoute,
+  ApiGoogleCalendarConnectRoute: ApiGoogleCalendarConnectRoute,
+  ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,
+  ApiGoogleCalendarStatusRoute: ApiGoogleCalendarStatusRoute,
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
