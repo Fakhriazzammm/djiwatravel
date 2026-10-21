@@ -1,192 +1,60 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { BackBar, Page } from "@/components/shell";
-import {
-  getTrip,
-  postBooking,
-  postChecklist,
-  postExpense,
-  postItinerary,
-} from "@/lib/my-trips.server";
+import { getTrip, postBooking, postChecklist, postExpense, postItinerary, patchTrip, patchBudget, patchExpense, patchItinerary, patchChecklistItem, patchBooking, removeTripEntity } from "@/lib/my-trips.server";
 
-export const Route = createFileRoute("/my-trips/$tripId/$section")({
-  loader: ({ params }) => getTrip({ data: { tripId: params.tripId } }),
-  component: TripSection,
-});
-const labels: Record<string, string> = {
-  budget: "Budget",
-  expenses: "Expenses",
-  itinerary: "Itinerary",
-  checklist: "Checklist",
-  bookings: "Bookings",
-  places: "Saved Places",
-  documents: "Documents",
-  group: "Travel Group",
-  "split-bill": "Split Bill",
-  currency: "Currency",
-  "ai-planner": "AI Planner",
-};
+export const Route = createFileRoute("/my-trips/$tripId/$section")({ loader: ({ params }) => getTrip({ data: { tripId: params.tripId } }), component: TripSection });
+const labels: Record<string, string> = { budget:"Budget", expenses:"Expenses", itinerary:"Itinerary", checklist:"Checklist", bookings:"Bookings" };
+const today = () => new Date().toISOString().slice(0, 10);
 function TripSection() {
-  const { section, tripId } = Route.useParams();
-  const data = Route.useLoaderData();
-  const trip = data.trip as unknown as {
-    id: string;
-    name: string;
-    primary_currency: string;
-    total_budget_minor: number;
-  };
-  const title = labels[section] ?? "Perjalanan";
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  async function submitExpense(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(null); setSaving(true);
-    const form = new FormData(event.currentTarget);
+  const { section, tripId } = Route.useParams(); const data = Route.useLoaderData();
+  const trip = data.trip as any; const title = labels[section] ?? "Perjalanan";
+  const [error,setError]=useState<string|null>(null); const [saving,setSaving]=useState(false);
+  const refresh=()=>window.location.reload();
+  async function run(action:()=>Promise<unknown>) { setError(null); setSaving(true); try { await action(); refresh(); } catch(e) { setError(e instanceof Error?e.message:"Perubahan belum dapat disimpan."); setSaving(false); } }
+  async function submit(event:React.FormEvent<HTMLFormElement>, action:(form:FormData)=>Promise<unknown>) { event.preventDefault(); await run(()=>action(new FormData(event.currentTarget))); }
+  const id=(name:string, form:FormData)=>String(form.get(name)??"");
+  const amount=(name:string, form:FormData)=>Math.round(Number(form.get(name)??0)*100);
+  return <Page><BackBar title={title}/><h1 className="text-2xl font-bold">{title}</h1><p className="mt-2 text-sm text-muted-foreground">Kelola {title.toLowerCase()} untuk {trip.name}.</p>
+    <div className="mt-6 space-y-4">
+      {section==="budget" && <BudgetEditor data={data} trip={trip} saving={saving} onError={setError} onRun={run} />}
+      {section==="expenses" && <EntityEditor title="Pengeluaran" items={data.expenses} saving={saving} error={error} onError={setError} onRun={run} render={(item:any, editing:string|null, setEditing:any)=><ExpenseRow item={item} trip={trip} editing={editing===item.id} setEditing={setEditing} /> } add={<QuickForm onSubmit={(e)=>submit(e,async f=>postExpense({data:{tripId,description:id("description",f),transactionDate:id("transactionDate",f),originalAmountMinor:amount("amount",f),originalCurrency:trip.primary_currency,convertedAmountMinor:amount("amount",f),convertedCurrency:trip.primary_currency,paymentMethod:id("paymentMethod",f)||undefined,notes:id("notes",f)||undefined}}))} saving={saving} label="Simpan pengeluaran"><input name="description" required placeholder="Deskripsi" className="field"/><input name="transactionDate" required type="date" defaultValue={today()} className="field"/><input name="amount" required min="1" type="number" placeholder={`Nominal (${trip.primary_currency})`} className="field"/><input name="paymentMethod" placeholder="Metode pembayaran" className="field"/><textarea name="notes" placeholder="Catatan" className="field"/></QuickForm>} />}
+      {section==="itinerary" && <EntityEditor title="Agenda" items={data.itinerary} saving={saving} error={error} onError={setError} onRun={run} render={(item:any,editing:string|null,setEditing:any)=><ItineraryRow item={item} trip={trip} editing={editing===item.id} setEditing={setEditing}/>} add={<QuickForm onSubmit={(e)=>submit(e,async f=>postItinerary({data:{tripId,activityDate:id("activityDate",f),startTime:id("startTime",f)||undefined,endTime:id("endTime",f)||undefined,title:id("title",f),location:id("location",f)||undefined,notes:id("notes",f)||undefined,estimatedCostMinor:amount("estimatedCost",f)||undefined,currency:trip.primary_currency,bookingReference:id("bookingReference",f)||undefined,activityCategory:id("activityCategory",f)||undefined}}))} saving={saving} label="Tambah agenda"><input name="title" required placeholder="Judul agenda" className="field"/><input name="activityDate" required type="date" defaultValue={today()} className="field"/><div className="grid grid-cols-2 gap-2"><input name="startTime" type="time" className="field"/><input name="endTime" type="time" className="field"/></div><input name="location" placeholder="Lokasi" className="field"/><input name="activityCategory" placeholder="Kategori" className="field"/><input name="estimatedCost" type="number" min="0" placeholder="Estimasi biaya" className="field"/><input name="bookingReference" placeholder="Referensi booking" className="field"/><textarea name="notes" placeholder="Catatan" className="field"/></QuickForm>} />}
+      {section==="checklist" && <EntityEditor title="Checklist" items={data.checklist} saving={saving} error={error} onError={setError} onRun={run} render={(item:any,editing:string|null,setEditing:any)=><ChecklistRow item={item} editing={editing===item.id} setEditing={setEditing}/>} add={<QuickForm onSubmit={(e)=>submit(e,async f=>postChecklist({data:{tripId,title:id("title",f),dueDate:id("dueDate",f)||undefined}}))} saving={saving} label="Tambah checklist"><input name="title" required placeholder="Item checklist" className="field"/><input name="dueDate" type="date" className="field"/></QuickForm>} />}
+      {section==="bookings" && <EntityEditor title="Booking" items={data.bookings} saving={saving} error={error} onError={setError} onRun={run} render={(item:any,editing:string|null,setEditing:any)=><BookingRow item={item} editing={editing===item.id} setEditing={setEditing}/>} add={<QuickForm onSubmit={(e)=>submit(e,async f=>postBooking({data:{tripId,title:id("title",f),category:id("category",f)||undefined,bookingDate:id("bookingDate",f)||undefined,provider:id("provider",f)||undefined,referenceNumber:id("referenceNumber",f)||undefined,notes:id("notes",f)||undefined}}))} saving={saving} label="Simpan booking"><input name="title" required placeholder="Judul booking" className="field"/><input name="category" placeholder="Kategori" className="field"/><input name="bookingDate" type="date" className="field"/><input name="provider" placeholder="Provider" className="field"/><input name="referenceNumber" placeholder="Nomor referensi" className="field"/><textarea name="notes" placeholder="Catatan" className="field"/></QuickForm>} />}
+      {error&&<p className="rounded-xl bg-brand-red-soft px-3 py-2 text-sm text-brand-red" role="alert">{error}</p>}
+    </div><Link to="/my-trips/$tripId" params={{tripId}} className="mt-6 block text-center text-sm font-semibold text-brand-red">Kembali ke detail perjalanan</Link>
+  </Page>;
+}
+function BudgetEditor({data,trip,saving,onRun,onError}:{data:any;trip:any;saving:boolean;onRun:(a:()=>Promise<unknown>)=>Promise<void>;onError:(x:string|null)=>void}) {
+ const [form,setForm]=useState<any>({name:"",allocated:""}); const [editing,setEditing]=useState<string|null>(null);
+ return <><QuickForm saving={saving} label="Simpan pengaturan trip" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void onRun(()=>patchTrip({data:{tripId:trip.id,name:String(f.get("name")),destinationCode:trip.destination_code,destinationName:String(f.get("destinationName")),departureDate:String(f.get("departureDate")),returnDate:String(f.get("returnDate")),travelersCount:Number(f.get("travelersCount")),primaryCurrency:trip.primary_currency,totalBudgetMinor:Math.round(Number(f.get("totalBudget"))*100),timezone:String(f.get("timezone")||"")||undefined}}))}}><input name="name" required defaultValue={trip.name} placeholder="Nama perjalanan" className="field"/><input name="destinationName" required defaultValue={trip.destination_name} placeholder="Destinasi" className="field"/><div className="grid grid-cols-2 gap-2"><input name="departureDate" required type="date" defaultValue={String(trip.departure_date).slice(0,10)} className="field"/><input name="returnDate" required type="date" defaultValue={String(trip.return_date).slice(0,10)} className="field"/></div><div className="grid grid-cols-2 gap-2"><input name="travelersCount" required type="number" min="1" defaultValue={trip.travelers_count} className="field"/><input name="totalBudget" required type="number" min="0" defaultValue={Number(trip.total_budget_minor)/100} placeholder="Total budget" className="field"/></div><input name="timezone" defaultValue={trip.timezone||""} placeholder="Timezone (opsional)" className="field"/></QuickForm><section><h2 className="mb-3 text-sm font-semibold text-muted-foreground">Alokasi kategori</h2><div className="space-y-2">{data.budget.map((item:any)=><div key={item.id} className="rounded-2xl bg-surface p-3">{editing===item.id?<form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void onRun(()=>patchBudget({data:{tripId:trip.id,id:item.id,name:String(f.get("name")),allocatedMinor:Math.round(Number(f.get("allocated"))*100),currency:trip.primary_currency}}));setEditing(null)}} className="space-y-2"><input name="name" defaultValue={item.name} className="field"/><input name="allocated" type="number" min="0" defaultValue={Number(item.allocated_minor)/100} className="field"/><button className="btn-primary">Simpan</button></form>:<div className="flex items-center gap-3"><span className="flex-1 text-sm font-medium">{item.name}<small className="block text-muted-foreground">{new Intl.NumberFormat("id-ID",{style:"currency",currency:trip.primary_currency,maximumFractionDigits:0}).format(Number(item.allocated_minor)/100)}</small></span><button className="btn-secondary" onClick={()=>setEditing(item.id)}>Edit</button></div>}</div>)}</div></section></>;
+}
+function EntityEditor({title,items,add,render,saving,error,onError,onRun}:{title:string;items:any[];add:React.ReactNode;render:(item:any,editing:string|null,setEditing:(id:string|null)=>void)=>React.ReactNode;saving:boolean;error:string|null;onError:(x:string|null)=>void;onRun:(a:()=>Promise<unknown>)=>Promise<void>}){const [editing,setEditing]=useState<string|null>(null);return <><div>{add}</div><section><h2 className="mb-3 text-sm font-semibold text-muted-foreground">{title}</h2><div className="space-y-2">{items.length?items.map(i=><div key={i.id}>{render(i,editing,setEditing)}</div>):<div className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">Belum ada {title.toLowerCase()}.</div>}</div></section></>}
+function ExpenseRow({item,trip,editing,setEditing}:{item:any;trip:any;editing:boolean;setEditing:(id:string|null)=>void}){return editing?<InlineForm item={item} trip={trip} type="expense" onClose={()=>setEditing(null)}/>:<Row text={`${item.description} · ${item.original_currency} ${Number(item.original_amount_minor)/100}`} onEdit={()=>setEditing(item.id)} tripId={trip.id} id={item.id} entity="expense"/>}
+function ItineraryRow({item,trip,editing,setEditing}:{item:any;trip:any;editing:boolean;setEditing:(id:string|null)=>void}){return editing?<InlineForm item={item} trip={trip} type="itinerary" onClose={()=>setEditing(null)}/>:<Row text={`${item.activity_date} · ${item.title}${item.location?` · ${item.location}`:""}`} onEdit={()=>setEditing(item.id)} tripId={trip.id} id={item.id} entity="itinerary"/>}
+function ChecklistRow({item,editing,setEditing}:{item:any;editing:boolean;setEditing:(id:string|null)=>void}){return editing?<InlineForm item={item} type="checklist" onClose={()=>setEditing(null)}/>:<Row text={`${item.is_completed?"✓":"○"} ${item.title}${item.due_date?` · jatuh tempo ${item.due_date}`:""}`} onEdit={()=>setEditing(item.id)} tripId={item.trip_id} id={item.id} entity="checklist"/>}
+function BookingRow({item,editing,setEditing}:{item:any;editing:boolean;setEditing:(id:string|null)=>void}){return editing?<InlineForm item={item} type="booking" onClose={()=>setEditing(null)}/>:<Row text={`${item.title} · ${item.provider||"Provider belum diatur"} · ${item.status}`} onEdit={()=>setEditing(item.id)} tripId={item.trip_id} id={item.id} entity="booking"/>}
+function Row({text,onEdit,tripId,id,entity}:{text:string;onEdit:()=>void;tripId:string;id:string;entity:string}){const [busy,setBusy]=useState(false);return <div className="flex items-center gap-2 rounded-2xl bg-surface px-4 py-3 text-sm"><span className="flex-1">{text}</span><button className="btn-secondary" onClick={onEdit}>Edit</button><button className="text-xs font-semibold text-brand-red disabled:opacity-50" disabled={busy} onClick={async()=>{if(!confirm("Hapus item ini?"))return;setBusy(true);try{await removeTripEntity({data:{tripId,id,entity:entity as any}});window.location.reload()}finally{setBusy(false)}}}>Hapus</button></div>}
+function InlineForm({ item, trip, type, onClose }: { item: any; trip?: any; type: string; onClose: () => void }) {
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const f = new FormData(event.currentTarget);
     try {
-      await postExpense({ data: {
-        tripId, description: String(form.get("description") ?? ""), transactionDate: String(form.get("transactionDate") ?? ""),
-        originalAmountMinor: Math.round(Number(form.get("amount") ?? 0) * 100), originalCurrency: trip.primary_currency,
-        convertedAmountMinor: Math.round(Number(form.get("amount") ?? 0) * 100), convertedCurrency: trip.primary_currency,
-      }});
+      if (type === "expense") await patchExpense({ data: { tripId: trip.id, id: item.id, description: String(f.get("description")), transactionDate: String(f.get("transactionDate")), originalAmountMinor: Math.round(Number(f.get("amount")) * 100), originalCurrency: trip.primary_currency, convertedAmountMinor: Math.round(Number(f.get("amount")) * 100), convertedCurrency: trip.primary_currency } });
+      if (type === "itinerary") await patchItinerary({ data: { tripId: trip.id, id: item.id, activityDate: String(f.get("activityDate")), startTime: String(f.get("startTime") || "") || undefined, endTime: String(f.get("endTime") || "") || undefined, title: String(f.get("title")), location: String(f.get("location") || "") || undefined } });
+      if (type === "checklist") await patchChecklistItem({ data: { tripId: item.trip_id, id: item.id, title: String(f.get("title")), dueDate: String(f.get("dueDate") || "") || undefined, completed: item.is_completed } });
+      if (type === "booking") await patchBooking({ data: { tripId: item.trip_id, id: item.id, title: String(f.get("title")), category: String(f.get("category") || "") || undefined, bookingDate: String(f.get("bookingDate") || "") || undefined, provider: String(f.get("provider") || "") || undefined, referenceNumber: String(f.get("referenceNumber") || "") || undefined, status: item.status } });
       window.location.reload();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Pengeluaran belum dapat disimpan."); setSaving(false); }
+    } catch (err) { alert(err instanceof Error ? err.message : "Gagal menyimpan"); }
   }
-  async function submitItinerary(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(null); setSaving(true);
-    const form = new FormData(event.currentTarget);
-    try {
-      await postItinerary({ data: {
-        tripId, activityDate: String(form.get("activityDate") ?? ""), startTime: String(form.get("startTime") ?? "") || undefined,
-        title: String(form.get("title") ?? ""), location: String(form.get("location") ?? "") || undefined,
-      }}); window.location.reload();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Agenda belum dapat disimpan."); setSaving(false); }
-  }
-  async function submitBooking(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(null); setSaving(true); const form = new FormData(event.currentTarget);
-    try { await postBooking({ data: { tripId, title: String(form.get("title") ?? ""), category: String(form.get("category") ?? "") || undefined, bookingDate: String(form.get("bookingDate") ?? "") || undefined, provider: String(form.get("provider") ?? "") || undefined, referenceNumber: String(form.get("referenceNumber") ?? "") || undefined }}); window.location.reload(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Booking belum dapat disimpan."); setSaving(false); }
-  }
-  async function submitChecklist(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(null); setSaving(true);
-    const form = new FormData(event.currentTarget);
-    try { await postChecklist({ data: { tripId, title: String(form.get("title") ?? "") }}); window.location.reload(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Checklist belum dapat disimpan."); setSaving(false); }
-  }
-  return (
-    <Page>
-      <BackBar title={title} />
-      <h1 className="text-2xl font-bold">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Kelola {title.toLowerCase()} untuk {trip.name}.
-      </p>
-      <div className="mt-6 space-y-3">
-        {section === "budget" && (
-          <div className="rounded-2xl bg-surface p-4">
-            <p className="text-sm text-muted-foreground">Total budget</p>
-            <p className="mt-1 text-2xl font-bold">
-              {new Intl.NumberFormat("id-ID", {
-                style: "currency",
-                currency: String(trip.primary_currency).trim(),
-                maximumFractionDigits: 0,
-              }).format(Number(trip.total_budget_minor) / 100)}
-            </p>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Pengeluaran tercatat: {data.expenses.length} transaksi.
-            </p>
-          </div>
-        )}
-        {section === "expenses" && (
-          <>
-            <QuickForm onSubmit={submitExpense} saving={saving} submitLabel="Simpan pengeluaran">
-              <input name="description" required placeholder="Contoh: makan malam" className="field" />
-              <input name="transactionDate" required type="date" className="field" />
-              <input name="amount" required min="1" step="1" type="number" placeholder={`Nominal (${trip.primary_currency})`} className="field" />
-            </QuickForm>
-            <List
-            title="Pengeluaran"
-            items={data.expenses.map(
-              (item) =>
-                `${item.description} · ${item.original_currency} ${Number(item.original_amount_minor) / 100}`,
-            )}
-            empty="Belum ada pengeluaran."
-            />
-          </>
-        )}
-        {section === "itinerary" && (
-          <>
-            <QuickForm onSubmit={submitItinerary} saving={saving} submitLabel="Tambah agenda">
-              <input name="title" required placeholder="Judul agenda" className="field" />
-              <input name="activityDate" required type="date" className="field" />
-              <input name="startTime" type="time" className="field" />
-              <input name="location" placeholder="Lokasi (opsional)" className="field" />
-            </QuickForm>
-            <List
-            title="Agenda"
-            items={data.itinerary.map((item) => `${item.activity_date} · ${item.title}`)}
-            empty="Belum ada agenda."
-            />
-          </>
-        )}
-        {section === "checklist" && (
-          <>
-            <QuickForm onSubmit={submitChecklist} saving={saving} submitLabel="Tambah checklist">
-              <input name="title" required placeholder="Contoh: Cetak itinerary" className="field" />
-            </QuickForm>
-            <List
-            title="Checklist"
-            items={data.checklist.map((item) => `${item.is_completed ? "✓" : "○"} ${item.title}`)}
-            empty="Belum ada checklist."
-            />
-          </>
-        )}
-        {section === "bookings" && (
-          <><QuickForm onSubmit={submitBooking} saving={saving} submitLabel="Simpan booking"><input name="title" required placeholder="Judul booking" className="field" /><input name="category" placeholder="Kategori" className="field" /><input name="bookingDate" type="date" className="field" /><input name="provider" placeholder="Provider" className="field" /><input name="referenceNumber" placeholder="Nomor referensi" className="field" /></QuickForm><List title="Bookings manual" items={data.bookings.map((item) => `${item.title} · ${item.status}`)} empty="Belum ada booking manual." /></>
-        )}
-        {false && section === "bookings" && (
-          <List
-            title="Bookings manual"
-            items={data.bookings.map((item) => `${item.title} · ${item.status}`)}
-            empty="Belum ada booking manual."
-          />
-        )}
-        {["places", "documents", "group", "split-bill", "currency", "ai-planner"].includes(
-          section,
-        ) && (
-          <div className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">
-            Fitur ini tersedia sebagai bagian dari My Trips dan tetap menggunakan data private trip.
-            Tambahkan item dari dashboard atau integrasi berikutnya.
-          </div>
-        )}
-        {error && <p className="rounded-xl bg-brand-red-soft px-3 py-2 text-sm text-brand-red" role="alert">{error}</p>}
-      </div>
-      <Link
-        to="/my-trips/$tripId"
-        params={{ tripId }}
-        className="mt-6 block text-center text-sm font-semibold text-brand-red"
-      >
-        Kembali ke detail perjalanan
-      </Link>
-    </Page>
-  );
+  return <form onSubmit={save} className="space-y-2 rounded-2xl bg-surface p-3">
+    {(type === "checklist" || type === "booking" || type === "itinerary") && <input name="title" defaultValue={item.title} placeholder="Judul" className="field" required />}
+    {type === "expense" && <><input name="description" defaultValue={item.description} placeholder="Deskripsi" className="field" required /><input name="amount" type="number" defaultValue={Number(item.original_amount_minor) / 100} className="field" required /><input name="transactionDate" type="date" defaultValue={String(item.transaction_date).slice(0, 10)} className="field" /></>}
+    {type === "itinerary" && <><input name="activityDate" type="date" defaultValue={String(item.activity_date).slice(0, 10)} className="field" required /><div className="grid grid-cols-2 gap-2"><input name="startTime" type="time" defaultValue={String(item.start_time || "").slice(0, 5)} className="field" /><input name="endTime" type="time" defaultValue={String(item.end_time || "").slice(0, 5)} className="field" /></div><input name="location" defaultValue={item.location || ""} placeholder="Lokasi" className="field" /></>}
+    {type === "checklist" && <input name="dueDate" type="date" defaultValue={item.due_date || ""} className="field" />}
+    {type === "booking" && <><input name="category" defaultValue={item.category || ""} placeholder="Kategori" className="field" /><input name="bookingDate" type="date" defaultValue={item.booking_date || ""} className="field" /><input name="provider" defaultValue={item.provider || ""} placeholder="Provider" className="field" /><input name="referenceNumber" defaultValue={item.reference_number || ""} placeholder="Nomor referensi" className="field" /></>}
+    <div className="flex gap-2"><button className="btn-primary">Simpan</button><button type="button" className="btn-secondary" onClick={onClose}>Batal</button></div>
+  </form>;
 }
-function List({ title, items, empty }: { title: string; items: string[]; empty: string }) {
-  return (
-    <section>
-      <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{title}</h2>
-      <div className="space-y-2">
-        {items.length ? (
-          items.map((item) => (
-            <div key={item} className="rounded-2xl bg-surface px-4 py-3 text-sm">
-              {item}
-            </div>
-          ))
-        ) : (
-          <div className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">{empty}</div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function QuickForm({ onSubmit, saving, submitLabel, children }: { onSubmit: (event: React.FormEvent<HTMLFormElement>) => void; saving: boolean; submitLabel: string; children: React.ReactNode }) {
-  return <form onSubmit={onSubmit} className="space-y-2 rounded-2xl bg-surface p-4 ring-1 ring-border/50">{children}<button disabled={saving} className="w-full rounded-xl bg-brand-red px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">{saving ? "Menyimpan…" : submitLabel}</button></form>;
-}
+function QuickForm({onSubmit,saving,label,children}:{onSubmit:(e:React.FormEvent<HTMLFormElement>)=>void;saving:boolean;label:string;children:React.ReactNode}){return <form onSubmit={onSubmit} className="space-y-2 rounded-2xl bg-surface p-4 ring-1 ring-border/50">{children}<button disabled={saving} className="btn-primary w-full disabled:opacity-60">{saving?"Menyimpan…":label}</button></form>}
