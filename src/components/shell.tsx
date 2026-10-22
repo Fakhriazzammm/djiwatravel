@@ -7,11 +7,11 @@ import { springSnappy } from "@/lib/motion";
 import { FixedLayer } from "@/components/motion-primitives";
 
 const tabs = [
-  { to: "/", label: "Home", icon: Home },
-  { to: "/explore", label: "Explore", icon: Compass },
-  { to: "/my-trips", label: "My Trips", icon: BriefcaseBusiness },
-  { to: "/wallet", label: "Wallet", icon: WalletCards },
-  { to: "/profile", label: "Profile", icon: User },
+  { to: "/", label: "Beranda", icon: Home },
+  { to: "/explore", label: "Jelajah", icon: Compass },
+  { to: "/my-trips", label: "Perjalanan", icon: BriefcaseBusiness },
+  { to: "/wallet", label: "Dompet", icon: WalletCards },
+  { to: "/profile", label: "Profil", icon: User },
 ] as const;
 
 const isActiveTab = (to: string, pathname: string) =>
@@ -21,7 +21,7 @@ export function TabBar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-surface/95 backdrop-blur-xl safe-bottom">
-      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pt-1.5">
+      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pt-1">
         {tabs.map(({ to, label, icon: Icon }) => {
           const active = isActiveTab(to, pathname);
           return (
@@ -30,19 +30,19 @@ export function TabBar() {
               to={to}
               activeOptions={{ exact: to === "/" }}
               aria-current={active ? "page" : undefined}
-              className={`flex flex-col items-center gap-0.5 py-1 text-[11px] font-medium ${
+              className={`tap flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold tracking-[-0.01em] ${
                 active ? "text-brand-red" : "text-muted-foreground"
               }`}
             >
-              <span className="relative flex h-7 w-12 items-center justify-center rounded-full">
+              <span className="relative flex size-8 items-center justify-center rounded-xl">
                 {active && (
                   <motion.span
                     layoutId="tab-indicator"
-                    className="absolute inset-0 rounded-full bg-brand-red-soft"
+                    className="absolute inset-0 rounded-xl bg-brand-red-soft"
                     transition={springSnappy}
                   />
                 )}
-                <Icon className="relative size-[22px]" strokeWidth={1.8} />
+                <Icon className="relative size-[20px]" strokeWidth={active ? 2.1 : 1.8} />
               </span>
               {label}
             </Link>

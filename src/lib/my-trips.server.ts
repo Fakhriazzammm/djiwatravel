@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pool } from "@/db/client.server";
 import { requireBetterAuthUser } from "@/lib/customer-profile.server";
-import { syncItineraryItem } from "@/lib/google-calendar.server";
 
 const currencies = ["IDR", "JPY", "USD", "SGD", "KRW"] as const;
 const defaultCategories = [
@@ -35,6 +34,19 @@ const tripSchema = z
     message: "Tanggal pulang harus setelah tanggal berangkat",
     path: ["returnDate"],
   });
+
+const tripPatchSchema = z.object({
+  tripId: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  destinationCode: z.string().trim().min(2).max(8),
+  destinationName: z.string().trim().min(1).max(120),
+  departureDate: z.string().date(),
+  returnDate: z.string().date(),
+  travelersCount: z.number().int().min(1).max(50),
+  primaryCurrency: z.enum(currencies),
+  totalBudgetMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  timezone: z.string().trim().max(80).optional(),
+}).refine((value) => value.returnDate >= value.departureDate, { message: "Tanggal pulang harus setelah tanggal berangkat", path: ["returnDate"] });
 
 const expenseSchema = z.object({
   tripId: z.string().uuid(),
@@ -91,10 +103,26 @@ const checklistSchema = z.object({
   title: z.string().trim().min(1).max(160),
   dueDate: z.string().date().optional(),
 });
-
-const bookingSchema = z.object({ tripId: z.string().uuid(), category: z.string().trim().max(80).optional(), title: z.string().trim().min(1).max(160), bookingDate: z.string().date().optional(), provider: z.string().trim().max(160).optional(), referenceNumber: z.string().trim().max(120).optional(), notes: z.string().trim().max(2000).optional() });
+const budgetPatchSchema = z.object({
+  id: z.string().uuid(),
+  allocatedMinor: z.number().int().min(0),
+});
+const bookingSchema = z.object({
+  tripId: z.string().uuid(),
+  category: z.string().trim().min(1).max(80),
+  title: z.string().trim().min(1).max(160),
+  bookingDate: z.string().date().optional(),
+  provider: z.string().trim().max(160).optional(),
+  referenceNumber: z.string().trim().max(160).optional(),
+  notes: z.string().trim().max(2000).optional(),
+});
+const itemIdSchema = z.object({ id: z.string().uuid() });
 
 const tripIdSchema = z.object({ tripId: z.string().uuid() });
+const tripSectionSchema = z.object({
+  tripId: z.string().uuid(),
+  section: z.enum(["budget", "expenses", "itinerary", "checklist", "bookings"]),
+});
 
 function statusFor(
   departure: string,
@@ -138,6 +166,18 @@ export async function listTrips() {
     checklist_total: Number(row.checklist_total ?? 0),
     checklist_done: Number(row.checklist_done ?? 0),
   }));
+}
+
+export async function updateTrip(input: unknown) {
+  const data = tripPatchSchema.parse(input);
+  const user = await requireBetterAuthUser();
+  const result = await pool.query(
+    `update travel_trips set name=$1,destination_code=$2,destination_name=$3,departure_date=$4,return_date=$5,travelers_count=$6,primary_currency=$7,total_budget_minor=$8,timezone=$9,updated_at=now()
+     where id=$10 and customer_auth_subject=$11 returning *`,
+    [data.name, data.destinationCode, data.destinationName, data.departureDate, data.returnDate, data.travelersCount, data.primaryCurrency, data.totalBudgetMinor, data.timezone ?? null, data.tripId, user.id],
+  );
+  if (!result.rows[0]) throw new Error("Perjalanan tidak ditemukan");
+  return result.rows[0];
 }
 
 export async function createTrip(input: unknown) {
@@ -257,6 +297,103 @@ export async function getTripDashboard(tripId: string) {
   };
 }
 
+/** Load only the selected section so navigation is responsive on mobile. */
+export async function getTripSectionData(tripId: string, section: string) {
+  const user = await requireBetterAuthUser();
+  const trip = await ownedTrip(tripId, user.id);
+  const queries: Record<string, Promise<{ rows: Record<string, unknown>[] }>> = {
+    budget: pool.query(
+      "select * from travel_budget_categories where trip_id=$1 order by sort_order",
+      [tripId],
+    ),
+    expenses: pool.query(
+      "select * from travel_expenses where trip_id=$1 order by transaction_date desc, created_at desc",
+      [tripId],
+    ),
+    itinerary: pool.query(
+      "select * from travel_itinerary_items where trip_id=$1 order by activity_date, start_time nulls last",
+      [tripId],
+    ),
+    checklist: pool.query(
+      "select * from travel_checklist_items where trip_id=$1 order by sort_order, created_at",
+      [tripId],
+    ),
+    bookings: pool.query(
+      "select * from travel_bookings where trip_id=$1 order by booking_date nulls last, created_at desc",
+      [tripId],
+    ),
+  };
+  const result = await queries[section];
+  if (!result) throw new Error("Section perjalanan tidak valid");
+  return {
+    trip: {
+      ...trip,
+      total_budget_minor: money(trip["total_budget_minor"]),
+      status: statusFor(String(trip["departure_date"]), String(trip["return_date"])),
+    },
+    items: result.rows.map((row) => ({
+      ...row,
+      allocated_minor: money(row["allocated_minor"]),
+      original_amount_minor: money(row["original_amount_minor"]),
+      converted_amount_minor: money(row["converted_amount_minor"]),
+    })),
+  };
+}
+
+export async function patchBudgetCategory(input: unknown) {
+  const data = budgetPatchSchema.parse(input);
+  const user = await requireBetterAuthUser();
+  const result = await pool.query(
+    `update travel_budget_categories c set allocated_minor=$1, updated_at=now()
+     from travel_trips t where c.id=$2 and c.trip_id=t.id and t.customer_auth_subject=$3 returning c.*`,
+    [data.allocatedMinor, data.id, user.id],
+  );
+  if (!result.rows[0]) throw new Error("Kategori budget tidak ditemukan");
+  return result.rows[0];
+}
+
+async function deleteOwned(table: "travel_expenses" | "travel_itinerary_items" | "travel_checklist_items" | "travel_bookings", id: string) {
+  const user = await requireBetterAuthUser();
+  const result = await pool.query(
+    `delete from ${table} item using travel_trips t where item.id=$1 and item.trip_id=t.id and t.customer_auth_subject=$2 returning item.id`,
+    [id, user.id],
+  );
+  if (!result.rows[0]) throw new Error("Item perjalanan tidak ditemukan");
+  return result.rows[0];
+}
+
+export async function addBooking(input: unknown) {
+  const data = bookingSchema.parse(input);
+  const user = await requireBetterAuthUser();
+  await ownedTrip(data.tripId, user.id);
+  const result = await pool.query(
+    `insert into travel_bookings (trip_id,category,title,booking_date,provider,reference_number,notes)
+     values ($1,$2,$3,$4,$5,$6,$7) returning *`,
+    [data.tripId, data.category, data.title, data.bookingDate ?? null, data.provider ?? null, data.referenceNumber ?? null, data.notes ?? null],
+  );
+  return result.rows[0];
+}
+
+export async function deleteTripItem(input: unknown) {
+  const data = itemIdSchema.parse(input);
+  return deleteOwned("travel_expenses", data.id);
+}
+
+export async function deleteItineraryItem(input: unknown) {
+  const data = itemIdSchema.parse(input);
+  return deleteOwned("travel_itinerary_items", data.id);
+}
+
+export async function deleteChecklistItem(input: unknown) {
+  const data = itemIdSchema.parse(input);
+  return deleteOwned("travel_checklist_items", data.id);
+}
+
+export async function deleteBooking(input: unknown) {
+  const data = itemIdSchema.parse(input);
+  return deleteOwned("travel_bookings", data.id);
+}
+
 export async function addExpense(input: unknown) {
   const data = expenseSchema.parse(input);
   const user = await requireBetterAuthUser();
@@ -305,14 +442,7 @@ export async function addItineraryItem(input: unknown) {
       data.activityCategory ?? null,
     ],
   );
-  const item = result.rows[0];
-  try {
-    await syncItineraryItem(String(item.id), user.id);
-  } catch (error) {
-    // Calendar sync must never roll back a saved itinerary item.
-    console.error("[google-calendar] itinerary sync failed", error);
-  }
-  return item;
+  return result.rows[0];
 }
 
 export async function toggleChecklist(input: unknown) {
@@ -326,12 +456,6 @@ export async function toggleChecklist(input: unknown) {
   return result.rows[0];
 }
 
-export async function addBooking(input: unknown) {
-  const data = bookingSchema.parse(input); const user = await requireBetterAuthUser(); await ownedTrip(data.tripId, user.id);
-  const result = await pool.query(`insert into travel_bookings (trip_id,category,title,booking_date,provider,reference_number,notes,status) values ($1,$2,$3,$4,$5,$6,$7,'planned') returning *`, [data.tripId, data.category ?? null, data.title, data.bookingDate ?? null, data.provider ?? null, data.referenceNumber ?? null, data.notes ?? null]);
-  return result.rows[0];
-}
-
 export async function addChecklistItem(input: unknown) {
   const data = checklistSchema.parse(input);
   const user = await requireBetterAuthUser();
@@ -342,74 +466,6 @@ export async function addChecklistItem(input: unknown) {
   );
   return result.rows[0];
 }
-
-
-async function ownedChild(table: string, id: string, tripId: string, subject: string) {
-  const allowed = new Set(["travel_budget_categories", "travel_expenses", "travel_itinerary_items", "travel_checklist_items", "travel_bookings"]);
-  if (!allowed.has(table)) throw new Error("Entity tidak valid");
-  const result = await pool.query(
-    `select c.* from ${table} c join travel_trips t on t.id=c.trip_id where c.id=$1 and c.trip_id=$2 and t.customer_auth_subject=$3 limit 1`,
-    [id, tripId, subject],
-  );
-  if (!result.rows[0]) throw new Error("Data tidak ditemukan");
-  return result.rows[0];
-}
-
-export async function updateTrip(input: unknown) {
-  const data = tripSchema.and(z.object({ tripId: z.string().uuid() })).parse(input);
-  const user = await requireBetterAuthUser();
-  const result = await pool.query(
-    `update travel_trips set name=$1,destination_code=$2,destination_name=$3,departure_date=$4,return_date=$5,travelers_count=$6,primary_currency=$7,total_budget_minor=$8,timezone=$9,updated_at=now() where id=$10 and customer_auth_subject=$11 returning *`,
-    [data.name, data.destinationCode.toUpperCase(), data.destinationName, data.departureDate, data.returnDate, data.travelersCount, data.primaryCurrency, data.totalBudgetMinor, data.timezone ?? null, data.tripId, user.id],
-  );
-  if (!result.rows[0]) throw new Error("Perjalanan tidak ditemukan");
-  return { ...result.rows[0], status: statusFor(data.departureDate, data.returnDate) };
-}
-
-export async function updateBudget(input: unknown) {
-  const data = z.object({ tripId:z.string().uuid(), id:z.string().uuid(), name:z.string().trim().min(1).max(80), allocatedMinor:z.number().int().min(0), currency:z.string().length(3) }).parse(input);
-  const user = await requireBetterAuthUser(); await ownedTrip(data.tripId, user.id);
-  const result = await pool.query(`update travel_budget_categories set name=$1,allocated_minor=$2,currency=$3,updated_at=now() where id=$4 and trip_id=$5 returning *`, [data.name,data.allocatedMinor,data.currency.toUpperCase(),data.id,data.tripId]);
-  if (!result.rows[0]) throw new Error("Kategori budget tidak ditemukan"); return result.rows[0];
-}
-
-export async function updateExpense(input: unknown) {
-  const data = expenseSchema.extend({ id:z.string().uuid() }).parse(input); const user=await requireBetterAuthUser(); await ownedTrip(data.tripId,user.id);
-  const result=await pool.query(`update travel_expenses set category_id=$1,description=$2,transaction_date=$3,original_amount_minor=$4,original_currency=$5,exchange_rate=$6,exchange_rate_source=$7,exchange_rate_status=$8,converted_amount_minor=$9,converted_currency=$10,payment_method=$11,notes=$12,updated_at=now() where id=$13 and trip_id=$14 returning *`,[data.categoryId??null,data.description,data.transactionDate,data.originalAmountMinor,data.originalCurrency,data.exchangeRate??null,data.exchangeRateSource??null,data.exchangeRateStatus,data.convertedAmountMinor,data.convertedCurrency,data.paymentMethod??null,data.notes??null,data.id,data.tripId]);
-  if(!result.rows[0]) throw new Error("Pengeluaran tidak ditemukan"); return result.rows[0];
-}
-
-export async function updateItinerary(input: unknown) {
-  const data=itinerarySchema.extend({id:z.string().uuid()}).parse(input); const user=await requireBetterAuthUser(); await ownedTrip(data.tripId,user.id);
-  const result=await pool.query(`update travel_itinerary_items set activity_date=$1,start_time=$2,end_time=$3,timezone=$4,title=$5,location=$6,notes=$7,estimated_cost_minor=$8,currency=$9,booking_reference=$10,activity_category=$11,updated_at=now() where id=$12 and trip_id=$13 returning *`,[data.activityDate,data.startTime??null,data.endTime??null,data.timezone??null,data.title,data.location??null,data.notes??null,data.estimatedCostMinor??null,data.currency?.toUpperCase()??null,data.bookingReference??null,data.activityCategory??null,data.id,data.tripId]);
-  if(!result.rows[0]) throw new Error("Agenda tidak ditemukan"); return result.rows[0];
-}
-
-export async function updateChecklist(input: unknown) {
-  const data=checklistSchema.extend({id:z.string().uuid(),completed:z.boolean().optional()}).parse(input); const user=await requireBetterAuthUser(); await ownedTrip(data.tripId,user.id);
-  const result=await pool.query(`update travel_checklist_items set title=$1,due_date=$2,is_completed=coalesce($3,is_completed),updated_at=now() where id=$4 and trip_id=$5 returning *`,[data.title,data.dueDate??null,data.completed??null,data.id,data.tripId]);
-  if(!result.rows[0]) throw new Error("Checklist tidak ditemukan"); return result.rows[0];
-}
-
-export async function updateBooking(input: unknown) {
-  const data=bookingSchema.extend({id:z.string().uuid(),status:z.enum(["manual","cancelled","completed"]).optional()}).parse(input); const user=await requireBetterAuthUser(); await ownedTrip(data.tripId,user.id);
-  const result=await pool.query(`update travel_bookings set category=$1,title=$2,booking_date=$3,provider=$4,reference_number=$5,notes=$6,status=coalesce($7,status),updated_at=now() where id=$8 and trip_id=$9 returning *`,[data.category??null,data.title,data.bookingDate??null,data.provider??null,data.referenceNumber??null,data.notes??null,data.status??null,data.id,data.tripId]);
-  if(!result.rows[0]) throw new Error("Booking tidak ditemukan"); return result.rows[0];
-}
-
-export async function deleteTripEntity(input: unknown) {
-  const data=z.object({tripId:z.string().uuid(),id:z.string().uuid(),entity:z.enum(["budget","expense","itinerary","checklist","booking"])}).parse(input); const user=await requireBetterAuthUser();
-  const table={budget:"travel_budget_categories",expense:"travel_expenses",itinerary:"travel_itinerary_items",checklist:"travel_checklist_items",booking:"travel_bookings"}[data.entity]; await ownedChild(table,data.id,data.tripId,user.id);
-  await pool.query(`delete from ${table} where id=$1 and trip_id=$2`,[data.id,data.tripId]); return {id:data.id};
-}
-
-export const patchTrip = createServerFn({ method: "POST" }).validator(tripSchema.and(z.object({ tripId: z.string().uuid() }))).handler(({ data }) => updateTrip(data));
-export const patchBudget = createServerFn({ method: "POST" }).handler(({ data }) => updateBudget(data));
-export const patchExpense = createServerFn({ method: "POST" }).handler(({ data }) => updateExpense(data));
-export const patchItinerary = createServerFn({ method: "POST" }).handler(({ data }) => updateItinerary(data));
-export const patchChecklistItem = createServerFn({ method: "POST" }).handler(({ data }) => updateChecklist(data));
-export const patchBooking = createServerFn({ method: "POST" }).handler(({ data }) => updateBooking(data));
-export const removeTripEntity = createServerFn({ method: "POST" }).handler(({ data }) => deleteTripEntity(data));
 
 export const getMyTrips = createServerFn({ method: "GET" }).handler(async () => {
   try {
@@ -425,9 +481,15 @@ export const getMyTrips = createServerFn({ method: "GET" }).handler(async () => 
 export const postTrip = createServerFn({ method: "POST" })
   .validator(tripSchema)
   .handler(({ data }) => createTrip(data));
+export const patchTrip = createServerFn({ method: "POST" })
+  .validator(tripPatchSchema)
+  .handler(({ data }) => updateTrip(data));
 export const getTrip = createServerFn({ method: "GET" })
   .validator(tripIdSchema)
   .handler(({ data }) => getTripDashboard(data.tripId));
+export const getTripSection = createServerFn({ method: "GET" })
+  .validator(tripSectionSchema)
+  .handler(({ data }) => getTripSectionData(data.tripId, data.section));
 export const postExpense = createServerFn({ method: "POST" })
   .validator(expenseSchema)
   .handler(({ data }) => addExpense(data));
@@ -437,12 +499,27 @@ export const postItinerary = createServerFn({ method: "POST" })
 export const postChecklist = createServerFn({ method: "POST" })
   .validator(checklistSchema)
   .handler(({ data }) => addChecklistItem(data));
-export const postBooking = createServerFn({ method: "POST" })
-  .validator(bookingSchema)
-  .handler(({ data }) => addBooking(data));
 export const patchChecklist = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), completed: z.boolean() }))
   .handler(({ data }) => toggleChecklist(data));
+export const patchBudget = createServerFn({ method: "POST" })
+  .validator(budgetPatchSchema)
+  .handler(({ data }) => patchBudgetCategory(data));
+export const postBooking = createServerFn({ method: "POST" })
+  .validator(bookingSchema)
+  .handler(({ data }) => addBooking(data));
+export const deleteExpense = createServerFn({ method: "POST" })
+  .validator(itemIdSchema)
+  .handler(({ data }) => deleteTripItem(data));
+export const deleteItinerary = createServerFn({ method: "POST" })
+  .validator(itemIdSchema)
+  .handler(({ data }) => deleteItineraryItem(data));
+export const deleteChecklist = createServerFn({ method: "POST" })
+  .validator(itemIdSchema)
+  .handler(({ data }) => deleteChecklistItem(data));
+export const deleteBookingRecord = createServerFn({ method: "POST" })
+  .validator(itemIdSchema)
+  .handler(({ data }) => deleteBooking(data));
 
 export const myTripsContract = {
   auth: "Better Auth HttpOnly session; all queries are scoped to user.id",

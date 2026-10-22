@@ -1,284 +1,51 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  CalendarDays,
-  CalendarPlus,
-  CheckSquare2,
-  ChevronRight,
-  CircleDollarSign,
-  FileText,
-  Plus,
-  Smartphone,
-  WalletCards,
-} from "lucide-react";
+import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { BackBar, Page, btnSoft, group, row } from "@/components/shell";
-import { getTrip, postChecklist, patchChecklist } from "@/lib/my-trips.server";
+import { CalendarDays, MapPin, Pencil, Plane } from "lucide-react";
+import { BackBar, Page, btnRed, btnSoft } from "@/components/shell";
+import { getTrip, patchTrip } from "@/lib/my-trips.server";
+import { TripFeatureNav, TripWorkspace } from "./my-trips.$tripId.$section";
 
-export const Route = createFileRoute("/my-trips/$tripId")({
-  loader: async ({ params }) => {
-    try {
-      return await getTrip({ data: { tripId: params.tripId } });
-    } catch (error) {
-      console.error("[my-trips] failed to load trip detail", error);
-      return null;
-    }
-  },
-  component: TripDetail,
-  errorComponent: TripDetailError,
-});
-function TripDetailError() {
-  return (
-    <Page>
-      <BackBar title="My Trips" />
-      <section className="mt-8 rounded-2xl bg-surface p-5 text-center ring-1 ring-border/50">
-        <h1 className="text-lg font-semibold">Trip tidak dapat dimuat</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Silakan masuk terlebih dahulu atau kembali ke daftar perjalanan.
-        </p>
-        <Link to="/my-trips" className={`${btnSoft} mx-auto mt-5 inline-flex px-4`}>
-          Kembali ke My Trips
-        </Link>
-      </section>
-    </Page>
-  );
-}
-const dateLabel = (value: string) => {
+export const Route = createFileRoute("/my-trips/$tripId")({ loader: ({ params }) => getTrip({ data: { tripId: params.tripId } }), component: TripDetail });
+const dateLabel = (value?: string | null) => {
+  if (!value) return "Belum diatur";
   const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return "Tanggal belum diatur";
-  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
+  return Number.isNaN(date.getTime()) ? "Belum diatur" : new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
 };
-const statusLabel: Record<string, string> = { upcoming: "Segera berangkat", ongoing: "Sedang berjalan", past: "Selesai" };
-const money = (minor: number, currency: string) =>
-  new Intl.NumberFormat("id-ID", { style: "currency", currency, maximumFractionDigits: 0 }).format(
-    minor / 100,
-  );
-const googleCalendarDate = (value: string, addDay = false) => {
-  const date = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return "";
-  if (addDay) date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10).replaceAll("-", "");
-};
-const googleCalendarUrl = (trip: { name: string; destination_name: string; departure_date: string; return_date: string }, details: string) => {
-  const start = googleCalendarDate(trip.departure_date);
-  const end = googleCalendarDate(trip.return_date, true);
-  if (!start || !end) return "https://calendar.google.com/calendar/u/0/r";
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: `Djiwa Trip — ${trip.name}`,
-    dates: `${start}/${end}`,
-    location: trip.destination_name,
-    details,
-  });
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
-};
+const money = (minor: number, currency: string) => new Intl.NumberFormat("id-ID", { style: "currency", currency, maximumFractionDigits: 0 }).format(minor / 100);
+
 function TripDetail() {
   const data = Route.useLoaderData();
-  if (!data) return <TripDetailError />;
-  const { trip: rawTrip, totals } = data;
-  const trip = rawTrip as unknown as {
-    id: string;
-    name: string;
-    destination_name: string;
-    departure_date: string;
-    return_date: string;
-    primary_currency: string;
-    status: string;
-  };
-  const [checklist, setChecklist] = useState(data.checklist);
-  const [newTask, setNewTask] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const completed = checklist.filter((item) => item.is_completed).length;
-  const progress = checklist.length ? Math.round((completed / checklist.length) * 100) : 0;
-  const today = new Date().toISOString().slice(0, 10);
-  const nextAgenda = data.itinerary.find((item) => String(item.activity_date) >= today) ?? data.itinerary[0];
-  async function toggle(id: string, value: boolean) {
-    try {
-      const updated = await patchChecklist({ data: { id, completed: value } });
-      setChecklist((items) => items.map((item) => (item.id === id ? updated : item)));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Checklist belum dapat diperbarui.");
-    }
-  }
-  async function addTask(event: React.FormEvent) {
-    event.preventDefault();
-    if (!newTask.trim()) return;
-    try {
-      const item = await postChecklist({ data: { tripId: trip.id, title: newTask.trim() } });
-      setChecklist((items) => [...items, item]);
-      setNewTask("");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Checklist belum dapat ditambahkan.");
-    }
-  }
-  return (
-    <Page>
-      <BackBar title="Detail Perjalanan" />
-      <header className="rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-border/50">
-        <div className="flex items-start gap-3">
-          <span className="flex size-12 items-center justify-center rounded-xl bg-brand-red-soft text-2xl">
-            🌏
-          </span>
-          <div>
-            <h1 className="text-xl font-bold">{trip.name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {trip.destination_name} · {statusLabel[trip.status] ?? trip.status}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {dateLabel(String(trip.departure_date))} — {dateLabel(String(trip.return_date))}
-            </p>
-            <a
-              href={googleCalendarUrl(
-                trip,
-                `Perjalanan ${trip.name} ke ${trip.destination_name}. Agenda dibuat dari Djiwa Travel.`,
-              )}
-              target="_blank"
-              rel="noreferrer"
-              className={`${btnSoft} mt-3 inline-flex min-h-10 px-3 text-xs font-semibold`}
-            >
-              <CalendarPlus className="size-4 text-brand-red" aria-hidden="true" />
-              Tambah ke Google Calendar
-            </a>
-          </div>
-        </div>
-      </header>
-      <section className="mt-5 grid grid-cols-2 gap-3">
-        <Metric
-          icon={<WalletCards />}
-          label="Terpakai"
-          value={money(totals.spentMinor, String(trip.primary_currency).trim())}
-        />
-        <Metric
-          icon={<CircleDollarSign />}
-          label="Sisa budget"
-          value={money(totals.remainingMinor, String(trip.primary_currency).trim())}
-        />
-      </section>
-      <section className="mt-6">
-        <h2 className="mb-3 px-1 text-sm font-semibold text-muted-foreground">
-          Rencana perjalanan
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Action section="budget" tripId={trip.id} icon={<WalletCards />} label="Budget" />
-          <Action
-            section="expenses"
-            tripId={trip.id}
-            icon={<CircleDollarSign />}
-            label="Expenses"
-          />
-          <Action section="itinerary" tripId={trip.id} icon={<CalendarDays />} label="Itinerary" />
-          <Action section="checklist" tripId={trip.id} icon={<CheckSquare2 />} label="Checklist" />
-          <Action to="/my-esim" icon={<Smartphone />} label="My eSIM" />
-          <Action section="bookings" tripId={trip.id} icon={<FileText />} label="Bookings" />
-        </div>
-      </section>
-      <section className="mt-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">Checklist · {progress}%</h2>
-          <span className="text-xs text-muted-foreground">
-            {completed}/{checklist.length}
-          </span>
-        </div>
-        <div className={group}>
-          {checklist.map((item) => (
-            <label key={item.id} className={`${row} cursor-pointer`}>
-              <span className="flex min-w-0 items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={item.is_completed}
-                  onChange={(e) => void toggle(item.id, e.target.checked)}
-                  className="size-4 accent-brand-red"
-                />
-                <span
-                  className={`truncate text-sm ${item.is_completed ? "text-muted-foreground line-through" : "font-medium"}`}
-                >
-                  {item.title}
-                </span>
-              </span>
-            </label>
-          ))}
-          <form onSubmit={addTask} className={row}>
-            <Plus className="size-4 text-muted-foreground" />
-            <input
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              placeholder="Tambah checklist"
-              aria-label="Tambah checklist"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-            />
-          </form>
-        </div>
-      </section>
-      {error && (
-        <p
-          className="mt-4 rounded-xl bg-brand-red-soft px-3 py-2 text-sm text-brand-red"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
-      <section className="mt-6">
-        <h2 className="mb-3 px-1 text-sm font-semibold text-muted-foreground">Agenda berikutnya</h2>
-        {nextAgenda ? (
-          <div className="rounded-2xl bg-surface p-4">
-            <p className="text-xs text-muted-foreground">
-              {dateLabel(String(nextAgenda.activity_date))}
-            </p>
-            <p className="mt-1 font-semibold">{nextAgenda.title}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {nextAgenda.location || "Lokasi belum ditentukan"}
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">
-            Belum ada agenda. Tambahkan dari Itinerary.
-          </div>
-        )}
-      </section>
-    </Page>
-  );
+  const showingSection = useRouterState({ select: (state) => state.matches.some((match) => match.routeId === "/my-trips/$tripId/$section") });
+  if (showingSection) return <Outlet />;
+  const trip = data.trip as unknown as { id: string; name: string; destination_name: string; destination_code: string; departure_date?: string | null; return_date?: string | null; travelers_count: number; primary_currency: string; total_budget_minor: number; timezone?: string; status: string };
+  const remaining = Number(data.totals.remainingMinor ?? 0);
+  const budget = Number(trip.total_budget_minor ?? 0);
+  const spent = Number(data.totals.spentMinor ?? 0);
+  const budgetPercent = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+  const checklistDone = (data.checklist as Array<{ is_completed?: unknown }>).filter((item) => Boolean(item.is_completed)).length;
+  const checklistTotal = data.checklist.length;
+  return <Page>
+    <BackBar title="Detail Perjalanan" />
+    <TripHeaderEditor trip={trip} onSaved={() => window.location.reload()} />
+    <section className="mt-4 rounded-2xl bg-surface p-3.5 shadow-[0_5px_18px_rgba(15,23,42,0.045)] ring-1 ring-black/[0.035]">
+      <div className="flex items-center justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Ringkasan dana</p><p className="mt-0.5 text-xl font-bold tracking-tight">{money(remaining, String(trip.primary_currency).trim())}</p><p className="mt-1 text-xs text-muted-foreground">tersisa dari total budget</p></div><span className="flex size-12 items-center justify-center rounded-2xl bg-brand-red-soft text-brand-red"><Plane className="size-5" strokeWidth={1.9} /></span></div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-brand-red transition-[width] duration-500" style={{ width: `${budgetPercent}%` }} /></div>
+      <div className="mt-2 flex justify-between text-xs text-muted-foreground"><span>{money(spent, String(trip.primary_currency).trim())} terpakai</span><span>{budgetPercent}% digunakan</span></div>
+    </section>
+    <section className="mt-3 grid grid-cols-2 gap-3"><Metric label="Checklist" value={checklistTotal ? `${checklistDone}/${checklistTotal} selesai` : "Belum ada"} /><Metric label="Agenda" value={data.itinerary.length ? `${data.itinerary.length} agenda` : "Belum ada"} /></section>
+    <TripFeatureNav tripId={trip.id} />
+    <div className="mt-5 flex items-end justify-between gap-3 px-1"><div><h2 className="text-lg font-bold tracking-tight">Ringkasan perjalanan</h2><p className="mt-1 text-sm text-muted-foreground">Pilih fitur untuk mengelola perjalanan.</p></div><span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Overview</span></div>
+    <TripWorkspace tripId={trip.id} currency={String(trip.primary_currency).trim()} budget={data.budget} expenses={data.expenses} itinerary={data.itinerary} checklist={data.checklist} bookings={data.bookings} />
+  </Page>;
 }
-function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-surface p-3 ring-1 ring-border/50">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <p className="mt-2 truncate text-sm font-bold">{value}</p>
-    </div>
-  );
+function TripHeaderEditor({ trip, onSaved }: { trip: { id: string; name: string; destination_name: string; destination_code: string; departure_date?: string | null; return_date?: string | null; travelers_count: number; primary_currency: string; total_budget_minor: number; timezone?: string; status: string }; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: trip.name, destinationName: trip.destination_name, departureDate: trip.departure_date ?? "", returnDate: trip.return_date ?? "", travelersCount: trip.travelers_count, totalBudgetMinor: trip.total_budget_minor, timezone: trip.timezone ?? "", destinationCode: trip.destination_code, primaryCurrency: trip.primary_currency.trim() as "IDR" | "JPY" | "USD" | "SGD" | "KRW" });
+  async function save(event: React.FormEvent) { event.preventDefault(); setSaving(true); try { await patchTrip({ data: { tripId: trip.id, ...form } }); setEditing(false); onSaved(); } finally { setSaving(false); } }
+  if (!editing) return <header className="rounded-2xl bg-surface p-3.5 shadow-[0_5px_18px_rgba(15,23,42,0.045)] ring-1 ring-black/[0.035]"><div className="flex items-start gap-3"><span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-brand-red-soft text-brand-red"><MapPin className="size-5" strokeWidth={1.9} /></span><div className="min-w-0 flex-1"><h1 className="text-lg font-bold tracking-tight">{trip.name}</h1><p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="size-3.5" />{trip.destination_name}</p><p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><CalendarDays className="size-3.5" />{trip.departure_date ? `${dateLabel(trip.departure_date)} — ${trip.return_date ? dateLabel(trip.return_date) : "Belum diatur"}` : "Jadwal belum diatur"}</p></div><button type="button" onClick={() => setEditing(true)} className="tap flex min-h-11 shrink-0 items-center gap-1 rounded-xl px-2.5 text-sm font-semibold text-brand-red" aria-label="Edit perjalanan"><Pencil className="size-4" />Edit</button></div></header>;
+  const field = (key: "name" | "destinationName" | "departureDate" | "returnDate", placeholder: string, type = "text") => <input required type={type} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} placeholder={placeholder} className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm" />;
+  return <form onSubmit={save} className="rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-border/50"><div className="grid gap-2 sm:grid-cols-2">{field("name", "Nama perjalanan")}{field("destinationName", "Destinasi")}{field("departureDate", "Berangkat", "date")}{field("returnDate", "Pulang", "date")}<input type="number" min="1" max="50" value={form.travelersCount} onChange={(e) => setForm({ ...form, travelersCount: Number(e.target.value) })} placeholder="Jumlah traveler" className="rounded-xl bg-secondary px-3 py-2 text-sm" /><input type="number" min="0" value={form.totalBudgetMinor / 100} onChange={(e) => setForm({ ...form, totalBudgetMinor: Math.round(Number(e.target.value || 0) * 100) })} placeholder="Total budget" className="rounded-xl bg-secondary px-3 py-2 text-sm" /></div><div className="mt-3 flex justify-end gap-2"><button type="button" onClick={() => setEditing(false)} className={btnSoft}>Batal</button><button disabled={saving} className={btnRed}>{saving ? "Menyimpan…" : "Simpan perjalanan"}</button></div></form>;
 }
-function Action({
-  to,
-  section,
-  tripId,
-  icon,
-  label,
-}: {
-  to?: string;
-  section?: string;
-  tripId?: string;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  if (to) {
-    return (
-      <Link to={to} className={`${btnSoft} h-16 justify-start px-4`}>
-        <span className="text-brand-red">{icon}</span>
-        <span className="flex-1 text-left">{label}</span>
-        <ChevronRight className="size-4 text-muted-foreground" />
-      </Link>
-    );
-  }
-  return (
-    <Link
-      to="/my-trips/$tripId/$section"
-      params={{ tripId: tripId!, section: section! }}
-      className={`${btnSoft} h-16 justify-start px-4`}
-    >
-      <span className="text-brand-red">{icon}</span>
-      <span className="flex-1 text-left">{label}</span>
-      <ChevronRight className="size-4 text-muted-foreground" />
-    </Link>
-  );
-}
+
+function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl bg-surface p-3 ring-1 ring-border/50"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 truncate text-sm font-bold">{value}</p></div>; }

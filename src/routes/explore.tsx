@@ -8,9 +8,6 @@ import {
   ServiceSectionHeading,
 } from "@/components/explore/service-category-grid";
 import { DestinationCard } from "@/components/explore/destination-card";
-import { FeaturedServiceCard } from "@/components/explore/featured-service-card";
-import { AiTripPlannerCard } from "@/components/explore/ai-trip-planner-card";
-import { affiliateServices, activeAffiliateServices } from "@/lib/affiliate-services";
 import { getListableDestinations } from "@/lib/destination-availability.server";
 import { exploreAvailability } from "@/lib/explore-availability";
 
@@ -66,8 +63,6 @@ function Explore() {
   const popular = destinations.filter(
     (destination) => destination.popular && res.includes(destination),
   );
-  const featured = popular.slice(0, 3);
-  const affiliates = activeAffiliateServices(affiliateServices);
   return (
     <Page>
       <header className="pt-4">
@@ -202,25 +197,6 @@ function Explore() {
             </p>
           )}
         </div>
-      </section>
-      <section className="mt-8">
-        <ServiceSectionHeading title="Pilihan untukmu" />
-        <div className="space-y-3">
-          {featured.map((destination) => (
-            <FeaturedServiceCard key={destination.code} destination={destination} />
-          ))}
-          {affiliates.map((affiliate) => (
-            <FeaturedServiceCard key={affiliate.id} affiliate={affiliate} />
-          ))}
-          {featured.length === 0 && affiliates.length === 0 && (
-            <div className="rounded-2xl bg-surface p-4 text-sm text-muted-foreground">
-              Rekomendasi layanan akan tampil saat katalog tersedia.
-            </div>
-          )}
-        </div>
-      </section>
-      <section className="mt-8 pb-4">
-        <AiTripPlannerCard />
       </section>
       {res.length === 0 && available.source !== "error" && (
         <p className="mb-6 text-center text-sm text-muted-foreground">

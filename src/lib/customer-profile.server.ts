@@ -42,9 +42,16 @@ export async function requireBetterAuthUser(
   cookie = getRequestHeader("cookie"),
 ): Promise<AuthenticatedUser> {
   if (!cookie) throw new Error("Autentikasi diperlukan");
-  const response = await fetch("https://auth.zantara.id/api/auth/get-session", {
-    headers: { cookie, origin: "https://djiwatravel.com" },
-  });
+  let response: Response;
+  try {
+    response = await fetch("https://auth.zantara.id/api/auth/get-session", {
+      headers: { cookie, origin: "https://djiwatravel.com" },
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // An unavailable auth service must not make the read-only My Trips page fail SSR.
+    throw new Error("Autentikasi diperlukan");
+  }
   if (!response.ok) throw new Error("Autentikasi diperlukan");
   const session = (await response.json()) as BetterAuthSession;
   const user = session?.user;
