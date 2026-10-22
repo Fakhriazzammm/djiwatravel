@@ -44,7 +44,7 @@ export async function requireBetterAuthUser(
   if (!cookie) throw new Error("Autentikasi diperlukan");
   let response: Response;
   try {
-    response = await fetch("https://auth.zantara.id/api/auth/get-session", {
+    response = await fetch("https://api.djiwatentram.web.id/api/auth/get-session", {
       headers: { cookie, origin: "https://djiwatravel.com" },
       signal: AbortSignal.timeout(5000),
     });
@@ -67,7 +67,7 @@ export async function resolveCanonicalCustomerIdentity(
   if (!cookie) throw new Error("Profil customer canonical tidak tersedia");
   let response: Response;
   try {
-    response = await fetch("https://auth.zantara.id/api/customer/profile", {
+    response = await fetch("https://api.djiwatentram.web.id/api/customer/profile", {
       headers: { cookie, origin: "https://djiwatravel.com", accept: "application/json" },
     });
   } catch {

@@ -1,11 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { renderAuthErrorPage } from "../lib/error-page";
 
-const UPSTREAM_BASE = "https://auth.zantara.id/api/auth";
+const UPSTREAM_BASE = "https://api.djiwatentram.web.id/api/auth";
 const PUBLIC_BASE = "https://djiwatravel.com/api/auth";
 
 function rewriteCookie(value: string) {
-  return value.replace(/;\s*Domain=[^;]*/gi, "");
+  const hostOnly = value.replace(/;\s*Domain=[^;]*/gi, "");
+  if (/;\s*Path=/i.test(hostOnly)) return hostOnly.replace(/;\s*Path=[^;]*/gi, "; Path=/");
+  return `${hostOnly}; Path=/`;
+}
+
+function cookieName(value: string) {
+  return value.slice(0, value.indexOf("=")).trim();
+}
+
+function copySessionCookieToAppRoot(request: Request, headers: Headers) {
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) return;
+  const existingNames = new Set((headers.getSetCookie?.() ?? []).map(cookieName).filter(Boolean));
+  for (const part of cookieHeader.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator <= 0) continue;
+    const name = part.slice(0, separator).trim();
+    const value = part.slice(separator + 1).trim();
+    if (!value || !/session/i.test(name) || existingNames.has(name)) continue;
+    // Re-issue an older /api/auth-scoped session at the app root for SSR loaders.
+    headers.append("set-cookie", `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax`);
+    existingNames.add(name);
+  }
 }
 
 function rewriteText(value: string) {
@@ -51,11 +73,18 @@ async function proxyAuth(request: Request) {
   const cookies = upstreamResponse.headers.getSetCookie?.() ?? [];
   responseHeaders.delete("set-cookie");
   for (const cookie of cookies) responseHeaders.append("set-cookie", rewriteCookie(cookie));
+  copySessionCookieToAppRoot(request, responseHeaders);
 
   const contentType = responseHeaders.get("content-type") ?? "";
-  const body = contentType.includes("application/json")
-    ? rewriteText(await upstreamResponse.text())
-    : await upstreamResponse.arrayBuffer();
+  const hasNoBody =
+    upstreamResponse.status === 204 ||
+    upstreamResponse.status === 205 ||
+    upstreamResponse.status === 304;
+  const body = hasNoBody
+    ? null
+    : contentType.includes("application/json")
+      ? rewriteText(await upstreamResponse.text())
+      : await upstreamResponse.arrayBuffer();
   return new Response(body, { status: upstreamResponse.status, headers: responseHeaders });
 }
 

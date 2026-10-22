@@ -1,8 +1,5 @@
-const CANONICAL_AUTH_BASE = "https://auth.zantara.id/api/auth";
-const AUTH_BASE =
-  typeof window === "undefined"
-    ? (import.meta.env["VITE_BETTER_AUTH_URL"] || CANONICAL_AUTH_BASE).replace(/\/$/, "")
-    : "/api/auth";
+const CANONICAL_AUTH_BASE = "https://api.djiwatentram.web.id/api/auth";
+const AUTH_BASE = typeof window === "undefined" ? CANONICAL_AUTH_BASE : "/api/auth";
 export type BetterAuthUser = { id: string; name?: string | null; email?: string | null };
 export type BetterAuthSession = {
   user: BetterAuthUser;
