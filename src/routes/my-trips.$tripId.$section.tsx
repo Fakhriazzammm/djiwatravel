@@ -29,17 +29,18 @@ export const Route = createFileRoute("/my-trips/$tripId/$section")({
 const labels: Record<string, string> = { budget: "Budget", expenses: "Expenses", itinerary: "Itinerary", checklist: "Checklist", bookings: "Bookings", places: "Saved Places", documents: "Documents", group: "Travel Group", "split-bill": "Split Bill", currency: "Currency", "ai-planner": "AI Planner" };
 type FeatureId = "budget" | "expenses" | "itinerary" | "checklist" | "bookings";
 const featureTabs: Array<{ id: FeatureId; label: string }> = [
+  { id: "itinerary", label: "Itinerary" },
+  { id: "bookings", label: "Bookings" },
   { id: "budget", label: "Budget" },
+  { id: "checklist", label: "Packing" },
   { id: "expenses", label: "Pengeluaran" },
-  { id: "itinerary", label: "Agenda" },
-  { id: "checklist", label: "Checklist" },
-  { id: "bookings", label: "Booking" },
 ];
 
 export function TripFeatureNav({ tripId, active }: { tripId: string; active?: FeatureId }) {
   return <nav aria-label="Navigasi fitur perjalanan" className="mt-4 -mx-4 border-y border-border/60 bg-background/90 px-4 py-2.5 backdrop-blur-sm">
-    <p className="mb-2 px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Kelola perjalanan</p>
+    <p className="mb-2 px-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Ruang perjalanan</p>
     <div className="flex gap-2 overflow-x-auto scrollbar-none">
+      <Link to="/my-trips/$tripId" params={{ tripId }} className={`tap flex min-h-10 shrink-0 items-center rounded-xl border px-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors ${!active ? "border-brand-red bg-brand-red text-white shadow-sm" : "border-border bg-surface text-foreground"}`} aria-current={!active ? "page" : undefined}>Overview</Link>
       {featureTabs.map((tab) => <Link key={tab.id} to="/my-trips/$tripId/$section" params={{ tripId, section: tab.id }} className={`tap flex min-h-10 shrink-0 items-center rounded-xl border px-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors ${active === tab.id ? "border-brand-red bg-brand-red text-white shadow-sm" : "border-border bg-surface text-foreground"}`} aria-current={active === tab.id ? "page" : undefined}>{tab.label}</Link>)}
     </div>
   </nav>;
@@ -160,7 +161,7 @@ function ItineraryItem({ item, onDelete }: { item: Item; onDelete: (id: string) 
     <div className="w-11 shrink-0 pt-1 text-right text-xs font-bold tabular-nums text-foreground">{time || "—"}</div>
     <div className="relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-surface bg-brand-red-soft text-brand-red ring-1 ring-brand-red/15"><Icon className="size-3.5" strokeWidth={2} /></div>
     <div className="min-w-0 flex-1 rounded-xl border border-border/60 bg-background/70 px-3 py-2.5">
-      <div className="flex items-start gap-2"><div className="min-w-0 flex-1"><h4 className="text-sm font-bold leading-snug">{String(item.title ?? "Aktivitas")}</h4><div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">{item.location ? <span className="inline-flex items-center gap-1"><MapPin className="size-3" />{String(item.location)}</span> : <span>Lokasi belum diatur</span>}{endTime && <span>{time}–{endTime}</span>}</div></div><button type="button" onClick={() => void remove()} disabled={deleting} className="tap shrink-0 rounded-lg px-1.5 py-1 text-xs font-semibold text-muted-foreground hover:text-brand-red" aria-label={`Hapus ${String(item.title ?? "aktivitas")}`}>{deleting ? "…" : "Hapus"}</button></div>
+      <div className="flex items-start gap-2"><div className="min-w-0 flex-1"><h4 className="text-sm font-bold leading-snug">{String(item.title ?? "Aktivitas")}</h4><div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">{item.location ? <span className="inline-flex items-center gap-1"><MapPin className="size-3" />{String(item.location)}</span> : <span>Lokasi belum diatur</span>}{endTime && <span>{time}–{endTime}</span>}</div></div><button type="button" onClick={() => void remove()} disabled={deleting} className="tap shrink-0 rounded-lg px-1.5 py-1 text-xs font-semibold text-muted-foreground hover:text-brand-red" aria-label={`Hapus ${String(item.title ?? "aktivitas")}`}>{deleting ? "…" : "Hapus"}</button><ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" /></div>
       {item.booking_reference ? <span className="mt-2 inline-flex rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Booking tersimpan</span> : <span className="mt-2 inline-flex rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">Perlu booking</span>}
     </div>
   </article>;
