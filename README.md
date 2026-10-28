@@ -52,6 +52,19 @@ Cek status migrasi kapan saja: `bash scripts/apply-migrations.sh --status` (di h
 
 Override host/key/service lewat env `DJIWA_DEPLOY_HOST`, `DJIWA_DEPLOY_KEY`, `DJIWA_DEPLOY_SERVICE`, `DJIWA_DEPLOY_URL`.
 
+### Auto-deploy dari `main`
+
+VPS memantau `origin/main` tiap 3 menit lewat `djiwa-autodeploy.timer` → `djiwa-autodeploy.service`. Setiap push ke `main` (termasuk commit dari Lovable) otomatis: fetch → migrasi SQL baru → `npm install` bila lockfile berubah → build → swap `.output` → restart → verifikasi semua route → rollback bila gagal.
+
+- Status: `systemctl list-timers djiwa-autodeploy.timer` dan `journalctl -u djiwa-autodeploy.service -n 50`
+- Cek manual: `sudo systemctl start djiwa-autodeploy.service`
+- Paksa build ulang: `bash scripts/autodeploy.sh --force`
+- Pause sementara: `sudo systemctl stop djiwa-autodeploy.timer`
+- Pasang di host baru: `sudo bash scripts/install-autodeploy.sh` (butuh checkout git di `/home/ubuntu/djiwatravel`)
+- Penanda rilis: `.deployed-sha` (SHA yang sedang live) dan `.deps-lock` (hash lockfile terakhir yang di-install)
+
+Push ke `main` berarti langsung production. Untuk perubahan berisiko, uji dulu lewat `scripts/deploy-vps.sh --dry-run` atau kerjakan di branch lain.
+
 ## Djiwa Pay top-up boundary
 
 The authenticated profile page exposes Djiwa Pay saldo top-up only after the central Better Auth session is verified server-side. Travel does not create or store a wallet, balance, ledger, Mayar key, or webhook settlement.
