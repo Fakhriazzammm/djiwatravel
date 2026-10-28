@@ -1,6 +1,14 @@
+import { isLocalDevelopmentHost, LOCAL_DEMO_USER } from "./local-development";
+
 type BetterAuthSession = { user?: { id?: string; email?: string | null } | null } | null;
 
 export type AuthenticatedUser = { id: string; email: string };
+
+export async function authenticateCustomerRequest(request: Request): Promise<AuthenticatedUser> {
+  const hostname = new URL(request.url).hostname;
+  if (isLocalDevelopmentHost(hostname)) return LOCAL_DEMO_USER;
+  return authenticateCustomerCookie(request.headers.get("cookie") ?? "");
+}
 
 export async function authenticateCustomerCookie(cookie: string): Promise<AuthenticatedUser> {
   if (!cookie) throw new Error("Autentikasi diperlukan");

@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getCustomerProfile, upsertCustomerProfile } from "@/lib/customer-profile.server";
+import {
+  readCustomerProfile,
+  writeCustomerProfile,
+} from "@/lib/customer-profile.server";
+import { authenticateCustomerRequest } from "@/lib/customer-session.server";
 
 function json(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -7,9 +11,10 @@ function json(body: unknown, status = 200) {
 
 async function receive(request: Request) {
   try {
-    if (request.method === "GET") return json(await getCustomerProfile({ data: undefined }));
+    const user = await authenticateCustomerRequest(request);
+    if (request.method === "GET") return json(await readCustomerProfile(user));
     const body = await request.json();
-    return json(await upsertCustomerProfile({ data: body }));
+    return json(await writeCustomerProfile(user, body));
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Permintaan profil gagal" }, 401);
   }

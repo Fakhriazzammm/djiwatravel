@@ -58,33 +58,42 @@ export async function resolveCanonicalCustomerSourceId(
   return (await resolveCanonicalCustomerIdentity(authenticatedEmail, cookie)).sourceId;
 }
 
-export const getCustomerProfile = createServerFn({ method: "GET" }).handler(async () => {
-  const user = await getAuthenticatedUser();
+export async function readCustomerProfile(user: AuthenticatedUser) {
   const rows = await db
     .select({ email: customerProfiles.email, whatsapp: customerProfiles.whatsapp })
     .from(customerProfiles)
     .where(eq(customerProfiles.authUserId, user.id))
     .limit(1);
   return rows[0] ?? null;
+}
+
+export async function writeCustomerProfile(
+  user: AuthenticatedUser,
+  data: z.infer<typeof profileInputSchema>,
+) {
+  if (data.email.toLowerCase() !== user.email.toLowerCase())
+    throw new Error("Email profil harus sama dengan email akun");
+  const whatsapp = normalizeCustomerWhatsapp(data.whatsapp);
+  const values = { authUserId: user.id, email: user.email.toLowerCase(), whatsapp };
+  const [profile] = await db
+    .insert(customerProfiles)
+    .values(values)
+    .onConflictDoUpdate({
+      target: customerProfiles.authUserId,
+      set: { email: values.email, whatsapp, updatedAt: new Date().toISOString() },
+    })
+    .returning({ email: customerProfiles.email, whatsapp: customerProfiles.whatsapp });
+  return profile;
+}
+
+export const getCustomerProfile = createServerFn({ method: "GET" }).handler(async () => {
+  return readCustomerProfile(await getAuthenticatedUser());
 });
 
 export const upsertCustomerProfile = createServerFn({ method: "POST" })
   .validator(profileInputSchema)
   .handler(async ({ data }) => {
-    const user = await getAuthenticatedUser();
-    if (data.email.toLowerCase() !== user.email.toLowerCase())
-      throw new Error("Email profil harus sama dengan email akun");
-    const whatsapp = normalizeCustomerWhatsapp(data.whatsapp);
-    const values = { authUserId: user.id, email: user.email.toLowerCase(), whatsapp };
-    const [profile] = await db
-      .insert(customerProfiles)
-      .values(values)
-      .onConflictDoUpdate({
-        target: customerProfiles.authUserId,
-        set: { email: values.email, whatsapp, updatedAt: new Date().toISOString() },
-      })
-      .returning({ email: customerProfiles.email, whatsapp: customerProfiles.whatsapp });
-    return profile;
+    return writeCustomerProfile(await getAuthenticatedUser(), data);
   });
 
 export const customerProfileContract = {
