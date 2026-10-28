@@ -23,6 +23,18 @@ npm i
 npm run dev
 ```
 
+## Deploy ke VPS
+
+Produksi: `https://djiwatravel.com` → nginx → `127.0.0.1:3000` (`djiwatravel.service`) di `ubuntu@43.133.156.93`.
+
+```sh
+scripts/deploy-vps.sh                 # build lokal -> upload -> swap -> restart -> verifikasi
+scripts/deploy-vps.sh --skip-build    # kirim .output yang sudah ada
+scripts/deploy-vps.sh --dry-run       # lihat rencana tanpa mengubah apa pun
+```
+
+Script menyimpan backup `.output.bak-<timestamp>` di VPS (3 terakhir), dan otomatis rollback bila health check `/`, `/explore`, `/my-trips`, `/profile`, `/wallet` gagal. Override host/key/service lewat env `DJIWA_DEPLOY_HOST`, `DJIWA_DEPLOY_KEY`, `DJIWA_DEPLOY_SERVICE`, `DJIWA_DEPLOY_URL`.
+
 ## Djiwa Pay top-up boundary
 
 The authenticated profile page exposes Djiwa Pay saldo top-up only after the central Better Auth session is verified server-side. Travel does not create or store a wallet, balance, ledger, Mayar key, or webhook settlement.
