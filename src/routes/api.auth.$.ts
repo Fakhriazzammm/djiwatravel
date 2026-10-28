@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { renderAuthErrorPage } from "../lib/error-page";
 
-const UPSTREAM_BASE = "https://auth.zantara.id/api/auth";
+const UPSTREAM_BASE = "https://api.djiwatentram.web.id/api/auth";
 const PUBLIC_BASE = "https://djiwatravel.com/api/auth";
 
 function rewriteCookie(value: string) {

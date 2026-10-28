@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pool } from "../db/client.server";
-import { requireBetterAuthUser } from "./customer-profile.server";
+import { getAuthenticatedUser } from "./customer-session.fn";
+
+const requireBetterAuthUser = getAuthenticatedUser;
 
 const createSchema = z.object({
   action: z.literal("create"),
@@ -63,7 +65,7 @@ const safeMessage = (r: SupportMessageRow) => ({
 });
 
 export async function listCustomerCases() {
-  const user = await requireBetterAuthUser();
+    const user = await getAuthenticatedUser();
   const cases = await pool.query(
     "select id, public_case_code, category, subject, description, status, priority, order_id, created_at, updated_at from support_cases where customer_auth_subject = $1 order by updated_at desc",
     [user.id],
@@ -76,7 +78,7 @@ export async function listCustomerCases() {
 
 export async function mutateCustomerSupport(input: unknown) {
   const data = inputSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   if ("order_id" in data && data.order_id)
     throw new Error("Order binding is unavailable; omit order_id");
   const fp = fingerprint(data);

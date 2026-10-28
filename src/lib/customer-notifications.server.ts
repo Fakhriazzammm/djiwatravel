@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pool } from "../db/client.server";
-import { requireBetterAuthUser } from "./customer-profile.server";
+import { getAuthenticatedUser } from "./customer-session.fn";
+
+const requireBetterAuthUser = getAuthenticatedUser;
 
 const listSchema = z.object({
   cursor: z.string().datetime().optional(),
@@ -37,7 +39,7 @@ const safe = (r: CustomerNotificationRow) => ({
 });
 export async function listCustomerNotifications(input: unknown = {}) {
   const data = listSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const args: unknown[] = [user.id];
   let where = `n.recipient_customer_auth_subject = $1 and (n.expires_at is null or n.expires_at > now())`;
   if (data.cursor) {
@@ -64,7 +66,7 @@ export async function listCustomerNotifications(input: unknown = {}) {
 }
 export async function markCustomerNotificationRead(notificationId: string) {
   const id = z.string().uuid().parse(notificationId);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   await pool.query(
     `insert into customer_notification_states(notification_id,recipient_customer_auth_subject,read_at) select id,$2,now() from customer_notifications where id=$1 and recipient_customer_auth_subject=$2 on conflict (notification_id,recipient_customer_auth_subject) do update set read_at=coalesce(customer_notification_states.read_at,excluded.read_at)`,
     [id, user.id],
@@ -73,7 +75,7 @@ export async function markCustomerNotificationRead(notificationId: string) {
 }
 export async function mutateCustomerPush(input: unknown) {
   const data = pushSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const hash = createHash("sha256").update(data.endpoint).digest("hex");
   if (data.action === "deactivate")
     await pool.query(

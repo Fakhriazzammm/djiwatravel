@@ -1,11 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import {
-  requireBetterAuthUser,
-  resolveCanonicalCustomerIdentity,
-  type CanonicalCustomerIdentity,
-} from "./customer-profile.server";
+import type { CanonicalCustomerIdentity } from "./customer-identity.fn";
 import { filterLedgerByScope, parseWalletScope, type WalletScope } from "./wallet-scope";
 
 const walletSchema = z.object({
@@ -112,8 +107,10 @@ export async function readCanonicalWalletForRequest(request: Request, scopeInput
   // Validate the requested scope before any network call; an unknown scope fails closed.
   const scope = parseWalletScope(scopeInput);
   const cookie = request.headers.get("cookie");
-  const user = await requireBetterAuthUser(cookie ?? "");
-  const identity = await resolveCanonicalCustomerIdentity(user.email, cookie ?? undefined);
+  const { authenticateCustomerCookie } = await import("./customer-session.server");
+  const { resolveCanonicalCustomerIdentity } = await import("./customer-identity.server");
+  const user = await authenticateCustomerCookie(cookie ?? "");
+  const identity = await resolveCanonicalCustomerIdentity(user.email, cookie ?? "");
   const response = await fetch(canonicalWalletUrl(), {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
@@ -145,6 +142,7 @@ export function walletScopeInput(data: unknown = {}): { scope: WalletScope } {
 export const getCustomerWallet = createServerFn({ method: "GET" })
   .validator(walletScopeInput)
   .handler(async ({ data }) => {
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
     return readCanonicalWalletForRequest(
       new Request("https://djiwatravel.com/api/customer-wallet", {
         headers: { cookie: getRequestHeader("cookie") ?? "" },

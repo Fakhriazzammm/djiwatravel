@@ -1,4 +1,6 @@
-const CANONICAL_AUTH_BASE = "https://auth.zantara.id/api/auth";
+import { isLocalDevelopmentHost, LOCAL_DEMO_USER } from "./local-development";
+
+const CANONICAL_AUTH_BASE = "https://api.djiwatentram.web.id/api/auth";
 const AUTH_BASE =
   typeof window === "undefined"
     ? (import.meta.env["VITE_BETTER_AUTH_URL"] || CANONICAL_AUTH_BASE).replace(/\/$/, "")
@@ -20,6 +22,12 @@ async function request(path: string, init: RequestInit = {}) {
   return payload;
 }
 export function getBetterAuthSession() {
+  if (typeof window !== "undefined" && isLocalDevelopmentHost(window.location.hostname)) {
+    return Promise.resolve({
+      user: LOCAL_DEMO_USER,
+      session: { id: "local-demo-session", expiresAt: "2099-01-01T00:00:00.000Z" },
+    } satisfies BetterAuthSession);
+  }
   return request("/get-session") as Promise<BetterAuthSession>;
 }
 export function signInEmail(email: string, password: string) {

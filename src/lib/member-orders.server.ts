@@ -10,7 +10,7 @@ import {
   orderClaimEvents,
 } from "../../drizzle/schema";
 import { db } from "../db/client.server";
-import { requireBetterAuthUser } from "./customer-profile.server";
+import { getAuthenticatedUser } from "./customer-session.fn";
 import { decryptEsimSecret } from "./esim-secret-crypto";
 import { effectivePaymentStatus } from "./payment-expiry";
 import { readMayarSnapshot } from "./payment-snapshot";
@@ -133,7 +133,7 @@ function toGuestOrderRecord(
  * returned, so a customer who returns later sees the current state instead of a frozen one.
  */
 export const getMemberOrders = createServerFn({ method: "GET" }).handler(async () => {
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const rows = await memberOrderRows(user.id);
 
   await Promise.all(
@@ -164,7 +164,7 @@ const claimSchema = z.object({
 export const claimGuestOrderForMember = createServerFn({ method: "POST" })
   .validator(claimSchema)
   .handler(async ({ data }) => {
-    const user = await requireBetterAuthUser();
+    const user = await getAuthenticatedUser();
     const rows = await db
       .select({
         id: customerOrders.id,

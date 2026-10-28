@@ -259,18 +259,18 @@ export const customerOrders = pgTable(
   (table) => [
     index("customer_orders_customer_auth_idx").using(
       "btree",
-      table.customerAuthId.asc().nullsLast().op("uuid_ops"),
-      table.createdAt.desc().nullsFirst().op("uuid_ops"),
+      table.customerAuthId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
     ),
     index("customer_orders_customer_auth_subject_idx").using(
       "btree",
-      table.customerAuthSubject.asc().nullsLast().op("text_ops"),
-      table.createdAt.desc().nullsFirst().op("timestamptz_ops"),
+      table.customerAuthSubject.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
     ),
     index("customer_orders_status_expiry_idx").using(
       "btree",
-      table.status.asc().nullsLast().op("text_ops"),
-      table.expiresAt.asc().nullsLast().op("text_ops"),
+      table.status.asc().nullsLast(),
+      table.expiresAt.asc().nullsLast(),
     ),
     unique("customer_orders_public_order_code_key").on(table.publicOrderCode),
     unique("customer_orders_idempotency_key_key").on(table.idempotencyKey),
@@ -303,8 +303,8 @@ export const paymentWebhookEvents = pgTable(
   (table) => [
     index("payment_webhook_events_order_idx").using(
       "btree",
-      table.orderId.asc().nullsLast().op("timestamptz_ops"),
-      table.createdAt.desc().nullsFirst().op("timestamptz_ops"),
+      table.orderId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
     ),
     foreignKey({
       columns: [table.orderId],
@@ -339,8 +339,8 @@ export const esimReconciliationRuns = pgTable(
   (table) => [
     index("esim_reconciliation_runs_order_idx").using(
       "btree",
-      table.orderId.asc().nullsLast().op("timestamptz_ops"),
-      table.createdAt.desc().nullsFirst().op("timestamptz_ops"),
+      table.orderId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
     ),
     foreignKey({
       columns: [table.orderId],
@@ -470,8 +470,8 @@ export const orderClaimEvents = pgTable(
   (table) => [
     index("order_claim_events_order_idx").using(
       "btree",
-      table.orderId.asc().nullsLast().op("timestamptz_ops"),
-      table.createdAt.desc().nullsFirst().op("timestamptz_ops"),
+      table.orderId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
     ),
     foreignKey({
       columns: [table.orderId],
@@ -515,14 +515,14 @@ export const webhookInbox = pgTable(
   (table) => [
     index("webhook_inbox_due_idx").using(
       "btree",
-      table.status.asc().nullsLast().op("text_ops"),
-      table.nextRetryAt.asc().nullsLast().op("timestamptz_ops"),
-      table.receivedAt.asc().nullsLast().op("timestamptz_ops"),
+      table.status.asc().nullsLast(),
+      table.nextRetryAt.asc().nullsLast(),
+      table.receivedAt.asc().nullsLast(),
     ),
     index("webhook_inbox_lease_idx").using(
       "btree",
-      table.status.asc().nullsLast().op("text_ops"),
-      table.lockedUntil.asc().nullsLast().op("timestamptz_ops"),
+      table.status.asc().nullsLast(),
+      table.lockedUntil.asc().nullsLast(),
     ),
     unique("webhook_inbox_provider_event_id_key").on(table.provider, table.eventId),
     check(
@@ -564,9 +564,9 @@ export const financeOutbox = pgTable(
   (table) => [
     index("finance_outbox_due_idx").using(
       "btree",
-      table.status.asc().nullsLast().op("text_ops"),
-      table.nextRetryAt.asc().nullsLast().op("timestamptz_ops"),
-      table.createdAt.asc().nullsLast().op("timestamptz_ops"),
+      table.status.asc().nullsLast(),
+      table.nextRetryAt.asc().nullsLast(),
+      table.createdAt.asc().nullsLast(),
     ),
     foreignKey({
       columns: [table.orderId],
@@ -614,8 +614,8 @@ export const refundEvents = pgTable(
   (table) => [
     index("refund_events_order_idx").using(
       "btree",
-      table.orderId.asc().nullsLast().op("timestamptz_ops"),
-      table.createdAt.desc().nullsFirst().op("timestamptz_ops"),
+      table.orderId.asc().nullsLast(),
+      table.createdAt.desc().nullsFirst(),
     ),
     foreignKey({
       columns: [table.orderId],

@@ -74,7 +74,7 @@ describe("Djiwa Pay Travel top-up boundary", () => {
       resolveCanonicalCustomerIdentity("a@example.com", "better-auth-session=secret"),
     ).resolves.toEqual({ sourceId: "djiwa-customer-1", email: "A@EXAMPLE.COM" });
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://auth.zantara.id/api/customer/profile",
+      "https://api.djiwatentram.web.id/api/customer/profile",
       expect.objectContaining({
         headers: expect.objectContaining({ cookie: "better-auth-session=secret" }),
       }),

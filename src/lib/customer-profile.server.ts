@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader } from "@tanstack/react-start/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { customerProfiles } from "../../drizzle/schema";
 import { db } from "../db/client.server";
+import { getAuthenticatedUser } from "./customer-session.fn";
+import type { AuthenticatedUser } from "./customer-session.server";
 
 const profileInputSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -13,14 +14,6 @@ const profileInputSchema = z.object({
     .regex(/^62\d{7,13}$/, "Nomor WhatsApp harus diawali 62"),
 });
 
-type BetterAuthSession = {
-  user?: { id?: string; email?: string | null } | null;
-} | null;
-export type AuthenticatedUser = { id: string; email: string };
-
-type CanonicalCustomerProfileResponse = {
-  customer?: { source_id?: unknown; email?: unknown } | null;
-};
 export type CanonicalCustomerIdentity = { sourceId: string; email: string };
 
 /**
@@ -38,73 +31,35 @@ export function normalizeCustomerWhatsapp(value: string) {
   return normalized;
 }
 
-export async function requireBetterAuthUser(
-  cookie = getRequestHeader("cookie"),
-): Promise<AuthenticatedUser> {
-  if (!cookie) throw new Error("Autentikasi diperlukan");
-  let response: Response;
-  try {
-    response = await fetch("https://auth.zantara.id/api/auth/get-session", {
-      headers: { cookie, origin: "https://djiwatravel.com" },
-      signal: AbortSignal.timeout(5000),
-    });
-  } catch {
-    // An unavailable auth service must not make the read-only My Trips page fail SSR.
-    throw new Error("Autentikasi diperlukan");
+export async function requireBetterAuthUser(cookie?: string): Promise<AuthenticatedUser> {
+  if (cookie !== undefined) {
+    const { authenticateCustomerCookie } = await import("./customer-session.server");
+    return authenticateCustomerCookie(cookie);
   }
-  if (!response.ok) throw new Error("Autentikasi diperlukan");
-  const session = (await response.json()) as BetterAuthSession;
-  const user = session?.user;
-  if (!user?.email || !isBetterAuthUserId(user.id)) throw new Error("Autentikasi diperlukan");
-  return { id: user.id, email: user.email };
+  return getAuthenticatedUser();
 }
 
 /** Resolve the canonical wallet identity without exposing the session cookie. */
 export async function resolveCanonicalCustomerIdentity(
   authenticatedEmail: string,
-  cookie = getRequestHeader("cookie"),
+  cookie: string,
 ): Promise<CanonicalCustomerIdentity> {
-  if (!cookie) throw new Error("Profil customer canonical tidak tersedia");
-  let response: Response;
-  try {
-    response = await fetch("https://auth.zantara.id/api/customer/profile", {
-      headers: { cookie, origin: "https://djiwatravel.com", accept: "application/json" },
-    });
-  } catch {
-    throw new Error("Profil customer canonical tidak tersedia");
-  }
-  if (!response.ok) throw new Error("Profil customer canonical tidak tersedia");
-
-  let payload: CanonicalCustomerProfileResponse | null;
-  try {
-    payload = (await response.json()) as CanonicalCustomerProfileResponse;
-  } catch {
-    throw new Error("Profil customer canonical tidak valid");
-  }
-  const sourceId =
-    typeof payload?.customer?.source_id === "string" ? payload.customer.source_id.trim() : "";
-  const profileEmail =
-    typeof payload?.customer?.email === "string" ? payload.customer.email.trim() : "";
-  if (
-    !sourceId ||
-    !profileEmail ||
-    profileEmail.toLowerCase() !== authenticatedEmail.trim().toLowerCase()
-  ) {
-    throw new Error("Profil customer canonical tidak valid");
-  }
-  return { sourceId, email: profileEmail };
+  return (await import("./customer-identity.server")).resolveCanonicalCustomerIdentity(
+    authenticatedEmail,
+    cookie,
+  );
 }
 
 /** Backwards-compatible source-id helper for callers that do not send email. */
 export async function resolveCanonicalCustomerSourceId(
   authenticatedEmail: string,
-  cookie = getRequestHeader("cookie"),
+  cookie: string,
 ): Promise<string> {
   return (await resolveCanonicalCustomerIdentity(authenticatedEmail, cookie)).sourceId;
 }
 
 export const getCustomerProfile = createServerFn({ method: "GET" }).handler(async () => {
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const rows = await db
     .select({ email: customerProfiles.email, whatsapp: customerProfiles.whatsapp })
     .from(customerProfiles)
@@ -116,7 +71,7 @@ export const getCustomerProfile = createServerFn({ method: "GET" }).handler(asyn
 export const upsertCustomerProfile = createServerFn({ method: "POST" })
   .validator(profileInputSchema)
   .handler(async ({ data }) => {
-    const user = await requireBetterAuthUser();
+    const user = await getAuthenticatedUser();
     if (data.email.toLowerCase() !== user.email.toLowerCase())
       throw new Error("Email profil harus sama dengan email akun");
     const whatsapp = normalizeCustomerWhatsapp(data.whatsapp);

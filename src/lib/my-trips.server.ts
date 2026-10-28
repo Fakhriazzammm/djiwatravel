@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pool } from "@/db/client.server";
-import { requireBetterAuthUser } from "@/lib/customer-profile.server";
+import { getAuthenticatedUser } from "@/lib/customer-session.fn";
+import { buildMyTripsHome } from "./my-trips-home";
+
 
 const currencies = ["IDR", "JPY", "USD", "SGD", "KRW"] as const;
 const defaultCategories = [
@@ -149,7 +151,7 @@ async function ownedTrip(tripId: string, subject: string) {
 }
 
 export async function listTrips() {
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const result = await pool.query(
     `select t.*, coalesce(sum(e.converted_amount_minor), 0) as spent_minor,
       (select count(*) from travel_checklist_items c where c.trip_id=t.id) as checklist_total,
@@ -174,7 +176,7 @@ export async function listTrips() {
 
 export async function updateTrip(input: unknown) {
   const data = tripPatchSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const result = await pool.query(
     `update travel_trips set name=$1,destination_code=$2,destination_name=$3,departure_date=$4,return_date=$5,travelers_count=$6,primary_currency=$7,total_budget_minor=$8,timezone=$9,updated_at=now()
      where id=$10 and customer_auth_subject=$11 returning *`,
@@ -186,7 +188,7 @@ export async function updateTrip(input: unknown) {
 
 export async function createTrip(input: unknown) {
   const data = tripSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -245,7 +247,7 @@ export async function createTrip(input: unknown) {
 }
 
 export async function getTripDashboard(tripId: string) {
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const trip = await ownedTrip(tripId, user.id);
   const [budget, expenses, itinerary, checklist, bookings, places, documents] = await Promise.all([
     pool.query("select * from travel_budget_categories where trip_id=$1 order by sort_order", [
@@ -303,7 +305,7 @@ export async function getTripDashboard(tripId: string) {
 
 /** Load only the selected section so navigation is responsive on mobile. */
 export async function getTripSectionData(tripId: string, section: string) {
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const trip = await ownedTrip(tripId, user.id);
   const queries: Record<string, Promise<{ rows: Record<string, unknown>[] }>> = {
     budget: pool.query(
@@ -346,7 +348,7 @@ export async function getTripSectionData(tripId: string, section: string) {
 
 export async function patchBudgetCategory(input: unknown) {
   const data = budgetPatchSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const result = await pool.query(
     `update travel_budget_categories c set allocated_minor=$1, updated_at=now()
      from travel_trips t where c.id=$2 and c.trip_id=t.id and t.customer_auth_subject=$3 returning c.*`,
@@ -357,7 +359,7 @@ export async function patchBudgetCategory(input: unknown) {
 }
 
 async function deleteOwned(table: "travel_expenses" | "travel_itinerary_items" | "travel_checklist_items" | "travel_bookings", id: string) {
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const result = await pool.query(
     `delete from ${table} item using travel_trips t where item.id=$1 and item.trip_id=t.id and t.customer_auth_subject=$2 returning item.id`,
     [id, user.id],
@@ -368,7 +370,7 @@ async function deleteOwned(table: "travel_expenses" | "travel_itinerary_items" |
 
 export async function addBooking(input: unknown) {
   const data = bookingSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   await ownedTrip(data.tripId, user.id);
   const result = await pool.query(
     `insert into travel_bookings (trip_id,category,title,booking_date,provider,reference_number,notes)
@@ -400,7 +402,7 @@ export async function deleteBooking(input: unknown) {
 
 export async function addExpense(input: unknown) {
   const data = expenseSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   await ownedTrip(data.tripId, user.id);
   const result = await pool.query(
     `insert into travel_expenses (trip_id,category_id,description,transaction_date,original_amount_minor,original_currency,exchange_rate,exchange_rate_source,exchange_rate_status,exchange_rate_as_of,converted_amount_minor,converted_currency,payment_method,notes)
@@ -426,7 +428,7 @@ export async function addExpense(input: unknown) {
 
 export async function addItineraryItem(input: unknown) {
   const data = itinerarySchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   await ownedTrip(data.tripId, user.id);
   const result = await pool.query(
     `insert into travel_itinerary_items (trip_id,activity_date,start_time,end_time,timezone,title,location,notes,estimated_cost_minor,currency,booking_reference,activity_category)
@@ -451,7 +453,7 @@ export async function addItineraryItem(input: unknown) {
 
 export async function toggleChecklist(input: unknown) {
   const data = z.object({ id: z.string().uuid(), completed: z.boolean() }).parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const result = await pool.query(
     `update travel_checklist_items c set is_completed=$1, updated_at=now() from travel_trips t where c.id=$2 and c.trip_id=t.id and t.customer_auth_subject=$3 returning c.*`,
     [data.completed, data.id, user.id],
@@ -462,7 +464,7 @@ export async function toggleChecklist(input: unknown) {
 
 export async function addChecklistItem(input: unknown) {
   const data = checklistSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   await ownedTrip(data.tripId, user.id);
   const result = await pool.query(
     `insert into travel_checklist_items (trip_id,title,due_date,sort_order) values ($1,$2,$3,coalesce((select max(sort_order)+1 from travel_checklist_items where trip_id=$1),0)) returning *`,
@@ -480,6 +482,36 @@ export const getMyTrips = createServerFn({ method: "GET" }).handler(async () => 
     // observable in server logs and render the empty state as a safe fallback.
     console.error("[my-trips] failed to load trips", error);
     return [];
+  }
+});
+export const getMyTripsHome = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    const trips = await listTrips();
+    const focusId = buildMyTripsHome(trips, [], []).focusTrip?.id;
+    if (!focusId) return buildMyTripsHome(trips, [], []);
+
+    const [agenda, checklist] = await Promise.all([
+      pool.query(
+        `select id, trip_id, activity_date, start_time, end_time, title, location, activity_category
+         from travel_itinerary_items
+         where trip_id=$1 and activity_date between current_date - 1 and current_date + 14
+         order by activity_date asc, start_time asc nulls last
+         limit 12`,
+        [focusId],
+      ),
+      pool.query(
+        `select id, trip_id, title, due_date, is_completed
+         from travel_checklist_items
+         where trip_id=$1
+         order by is_completed asc, due_date asc nulls last, sort_order asc
+         limit 12`,
+        [focusId],
+      ),
+    ]);
+    return buildMyTripsHome(trips, agenda.rows, checklist.rows);
+  } catch (error) {
+    console.error("[my-trips] failed to load home", error);
+    return buildMyTripsHome([], [], []);
   }
 });
 export const postTrip = createServerFn({ method: "POST" })

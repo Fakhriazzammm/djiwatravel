@@ -2,9 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
 /** Same upstream Better Auth instance the rest of the app trusts. */
-const AUTH_SESSION_URL = "https://auth.zantara.id/api/auth/get-session";
+const AUTH_SESSION_URL = "https://api.djiwatentram.web.id/api/auth/get-session";
 const AUTH_ORIGIN = "https://djiwatravel.com";
-export const ADMIN_AUTH_ISSUER = "https://auth.zantara.id";
+export const ADMIN_AUTH_ISSUER = "https://api.djiwatentram.web.id";
 
 type BetterAuthSession = { user?: { email?: string | null } | null } | null;
 

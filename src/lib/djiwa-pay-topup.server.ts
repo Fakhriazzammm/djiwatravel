@@ -1,11 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import {
-  requireBetterAuthUser,
-  resolveCanonicalCustomerIdentity as fetchCanonicalCustomerIdentity,
-  type CanonicalCustomerIdentity,
-} from "./customer-profile.server";
+import { getCanonicalCustomerIdentity, type CanonicalCustomerIdentity } from "./customer-identity.fn";
 import { DJIWA_TRAVEL_SOURCE_APP } from "./wallet-scope";
 
 const topupInputSchema = z.object({
@@ -71,7 +66,7 @@ export async function resolveVerifiedCanonicalCustomerIdentity(
   cookie?: string | null,
 ): Promise<CanonicalCustomerIdentity> {
   try {
-    return await fetchCanonicalCustomerIdentity(user.email, cookie ?? undefined);
+    return await getCanonicalCustomerIdentity({ data: { authenticatedEmail: user.email, cookie: cookie ?? "" } });
   } catch {
     throw new CanonicalIdentityConfigurationError();
   }
@@ -127,7 +122,8 @@ async function createDjiwaPayTopupForAuthenticatedUser(
 
 async function createDjiwaPayTopupForCookie(cookie: string | null, rawInput: unknown) {
   // Authenticate before parsing browser input or contacting any wallet service.
-  const user = await requireBetterAuthUser(cookie ?? "");
+  const { authenticateCustomerCookie } = await import("./customer-session.server");
+  const user = await authenticateCustomerCookie(cookie ?? "");
   return createDjiwaPayTopupForAuthenticatedUser(user, cookie, rawInput);
 }
 
@@ -135,13 +131,17 @@ async function createDjiwaPayTopupForCookie(cookie: string | null, rawInput: unk
 export async function createDjiwaPayTopupForRequest(request: Request) {
   const cookie = request.headers.get("cookie");
   // Keep authentication ahead of body parsing and all wallet-side effects.
-  const user = await requireBetterAuthUser(cookie ?? "");
+  const { authenticateCustomerCookie } = await import("./customer-session.server");
+  const user = await authenticateCustomerCookie(cookie ?? "");
   return createDjiwaPayTopupForAuthenticatedUser(user, cookie, await request.json());
 }
 
 export const createDjiwaPayTopup = createServerFn({ method: "POST" })
   .validator(topupInputSchema)
-  .handler(({ data }) => createDjiwaPayTopupForCookie(getRequestHeader("cookie") ?? null, data));
+  .handler(async ({ data }) => {
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
+    return createDjiwaPayTopupForCookie(getRequestHeader("cookie") ?? null, data);
+  });
 
 export const djiwaPayTopupContract = {
   auth: "Better Auth session is required; sourceId and email are never accepted from the browser",

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pool } from "../db/client.server";
-import { requireBetterAuthUser } from "./customer-profile.server";
+import { getAuthenticatedUser } from "./customer-session.fn";
 const refSchema = z.object({ order: z.string().trim().min(1).max(128) });
 export type RefundEligibility = {
   eligible: boolean;
@@ -13,7 +13,7 @@ export type RefundEligibility = {
 };
 export async function getCustomerRefund(input: unknown) {
   const { order } = refSchema.parse(input);
-  const user = await requireBetterAuthUser();
+  const user = await getAuthenticatedUser();
   const r = await pool.query(
     `select o.id,o.public_order_code,o.status, exists(select 1 from esim_provisioning_orders p where p.order_id=o.id) provisioning_started from customer_orders o where o.customer_auth_subject=$1 and (o.public_order_code=$2 or (o.id::text=$2)) limit 1`,
     [user.id, order],
