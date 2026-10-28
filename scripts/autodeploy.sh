@@ -136,7 +136,7 @@ if [ "${FAILED}" = "0" ]; then
     case "${code}" in 2??|3??) ;; *) FAILED=1 ;; esac
   done < <(bash scripts/list-routes.sh 2>/dev/null)
 
-  asset="$(curl -s "${PUBLIC_URL}/" | grep -o 'assets/index-[A-Za-z0-9_-]*\.js' | head -1 || true)"
+  asset="$(curl -s --compressed "${PUBLIC_URL}/" | grep -a -o 'assets/index-[A-Za-z0-9_-]*\.js' | head -1 || true)"
   if [ -n "${asset}" ] && [ -f ".output/public/${asset}" ]; then
     echo "  asset ${asset} (cocok)"
   elif [ -n "${asset}" ]; then

@@ -215,7 +215,7 @@ if [ "${FAILED}" = "0" ]; then
   fi
 
   # Pastikan HTML publik memuat bundle dari build yang baru dikirim.
-  REMOTE_ASSET="$(curl -s "${PUBLIC_URL}/" | grep -o 'assets/index-[A-Za-z0-9_-]*\.js' | head -1 || true)"
+  REMOTE_ASSET="$(curl -s --compressed "${PUBLIC_URL}/" | grep -a -o 'assets/index-[A-Za-z0-9_-]*\.js' | head -1 || true)"
   if [ -n "${REMOTE_ASSET}" ] && [ -f ".output/public/${REMOTE_ASSET}" ]; then
     echo "  asset                          ${REMOTE_ASSET} (cocok)"
   elif [ -n "${REMOTE_ASSET}" ]; then
