@@ -35,6 +35,8 @@ scripts/deploy-vps.sh --skip-source   # hanya kirim .output, jangan sinkron sour
 scripts/deploy-vps.sh --dry-run       # lihat rencana tanpa mengubah apa pun
 ```
 
+Deploy manual menolak HEAD yang belum di-push ke `origin/main` (auto-deploy akan menimpanya); untuk kasus khusus pakai `--allow-unpushed`. Setelah sukses, script menulis `.deployed-sha` supaya timer tahu commit itu sudah live.
+
 Yang otomatis:
 
 - **Route/halaman baru** — build Vite/Nitro ikut membawa semua `src/routes/*.tsx`. Script membaca folder itu, jadi route statis baru langsung di-deploy dan diuji tanpa mengedit script; route dengan segmen dinamis (`$id`, `$slug`) dihitung tapi tidak diprobe karena butuh ID nyata.
