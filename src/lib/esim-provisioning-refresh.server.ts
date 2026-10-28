@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client.server";
 import { queryEsimAccessProfilesServer } from "./esim-access";
 import { protectProviderProfile } from "./esim-profile-protection";
+import { mapProviderStatus } from "./esim-access-webhooks";
 
 /**
  * eSIM Access only hands profiles and usage over through its own webhook, and that webhook has never
@@ -92,19 +93,22 @@ export async function refreshTravelOrderProvisioning(
     // The provider answers `ac` with a complete "LPA:1$smdp$code" string, so it doubles as the QR payload.
     const activationCode = firstString(record, ["ac", "activationCode", "qrCode"]);
     providerStatus = firstString(record, ["esimStatus", "smdpStatus"]) ?? providerStatus;
-    expiresAtIso =
-      providerTimestamp(firstString(record, ["expiredTime", "expirationTime"])) ?? expiresAtIso;
+    const recordExpiresAt = providerTimestamp(
+      firstString(record, ["expiredTime", "expirationTime", "expiresAt", "expires_at"]),
+    );
+    expiresAtIso = recordExpiresAt ?? expiresAtIso;
     if (!iccid || !activationCode) continue;
-    const status = firstString(record, ["smdpStatus", "esimStatus", "status"]) ?? "RELEASED";
-    const protectedProfile = protectProviderProfile(provisioningOrderId, {
-      iccid,
-      ac: activationCode,
-      qrCode: activationCode,
-      status,
-    });
-    await db.execute(sql`insert into public.esim_profiles(provisioning_order_id, iccid, activation_code_encrypted, qr_payload_encrypted, profile_status, installable, expires_at, provider_payload, updated_at)
-      values (${provisioningOrderId}::uuid, ${protectedProfile.iccid}, ${protectedProfile.activationCodeEncrypted ?? null}, ${protectedProfile.qrPayloadEncrypted ?? null}, ${protectedProfile.status}, ${Boolean(protectedProfile.qrPayloadEncrypted)}, ${expiresAtIso}::timestamptz, ${JSON.stringify({ source: "provider_query", orderNo: providerOrderNo })}::jsonb, now())
-      on conflict (iccid) do update set activation_code_encrypted = excluded.activation_code_encrypted, qr_payload_encrypted = excluded.qr_payload_encrypted, installable = excluded.installable, profile_status = excluded.profile_status, expires_at = coalesce(excluded.expires_at, public.esim_profiles.expires_at), provider_payload = excluded.provider_payload, updated_at = now()`);
+    const protectedProfile = protectProviderProfile(provisioningOrderId, record);
+    const profileStatus = mapProviderStatus(protectedProfile.status);
+    const providerPayload = {
+      source: "provider_query",
+      orderNo: providerOrderNo,
+      esimTranNo: protectedProfile.esimTranNo ?? null,
+      status: protectedProfile.status,
+    };
+    await db.execute(sql`insert into public.esim_profiles(provisioning_order_id, iccid, esim_tran_no, smdp_address, activation_code_encrypted, qr_payload_encrypted, profile_status, installable, activated_at, expires_at, provider_payload, updated_at)
+      values (${provisioningOrderId}::uuid, ${protectedProfile.iccid}, ${protectedProfile.esimTranNo ?? null}, ${protectedProfile.smdpAddress ?? null}, ${protectedProfile.activationCodeEncrypted ?? null}, ${protectedProfile.qrPayloadEncrypted ?? null}, ${profileStatus}, ${Boolean(protectedProfile.qrPayloadEncrypted)}, ${protectedProfile.activatedAt ?? null}::timestamptz, ${protectedProfile.expiresAt ?? recordExpiresAt}::timestamptz, ${JSON.stringify(providerPayload)}::jsonb, now())
+      on conflict (iccid) do update set esim_tran_no = coalesce(excluded.esim_tran_no, public.esim_profiles.esim_tran_no), smdp_address = coalesce(excluded.smdp_address, public.esim_profiles.smdp_address), activation_code_encrypted = excluded.activation_code_encrypted, qr_payload_encrypted = excluded.qr_payload_encrypted, installable = excluded.installable, profile_status = excluded.profile_status, activated_at = coalesce(excluded.activated_at, public.esim_profiles.activated_at), expires_at = coalesce(excluded.expires_at, public.esim_profiles.expires_at), provider_payload = excluded.provider_payload, updated_at = now()`);
     if (protectedProfile.qrPayloadEncrypted) installable = true;
   }
 

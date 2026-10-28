@@ -54,6 +54,27 @@ Cek status migrasi kapan saja: `bash scripts/apply-migrations.sh --status` (di h
 
 Override host/key/service lewat env `DJIWA_DEPLOY_HOST`, `DJIWA_DEPLOY_KEY`, `DJIWA_DEPLOY_SERVICE`, `DJIWA_DEPLOY_URL`.
 
+### eSIM Access webhook
+
+Integrasi eSIM Access berjalan server-only. Jangan memakai prefix `VITE_` untuk credential dan jangan commit nilainya:
+
+- `ESIM_ACCESS_CODE`
+- `ESIM_ACCESS_SECRET_KEY`
+- `ESIM_ACCESS_WEBHOOK_TOKEN` — token acak khusus path webhook, berbeda dari SecretKey provider
+- `ESIM_ACCESS_WEBHOOK_LOG_PATH` (opsional; default `/var/lib/djiwatravel/esim-access-webhooks.jsonl`)
+
+Setelah aplikasi sudah live di HTTPS, registrasikan endpoint dan verifikasi URL yang dibaca kembali dari provider:
+
+```sh
+PUBLIC_BASE_URL=https://djiwatravel.com \
+ESIM_ACCESS_CODE='...' \
+ESIM_ACCESS_SECRET_KEY='...' \
+ESIM_ACCESS_WEBHOOK_TOKEN='...' \
+npm run register:esim-webhook
+```
+
+Untuk memeriksa URL tanpa memanggil provider, tambahkan `-- --dry-run`. Endpoint provider melakukan health-check `CHECK_HEALTH` saat URL disimpan; route membalas sukses tanpa membuat order palsu. Event `ORDER_STATUS` kemudian menarik profil melalui endpoint query provider, menyimpan LPA/activation code terenkripsi, dan tetap mempertahankan polling sebagai recovery.
+
 ### Auto-deploy dari `main`
 
 VPS memantau `origin/main` tiap 3 menit lewat `djiwa-autodeploy.timer` → `djiwa-autodeploy.service`. Setiap push ke `main` (termasuk commit dari Lovable) otomatis: fetch → migrasi SQL baru → `npm install` bila lockfile berubah → build → swap `.output` → restart → verifikasi semua route → rollback bila gagal.

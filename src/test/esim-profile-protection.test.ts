@@ -29,4 +29,25 @@ describe("provider eSIM profile protection", () => {
       protectProviderProfile("order-1", { obj: { esimProfile: { activationCode: "x" } } }),
     ).toThrow("ICCID");
   });
+
+  it("preserves provider lifecycle identifiers without returning plaintext secrets", () => {
+    const profile = protectProviderProfile("order-1", {
+      obj: {
+        esimProfile: {
+          iccid: "898821235",
+          esimTranNo: "tran-123",
+          smdpAddress: "smdp.example",
+          activationCode: "secret-code-2",
+          esimStatus: "IN_USE",
+          expiredTime: "2027-04-10T10:58:23+0000",
+        },
+      },
+    });
+
+    expect(profile.esimTranNo).toBe("tran-123");
+    expect(profile.smdpAddress).toBe("smdp.example");
+    expect(profile.status).toBe("IN_USE");
+    expect(profile.expiresAt).toBe("2027-04-10T10:58:23.000Z");
+    expect(JSON.stringify(profile)).not.toContain("secret-code-2");
+  });
 });

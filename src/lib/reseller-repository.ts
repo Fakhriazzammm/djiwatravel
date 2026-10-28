@@ -17,9 +17,14 @@ export type ResellerOrderRecord = {
 export type EsimProfileRecord = {
   orderId: string;
   iccid: string;
+  esimTranNo?: string;
+  smdpAddress?: string;
   status: string;
   qrPayloadEncrypted?: string;
   activationCodeEncrypted?: string;
+  activatedAt?: string;
+  expiresAt?: string;
+  providerPayload?: Record<string, unknown>;
 };
 
 export interface ResellerRepository {

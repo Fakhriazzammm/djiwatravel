@@ -6,6 +6,12 @@ const first = (source: ProviderProfilePayload, keys: string[]) =>
   keys.map((key) => source[key]).find((value) => typeof value === "string" && value.length > 0) as
     string | undefined;
 
+function providerTimestamp(value: string | undefined) {
+  if (!value) return undefined;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : undefined;
+}
+
 /** Converts provider profile fields into the encrypted DB shape; plaintext is not returned. */
 export function protectProviderProfile(
   orderId: string,
@@ -14,6 +20,7 @@ export function protectProviderProfile(
   const nested = (payload["obj"] ?? payload["data"] ?? payload) as ProviderProfilePayload;
   const profile = (nested["esimProfile"] ?? nested["profile"] ?? nested) as ProviderProfilePayload;
   const iccid = first(profile, ["iccid", "ICCID"]);
+  const esimTranNo = first(profile, ["esimTranNo", "esim_tran_no"]);
   const smdp = first(profile, ["smdpAddress", "smdp", "smdp_address"]);
   const activationCode = first(profile, ["activationCode", "activation_code", "ac"]);
   const qrPayload =
@@ -22,11 +29,21 @@ export function protectProviderProfile(
   if (!iccid) throw new Error("Response provider tidak berisi ICCID");
   if (!activationCode && !qrPayload)
     throw new Error("Response provider tidak berisi activation code atau QR payload");
+  const expiresAt = providerTimestamp(
+    first(profile, ["expiredTime", "expirationTime", "expiresAt", "expires_at"]),
+  );
+  const activatedAt = providerTimestamp(
+    first(profile, ["activatedTime", "activatedAt", "activated_at"]),
+  );
   return {
     orderId,
     iccid,
-    status: first(profile, ["status", "profileStatus"]) ?? "RELEASED",
+    ...(esimTranNo ? { esimTranNo } : {}),
+    ...(smdp ? { smdpAddress: smdp } : {}),
+    status: first(profile, ["status", "profileStatus", "esimStatus", "smdpStatus"]) ?? "RELEASED",
     ...(qrPayload ? { qrPayloadEncrypted: encryptEsimSecret(qrPayload) } : {}),
     ...(activationCode ? { activationCodeEncrypted: encryptEsimSecret(activationCode) } : {}),
+    ...(activatedAt ? { activatedAt } : {}),
+    ...(expiresAt ? { expiresAt } : {}),
   };
 }

@@ -4,13 +4,14 @@ import { z } from "zod";
 import { RESELLER_CONFIG } from "./reseller-config";
 
 const BASE_URL = "https://api.esimaccess.com";
-const querySchema = z
+export const esimAccessQuerySchema = z
   .object({
     locationCode: z.string().trim().max(8).optional(),
     type: z.string().trim().max(20).optional(),
     slug: z.string().trim().max(120).optional(),
     packageCode: z.string().trim().max(120).optional(),
     iccid: z.string().trim().max(40).optional(),
+    dataType: z.string().trim().max(8).optional(),
   })
   .default({});
 
@@ -23,6 +24,25 @@ type ApiResponse<T extends JsonValue = JsonValue> = {
   data?: T;
 };
 
+export function buildEsimAccessSignature(input: {
+  timestamp: string;
+  requestId: string;
+  accessCode: string;
+  requestBody: string;
+  secretKey: string;
+}) {
+  return createHmac("sha256", input.secretKey)
+    .update(input.timestamp + input.requestId + input.accessCode + input.requestBody)
+    .digest("hex");
+}
+
+export function providerErrorMessage(payload: ApiResponse, status?: number) {
+  const code = payload.errorCode == null ? undefined : String(payload.errorCode);
+  return (
+    payload.errorMessage ?? payload.errorMsg ?? `eSIM Access error ${code ?? status ?? "unknown"}`
+  );
+}
+
 async function request<T extends JsonValue = JsonValue>(
   path: string,
   body: Record<string, unknown> = {},
@@ -33,9 +53,13 @@ async function request<T extends JsonValue = JsonValue>(
   const requestId = randomUUID();
   const timestamp = String(Date.now());
   const requestBody = JSON.stringify(body);
-  const signature = createHmac("sha256", secretKey)
-    .update(timestamp + requestId + accessCode + requestBody)
-    .digest("hex");
+  const signature = buildEsimAccessSignature({
+    timestamp,
+    requestId,
+    accessCode,
+    requestBody,
+    secretKey,
+  });
   const response = await fetch(`${BASE_URL}${path}`, {
     method: "POST",
     headers: {
@@ -51,15 +75,13 @@ async function request<T extends JsonValue = JsonValue>(
   const payload = (await response.json()) as ApiResponse<T>;
   const code = payload.errorCode == null ? undefined : String(payload.errorCode);
   if (!response.ok || (code && code !== "0")) {
-    throw new Error(
-      payload.errorMessage ?? payload.errorMsg ?? `eSIM Access error ${code ?? response.status}`,
-    );
+    throw new Error(providerErrorMessage(payload, response.status));
   }
   return payload;
 }
 
 export const queryEsimAccessPackages = createServerFn({ method: "POST" })
-  .validator(querySchema)
+  .validator(esimAccessQuerySchema)
   .handler(({ data }) => request("/api/v1/open/package/list", data));
 
 const orderSchema = z.object({
