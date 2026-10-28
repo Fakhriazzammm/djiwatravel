@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 # Deploy Djiwa Travel to the production VPS (nginx -> 127.0.0.1:3000, systemd unit).
 #
-# Flow: build locally -> rsync .output to a staging dir on the VPS -> atomic swap with a
-# timestamped backup -> restart the service -> health-check every route -> auto-rollback on failure.
+# Flow: build locally -> sync source + migrations -> apply pending SQL -> upload .output to a
+# staging dir -> atomic swap with a timestamped backup -> restart -> check EVERY route found in
+# src/routes (new pages included automatically) -> auto-rollback on failure.
 #
 # Usage:
-#   scripts/deploy-vps.sh                 # build + deploy + verify
+#   scripts/deploy-vps.sh                 # build + migrate + deploy + verify
 #   scripts/deploy-vps.sh --skip-build    # ship the existing .output as-is
+#   scripts/deploy-vps.sh --no-migrate    # skip the SQL migration phase
+#   scripts/deploy-vps.sh --skip-source   # only ship .output, do not mirror source to the VPS
 #   scripts/deploy-vps.sh --dry-run       # print the plan, touch nothing
 #   scripts/deploy-vps.sh --no-rollback   # keep the new build even if health checks fail
+#
+# One-time (host whose schema is current but has no tracking table):
+#   ssh <host> 'cd /home/ubuntu/djiwatravel && bash scripts/apply-migrations.sh --baseline'
 #
 # Overrides (env):
 #   DJIWA_DEPLOY_HOST=ubuntu@43.133.156.93
@@ -18,7 +24,7 @@
 #   DJIWA_DEPLOY_URL=https://djiwatravel.com
 #   DJIWA_DEPLOY_KEEP_BACKUPS=3
 #
-# Exit codes: 0 deployed and verified, non-zero = production is on the previous build (rolled back).
+# Exit codes: 0 deployed and verified, non-zero = production stays on the previous build.
 
 set -euo pipefail
 
@@ -35,26 +41,43 @@ KEEP_BACKUPS="${DJIWA_DEPLOY_KEEP_BACKUPS:-3}"
 SSH_OPTS=(-i "${KEY}" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
 RSYNC_RSH="ssh -i ${KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
 
-# Routes that must answer 2xx/3xx after the swap. /catalog legitimately redirects (307).
-VERIFY_PATHS=(/ /explore /my-trips /profile /wallet)
-
 SKIP_BUILD=0
+SKIP_SOURCE=0
+SKIP_MIGRATE=0
 DRY_RUN=0
 NO_ROLLBACK=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --skip-build) SKIP_BUILD=1; shift ;;
+    --skip-source) SKIP_SOURCE=1; shift ;;
+    --no-migrate) SKIP_MIGRATE=1; shift ;;
     --no-rollback) NO_ROLLBACK=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
-    -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
 
 ssh_run() { ssh "${SSH_OPTS[@]}" "${HOST}" "$@"; }
-
 step() { printf '\n=== %s ===\n' "$*"; }
+
+# Route list comes from the filesystem router, so a new src/routes/*.tsx is deployed and checked
+# without editing this script. Dynamic segments ($id, $slug, ...) cannot be probed without real IDs.
+ROUTE_PATHS=()
+DYNAMIC_ROUTES=0
+while IFS= read -r file; do
+  name="$(basename "${file}" .tsx)"
+  [ "${name}" = "__root" ] && continue
+  case "${name}" in *'$'*) DYNAMIC_ROUTES=$((DYNAMIC_ROUTES + 1)); continue ;; esac
+  if [ "${name}" = "index" ]; then
+    ROUTE_PATHS+=("/")
+  else
+    ROUTE_PATHS+=("/$(printf '%s' "${name%.index}" | tr '.' '/')")
+  fi
+done < <(find src/routes -maxdepth 1 -name '*.tsx' | sort)
+
+[ "${#ROUTE_PATHS[@]}" -gt 0 ] || { echo "ERROR: tidak ada route ditemukan di src/routes" >&2; exit 2; }
 
 for bin in npm rsync ssh curl; do
   command -v "${bin}" >/dev/null || { echo "ERROR: '${bin}' tidak ditemukan" >&2; exit 2; }
@@ -70,6 +93,7 @@ echo "host    : ${HOST}:${REMOTE_DIR}"
 echo "service : ${SERVICE}"
 echo "url     : ${PUBLIC_URL}"
 echo "commit  : ${COMMIT} (${BRANCH})"
+echo "routes  : ${#ROUTE_PATHS[@]} statis + ${DYNAMIC_ROUTES} dinamis"
 
 if ! ssh_run true; then
   echo "ERROR: tidak bisa SSH ke ${HOST} dengan key ${KEY}" >&2
@@ -83,15 +107,24 @@ fi
 if [ "${DRY_RUN}" = "1" ]; then
   echo
   echo "--dry-run: tidak ada perubahan."
-  if [ "${SKIP_BUILD}" = "1" ]; then
-    echo "1. build: dilewati (--skip-build)"
-  else
-    echo "1. npm run build"
-  fi
-  echo "2. rsync .output/ -> ${HOST}:${REMOTE_DIR}/.output.new/"
-  echo "3. backup .output -> .output.bak-<timestamp>, swap, restart ${SERVICE}"
-  echo "4. verifikasi: ${VERIFY_PATHS[*]}"
+  echo "1. npm run build"
+  echo "2. sync src/ public/ migrations/ drizzle/ scripts/ + config ke VPS"
+  echo "3. scripts/apply-migrations.sh (migrasi SQL baru)"
+  echo "4. rsync .output/ -> ${REMOTE_DIR}/.output.new/"
+  echo "5. backup .output, swap, restart ${SERVICE}"
+  echo "6. verifikasi ${#ROUTE_PATHS[@]} route: ${ROUTE_PATHS[*]}"
   exit 0
+fi
+
+if [ "${SKIP_MIGRATE}" = "0" ]; then
+  step "Migrasi database"
+  # Sync dulu supaya scripts/apply-migrations.sh dan migrations/ terbaru ada di host.
+  rsync -az --delete -e "${RSYNC_RSH}" migrations/ "${HOST}:${REMOTE_DIR}/migrations/"
+  rsync -az --delete -e "${RSYNC_RSH}" scripts/ "${HOST}:${REMOTE_DIR}/scripts/"
+  if ! ssh_run "cd '${REMOTE_DIR}' && bash scripts/apply-migrations.sh apply"; then
+    echo "ERROR: migrasi gagal; build belum di-swap, production masih versi lama." >&2
+    exit 1
+  fi
 fi
 
 if [ "${SKIP_BUILD}" = "1" ]; then
@@ -103,10 +136,23 @@ else
   [ -f .output/server/index.mjs ] || { echo "ERROR: build tidak menghasilkan .output/server/index.mjs" >&2; exit 1; }
 fi
 
+if [ "${SKIP_SOURCE}" = "1" ]; then
+  echo "source  : dilewati (--skip-source)"
+else
+  step "Sync source ke VPS"
+  for dir in src public migrations drizzle scripts; do
+    [ -d "${dir}" ] || continue
+    rsync -az --delete -e "${RSYNC_RSH}" "${dir}/" "${HOST}:${REMOTE_DIR}/${dir}/"
+  done
+  rsync -az -e "${RSYNC_RSH}" \
+    package.json package-lock.json tsconfig.json vite.config.ts drizzle.config.ts components.json README.md \
+    "${HOST}:${REMOTE_DIR}/" 2>/dev/null || true
+  echo "source  : src/ public/ migrations/ drizzle/ scripts/ + config tersinkron"
+fi
+
 step "Upload artefak"
 rsync -az --delete -e "${RSYNC_RSH}" .output/ "${HOST}:${REMOTE_DIR}/.output.new/"
-REMOTE_SIZE="$(ssh_run "du -sh '${REMOTE_DIR}/.output.new' | cut -f1")"
-echo "terkirim: ${REMOTE_SIZE}"
+echo "terkirim: $(ssh_run "du -sh '${REMOTE_DIR}/.output.new' | cut -f1")"
 
 step "Swap + restart"
 BACKUP="$(ssh_run "set -e
@@ -127,45 +173,58 @@ rollback() {
     mv .output .output.failed
     mv '${BACKUP}' .output
     sudo -n systemctl restart '${SERVICE}'" || true
-  echo "ROLLBACK_SELESAI: production kembali ke build sebelumnya" >&2
+  echo "ROLLBACK_SELESAI: production kembali ke build sebelumnya (migrasi SQL additive tetap terpasang)" >&2
 }
 
-step "Health check"
-HEALTHY=0
-for _ in $(seq 1 20); do
-  if ssh_run "systemctl is-active --quiet '${SERVICE}'"; then
-    if [ "$(ssh_run "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/" || true)" = "200" ]; then
-      HEALTHY=1
-      break
+wait_for_app() {
+  for _ in $(seq 1 20); do
+    if ssh_run "systemctl is-active --quiet '${SERVICE}'" &&
+       [ "$(ssh_run "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/" || true)" = "200" ]; then
+      return 0
     fi
-  fi
-  sleep 1
-done
+    sleep 1
+  done
+  return 1
+}
 
+check_paths() { # $1 = "remote" | "public"
+  local mode="$1" line path code failures=0
+  if [ "${mode}" = "remote" ]; then
+    while IFS= read -r line; do
+      printf '  %s\n' "${line}"
+      code="${line##* }"
+      case "${code}" in 2??|3??) ;; *) failures=$((failures + 1)) ;; esac
+    done < <(printf '%s\n' "${ROUTE_PATHS[@]}" | ssh "${SSH_OPTS[@]}" "${HOST}" \
+      "while IFS= read -r p; do code=\$(curl -s -o /dev/null -w '%{http_code}' \"http://127.0.0.1:3000\$p\"); printf '%-30s %s\n' \"\$p\" \"\$code\"; done")
+  else
+    for path in "${ROUTE_PATHS[@]}"; do
+      code="$(curl -s -o /dev/null -w '%{http_code}' "${PUBLIC_URL}${path}" || true)"
+      printf '  %-30s %s\n' "${path}" "${code}"
+      case "${code}" in 2??|3??) ;; *) failures=$((failures + 1)) ;; esac
+    done
+  fi
+  return "${failures}"
+}
+
+step "Health check (semua route, via localhost:3000)"
 FAILED=0
-if [ "${HEALTHY}" != "1" ]; then
+if ! wait_for_app; then
   echo "GAGAL: service tidak menjawab 200 dalam 20 detik" >&2
   FAILED=1
-else
-  for path in "${VERIFY_PATHS[@]}"; do
-    code="$(ssh_run "curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:3000${path}'" || true)"
-    printf '  %-14s %s\n' "${path}" "${code}"
-    case "${code}" in 2??|3??) ;; *) FAILED=1 ;; esac
-  done
+elif ! check_paths remote; then
+  FAILED=1
 fi
 
-step "Verifikasi publik"
+step "Verifikasi publik (${PUBLIC_URL})"
 if [ "${FAILED}" = "0" ]; then
-  for path in "${VERIFY_PATHS[@]}"; do
-    code="$(curl -s -o /dev/null -w '%{http_code}' "${PUBLIC_URL}${path}" || true)"
-    printf '  %-14s %s\n' "${path}" "${code}"
-    case "${code}" in 2??|3??) ;; *) FAILED=1 ;; esac
-  done
+  if ! check_paths public; then
+    FAILED=1
+  fi
 
-  # Pastikan HTML publik memang menyajikan bundle dari build yang baru dikirim.
+  # Pastikan HTML publik memuat bundle dari build yang baru dikirim.
   REMOTE_ASSET="$(curl -s "${PUBLIC_URL}/" | grep -o 'assets/index-[A-Za-z0-9_-]*\.js' | head -1 || true)"
   if [ -n "${REMOTE_ASSET}" ] && [ -f ".output/public/${REMOTE_ASSET}" ]; then
-    echo "  asset          ${REMOTE_ASSET} (cocok)"
+    echo "  asset                          ${REMOTE_ASSET} (cocok)"
   elif [ -n "${REMOTE_ASSET}" ]; then
     echo "PERINGATAN: HTML publik memuat ${REMOTE_ASSET}, tidak ada di build lokal (cache/proxy?)" >&2
   fi
@@ -186,5 +245,6 @@ ssh_run "cd '${REMOTE_DIR}' && ls -1dt .output.bak-* 2>/dev/null | tail -n +\$((
 step "Selesai"
 echo "commit  : ${COMMIT} (${BRANCH})"
 echo "backup  : ${REMOTE_DIR}/${BACKUP}"
+echo "routes  : ${#ROUTE_PATHS[@]} statis OK, ${DYNAMIC_ROUTES} dinamis tidak diprobe"
 echo "service : $(ssh_run "systemctl is-active '${SERVICE}'")"
 echo "url     : ${PUBLIC_URL}"

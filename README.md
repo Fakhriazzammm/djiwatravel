@@ -28,12 +28,29 @@ npm run dev
 Produksi: `https://djiwatravel.com` → nginx → `127.0.0.1:3000` (`djiwatravel.service`) di `ubuntu@43.133.156.93`.
 
 ```sh
-scripts/deploy-vps.sh                 # build lokal -> upload -> swap -> restart -> verifikasi
+scripts/deploy-vps.sh                 # build -> migrasi -> upload -> swap -> restart -> verifikasi
 scripts/deploy-vps.sh --skip-build    # kirim .output yang sudah ada
+scripts/deploy-vps.sh --no-migrate    # lewati fase migrasi SQL
+scripts/deploy-vps.sh --skip-source   # hanya kirim .output, jangan sinkron source
 scripts/deploy-vps.sh --dry-run       # lihat rencana tanpa mengubah apa pun
 ```
 
-Script menyimpan backup `.output.bak-<timestamp>` di VPS (3 terakhir), dan otomatis rollback bila health check `/`, `/explore`, `/my-trips`, `/profile`, `/wallet` gagal. Override host/key/service lewat env `DJIWA_DEPLOY_HOST`, `DJIWA_DEPLOY_KEY`, `DJIWA_DEPLOY_SERVICE`, `DJIWA_DEPLOY_URL`.
+Yang otomatis:
+
+- **Route/halaman baru** — build Vite/Nitro ikut membawa semua `src/routes/*.tsx`. Script membaca folder itu, jadi route statis baru langsung di-deploy dan diuji tanpa mengedit script; route dengan segmen dinamis (`$id`, `$slug`) dihitung tapi tidak diprobe karena butuh ID nyata.
+- **Verifikasi** — setiap route statis dicek 2xx/3xx lewat `localhost:3000` **dan** URL publik, plus pencocokan hash asset HTML publik vs build lokal. Gagal satu saja → rollback otomatis ke `.output.bak-<timestamp>` (3 backup terakhir disimpan).
+- **Source VPS** — `src/`, `public/`, `migrations/`, `drizzle/`, `scripts/`, dan config ikut disinkronkan supaya isi host sama dengan commit yang di-deploy.
+- **Migrasi SQL** — `scripts/apply-migrations.sh` mencatat migrasi yang sudah jalan di tabel `deploy_schema_migrations` dan hanya menjalankan file baru (satu transaksi per file). Migrasi gagal = deploy berhenti sebelum swap.
+
+Baseline sekali per host yang skemanya sudah current tapi belum punya tabel pencatat:
+
+```sh
+ssh ubuntu@43.133.156.93 'cd /home/ubuntu/djiwatravel && bash scripts/apply-migrations.sh --baseline'
+```
+
+Cek status migrasi kapan saja: `bash scripts/apply-migrations.sh --status` (di host) atau lewat SSH yang sama.
+
+Override host/key/service lewat env `DJIWA_DEPLOY_HOST`, `DJIWA_DEPLOY_KEY`, `DJIWA_DEPLOY_SERVICE`, `DJIWA_DEPLOY_URL`.
 
 ## Djiwa Pay top-up boundary
 
