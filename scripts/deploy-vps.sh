@@ -65,17 +65,10 @@ step() { printf '\n=== %s ===\n' "$*"; }
 # Route list comes from the filesystem router, so a new src/routes/*.tsx is deployed and checked
 # without editing this script. Dynamic segments ($id, $slug, ...) cannot be probed without real IDs.
 ROUTE_PATHS=()
-DYNAMIC_ROUTES=0
-while IFS= read -r file; do
-  name="$(basename "${file}" .tsx)"
-  [ "${name}" = "__root" ] && continue
-  case "${name}" in *'$'*) DYNAMIC_ROUTES=$((DYNAMIC_ROUTES + 1)); continue ;; esac
-  if [ "${name}" = "index" ]; then
-    ROUTE_PATHS+=("/")
-  else
-    ROUTE_PATHS+=("/$(printf '%s' "${name%.index}" | tr '.' '/')")
-  fi
-done < <(find src/routes -maxdepth 1 -name '*.tsx' | sort)
+while IFS= read -r route_path; do
+  [ -n "${route_path}" ] && ROUTE_PATHS+=("${route_path}")
+done < <(bash scripts/list-routes.sh 2>/dev/null)
+DYNAMIC_ROUTES="$(bash scripts/list-routes.sh 2>&1 >/dev/null | sed -n 's/^dynamic=//p')"
 
 [ "${#ROUTE_PATHS[@]}" -gt 0 ] || { echo "ERROR: tidak ada route ditemukan di src/routes" >&2; exit 2; }
 

@@ -20,6 +20,10 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Deploy bookkeeping on the VPS
+.deployed-sha
+.deps-lock
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
