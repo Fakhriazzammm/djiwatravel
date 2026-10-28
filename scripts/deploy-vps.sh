@@ -12,6 +12,7 @@
 #   scripts/deploy-vps.sh --skip-source   # only ship .output, do not mirror source to the VPS
 #   scripts/deploy-vps.sh --dry-run       # print the plan, touch nothing
 #   scripts/deploy-vps.sh --no-rollback   # keep the new build even if health checks fail
+#   scripts/deploy-vps.sh --allow-unpushed # deploy a HEAD that is not on origin/<branch> yet
 #
 # One-time (host whose schema is current but has no tracking table):
 #   ssh <host> 'cd /home/ubuntu/djiwatravel && bash scripts/apply-migrations.sh --baseline'
@@ -46,6 +47,7 @@ SKIP_SOURCE=0
 SKIP_MIGRATE=0
 DRY_RUN=0
 NO_ROLLBACK=0
+ALLOW_UNPUSHED=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -53,8 +55,9 @@ while [ $# -gt 0 ]; do
     --skip-source) SKIP_SOURCE=1; shift ;;
     --no-migrate) SKIP_MIGRATE=1; shift ;;
     --no-rollback) NO_ROLLBACK=1; shift ;;
+    --allow-unpushed) ALLOW_UNPUSHED=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
-    -h|--help) sed -n '2,27p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,28p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -78,6 +81,7 @@ done
 [ -f "${KEY}" ] || { echo "ERROR: SSH key tidak ditemukan: ${KEY}" >&2; exit 2; }
 
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+COMMIT_FULL="$(git rev-parse HEAD 2>/dev/null || echo '')"
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')"
 DIRTY="$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
 
@@ -95,6 +99,19 @@ fi
 
 if [ "${DIRTY}" != "0" ]; then
   echo "PERINGATAN: ${DIRTY} file lokal belum di-commit; yang di-deploy tetap isi working tree." >&2
+fi
+
+# Auto-deploy di VPS memantau origin/<branch>. Commit yang belum di-push akan tertimpa dalam
+# hitungan menit, jadi tolak lebih awal daripada mengejutkan setelah rilis.
+if [ "${ALLOW_UNPUSHED}" = "0" ] && [ -n "${COMMIT_FULL}" ]; then
+  if git fetch --quiet origin "${BRANCH}" 2>/dev/null; then
+    REMOTE_SHA="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"
+    if [ -n "${REMOTE_SHA}" ] && [ "${REMOTE_SHA}" != "${COMMIT_FULL}" ]; then
+      echo "ERROR: HEAD ${COMMIT} belum ada di origin/${BRANCH}; auto-deploy VPS akan menimpanya." >&2
+      echo "       Push dulu, atau jalankan dengan --allow-unpushed kalau memang mau." >&2
+      exit 2
+    fi
+  fi
 fi
 
 if [ "${DRY_RUN}" = "1" ]; then
@@ -234,6 +251,16 @@ fi
 
 step "Prune backup (simpan ${KEEP_BACKUPS} terakhir)"
 ssh_run "cd '${REMOTE_DIR}' && ls -1dt .output.bak-* 2>/dev/null | tail -n +\$(( ${KEEP_BACKUPS} + 1 )) | xargs -r rm -rf || true"
+
+# Catat SHA yang sekarang live supaya timer auto-deploy tahu ini sudah terpasang dan tidak
+# membangun ulang/ menimpa. Hanya untuk working tree bersih; kalau kotor, biarkan auto-deploy
+# yang menang pada push berikutnya.
+if [ -n "${COMMIT_FULL}" ] && [ "${DIRTY}" = "0" ]; then
+  ssh_run "cd '${REMOTE_DIR}' && echo '${COMMIT_FULL}' > .deployed-sha"
+  echo "state   : .deployed-sha = ${COMMIT}"
+else
+  echo "state   : .deployed-sha tidak diperbarui (working tree kotor / SHA tidak diketahui)"
+fi
 
 step "Selesai"
 echo "commit  : ${COMMIT} (${BRANCH})"
