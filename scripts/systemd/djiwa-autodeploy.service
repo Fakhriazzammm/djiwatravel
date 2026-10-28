@@ -1,0 +1,14 @@
+[Unit]
+Description=Djiwa Travel auto-deploy (pull main, migrate, build, verify)
+Documentation=https://github.com/Fakhriazzammm/djiwatravel
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/djiwatravel
+Environment=PATH=/home/ubuntu/.nvm/versions/node/v22.23.4/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=NODE_ENV=production
+ExecStart=/bin/bash /home/ubuntu/djiwatravel/scripts/autodeploy.sh
+TimeoutStartSec=900

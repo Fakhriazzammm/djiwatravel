@@ -1,0 +1,11 @@
+[Unit]
+Description=Check djiwatravel main for new commits every 3 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=3min
+AccuracySec=30s
+Unit=djiwa-autodeploy.service
+
+[Install]
+WantedBy=timers.target

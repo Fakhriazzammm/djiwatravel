@@ -63,6 +63,11 @@ fi
 
 export PATH="/home/ubuntu/.nvm/versions/node/v22.23.4/bin:${PATH}"
 
+# Timer berjalan sebagai user ubuntu, jadi restart unit sistem butuh sudo tanpa password.
+as_root() {
+  if [ "$(id -u)" = "0" ]; then "$@"; else sudo -n "$@"; fi
+}
+
 echo "=== deploy ${CURRENT} -> ${TARGET} ==="
 git reset --hard --quiet "${TARGET}"
 
@@ -106,11 +111,11 @@ rollback() {
   echo "ROLLBACK ke ${BACKUP} ..." >&2
   rm -rf .output
   mv "${BACKUP}" .output
-  systemctl restart "${SERVICE}" || true
+  as_root systemctl restart "${SERVICE}" || true
 }
 
 echo "--- restart ${SERVICE} ---"
-systemctl restart "${SERVICE}"
+as_root systemctl restart "${SERVICE}"
 
 FAILED=0
 for _ in $(seq 1 20); do
