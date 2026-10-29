@@ -56,6 +56,7 @@ function maskedId(value: string, visible: boolean) {
 
 export function Wallet() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isPayRoute = pathname === "/wallet/pay";
   const { user, loading: authLoading } = useBetterAuthUser();
   const [data, setData] = useState<CustomerWalletResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,6 +71,7 @@ export function Wallet() {
   const [topupPresets, setTopupPresets] = useState<readonly number[]>(DEFAULT_TOPUP_PRESETS);
   const [topupMinimum, setTopupMinimum] = useState(DEFAULT_MINIMUM_TOPUP);
   useEffect(() => {
+    if (isPayRoute) return;
     let cancelled = false;
     void getCustomerAppConfig()
       .then((config) => {
@@ -84,7 +86,7 @@ export function Wallet() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isPayRoute]);
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupPending, setTopupPending] = useState<{
     amount: number;
@@ -124,12 +126,13 @@ export function Wallet() {
   }, [user, scope]);
 
   useEffect(() => {
+    if (isPayRoute) return;
     void loadWallet();
-  }, [loadWallet]);
+  }, [isPayRoute, loadWallet]);
 
   const topupPendingKey = user ? `${TOPUP_PENDING_KEY}:${user.id}` : TOPUP_PENDING_KEY;
   useEffect(() => {
-    if (!user) return;
+    if (isPayRoute || !user) return;
     try {
       const raw = window.sessionStorage.getItem(topupPendingKey);
       if (!raw) return;
@@ -155,7 +158,7 @@ export function Wallet() {
     } catch {
       /* Abaikan session marker yang rusak. */
     }
-  }, [topupPendingKey, user]);
+  }, [isPayRoute, topupPendingKey, user]);
 
   useEffect(() => {
     if (!topupPending) return;
@@ -200,7 +203,7 @@ export function Wallet() {
   const groups = useMemo(() => groupWalletLedger(data?.ledger ?? []), [data?.ledger]);
   const wallet = data?.wallet;
   const formatted = (amount: number) => (visible ? rupiah(amount) : "Rp ••••••");
-  const initialLoading = authLoading || Boolean(user && loading && !data);
+  const initialLoading = !isPayRoute && (authLoading || Boolean(user && loading && !data));
 
   if (initialLoading) {
     return (
@@ -317,10 +320,7 @@ export function Wallet() {
             </a>
           </section>
 
-          <section
-            className="mt-5 rounded-2xl bg-surface p-4 sm:p-5"
-            aria-label="Aksi cepat"
-          >
+          <section className="mt-5 rounded-2xl bg-surface p-4 sm:p-5" aria-label="Aksi cepat">
             <div className="grid grid-cols-4 gap-2" aria-label="Aksi cepat">
               {walletActions.map((action) => (
                 <button
