@@ -12,7 +12,6 @@ import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Page, SectionTitle, Wordmark } from "@/components/shell";
 import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
-import { DjiwaPayBrowser } from "@/components/djiwa-pay-browser";
 import { FixedLayer } from "@/components/motion-primitives";
 import { PendingSpinner } from "@/components/route-loading";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
@@ -62,7 +61,6 @@ export function Wallet() {
   const walletLoadingLabel = useStagedLabel(loading, ACTION_STAGES.walletLoad);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
-  const [djiwaPayOpen, setDjiwaPayOpen] = useState(false);
   const [scope, setScope] = useState<WalletScope>("all");
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
   // Presets and which quick actions are live come from the server; the shipped defaults render
@@ -234,11 +232,7 @@ export function Wallet() {
       {!user ? (
         <GuestState />
       ) : error ? (
-        <ErrorState
-          message={error}
-          onRetry={() => void loadWallet()}
-          onOpenDjiwaPay={() => setDjiwaPayOpen(true)}
-        />
+        <ErrorState message={error} onRetry={() => void loadWallet()} />
       ) : !wallet ? (
         <EmptyState />
       ) : (
@@ -312,14 +306,13 @@ export function Wallet() {
                 Buka layanan pembayaran tanpa meninggalkan navbar Djiwa Travel.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setDjiwaPayOpen(true)}
+            <a
+              href="/wallet/pay"
               className="tap inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-brand-red px-3 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
             >
               Buka Djiwa Pay
               <ExternalLink className="size-3.5" aria-hidden="true" />
-            </button>
+            </a>
           </section>
 
           <section
@@ -514,7 +507,6 @@ export function Wallet() {
           </div>
         </FixedLayer>
       )}
-      <DjiwaPayBrowser open={djiwaPayOpen} onOpenChange={setDjiwaPayOpen} />
     </Page>
   );
 }
@@ -611,15 +603,7 @@ function EmptyState() {
     </div>
   );
 }
-function ErrorState({
-  message,
-  onRetry,
-  onOpenDjiwaPay,
-}: {
-  message: string;
-  onRetry: () => void;
-  onOpenDjiwaPay: () => void;
-}) {
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm">
       <h2 className="text-lg font-bold">Wallet belum dapat dimuat</h2>
@@ -631,14 +615,13 @@ function ErrorState({
       >
         Coba lagi
       </button>
-      <button
-        type="button"
-        onClick={onOpenDjiwaPay}
+      <a
+        href="/wallet/pay"
         className="tap mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-red px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
       >
         Buka Djiwa Pay
         <ExternalLink className="size-3.5" aria-hidden="true" />
-      </button>
+      </a>
     </div>
   );
 }

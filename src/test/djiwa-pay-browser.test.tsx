@@ -35,4 +35,13 @@ describe("Djiwa Pay in-app browser", () => {
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("supports a page layout that ends above the Travel tab bar", () => {
+    render(<DjiwaPayBrowser open layout="page" onOpenChange={vi.fn()} />);
+
+    expect(screen.getByRole("dialog", { name: "Djiwa Pay" })).toHaveAttribute(
+      "data-layout",
+      "page",
+    );
+  });
 });

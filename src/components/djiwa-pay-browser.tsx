@@ -7,11 +7,13 @@ export const DJIWA_PAY_URL = "https://djiwapay.web.id";
 
 type DjiwaPayBrowserProps = {
   open: boolean;
+  layout?: "sheet" | "page";
   onOpenChange: (open: boolean) => void;
 };
 
-export function DjiwaPayBrowser({ open, onOpenChange }: DjiwaPayBrowserProps) {
+export function DjiwaPayBrowser({ open, layout = "sheet", onOpenChange }: DjiwaPayBrowserProps) {
   const reduce = useReducedMotion();
+  const pageLayout = layout === "page";
   const [frameVersion, setFrameVersion] = useState(0);
 
   useEffect(() => {
@@ -33,7 +35,11 @@ export function DjiwaPayBrowser({ open, onOpenChange }: DjiwaPayBrowserProps) {
       <AnimatePresence>
         {open && (
           <motion.div
-            className="fixed inset-x-0 top-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 bg-black/35 p-3 sm:bottom-4 sm:bg-black/20"
+            className={
+              pageLayout
+                ? "fixed inset-x-0 top-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 bg-background"
+                : "fixed inset-x-0 top-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 bg-black/35 p-3 sm:bottom-4 sm:bg-black/20"
+            }
             initial={reduce ? { opacity: 1 } : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0 }}
@@ -45,9 +51,13 @@ export function DjiwaPayBrowser({ open, onOpenChange }: DjiwaPayBrowserProps) {
           >
             <motion.section
               role="dialog"
+              data-layout={layout}
               aria-modal="true"
               aria-labelledby="djiwa-pay-browser-title"
-              className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden rounded-[26px] bg-surface shadow-2xl ring-1 ring-black/10"
+              className={
+                "mx-auto flex h-full w-full max-w-md flex-col overflow-hidden bg-surface " +
+                (pageLayout ? "" : "rounded-[26px] shadow-2xl ring-1 ring-black/10")
+              }
               initial={reduce ? { y: 0, scale: 1 } : { y: 24, scale: 0.98 }}
               animate={{ y: 0, scale: 1 }}
               exit={reduce ? { y: 8, scale: 0.99 } : { y: 18, scale: 0.98 }}

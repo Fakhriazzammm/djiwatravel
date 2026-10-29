@@ -57,6 +57,7 @@ import { Route as PanduanSlugRouteImport } from './routes/panduan.$slug'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
 import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
 import { Route as RefundOrderRouteImport } from './routes/refund.$order'
+import { Route as WalletPayRouteImport } from './routes/wallet.pay'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.topup'
@@ -311,6 +312,11 @@ const RefundOrderRoute = RefundOrderRouteImport.update({
   path: '/refund/$order',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WalletPayRoute = WalletPayRouteImport.update({
+  id: '/pay',
+  path: '/pay',
+  getParentRoute: () => WalletRoute,
+} as any)
 const AdminOrdersIdRoute = AdminOrdersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -390,7 +396,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
-  '/wallet': typeof WalletRoute
+  '/wallet': typeof WalletRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -422,6 +428,7 @@ export interface FileRoutesByFullPath {
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
+  '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
@@ -452,7 +459,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
-  '/wallet': typeof WalletRoute
+  '/wallet': typeof WalletRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -484,6 +491,7 @@ export interface FileRoutesByTo {
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
+  '/wallet/pay': typeof WalletPayRoute
   '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
   '/my-trips': typeof MyTripsIndexRoute
@@ -515,7 +523,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
-  '/wallet': typeof WalletRoute
+  '/wallet': typeof WalletRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -547,6 +555,7 @@ export interface FileRoutesById {
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
+  '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
@@ -611,6 +620,7 @@ export interface FileRouteTypes {
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
+    | '/wallet/pay'
     | '/admin/'
     | '/my-esim/'
     | '/my-trips/'
@@ -673,6 +683,7 @@ export interface FileRouteTypes {
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
+    | '/wallet/pay'
     | '/admin'
     | '/my-esim'
     | '/my-trips'
@@ -735,6 +746,7 @@ export interface FileRouteTypes {
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
+    | '/wallet/pay'
     | '/admin/'
     | '/my-esim/'
     | '/my-trips/'
@@ -766,7 +778,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
-  WalletRoute: typeof WalletRoute
+  WalletRoute: typeof WalletRouteWithChildren
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminCatalogRoute: typeof AdminCatalogRoute
@@ -1152,6 +1164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RefundOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/wallet/pay': {
+      id: '/wallet/pay'
+      path: '/pay'
+      fullPath: '/wallet/pay'
+      preLoaderRoute: typeof WalletPayRouteImport
+      parentRoute: typeof WalletRoute
+    }
     '/admin/orders/$id': {
       id: '/admin/orders/$id'
       path: '/$id'
@@ -1239,6 +1258,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface WalletRouteChildren {
+  WalletPayRoute: typeof WalletPayRoute
+}
+
+const WalletRouteChildren: WalletRouteChildren = {
+  WalletPayRoute: WalletPayRoute,
+}
+
+const WalletRouteWithChildren =
+  WalletRoute._addFileChildren(WalletRouteChildren)
+
 interface AdminOrdersRouteChildren {
   AdminOrdersIdRoute: typeof AdminOrdersIdRoute
 }
@@ -1276,7 +1306,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
-  WalletRoute: WalletRoute,
+  WalletRoute: WalletRouteWithChildren,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
   AdminCatalogRoute: AdminCatalogRoute,
