@@ -9,6 +9,7 @@ import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 import { DURATION_OPTIONS } from "@/lib/finder-form";
 import type { RecommendationPreferences } from "@/lib/recommendation/preferences";
 import { trackAnalytics } from "@/lib/analytics";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import {
   packageCoverageLabel,
   packageDataLabel,
@@ -64,6 +65,7 @@ function Finder() {
   const [result, setResult] = useState<Awaited<ReturnType<typeof recommendPackages>> | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
   const loadingLabel = useStagedLabel(loading, ACTION_STAGES.search);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -149,7 +151,10 @@ function Finder() {
                     key={item.code}
                     type="button"
                     aria-pressed={selected}
-                    onClick={() => setDestination(item.code)}
+                    onClick={() => {
+                      setDestination(item.code);
+                      setFormOpen(true);
+                    }}
                     className={`tap flex min-h-[68px] w-full items-center gap-3 px-4 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${selected ? "bg-secondary/60" : ""}`}
                   >
                     <span
@@ -181,63 +186,74 @@ function Finder() {
             </p>
           )}
         </section>
-        <form
-          onSubmit={submit}
-          className="mt-5 grid gap-4 rounded-2xl bg-surface p-4 sm:grid-cols-2"
-        >
-          <p className="text-sm text-muted-foreground sm:col-span-2">
-            Destinasi dipilih:{" "}
-            <span className="font-semibold text-foreground">
-              {available.destinations.find((item) => item.code === destination)?.nameId ??
-                "Pilih destinasi di atas"}
-            </span>
-          </p>
-          <label className="text-sm">
-            Masa aktif
-            <select
-              value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
-              className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
-              aria-label="Pilih masa aktif"
-            >
-              {DURATION_OPTIONS.map((value) => (
-                <option key={value} value={value}>
-                  {value} hari
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            Kebutuhan data
-            <select
-              value={dataNeed}
-              onChange={(e) => setDataNeed(e.target.value as RecommendationPreferences["dataNeed"])}
-              className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
-            >
-              <option value="low">Hemat</option>
-              <option value="medium">Sedang</option>
-              <option value="high">Tinggi</option>
-              <option value="unlimited">Unlimited</option>
-            </select>
-          </label>
-          <label className="text-sm">
-            Budget
-            <input
-              type="text"
-              inputMode="numeric"
-              value={formatBudget(budget)}
-              onChange={(e) => setBudget(parseBudget(e.target.value))}
-              aria-label="Masukkan budget dalam Rupiah"
-              className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
-            />
-          </label>
-          <button
-            disabled={loading || !destination || available.source === "error"}
-            className="h-12 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground sm:col-span-2"
+        <Sheet open={formOpen} onOpenChange={setFormOpen}>
+          <SheetContent
+            side="bottom"
+            aria-describedby="finder-preferences-description"
+            className="mx-auto max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] border-border/70 bg-surface px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6 shadow-2xl"
           >
-            {loading ? loadingLabel : "Tampilkan rekomendasi"}
-          </button>
-        </form>
+            <SheetTitle className="sr-only">Sesuaikan kebutuhan eSIM</SheetTitle>
+            <SheetDescription id="finder-preferences-description" className="sr-only">
+              Pilih masa aktif, kebutuhan data, dan budget untuk melihat rekomendasi paket eSIM.
+            </SheetDescription>
+            <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                Destinasi dipilih:{" "}
+                <span className="font-semibold text-foreground">
+                  {available.destinations.find((item) => item.code === destination)?.nameId ??
+                    "Pilih destinasi di atas"}
+                </span>
+              </p>
+              <label className="text-sm">
+                Masa aktif
+                <select
+                  value={days}
+                  onChange={(e) => setDays(Number(e.target.value))}
+                  className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
+                  aria-label="Pilih masa aktif"
+                >
+                  {DURATION_OPTIONS.map((value) => (
+                    <option key={value} value={value}>
+                      {value} hari
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                Kebutuhan data
+                <select
+                  value={dataNeed}
+                  onChange={(e) =>
+                    setDataNeed(e.target.value as RecommendationPreferences["dataNeed"])
+                  }
+                  className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
+                >
+                  <option value="low">Hemat</option>
+                  <option value="medium">Sedang</option>
+                  <option value="high">Tinggi</option>
+                  <option value="unlimited">Unlimited</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Budget
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatBudget(budget)}
+                  onChange={(e) => setBudget(parseBudget(e.target.value))}
+                  aria-label="Masukkan budget dalam Rupiah"
+                  className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
+                />
+              </label>
+              <button
+                disabled={loading || !destination || available.source === "error"}
+                className="h-12 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground sm:col-span-2"
+              >
+                {loading ? loadingLabel : "Tampilkan rekomendasi"}
+              </button>
+            </form>
+          </SheetContent>
+        </Sheet>
         {errorMessage && (
           <div
             role="alert"
