@@ -79,15 +79,15 @@ export function TripFeatureNav({ tripId, active }: { tripId: string; active?: Fe
   return (
     <nav
       aria-label="Fitur perjalanan"
-      className="mt-4 -mx-4 overflow-x-auto border-y border-border/60 bg-background/90 px-4 py-2.5 backdrop-blur-sm scrollbar-none"
+      className="sticky top-0 z-20 -mx-4 mt-4 overflow-x-auto border-y border-border/60 bg-background/95 px-4 py-2 backdrop-blur-md scrollbar-none"
     >
-      <div className="flex w-max gap-1 rounded-xl bg-secondary/80 p-1">
+      <div className="flex w-max gap-1.5">
         {featureTabs.map((tab) => (
           <Link
             key={tab.id}
             to="/my-trips/$tripId/$section"
             params={{ tripId, section: tab.id }}
-            className={`tap flex min-h-9 items-center rounded-full px-3 text-[13px] font-semibold whitespace-nowrap transition-colors ${active === tab.id ? "bg-surface text-foreground" : "text-muted-foreground"}`}
+            className={`tap flex min-h-11 items-center rounded-full px-4 text-[13px] font-semibold whitespace-nowrap transition-colors ${active === tab.id ? "bg-foreground text-background shadow-sm" : "bg-secondary text-muted-foreground"}`}
             aria-current={active === tab.id ? "page" : undefined}
           >
             {tab.label}
@@ -143,11 +143,15 @@ function TripSection() {
   const refresh = () => router.invalidate();
   return (
     <Page>
-      <BackBar title={trip.name} />
-      <div className="flex items-end justify-between gap-3">
-        <h1 className="text-[28px] font-bold tracking-[-0.035em]">
+      <BackBar title={trip.destination_name || trip.name} />
+      <div className="pt-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Ruang perjalanan
+        </p>
+        <h1 className="mt-1 text-[28px] font-bold tracking-[-0.04em]">
           {labels[section] ?? "Perjalanan"}
         </h1>
+        <p className="mt-1 text-sm text-muted-foreground">{trip.name}</p>
       </div>
       <TripFeatureNav tripId={tripId} active={section as FeatureId} />
       <div className="mt-5 space-y-4">
@@ -196,6 +200,7 @@ function BudgetEditor({
     Object.fromEntries(items.map((x) => [x.id, String(Number(x.allocated_minor ?? 0) / 100)])),
   );
   const [saving, setSaving] = useState<string | null>(null);
+  const total = items.reduce((sum, item) => sum + Number(item.allocated_minor ?? 0), 0);
   async function save(id: string) {
     setSaving(id);
     try {
@@ -212,43 +217,43 @@ function BudgetEditor({
   }
   return (
     <section>
-      <p className={label}>Alokasi budget</p>
-      <div className={group}>
-        <div className={row}>
-          <span className="text-sm text-muted-foreground">Total kategori</span>
-          <strong>
-            {money(
-              items.reduce((s, x) => s + Number(x.allocated_minor ?? 0), 0),
-              currency,
-            )}
-          </strong>
-        </div>
-        {items.length ? (
-          items.map((item) => (
-            <div key={item.id} className={row}>
-              <span className="min-w-0 flex-1 text-sm font-medium">
-                {displayBudgetCategory(String(item.name ?? "Kategori"))}
-              </span>
-              <input
-                type="number"
-                min="0"
-                value={values[item.id]}
-                onChange={(e) => setValues({ ...values, [item.id]: e.target.value })}
-                className="w-28 rounded-lg bg-secondary px-2 py-1 text-right text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => void save(item.id)}
-                className="text-xs font-semibold text-brand-red"
-              >
-                {saving === item.id ? "…" : "Simpan"}
-              </button>
-            </div>
-          ))
-        ) : (
-          <p className="p-4 text-sm text-muted-foreground">Belum ada kategori budget.</p>
-        )}
+      <div className="mb-4 rounded-[22px] bg-foreground p-5 text-background">
+        <p className="text-xs font-medium text-background/65">Total alokasi perjalanan</p>
+        <p className="mt-1 text-2xl font-bold">{money(total, currency)}</p>
+        <p className="mt-1 text-xs text-background/65">Atur batas untuk tiap kategori di bawah.</p>
       </div>
+      <section>
+        <p className={label}>Kategori anggaran</p>
+        <div className={`${group} divide-y divide-border/60`}>
+          {items.length ? (
+            items.map((item) => (
+              <div key={item.id} className="flex min-h-[68px] items-center gap-3 px-4 py-3">
+                <span className="min-w-0 flex-1 text-sm font-semibold">
+                  {displayBudgetCategory(String(item.name ?? "Kategori"))}
+                </span>
+                <input
+                  aria-label={`Anggaran ${displayBudgetCategory(String(item.name ?? "Kategori"))}`}
+                  type="number"
+                  min="0"
+                  value={values[item.id]}
+                  onChange={(e) => setValues({ ...values, [item.id]: e.target.value })}
+                  className="min-h-11 w-28 rounded-xl bg-secondary px-3 text-right text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => void save(item.id)}
+                  disabled={saving === item.id}
+                  className="min-h-11 rounded-full px-3 text-xs font-bold text-brand-red disabled:opacity-50"
+                >
+                  {saving === item.id ? "…" : "Simpan"}
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="p-4 text-sm text-muted-foreground">Belum ada kategori budget.</p>
+          )}
+        </div>
+      </section>
     </section>
   );
 }
@@ -266,6 +271,7 @@ function ExpenseEditor({
 }) {
   const [form, setForm] = useState({ description: "", date: today(), amount: "" });
   const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -289,44 +295,74 @@ function ExpenseEditor({
         successMessage: "Pengeluaran disimpan",
         failureMessage: "Pengeluaran belum tersimpan. Periksa data lalu coba lagi.",
       });
-      if (saved) setForm({ description: "", date: today(), amount: "" });
+      if (saved) {
+        setForm({ description: "", date: today(), amount: "" });
+        setShowForm(false);
+      }
     } finally {
       setSaving(false);
     }
   }
   return (
     <section>
-      <p className={label}>Tambah pengeluaran</p>
-      <form onSubmit={submit} className={`${group} space-y-2 p-3`}>
-        <input
-          required
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          placeholder="Contoh: Tiket kereta"
-          className="w-full rounded-xl bg-secondary px-3 py-2 text-sm"
-        />
-        <div className="flex gap-2">
-          <input
-            required
-            type="date"
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
-            className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
-          />
-          <input
-            required
-            min="1"
-            type="number"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            placeholder="Nominal"
-            className="w-32 rounded-xl bg-secondary px-3 py-2 text-sm"
-          />
-        </div>
-        <button disabled={saving} className={btnRed}>
-          {saving ? "Menyimpan…" : "Tambah pengeluaran"}
-        </button>
-      </form>
+      <div className="mb-4 rounded-[22px] bg-surface p-4 ring-1 ring-border/50">
+        <p className="text-xs font-medium text-muted-foreground">Pengeluaran tercatat</p>
+        <p className="mt-1 text-2xl font-bold">
+          {money(
+            items.reduce((sum, item) => sum + Number(item.original_amount_minor ?? 0), 0),
+            currency,
+          )}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{items.length} transaksi</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => setShowForm(true)}
+        className={`${btnRed} min-h-12 w-full rounded-2xl`}
+      >
+        Tambah pengeluaran
+      </button>
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent
+          side="bottom"
+          className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
+        >
+          <SheetHeader className="mb-5 text-left">
+            <SheetTitle>Catat pengeluaran</SheetTitle>
+            <SheetDescription>Tambahkan transaksi ke anggaran perjalananmu.</SheetDescription>
+          </SheetHeader>
+          <form onSubmit={submit} className={`${group} space-y-2 p-3`}>
+            <input
+              required
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Contoh: Tiket kereta"
+              className="w-full rounded-xl bg-secondary px-3 py-2 text-sm"
+            />
+            <div className="flex gap-2">
+              <input
+                required
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
+              />
+              <input
+                required
+                min="1"
+                type="number"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                placeholder="Nominal"
+                className="w-32 rounded-xl bg-secondary px-3 py-2 text-sm"
+              />
+            </div>
+            <button disabled={saving} className={btnRed}>
+              {saving ? "Menyimpan…" : "Tambah pengeluaran"}
+            </button>
+          </form>
+        </SheetContent>
+      </Sheet>
       <EditableList
         items={items}
         empty="Belum ada pengeluaran."
@@ -750,6 +786,8 @@ function ChecklistEditor({
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const done = items.filter((item) => Boolean(item.is_completed)).length;
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -760,7 +798,10 @@ function ChecklistEditor({
         successMessage: "Checklist ditambahkan",
         failureMessage: "Checklist belum tersimpan. Coba lagi.",
       });
-      if (saved) setTitle("");
+      if (saved) {
+        setTitle("");
+        setShowAdd(false);
+      }
     } finally {
       setSaving(false);
     }
@@ -780,11 +821,24 @@ function ChecklistEditor({
   }
   return (
     <section>
-      <p className={label}>Checklist perjalanan</p>
-      <div className={group}>
+      <div className="mb-4 rounded-[22px] bg-surface p-4 ring-1 ring-border/50">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-semibold">Persiapan</span>
+          <span className="text-muted-foreground">
+            {done}/{items.length}
+          </span>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+          <div
+            className="h-full rounded-full bg-brand-red transition-[width]"
+            style={{ width: `${items.length ? Math.round((done / items.length) * 100) : 0}%` }}
+          />
+        </div>
+      </div>
+      <div className={`${group} divide-y divide-border/60`}>
         {items.length ? (
           items.map((x) => (
-            <div key={x.id} className={row}>
+            <div key={x.id} className="flex min-h-[60px] items-center gap-3 px-4 py-2">
               <label className="flex min-w-0 flex-1 items-center gap-3 text-sm">
                 <input
                   type="checkbox"
@@ -797,7 +851,7 @@ function ChecklistEditor({
                       e.target.checked ? "Checklist ditandai selesai" : "Checklist diperbarui",
                     )
                   }
-                  className="size-4 accent-brand-red"
+                  className="size-5 accent-brand-red"
                 />
                 <span className={x.is_completed ? "line-through text-muted-foreground" : ""}>
                   {displayChecklistTitle(String(x.title ?? ""))}
@@ -813,7 +867,7 @@ function ChecklistEditor({
                     "Checklist dihapus",
                   )
                 }
-                className="text-xs text-brand-red disabled:opacity-50"
+                className="min-h-11 rounded-full px-3 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-brand-red disabled:opacity-50"
               >
                 {busyItemId === x.id ? "…" : "Hapus"}
               </button>
@@ -823,18 +877,38 @@ function ChecklistEditor({
           <p className="p-4 text-sm text-muted-foreground">Belum ada checklist.</p>
         )}
       </div>
-      <form onSubmit={add} className="mt-3 flex gap-2">
-        <input
-          required
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Tambah checklist"
-          className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
-        />
-        <button disabled={saving} className={btnSoft}>
-          {saving ? "Menyimpan…" : "Tambah"}
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={() => setShowAdd(true)}
+        className={`${btnRed} mt-3 min-h-12 w-full rounded-2xl`}
+      >
+        Tambah checklist
+      </button>
+      <Sheet open={showAdd} onOpenChange={setShowAdd}>
+        <SheetContent
+          side="bottom"
+          className="mx-auto max-h-[88dvh] w-full max-w-lg rounded-t-[28px] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
+        >
+          <SheetHeader className="mb-5 text-left">
+            <SheetTitle>Tambah checklist</SheetTitle>
+            <SheetDescription>
+              Tambahkan hal yang perlu disiapkan untuk perjalanan.
+            </SheetDescription>
+          </SheetHeader>
+          <form onSubmit={add} className="flex gap-2">
+            <input
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Tambah checklist"
+              className="min-h-12 min-w-0 flex-1 rounded-xl bg-secondary px-3 text-sm"
+            />
+            <button disabled={saving} className={btnSoft}>
+              {saving ? "Menyimpan…" : "Tambah"}
+            </button>
+          </form>
+        </SheetContent>
+      </Sheet>
     </section>
   );
 }
@@ -850,6 +924,7 @@ function BookingEditor({
 }) {
   const [form, setForm] = useState({ category: "Lainnya", title: "", date: "", provider: "" });
   const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -869,49 +944,71 @@ function BookingEditor({
         successMessage: "Pemesanan disimpan",
         failureMessage: "Pemesanan belum tersimpan. Periksa data lalu coba lagi.",
       });
-      if (saved) setForm({ category: "Lainnya", title: "", date: "", provider: "" });
+      if (saved) {
+        setForm({ category: "Lainnya", title: "", date: "", provider: "" });
+        setShowForm(false);
+      }
     } finally {
       setSaving(false);
     }
   }
   return (
     <section>
-      <p className={label}>Tambah booking</p>
-      <form onSubmit={submit} className={`${group} space-y-2 p-3`}>
-        <div className="flex gap-2">
-          <input
-            required
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            placeholder="Kategori"
-            className="w-1/3 rounded-xl bg-secondary px-3 py-2 text-sm"
-          />
-          <input
-            required
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="Nama booking"
-            className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
-          />
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
-            className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
-          />
-          <input
-            value={form.provider}
-            onChange={(e) => setForm({ ...form, provider: e.target.value })}
-            placeholder="Provider"
-            className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
-          />
-        </div>
-        <button disabled={saving} className={btnRed}>
-          {saving ? "Menyimpan…" : "Tambah booking"}
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={() => setShowForm(true)}
+        className={`${btnRed} mb-4 min-h-12 w-full rounded-2xl`}
+      >
+        Tambah pemesanan
+      </button>
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent
+          side="bottom"
+          className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
+        >
+          <SheetHeader className="mb-5 text-left">
+            <SheetTitle>Tambah pemesanan</SheetTitle>
+            <SheetDescription>
+              Simpan detail tiket, hotel, transportasi, atau aktivitas.
+            </SheetDescription>
+          </SheetHeader>
+          <form onSubmit={submit} className={`${group} space-y-2 p-3`}>
+            <div className="flex gap-2">
+              <input
+                required
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                placeholder="Kategori"
+                className="w-1/3 rounded-xl bg-secondary px-3 py-2 text-sm"
+              />
+              <input
+                required
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Nama booking"
+                className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
+              />
+              <input
+                value={form.provider}
+                onChange={(e) => setForm({ ...form, provider: e.target.value })}
+                placeholder="Provider"
+                className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
+              />
+            </div>
+            <button disabled={saving} className={btnRed}>
+              {saving ? "Menyimpan…" : "Tambah booking"}
+            </button>
+          </form>
+        </SheetContent>
+      </Sheet>
       <EditableList
         items={items}
         empty="Belum ada booking."
@@ -1026,17 +1123,17 @@ export function TripWorkspace({
           >
             {group.title}
           </h2>
-          <div className="mt-2 overflow-hidden rounded-2xl bg-surface">
+          <div className="mt-3 overflow-hidden rounded-[22px] bg-surface shadow-[0_4px_18px_rgba(15,23,42,0.04)] ring-1 ring-border/50">
             {group.items.map(({ id, title, icon: Icon }) => (
               <Link
                 key={id}
                 to="/my-trips/$tripId/$section"
                 params={{ tripId, section: id }}
-                className="tap flex min-h-[60px] items-center gap-3 border-b border-border/55 px-4 py-3 transition-colors last:border-b-0 active:bg-secondary/60"
+                className="tap flex min-h-[68px] items-center gap-3 border-b border-border/55 px-4 py-3 transition-colors last:border-b-0 active:bg-secondary/60"
               >
                 <Icon className="size-5 shrink-0 text-foreground/65" strokeWidth={1.8} />
                 <span className="min-w-0 flex-1 text-[15px] font-medium">{title}</span>
-                <span className="max-w-[46%] truncate text-right text-[13px] text-muted-foreground">
+                <span className="max-w-[46%] truncate rounded-full bg-secondary px-2.5 py-1 text-right text-[11px] font-medium text-muted-foreground">
                   {summary[id]}
                 </span>
                 <ChevronRight

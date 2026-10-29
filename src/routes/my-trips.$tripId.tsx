@@ -7,7 +7,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarDays, ChevronRight, MapPin } from "lucide-react";
+import { CalendarDays, ChevronRight, MapPin, ClipboardCheck } from "lucide-react";
 import { BackBar, Page, btnRed, btnSoft } from "@/components/shell";
 import { deleteTripRecord, getTrip, patchTrip } from "@/lib/my-trips.server";
 import { isTripAuthenticationError } from "@/lib/trip-actions";
@@ -70,9 +70,47 @@ function TripDetail() {
   const budget = Number(trip.total_budget_minor ?? 0);
   const spent = Number(data.totals.spentMinor ?? 0);
   const budgetPercent = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+  const checklistItems = data.checklist as Array<{ is_completed?: boolean }>;
+  const completedChecklist = checklistItems.filter((item) => item.is_completed).length;
   return (
     <Page>
       <TripHeaderEditor trip={trip} onSaved={() => window.location.reload()} />
+
+      <section
+        className="mt-5 rounded-[24px] bg-foreground p-5 text-background"
+        aria-label="Ringkasan perjalanan"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium text-background/65">Persiapan perjalanan</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight">
+              {checklistItems.length
+                ? `${completedChecklist} dari ${checklistItems.length} selesai`
+                : "Mulai persiapanmu"}
+            </p>
+          </div>
+          <ClipboardCheck className="size-5 shrink-0 text-background/75" />
+        </div>
+        <div
+          className="mt-4 h-2 overflow-hidden rounded-full bg-background/20"
+          role="progressbar"
+          aria-label="Checklist persiapan"
+          aria-valuemin={0}
+          aria-valuemax={checklistItems.length || 1}
+          aria-valuenow={completedChecklist}
+        >
+          <div
+            className="h-full rounded-full bg-background transition-[width]"
+            style={{
+              width: `${checklistItems.length ? Math.round((completedChecklist / checklistItems.length) * 100) : 0}%`,
+            }}
+          />
+        </div>
+        <p className="mt-3 text-xs text-background/70">
+          {trip.destination_name} · {trip.travelers_count} traveler
+          {trip.travelers_count === 1 ? "" : "s"}
+        </p>
+      </section>
 
       <Link
         to="/my-trips/$tripId/$section"
