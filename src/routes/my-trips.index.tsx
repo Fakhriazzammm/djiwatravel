@@ -1,8 +1,7 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
   CalendarDays,
-  Check,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -16,14 +15,13 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState, type ReactNode } from "react";
-import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FixedLayer } from "@/components/motion-primitives";
 import { Page } from "@/components/shell";
 import { TripProgress } from "@/components/trip-progress";
 import { destinationPhoto } from "@/lib/destination-artwork";
-import { displayChecklistTitle, getMyTripsActions, getTripProgress } from "@/lib/my-trips-home";
-import { getMyTripsHome, patchChecklist } from "@/lib/my-trips.server";
+import { getMyTripsActions, getTripProgress } from "@/lib/my-trips-home";
+import { getMyTripsHome } from "@/lib/my-trips.server";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { pressable, springSheet } from "@/lib/motion";
 
@@ -50,7 +48,6 @@ export const Route = createFileRoute("/my-trips/")({
 type HomeData = Awaited<ReturnType<typeof getMyTripsHome>>;
 type Trip = HomeData["trips"][number];
 type AgendaItem = HomeData["agenda"][number];
-type ChecklistItem = HomeData["checklist"][number];
 
 const formatDate = (value: string | null | undefined, options?: Intl.DateTimeFormatOptions) => {
   if (!value) return "Tanggal belum diatur";
@@ -300,21 +297,6 @@ function TodayView({
   onAuthenticated: (user: { id: string; email: string }) => void;
 }) {
   const focusTrip = data.focusTrip;
-  const router = useRouter();
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  async function toggleChecklist(item: ChecklistItem) {
-    setBusyId(item.id);
-    try {
-      await patchChecklist({ data: { id: item.id, completed: !item.is_completed } });
-      toast.success(item.is_completed ? "Checklist diperbarui" : "Satu langkah persiapan selesai");
-      await router.invalidate();
-    } catch {
-      toast.error("Checklist belum berhasil diperbarui");
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   if (!focusTrip) {
     return (
@@ -327,8 +309,6 @@ function TodayView({
     );
   }
 
-  const openItems = data.checklist.filter((item) => !item.is_completed);
-  const checklistItems = openItems.slice(0, 3);
   const progress = getTripProgress(focusTrip);
 
   return (
@@ -371,50 +351,6 @@ function TodayView({
             <span className="flex-1">Belum ada agenda. Susun hari perjalananmu.</span>
             <ChevronRight className="size-4" />
           </Link>
-        )}
-      </section>
-
-      <section aria-labelledby="today-checklist-heading">
-        <SectionHeading
-          id="today-checklist-heading"
-          title="Checklist"
-          subtitle={`${openItems.length} hal belum selesai`}
-          action={
-            <Link
-              to="/my-trips/$tripId/$section"
-              params={{ tripId: focusTrip.id, section: "checklist" }}
-              className="tap text-[12px] font-semibold text-brand-red"
-            >
-              Lihat semua
-            </Link>
-          }
-        />
-        <div className="mt-3 divide-y divide-border/60 overflow-hidden rounded-2xl bg-surface ring-1 ring-border/60">
-          {checklistItems.length ? (
-            checklistItems.map((item) => (
-              <ChecklistRow
-                key={item.id}
-                item={item}
-                busy={busyId === item.id}
-                onToggle={() => void toggleChecklist(item)}
-                tripId={focusTrip.id}
-              />
-            ))
-          ) : (
-            <Link
-              to="/my-trips/$tripId/$section"
-              params={{ tripId: focusTrip.id, section: "checklist" }}
-              className="tap flex items-center gap-3 px-4 py-4 text-sm text-muted-foreground"
-            >
-              <ListChecks className="size-5 text-brand-red" /> Belum ada checklist untuk perjalanan
-              ini.
-            </Link>
-          )}
-        </div>
-        {openItems.length > checklistItems.length && (
-          <p className="mt-2 px-1 text-xs text-muted-foreground">
-            Selesaikan langkah kecil satu per satu.
-          </p>
         )}
       </section>
     </div>
@@ -520,42 +456,6 @@ function AgendaRow({ item, tripId }: { item: AgendaItem; tripId: string }) {
       </div>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
     </Link>
-  );
-}
-
-function ChecklistRow({
-  item,
-  busy,
-  onToggle,
-  tripId,
-}: {
-  item: ChecklistItem;
-  busy: boolean;
-  onToggle: () => void;
-  tripId: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <button
-        type="button"
-        aria-label={
-          item.is_completed ? `Tandai ${item.title} belum selesai` : `Tandai ${item.title} selesai`
-        }
-        onClick={onToggle}
-        disabled={busy}
-        className={`tap flex size-6 shrink-0 items-center justify-center rounded-full border-2 ${item.is_completed ? "border-brand-red bg-brand-red text-white" : "border-[#c7c7cc] text-transparent"}`}
-      >
-        {item.is_completed && <Check className="size-4" strokeWidth={3} />}
-      </button>
-      <Link
-        to="/my-trips/$tripId/$section"
-        params={{ tripId, section: "checklist" }}
-        className={`min-w-0 flex-1 truncate text-[15px] ${item.is_completed ? "text-muted-foreground line-through" : "font-medium"}`}
-      >
-        {displayChecklistTitle(item.title)}
-      </Link>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />
-    </div>
   );
 }
 
