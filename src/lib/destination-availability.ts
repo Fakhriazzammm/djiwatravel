@@ -20,19 +20,44 @@ export type DestinationAvailability = {
   degraded: boolean;
 };
 
+function localizedRegionName(code: string, locale: string): string | undefined {
+  try {
+    return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Display metadata for a code, falling back to the raw code so nothing is ever dropped. */
 export function destinationForCode(code: string): Destination {
   const wanted = code.trim().toUpperCase();
+  const englishName = localizedRegionName(wanted, "en") ?? wanted;
+  const indonesianName = localizedRegionName(wanted, "id") ?? englishName;
   return (
     destinations.find((d) => d.code.toUpperCase() === wanted) ?? {
       code: wanted,
       flag: "🌐",
-      name: wanted,
-      nameId: wanted,
+      name: englishName,
+      nameId: indonesianName,
       aliases: [],
       region: "Lainnya",
     }
   );
+}
+
+/** Resolves a destination route without allowing arbitrary, package-less codes. */
+export function resolveCatalogDestination(
+  code: string,
+  catalogPackages: readonly DestinationPackage[],
+): Destination | null {
+  const wanted = code.trim().toUpperCase();
+  if (!wanted) return null;
+  const known = destinations.find((destination) => destination.code.toUpperCase() === wanted);
+  if (known) return known;
+  const covered = catalogPackages.some((pkg) =>
+    pkg.locationCodes.some((locationCode) => locationCode.trim().toUpperCase() === wanted),
+  );
+  return covered ? destinationForCode(wanted) : null;
 }
 
 /**
@@ -114,7 +139,17 @@ export function listableDestinations(
   destinationsToList: readonly Destination[] = destinations,
 ): Destination[] {
   if (available.degraded || available.codes.length === 0) return [...destinationsToList];
-  return destinationsToList.filter((destination) =>
+  const known = destinationsToList.filter((destination) =>
     isDestinationSellable(destination, sellablePackages, available),
   );
+  const knownCodes = new Set(known.map((destination) => destination.code.toUpperCase()));
+  const dynamic: Destination[] = [];
+  for (const code of available.codes) {
+    const destination = destinationForCode(code);
+    const normalizedCode = destination.code.toUpperCase();
+    if (knownCodes.has(normalizedCode)) continue;
+    knownCodes.add(normalizedCode);
+    dynamic.push(destination);
+  }
+  return [...known, ...dynamic];
 }

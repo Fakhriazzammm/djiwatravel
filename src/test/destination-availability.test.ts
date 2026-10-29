@@ -7,6 +7,7 @@ import {
   isDestinationSellable,
   listableDestinations,
   regionalCoverage,
+  resolveCatalogDestination,
   type DestinationAvailability,
 } from "@/lib/destination-availability";
 
@@ -118,5 +119,34 @@ describe("listable destinations", () => {
     expect(isDestinationSellable({ code: "US", region: "Amerika" }, bundles, availability)).toBe(
       false,
     );
+  });
+
+  it("projects an unknown live country into the destination list", () => {
+    const packages = [{ locationCodes: ["DE"] }, { locationCodes: ["DE", "FR"] }];
+    const listed = listableDestinations(packages, live(["DE", "FR"]));
+
+    expect(listed.map((destination) => destination.code)).toContain("DE");
+    expect(listed.find((destination) => destination.code === "DE")).toEqual({
+      code: "DE",
+      flag: "🌐",
+      name: "Germany",
+      nameId: "Jerman",
+      aliases: [],
+      region: "Lainnya",
+    });
+  });
+
+  it("keeps known metadata and live unknown countries unique", () => {
+    const packages = [{ locationCodes: ["JP"] }, { locationCodes: ["JP", "DE"] }];
+    const listed = listableDestinations(packages, live(["JP", "DE", "DE"]));
+
+    expect(listed.filter((destination) => destination.code === "JP")).toHaveLength(1);
+    expect(listed.find((destination) => destination.code === "JP")?.nameId).toBe("Jepang");
+    expect(listed.filter((destination) => destination.code === "DE")).toHaveLength(1);
+  });
+
+  it("allows an unknown destination route only when live packages cover its code", () => {
+    expect(resolveCatalogDestination("DE", [{ locationCodes: ["DE"] }])?.code).toBe("DE");
+    expect(resolveCatalogDestination("DE", [{ locationCodes: ["FR"] }])).toBeNull();
   });
 });
