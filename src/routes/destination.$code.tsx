@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
-import { Check, ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BackBar, Page, StickyCta } from "@/components/shell";
 import {
@@ -469,9 +469,11 @@ function Destination() {
                       <Link
                         to="/checkout/$id"
                         params={{ id: pkg.packageCode }}
-                        className="tap inline-flex min-h-11 items-center justify-center gap-1 rounded-lg px-3 text-sm font-semibold text-brand-red transition hover:bg-brand-red-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label={`Pilih paket ${pkg.name}`}
+                        className="tap inline-flex min-h-11 min-w-20 items-center justify-center gap-1 rounded-full bg-brand-red px-4 text-sm font-bold text-white shadow-md shadow-brand-red/20 transition duration-150 hover:brightness-95 hover:shadow-lg active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
                       >
-                        Pilih <span aria-hidden="true">›</span>
+                        Pilih{" "}
+                        <ChevronRight className="size-4" strokeWidth={2.5} aria-hidden="true" />
                       </Link>
                     ) : stockPending ? (
                       <span
