@@ -19,6 +19,7 @@ function WalletPay() {
     <DjiwaPayBrowser
       open
       layout="page"
+      sharedAuth
       onOpenChange={(open) => {
         if (!open) void navigate({ to: "/wallet" });
       }}

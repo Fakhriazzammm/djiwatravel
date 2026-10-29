@@ -60,6 +60,7 @@ import { Route as RefundOrderRouteImport } from './routes/refund.$order'
 import { Route as WalletPayRouteImport } from './routes/wallet.pay'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
+import { Route as ApiDjiwaPayBridgeRouteImport } from './routes/api.djiwa-pay.bridge'
 import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.topup'
 import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api.google-calendar.callback'
 import { Route as ApiGoogleCalendarConnectRouteImport } from './routes/api.google-calendar.connect'
@@ -327,6 +328,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDjiwaPayBridgeRoute = ApiDjiwaPayBridgeRouteImport.update({
+  id: '/api/djiwa-pay/bridge',
+  path: '/api/djiwa-pay/bridge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDjiwaPayTopupRoute = ApiDjiwaPayTopupRouteImport.update({
   id: '/api/djiwa-pay/topup',
   path: '/api/djiwa-pay/topup',
@@ -435,6 +441,7 @@ export interface FileRoutesByFullPath {
   '/panduan/': typeof PanduanIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
@@ -498,6 +505,7 @@ export interface FileRoutesByTo {
   '/panduan': typeof PanduanIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
@@ -562,6 +570,7 @@ export interface FileRoutesById {
   '/panduan/': typeof PanduanIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
@@ -627,6 +636,7 @@ export interface FileRouteTypes {
     | '/panduan/'
     | '/admin/orders/$id'
     | '/api/auth/$'
+    | '/api/djiwa-pay/bridge'
     | '/api/djiwa-pay/topup'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/connect'
@@ -690,6 +700,7 @@ export interface FileRouteTypes {
     | '/panduan'
     | '/admin/orders/$id'
     | '/api/auth/$'
+    | '/api/djiwa-pay/bridge'
     | '/api/djiwa-pay/topup'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/connect'
@@ -753,6 +764,7 @@ export interface FileRouteTypes {
     | '/panduan/'
     | '/admin/orders/$id'
     | '/api/auth/$'
+    | '/api/djiwa-pay/bridge'
     | '/api/djiwa-pay/topup'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/connect'
@@ -815,6 +827,7 @@ export interface RootRouteChildren {
   MyTripsIndexRoute: typeof MyTripsIndexRoute
   PanduanIndexRoute: typeof PanduanIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiDjiwaPayBridgeRoute: typeof ApiDjiwaPayBridgeRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
   ApiGoogleCalendarCallbackRoute: typeof ApiGoogleCalendarCallbackRoute
   ApiGoogleCalendarConnectRoute: typeof ApiGoogleCalendarConnectRoute
@@ -1185,6 +1198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/djiwa-pay/bridge': {
+      id: '/api/djiwa-pay/bridge'
+      path: '/api/djiwa-pay/bridge'
+      fullPath: '/api/djiwa-pay/bridge'
+      preLoaderRoute: typeof ApiDjiwaPayBridgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/djiwa-pay/topup': {
       id: '/api/djiwa-pay/topup'
       path: '/api/djiwa-pay/topup'
@@ -1343,6 +1363,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyTripsIndexRoute: MyTripsIndexRoute,
   PanduanIndexRoute: PanduanIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiDjiwaPayBridgeRoute: ApiDjiwaPayBridgeRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
   ApiGoogleCalendarCallbackRoute: ApiGoogleCalendarCallbackRoute,
   ApiGoogleCalendarConnectRoute: ApiGoogleCalendarConnectRoute,
