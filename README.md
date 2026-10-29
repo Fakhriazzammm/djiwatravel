@@ -1,104 +1,72 @@
-# Implementing Delight
+# Djiwa Travel
 
-implementasi
+Platform perjalanan Djiwa untuk katalog eSIM, checkout, provisioning,
+customer support, My Trips, wallet handoff, dan operasi admin.
 
-This project was built with [Lovable](https://lovable.dev).
+## Mulai dari sini
 
-## Build with Lovable
+Dokumen kanonik dipisah agar agent dan manusia hanya membaca konteks yang
+dibutuhkan:
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/2b192783-a802-45e0-bf2f-60ac1fd4bb56).
+- [`AGENTS.md`](AGENTS.md) — aturan kerja, ownership, secret safety, dan
+  pelaporan release.
+- [`CLAUDE.md`](CLAUDE.md) — adapter singkat yang mengikuti `AGENTS.md`.
+- [`PROJECT.md`](PROJECT.md) — arsitektur, route/source map, integrasi, data,
+  auth, VPS, dan runbook.
+- [`DESIGN.md`](DESIGN.md) — UI/UX iOS-inspired, komponen, state, motion, dan
+  asset 3D.
+- [`LESSONS.md`](LESSONS.md) — lessons operasional terverifikasi dan guardrail.
+- [`src/routes/README.md`](src/routes/README.md) — konvensi file-based routing.
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+Sebelum mengubah kode: pastikan repo/branch/environment/database/VPS target,
+baca `git status --short`, ikuti alur route → server module → database/provider,
+dan pertahankan perubahan yang tidak terkait.
 
-## Development
+## Development command matrix
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+| Tujuan | Command | Bukti yang dicari |
+| --- | --- | --- |
+| Install | `npm install` | dependency sesuai lockfile |
+| Local app | `npm run dev` | server lokal dapat diakses |
+| Focused check | `npm test -- src/test/<file>.test.ts` | perilaku terkait lulus |
+| Full tests | `npm test` | hasil suite dan baseline failure dicatat |
+| Build | `npm run build` | `.output/server/index.mjs` tersedia |
+| Lint | `npm run lint` | error lint dicatat atau nol |
+| Route inventory | `bash scripts/list-routes.sh` | route bersumber dari `src/routes/` |
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+Gunakan `.env.example` hanya sebagai daftar nama variable. Nilai auth,
+database, AI, eSIM Access, Mayar, dan Calendar harus berada di environment
+server/lokal yang di-ignore; jangan gunakan prefix `VITE_` untuk secret.
 
-## Deploy ke VPS
+## Deploy dan operasi VPS
 
-Produksi: `https://djiwatravel.com` → nginx → `127.0.0.1:3000` (`djiwatravel.service`) di `ubuntu@43.133.156.93`.
-
-```sh
-scripts/deploy-vps.sh                 # build -> migrasi -> upload -> swap -> restart -> verifikasi
-scripts/deploy-vps.sh --skip-build    # kirim .output yang sudah ada
-scripts/deploy-vps.sh --no-migrate    # lewati fase migrasi SQL
-scripts/deploy-vps.sh --skip-source   # hanya kirim .output, jangan sinkron source
-scripts/deploy-vps.sh --dry-run       # lihat rencana tanpa mengubah apa pun
-```
-
-Deploy manual menolak HEAD yang belum di-push ke `origin/main` (auto-deploy akan menimpanya); untuk kasus khusus pakai `--allow-unpushed`. Setelah sukses, script menulis `.deployed-sha` supaya timer tahu commit itu sudah live.
-
-Yang otomatis:
-
-- **Route/halaman baru** — build Vite/Nitro ikut membawa semua `src/routes/*.tsx`. Script membaca folder itu, jadi route statis baru langsung di-deploy dan diuji tanpa mengedit script; route dengan segmen dinamis (`$id`, `$slug`) dihitung tapi tidak diprobe karena butuh ID nyata.
-- **Verifikasi** — setiap route statis dicek 2xx/3xx lewat `localhost:3000` **dan** URL publik, plus pencocokan hash asset HTML publik vs build lokal. Gagal satu saja → rollback otomatis ke `.output.bak-<timestamp>` (3 backup terakhir disimpan).
-- **Source VPS** — `src/`, `public/`, `migrations/`, `drizzle/`, `scripts/`, dan config ikut disinkronkan supaya isi host sama dengan commit yang di-deploy.
-- **Migrasi SQL** — `scripts/apply-migrations.sh` mencatat migrasi yang sudah jalan di tabel `deploy_schema_migrations` dan hanya menjalankan file baru (satu transaksi per file). Migrasi gagal = deploy berhenti sebelum swap.
-
-Baseline sekali per host yang skemanya sudah current tapi belum punya tabel pencatat:
+Target Travel yang didokumentasikan oleh script adalah
+`/home/ubuntu/djiwatravel`, service `djiwatravel.service`, listener
+`127.0.0.1:3000`, dan public origin `https://djiwatravel.com`.
 
 ```sh
-ssh ubuntu@43.133.156.93 'cd /home/ubuntu/djiwatravel && bash scripts/apply-migrations.sh --baseline'
+scripts/deploy-vps.sh --dry-run       # rencana tanpa perubahan
+scripts/deploy-vps.sh                 # build, migrasi, swap, restart, cek
+scripts/deploy-vps.sh --skip-build    # gunakan .output yang sudah ada
+scripts/deploy-vps.sh --no-migrate    # hanya jika migration boundary dipahami
 ```
 
-Cek status migrasi kapan saja: `bash scripts/apply-migrations.sh --status` (di host) atau lewat SSH yang sama.
+Baca [`scripts/deploy-vps.sh`](scripts/deploy-vps.sh) sebelum release. Script
+membedakan build, migrasi, source sync, atomic swap, backup, systemd restart,
+localhost route checks, public route/asset checks, dan rollback. Push ke branch
+production atau deploy ke VPS hanya jika diminta. Auto-deploy dan timer ada di
+[`scripts/autodeploy.sh`](scripts/autodeploy.sh) serta
+`scripts/systemd/`.
 
-Override host/key/service lewat env `DJIWA_DEPLOY_HOST`, `DJIWA_DEPLOY_KEY`, `DJIWA_DEPLOY_SERVICE`, `DJIWA_DEPLOY_URL`.
+Laporkan status secara terpisah: local source, commit, pushed revision,
+deployed artifact, service/listener health, dan public reachability. HTTP 200
+saja tidak membuktikan artifact, auth, data, atau migrasi yang benar.
 
-### eSIM Access webhook
+## Cross-project boundary
 
-Integrasi eSIM Access berjalan server-only. Jangan memakai prefix `VITE_` untuk credential dan jangan commit nilainya:
-
-- `ESIM_ACCESS_CODE`
-- `ESIM_ACCESS_SECRET_KEY`
-- `ESIM_ACCESS_WEBHOOK_TOKEN` — token acak khusus path webhook, berbeda dari SecretKey provider
-- `ESIM_ACCESS_WEBHOOK_LOG_PATH` (opsional; default `/var/lib/djiwatravel/esim-access-webhooks.jsonl`)
-
-Setelah aplikasi sudah live di HTTPS, registrasikan endpoint dan verifikasi URL yang dibaca kembali dari provider:
-
-```sh
-PUBLIC_BASE_URL=https://djiwatravel.com \
-ESIM_ACCESS_CODE='...' \
-ESIM_ACCESS_SECRET_KEY='...' \
-ESIM_ACCESS_WEBHOOK_TOKEN='...' \
-npm run register:esim-webhook
-```
-
-Untuk memeriksa URL tanpa memanggil provider, tambahkan `-- --dry-run`. Endpoint provider melakukan health-check `CHECK_HEALTH` saat URL disimpan; route membalas sukses tanpa membuat order palsu. Event `ORDER_STATUS` kemudian menarik profil melalui endpoint query provider, menyimpan LPA/activation code terenkripsi, dan tetap mempertahankan polling sebagai recovery.
-
-### Auto-deploy dari `main`
-
-VPS memantau `origin/main` tiap 3 menit lewat `djiwa-autodeploy.timer` → `djiwa-autodeploy.service`. Setiap push ke `main` (termasuk commit dari Lovable) otomatis: fetch → migrasi SQL baru → `npm install` bila lockfile berubah → build → swap `.output` → restart → verifikasi semua route → rollback bila gagal.
-
-- Status: `systemctl list-timers djiwa-autodeploy.timer` dan `journalctl -u djiwa-autodeploy.service -n 50`
-- Cek manual: `sudo systemctl start djiwa-autodeploy.service`
-- Paksa build ulang: `bash scripts/autodeploy.sh --force`
-- Pause sementara: `sudo systemctl stop djiwa-autodeploy.timer`
-- Pasang di host baru: `sudo bash scripts/install-autodeploy.sh` (butuh checkout git di `/home/ubuntu/djiwatravel`)
-- Penanda rilis: `.deployed-sha` (SHA yang sedang live) dan `.deps-lock` (hash lockfile terakhir yang di-install)
-
-Push ke `main` berarti langsung production. Untuk perubahan berisiko, uji dulu lewat `scripts/deploy-vps.sh --dry-run` atau kerjakan di branch lain.
-
-## Djiwa Pay top-up boundary
-
-The authenticated profile page exposes Djiwa Pay saldo top-up only after the central Better Auth session is verified server-side. Travel does not create or store a wallet, balance, ledger, Mayar key, or webhook settlement.
-
-Before enabling this in a runtime, configure these server-only variables:
-
-- `DJIWA_PAY_CUSTOMER_WALLET_URL`: the verified HTTPS URL for the canonical `customer-wallet` Edge Function boundary.
-- `DJIWA_TRAVEL_PUBLIC_ORIGIN` (optional): HTTPS origin used for the canonical `/saldo` return URL; defaults to `https://djiwatravel.com`.
-
-The server resolves each user's canonical `customerSourceId` by forwarding the incoming Better Auth session cookie to `GET https://api.djiwatentram.web.id/api/customer/profile`. It requires a non-empty `customer.source_id` and case-insensitive email ownership matching the authenticated Better Auth user. Unavailable, malformed, or mismatched profiles fail closed before `customer-wallet` is called. It must never pass `user.id` as `sourceId`, use email as identity, or read a shared browser/server value as every user's source id.
-
-`DJIWA_PAY_CUSTOMER_SOURCE_ID` is not used: canonical identity is a per-request server-side exchange result, never a static environment value or browser input.
-
-Invoice creation is pending only; Travel never marks saldo credited. The canonical Mayar webhook remains the only settlement authority.
+Djiwa Travel bukan Djiwa Tentram/Djiwa Pay. Keduanya dapat memiliki repository,
+app, database, domain, VPS, dan runbook berbeda. Travel memakai central Better
+Auth/profile contract melalui `api.djiwatentram.web.id`; ownership tetap
+diturunkan dari session server-side. Djiwa Pay tetap menjadi authority untuk
+wallet, ledger, settlement, dan Mayar. Sebelum pekerjaan lintas app/VPS,
+inspeksi `AGENTS.md` dan runbook proyek tujuan secara terpisah.
