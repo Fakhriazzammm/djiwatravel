@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Search, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Page } from "@/components/shell";
 import { destinations, search } from "@/lib/catalog";
 import {
@@ -53,12 +54,47 @@ function Explore() {
   const [q, setQ] = useState("");
   const [searchMessage, setSearchMessage] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const [placeholderText, setPlaceholderText] = useState("Cari negara atau kota");
   const res = search(q).filter((destination) =>
     available.destinations.some((item) => item.code === destination.code),
   );
   const searchOptions = (q.trim() ? res : destinations).filter((destination) =>
     available.destinations.some((item) => item.code === destination.code),
   );
+
+  useEffect(() => {
+    if (reduceMotion || searchFocused || q) {
+      setPlaceholderText("Cari negara atau kota");
+      return;
+    }
+
+    const examples = ["Jepang", "Singapura", "Thailand"];
+    let wordIndex = 0;
+    let characterCount = 0;
+    let deleting = false;
+    let timeout: ReturnType<typeof setTimeout>;
+
+    const tick = () => {
+      const word = examples[wordIndex];
+      characterCount += deleting ? -1 : 1;
+      setPlaceholderText(`Cari ${word.slice(0, characterCount)}`);
+
+      if (!deleting && characterCount === word.length) {
+        deleting = true;
+        timeout = setTimeout(tick, 1100);
+      } else if (deleting && characterCount === 0) {
+        deleting = false;
+        wordIndex = (wordIndex + 1) % examples.length;
+        timeout = setTimeout(tick, 250);
+      } else {
+        timeout = setTimeout(tick, deleting ? 45 : 85);
+      }
+    };
+
+    timeout = setTimeout(tick, 500);
+    return () => clearTimeout(timeout);
+  }, [q, reduceMotion, searchFocused]);
   return (
     <Page>
       <header className="pt-4">
@@ -89,7 +125,6 @@ function Explore() {
         >
           <Search className="size-5 text-muted-foreground" aria-hidden="true" />
           <input
-            autoFocus
             value={q}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
@@ -97,7 +132,7 @@ function Explore() {
               setQ(e.target.value);
               setSearchMessage("");
             }}
-            placeholder="Cari negara atau kota"
+            placeholder={placeholderText}
             aria-label="Cari destinasi"
             className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
           />
@@ -115,34 +150,48 @@ function Explore() {
             </button>
           )}
         </form>
-        {searchFocused && searchOptions.length > 0 && (
-          <div className="absolute inset-x-0 top-[calc(100%+8px)] z-20 max-h-72 overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-md">
-            <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {q.trim() ? "Hasil pencarian" : "Semua negara"}
-            </p>
-            {searchOptions.map((destination) => (
-              <button
-                key={destination.code}
-                type="button"
-                className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm hover:bg-secondary"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  setQ(destination.nameId);
-                  setSearchFocused(false);
-                  setSearchMessage("");
-                  void router.navigate({
-                    to: "/destination/$code",
-                    params: { code: destination.code.toLowerCase() },
-                  });
-                }}
-              >
-                <span aria-hidden="true">{destination.flag}</span>
-                <span className="font-medium">{destination.nameId}</span>
-                <span className="ml-auto text-xs text-muted-foreground">{destination.region}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <AnimatePresence>
+          {searchFocused && q.trim() && (
+            <motion.div
+              key="destination-search-results"
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: reduceMotion ? 0 : -4 }}
+              transition={reduceMotion ? { duration: 0.1 } : { duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
+              className="absolute inset-x-0 top-[calc(100%+8px)] z-20 max-h-72 overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-md"
+            >
+              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Hasil pencarian
+              </p>
+              {searchOptions.length > 0 ? searchOptions.map((destination) => (
+                <motion.button
+                  layout={!reduceMotion}
+                  key={destination.code}
+                  type="button"
+                  className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm hover:bg-secondary"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setQ(destination.nameId);
+                    setSearchFocused(false);
+                    setSearchMessage("");
+                    void router.navigate({
+                      to: "/destination/$code",
+                      params: { code: destination.code.toLowerCase() },
+                    });
+                  }}
+                >
+                  <span aria-hidden="true">{destination.flag}</span>
+                  <span className="font-medium">{destination.nameId}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{destination.region}</span>
+                </motion.button>
+              )) : (
+                <p className="px-3 py-3 text-sm text-muted-foreground" role="status">
+                  Tidak ada destinasi yang cocok.
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       {searchMessage && (
         <p className="mt-2 text-sm text-muted-foreground" role="status">
