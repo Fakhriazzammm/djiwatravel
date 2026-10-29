@@ -3,7 +3,6 @@ import { useState } from "react";
 import {
   BedDouble,
   CalendarDays,
-  ChevronRight,
   ClipboardCheck,
   Coffee,
   Hotel,
@@ -13,10 +12,16 @@ import {
   Ticket,
   Utensils,
   WalletCards,
-  X,
 } from "lucide-react";
 import { BackBar, Page, btnRed, btnSoft, group, label, row } from "@/components/shell";
 import { TripProgress } from "@/components/trip-progress";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { displayBudgetCategory, displayChecklistTitle, getTripProgress } from "@/lib/my-trips-home";
 import { isTripAuthenticationError, runTripMutation } from "@/lib/trip-actions";
 import {
@@ -350,7 +355,7 @@ function ExpenseEditor({
   );
 }
 
-function ItineraryEditor({
+export function ItineraryEditor({
   tripId,
   items,
   onSaved,
@@ -368,7 +373,7 @@ function ItineraryEditor({
     category: "",
   });
   const [saving, setSaving] = useState(false);
-  const [showForm, setShowForm] = useState(items.length === 0);
+  const [showForm, setShowForm] = useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -411,84 +416,131 @@ function ItineraryEditor({
   return (
     <section className="space-y-4" aria-label="Agenda perjalanan">
       <div className="flex items-center justify-end">
-        <div className="flex items-start justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => setShowForm((value) => !value)}
-            className="tap flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-brand-red px-3 text-sm font-semibold text-white"
-            aria-expanded={showForm}
-          >
-            {showForm ? <X className="size-4" /> : <Plus className="size-4" />}
-            {showForm ? "Tutup" : "Tambah"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="tap flex min-h-10 items-center gap-2 rounded-full bg-brand-red px-4 text-sm font-semibold text-white"
+          aria-expanded={showForm}
+        >
+          <Plus className="size-4" /> Tambah aktivitas
+        </button>
       </div>
-      {showForm && (
-        <form onSubmit={submit} className="rounded-2xl bg-surface p-4">
-          <div className="flex items-center justify-between">
-            <p className={label}>Tambah aktivitas</p>
-            <span className="text-[11px] text-muted-foreground">Semua waktu lokal perjalanan</span>
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <input
-              required
-              value={form.title}
-              onChange={(event) => setForm({ ...form, title: event.target.value })}
-              placeholder="Contoh: Makan malam di Ximending"
-              className="rounded-xl bg-secondary px-3 py-2.5 text-sm sm:col-span-2"
-            />
-            <input
-              required
-              type="date"
-              value={form.date}
-              onChange={(event) => setForm({ ...form, date: event.target.value })}
-              className="rounded-xl bg-secondary px-3 py-2.5 text-sm"
-            />
-            <input
-              value={form.location}
-              onChange={(event) => setForm({ ...form, location: event.target.value })}
-              placeholder="Lokasi"
-              className="rounded-xl bg-secondary px-3 py-2.5 text-sm"
-            />
-            <input
-              type="time"
-              value={form.startTime}
-              onChange={(event) => setForm({ ...form, startTime: event.target.value })}
-              aria-label="Waktu mulai"
-              className="rounded-xl bg-secondary px-3 py-2.5 text-sm"
-            />
-            <input
-              type="time"
-              value={form.endTime}
-              onChange={(event) => setForm({ ...form, endTime: event.target.value })}
-              aria-label="Waktu selesai"
-              className="rounded-xl bg-secondary px-3 py-2.5 text-sm"
-            />
-            <select
-              value={form.category}
-              onChange={(event) => setForm({ ...form, category: event.target.value })}
-              aria-label="Kategori aktivitas"
-              className="rounded-xl bg-secondary px-3 py-2.5 text-sm sm:col-span-2"
-            >
-              <option value="">Kategori aktivitas (opsional)</option>
-              <option value="flight">Penerbangan</option>
-              <option value="hotel">Hotel</option>
-              <option value="food">Makan</option>
-              <option value="attraction">Atraksi</option>
-              <option value="transport">Transportasi</option>
-              <option value="other">Lainnya</option>
-            </select>
-          </div>
-          <div className="mt-3 flex justify-end gap-2">
-            <button type="button" onClick={() => setShowForm(false)} className={btnSoft}>
-              Batal
-            </button>
-            <button disabled={saving} className={btnRed}>
-              {saving ? "Menyimpan…" : "Simpan aktivitas"}
-            </button>
-          </div>
-        </form>
-      )}
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent
+          side="bottom"
+          className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border-border/70 px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7 sm:rounded-t-[28px]"
+        >
+          <SheetHeader className="mb-5 pr-8 text-left">
+            <SheetTitle className="text-[22px] tracking-tight">Tambah aktivitas</SheetTitle>
+            <SheetDescription>
+              Susun rencana perjalananmu. Semua waktu mengikuti zona lokal.
+            </SheetDescription>
+          </SheetHeader>
+          <form onSubmit={submit} className="space-y-5">
+            <div className="space-y-1.5">
+              <label htmlFor="agenda-title" className="text-[13px] font-semibold">
+                Nama aktivitas
+              </label>
+              <input
+                id="agenda-title"
+                required
+                autoFocus
+                value={form.title}
+                onChange={(event) => setForm({ ...form, title: event.target.value })}
+                placeholder="Contoh: Makan malam"
+                className="min-h-12 w-full rounded-xl border border-border/70 bg-secondary/70 px-3.5 text-[15px] outline-none transition focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label htmlFor="agenda-date" className="text-[13px] font-semibold">
+                  Tanggal
+                </label>
+                <input
+                  id="agenda-date"
+                  required
+                  type="date"
+                  value={form.date}
+                  onChange={(event) => setForm({ ...form, date: event.target.value })}
+                  className="min-h-12 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="agenda-location" className="text-[13px] font-semibold">
+                  Lokasi <span className="font-normal text-muted-foreground">(opsional)</span>
+                </label>
+                <input
+                  id="agenda-location"
+                  value={form.location}
+                  onChange={(event) => setForm({ ...form, location: event.target.value })}
+                  placeholder="Tambahkan lokasi"
+                  className="min-h-12 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                />
+              </div>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[13px] font-semibold">
+                Waktu <span className="font-normal text-muted-foreground">(opsional)</span>
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1.5 text-xs text-muted-foreground">
+                  Mulai
+                  <input
+                    type="time"
+                    value={form.startTime}
+                    onChange={(event) => setForm({ ...form, startTime: event.target.value })}
+                    className="min-h-12 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                  />
+                </label>
+                <label className="space-y-1.5 text-xs text-muted-foreground">
+                  Selesai
+                  <input
+                    type="time"
+                    value={form.endTime}
+                    onChange={(event) => setForm({ ...form, endTime: event.target.value })}
+                    className="min-h-12 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="agenda-category" className="text-[13px] font-semibold">
+                Kategori <span className="font-normal text-muted-foreground">(opsional)</span>
+              </label>
+              <select
+                id="agenda-category"
+                value={form.category}
+                onChange={(event) => setForm({ ...form, category: event.target.value })}
+                className="min-h-12 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+              >
+                <option value="">Pilih kategori</option>
+                <option value="flight">Penerbangan</option>
+                <option value="hotel">Hotel</option>
+                <option value="food">Makan</option>
+                <option value="attraction">Atraksi</option>
+                <option value="transport">Transportasi</option>
+                <option value="other">Lainnya</option>
+              </select>
+            </div>
+            <div className="sticky bottom-0 -mx-5 flex gap-3 border-t border-border/60 bg-background/95 px-5 pb-1 pt-4 backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className={`${btnSoft} min-h-12 flex-1 rounded-full`}
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className={`${btnRed} min-h-12 flex-[1.4] rounded-full disabled:opacity-60`}
+              >
+                {saving ? "Menyimpan…" : "Simpan aktivitas"}
+              </button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
       {days.length ? (
         days.map((day) => (
           <ItineraryDay
@@ -510,8 +562,15 @@ function ItineraryEditor({
           <CalendarDays className="mx-auto size-9 text-muted-foreground" strokeWidth={1.5} />
           <p className="mt-3 text-sm font-semibold">Belum ada aktivitas</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tambahkan agenda pertama untuk mulai menyusun perjalanan.
+            Rencana perjalananmu akan tersusun di sini.
           </p>
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="tap mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-background px-4 text-sm font-semibold text-brand-red"
+          >
+            <Plus className="size-4" /> Tambah aktivitas
+          </button>
         </div>
       )}
     </section>
@@ -565,7 +624,7 @@ function ItineraryDay({
           {items.length} aktivitas
         </span>
       </div>
-      <div className="relative mt-4 space-y-0 before:absolute before:bottom-4 before:left-[3.4rem] before:top-4 before:w-px before:bg-border/80">
+      <div className="mt-3 divide-y divide-border/60">
         {items.map((item) => (
           <ItineraryItem key={item.id} item={item} onDelete={onDelete} />
         ))}
@@ -594,17 +653,19 @@ function ItineraryItem({
     }
   }
   return (
-    <article className="relative flex gap-3 py-2.5 first:pt-0 last:pb-0">
-      <div className="w-11 shrink-0 pt-1 text-right text-xs font-bold tabular-nums text-foreground">
+    <article className="flex items-start gap-3 py-3 first:pt-1 last:pb-1">
+      <div className="w-11 shrink-0 pt-0.5 text-right text-xs font-medium tabular-nums text-muted-foreground">
         {time || "—"}
       </div>
-      <div className="relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-surface bg-brand-red-soft text-brand-red ring-1 ring-brand-red/15">
-        <Icon className="size-3.5" strokeWidth={2} />
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+        <Icon className="size-3.5" strokeWidth={1.8} />
       </div>
-      <div className="min-w-0 flex-1 rounded-xl border border-border/60 bg-background/70 px-3 py-2.5">
+      <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-bold leading-snug">{String(item.title ?? "Aktivitas")}</h4>
+            <h4 className="text-sm font-semibold leading-snug">
+              {String(item.title ?? "Aktivitas")}
+            </h4>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               {item.location ? (
                 <span className="inline-flex items-center gap-1">
@@ -614,7 +675,7 @@ function ItineraryItem({
               ) : (
                 <span>Lokasi belum diatur</span>
               )}
-              {endTime && (
+              {endTime && time && (
                 <span>
                   {time}–{endTime}
                 </span>
@@ -630,10 +691,6 @@ function ItineraryItem({
           >
             {deleting ? "…" : "Hapus"}
           </button>
-          <ChevronRight
-            className="mt-1 size-4 shrink-0 text-muted-foreground/60"
-            aria-hidden="true"
-          />
         </div>
         {item.booking_reference ? (
           <span className="mt-2 inline-flex rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
