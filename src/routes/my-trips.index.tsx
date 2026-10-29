@@ -181,10 +181,10 @@ function ActionSheet({
       {open && (
         <FixedLayer>
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={reduce ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: reduce ? 0.12 : 0.2 }}
+            transition={{ duration: reduce ? 0 : 0.2 }}
             className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-3 sm:items-center"
             role="presentation"
             onClick={(event) => {
@@ -349,6 +349,7 @@ function TodayView({
 }
 
 function FocusTripCard({ trip }: { trip: Trip }) {
+  const reduce = useReducedMotion();
   const photo = destinationPhoto(String(trip.destination_code ?? ""));
   const pct =
     trip.total_budget_minor > 0
@@ -356,9 +357,9 @@ function FocusTripCard({ trip }: { trip: Trip }) {
       : 0;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={reduce ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={springSheet}
+      transition={reduce ? { duration: 0 } : springSheet}
     >
       <Link
         to="/my-trips/$tripId"
