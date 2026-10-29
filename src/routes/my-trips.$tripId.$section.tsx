@@ -327,17 +327,21 @@ function ExpenseEditor({
           side="bottom"
           className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
         >
+          <div
+            className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
+            aria-hidden="true"
+          />
           <SheetHeader className="mb-5 text-left">
             <SheetTitle>Catat pengeluaran</SheetTitle>
             <SheetDescription>Tambahkan transaksi ke anggaran perjalananmu.</SheetDescription>
           </SheetHeader>
-          <form onSubmit={submit} className={`${group} space-y-2 p-3`}>
+          <form onSubmit={submit} className="space-y-3">
             <input
               required
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Contoh: Tiket kereta"
-              className="w-full rounded-xl bg-secondary px-3 py-2 text-sm"
+              className="min-h-12 w-full rounded-2xl bg-secondary px-4 text-[15px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
             />
             <div className="flex gap-2">
               <input
@@ -345,7 +349,7 @@ function ExpenseEditor({
                 type="date"
                 value={form.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
+                className="min-h-12 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-[15px] outline-none focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
               <input
                 required
@@ -354,10 +358,10 @@ function ExpenseEditor({
                 value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
                 placeholder="Nominal"
-                className="w-32 rounded-xl bg-secondary px-3 py-2 text-sm"
+                className="min-h-12 w-32 rounded-2xl bg-secondary px-4 text-[15px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
             </div>
-            <button disabled={saving} className={btnRed}>
+            <button disabled={saving} className={`${btnRed} min-h-12 rounded-2xl`}>
               {saving ? "Menyimpan…" : "Tambah pengeluaran"}
             </button>
           </form>
@@ -457,6 +461,10 @@ export function ItineraryEditor({
           side="bottom"
           className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border-border/70 px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7 sm:rounded-t-[28px]"
         >
+          <div
+            className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
+            aria-hidden="true"
+          />
           <SheetHeader className="mb-5 pr-8 text-left">
             <SheetTitle className="text-[22px] tracking-tight">Tambah aktivitas</SheetTitle>
             <SheetDescription>
@@ -889,6 +897,10 @@ function ChecklistEditor({
           side="bottom"
           className="mx-auto max-h-[88dvh] w-full max-w-lg rounded-t-[28px] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
         >
+          <div
+            className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
+            aria-hidden="true"
+          />
           <SheetHeader className="mb-5 text-left">
             <SheetTitle>Tambah checklist</SheetTitle>
             <SheetDescription>
@@ -966,27 +978,31 @@ function BookingEditor({
           side="bottom"
           className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
         >
+          <div
+            className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
+            aria-hidden="true"
+          />
           <SheetHeader className="mb-5 text-left">
             <SheetTitle>Tambah pemesanan</SheetTitle>
             <SheetDescription>
               Simpan detail tiket, hotel, transportasi, atau aktivitas.
             </SheetDescription>
           </SheetHeader>
-          <form onSubmit={submit} className={`${group} space-y-2 p-3`}>
+          <form onSubmit={submit} className="space-y-3">
             <div className="flex gap-2">
               <input
                 required
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 placeholder="Kategori"
-                className="w-1/3 rounded-xl bg-secondary px-3 py-2 text-sm"
+                className="min-h-12 w-1/3 rounded-2xl bg-secondary px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
               <input
                 required
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Nama booking"
-                className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
+                className="min-h-12 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
             </div>
             <div className="flex gap-2">
@@ -994,16 +1010,16 @@ function BookingEditor({
                 type="date"
                 value={form.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
+                className="min-h-12 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
               <input
                 value={form.provider}
                 onChange={(e) => setForm({ ...form, provider: e.target.value })}
                 placeholder="Provider"
-                className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
+                className="min-h-12 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
             </div>
-            <button disabled={saving} className={btnRed}>
+            <button disabled={saving} className={`${btnRed} min-h-12 rounded-2xl`}>
               {saving ? "Menyimpan…" : "Tambah booking"}
             </button>
           </form>
