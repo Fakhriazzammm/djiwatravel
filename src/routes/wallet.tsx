@@ -234,7 +234,11 @@ export function Wallet() {
       {!user ? (
         <GuestState />
       ) : error ? (
-        <ErrorState message={error} onRetry={() => void loadWallet()} />
+        <ErrorState
+          message={error}
+          onRetry={() => void loadWallet()}
+          onOpenDjiwaPay={() => setDjiwaPayOpen(true)}
+        />
       ) : !wallet ? (
         <EmptyState />
       ) : (
@@ -607,7 +611,15 @@ function EmptyState() {
     </div>
   );
 }
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({
+  message,
+  onRetry,
+  onOpenDjiwaPay,
+}: {
+  message: string;
+  onRetry: () => void;
+  onOpenDjiwaPay: () => void;
+}) {
   return (
     <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm">
       <h2 className="text-lg font-bold">Wallet belum dapat dimuat</h2>
@@ -618,6 +630,14 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         className="mt-5 min-h-11 rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
       >
         Coba lagi
+      </button>
+      <button
+        type="button"
+        onClick={onOpenDjiwaPay}
+        className="tap mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-red px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
+      >
+        Buka Djiwa Pay
+        <ExternalLink className="size-3.5" aria-hidden="true" />
       </button>
     </div>
   );

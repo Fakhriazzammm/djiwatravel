@@ -2,7 +2,7 @@
 
 ## Intent
 
-Memberi pengguna akses cepat ke `https://djiwapay.web.id` dari halaman `/wallet` tanpa menghilangkan navbar bottom Djiwa Travel atau fitur saldo, top up, dan riwayat yang sudah ada.
+Memberi pengguna akses cepat ke `https://djiwapay.web.id` dari halaman `/wallet` tanpa menghilangkan navbar bottom Djiwa Travel atau fitur saldo, top up, dan riwayat yang sudah ada. Akses ini tetap tersedia ketika pembacaan wallet Travel sedang gagal.
 
 ## Goals
 
@@ -11,6 +11,7 @@ Memberi pengguna akses cepat ke `https://djiwapay.web.id` dari halaman `/wallet`
 - Mempertahankan navbar bottom Djiwa Travel di luar sheet.
 - Menyediakan fallback `Buka di browser` untuk login, pembayaran, atau browser yang menolak iframe.
 - Menyediakan kontrol tutup yang accessible.
+- Menampilkan jalur `Buka Djiwa Pay` pada state error wallet agar kegagalan API Travel tidak memblokir akses ke Djiwa Pay.
 
 ## Non-goals and constraints
 
@@ -18,6 +19,7 @@ Memberi pengguna akses cepat ke `https://djiwapay.web.id` dari halaman `/wallet`
 - Tidak mengasumsikan sesi/cookie Djiwa Travel berlaku di domain Djiwa Pay.
 - Tidak menyimpan credential atau token di frontend.
 - Iframe lintas-origin dapat dibatasi oleh browser atau aplikasi Djiwa Pay; fallback eksternal harus selalu tersedia.
+- Error wallet Travel tidak boleh menyembunyikan tombol pembuka Djiwa Pay.
 
 ## Approaches
 
@@ -28,6 +30,7 @@ Memberi pengguna akses cepat ke `https://djiwapay.web.id` dari halaman `/wallet`
 ## Acceptance criteria
 
 - Wallet yang berhasil dimuat menampilkan tombol `Buka Djiwa Pay`.
+- Wallet yang gagal dimuat tetap menampilkan tombol `Buka Djiwa Pay` dan pesan error Travel.
 - Klik tombol membuka dialog berjudul `Djiwa Pay` dengan iframe menuju URL kanonik.
 - Dialog memiliki tombol tutup dan link `Buka di browser` dengan `target="_blank"`.
 - Menutup dialog mengembalikan pengguna ke Wallet tanpa mengubah data Wallet.

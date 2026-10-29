@@ -95,6 +95,9 @@ describe("Wallet history scope filter", () => {
 
     expect(await screen.findByText("Wallet belum dapat dimuat")).toBeInTheDocument();
     expect(screen.getByText("Wallet service unavailable")).toBeInTheDocument();
+    screen.getByRole("button", { name: "Buka Djiwa Pay" }).click();
+    expect(await screen.findByRole("dialog", { name: "Djiwa Pay" })).toBeInTheDocument();
+    expect(screen.getByTitle("Djiwa Pay")).toHaveAttribute("src", "https://djiwapay.web.id");
     expect(screen.queryByTestId("wallet-loading-splash")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Djiwa Travel" })).not.toBeInTheDocument();
   });
