@@ -63,18 +63,16 @@ export function requiredUnits(providerPriceUnits: number, buffer = SELLABILITY_B
 }
 
 /**
- * Fail-open by design: an unreadable balance must never empty the whole store. The checkout gate
- * re-checks against the same snapshot, so an unknown balance cannot turn into a paid order we
- * cannot deliver.
+ * Fail closed: an unreadable balance or invalid provider cost cannot prove that a package is
+ * affordable. The UI can show a neutral stock-checking state while checkout independently rechecks.
  */
 export function isPackageSellable(
   pkg: SellablePackage,
   snapshot: BalanceSnapshot,
   buffer = SELLABILITY_BUFFER,
 ): boolean {
-  // A package without a usable price is a catalogue problem, not an affordability verdict.
-  if (!Number.isFinite(pkg.providerPriceUnits) || pkg.providerPriceUnits <= 0) return true;
-  if (snapshot.balanceUnits === null || !Number.isFinite(snapshot.balanceUnits)) return true;
+  if (!Number.isFinite(pkg.providerPriceUnits) || pkg.providerPriceUnits <= 0) return false;
+  if (snapshot.balanceUnits === null || !Number.isFinite(snapshot.balanceUnits)) return false;
   return snapshot.balanceUnits >= requiredUnits(pkg.providerPriceUnits, buffer);
 }
 

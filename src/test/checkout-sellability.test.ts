@@ -4,10 +4,10 @@ import { checkoutSellabilityDecision, isPackageSellable } from "@/lib/sellabilit
 describe("checkout affordability boundary", () => {
   const pkg = { packageCode: "p-1", providerPriceUnits: 100_000 };
 
-  it("keeps catalog reads degraded-safe while an unknown balance is not an affordability proof", () => {
+  it("does not advertise a package when an unknown balance cannot prove affordability", () => {
     expect(
       isPackageSellable(pkg, { balanceUnits: null, capturedAtMs: null, source: "unknown" }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("requires a known balance before the provider-cost threshold can be evaluated", () => {

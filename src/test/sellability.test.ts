@@ -67,13 +67,13 @@ describe("isPackageSellable", () => {
     expect(isPackageSellable(pkg("inside", 160_000), live(REAL_BALANCE))).toBe(true);
   });
 
-  it("fails open when the balance is unknown", () => {
-    expect(isPackageSellable(pkg("anything", 3_816_900), live(null, "unknown"))).toBe(true);
+  it("does not claim a package is sellable when the balance is unknown", () => {
+    expect(isPackageSellable(pkg("anything", 3_816_900), live(null, "unknown"))).toBe(false);
   });
 
-  it("never hides a package with a broken price", () => {
-    expect(isPackageSellable(pkg("no-price", 0), live(REAL_BALANCE))).toBe(true);
-    expect(isPackageSellable(pkg("nan-price", Number.NaN), live(REAL_BALANCE))).toBe(true);
+  it("does not claim a package is sellable when its provider price is invalid", () => {
+    expect(isPackageSellable(pkg("no-price", 0), live(REAL_BALANCE))).toBe(false);
+    expect(isPackageSellable(pkg("nan-price", Number.NaN), live(REAL_BALANCE))).toBe(false);
   });
 
   it("sells everything when the balance is zero only if it costs nothing", () => {
@@ -90,9 +90,10 @@ describe("partitionSellability", () => {
     expect(partition.sellableCount).toBe(2);
   });
 
-  it("hides nothing when the balance is unknown", () => {
+  it("marks every package unavailable when the balance is unknown", () => {
     const partition = partitionSellability([pkg("a", 3_816_900)], live(null, "unknown"));
-    expect(partition.hiddenCount).toBe(0);
+    expect(partition.hiddenCount).toBe(1);
+    expect(partition.hidden).toEqual(new Set(["a"]));
   });
 });
 
