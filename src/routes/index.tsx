@@ -12,6 +12,7 @@ import { destinationPhoto } from "@/lib/destination-artwork";
 import { travelGuides } from "@/lib/travel-guides";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
+import { useReducedMotion } from "motion/react";
 
 const featuredGuides = travelGuides.slice(0, 3);
 
@@ -52,10 +53,43 @@ function Home() {
   const [hello, setHello] = useState("Halo");
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [searchHint, setSearchHint] = useState("Cari negara atau wilayah");
+  const reduceMotion = useReducedMotion();
   const nav = useNavigate();
   const orders = useOrders();
   const { user, loading } = useBetterAuthUser();
   useEffect(() => setHello(greeting()), []);
+  useEffect(() => {
+    if (reduceMotion || query) {
+      setSearchHint("Cari negara atau wilayah");
+      return;
+    }
+
+    const examples = ["Jepang", "Singapura", "Korea Selatan", "Eropa"];
+    let wordIndex = 0;
+    let characterCount = 0;
+    let deleting = false;
+    let timeout: ReturnType<typeof setTimeout>;
+
+    const tick = () => {
+      const word = examples[wordIndex];
+      characterCount += deleting ? -1 : 1;
+      setSearchHint(`Cari ${word.slice(0, characterCount)}`);
+      if (!deleting && characterCount === word.length) {
+        deleting = true;
+        timeout = setTimeout(tick, 1000);
+      } else if (deleting && characterCount === 0) {
+        deleting = false;
+        wordIndex = (wordIndex + 1) % examples.length;
+        timeout = setTimeout(tick, 250);
+      } else {
+        timeout = setTimeout(tick, deleting ? 42 : 80);
+      }
+    };
+
+    timeout = setTimeout(tick, 500);
+    return () => clearTimeout(timeout);
+  }, [query, reduceMotion, searchOpen]);
 
   // The seeded row paints immediately; the live (sellable-only) row replaces it when it arrives so
   // the first paint never blocks on the reseller provider.
@@ -130,7 +164,7 @@ function Home() {
         aria-expanded={searchOpen}
         className="tap mt-4 flex h-12 w-full items-center gap-3 rounded-2xl border border-border/70 bg-surface px-4 text-left text-[15px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <Search className="size-5 shrink-0" /> Cari negara atau wilayah
+        <Search className="size-5 shrink-0" /> {searchHint}
       </button>
 
       {searchOpen && (
@@ -165,7 +199,7 @@ function Home() {
                 autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Jepang, Korea, Eropa…"
+                placeholder={reduceMotion ? "Jepang, Korea, Eropa…" : searchHint}
                 className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
               />
             </label>
