@@ -21,27 +21,44 @@ export function DjiwaPayBrowser({
   const reduce = useReducedMotion();
   const pageLayout = layout === "page";
   const [frameVersion, setFrameVersion] = useState(0);
-  const [frameSrc, setFrameSrc] = useState(DJIWA_PAY_URL);
+  const [frameSrc, setFrameSrc] = useState<string | null>(sharedAuth ? null : DJIWA_PAY_URL);
+  const [bridgeState, setBridgeState] = useState<"loading" | "ready" | "error">(
+    sharedAuth ? "loading" : "ready",
+  );
+  const [bridgeAttempt, setBridgeAttempt] = useState(0);
 
   useEffect(() => {
-    if (!open || !sharedAuth) return;
+    if (!sharedAuth) {
+      setFrameSrc(DJIWA_PAY_URL);
+      setBridgeState("ready");
+      return;
+    }
+    if (!open) return;
     let cancelled = false;
+    setFrameSrc(null);
+    setBridgeState("loading");
     void fetch("/api/djiwa-pay/bridge", { credentials: "include" })
       .then(async (response) => {
-        if (!response.ok) return null;
+        if (!response.ok) throw new Error("Bridge request failed");
         const payload = (await response.json()) as { url?: unknown };
-        return typeof payload.url === "string" ? payload.url : null;
+        if (typeof payload.url !== "string" || !payload.url) throw new Error("Invalid bridge URL");
+        return payload.url;
       })
       .then((url) => {
-        if (!cancelled && url) setFrameSrc(url);
+        if (cancelled) return;
+        setFrameSrc(url);
+        setBridgeState("ready");
       })
       .catch(() => {
-        // Keep the normal Pay page as a safe fallback when bridge SSO is unavailable.
+        if (!cancelled) {
+          setFrameSrc(null);
+          setBridgeState("error");
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [open, sharedAuth]);
+  }, [bridgeAttempt, open, sharedAuth]);
 
   useEffect(() => {
     if (!open) return;
@@ -124,15 +141,37 @@ export function DjiwaPayBrowser({
               ) : null}
 
               <div className="min-h-0 flex-1 bg-background">
-                <iframe
-                  key={`${frameSrc}-${frameVersion}`}
-                  title="Djiwa Pay"
-                  src={frameSrc}
-                  className="size-full border-0 bg-background"
-                  loading="eager"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allow="payment *; clipboard-read; clipboard-write"
-                />
+                {bridgeState === "loading" ? (
+                  <div className="flex h-full items-center justify-center px-6 text-center">
+                    <p className="text-sm text-muted-foreground">Menghubungkan ke Djiwa Pay…</p>
+                  </div>
+                ) : bridgeState === "error" ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+                    <div>
+                      <p className="font-semibold text-foreground">Sesi Djiwa Pay belum siap</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Coba lagi untuk meneruskan sesi Djiwa Travel Anda.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="tap min-h-11 rounded-xl bg-brand-red px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
+                      onClick={() => setBridgeAttempt((current) => current + 1)}
+                    >
+                      Coba lagi
+                    </button>
+                  </div>
+                ) : frameSrc ? (
+                  <iframe
+                    key={`${frameSrc}-${frameVersion}`}
+                    title="Djiwa Pay"
+                    src={frameSrc}
+                    className="size-full border-0 bg-background"
+                    loading="eager"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allow="payment *; clipboard-read; clipboard-write"
+                  />
+                ) : null}
               </div>
 
               {!pageLayout ? (
