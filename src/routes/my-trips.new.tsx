@@ -63,14 +63,39 @@ function NewTrip() {
                 onChange={(v) => update("destinationName", v)}
               />
             }
-            {
-              <Field
-                label="Kode negara"
+            <label className={row}>
+              <span className="text-sm font-medium">Negara</span>
+              <select
                 value={form.destinationCode}
-                placeholder="JP"
-                onChange={(v) => update("destinationCode", v.toUpperCase())}
-              />
-            }
+                onChange={(event) => {
+                  const destinationCode = event.target.value;
+                  const countryByCode: Record<
+                    string,
+                    { name: string; currency: "IDR" | "JPY" | "USD" | "SGD" | "KRW" }
+                  > = {
+                    JP: { name: "Jepang", currency: "JPY" },
+                    US: { name: "Amerika Serikat", currency: "USD" },
+                    SG: { name: "Singapura", currency: "SGD" },
+                    KR: { name: "Korea Selatan", currency: "KRW" },
+                    ID: { name: "Indonesia", currency: "IDR" },
+                  };
+                  const country = countryByCode[destinationCode];
+                  setForm((current) => ({
+                    ...current,
+                    destinationCode,
+                    destinationName: country.name,
+                    primaryCurrency: country.currency,
+                  }));
+                }}
+                className="max-w-44 bg-transparent text-right text-sm outline-none"
+              >
+                <option value="JP">Jepang</option>
+                <option value="SG">Singapura</option>
+                <option value="KR">Korea Selatan</option>
+                <option value="US">Amerika Serikat</option>
+                <option value="ID">Indonesia</option>
+              </select>
+            </label>
           </div>
         </div>
         <div>
@@ -89,10 +114,10 @@ function NewTrip() {
           </div>
         </div>
         <div>
-          <p className={label}>Budget awal</p>
+          <p className={label}>Anggaran & traveler</p>
           <div className={group}>
             <label className={row}>
-              <span className="text-sm font-medium">Budget (Rp)</span>
+              <span className="text-sm font-medium">Anggaran ({form.primaryCurrency})</span>
               <input
                 required
                 type="number"

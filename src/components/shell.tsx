@@ -70,8 +70,8 @@ export function Page({ children, tabs = true }: { children: ReactNode; tabs?: bo
   );
 }
 
-/** iOS nav bar: back left, title centered, equal-width spacer right. */
-export function BackBar({ title }: { title?: string }) {
+/** iOS nav bar: back left, title centered, optional action right. */
+export function BackBar({ title, action }: { title?: string; action?: ReactNode }) {
   const router = useRouter();
   return (
     <div className="mb-3 grid h-11 grid-cols-[5.5rem_minmax(0,1fr)_5.5rem] items-center">
@@ -83,7 +83,7 @@ export function BackBar({ title }: { title?: string }) {
         <ChevronLeft className="size-6 shrink-0" strokeWidth={2.2} /> Kembali
       </button>
       <span className="truncate text-center text-[16px] font-semibold">{title}</span>
-      <span />
+      <span className="flex items-center justify-end">{action}</span>
     </div>
   );
 }

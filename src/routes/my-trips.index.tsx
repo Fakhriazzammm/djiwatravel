@@ -4,7 +4,6 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
   Clock3,
   Ellipsis,
@@ -67,7 +66,6 @@ function MyTrips() {
   const { user, setUser, loading: authLoading } = useBetterAuthUser();
   const [view, setView] = useState<"today" | "logbook">("today");
   const [sheet, setSheet] = useState<"menu" | "actions" | null>(null);
-  const [viewMenuOpen, setViewMenuOpen] = useState(false);
 
   if (!user && !authLoading) return <Unauthenticated onAuthenticated={setUser} />;
 
@@ -75,54 +73,9 @@ function MyTrips() {
     <Page>
       <div className="relative pt-1">
         <TopBar onMenu={() => setSheet("menu")} />
-        <div className="relative mt-4">
-          <button
-            type="button"
-            aria-expanded={viewMenuOpen}
-            aria-haspopup="menu"
-            onClick={() => setViewMenuOpen((open) => !open)}
-            className="tap inline-flex items-center gap-2 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
-          >
-            <h1 className="text-[34px] font-bold leading-none tracking-[-0.045em]">
-              {view === "today" ? "Today" : "Logbook"}
-            </h1>
-            <ChevronDown
-              className={`mt-1 size-5 text-muted-foreground transition-transform ${viewMenuOpen ? "rotate-180" : ""}`}
-              strokeWidth={2.5}
-            />
-          </button>
-          <AnimatePresence>
-            {viewMenuOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                transition={springSheet}
-                role="menu"
-                className="absolute left-0 top-11 z-20 min-w-36 overflow-hidden rounded-2xl bg-surface p-1.5 shadow-xl ring-1 ring-border/70"
-              >
-                {(["today", "logbook"] as const).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setView(item);
-                      setViewMenuOpen(false);
-                    }}
-                    className="tap flex min-h-10 w-full items-center rounded-xl px-3 text-sm font-semibold"
-                  >
-                    {item === "today" ? "Today" : "Logbook"}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <h1 className="mt-5 text-[34px] font-bold leading-none tracking-[-0.045em]">Perjalanan</h1>
         <p className="mt-2 text-[15px] text-muted-foreground">
-          {view === "today"
-            ? "Satu langkah kecil untuk perjalananmu."
-            : "Semua cerita perjalananmu."}
+          {view === "today" ? "Satu langkah kecil untuk perjalananmu." : "Semua perjalananmu."}
         </p>
       </div>
 
@@ -142,7 +95,7 @@ function MyTrips() {
               view === item ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground"
             }`}
           >
-            {item === "today" ? "Today" : "Logbook"}
+            {item === "today" ? "Hari ini" : "Riwayat"}
           </button>
         ))}
       </nav>
@@ -380,7 +333,7 @@ function TodayView({
       <section aria-labelledby="today-agenda-heading">
         <SectionHeading
           id="today-agenda-heading"
-          title="Today"
+          title="Hari ini"
           subtitle={new Intl.DateTimeFormat("id-ID", {
             weekday: "long",
             day: "numeric",
@@ -496,7 +449,7 @@ function FocusTripCard({ trip }: { trip: Trip }) {
         <div className="relative flex min-h-56 flex-col justify-between p-5 text-white">
           <div className="flex items-start justify-between gap-3">
             <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold backdrop-blur-md">
-              {trip.status === "ongoing" ? "Sedang berjalan" : "Perjalanan berikutnya"}
+              {trip.status === "ongoing" ? "Sedang berlangsung" : "Berikutnya"}
             </span>
             <Plane className="size-5" />
           </div>
