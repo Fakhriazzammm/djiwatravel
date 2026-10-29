@@ -48,6 +48,15 @@ describe("destination availability", () => {
   it("uses the ISO country flag for live countries without local metadata", () => {
     expect(destinationForCode("EC").flag).toBe("🇪🇨");
     expect(destinationForCode("ec").nameId).toBe("Ekuador");
+    expect(destinationForCode("EC").region).toBe("Amerika");
+  });
+
+  it("normalizes legacy provider country codes for names and flags", () => {
+    expect(destinationForCode("AN")).toMatchObject({
+      nameId: "Curaçao",
+      flag: "🇨🇼",
+      region: "Amerika",
+    });
   });
 
   it("keeps the globe fallback for non-country region codes", () => {
@@ -142,7 +151,7 @@ describe("listable destinations", () => {
       name: "Germany",
       nameId: "Jerman",
       aliases: [],
-      region: "Lainnya",
+      region: "Eropa",
     });
   });
 
