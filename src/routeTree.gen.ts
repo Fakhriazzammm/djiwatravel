@@ -46,6 +46,7 @@ import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recover
 import { Route as ApiTravelWaitlistRouteImport } from './routes/api.travel-waitlist'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
+import { Route as EsimFinderRouteImport } from './routes/esim.finder'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
 import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as MyTripsIndexRouteImport } from './routes/my-trips.index'
@@ -258,6 +259,11 @@ const DestinationCodeRoute = DestinationCodeRouteImport.update({
   path: '/destination/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EsimFinderRoute = EsimFinderRouteImport.update({
+  id: '/esim/finder',
+  path: '/esim/finder',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyEsimIndexRoute = MyEsimIndexRouteImport.update({
   id: '/my-esim/',
   path: '/my-esim/',
@@ -426,6 +432,7 @@ export interface FileRoutesByFullPath {
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
+  '/esim/finder': typeof EsimFinderRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -490,6 +497,7 @@ export interface FileRoutesByTo {
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
+  '/esim/finder': typeof EsimFinderRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -555,6 +563,7 @@ export interface FileRoutesById {
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
+  '/esim/finder': typeof EsimFinderRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -621,6 +630,7 @@ export interface FileRouteTypes {
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
+    | '/esim/finder'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -685,6 +695,7 @@ export interface FileRouteTypes {
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
+    | '/esim/finder'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -749,6 +760,7 @@ export interface FileRouteTypes {
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
+    | '/esim/finder'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -814,6 +826,7 @@ export interface RootRouteChildren {
   ApiTravelWaitlistRoute: typeof ApiTravelWaitlistRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
+  EsimFinderRoute: typeof EsimFinderRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
   MyTripsTripIdRoute: typeof MyTripsTripIdRouteWithChildren
   MyTripsNewRoute: typeof MyTripsNewRoute
@@ -1100,6 +1113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DestinationCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/esim/finder': {
+      id: '/esim/finder'
+      path: '/esim/finder'
+      fullPath: '/esim/finder'
+      preLoaderRoute: typeof EsimFinderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/my-esim/': {
       id: '/my-esim/'
       path: '/my-esim'
@@ -1350,6 +1370,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTravelWaitlistRoute: ApiTravelWaitlistRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
+  EsimFinderRoute: EsimFinderRoute,
   MyEsimIdRoute: MyEsimIdRoute,
   MyTripsTripIdRoute: MyTripsTripIdRouteWithChildren,
   MyTripsNewRoute: MyTripsNewRoute,

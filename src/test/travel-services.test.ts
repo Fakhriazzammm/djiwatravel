@@ -25,7 +25,7 @@ describe("travel service configuration", () => {
 
   it("only active services can navigate", () => {
     for (const service of travelServices) {
-      expect(serviceHref(service)).toBe(service.status === "ACTIVE" ? "/finder" : null);
+      expect(serviceHref(service)).toBe(service.status === "ACTIVE" ? "/esim/finder" : null);
     }
   });
 });

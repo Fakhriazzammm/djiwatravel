@@ -40,7 +40,7 @@ describe("privacy-safe analytics attribution", () => {
   it("keeps attribution stable for a session", () => {
     const first = buildAnalyticsEvent("page_view", "/explore");
     window.history.replaceState({}, "", "/explore?utm_source=other&utm_medium=paid");
-    const second = buildAnalyticsEvent("finder_submit", "/finder", { durationDays: 7 });
+    const second = buildAnalyticsEvent("finder_submit", "/esim/finder", { durationDays: 7 });
     expect(second?.sessionId).toBe(first?.sessionId);
     expect(second?.attribution).toEqual(first?.attribution);
   });

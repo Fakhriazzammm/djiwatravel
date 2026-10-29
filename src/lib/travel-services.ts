@@ -6,7 +6,7 @@ export type TravelServiceCategory = {
   description: string;
   icon: string;
   status: TravelServiceStatus;
-  href?: "/explore" | "/finder";
+  href?: "/explore" | "/esim/finder";
   displayOrder: number;
 };
 
@@ -17,7 +17,7 @@ export const travelServices: TravelServiceCategory[] = [
     description: "Internet saat tiba",
     icon: "esim",
     status: "ACTIVE",
-    href: "/finder",
+    href: "/esim/finder",
     displayOrder: 1,
   },
   {
@@ -90,6 +90,6 @@ export const visibleTravelServices = () =>
     .filter((service) => service.status !== "DISABLED")
     .sort((a, b) => a.displayOrder - b.displayOrder);
 
-export function serviceHref(service: TravelServiceCategory): "/explore" | "/finder" | null {
+export function serviceHref(service: TravelServiceCategory): "/explore" | "/esim/finder" | null {
   return service.status === "ACTIVE" ? (service.href ?? null) : null;
 }

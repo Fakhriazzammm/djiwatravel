@@ -15,7 +15,11 @@ const tabs = [
 ] as const;
 
 const isActiveTab = (to: string, pathname: string) =>
-  to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
+  to === "/"
+    ? pathname === "/"
+    : pathname === to ||
+      pathname.startsWith(`${to}/`) ||
+      (to === "/explore" && pathname === "/esim/finder");
 
 export function TabBar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });

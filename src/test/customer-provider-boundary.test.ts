@@ -8,7 +8,7 @@ describe("customer provider boundary", () => {
     const root = path.resolve("src");
     const pending = [
       "routes/catalog.tsx",
-      "routes/finder.tsx",
+      "routes/esim.finder.tsx",
       "routes/checkout.$id.tsx",
       "lib/guest-orders.server.ts",
       "lib/esim-access-provisioner.ts",

@@ -41,7 +41,7 @@ export function staggerContainer(step = 0.045, cap = 0.35): Variants {
 export type NavDirection = "forward" | "back" | "tab" | "initial";
 
 /** Top-level tab routes: switching between them must not slide sideways. */
-export const TAB_PATHS = ["/", "/explore", "/my-esim", "/profile"] as const;
+export const TAB_PATHS = ["/", "/explore", "/esim/finder", "/my-esim", "/profile"] as const;
 
 const isTabPath = (pathname: string) =>
   TAB_PATHS.some((tab) =>

@@ -37,4 +37,10 @@ describe("retired catalog URLs", () => {
     await router.load();
     expect(router.state.location.pathname).toBe("/explore");
   });
+
+  it("redirects the legacy /finder URL to the eSIM Finder route", async () => {
+    const router = buildRouter("/finder");
+    await router.load();
+    expect(router.state.location.pathname).toBe("/esim/finder");
+  });
 });

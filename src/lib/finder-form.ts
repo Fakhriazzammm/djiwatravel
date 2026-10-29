@@ -1,7 +1,7 @@
 /**
  * Shared shape of the Finder form.
  *
- * The form fields live in `routes/finder.tsx`, but other screens describe the form ("Jawab N
+ * The form fields live in `routes/esim.finder.tsx`, but other screens describe the form ("Jawab N
  * pertanyaan"). Keeping the count next to the field list means that copy cannot silently drift
  * when a field is added or removed.
  */

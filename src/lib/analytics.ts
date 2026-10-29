@@ -19,7 +19,7 @@ const ATTRIBUTION_KEY = "djiwa.analytics.attribution";
 const PUBLIC_PATHS = [
   /^\/$/,
   /^\/explore\/?$/,
-  /^\/finder\/?$/,
+  /^\/(?:esim\/finder|finder)\/?$/,
   /^\/destination\/[a-z0-9-]+\/?$/,
   /^\/panduan(?:\/.*)?$/,
 ];

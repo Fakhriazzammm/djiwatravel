@@ -59,9 +59,6 @@ function Explore() {
   const searchOptions = (q.trim() ? res : destinations).filter((destination) =>
     available.destinations.some((item) => item.code === destination.code),
   );
-  const listedDestinations = [...res].sort(
-    (a, b) => Number(b.popular) - Number(a.popular),
-  );
   return (
     <Page>
       <header className="pt-4">
@@ -153,7 +150,7 @@ function Explore() {
         </p>
       )}
       <Link
-        to="/finder"
+        to="/esim/finder"
         className="tap mt-3 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-3"
       >
         <div className="min-w-0 flex-1">
@@ -179,41 +176,6 @@ function Explore() {
           </button>
         </div>
       )}
-      <section className="mt-7">
-        <ServiceSectionHeading
-          title="Pilih destinasi"
-          detail={`${listedDestinations.length} tersedia`}
-        />
-        {listedDestinations.length > 0 ? (
-          <div className="divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface">
-            {listedDestinations.map((destination) => (
-              <Link
-                key={destination.code}
-                to="/destination/$code"
-                params={{ code: destination.code.toLowerCase() }}
-                className="tap flex min-h-[68px] items-center gap-3 px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-              >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xl" aria-hidden="true">
-                  {destination.flag}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-semibold text-foreground">
-                    {destination.nameId}
-                  </span>
-                  <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                    {destination.region} · Paket eSIM
-                  </span>
-                </span>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-2xl bg-surface px-4 py-5 text-sm text-muted-foreground">
-            Belum ada destinasi live dari katalog.
-          </p>
-        )}
-      </section>
       <section className="mt-8">
         <ServiceSectionHeading title="Kebutuhan perjalanan" detail="Layanan" />
         <ServiceCategoryGrid />
