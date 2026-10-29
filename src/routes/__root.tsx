@@ -22,6 +22,7 @@ import { CustomerOnboardingGate } from "../components/customer-onboarding-gate";
 import { easeIos } from "../lib/motion";
 import { warmResellerCatalog } from "../lib/explore-warm";
 import { trackAnalytics } from "../lib/analytics";
+import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -135,6 +136,7 @@ function RootComponent() {
         <AnalyticsPageView />
         <AnimatedOutlet />
         <CustomerOnboardingGate />
+        <Toaster />
       </MotionConfig>
     </QueryClientProvider>
   );
