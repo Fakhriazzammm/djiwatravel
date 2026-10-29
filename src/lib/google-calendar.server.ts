@@ -10,7 +10,7 @@ type User = { id: string };
 type TripItem = {
   id: string;
   trip_id: string;
-  activity_date: string;
+  activity_date: string | Date;
   start_time: string | null;
   end_time: string | null;
   timezone: string | null;
@@ -58,8 +58,17 @@ function stateHash(state: string) {
 function baseUrl() {
   return process.env["PUBLIC_APP_URL"] ?? "https://djiwatravel.com";
 }
-function dateOnly(value: string, days = 0) {
-  const date = new Date(`${value}T00:00:00Z`);
+export function calendarDate(value: string | Date) {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) throw new Error("Tanggal agenda tidak valid");
+    return value.toISOString().slice(0, 10);
+  }
+  const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+  if (!match) throw new Error("Tanggal agenda tidak valid");
+  return match[0];
+}
+function dateOnly(value: string | Date, days = 0) {
+  const date = new Date(`${calendarDate(value)}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
@@ -68,6 +77,7 @@ function timeValue(value: string) {
 }
 function eventBody(item: TripItem, trip: { name: string; destination_name: string }) {
   const timezone = item.timezone || "UTC";
+  const activityDate = calendarDate(item.activity_date);
   const description = [
     `Trip: ${trip.name}`,
     `Destinasi: ${trip.destination_name}`,
@@ -83,18 +93,18 @@ function eventBody(item: TripItem, trip: { name: string; destination_name: strin
     extendedProperties: { private: { djiwaTripId: item.trip_id, djiwaItineraryItemId: item.id } },
   };
   if (!item.start_time) {
-    body.start = { date: item.activity_date };
-    body.end = { date: dateOnly(item.activity_date, 1) };
+    body.start = { date: activityDate };
+    body.end = { date: dateOnly(activityDate, 1) };
   } else {
-    const start = `${item.activity_date}T${timeValue(item.start_time)}`;
+    const start = `${activityDate}T${timeValue(item.start_time)}`;
     const endDate = item.end_time && item.end_time < item.start_time
-      ? dateOnly(item.activity_date, 1)
-      : item.activity_date;
+      ? dateOnly(activityDate, 1)
+      : activityDate;
     const end = item.end_time
       ? `${endDate}T${timeValue(item.end_time)}`
-      : `${item.activity_date}T${timeValue(item.start_time)}`;
+      : `${activityDate}T${timeValue(item.start_time)}`;
   const endDateTime = end === start
-    ? `${item.activity_date}T${timeValue(item.start_time).replace(/(\d{2}):(\d{2}):\d{2}/, (_, hour, minute) => `${String((Number(hour) + 1) % 24).padStart(2, "0")}:${minute}:00`)}`
+    ? `${activityDate}T${timeValue(item.start_time).replace(/(\d{2}):(\d{2}):\d{2}/, (_, hour, minute) => `${String((Number(hour) + 1) % 24).padStart(2, "0")}:${minute}:00`)}`
     : end;
     body.start = { dateTime: start, timeZone: timezone };
     body.end = { dateTime: endDateTime, timeZone: timezone };
@@ -106,7 +116,10 @@ async function googleRequest(path: string, init: RequestInit, token: string) {
     ...init,
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(init.headers ?? {}) },
   });
-  if (!response.ok) throw new Error(`Google Calendar API ${response.status}`);
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Google Calendar API ${response.status}${detail ? `: ${detail.slice(0, 240)}` : ""}`);
+  }
   return response.status === 204 ? null : response.json();
 }
 async function refreshAccessToken(connection: Connection) {
