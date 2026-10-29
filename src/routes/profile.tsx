@@ -16,10 +16,12 @@ import {
   saveCustomerProfile,
 } from "@/lib/customer-profile-client";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
+import { isSafeTripReturnTo } from "@/lib/trip-actions";
 
 export const Route = createFileRoute("/profile")({
   validateSearch: (search: Record<string, unknown>) => ({
     admin: search["admin"] === "unauthorized" ? ("unauthorized" as const) : undefined,
+    returnTo: isSafeTripReturnTo(search["returnTo"]) ? search["returnTo"] : undefined,
   }),
   head: () => ({
     meta: [
@@ -34,7 +36,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 function Profile() {
-  const { admin } = Route.useSearch();
+  const { admin, returnTo } = Route.useSearch();
   const orders = useOrders() ?? [];
   const item = row;
   const { user, setUser, loading } = useBetterAuthUser();
@@ -64,6 +66,9 @@ function Profile() {
       ].includes(status);
     return true;
   });
+  useEffect(() => {
+    if (!loading && user && returnTo) window.location.replace(returnTo);
+  }, [loading, returnTo, user]);
   useEffect(() => {
     if (!user) {
       setProfileSaved(false);

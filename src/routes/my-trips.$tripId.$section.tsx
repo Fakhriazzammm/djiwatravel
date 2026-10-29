@@ -1,6 +1,5 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
-import { toast } from "sonner";
 import {
   BedDouble,
   CalendarDays,
@@ -19,6 +18,7 @@ import {
 import { BackBar, Page, btnRed, btnSoft, group, label, row } from "@/components/shell";
 import { TripProgress } from "@/components/trip-progress";
 import { displayBudgetCategory, displayChecklistTitle, getTripProgress } from "@/lib/my-trips-home";
+import { isTripAuthenticationError, runTripMutation } from "@/lib/trip-actions";
 import {
   deleteBookingRecord,
   deleteChecklist,
@@ -34,10 +34,18 @@ import {
 } from "@/lib/my-trips.server";
 
 export const Route = createFileRoute("/my-trips/$tripId/$section")({
-  loader: ({ params }) =>
-    getTripSection({
-      data: { tripId: params.tripId, section: params.section as FeatureId },
-    }),
+  loader: async ({ params, location }) => {
+    try {
+      return await getTripSection({
+        data: { tripId: params.tripId, section: params.section as FeatureId },
+      });
+    } catch (error) {
+      if (isTripAuthenticationError(error)) {
+        throw redirect({ to: "/profile", search: { returnTo: location.href } });
+      }
+      throw error;
+    }
+  },
   component: TripSection,
 });
 const labels: Record<string, string> = {
@@ -132,10 +140,7 @@ function TripSection() {
     booking_count: number;
     expense_count: number;
   };
-  const refresh = () => {
-    void router.invalidate();
-    toast.success("Progres perjalanan diperbarui");
-  };
+  const refresh = () => router.invalidate();
   const progress = getTripProgress(trip);
   return (
     <Page>
@@ -189,7 +194,7 @@ function BudgetEditor({
 }: {
   items: Item[];
   currency: string;
-  onSaved: () => void;
+  onSaved: () => Promise<void>;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(items.map((x) => [x.id, String(Number(x.allocated_minor ?? 0) / 100)])),
@@ -198,10 +203,13 @@ function BudgetEditor({
   async function save(id: string) {
     setSaving(id);
     try {
-      await patchBudget({
-        data: { id, allocatedMinor: Math.round(Number(values[id] || 0) * 100) },
+      await runTripMutation({
+        action: () =>
+          patchBudget({ data: { id, allocatedMinor: Math.round(Number(values[id] || 0) * 100) } }),
+        refresh: onSaved,
+        successMessage: "Alokasi anggaran disimpan",
+        failureMessage: "Anggaran belum tersimpan. Periksa nilainya lalu coba lagi.",
       });
-      onSaved();
     } finally {
       setSaving(null);
     }
@@ -258,7 +266,7 @@ function ExpenseEditor({
   tripId: string;
   currency: string;
   items: Item[];
-  onSaved: () => void;
+  onSaved: () => Promise<void>;
 }) {
   const [form, setForm] = useState({ description: "", date: today(), amount: "" });
   const [saving, setSaving] = useState(false);
@@ -267,20 +275,25 @@ function ExpenseEditor({
     setSaving(true);
     try {
       const amount = Math.round(Number(form.amount) * 100);
-      await postExpense({
-        data: {
-          tripId,
-          description: form.description,
-          transactionDate: form.date,
-          originalAmountMinor: amount,
-          originalCurrency: currency,
-          convertedAmountMinor: amount,
-          convertedCurrency: currency,
-          exchangeRateStatus: "manual",
-        },
+      const saved = await runTripMutation({
+        action: () =>
+          postExpense({
+            data: {
+              tripId,
+              description: form.description,
+              transactionDate: form.date,
+              originalAmountMinor: amount,
+              originalCurrency: currency,
+              convertedAmountMinor: amount,
+              convertedCurrency: currency,
+              exchangeRateStatus: "manual",
+            },
+          }),
+        refresh: onSaved,
+        successMessage: "Pengeluaran disimpan",
+        failureMessage: "Pengeluaran belum tersimpan. Periksa data lalu coba lagi.",
       });
-      setForm({ description: "", date: today(), amount: "" });
-      onSaved();
+      if (saved) setForm({ description: "", date: today(), amount: "" });
     } finally {
       setSaving(false);
     }
@@ -325,8 +338,12 @@ function ExpenseEditor({
           `${String(x.description ?? "")} · ${money(x.original_amount_minor, String(x.original_currency ?? currency))}`
         }
         onDelete={async (id) => {
-          await deleteExpense({ data: { id } });
-          onSaved();
+          await runTripMutation({
+            action: () => deleteExpense({ data: { id } }),
+            refresh: onSaved,
+            successMessage: "Pengeluaran dihapus",
+            failureMessage: "Pengeluaran belum terhapus. Coba lagi.",
+          });
         }}
       />
     </section>
@@ -340,7 +357,7 @@ function ItineraryEditor({
 }: {
   tripId: string;
   items: Item[];
-  onSaved: () => void;
+  onSaved: () => Promise<void>;
 }) {
   const [form, setForm] = useState({
     title: "",
@@ -357,27 +374,34 @@ function ItineraryEditor({
     event.preventDefault();
     setSaving(true);
     try {
-      await postItinerary({
-        data: {
-          tripId,
-          title: form.title,
-          activityDate: form.date,
-          startTime: form.startTime || undefined,
-          endTime: form.endTime || undefined,
-          location: form.location || undefined,
-          activityCategory: form.category || undefined,
-        },
+      const saved = await runTripMutation({
+        action: () =>
+          postItinerary({
+            data: {
+              tripId,
+              title: form.title,
+              activityDate: form.date,
+              startTime: form.startTime || undefined,
+              endTime: form.endTime || undefined,
+              location: form.location || undefined,
+              activityCategory: form.category || undefined,
+            },
+          }),
+        refresh: onSaved,
+        successMessage: "Aktivitas disimpan",
+        failureMessage: "Aktivitas belum tersimpan. Periksa tanggal dan waktu lalu coba lagi.",
       });
-      setForm({
-        title: "",
-        date: form.date,
-        startTime: "",
-        endTime: "",
-        location: "",
-        category: "",
-      });
-      setShowForm(false);
-      onSaved();
+      if (saved) {
+        setForm({
+          title: "",
+          date: form.date,
+          startTime: "",
+          endTime: "",
+          location: "",
+          category: "",
+        });
+        setShowForm(false);
+      }
     } finally {
       setSaving(false);
     }
@@ -400,10 +424,7 @@ function ItineraryEditor({
         </div>
       </div>
       {showForm && (
-        <form
-          onSubmit={submit}
-          className="rounded-2xl bg-surface p-4"
-        >
+        <form onSubmit={submit} className="rounded-2xl bg-surface p-4">
           <div className="flex items-center justify-between">
             <p className={label}>Tambah aktivitas</p>
             <span className="text-[11px] text-muted-foreground">Semua waktu lokal perjalanan</span>
@@ -475,8 +496,12 @@ function ItineraryEditor({
             date={day.date}
             items={day.items}
             onDelete={async (id) => {
-              await deleteItinerary({ data: { id } });
-              onSaved();
+              await runTripMutation({
+                action: () => deleteItinerary({ data: { id } }),
+                refresh: onSaved,
+                successMessage: "Aktivitas dihapus",
+                failureMessage: "Aktivitas belum terhapus. Coba lagi.",
+              });
             }}
           />
         ))
@@ -660,19 +685,37 @@ function ChecklistEditor({
 }: {
   tripId: string;
   items: Item[];
-  onSaved: () => void;
+  onSaved: () => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
+  const [busyItemId, setBusyItemId] = useState<string | null>(null);
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      await postChecklist({ data: { tripId, title } });
-      setTitle("");
-      onSaved();
+      const saved = await runTripMutation({
+        action: () => postChecklist({ data: { tripId, title } }),
+        refresh: onSaved,
+        successMessage: "Checklist ditambahkan",
+        failureMessage: "Checklist belum tersimpan. Coba lagi.",
+      });
+      if (saved) setTitle("");
     } finally {
       setSaving(false);
+    }
+  }
+  async function updateItem(id: string, action: () => Promise<unknown>, message: string) {
+    setBusyItemId(id);
+    try {
+      await runTripMutation({
+        action,
+        refresh: onSaved,
+        successMessage: message,
+        failureMessage: "Checklist belum diperbarui. Coba lagi.",
+      });
+    } finally {
+      setBusyItemId(null);
     }
   }
   return (
@@ -686,9 +729,12 @@ function ChecklistEditor({
                 <input
                   type="checkbox"
                   checked={Boolean(x.is_completed)}
+                  disabled={busyItemId === x.id}
                   onChange={(e) =>
-                    void patchChecklist({ data: { id: x.id, completed: e.target.checked } }).then(
-                      onSaved,
+                    void updateItem(
+                      x.id,
+                      () => patchChecklist({ data: { id: x.id, completed: e.target.checked } }),
+                      e.target.checked ? "Checklist ditandai selesai" : "Checklist diperbarui",
                     )
                   }
                   className="size-4 accent-brand-red"
@@ -699,10 +745,17 @@ function ChecklistEditor({
               </label>
               <button
                 type="button"
-                onClick={() => void deleteChecklist({ data: { id: x.id } }).then(onSaved)}
-                className="text-xs text-brand-red"
+                disabled={busyItemId === x.id}
+                onClick={() =>
+                  void updateItem(
+                    x.id,
+                    () => deleteChecklist({ data: { id: x.id } }),
+                    "Checklist dihapus",
+                  )
+                }
+                className="text-xs text-brand-red disabled:opacity-50"
               >
-                Hapus
+                {busyItemId === x.id ? "…" : "Hapus"}
               </button>
             </div>
           ))
@@ -719,7 +772,7 @@ function ChecklistEditor({
           className="min-w-0 flex-1 rounded-xl bg-secondary px-3 py-2 text-sm"
         />
         <button disabled={saving} className={btnSoft}>
-          Tambah
+          {saving ? "Menyimpan…" : "Tambah"}
         </button>
       </form>
     </section>
@@ -733,7 +786,7 @@ function BookingEditor({
 }: {
   tripId: string;
   items: Item[];
-  onSaved: () => void;
+  onSaved: () => Promise<void>;
 }) {
   const [form, setForm] = useState({ category: "Lainnya", title: "", date: "", provider: "" });
   const [saving, setSaving] = useState(false);
@@ -741,17 +794,22 @@ function BookingEditor({
     e.preventDefault();
     setSaving(true);
     try {
-      await postBooking({
-        data: {
-          tripId,
-          category: form.category,
-          title: form.title,
-          bookingDate: form.date || undefined,
-          provider: form.provider || undefined,
-        },
+      const saved = await runTripMutation({
+        action: () =>
+          postBooking({
+            data: {
+              tripId,
+              category: form.category,
+              title: form.title,
+              bookingDate: form.date || undefined,
+              provider: form.provider || undefined,
+            },
+          }),
+        refresh: onSaved,
+        successMessage: "Pemesanan disimpan",
+        failureMessage: "Pemesanan belum tersimpan. Periksa data lalu coba lagi.",
       });
-      setForm({ category: "Lainnya", title: "", date: "", provider: "" });
-      onSaved();
+      if (saved) setForm({ category: "Lainnya", title: "", date: "", provider: "" });
     } finally {
       setSaving(false);
     }
@@ -799,8 +857,12 @@ function BookingEditor({
         empty="Belum ada booking."
         render={(x) => `${String(x.title ?? "")} · ${String(x.status ?? "manual")}`}
         onDelete={async (id) => {
-          await deleteBookingRecord({ data: { id } });
-          onSaved();
+          await runTripMutation({
+            action: () => deleteBookingRecord({ data: { id } }),
+            refresh: onSaved,
+            successMessage: "Pemesanan dihapus",
+            failureMessage: "Pemesanan belum terhapus. Coba lagi.",
+          });
         }}
       />
     </section>
@@ -818,6 +880,15 @@ function EditableList({
   render: (x: Item) => string;
   onDelete: (id: string) => Promise<void>;
 }) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  async function remove(id: string) {
+    setDeletingId(id);
+    try {
+      await onDelete(id);
+    } finally {
+      setDeletingId(null);
+    }
+  }
   return (
     <div className="mt-4 space-y-2">
       {items.length ? (
@@ -829,10 +900,11 @@ function EditableList({
             <span className="min-w-0 flex-1">{render(x)}</span>
             <button
               type="button"
-              onClick={() => void onDelete(x.id)}
-              className="text-xs font-semibold text-brand-red"
+              disabled={deletingId === x.id}
+              onClick={() => void remove(x.id)}
+              className="text-xs font-semibold text-brand-red disabled:opacity-50"
             >
-              Hapus
+              {deletingId === x.id ? "…" : "Hapus"}
             </button>
           </div>
         ))
