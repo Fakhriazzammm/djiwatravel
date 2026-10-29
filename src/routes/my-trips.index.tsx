@@ -64,11 +64,11 @@ const tripTitle = (trip: Trip) =>
 
 function MyTrips() {
   const data = Route.useLoaderData();
-  const { user, setUser, loading: authLoading } = useBetterAuthUser();
+  const { user, loading: authLoading } = useBetterAuthUser();
   const [view, setView] = useState<"today" | "logbook">("today");
   const [sheet, setSheet] = useState<"menu" | "actions" | null>(null);
 
-  if (!user && !authLoading) return <Unauthenticated onAuthenticated={setUser} />;
+  if (!user && !authLoading) return <Unauthenticated />;
 
   return (
     <Page>
@@ -102,7 +102,7 @@ function MyTrips() {
       </nav>
 
       {view === "today" ? (
-        <TodayView data={data} user={user} authLoading={authLoading} onAuthenticated={setUser} />
+        <TodayView data={data} user={user} authLoading={authLoading} />
       ) : (
         <LogbookView trips={data.trips} />
       )}
@@ -289,24 +289,15 @@ function TodayView({
   data,
   user,
   authLoading,
-  onAuthenticated,
 }: {
   data: HomeData;
   user: { id: string; email: string } | null;
   authLoading: boolean;
-  onAuthenticated: (user: { id: string; email: string }) => void;
 }) {
   const focusTrip = data.focusTrip;
 
   if (!focusTrip) {
-    return (
-      <EmptyTrips
-        trips={data.trips}
-        user={user}
-        loading={authLoading}
-        onAuthenticated={onAuthenticated}
-      />
-    );
+    return <EmptyTrips trips={data.trips} user={user} loading={authLoading} />;
   }
 
   const progress = getTripProgress(focusTrip);
@@ -551,12 +542,10 @@ function EmptyTrips({
   trips,
   user,
   loading,
-  onAuthenticated,
 }: {
   trips: Trip[];
   user: { id: string; email: string } | null | undefined;
   loading: boolean;
-  onAuthenticated: (user: { id: string; email: string }) => void;
 }) {
   return (
     <section className="mt-7 rounded-[28px] bg-surface px-5 py-10 text-center ring-1 ring-border/60">
@@ -584,18 +573,14 @@ function EmptyTrips({
           </Link>
         ) : (
           <div className="mx-auto mt-6 max-w-xs">
-            <CustomerAuth onAuthenticated={onAuthenticated} />
+            <CustomerAuth />
           </div>
         ))}
     </section>
   );
 }
 
-function Unauthenticated({
-  onAuthenticated,
-}: {
-  onAuthenticated: (user: { id: string; email: string }) => void;
-}) {
+function Unauthenticated() {
   return (
     <Page>
       <div className="flex min-h-[70vh] items-center">
@@ -606,7 +591,7 @@ function Unauthenticated({
             Login untuk menyimpan itinerary, checklist, budget, dan booking.
           </p>
           <div className="mx-auto mt-6 max-w-xs">
-            <CustomerAuth onAuthenticated={onAuthenticated} />
+            <CustomerAuth />
           </div>
         </section>
       </div>

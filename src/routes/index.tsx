@@ -109,12 +109,7 @@ function Home() {
             </span>
           </Link>
         ) : (
-          <CustomerAuth
-            size="compact"
-            onAuthenticated={() => {
-              void nav({ to: "/profile", search: { admin: undefined } });
-            }}
-          />
+          <CustomerAuth size="compact" />
         )}
       </header>
 
@@ -221,7 +216,10 @@ function Home() {
             params={{ id: active.id }}
             className="tap flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xl" aria-hidden="true">
+            <span
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xl"
+              aria-hidden="true"
+            >
               🌐
             </span>
             <span className="min-w-0 flex-1">

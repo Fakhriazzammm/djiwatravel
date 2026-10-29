@@ -6,19 +6,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { signInGoogle, type BetterAuthUser } from "@/lib/better-auth-client";
+import { signInGoogle } from "@/lib/better-auth-client";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 
 const button = "tap min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50";
 
 /** `compact` is the header slot: never full width, so it cannot stretch a nav bar. */
-export function CustomerAuth({
-  onAuthenticated: _onAuthenticated,
-  size = "block",
-}: {
-  onAuthenticated: (user: BetterAuthUser) => void;
-  size?: "block" | "compact";
-}) {
+export function CustomerAuth({ size = "block" }: { size?: "block" | "compact" }) {
   const [open, setOpen] = useState(false);
   const layout = size === "compact" ? "shrink-0 px-3 py-2 text-[13px]" : "w-full sm:w-auto";
   return (
@@ -42,7 +36,10 @@ function AuthChoice() {
     setGoogleLoading(true);
     setError("");
     try {
-      await signInGoogle(`${window.location.origin}/profile`);
+      const currentUrl = new URL(window.location.href);
+      await signInGoogle(
+        `${currentUrl.origin}${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+      );
     } catch {
       setError("Google gagal. Coba lagi.");
     } finally {
@@ -51,13 +48,27 @@ function AuthChoice() {
   }
 
   return (
-    <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-3xl">
-      <DialogTitle>Selamat datang</DialogTitle>
-      <DialogDescription>Simpan pesanan dan eSIM dalam satu akun.</DialogDescription>
-      <div className="space-y-2 pt-2">
+    <DialogContent
+      overlayClassName="bg-black/35 backdrop-blur-[2px]"
+      className="bottom-0 left-0 top-auto max-h-[90dvh] w-full max-w-none translate-x-0 translate-y-0 gap-4 overflow-y-auto rounded-t-[28px] rounded-b-none border-x-0 border-b-0 border-t border-border/70 bg-background px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[min(90dvh,32rem)] sm:w-[calc(100%-2rem)] sm:max-w-sm sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[28px] sm:border sm:p-6 sm:shadow-xl sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:slide-out-to-bottom-0"
+    >
+      <div
+        aria-hidden="true"
+        className="mx-auto mb-1 h-1 w-9 rounded-full bg-muted-foreground/30 sm:hidden"
+      />
+      <div className="space-y-1.5">
+        <DialogTitle className="text-xl font-bold tracking-tight">
+          Satu akun untuk perjalananmu
+        </DialogTitle>
+        <DialogDescription className="text-[14px] leading-6">
+          Masuk atau buat akun untuk menyimpan perjalanan, pesanan, dan eSIM. Djiwa Pay memakai akun
+          yang sama.
+        </DialogDescription>
+      </div>
+      <div className="space-y-2 pt-1">
         <button
           type="button"
-          className={`${button} flex w-full items-center justify-center gap-2 bg-brand-red text-white`}
+          className={`${button} flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
           disabled={googleLoading}
           onClick={() => void googleLogin()}
         >
@@ -87,6 +98,9 @@ function AuthChoice() {
           </svg>
           {googleLoading ? googleLabel : "Lanjutkan dengan Google"}
         </button>
+        <p className="text-center text-xs leading-5 text-muted-foreground">
+          Akun baru dibuat otomatis saat pertama kali masuk.
+        </p>
         {error && (
           <p role="alert" className="text-sm text-destructive">
             {error}
