@@ -11,7 +11,11 @@ vi.mock("@/lib/use-better-auth-user", () => ({ useBetterAuthUser: vi.fn() }));
 vi.mock("@tanstack/react-router", async () => {
   const actual =
     await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");
-  return { ...actual, Outlet: () => null };
+  return {
+    ...actual,
+    Outlet: () => null,
+    useRouterState: () => ({ location: { pathname: "/wallet" } }),
+  };
 });
 vi.mock("@/components/shell", () => ({
   Page: ({ children }: { children: ReactNode }) => <div>{children}</div>,

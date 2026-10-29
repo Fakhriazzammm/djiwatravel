@@ -1,4 +1,4 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -55,6 +55,7 @@ function maskedId(value: string, visible: boolean) {
 }
 
 export function Wallet() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { user, loading: authLoading } = useBetterAuthUser();
   const [data, setData] = useState<CustomerWalletResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -203,8 +204,9 @@ export function Wallet() {
 
   if (initialLoading) {
     return (
-      <Page tabs={false}>
-        <WalletLoadingSplash />
+      <Page>
+        {pathname !== "/wallet/pay" && <WalletLoadingSplash />}
+        <Outlet />
       </Page>
     );
   }
