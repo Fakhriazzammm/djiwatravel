@@ -8,7 +8,7 @@ afterEach(cleanup);
 beforeEach(() => vi.resetAllMocks());
 
 function openGoogleAuth() {
-  render(<CustomerAuth onAuthenticated={vi.fn()} />);
+  render(<CustomerAuth />);
   fireEvent.click(screen.getByText("Masuk atau daftar"));
   return screen.getByRole("button", { name: "Lanjutkan dengan Google" });
 }

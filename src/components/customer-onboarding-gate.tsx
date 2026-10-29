@@ -40,8 +40,9 @@ export function CustomerOnboardingGate() {
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   const isLocalDevelopment =
     typeof window !== "undefined" && isLocalDevelopmentHost(window.location.hostname);
+  const needsProfileAction = profileStatus === "incomplete" || profileStatus === "error";
   const open = Boolean(
-    user && !authLoading && !isAdminRoute && !isLocalDevelopment && profileStatus !== "complete",
+    user && !authLoading && !isAdminRoute && !isLocalDevelopment && needsProfileAction,
   );
 
   useEffect(() => {

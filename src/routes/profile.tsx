@@ -316,7 +316,7 @@ function Profile() {
         </div>
         {!loading && !user && (
           <div className="mt-4">
-            <CustomerAuth onAuthenticated={setUser} />
+            <CustomerAuth />
           </div>
         )}
         {user && (!profileSaved || editingProfile) && (

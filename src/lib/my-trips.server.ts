@@ -156,10 +156,7 @@ export async function listTrips() {
   const result = await pool.query(
     `select t.*, coalesce(sum(e.converted_amount_minor), 0) as spent_minor,
       (select count(*) from travel_checklist_items c where c.trip_id=t.id) as checklist_total,
-      (select count(*) from travel_checklist_items c where c.trip_id=t.id and c.is_completed) as checklist_done,
-      (select count(*) from travel_itinerary_items i where i.trip_id=t.id) as itinerary_count,
-      (select count(*) from travel_bookings b where b.trip_id=t.id) as booking_count,
-      (select count(*) from travel_expenses x where x.trip_id=t.id) as expense_count
+      (select count(*) from travel_checklist_items c where c.trip_id=t.id and c.is_completed) as checklist_done
      from travel_trips t left join travel_expenses e on e.trip_id=t.id
      where t.customer_auth_subject=$1 group by t.id order by t.departure_date asc`,
     [user.id],
@@ -171,9 +168,6 @@ export async function listTrips() {
     status: statusFor(String(row.departure_date), String(row.return_date)),
     checklist_total: Number(row.checklist_total ?? 0),
     checklist_done: Number(row.checklist_done ?? 0),
-    itinerary_count: Number(row.itinerary_count ?? 0),
-    booking_count: Number(row.booking_count ?? 0),
-    expense_count: Number(row.expense_count ?? 0),
   }));
 }
 
@@ -350,29 +344,12 @@ export async function getTripSectionData(tripId: string, section: string) {
   };
   const selectedQuery = queries[section];
   if (!selectedQuery) throw new Error("Section perjalanan tidak valid");
-  const [result, progressResult] = await Promise.all([
-    selectedQuery(),
-    pool.query(
-      `select
-        (select count(*) from travel_itinerary_items where trip_id=$1) as itinerary_count,
-        (select count(*) from travel_checklist_items where trip_id=$1) as checklist_total,
-        (select count(*) from travel_checklist_items where trip_id=$1 and is_completed) as checklist_done,
-        (select count(*) from travel_bookings where trip_id=$1) as booking_count,
-        (select count(*) from travel_expenses where trip_id=$1) as expense_count`,
-      [tripId],
-    ),
-  ]);
+  const result = await selectedQuery();
   return {
     trip: {
       ...trip,
       total_budget_minor: money(trip["total_budget_minor"]),
       status: statusFor(String(trip["departure_date"]), String(trip["return_date"])),
-      ...Object.fromEntries(
-        Object.entries(progressResult.rows[0] ?? {}).map(([key, value]) => [
-          key,
-          Number(value ?? 0),
-        ]),
-      ),
     },
     items: result.rows.map((row) => {
       const { activity_date_text, ...item } = row;
