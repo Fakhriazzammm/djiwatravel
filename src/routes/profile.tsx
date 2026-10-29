@@ -10,7 +10,11 @@ import { useOrders } from "@/lib/orders";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import { rupiah } from "@/lib/pricing";
 import { validateCustomerProfile, type CustomerProfileDraft } from "@/lib/customer-profile";
-import { loadCustomerProfile, saveCustomerProfile } from "@/lib/customer-profile-client";
+import {
+  CUSTOMER_PROFILE_UPDATED_EVENT,
+  loadCustomerProfile,
+  saveCustomerProfile,
+} from "@/lib/customer-profile-client";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 
 export const Route = createFileRoute("/profile")({
@@ -85,6 +89,18 @@ function Profile() {
         setProfileSaved(false);
       });
   }, [user]);
+  useEffect(() => {
+    const onProfileUpdated = (event: Event) => {
+      const saved = (event as CustomEvent<CustomerProfileDraft>).detail;
+      if (!saved) return;
+      setProfile(saved);
+      setProfileSaved(true);
+      setEditingProfile(false);
+      setProfileError(null);
+    };
+    window.addEventListener(CUSTOMER_PROFILE_UPDATED_EVENT, onProfileUpdated);
+    return () => window.removeEventListener(CUSTOMER_PROFILE_UPDATED_EVENT, onProfileUpdated);
+  }, []);
   const submitProfile = async () => {
     const errors = validateCustomerProfile(profile);
     if (Object.keys(errors).length > 0) {
@@ -222,34 +238,63 @@ function Profile() {
         )}
       </div>
 
-      <section aria-labelledby="travel-calendar-heading" className="mt-5 overflow-hidden rounded-2xl bg-surface ring-1 ring-border/50">
+      <section
+        aria-labelledby="travel-calendar-heading"
+        className="mt-5 overflow-hidden rounded-2xl bg-surface ring-1 ring-border/50"
+      >
         <div className="flex items-center gap-3 p-4">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-red-soft text-brand-red">
             <CalendarDays className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 id="travel-calendar-heading" className="text-sm font-semibold">Sinkronisasi jadwal trip</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Setiap item itinerary akan dibuat sebagai event dan otomatis diperbarui di Google Calendar.</p>
-            {calendarConnected && <p className="mt-1 text-xs font-medium text-success">Terhubung{calendarAccount ? ` · ${calendarAccount}` : ""}</p>}
+            <h2 id="travel-calendar-heading" className="text-sm font-semibold">
+              Sinkronisasi jadwal trip
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Setiap item itinerary akan dibuat sebagai event dan otomatis diperbarui di Google
+              Calendar.
+            </p>
+            {calendarConnected && (
+              <p className="mt-1 text-xs font-medium text-success">
+                Terhubung{calendarAccount ? ` · ${calendarAccount}` : ""}
+              </p>
+            )}
           </div>
         </div>
         <div className="border-t border-border/60 space-y-2 px-4 py-3">
-          <Link to="/my-trips" className={`${row} tap min-h-11 rounded-xl bg-background px-3 text-sm font-semibold`}>
+          <Link
+            to="/my-trips"
+            className={`${row} tap min-h-11 rounded-xl bg-background px-3 text-sm font-semibold`}
+          >
             <span>Buka My Trips</span>
             <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
           </Link>
           {user && !calendarConnected && (
-            <a href="/api/google-calendar/connect" className="tap flex min-h-11 items-center justify-center rounded-xl bg-brand-red px-3 text-sm font-semibold text-white">
+            <a
+              href="/api/google-calendar/connect"
+              className="tap flex min-h-11 items-center justify-center rounded-xl bg-brand-red px-3 text-sm font-semibold text-white"
+            >
               Hubungkan Google Calendar
             </a>
           )}
           {user && calendarConnected && (
-            <button type="button" disabled={calendarBusy} onClick={() => {
-              setCalendarBusy(true);
-              void fetch("/api/google-calendar/disconnect", { method: "POST", credentials: "include" })
-                .then(() => { setCalendarConnected(false); setCalendarAccount(null); })
-                .finally(() => setCalendarBusy(false));
-            }} className="tap flex min-h-11 w-full items-center justify-center rounded-xl bg-background px-3 text-sm font-semibold text-muted-foreground ring-1 ring-border/60 disabled:opacity-50">
+            <button
+              type="button"
+              disabled={calendarBusy}
+              onClick={() => {
+                setCalendarBusy(true);
+                void fetch("/api/google-calendar/disconnect", {
+                  method: "POST",
+                  credentials: "include",
+                })
+                  .then(() => {
+                    setCalendarConnected(false);
+                    setCalendarAccount(null);
+                  })
+                  .finally(() => setCalendarBusy(false));
+              }}
+              className="tap flex min-h-11 w-full items-center justify-center rounded-xl bg-background px-3 text-sm font-semibold text-muted-foreground ring-1 ring-border/60 disabled:opacity-50"
+            >
               {calendarBusy ? "Memutuskan…" : "Putuskan koneksi (event tetap ada)"}
             </button>
           )}

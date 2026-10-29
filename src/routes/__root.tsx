@@ -18,6 +18,7 @@ import { PageTransition } from "../components/motion-primitives";
 import { NavProgress } from "../components/nav-progress";
 import { AppSplash } from "../components/app-splash";
 import { TransitionLoader } from "../components/transition-loader";
+import { CustomerOnboardingGate } from "../components/customer-onboarding-gate";
 import { easeIos } from "../lib/motion";
 import { warmResellerCatalog } from "../lib/explore-warm";
 import { trackAnalytics } from "../lib/analytics";
@@ -133,6 +134,7 @@ function RootComponent() {
         <CatalogWarmup />
         <AnalyticsPageView />
         <AnimatedOutlet />
+        <CustomerOnboardingGate />
       </MotionConfig>
     </QueryClientProvider>
   );

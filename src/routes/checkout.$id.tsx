@@ -16,7 +16,7 @@ import {
 import { getBetterAuthSession, type BetterAuthUser } from "@/lib/better-auth-client";
 import { isCustomerProfileComplete } from "@/lib/customer-profile";
 import { formatWhatsapp, isValidWhatsapp, normalizeWhatsapp } from "@/lib/phone";
-import { loadCustomerProfile } from "@/lib/customer-profile-client";
+import { CUSTOMER_PROFILE_UPDATED_EVENT, loadCustomerProfile } from "@/lib/customer-profile-client";
 import { toViewPackage } from "@/lib/package-view";
 import { DeviceCompatibility } from "@/components/device-compatibility";
 import { nextFrame, paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
@@ -80,6 +80,17 @@ function Checkout() {
         }
       })
       .catch(() => setUser(null));
+  }, []);
+  useEffect(() => {
+    const onProfileUpdated = (event: Event) => {
+      const saved = (event as CustomEvent<{ email: string; whatsapp: string }>).detail;
+      if (!saved) return;
+      setEmail(saved.email);
+      setWa(saved.whatsapp);
+      setMemberProfileReady(isCustomerProfileComplete(saved));
+    };
+    window.addEventListener(CUSTOMER_PROFILE_UPDATED_EVENT, onProfileUpdated);
+    return () => window.removeEventListener(CUSTOMER_PROFILE_UPDATED_EVENT, onProfileUpdated);
   }, []);
   const valid = isCustomerProfileComplete({ email, whatsapp: wa });
   const canPay = valid && (!user || memberProfileReady);
