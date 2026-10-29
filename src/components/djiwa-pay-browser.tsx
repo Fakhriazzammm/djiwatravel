@@ -8,13 +8,40 @@ export const DJIWA_PAY_URL = "https://djiwapay.web.id";
 type DjiwaPayBrowserProps = {
   open: boolean;
   layout?: "sheet" | "page";
+  sharedAuth?: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export function DjiwaPayBrowser({ open, layout = "sheet", onOpenChange }: DjiwaPayBrowserProps) {
+export function DjiwaPayBrowser({
+  open,
+  layout = "sheet",
+  sharedAuth = false,
+  onOpenChange,
+}: DjiwaPayBrowserProps) {
   const reduce = useReducedMotion();
   const pageLayout = layout === "page";
   const [frameVersion, setFrameVersion] = useState(0);
+  const [frameSrc, setFrameSrc] = useState(DJIWA_PAY_URL);
+
+  useEffect(() => {
+    if (!open || !sharedAuth) return;
+    let cancelled = false;
+    void fetch("/api/djiwa-pay/bridge", { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const payload = (await response.json()) as { url?: unknown };
+        return typeof payload.url === "string" ? payload.url : null;
+      })
+      .then((url) => {
+        if (!cancelled && url) setFrameSrc(url);
+      })
+      .catch(() => {
+        // Keep the normal Pay page as a safe fallback when bridge SSO is unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, sharedAuth]);
 
   useEffect(() => {
     if (!open) return;
@@ -94,9 +121,9 @@ export function DjiwaPayBrowser({ open, layout = "sheet", onOpenChange }: DjiwaP
 
               <div className="min-h-0 flex-1 bg-background">
                 <iframe
-                  key={frameVersion}
+                  key={`${frameSrc}-${frameVersion}`}
                   title="Djiwa Pay"
-                  src={DJIWA_PAY_URL}
+                  src={frameSrc}
                   className="size-full border-0 bg-background"
                   loading="eager"
                   referrerPolicy="strict-origin-when-cross-origin"
