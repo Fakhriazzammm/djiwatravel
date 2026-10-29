@@ -39,11 +39,18 @@ export function packageDataLabel(
 ) {
   if (pkg.unlimited === true) return "Data unlimited";
   if (!Number.isFinite(pkg.volumeBytes) || pkg.volumeBytes <= 0) return "Kuota belum tersedia";
-  const gb = pkg.volumeBytes / 1_000_000_000;
+  const gb = packageDisplayedGb(pkg.volumeBytes);
   return gb >= 1
     ? `${Math.round(gb)} GB data`
     : `${Math.max(1, Math.round(pkg.volumeBytes / 1_000_000))} MB data`;
 }
+
+/** GB quantity used in the catalog label, rounded to the same whole-GB amount customers see. */
+export function packageDisplayedGb(volumeBytes: number): number {
+  const gb = volumeBytes / 1_000_000_000;
+  return gb >= 1 ? Math.max(1, Math.round(gb)) : gb;
+}
+
 export function packageDestinationLabel(
   pkg: Pick<ResellerCatalogPackage, "name" | "locationCodes">,
 ) {

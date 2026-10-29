@@ -22,6 +22,7 @@ import {
   packageCoverageLabel,
   packageDataLabel,
   packageDestinationLabel,
+  packageDisplayedGb,
 } from "@/lib/package-copy";
 
 /** Cards rendered on the first paint; the rest are revealed on demand (see below). */
@@ -71,7 +72,7 @@ export function toggleComparisonSelection(
 }
 
 function pricePerGb(pkg: ViewPackage): number {
-  const gb = pkg.volumeBytes / 1_000_000_000;
+  const gb = packageDisplayedGb(pkg.volumeBytes);
   if (!Number.isFinite(gb) || gb <= 0) return Number.POSITIVE_INFINITY;
   return pkg.priceIdr / gb;
 }
