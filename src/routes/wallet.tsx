@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Outlet, createFileRoute } from "@tanstack/react-router";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -507,6 +507,7 @@ export function Wallet() {
           </div>
         </FixedLayer>
       )}
+      <Outlet />
     </Page>
   );
 }

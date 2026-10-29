@@ -7,12 +7,10 @@ import {
   ChevronRight,
   Clock3,
   Ellipsis,
-  FolderPlus,
   ListChecks,
   MapPin,
   Plane,
   Plus,
-  WalletCards,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState, type ReactNode } from "react";
@@ -60,6 +58,10 @@ const formatDate = (value: string | null | undefined, options?: Intl.DateTimeFor
 };
 
 const formatTime = (value: string | null | undefined) => (value ? value.slice(0, 5) : "Fleksibel");
+const tripTitle = (trip: Trip) => {
+  const name = trip.name?.trim();
+  return name && name.length > 2 ? name : `${trip.destination_name || "Perjalanan"} Trip`;
+};
 
 function MyTrips() {
   const data = Route.useLoaderData();
@@ -321,10 +323,7 @@ function TodayView({
   }
 
   const openItems = data.checklist.filter((item) => !item.is_completed);
-  const checklistItems = [
-    ...openItems,
-    ...data.checklist.filter((item) => item.is_completed),
-  ].slice(0, 6);
+  const checklistItems = openItems.slice(0, 3);
 
   return (
     <div className="mt-5 space-y-6 pb-5">
@@ -333,12 +332,8 @@ function TodayView({
       <section aria-labelledby="today-agenda-heading">
         <SectionHeading
           id="today-agenda-heading"
-          title="Hari ini"
-          subtitle={new Intl.DateTimeFormat("id-ID", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          }).format(new Date())}
+          title="Agenda terdekat"
+          subtitle="Untuk 14 hari ke depan"
           action={
             <Link
               to="/my-trips/$tripId/$section"
@@ -409,7 +404,7 @@ function TodayView({
             </Link>
           )}
         </div>
-        {data.checklist.length > checklistItems.length && (
+        {openItems.length > checklistItems.length && (
           <Link
             to="/my-trips/$tripId/$section"
             params={{ tripId: focusTrip.id, section: "checklist" }}
@@ -419,8 +414,6 @@ function TodayView({
           </Link>
         )}
       </section>
-
-      <QuickActions tripId={focusTrip.id} />
     </div>
   );
 }
@@ -455,19 +448,25 @@ function FocusTripCard({ trip }: { trip: Trip }) {
           </div>
           <div>
             <p className="text-[13px] font-medium text-white/75">
-              {formatDate(trip.departure_date)} — {formatDate(trip.return_date)}
+              {trip.departure_date && trip.return_date
+                ? `${formatDate(trip.departure_date)} — ${formatDate(trip.return_date)}`
+                : "Atur tanggal perjalanan"}
             </p>
-            <h2 className="mt-1 text-[25px] font-bold tracking-[-0.03em]">{trip.name}</h2>
+            <h2 className="mt-1 line-clamp-2 break-words text-[25px] font-bold tracking-[-0.03em]">
+              {tripTitle(trip)}
+            </h2>
             <p className="mt-1 flex items-center gap-1.5 text-[14px] text-white/80">
               <MapPin className="size-3.5" />
-              {trip.destination_name}
+              <span className="capitalize">{trip.destination_name}</span>
             </p>
-            <div className="mt-4 flex items-center gap-2 text-[11px] text-white/75">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/25">
-                <div className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
+            {trip.total_budget_minor > 0 && (
+              <div className="mt-4 flex items-center gap-2 text-[11px] text-white/75">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/25">
+                  <div className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
+                </div>
+                <span>{pct}% anggaran terpakai</span>
               </div>
-              <span>{pct}% budget</span>
-            </div>
+            )}
           </div>
         </div>
       </Link>
@@ -557,42 +556,6 @@ function ChecklistRow({
   );
 }
 
-function QuickActions({ tripId }: { tripId: string }) {
-  const actions = [
-    {
-      label: "Itinerary",
-      icon: CalendarDays,
-      section: "itinerary" as const,
-      tint: "text-brand-red",
-    },
-    { label: "Budget", icon: WalletCards, section: "budget" as const, tint: "text-[#34c759]" },
-    { label: "Checklist", icon: ListChecks, section: "checklist" as const, tint: "text-[#ff9500]" },
-    { label: "Bookings", icon: FolderPlus, section: "bookings" as const, tint: "text-[#af52de]" },
-  ];
-  return (
-    <section aria-labelledby="quick-actions-heading">
-      <SectionHeading
-        id="quick-actions-heading"
-        title="Ruang perjalanan"
-        subtitle="Kelola detail tanpa kehilangan konteks"
-      />
-      <div className="mt-3 grid grid-cols-4 gap-2">
-        {actions.map(({ label, icon: Icon, section, tint }) => (
-          <Link
-            key={section}
-            to="/my-trips/$tripId/$section"
-            params={{ tripId, section }}
-            className="tap flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl bg-surface px-2 text-center ring-1 ring-border/60"
-          >
-            <Icon className={`size-6 ${tint}`} strokeWidth={1.8} />
-            <span className="text-[11px] font-semibold">{label}</span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function LogbookView({ trips }: { trips: Trip[] }) {
   return (
     <div className="mt-5 space-y-4 pb-5">
@@ -648,7 +611,9 @@ function LogbookCard({ trip }: { trip: Trip }) {
         <div className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="truncate text-[19px] font-bold tracking-[-0.025em]">{trip.name}</h2>
+              <h2 className="truncate text-[19px] font-bold tracking-[-0.025em]">
+                {tripTitle(trip)}
+              </h2>
               <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
                 <MapPin className="size-3.5" />
                 {trip.destination_name}

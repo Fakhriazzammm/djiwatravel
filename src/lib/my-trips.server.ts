@@ -4,7 +4,6 @@ import { pool } from "@/db/client.server";
 import { getAuthenticatedUser } from "@/lib/customer-session.fn";
 import { buildMyTripsHome } from "./my-trips-home";
 
-
 const currencies = ["IDR", "JPY", "USD", "SGD", "KRW"] as const;
 const defaultCategories = [
   "Flights",
@@ -37,18 +36,23 @@ const tripSchema = z
     path: ["returnDate"],
   });
 
-const tripPatchSchema = z.object({
-  tripId: z.string().uuid(),
-  name: z.string().trim().min(1).max(120),
-  destinationCode: z.string().trim().min(2).max(8),
-  destinationName: z.string().trim().min(1).max(120),
-  departureDate: z.string().date(),
-  returnDate: z.string().date(),
-  travelersCount: z.number().int().min(1).max(50),
-  primaryCurrency: z.enum(currencies),
-  totalBudgetMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
-  timezone: z.string().trim().max(80).optional(),
-}).refine((value) => value.returnDate >= value.departureDate, { message: "Tanggal pulang harus setelah tanggal berangkat", path: ["returnDate"] });
+const tripPatchSchema = z
+  .object({
+    tripId: z.string().uuid(),
+    name: z.string().trim().min(1).max(120),
+    destinationCode: z.string().trim().min(2).max(8),
+    destinationName: z.string().trim().min(1).max(120),
+    departureDate: z.string().date(),
+    returnDate: z.string().date(),
+    travelersCount: z.number().int().min(1).max(50),
+    primaryCurrency: z.enum(currencies),
+    totalBudgetMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+    timezone: z.string().trim().max(80).optional(),
+  })
+  .refine((value) => value.returnDate >= value.departureDate, {
+    message: "Tanggal pulang harus setelah tanggal berangkat",
+    path: ["returnDate"],
+  });
 
 const expenseSchema = z.object({
   tripId: z.string().uuid(),
@@ -157,7 +161,8 @@ export async function listTrips() {
       (select count(*) from travel_checklist_items c where c.trip_id=t.id) as checklist_total,
       (select count(*) from travel_checklist_items c where c.trip_id=t.id and c.is_completed) as checklist_done,
       (select count(*) from travel_itinerary_items i where i.trip_id=t.id) as itinerary_count,
-      (select count(*) from travel_bookings b where b.trip_id=t.id) as booking_count
+      (select count(*) from travel_bookings b where b.trip_id=t.id) as booking_count,
+      (select count(*) from travel_expenses x where x.trip_id=t.id) as expense_count
      from travel_trips t left join travel_expenses e on e.trip_id=t.id
      where t.customer_auth_subject=$1 group by t.id order by t.departure_date asc`,
     [user.id],
@@ -171,6 +176,7 @@ export async function listTrips() {
     checklist_done: Number(row.checklist_done ?? 0),
     itinerary_count: Number(row.itinerary_count ?? 0),
     booking_count: Number(row.booking_count ?? 0),
+    expense_count: Number(row.expense_count ?? 0),
   }));
 }
 
@@ -180,7 +186,19 @@ export async function updateTrip(input: unknown) {
   const result = await pool.query(
     `update travel_trips set name=$1,destination_code=$2,destination_name=$3,departure_date=$4,return_date=$5,travelers_count=$6,primary_currency=$7,total_budget_minor=$8,timezone=$9,updated_at=now()
      where id=$10 and customer_auth_subject=$11 returning *`,
-    [data.name, data.destinationCode, data.destinationName, data.departureDate, data.returnDate, data.travelersCount, data.primaryCurrency, data.totalBudgetMinor, data.timezone ?? null, data.tripId, user.id],
+    [
+      data.name,
+      data.destinationCode,
+      data.destinationName,
+      data.departureDate,
+      data.returnDate,
+      data.travelersCount,
+      data.primaryCurrency,
+      data.totalBudgetMinor,
+      data.timezone ?? null,
+      data.tripId,
+      user.id,
+    ],
   );
   if (!result.rows[0]) throw new Error("Perjalanan tidak ditemukan");
   return result.rows[0];
@@ -358,7 +376,11 @@ export async function patchBudgetCategory(input: unknown) {
   return result.rows[0];
 }
 
-async function deleteOwned(table: "travel_expenses" | "travel_itinerary_items" | "travel_checklist_items" | "travel_bookings", id: string) {
+async function deleteOwned(
+  table:
+    "travel_expenses" | "travel_itinerary_items" | "travel_checklist_items" | "travel_bookings",
+  id: string,
+) {
   const user = await getAuthenticatedUser();
   const result = await pool.query(
     `delete from ${table} item using travel_trips t where item.id=$1 and item.trip_id=t.id and t.customer_auth_subject=$2 returning item.id`,
@@ -375,7 +397,15 @@ export async function addBooking(input: unknown) {
   const result = await pool.query(
     `insert into travel_bookings (trip_id,category,title,booking_date,provider,reference_number,notes)
      values ($1,$2,$3,$4,$5,$6,$7) returning *`,
-    [data.tripId, data.category, data.title, data.bookingDate ?? null, data.provider ?? null, data.referenceNumber ?? null, data.notes ?? null],
+    [
+      data.tripId,
+      data.category,
+      data.title,
+      data.bookingDate ?? null,
+      data.provider ?? null,
+      data.referenceNumber ?? null,
+      data.notes ?? null,
+    ],
   );
   return result.rows[0];
 }
@@ -494,7 +524,7 @@ export const getMyTripsHome = createServerFn({ method: "GET" }).handler(async ()
       pool.query(
         `select id, trip_id, activity_date, start_time, end_time, title, location, activity_category
          from travel_itinerary_items
-         where trip_id=$1 and activity_date between current_date - 1 and current_date + 14
+         where trip_id=$1 and activity_date between current_date and current_date + 14
          order by activity_date asc, start_time asc nulls last
          limit 12`,
         [focusId],

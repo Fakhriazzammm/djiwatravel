@@ -8,6 +8,11 @@ import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 
 vi.mock("@/lib/customer-wallet.server", () => ({ getCustomerWallet: vi.fn() }));
 vi.mock("@/lib/use-better-auth-user", () => ({ useBetterAuthUser: vi.fn() }));
+vi.mock("@tanstack/react-router", async () => {
+  const actual =
+    await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");
+  return { ...actual, Outlet: () => null };
+});
 vi.mock("@/components/shell", () => ({
   Page: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SectionTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
