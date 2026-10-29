@@ -498,7 +498,7 @@ function Profile() {
           </button>
         ))}
       </div>
-      <div className={group}>
+      <div className={`${group} mt-2`}>
         {filteredOrders.length === 0 && (
           <p className="px-4 py-3.5 text-muted-foreground">Belum ada pesanan.</p>
         )}
