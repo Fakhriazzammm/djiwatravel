@@ -15,7 +15,6 @@ import {
   WalletCards,
 } from "lucide-react";
 import { BackBar, Page, btnRed, btnSoft, group, label, row } from "@/components/shell";
-import { TripProgress } from "@/components/trip-progress";
 import {
   Sheet,
   SheetContent,
@@ -23,7 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { displayBudgetCategory, displayChecklistTitle, getTripProgress } from "@/lib/my-trips-home";
+import { displayBudgetCategory, displayChecklistTitle } from "@/lib/my-trips-home";
 import { isTripAuthenticationError, runTripMutation } from "@/lib/trip-actions";
 import {
   deleteBookingRecord,
@@ -140,14 +139,8 @@ function TripSection() {
     return_date: string | null;
     primary_currency: string;
     total_budget_minor: number;
-    itinerary_count: number;
-    checklist_total: number;
-    checklist_done: number;
-    booking_count: number;
-    expense_count: number;
   };
   const refresh = () => router.invalidate();
-  const progress = getTripProgress(trip);
   return (
     <Page>
       <BackBar title={trip.name} />
@@ -157,9 +150,6 @@ function TripSection() {
         </h1>
       </div>
       <TripFeatureNav tripId={tripId} active={section as FeatureId} />
-      <div className="mt-4">
-        <TripProgress {...progress} tripId={tripId} />
-      </div>
       <div className="mt-5 space-y-4">
         {section === "budget" && (
           <BudgetEditor items={items} currency={trip.primary_currency} onSaved={refresh} />

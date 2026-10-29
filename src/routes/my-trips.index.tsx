@@ -18,9 +18,8 @@ import { useState, type ReactNode } from "react";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FixedLayer } from "@/components/motion-primitives";
 import { Page } from "@/components/shell";
-import { TripProgress } from "@/components/trip-progress";
 import { destinationPhoto } from "@/lib/destination-artwork";
-import { getMyTripsActions, getTripProgress } from "@/lib/my-trips-home";
+import { getMyTripsActions } from "@/lib/my-trips-home";
 import { getMyTripsHome } from "@/lib/my-trips.server";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { pressable, springSheet } from "@/lib/motion";
@@ -300,12 +299,9 @@ function TodayView({
     return <EmptyTrips trips={data.trips} user={user} loading={authLoading} />;
   }
 
-  const progress = getTripProgress(focusTrip);
-
   return (
     <div className="mt-5 space-y-6 pb-5">
       <FocusTripCard trip={focusTrip} />
-      <TripProgress {...progress} tripId={focusTrip.id} />
 
       <section aria-labelledby="today-agenda-heading">
         <SectionHeading
