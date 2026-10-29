@@ -142,8 +142,23 @@ if [ "${SKIP_BUILD}" = "1" ]; then
   echo "build   : dilewati (--skip-build)"
 else
   step "Build lokal"
-  npm run build
-  [ -f .output/server/index.mjs ] || { echo "ERROR: build tidak menghasilkan .output/server/index.mjs" >&2; exit 1; }
+  STALE_OUTPUT=""
+  if [ -d .output ]; then
+    STALE_OUTPUT=".output.prebuild-$(date +%Y%m%d-%H%M%S)-$$"
+    mv .output "${STALE_OUTPUT}"
+  fi
+  if ! npm run build; then
+    rm -rf .output
+    [ -z "${STALE_OUTPUT}" ] || mv "${STALE_OUTPUT}" .output
+    exit 1
+  fi
+  if [ ! -f .output/server/index.mjs ]; then
+    echo "ERROR: build tidak menghasilkan .output/server/index.mjs; artefak lama tidak akan di-deploy" >&2
+    rm -rf .output
+    [ -z "${STALE_OUTPUT}" ] || mv "${STALE_OUTPUT}" .output
+    exit 1
+  fi
+  [ -z "${STALE_OUTPUT}" ] || rm -rf "${STALE_OUTPUT}"
 fi
 
 if [ "${SKIP_SOURCE}" = "1" ]; then
