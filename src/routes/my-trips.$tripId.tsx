@@ -1,14 +1,24 @@
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { CalendarDays, ChevronRight, MapPin } from "lucide-react";
 import { BackBar, Page, btnRed, btnSoft } from "@/components/shell";
 import { TripProgress } from "@/components/trip-progress";
 import { getTrip, patchTrip } from "@/lib/my-trips.server";
 import { getTripProgress } from "@/lib/my-trips-home";
+import { isTripAuthenticationError } from "@/lib/trip-actions";
 import { TripWorkspace } from "./my-trips.$tripId.$section";
 
 export const Route = createFileRoute("/my-trips/$tripId")({
-  loader: ({ params }) => getTrip({ data: { tripId: params.tripId } }),
+  loader: async ({ params, location }) => {
+    try {
+      return await getTrip({ data: { tripId: params.tripId } });
+    } catch (error) {
+      if (isTripAuthenticationError(error)) {
+        throw redirect({ to: "/profile", search: { returnTo: location.href } });
+      }
+      throw error;
+    }
+  },
   component: TripDetail,
 });
 
@@ -184,10 +194,7 @@ function TripHeaderEditor({ trip, onSaved }: { trip: Trip; onSaved: () => void }
       />
 
       {editing ? (
-        <form
-          onSubmit={save}
-          className="mt-2 rounded-2xl bg-surface p-4"
-        >
+        <form onSubmit={save} className="mt-2 rounded-2xl bg-surface p-4">
           <div className="grid gap-2.5 sm:grid-cols-2">
             {field("name", "Nama perjalanan")}
             {field("destinationName", "Destinasi")}
