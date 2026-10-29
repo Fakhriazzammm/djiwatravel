@@ -16,7 +16,7 @@
 - Do not invent trip, eSIM, or availability data.
 - Preserve semantic colors for operational and payment states.
 - Respect safe areas, reduced motion, keyboard focus, and mobile layouts.
-- Preserve Lovable-published Git history.
+- Preserve published Git history.
 
 ## Review Focus
 

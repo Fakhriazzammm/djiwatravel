@@ -36,7 +36,7 @@ Give Djiwa Travel a calm, clean, mobile-first interface inspired by the visual h
 ## Constraints
 
 - Existing TanStack Start/React/Tailwind stack and current route contracts.
-- Preserve the Lovable-connected Git history; no force push, rebase, amend, or squash of published commits.
+- Preserve published Git history; no force push, rebase, amend, or squash of published commits.
 - Avoid changing backend semantics or business copy that encodes terms/pricing.
 
 ## Acceptance
