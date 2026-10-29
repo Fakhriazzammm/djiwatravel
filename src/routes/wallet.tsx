@@ -1,9 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, RefreshCw, WalletCards } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  RefreshCw,
+  WalletCards,
+} from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Page, SectionTitle, Wordmark } from "@/components/shell";
 import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
+import { DjiwaPayBrowser } from "@/components/djiwa-pay-browser";
 import { FixedLayer } from "@/components/motion-primitives";
 import { PendingSpinner } from "@/components/route-loading";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
@@ -53,6 +62,7 @@ export function Wallet() {
   const walletLoadingLabel = useStagedLabel(loading, ACTION_STAGES.walletLoad);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const [djiwaPayOpen, setDjiwaPayOpen] = useState(false);
   const [scope, setScope] = useState<WalletScope>("all");
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
   // Presets and which quick actions are live come from the server; the shipped defaults render
@@ -291,6 +301,23 @@ export function Wallet() {
             />
           </div>
 
+          <section className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-surface p-4 shadow-sm">
+            <div className="min-w-0">
+              <p className="text-sm font-bold">Kelola lebih lengkap di Djiwa Pay</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Buka layanan pembayaran tanpa meninggalkan navbar Djiwa Travel.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDjiwaPayOpen(true)}
+              className="tap inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-brand-red px-3 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
+            >
+              Buka Djiwa Pay
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+            </button>
+          </section>
+
           <section
             className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5"
             aria-label="Aksi cepat"
@@ -483,6 +510,7 @@ export function Wallet() {
           </div>
         </FixedLayer>
       )}
+      <DjiwaPayBrowser open={djiwaPayOpen} onOpenChange={setDjiwaPayOpen} />
     </Page>
   );
 }

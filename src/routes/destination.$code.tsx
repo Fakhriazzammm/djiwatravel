@@ -1,6 +1,14 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
+import { Check, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BackBar, Page, StickyCta } from "@/components/shell";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { getDest } from "@/lib/catalog";
 import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
 import { regionalCoverage as extendRegionalCoverage } from "@/lib/destination-availability";
@@ -234,6 +242,7 @@ function Destination() {
   const { destination, packages, stale, stockPending } = Route.useLoaderData();
   const { availability } = Route.useSearch();
   const [sort, setSort] = useState<SortKey>("recommended");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const comparisonRef = useRef<HTMLElement>(null);
@@ -279,6 +288,31 @@ function Destination() {
           ? "Cakupan regional · beberapa negara"
           : "Cakupan negara · satu tujuan"}
       </p>
+      {packages.length > 0 && (
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Pilih paket yang cocok</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {filteredPackages.length} paket ·{" "}
+              {availability === "available"
+                ? "Tersedia"
+                : availability === "sold-out"
+                  ? "Habis"
+                  : "Semua"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className="tap inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-surface px-3.5 text-sm font-semibold shadow-sm ring-1 ring-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Buka filter dan urutkan paket"
+          >
+            <SlidersHorizontal className="size-4 text-brand-red" aria-hidden="true" />
+            Filter
+            <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+          </button>
+        </div>
+      )}
       {stockPending && (
         <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground" role="status">
           Stok sedang diperbarui. Coba lagi sebentar lagi.
@@ -295,59 +329,80 @@ function Destination() {
         </p>
       ) : (
         <>
-          <div className="mt-4">
-            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Ketersediaan paket
-            </p>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {AVAILABILITY_OPTIONS.map((option) => {
-                const count = availabilityCounts[option.key];
-                const disabled = stockPending && option.key !== "all";
-                return (
-                  <button
-                    key={option.key}
-                    type="button"
-                    aria-pressed={availability === option.key}
-                    disabled={disabled}
-                    onClick={() => setAvailability(option.key)}
-                    className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
-                      availability === option.key
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-muted-foreground"
-                    }`}
-                  >
-                    {option.label}
-                    {count !== null && <span className="ml-1 opacity-75">({count})</span>}
-                  </button>
-                );
-              })}
-            </div>
-            {stockPending && (
-              <p className="mt-2 px-1 text-xs text-muted-foreground">
-                Filter stok tersedia setelah status saldo provider diperbarui.
-              </p>
-            )}
-          </div>
-          <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1">
-            {SORT_OPTIONS.map((option) => (
+          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <SheetContent
+              side="bottom"
+              className="mx-auto max-h-[82dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] border-border/70 px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-6"
+            >
+              <SheetHeader className="mb-6 pr-10 text-left">
+                <SheetTitle>Filter &amp; Urutkan</SheetTitle>
+                <SheetDescription>
+                  Temukan paket yang sesuai kebutuhan perjalananmu.
+                </SheetDescription>
+              </SheetHeader>
+              <div>
+                <p className="mb-2 text-sm font-semibold">Ketersediaan</p>
+                <div className="space-y-1.5">
+                  {AVAILABILITY_OPTIONS.map((option) => {
+                    const count = availabilityCounts[option.key];
+                    const disabled = stockPending && option.key !== "all";
+                    const active = availability === option.key;
+                    return (
+                      <button
+                        key={option.key}
+                        type="button"
+                        aria-pressed={active}
+                        disabled={disabled}
+                        onClick={() => setAvailability(option.key)}
+                        className="tap flex min-h-12 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-medium transition hover:bg-secondary disabled:opacity-50"
+                      >
+                        <span>
+                          {option.label}
+                          {count !== null ? ` (${count})` : ""}
+                        </span>
+                        {active && <Check className="size-4 text-brand-red" aria-hidden="true" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                {stockPending && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Filter stok tersedia setelah status diperbarui.
+                  </p>
+                )}
+              </div>
+              <div className="mt-6">
+                <p className="mb-2 text-sm font-semibold">Urutkan</p>
+                <div className="space-y-1.5">
+                  {SORT_OPTIONS.map((option) => {
+                    const active = sort === option.key;
+                    return (
+                      <button
+                        key={option.key}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => {
+                          setSort(option.key);
+                          setVisible(PAGE_SIZE);
+                        }}
+                        className="tap flex min-h-12 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-medium transition hover:bg-secondary"
+                      >
+                        <span>{option.label}</span>
+                        {active && <Check className="size-4 text-brand-red" aria-hidden="true" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <button
-                key={option.key}
                 type="button"
-                aria-pressed={sort === option.key}
-                onClick={() => {
-                  setSort(option.key);
-                  setVisible(PAGE_SIZE);
-                }}
-                className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold ${
-                  sort === option.key
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground"
-                }`}
+                onClick={() => setFiltersOpen(false)}
+                className="tap mt-5 min-h-12 w-full rounded-xl bg-brand-red text-sm font-bold text-white"
               >
-                {option.label}
+                Tampilkan {filteredPackages.length} paket
               </button>
-            ))}
-          </div>
+            </SheetContent>
+          </Sheet>
           <p className="mt-2 px-1 text-xs text-muted-foreground">
             Menampilkan {shown.length} dari {sorted.length} paket
           </p>
@@ -364,7 +419,7 @@ function Destination() {
               {shown.map((pkg) => (
                 <article
                   key={pkg.packageCode}
-                  className={`rounded-2xl p-4 shadow-sm ${
+                  className={`rounded-[22px] p-4 shadow-sm ring-1 ring-black/[0.035] ${
                     pkg.sellable ? "bg-surface" : "border border-red-200 bg-red-50/70"
                   }`}
                 >
@@ -379,13 +434,25 @@ function Destination() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {packageDataLabel(pkg)} · {pkg.durationDays} hari masa aktif
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    {packageDataLabel(pkg)}{" "}
+                    <span className="font-normal text-muted-foreground">
+                      · {pkg.durationDays} hari
+                    </span>
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Cakupan: {packageCoverageLabel(pkg)}
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {packageCoverageLabel(pkg)}
                   </p>
-                  <p className="mt-4 text-lg font-bold text-brand-red">{rupiah(pkg.priceIdr)}</p>
+                  <div className="mt-4 flex items-end justify-between gap-2">
+                    <p className="text-xl font-bold tracking-tight text-brand-red">
+                      {rupiah(pkg.priceIdr)}
+                    </p>
+                    <p className="text-right text-[11px] leading-4 text-muted-foreground">
+                      {Number.isFinite(pricePerGb(pkg))
+                        ? `${rupiah(Math.round(pricePerGb(pkg)))}/GB`
+                        : ""}
+                    </p>
+                  </div>
                   <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                     <input
                       type="checkbox"
@@ -405,7 +472,7 @@ function Destination() {
                       params={{ id: pkg.packageCode }}
                       className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
                     >
-                      Lihat detail &amp; pilih
+                      Pilih paket
                     </Link>
                   ) : stockPending ? (
                     <span

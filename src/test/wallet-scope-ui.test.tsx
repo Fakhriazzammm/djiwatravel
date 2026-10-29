@@ -44,6 +44,7 @@ describe("Wallet history scope filter", () => {
     render(<Wallet />);
 
     expect(await screen.findByText("Wallet Djiwa Pay")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Buka Djiwa Pay" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Semua transaksi" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -53,6 +54,17 @@ describe("Wallet history scope filter", () => {
       "false",
     );
     expect(mockedWallet).toHaveBeenCalledWith({ data: { scope: "all" } });
+  });
+
+  it("opens Djiwa Pay without leaving the Wallet page", async () => {
+    mockedWallet.mockResolvedValue(walletResponse);
+    render(<Wallet />);
+
+    await screen.findByText("Wallet Djiwa Pay");
+    screen.getByRole("button", { name: "Buka Djiwa Pay" }).click();
+
+    expect(await screen.findByRole("dialog", { name: "Djiwa Pay" })).toBeInTheDocument();
+    expect(screen.getByTitle("Djiwa Pay")).toHaveAttribute("src", "https://djiwapay.web.id");
   });
 
   it("re-reads the wallet with the Djiwa Travel scope when the filter is chosen", async () => {
