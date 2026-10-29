@@ -415,80 +415,79 @@ function Destination() {
                   : "Belum ada paket yang habis pada katalog ini."}
             </p>
           ) : (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 divide-y divide-border/70 border-y border-border/70">
               {shown.map((pkg) => (
                 <article
                   key={pkg.packageCode}
-                  className={`rounded-[22px] p-4 shadow-sm ring-1 ring-black/[0.035] ${
-                    pkg.sellable ? "bg-surface" : "border border-red-200 bg-red-50/70"
-                  }`}
+                  className={`py-4 ${pkg.sellable ? "" : "opacity-65"}`}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                    Paket internet
-                  </p>
                   <div className="flex items-start justify-between gap-2">
-                    <h2 className="font-semibold">{packageDestinationLabel(pkg)}</h2>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate text-[15px] font-semibold tracking-tight">
+                        {packageDestinationLabel(pkg)}
+                      </h2>
+                      <p className="mt-1 text-sm">
+                        <span className="font-semibold">{packageDataLabel(pkg)}</span>
+                        <span className="text-muted-foreground"> · {pkg.durationDays} hari</span>
+                      </p>
+                    </div>
                     {!pkg.sellable && !stockPending && (
-                      <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
+                      <span className="shrink-0 rounded-full bg-red-100 px-2 py-1 text-[11px] font-bold text-red-700">
+                        Habis
+                      </span>
+                    )}
+                    <div className="shrink-0 text-right">
+                      <p className="text-[17px] font-bold tracking-tight text-brand-red">
+                        {rupiah(pkg.priceIdr)}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {Number.isFinite(pricePerGb(pkg))
+                          ? `${rupiah(Math.round(pricePerGb(pkg)))}/GB`
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {packageCoverageLabel(pkg)}
+                  </p>
+                  <div className="mt-2 flex min-h-11 items-center justify-between gap-3">
+                    <label className="tap inline-flex min-h-11 items-center gap-2 text-xs font-medium text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={selectedCodes.includes(pkg.packageCode)}
+                        disabled={
+                          !pkg.sellable ||
+                          (selectedCodes.length >= 3 && !selectedCodes.includes(pkg.packageCode))
+                        }
+                        onChange={() => toggleComparison(pkg)}
+                        className="size-4 accent-primary"
+                      />
+                      Bandingkan
+                    </label>
+                    {pkg.sellable ? (
+                      <Link
+                        to="/checkout/$id"
+                        params={{ id: pkg.packageCode }}
+                        className="tap inline-flex min-h-11 items-center justify-center gap-1 rounded-lg px-3 text-sm font-semibold text-brand-red transition hover:bg-brand-red-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        Pilih <span aria-hidden="true">›</span>
+                      </Link>
+                    ) : stockPending ? (
+                      <span
+                        className="px-3 text-sm font-medium text-muted-foreground"
+                        aria-label="Paket belum dapat dipesan saat ini"
+                      >
+                        Memeriksa stok
+                      </span>
+                    ) : (
+                      <span
+                        className="px-3 text-sm font-semibold text-red-700"
+                        aria-label="Paket habis dan tidak dapat dibeli"
+                      >
                         Habis
                       </span>
                     )}
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
-                    {packageDataLabel(pkg)}{" "}
-                    <span className="font-normal text-muted-foreground">
-                      · {pkg.durationDays} hari
-                    </span>
-                  </p>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {packageCoverageLabel(pkg)}
-                  </p>
-                  <div className="mt-4 flex items-end justify-between gap-2">
-                    <p className="text-xl font-bold tracking-tight text-brand-red">
-                      {rupiah(pkg.priceIdr)}
-                    </p>
-                    <p className="text-right text-[11px] leading-4 text-muted-foreground">
-                      {Number.isFinite(pricePerGb(pkg))
-                        ? `${rupiah(Math.round(pricePerGb(pkg)))}/GB`
-                        : ""}
-                    </p>
-                  </div>
-                  <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={selectedCodes.includes(pkg.packageCode)}
-                      disabled={
-                        !pkg.sellable ||
-                        (selectedCodes.length >= 3 && !selectedCodes.includes(pkg.packageCode))
-                      }
-                      onChange={() => toggleComparison(pkg)}
-                      className="h-4 w-4 accent-primary"
-                    />
-                    Bandingkan paket
-                  </label>
-                  {pkg.sellable ? (
-                    <Link
-                      to="/checkout/$id"
-                      params={{ id: pkg.packageCode }}
-                      className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
-                    >
-                      Pilih paket
-                    </Link>
-                  ) : stockPending ? (
-                    <span
-                      className="inline-flex w-full items-center justify-center rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-muted-foreground"
-                      aria-label="Paket belum dapat dipesan saat ini"
-                    >
-                      Belum tersedia
-                    </span>
-                  ) : (
-                    <span
-                      className="inline-flex w-full items-center justify-center rounded-xl bg-red-100 px-4 py-3 text-sm font-bold text-red-700"
-                      aria-label="Paket habis dan tidak dapat dibeli"
-                    >
-                      Habis
-                    </span>
-                  )}
                 </article>
               ))}
             </div>
