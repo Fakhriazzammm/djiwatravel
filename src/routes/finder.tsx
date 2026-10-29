@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { TabBar } from "@/components/shell";
-import { FixedLayer } from "@/components/motion-primitives";
+import { BackBar, Page } from "@/components/shell";
 import { useState } from "react";
 import { recommendPackages } from "@/lib/recommendation/recommend-packages.server";
 import { destinations } from "@/lib/catalog";
@@ -86,26 +85,24 @@ function Finder() {
   }
   return (
     <>
-      <main className="mx-auto min-h-screen max-w-4xl bg-background px-4 pb-24 py-8 text-foreground">
-        <header>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Djiwa Travel
-          </p>
-          <h1 className="mt-2 text-2xl font-bold">Cari paket yang cocok</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Jawab singkat, kami urutkan paket live berdasarkan kebutuhanmu.
+      <Page>
+        <BackBar title="Pencari paket" />
+        <header className="pt-2">
+          <h1 className="large-title">Cari paket yang cocok</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Jawab beberapa hal. Kami urutkan paket live sesuai perjalananmu.
           </p>
         </header>
         <form
           onSubmit={submit}
-          className="mt-6 grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-4"
+          className="mt-5 grid gap-4 rounded-2xl bg-surface p-4 sm:grid-cols-2"
         >
           <label className="text-sm">
             Destinasi
             <select
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3"
+              className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
               aria-label="Pilih destinasi"
             >
               {destinations.map((item) => (
@@ -121,7 +118,7 @@ function Finder() {
             <select
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
-              className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3"
+              className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
               aria-label="Pilih masa aktif"
             >
               {DURATION_OPTIONS.map((value) => (
@@ -136,7 +133,7 @@ function Finder() {
             <select
               value={dataNeed}
               onChange={(e) => setDataNeed(e.target.value as RecommendationPreferences["dataNeed"])}
-              className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3"
+              className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
             >
               <option value="low">Hemat</option>
               <option value="medium">Sedang</option>
@@ -152,12 +149,12 @@ function Finder() {
               value={formatBudget(budget)}
               onChange={(e) => setBudget(parseBudget(e.target.value))}
               aria-label="Masukkan budget dalam Rupiah"
-              className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3"
+              className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3"
             />
           </label>
           <button
             disabled={loading}
-            className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground sm:col-span-4"
+            className="h-12 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground sm:col-span-2"
           >
             {loading ? loadingLabel : "Tampilkan rekomendasi"}
           </button>
@@ -241,10 +238,7 @@ function Finder() {
             )}
           </section>
         )}
-      </main>
-      <FixedLayer>
-        <TabBar />
-      </FixedLayer>
+      </Page>
     </>
   );
 }

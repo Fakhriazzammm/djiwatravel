@@ -45,12 +45,12 @@ function AdminSettings() {
           />
         </AdminSurface>
         <AdminSurface className="p-3">
-          <div className="divide-y divide-[#f0f0f2]">
+          <div className="divide-y divide-border">
             {readiness.map((item) => (
               <ReadinessRow key={item.name} item={item} />
             ))}
           </div>
-          <div className="mt-3 flex gap-2 rounded-xl bg-[#fffaf0] p-3 text-xs text-[#6e6e73]">
+          <div className="mt-3 flex gap-2 rounded-xl bg-[#fffaf0] p-3 text-xs text-muted-foreground">
             <CircleAlert className="size-4 shrink-0 text-[#b87400]" />
             <p>Secret dan raw provider payload tidak pernah ditampilkan.</p>
           </div>
@@ -62,16 +62,16 @@ function AdminSettings() {
 function ReadinessRow({ item }: { item: { name: string; ready: boolean; detail: string } }) {
   return (
     <div className="flex min-h-14 items-center gap-3 py-2">
-      <span className="rounded-xl bg-[#f7f7f8] p-2">
+      <span className="rounded-xl bg-secondary p-2">
         {item.ready ? (
-          <Database className="size-4 text-[#248a3d]" />
+          <Database className="size-4 text-success" />
         ) : (
-          <Server className="size-4 text-[#8e8e93]" />
+          <Server className="size-4 text-muted-foreground" />
         )}
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{item.name}</p>
-        <p className="truncate text-xs text-[#8e8e93]">{item.detail}</p>
+        <p className="truncate text-xs text-muted-foreground">{item.detail}</p>
       </div>
       <StatusPill tone={item.ready ? "good" : "warn"}>
         {item.ready ? "Ready" : "Belum tersedia"}

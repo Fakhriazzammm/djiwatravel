@@ -28,13 +28,13 @@ function AdminOrders() {
   const card = (order: (typeof orders)[number]) => (
     <Link
       to={order.detailHref as never}
-      className="block rounded-xl bg-[#f7f7f8] p-2.5 text-xs active:bg-[#ececf0]"
+      className="block rounded-xl bg-secondary p-2.5 text-xs active:bg-secondary"
     >
       <div className="flex items-center justify-between gap-2">
         <b className="truncate">{projectAdminPrivacy(order.displayIdentifier, privateMode)}</b>
         <StatusPill>{humanizeAdminStatus(order.status)}</StatusPill>
       </div>
-      <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-[#6e6e73]">
+      <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
         <span className="truncate">{projectAdminCustomer(order.customer, privateMode).label}</span>
         <span className="truncate text-right">
           {projectAdminAmount(order.totalAmount, order.currencyCode, privateMode)}
@@ -46,7 +46,7 @@ function AdminOrders() {
           eSIM {humanizeAdminStatus(order.provisioningStatus)}
         </span>
       </div>
-      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#8e8e93]">
+      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
         <span className="truncate">
           {projectAdminPrivacy(order.paymentProviderLabel ?? "Payment —", privateMode)}
         </span>
@@ -60,12 +60,12 @@ function AdminOrders() {
         <AdminSurface className="p-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6e6e73]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 Monitoring order
               </p>
               <p className="mt-0.5 text-base font-bold tabular-nums">
                 {privateMode ? "••••" : orders.length}{" "}
-                <span className="text-xs font-medium text-[#6e6e73]">total</span>
+                <span className="text-xs font-medium text-muted-foreground">total</span>
               </p>
             </div>
             <div className="flex items-center gap-1">
@@ -75,7 +75,7 @@ function AdminOrders() {
                 onClick={() => setPrivateMode((v) => !v)}
                 aria-label="Mode privasi"
                 aria-pressed={privateMode}
-                className="min-h-11 min-w-11 rounded-xl border bg-white p-2"
+                className="min-h-11 min-w-11 rounded-xl border bg-surface p-2"
               >
                 {privateMode ? (
                   <EyeOff className="mx-auto size-4" />
@@ -88,21 +88,21 @@ function AdminOrders() {
           {newest ? (
             <>
               <div className="hidden lg:block">
-                <p className="mt-3 text-[11px] font-medium text-[#6e6e73]">Order terbaru</p>
+                <p className="mt-3 text-[11px] font-medium text-muted-foreground">Order terbaru</p>
                 <div className="mt-1">{card(newest)}</div>
-                <p className="mt-2 text-[11px] text-[#6e6e73]">
+                <p className="mt-2 text-[11px] text-muted-foreground">
                   Semua order tampil di bawah untuk monitoring langsung.
                 </p>
               </div>
               <details className="mt-2 lg:hidden">
-                <summary className="cursor-pointer text-[11px] font-medium text-[#6e6e73]">
+                <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground">
                   Order terbaru · {humanizeAdminStatus(newest.status)}
                 </summary>
                 <div className="mt-1">{card(newest)}</div>
               </details>
             </>
           ) : (
-            <div className="mt-3 flex items-center gap-3 text-sm text-[#6e6e73]">
+            <div className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
               <ClipboardList className="size-5" />
               Belum ada order dari database Travel.
             </div>
@@ -111,7 +111,7 @@ function AdminOrders() {
         <AdminSurface className="hidden p-3 lg:block">
           <div className="overflow-auto">
             <table className="w-full min-w-[760px] text-xs">
-              <thead className="border-b text-left text-[#6e6e73]">
+              <thead className="border-b text-left text-muted-foreground">
                 <tr>
                   {["Order", "Customer", "Paket / total", "Status", "Dibuat / diperbarui"].map(
                     (x) => (
@@ -135,13 +135,13 @@ function AdminOrders() {
                         openOrder(order.detailHref);
                       }
                     }}
-                    className="cursor-pointer outline-none hover:bg-[#f7f7f8] focus-visible:bg-[#f7f7f8]"
+                    className="cursor-pointer outline-none hover:bg-secondary focus-visible:bg-secondary"
                   >
                     <td className="px-2.5 py-2">
-                      <Link className="font-semibold text-[#0a67c7]" to={order.detailHref as never}>
+                      <Link className="font-semibold text-brand-red" to={order.detailHref as never}>
                         {projectAdminPrivacy(order.displayIdentifier, privateMode)}
                       </Link>
-                      <div className="text-[#8e8e93]">
+                      <div className="text-muted-foreground">
                         {projectAdminPrivacy(
                           order.paymentProviderLabel ?? "Payment belum tersedia",
                           privateMode,
@@ -164,11 +164,11 @@ function AdminOrders() {
                     </td>
                     <td className="px-2.5 py-2">
                       {humanizeAdminStatus(order.status)}
-                      <div className="text-[#8e8e93]">
+                      <div className="text-muted-foreground">
                         eSIM: {humanizeAdminStatus(order.provisioningStatus)}
                       </div>
                     </td>
-                    <td className="px-2.5 py-2 text-[#6e6e73]">
+                    <td className="px-2.5 py-2 text-muted-foreground">
                       {formatAdminDateTime(order.createdAt)}
                       <div>Update {formatAdminDateTime(order.updatedAt)}</div>
                     </td>
@@ -180,7 +180,7 @@ function AdminOrders() {
         </AdminSurface>
         <div className="lg:hidden">
           <AdminSurface className="p-3">
-            <p className="mb-2 text-[11px] font-medium text-[#6e6e73]">Semua order</p>
+            <p className="mb-2 text-[11px] font-medium text-muted-foreground">Semua order</p>
             <div className="space-y-1.5">{orders.map(card)}</div>
           </AdminSurface>
         </div>

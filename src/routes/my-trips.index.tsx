@@ -81,7 +81,7 @@ function MyTrips() {
       </div>
 
       <nav
-        className="no-scrollbar mt-5 flex gap-1 overflow-x-auto rounded-2xl bg-secondary/80 p-1"
+        className="no-scrollbar mt-5 flex gap-1 overflow-x-auto rounded-full bg-secondary p-1"
         role="tablist"
         aria-label="Tampilan perjalanan"
       >
@@ -93,7 +93,7 @@ function MyTrips() {
             aria-selected={view === item}
             onClick={() => setView(item)}
             className={`min-h-10 flex-1 rounded-xl px-4 text-[13px] font-semibold transition-colors ${
-              view === item ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground"
+              view === item ? "bg-surface text-foreground" : "text-muted-foreground"
             }`}
           >
             {item === "today" ? "Hari ini" : "Riwayat"}
@@ -111,7 +111,7 @@ function MyTrips() {
         type="button"
         aria-label="Buat perjalanan baru"
         onClick={() => setSheet("actions")}
-        className="tap fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-5 z-30 flex size-14 items-center justify-center rounded-full bg-brand-red text-white shadow-[0_8px_24px_rgba(220,38,38,0.25)] ring-4 ring-background"
+        className="tap fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-5 z-30 flex size-14 items-center justify-center rounded-full bg-brand-red text-white ring-4 ring-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
         {...pressable}
       >
         <Plus className="size-7" strokeWidth={2.1} />
@@ -132,7 +132,7 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
       <Link
         to="/"
         aria-label="Kembali ke beranda"
-        className="tap flex size-10 items-center justify-center rounded-full bg-surface shadow-[0_1px_5px_rgba(15,23,42,0.08)] ring-1 ring-border/70"
+        className="tap flex size-10 items-center justify-center rounded-full border border-border/70 bg-surface"
       >
         <ArrowLeft className="size-5" strokeWidth={2.3} />
       </Link>
@@ -140,7 +140,7 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
         type="button"
         aria-label="Menu perjalanan"
         onClick={onMenu}
-        className="tap flex size-10 items-center justify-center rounded-full bg-surface text-foreground shadow-[0_1px_5px_rgba(15,23,42,0.08)] ring-1 ring-border/70"
+        className="tap flex size-10 items-center justify-center rounded-full border border-border/70 bg-surface text-foreground"
       >
         <Ellipsis className="size-5" strokeWidth={2.4} />
       </button>

@@ -159,11 +159,11 @@ function Notifications() {
           </p>
         </div>
       )}
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface">
         {notifications.map((item) => (
           <article
             key={item.id}
-            className={`rounded-2xl border p-4 ${item.read_at ? "border-border bg-background" : "border-brand-red/30 bg-brand-red/[0.04]"}`}
+            className={`border-b p-4 last:border-b-0 ${item.read_at ? "bg-surface" : "bg-brand-red/[0.04]"}`}
           >
             <div className="flex gap-3">
               <div

@@ -73,7 +73,7 @@ function TripDetail() {
       <Link
         to="/my-trips/$tripId/$section"
         params={{ tripId: trip.id, section: "budget" }}
-        className="tap mt-5 block rounded-[20px] bg-surface p-5 ring-1 ring-black/[0.045] transition-colors active:bg-secondary/60"
+        className="tap mt-5 block rounded-2xl bg-surface p-4 transition-colors active:bg-secondary/60"
         aria-label="Buka detail anggaran"
       >
         <div className="flex items-start justify-between gap-4">
@@ -186,7 +186,7 @@ function TripHeaderEditor({ trip, onSaved }: { trip: Trip; onSaved: () => void }
       {editing ? (
         <form
           onSubmit={save}
-          className="mt-2 rounded-[20px] bg-surface p-4 ring-1 ring-black/[0.045]"
+          className="mt-2 rounded-2xl bg-surface p-4"
         >
           <div className="grid gap-2.5 sm:grid-cols-2">
             {field("name", "Nama perjalanan")}

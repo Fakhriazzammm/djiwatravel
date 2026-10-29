@@ -74,7 +74,7 @@ export function TripFeatureNav({ tripId, active }: { tripId: string; active?: Fe
             key={tab.id}
             to="/my-trips/$tripId/$section"
             params={{ tripId, section: tab.id }}
-            className={`tap flex min-h-9 items-center rounded-lg px-3 text-[13px] font-semibold whitespace-nowrap transition-colors ${active === tab.id ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground"}`}
+            className={`tap flex min-h-9 items-center rounded-full px-3 text-[13px] font-semibold whitespace-nowrap transition-colors ${active === tab.id ? "bg-surface text-foreground" : "text-muted-foreground"}`}
             aria-current={active === tab.id ? "page" : undefined}
           >
             {tab.label}
@@ -402,7 +402,7 @@ function ItineraryEditor({
       {showForm && (
         <form
           onSubmit={submit}
-          className="rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-border/50"
+          className="rounded-2xl bg-surface p-4"
         >
           <div className="flex items-center justify-between">
             <p className={label}>Tambah aktivitas</p>
@@ -528,7 +528,7 @@ function ItineraryDay({
 }) {
   const dateLabel = formatItineraryDate(date);
   return (
-    <section className="rounded-2xl bg-surface p-4 shadow-[0_5px_18px_rgba(15,23,42,0.04)] ring-1 ring-black/[0.035]">
+    <section className="rounded-2xl bg-surface p-4">
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-red">
@@ -894,7 +894,7 @@ export function TripWorkspace({
           >
             {group.title}
           </h2>
-          <div className="mt-2 overflow-hidden rounded-[18px] bg-surface ring-1 ring-black/[0.045]">
+          <div className="mt-2 overflow-hidden rounded-2xl bg-surface">
             {group.items.map(({ id, title, icon: Icon }) => (
               <Link
                 key={id}

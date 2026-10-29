@@ -128,7 +128,7 @@ function Home() {
         onClick={() => setSearchOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={searchOpen}
-        className="tap mt-4 flex h-12 w-full items-center gap-3 rounded-2xl bg-surface px-4 text-left text-[15px] text-muted-foreground shadow-sm"
+        className="tap mt-4 flex h-12 w-full items-center gap-3 rounded-2xl border border-border/70 bg-surface px-4 text-left text-[15px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Search className="size-5 shrink-0" /> Cari negara atau wilayah
       </button>
@@ -159,7 +159,7 @@ function Home() {
                 <X className="size-5" />
               </button>
             </div>
-            <label className="mt-4 flex h-11 items-center gap-2 rounded-xl bg-surface px-3 shadow-sm">
+            <label className="mt-4 flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-surface px-3">
               <Search className="size-5 text-muted-foreground" />
               <input
                 autoFocus
@@ -209,6 +209,30 @@ function Home() {
             </button>
           </section>
         </div>
+      )}
+
+      {active && (
+        <Reveal as="section" className="mt-6">
+          <SectionTitle action={<Link to="/my-esim">Lihat Semua ›</Link>}>
+            Perjalanan aktif
+          </SectionTitle>
+          <Link
+            to="/my-esim/$id"
+            params={{ id: active.id }}
+            className="tap flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xl" aria-hidden="true">
+              🌐
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold">{activeName}</span>
+              <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                {activeLocation} · {activeQuota} · {activeDuration} hari
+              </span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </Link>
+        </Reveal>
       )}
 
       <Stagger className="block">
@@ -294,45 +318,6 @@ function Home() {
           </div>
         </Reveal>
 
-        {active ? (
-          <Reveal as="section" className="mt-7">
-            <SectionTitle action={<Link to="/my-esim">Lihat Semua ›</Link>}>
-              Perjalananmu
-            </SectionTitle>
-            <Link
-              to="/my-esim/$id"
-              params={{ id: active.id }}
-              className="tap block rounded-2xl bg-surface p-4 shadow-sm"
-            >
-              <div className="flex items-center gap-3">
-                <span className="shrink-0 text-3xl">🌐</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{activeName}</p>
-                  <p className="text-[13px] text-muted-foreground">
-                    {activeLocation} · {activeQuota} · {activeDuration} hari
-                  </p>
-                </div>
-                <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-              </div>
-            </Link>
-          </Reveal>
-        ) : (
-          <Reveal className="block">
-            <Link
-              to="/finder"
-              className="tap mt-7 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-4"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold">Cari Paket yang Cocok</p>
-                <p className="truncate text-[13px] text-muted-foreground">
-                  Jawab singkat, kami urutkan paket terbaiknya
-                </p>
-              </div>
-              <ChevronRight className="size-5 shrink-0 text-brand-red" />
-            </Link>
-          </Reveal>
-        )}
-
         <Reveal as="section" className="mt-7" aria-labelledby="home-guides-title">
           <SectionTitle action={<Link to="/panduan">Lihat semua ›</Link>}>
             <span id="home-guides-title">Panduan Travel</span>
@@ -344,7 +329,7 @@ function Home() {
                 to="/panduan/$slug"
                 params={{ slug: guide.slug }}
                 aria-label={`Baca panduan: ${guide.title}`}
-                className="tap flex min-h-11 items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-sm"
+                className="tap flex min-h-11 items-center gap-3 rounded-2xl bg-surface px-4 py-3"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-[11px] font-bold uppercase tracking-wide text-brand-red">

@@ -68,7 +68,7 @@ function AdminDashboard() {
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2" aria-live="polite">
           <div
-            className="flex min-h-11 items-center gap-0.5 rounded-xl bg-white p-1 shadow-sm"
+            className="flex min-h-11 items-center gap-0.5 rounded-xl bg-surface p-1 shadow-sm"
             aria-label="Periode"
           >
             {(["daily", "weekly", "monthly"] as Period[]).map((v) => (
@@ -79,14 +79,14 @@ function AdminDashboard() {
                   void router.navigate({ to: "/admin/dashboard", search: { period: v } } as never)
                 }
                 aria-pressed={period === v}
-                className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${period === v ? "bg-[#eaf3ff] text-[#0a67c7]" : "text-[#6e6e73]"}`}
+                className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${period === v ? "bg-brand-red-soft text-brand-red" : "text-muted-foreground"}`}
               >
                 {v === "daily" ? "Harian" : v === "weekly" ? "Mingguan" : "Bulanan"}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="hidden text-[11px] text-[#6e6e73] sm:inline">
+            <span className="hidden text-[11px] text-muted-foreground sm:inline">
               Data {formatAdminDateTime(data.updatedAt)}
             </span>
             <button
@@ -94,7 +94,7 @@ function AdminDashboard() {
               onClick={refresh}
               disabled={refreshing}
               aria-label="Refresh dashboard"
-              className="min-h-11 min-w-11 rounded-xl border border-black/[0.06] bg-white p-2"
+              className="min-h-11 min-w-11 rounded-xl border border-border bg-surface p-2"
             >
               <RefreshCw
                 className={`mx-auto size-4 ${refreshing ? "animate-spin" : ""} motion-reduce:animate-none`}
@@ -105,7 +105,7 @@ function AdminDashboard() {
               onClick={() => setPrivateMode((v) => !v)}
               aria-pressed={privateMode}
               aria-label="Mode privasi"
-              className="min-h-11 min-w-11 rounded-xl border border-black/[0.06] bg-white p-2"
+              className="min-h-11 min-w-11 rounded-xl border border-border bg-surface p-2"
             >
               {privateMode ? (
                 <EyeOff className="mx-auto size-4" />
@@ -140,7 +140,7 @@ function AdminDashboard() {
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs font-semibold">Saldo provider eSIM</p>
-              <p className="mt-0.5 truncate text-[11px] text-[#6e6e73]">
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                 {provider.state === "ok"
                   ? `IDR ${amount(provider.idrReference)} · ceiling ${provider.sellableCeilingUsd === null ? "—" : `US$${provider.sellableCeilingUsd.toFixed(2)}`}`
                   : "Tidak tersedia"}
@@ -158,14 +158,14 @@ function AdminDashboard() {
           </div>
           <div className="mt-2 flex items-end justify-between gap-3">
             <p className="text-[22px] font-bold tabular-nums">{balance}</p>
-            <div className="text-right text-[10px] text-[#8e8e93]">
+            <div className="text-right text-[10px] text-muted-foreground">
               {provider.state === "ok"
                 ? `≈ ${amount(provider.idrReference)} · ${formatAdminDateTime(provider.fetchedAt)}`
                 : "Saldo tidak bisa dibaca"}
             </div>
           </div>
           {provider.state === "ok" && provider.sellableCeilingUsd !== null && (
-            <p className="mt-1 text-[10px] text-[#6e6e73]">
+            <p className="mt-1 text-[10px] text-muted-foreground">
               Habis di atas US${provider.sellableCeilingUsd.toFixed(2)} (buffer 15%)
             </p>
           )}
@@ -181,7 +181,7 @@ function AdminDashboard() {
                     : "Tidak ada exception aktif"
                 }
               />
-              <span className="text-[11px] text-[#6e6e73]">Detail di bawah</span>
+              <span className="text-[11px] text-muted-foreground">Detail di bawah</span>
             </div>
             {actions.slice(0, 1).map((item) => (
               <Link
@@ -202,7 +202,7 @@ function AdminDashboard() {
             <SectionHeading title="Health & freshness" />
             <div className="mt-2 space-y-1.5 text-xs">
               <div className="flex items-center gap-2">
-                <Activity className="size-4 text-[#248a3d]" />
+                <Activity className="size-4 text-success" />
                 <span className="flex-1">Database Travel</span>
                 <StatusPill tone="good">Terhubung</StatusPill>
               </div>
@@ -222,7 +222,7 @@ function AdminDashboard() {
         <button
           type="button"
           onClick={() => setDetailOpen(true)}
-          className="min-h-11 rounded-xl bg-white px-3 text-sm font-semibold shadow-sm"
+          className="min-h-11 rounded-xl bg-surface px-3 text-sm font-semibold shadow-sm"
         >
           Lihat detail operasional
         </button>
@@ -234,7 +234,7 @@ function AdminDashboard() {
       >
         <div className="space-y-2">
           {series.length ? (
-            <div className="flex h-40 items-end gap-1 border-b border-black/[0.06]">
+            <div className="flex h-40 items-end gap-1 border-b border-border">
               {series.map((point) => (
                 <div
                   key={point.day}
@@ -243,17 +243,17 @@ function AdminDashboard() {
                 >
                   <span className="text-[10px]">{privateMode ? "••" : point.count}</span>
                   <div
-                    className="w-full max-w-7 rounded-t bg-[#0a84ff]"
+                    className="w-full max-w-7 rounded-t bg-brand-red"
                     style={{
                       height: privateMode ? "4px" : `${Math.max(4, (point.count / max) * 100)}%`,
                     }}
                   />
-                  <span className="text-[10px] text-[#8e8e93]">{point.day.slice(5)}</span>
+                  <span className="text-[10px] text-muted-foreground">{point.day.slice(5)}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#6e6e73]">Belum ada data pada periode ini.</p>
+            <p className="text-sm text-muted-foreground">Belum ada data pada periode ini.</p>
           )}
           <div className="divide-y">
             {data.statuses.slice(0, 6).map((item) => (

@@ -166,7 +166,7 @@ function Detail() {
     <Page>
       <BackBar title="Detail eSIM" />
 
-      <section className="overflow-hidden rounded-2xl bg-primary p-4 text-primary-foreground shadow-sm">
+      <section className="overflow-hidden rounded-2xl bg-primary p-4 text-primary-foreground">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/65">

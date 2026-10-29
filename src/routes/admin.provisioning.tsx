@@ -34,9 +34,9 @@ function AdminProvisioning() {
     const Icon =
       x.status === "FAILED" ? CircleX : x.status === "PROVISIONING" ? LoaderCircle : ShieldCheck;
     return (
-      <Link to={x.detailHref as never} className="block rounded-xl bg-[#f7f7f8] p-2.5 text-xs">
+      <Link to={x.detailHref as never} className="block rounded-xl bg-secondary p-2.5 text-xs">
         <div className="flex items-center gap-2">
-          <Icon className="size-4 shrink-0 text-[#8e8e93]" />
+          <Icon className="size-4 shrink-0 text-muted-foreground" />
           <b className="min-w-0 flex-1 truncate">
             {projectAdminPrivacy(x.displayIdentifier, privateMode)}
           </b>
@@ -46,13 +46,13 @@ function AdminProvisioning() {
             {humanizeAdminStatus(x.status)}
           </StatusPill>
         </div>
-        <p className="mt-1 text-[#6e6e73]">
+        <p className="mt-1 text-muted-foreground">
           {projectAdminCustomer(x.customer, privateMode).label} ·{" "}
           {projectAdminCount(x.provisioningAttempts, privateMode)} percobaan ·{" "}
           {formatAdminDateTime(x.updatedAt)}
         </p>
         {x.lastError && (
-          <p className="mt-1 truncate text-[#b00020]">
+          <p className="mt-1 truncate text-destructive">
             {projectAdminPrivacy(x.lastError, privateMode)}
           </p>
         )}
@@ -71,7 +71,7 @@ function AdminProvisioning() {
             type="button"
             onClick={() => setPrivateMode((v) => !v)}
             aria-pressed={privateMode}
-            className="min-h-11 min-w-11 rounded-xl border bg-white p-2"
+            className="min-h-11 min-w-11 rounded-xl border bg-surface p-2"
           >
             {privateMode ? (
               <EyeOff className="mx-auto size-4" />
@@ -83,20 +83,20 @@ function AdminProvisioning() {
         <AdminSurface className="p-3">
           <div className="grid grid-cols-2 divide-x divide-y divide-black/[0.06] sm:grid-cols-4">
             <div className="p-2">
-              <p className="text-[11px] text-[#6e6e73]">Total queue</p>
+              <p className="text-[11px] text-muted-foreground">Total queue</p>
               <b className="text-xl">{privateMode ? "••••" : queue.length}</b>
             </div>
             <div className="p-2">
-              <p className="text-[11px] text-[#6e6e73]">Gagal</p>
-              <b className="text-xl text-[#c7352d]">{privateMode ? "••••" : failed}</b>
+              <p className="text-[11px] text-muted-foreground">Gagal</p>
+              <b className="text-xl text-destructive">{privateMode ? "••••" : failed}</b>
             </div>
             <div className="p-2">
-              <p className="text-[11px] text-[#6e6e73]">Berjalan</p>
+              <p className="text-[11px] text-muted-foreground">Berjalan</p>
               <b className="text-xl">{privateMode ? "••••" : active}</b>
             </div>
             <div className="p-2">
-              <p className="text-[11px] text-[#6e6e73]">Siap</p>
-              <b className="text-xl text-[#248a3d]">{privateMode ? "••••" : ready}</b>
+              <p className="text-[11px] text-muted-foreground">Siap</p>
+              <b className="text-xl text-success">{privateMode ? "••••" : ready}</b>
             </div>
           </div>
           <div className="mt-2 flex items-center justify-between gap-2 text-xs">
@@ -108,7 +108,7 @@ function AdminProvisioning() {
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="min-h-11 rounded-xl bg-[#0a84ff] px-3 font-semibold text-white"
+              className="min-h-11 rounded-xl bg-brand-red px-3 font-semibold text-white"
             >
               Lihat queue
             </button>
@@ -118,7 +118,7 @@ function AdminProvisioning() {
           <div className="space-y-2">{queue.map(item)}</div>
         </AdminSurface>
         {!queue.length && (
-          <AdminSurface className="p-4 text-sm text-[#6e6e73]">
+          <AdminSurface className="p-4 text-sm text-muted-foreground">
             Tidak ada provisioning exception dari database Travel.
           </AdminSurface>
         )}

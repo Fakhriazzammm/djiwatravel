@@ -209,13 +209,13 @@ function Support() {
                 Memuat kasus…
               </p>
             ) : data?.cases.length ? (
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4">
                 {data.cases.map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => setSelected(item)}
-                    className="w-full rounded-2xl border bg-surface p-4 text-left"
+                    className="w-full py-4 text-left first:pt-4 last:pb-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <span className="font-semibold">{item.subject}</span>

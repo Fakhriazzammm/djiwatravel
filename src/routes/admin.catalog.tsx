@@ -63,9 +63,9 @@ export const Route = createFileRoute("/admin/catalog")({
   pendingComponent: () => (
     <AdminShell title="Katalog & Pricing" subtitle="Memuat katalog provider">
       <div className="space-y-2" role="status" aria-live="polite">
-        <p className="text-sm text-[#6e6e73]">Memuat katalog…</p>
-        <div className="h-16 animate-pulse rounded-2xl bg-white motion-reduce:animate-none" />
-        <div className="h-64 animate-pulse rounded-2xl bg-white motion-reduce:animate-none" />
+        <p className="text-sm text-muted-foreground">Memuat katalog…</p>
+        <div className="h-16 animate-pulse rounded-2xl bg-surface motion-reduce:animate-none" />
+        <div className="h-64 animate-pulse rounded-2xl bg-surface motion-reduce:animate-none" />
       </div>
     </AdminShell>
   ),
@@ -73,7 +73,7 @@ export const Route = createFileRoute("/admin/catalog")({
     <AdminShell title="Katalog & Pricing" subtitle="Katalog belum dapat dimuat">
       <div role="alert" className="rounded-2xl border border-[#f1d9a8] bg-[#fffaf0] p-4">
         <p className="font-semibold">Katalog belum dapat dimuat</p>
-        <p className="mt-1 text-sm text-[#6e6e73]">
+        <p className="mt-1 text-sm text-muted-foreground">
           Pembacaan katalog provider gagal atau melewati batas waktu. Tidak ada angka contoh yang
           ditampilkan.
         </p>
@@ -336,7 +336,7 @@ function AdminCatalogPage() {
       <div className={`space-y-2 ${editorOpen ? "pb-32" : ""}`}>
         {/* KPI strip — one screen, no cards maze */}
         <AdminSurface className="p-2.5">
-          <div className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-y-2 sm:divide-[#f0f0f2] sm:px-0 sm:pb-0 lg:grid-cols-5 lg:divide-x">
+          <div className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-y-2 sm:divide-border sm:px-0 sm:pb-0 lg:grid-cols-5 lg:divide-x">
             <Kpi
               label="Saldo provider"
               value={usd(balance.usd)}
@@ -391,8 +391,8 @@ function AdminCatalogPage() {
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <label className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-black/[0.06] bg-white px-3 shadow-sm">
-            <Search className="size-4 text-[#8e8e93]" />
+          <label className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-border bg-surface px-3 shadow-sm">
+            <Search className="size-4 text-muted-foreground" />
             <input
               value={qDraft}
               onChange={(event) => setQDraft(event.target.value)}
@@ -401,7 +401,7 @@ function AdminCatalogPage() {
               }}
               placeholder="Cari kode, nama paket, atau negara…"
               aria-label="Cari paket"
-              className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[#8e8e93]"
+              className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
             />
             {qDraft !== "" && (
               <button
@@ -412,14 +412,14 @@ function AdminCatalogPage() {
                   navigate({ q: "", page: 1 });
                 }}
               >
-                <X className="size-4 text-[#8e8e93]" />
+                <X className="size-4 text-muted-foreground" />
               </button>
             )}
           </label>
           <button
             type="button"
             onClick={() => navigate({ q: qDraft, page: 1 })}
-            className="hidden hidden min-h-11 rounded-xl border border-black/[0.06] bg-white px-3 text-[13px] font-semibold shadow-sm sm:block"
+            className="hidden hidden min-h-11 rounded-xl border border-border bg-surface px-3 text-[13px] font-semibold shadow-sm sm:block"
           >
             Cari
           </button>
@@ -427,7 +427,7 @@ function AdminCatalogPage() {
             aria-label="Filter status saldo"
             value={search.status}
             onChange={(event) => navigate({ status: event.target.value as StatusFilter, page: 1 })}
-            className="hidden min-h-11 rounded-xl border border-black/[0.06] bg-white px-2 text-[13px] shadow-sm sm:block"
+            className="hidden min-h-11 rounded-xl border border-border bg-surface px-2 text-[13px] shadow-sm sm:block"
           >
             <option value="all">Semua paket</option>
             <option value="unaffordable">Melebihi saldo</option>
@@ -437,7 +437,7 @@ function AdminCatalogPage() {
             aria-label="Jumlah baris"
             value={String(search.pageSize)}
             onChange={(event) => navigate({ pageSize: Number(event.target.value) as 50, page: 1 })}
-            className="hidden min-h-11 rounded-xl border border-black/[0.06] bg-white px-2 text-[13px] shadow-sm sm:block"
+            className="hidden min-h-11 rounded-xl border border-border bg-surface px-2 text-[13px] shadow-sm sm:block"
           >
             <option value="50">50 baris</option>
             <option value="100">100 baris</option>
@@ -446,12 +446,12 @@ function AdminCatalogPage() {
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
-            className="flex min-h-11 items-center gap-1.5 rounded-xl border border-black/[0.06] bg-white px-3 text-[13px] font-semibold shadow-sm sm:hidden"
+            className="flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 text-[13px] font-semibold shadow-sm sm:hidden"
           >
             <SlidersHorizontal className="size-4" />
             Filter
             {(search.status !== "all" || search.pageSize !== 50) && (
-              <span className="size-1.5 rounded-full bg-[#0a67c7]" />
+              <span className="size-1.5 rounded-full bg-brand-red" />
             )}
           </button>
           {/* Rules live in a sheet so nobody scrolls to the end of a 3.184-row catalogue to read them. */}
@@ -461,11 +461,11 @@ function AdminCatalogPage() {
               setRulesOpen(true);
               setHistory(null);
             }}
-            className="flex min-h-11 items-center gap-1.5 rounded-xl border border-black/[0.06] bg-white px-3 text-[13px] font-semibold shadow-sm"
+            className="flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 text-[13px] font-semibold shadow-sm"
           >
             <SlidersHorizontal className="size-4" />
             Aturan
-            <span className="rounded-full bg-[#eaf3ff] px-1.5 text-[11px] font-bold text-[#0a67c7]">
+            <span className="rounded-full bg-brand-red-soft px-1.5 text-[11px] font-bold text-brand-red">
               {data.rules.length}
             </span>
           </button>
@@ -474,7 +474,7 @@ function AdminCatalogPage() {
             onClick={refresh}
             disabled={busy}
             aria-label="Segarkan katalog"
-            className="min-h-11 min-w-11 rounded-xl border border-black/[0.06] bg-white p-2 shadow-sm"
+            className="min-h-11 min-w-11 rounded-xl border border-border bg-surface p-2 shadow-sm"
           >
             <RefreshCw
               className={`mx-auto size-4 ${busy ? "animate-spin" : ""} motion-reduce:animate-none`}
@@ -487,7 +487,7 @@ function AdminCatalogPage() {
                 setQDraft("");
                 navigate({ q: "", status: "all", page: 1 });
               }}
-              className="min-h-11 rounded-xl border border-black/[0.06] bg-white px-3 text-[13px] font-semibold shadow-sm"
+              className="min-h-11 rounded-xl border border-border bg-surface px-3 text-[13px] font-semibold shadow-sm"
             >
               Bersihkan filter
             </button>
@@ -495,7 +495,7 @@ function AdminCatalogPage() {
         </div>
 
         {/* Source / freshness chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[11px] text-[#6e6e73] sm:flex-wrap sm:overflow-visible">
+        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[11px] text-muted-foreground sm:flex-wrap sm:overflow-visible">
           <StatusPill tone={meta.stale ? "warn" : "good"}>
             {meta.stale
               ? "Katalog tersimpan (stale)"
@@ -518,7 +518,7 @@ function AdminCatalogPage() {
         {notice && (
           <div
             role="status"
-            className={`rounded-2xl p-3 text-sm ${notice.tone === "good" ? "bg-[#e8f8ed] text-[#1f6b34]" : "bg-[#fff0ef] text-[#c7352d]"}`}
+            className={`rounded-2xl p-3 text-sm ${notice.tone === "good" ? "bg-[#e8f8ed] text-success" : "bg-[#fff0ef] text-destructive"}`}
           >
             {notice.text}
           </div>
@@ -530,7 +530,7 @@ function AdminCatalogPage() {
             <button
               type="button"
               onClick={() => startQuickBulk(30)}
-              className="min-h-9 rounded-xl bg-[#0a67c7] px-2.5 font-semibold text-white shadow-sm"
+              className="min-h-9 rounded-xl bg-brand-red px-2.5 font-semibold text-white shadow-sm"
               aria-label={`Atur profit 30 persen untuk ${slice.filteredCount} hasil filter`}
             >
               30% semua hasil filter
@@ -542,7 +542,7 @@ function AdminCatalogPage() {
               setScopeAllFiltered(false);
               setSelected(allPageSelected ? new Set() : new Set(pageCodes));
             }}
-            className="min-h-9 rounded-xl border border-black/[0.06] bg-white px-2.5 font-semibold"
+            className="min-h-9 rounded-xl border border-border bg-surface px-2.5 font-semibold"
           >
             {allPageSelected ? "Kosongkan halaman ini" : `Pilih ${pageCodes.length} di halaman ini`}
           </button>
@@ -554,14 +554,14 @@ function AdminCatalogPage() {
                 setScopeAllFiltered((v) => !v);
               }}
               aria-pressed={scopeAllFiltered}
-              className={`min-h-9 rounded-xl border px-2.5 font-semibold ${scopeAllFiltered ? "border-[#0a67c7] bg-[#eaf3ff] text-[#0a67c7]" : "border-black/[0.06] bg-white"}`}
+              className={`min-h-9 rounded-xl border px-2.5 font-semibold ${scopeAllFiltered ? "border-brand-red bg-brand-red-soft text-brand-red" : "border-border bg-surface"}`}
             >
               {scopeAllFiltered
                 ? "Batalkan seluruh hasil filter"
                 : `Pilih semua hasil filter (${slice.filteredCount})`}
             </button>
           )}
-          <span className="text-[#6e6e73]">
+          <span className="text-muted-foreground">
             <span className="sm:hidden">
               {selectionCount} dipilih · {slice.filteredCount} hasil
             </span>
@@ -570,7 +570,7 @@ function AdminCatalogPage() {
               {slice.totalCount} paket, batas {data.maxBatch}/aksi)
             </span>
           </span>
-          <span className="hidden text-[#8e8e93] sm:inline">
+          <span className="hidden text-muted-foreground sm:inline">
             · tap harga jual / margin di baris untuk ubah cepat (Enter simpan, Esc batal)
           </span>
         </div>
@@ -579,7 +579,7 @@ function AdminCatalogPage() {
         <AdminSurface className="hidden overflow-hidden p-0 md:block">
           <div className="max-h-[calc(100vh-19rem)] overflow-auto">
             <table className="w-full border-collapse text-[12.5px]">
-              <thead className="sticky top-0 z-10 bg-[#f7f7f8] text-left text-[11px] uppercase tracking-wide text-[#6e6e73]">
+              <thead className="sticky top-0 z-10 bg-secondary text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="w-8 px-2 py-2" aria-label="Pilih" />
                   <SortHeader
@@ -672,11 +672,11 @@ function AdminCatalogPage() {
                   <th className="px-2 py-2 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#f0f0f2]">
+              <tbody className="divide-y divide-border">
                 {slice.rows.map((row) => (
                   <tr
                     key={row.packageCode}
-                    className={selected.has(row.packageCode) ? "bg-[#eaf3ff]" : "bg-white"}
+                    className={selected.has(row.packageCode) ? "bg-brand-red-soft" : "bg-surface"}
                   >
                     <td className="px-2 py-1.5">
                       <input
@@ -689,7 +689,7 @@ function AdminCatalogPage() {
                     </td>
                     <td className="max-w-[22rem] px-2 py-1.5">
                       <p className="truncate font-semibold">{row.name}</p>
-                      <p className="truncate text-[11px] text-[#8e8e93]">
+                      <p className="truncate text-[11px] text-muted-foreground">
                         {row.packageCode} · {row.locationCodes.slice(0, 4).join(", ")}
                         {row.locationCodes.length > 4 ? ` +${row.locationCodes.length - 4}` : ""} ·
                         aturan {row.pricingSource === "default" ? "default" : row.pricingSource}
@@ -699,7 +699,7 @@ function AdminCatalogPage() {
                     <td className="px-2 py-1.5 tabular-nums">{row.durationDays}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">
                       <p>US${(row.providerPriceUnits / 10_000).toFixed(2)}</p>
-                      <p className="text-[11px] text-[#8e8e93]">{idr(row.providerCostIdr)}</p>
+                      <p className="text-[11px] text-muted-foreground">{idr(row.providerCostIdr)}</p>
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums">
                       {inline?.packageCode === row.packageCode && inline.mode === "percent" ? (
@@ -713,7 +713,7 @@ function AdminCatalogPage() {
                           }}
                           inputMode="decimal"
                           aria-label={`Profit persen ${row.packageCode}`}
-                          className="w-20 rounded-lg border border-[#0a67c7] px-1.5 py-0.5 text-right text-[12px] tabular-nums outline-none"
+                          className="w-20 rounded-lg border border-brand-red px-1.5 py-0.5 text-right text-[12px] tabular-nums outline-none"
                         />
                       ) : (
                         <button
@@ -725,7 +725,7 @@ function AdminCatalogPage() {
                               value: String(row.markupPercent),
                             })
                           }
-                          className="underline decoration-dotted decoration-[#0a67c7] underline-offset-2"
+                          className="underline decoration-dotted decoration-brand-red underline-offset-2"
                           aria-label={`Ubah profit ${row.packageCode}`}
                         >
                           {row.markupPercent}%
@@ -745,7 +745,7 @@ function AdminCatalogPage() {
                           }}
                           inputMode="numeric"
                           aria-label={`Harga jual ${row.packageCode}`}
-                          className="w-24 rounded-lg border border-[#0a67c7] px-1.5 py-0.5 text-right text-[12px] tabular-nums outline-none"
+                          className="w-24 rounded-lg border border-brand-red px-1.5 py-0.5 text-right text-[12px] tabular-nums outline-none"
                         />
                       ) : (
                         <button
@@ -757,7 +757,7 @@ function AdminCatalogPage() {
                               value: String(row.sellingPriceIdr),
                             })
                           }
-                          className="underline decoration-dotted decoration-[#0a67c7] underline-offset-2"
+                          className="underline decoration-dotted decoration-brand-red underline-offset-2"
                           aria-label={`Ubah harga jual ${row.packageCode}`}
                         >
                           {idr(row.sellingPriceIdr)}
@@ -765,7 +765,7 @@ function AdminCatalogPage() {
                       )}
                     </td>
                     <td
-                      className={`px-2 py-1.5 text-right tabular-nums ${row.marginIdr < 0 ? "text-[#c7352d]" : "text-[#1f6b34]"}`}
+                      className={`px-2 py-1.5 text-right tabular-nums ${row.marginIdr < 0 ? "text-destructive" : "text-success"}`}
                     >
                       <p>{idr(row.marginIdr)}</p>
                       <p className="text-[11px]">{percent(row.marginPercent)}</p>
@@ -777,7 +777,7 @@ function AdminCatalogPage() {
                       <button
                         type="button"
                         onClick={() => openEditor(row)}
-                        className="min-h-8 rounded-lg border border-black/[0.06] px-2 text-[12px] font-semibold"
+                        className="min-h-8 rounded-lg border border-border px-2 text-[12px] font-semibold"
                       >
                         Edit
                       </button>
@@ -786,7 +786,7 @@ function AdminCatalogPage() {
                 ))}
                 {slice.rows.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-[13px] text-[#6e6e73]">
+                    <td colSpan={10} className="px-3 py-8 text-center text-[13px] text-muted-foreground">
                       Tidak ada paket pada filter ini.
                     </td>
                   </tr>
@@ -798,11 +798,11 @@ function AdminCatalogPage() {
 
         {/* Mobile list: price and profit are editable in place, the rest of the row opens the sheet */}
         <div className="md:hidden">
-          <AdminSurface className="max-h-[calc(100dvh-13rem)] divide-y divide-[#f0f0f2] overflow-auto p-0">
+          <AdminSurface className="max-h-[calc(100dvh-13rem)] divide-y divide-border overflow-auto p-0">
             {slice.rows.map((row) => (
               <div
                 key={row.packageCode}
-                className={`flex items-start gap-2 px-3 py-2 ${selected.has(row.packageCode) ? "bg-[#eaf3ff]" : ""}`}
+                className={`flex items-start gap-2 px-3 py-2 ${selected.has(row.packageCode) ? "bg-brand-red-soft" : ""}`}
               >
                 <input
                   type="checkbox"
@@ -818,13 +818,13 @@ function AdminCatalogPage() {
                     className="block w-full text-left"
                   >
                     <p className="truncate text-[13px] font-semibold">{row.name}</p>
-                    <p className="truncate text-[11px] text-[#8e8e93]">
+                    <p className="truncate text-[11px] text-muted-foreground">
                       {row.packageCode} · {dataLabel(row.volumeBytes)} · {row.durationDays} hari
                     </p>
                   </button>
                   {inline?.packageCode === row.packageCode ? (
                     <div className="mt-1 flex items-center gap-1 text-[12px]">
-                      <span className="text-[#8e8e93]">{inline.mode === "price" ? "Rp" : "%"}</span>
+                      <span className="text-muted-foreground">{inline.mode === "price" ? "Rp" : "%"}</span>
                       <input
                         autoFocus
                         value={inline.value}
@@ -835,24 +835,24 @@ function AdminCatalogPage() {
                         }}
                         inputMode="decimal"
                         aria-label={inline.mode === "price" ? "Harga jual" : "Profit persen"}
-                        className="w-24 rounded-lg border border-[#0a67c7] px-1.5 py-0.5 text-[12px] tabular-nums outline-none"
+                        className="w-24 rounded-lg border border-brand-red px-1.5 py-0.5 text-[12px] tabular-nums outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => void saveInline()}
                         disabled={inlineBusy}
-                        className="min-h-7 rounded-lg bg-[#0a67c7] px-2 text-[11px] font-semibold text-white disabled:opacity-40"
+                        className="min-h-7 rounded-lg bg-brand-red px-2 text-[11px] font-semibold text-white disabled:opacity-40"
                       >
                         {inlineBusy ? "…" : "Simpan"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setInline(null)}
-                        className="min-h-7 rounded-lg border border-black/[0.06] px-2 text-[11px] font-semibold"
+                        className="min-h-7 rounded-lg border border-border px-2 text-[11px] font-semibold"
                       >
                         Batal
                       </button>
-                      <span className="text-[11px] text-[#8e8e93]">Enter simpan</span>
+                      <span className="text-[11px] text-muted-foreground">Enter simpan</span>
                     </div>
                   ) : (
                     <p className="mt-0.5 text-[12px] tabular-nums">
@@ -866,7 +866,7 @@ function AdminCatalogPage() {
                             value: String(row.sellingPriceIdr),
                           })
                         }
-                        className="font-semibold underline decoration-dotted decoration-[#0a67c7] underline-offset-2"
+                        className="font-semibold underline decoration-dotted decoration-brand-red underline-offset-2"
                         aria-label={`Ubah harga jual ${row.packageCode}`}
                       >
                         {idr(row.sellingPriceIdr)}
@@ -880,7 +880,7 @@ function AdminCatalogPage() {
                             value: String(row.markupPercent),
                           })
                         }
-                        className={`underline decoration-dotted underline-offset-2 ${row.marginIdr < 0 ? "text-[#c7352d]" : "text-[#1f6b34]"}`}
+                        className={`underline decoration-dotted underline-offset-2 ${row.marginIdr < 0 ? "text-destructive" : "text-success"}`}
                         aria-label={`Ubah profit ${row.packageCode}`}
                       >
                         {percent(row.marginPercent)}
@@ -892,7 +892,7 @@ function AdminCatalogPage() {
               </div>
             ))}
             {slice.rows.length === 0 && (
-              <p className="px-3 py-8 text-center text-[13px] text-[#6e6e73]">
+              <p className="px-3 py-8 text-center text-[13px] text-muted-foreground">
                 Tidak ada paket pada filter ini.
               </p>
             )}
@@ -900,7 +900,7 @@ function AdminCatalogPage() {
         </div>
 
         {/* Pagination */}
-        <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-[#6e6e73]">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-muted-foreground">
           <span>
             {slice.filteredCount === 0 ? "0" : (slice.page - 1) * slice.pageSize + 1}–
             {Math.min(slice.page * slice.pageSize, slice.filteredCount)} dari {slice.filteredCount}{" "}
@@ -911,7 +911,7 @@ function AdminCatalogPage() {
               type="button"
               onClick={() => navigate({ page: slice.page - 1 })}
               disabled={slice.page <= 1}
-              className="min-h-9 rounded-xl border border-black/[0.06] bg-white px-2 disabled:opacity-40"
+              className="min-h-9 rounded-xl border border-border bg-surface px-2 disabled:opacity-40"
               aria-label="Halaman sebelumnya"
             >
               <ChevronLeft className="size-4" />
@@ -923,7 +923,7 @@ function AdminCatalogPage() {
               type="button"
               onClick={() => navigate({ page: slice.page + 1 })}
               disabled={slice.page >= slice.pageCount}
-              className="min-h-9 rounded-xl border border-black/[0.06] bg-white px-2 disabled:opacity-40"
+              className="min-h-9 rounded-xl border border-border bg-surface px-2 disabled:opacity-40"
               aria-label="Halaman berikutnya"
             >
               <ChevronRight className="size-4" />
@@ -947,7 +947,7 @@ function AdminCatalogPage() {
               className="absolute inset-0 h-full w-full cursor-default"
               onClick={() => setFiltersOpen(false)}
             />
-            <div className="relative z-10 w-full rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl">
+            <div className="relative z-10 w-full rounded-t-2xl border-t border-border bg-surface p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl">
               <div className="flex items-center justify-between gap-2">
                 <SectionHeading
                   title="Filter & urutan"
@@ -957,20 +957,20 @@ function AdminCatalogPage() {
                   type="button"
                   onClick={() => setFiltersOpen(false)}
                   aria-label="Tutup"
-                  className="min-h-9 min-w-9 shrink-0 rounded-xl border border-black/[0.06]"
+                  className="min-h-9 min-w-9 shrink-0 rounded-xl border border-border"
                 >
                   <X className="mx-auto size-4" />
                 </button>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
                 <label className="space-y-1">
-                  <span className="text-[#6e6e73]">Status saldo</span>
+                  <span className="text-muted-foreground">Status saldo</span>
                   <select
                     value={search.status}
                     onChange={(event) =>
                       navigate({ status: event.target.value as StatusFilter, page: 1 })
                     }
-                    className="min-h-10 w-full rounded-xl border border-black/[0.06] px-2"
+                    className="min-h-10 w-full rounded-xl border border-border px-2"
                   >
                     <option value="all">Semua paket</option>
                     <option value="unaffordable">Melebihi saldo</option>
@@ -978,13 +978,13 @@ function AdminCatalogPage() {
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="text-[#6e6e73]">Baris per halaman</span>
+                  <span className="text-muted-foreground">Baris per halaman</span>
                   <select
                     value={String(search.pageSize)}
                     onChange={(event) =>
                       navigate({ pageSize: Number(event.target.value) as 50, page: 1 })
                     }
-                    className="min-h-10 w-full rounded-xl border border-black/[0.06] px-2"
+                    className="min-h-10 w-full rounded-xl border border-border px-2"
                   >
                     <option value="50">50 baris</option>
                     <option value="100">100 baris</option>
@@ -992,11 +992,11 @@ function AdminCatalogPage() {
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="text-[#6e6e73]">Urut berdasarkan</span>
+                  <span className="text-muted-foreground">Urut berdasarkan</span>
                   <select
                     value={search.sortKey}
                     onChange={(event) => navigate({ sortKey: event.target.value as "name" })}
-                    className="min-h-10 w-full rounded-xl border border-black/[0.06] px-2"
+                    className="min-h-10 w-full rounded-xl border border-border px-2"
                   >
                     <option value="providerCost">HPP</option>
                     <option value="sellingPrice">Harga jual</option>
@@ -1007,13 +1007,13 @@ function AdminCatalogPage() {
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="text-[#6e6e73]">Arah</span>
+                  <span className="text-muted-foreground">Arah</span>
                   <select
                     value={search.sortDir}
                     onChange={(event) =>
                       navigate({ sortDir: event.target.value as "asc" | "desc" })
                     }
-                    className="min-h-10 w-full rounded-xl border border-black/[0.06] px-2"
+                    className="min-h-10 w-full rounded-xl border border-border px-2"
                   >
                     <option value="asc">Kecil → besar</option>
                     <option value="desc">Besar → kecil</option>
@@ -1021,7 +1021,7 @@ function AdminCatalogPage() {
                 </label>
               </div>
               <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="text-[11px] text-[#6e6e73]">
+                <p className="text-[11px] text-muted-foreground">
                   {meta.stale
                     ? "Katalog tersimpan (stale)"
                     : meta.source === "provider"
@@ -1036,7 +1036,7 @@ function AdminCatalogPage() {
                 <button
                   type="button"
                   onClick={() => setFiltersOpen(false)}
-                  className="min-h-9 shrink-0 rounded-xl bg-[#0a67c7] px-3 text-[12px] font-semibold text-white"
+                  className="min-h-9 shrink-0 rounded-xl bg-brand-red px-3 text-[12px] font-semibold text-white"
                 >
                   Terapkan
                 </button>
@@ -1061,7 +1061,7 @@ function AdminCatalogPage() {
               className="absolute inset-0 h-full w-full cursor-default"
               onClick={() => setRulesOpen(false)}
             />
-            <div className="relative z-10 max-h-[78dvh] w-full overflow-auto rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl lg:left-[272px]">
+            <div className="relative z-10 max-h-[78dvh] w-full overflow-auto rounded-t-2xl border-t border-border bg-surface p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl lg:left-[272px]">
               <div className="flex items-center justify-between gap-2">
                 <SectionHeading
                   title="Aturan harga aktif"
@@ -1072,7 +1072,7 @@ function AdminCatalogPage() {
                     type="button"
                     onClick={loadHistory}
                     disabled={busy}
-                    className="min-h-9 rounded-xl border border-black/[0.06] px-2.5 text-[12px] font-semibold"
+                    className="min-h-9 rounded-xl border border-border px-2.5 text-[12px] font-semibold"
                   >
                     <History className="mr-1 inline size-3.5" /> Riwayat
                   </button>
@@ -1080,42 +1080,42 @@ function AdminCatalogPage() {
                     type="button"
                     onClick={() => setRulesOpen(false)}
                     aria-label="Tutup"
-                    className="min-h-9 min-w-9 rounded-xl border border-black/[0.06]"
+                    className="min-h-9 min-w-9 rounded-xl border border-border"
                   >
                     <X className="mx-auto size-4" />
                   </button>
                 </div>
               </div>
               {data.rules.length === 0 ? (
-                <p className="mt-2 text-[12px] text-[#6e6e73]">
+                <p className="mt-2 text-[12px] text-muted-foreground">
                   Belum ada aturan tersimpan. Harga memakai default server:{" "}
                   {data.defaults.markupPercent}% + {idr(data.defaults.fixedMarkupIdr)} (kurs{" "}
                   {idr(data.defaults.usdToIdr)}/US$, pembulatan {idr(data.defaults.roundingIdr)}).
                 </p>
               ) : (
-                <ul className="mt-2 divide-y divide-[#f0f0f2] text-[12px]">
+                <ul className="mt-2 divide-y divide-border text-[12px]">
                   {data.rules.map((rule) => (
                     <li key={rule.id} className="flex flex-wrap items-center gap-2 py-1.5">
                       <span className="font-semibold uppercase">{rule.scopeType}</span>
                       <span>{rule.scopeKey ?? "semua paket"}</span>
-                      <span className="text-[#6e6e73]">
+                      <span className="text-muted-foreground">
                         {rule.markupType === "percentage"
                           ? `${rule.markupValue}%`
                           : idr(rule.markupValue)}
                       </span>
-                      <span className="text-[11px] text-[#8e8e93]">
+                      <span className="text-[11px] text-muted-foreground">
                         v{rule.version} · {rule.createdBy ?? "—"} ·{" "}
                         {formatAdminDateTime(rule.effectiveFrom)}
                       </span>
                       {rule.reason && (
-                        <span className="truncate text-[11px] text-[#8e8e93]">· {rule.reason}</span>
+                        <span className="truncate text-[11px] text-muted-foreground">· {rule.reason}</span>
                       )}
                     </li>
                   ))}
                 </ul>
               )}
               {history && (
-                <ul className="mt-3 divide-y divide-[#f0f0f2] text-[12px]">
+                <ul className="mt-3 divide-y divide-border text-[12px]">
                   {history.map((event) => (
                     <li key={event.id} className="flex flex-wrap items-center gap-2 py-1.5">
                       <StatusPill tone={event.action === "rolled_back" ? "warn" : "neutral"}>
@@ -1123,12 +1123,12 @@ function AdminCatalogPage() {
                       </StatusPill>
                       <span className="uppercase">{event.scopeType}</span>
                       <span>{event.scopeKey ?? "semua"}</span>
-                      <span className="text-[#6e6e73]">
+                      <span className="text-muted-foreground">
                         {event.markupType === "percentage"
                           ? `${event.beforeValue ?? "—"}% → ${event.afterValue ?? "—"}%`
                           : `${idr(event.beforeValue)} → ${idr(event.afterValue)}`}
                       </span>
-                      <span className="text-[11px] text-[#8e8e93]">
+                      <span className="text-[11px] text-muted-foreground">
                         {event.actorId} · {formatAdminDateTime(event.createdAt)} · {event.reason}
                       </span>
                       {event.batchId && event.action === "bulk_applied" && (
@@ -1136,7 +1136,7 @@ function AdminCatalogPage() {
                           type="button"
                           onClick={() => rollback(event.batchId as string)}
                           disabled={busy}
-                          className="min-h-8 rounded-lg border border-[#e5e5ea] px-2 font-semibold"
+                          className="min-h-8 rounded-lg border border-border px-2 font-semibold"
                         >
                           <RotateCcw className="mr-1 inline size-3.5" /> Batalkan batch
                         </button>
@@ -1144,7 +1144,7 @@ function AdminCatalogPage() {
                     </li>
                   ))}
                   {history.length === 0 && (
-                    <li className="py-2 text-[#6e6e73]">Belum ada riwayat perubahan.</li>
+                    <li className="py-2 text-muted-foreground">Belum ada riwayat perubahan.</li>
                   )}
                 </ul>
               )}
@@ -1156,14 +1156,14 @@ function AdminCatalogPage() {
       {/* Editor: two compact rows (~100px) so the list stays visible while pricing */}
       {editorOpen && (
         <FixedLayer>
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.06] bg-white/95 px-2.5 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur lg:left-[272px]">
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-2.5 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur lg:left-[272px]">
             <div className="mx-auto max-w-[1360px] space-y-1.5">
               <div className="flex items-center gap-1.5 overflow-x-auto text-[12px]">
                 <span className="shrink-0 font-semibold">
                   {editing ? editing.packageCode : `${selectionCount} dipilih`}
                 </span>
-                <label className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-black/[0.06] px-2">
-                  <Percent className="size-3.5 text-[#8e8e93]" />
+                <label className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-border px-2">
+                  <Percent className="size-3.5 text-muted-foreground" />
                   <input
                     value={markupPercent}
                     onChange={(event) => setMarkupPercent(event.target.value)}
@@ -1173,8 +1173,8 @@ function AdminCatalogPage() {
                     className="w-16 bg-transparent text-[12px] outline-none"
                   />
                 </label>
-                <label className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-black/[0.06] px-2">
-                  <span className="text-[#8e8e93]">Rp</span>
+                <label className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-border px-2">
+                  <span className="text-muted-foreground">Rp</span>
                   <input
                     value={markupFixed}
                     onChange={(event) => setMarkupFixed(event.target.value)}
@@ -1188,7 +1188,7 @@ function AdminCatalogPage() {
                   type="button"
                   onClick={runPreview}
                   disabled={!bulkReady}
-                  className="min-h-9 shrink-0 rounded-xl border border-black/[0.06] px-2.5 font-semibold disabled:opacity-40"
+                  className="min-h-9 shrink-0 rounded-xl border border-border px-2.5 font-semibold disabled:opacity-40"
                 >
                   Preview Δ
                 </button>
@@ -1196,7 +1196,7 @@ function AdminCatalogPage() {
                   type="button"
                   onClick={runApply}
                   disabled={!bulkReady || !preview}
-                  className="min-h-9 shrink-0 rounded-xl bg-[#0a67c7] px-3 font-semibold text-white disabled:opacity-40"
+                  className="min-h-9 shrink-0 rounded-xl bg-brand-red px-3 font-semibold text-white disabled:opacity-40"
                 >
                   Terapkan
                 </button>
@@ -1205,7 +1205,7 @@ function AdminCatalogPage() {
                     type="button"
                     onClick={() => setShowPreview((v) => !v)}
                     aria-expanded={showPreview}
-                    className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-black/[0.06] px-2 font-semibold"
+                    className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-border px-2 font-semibold"
                   >
                     Detail{" "}
                     {showPreview ? (
@@ -1222,7 +1222,7 @@ function AdminCatalogPage() {
                     setScopeAllFiltered(false);
                     setEditing(null);
                   }}
-                  className="ml-auto min-h-9 shrink-0 rounded-xl border border-black/[0.06] px-2.5 font-semibold"
+                  className="ml-auto min-h-9 shrink-0 rounded-xl border border-border px-2.5 font-semibold"
                 >
                   Tutup
                 </button>
@@ -1232,7 +1232,7 @@ function AdminCatalogPage() {
                 onChange={(event) => setReason(event.target.value)}
                 placeholder="alasan perubahan (wajib, untuk audit)"
                 aria-label="Alasan perubahan"
-                className="min-h-9 w-full rounded-xl border border-black/[0.06] px-2 text-[12px] outline-none"
+                className="min-h-9 w-full rounded-xl border border-border px-2 text-[12px] outline-none"
               />
               {(markupProblems.length > 0 || !reasonOk) && (
                 <p className="text-[11px] text-[#9a6100]">
@@ -1243,7 +1243,7 @@ function AdminCatalogPage() {
                 </p>
               )}
               {preview && showPreview && (
-                <div className="max-h-40 overflow-auto rounded-xl bg-[#f7f7f8] p-2 text-[11.5px]">
+                <div className="max-h-40 overflow-auto rounded-xl bg-secondary p-2 text-[11.5px]">
                   <p className="font-semibold">
                     {preview.summary.affected} paket · naik {preview.summary.increased} · turun{" "}
                     {preview.summary.decreased} · tetap {preview.summary.unchanged} · margin total{" "}
@@ -1281,7 +1281,7 @@ function AdminCatalogPage() {
                     </tbody>
                   </table>
                   {preview.sampled < preview.summary.affected && (
-                    <p className="mt-1 text-[#6e6e73]">
+                    <p className="mt-1 text-muted-foreground">
                       Menampilkan {preview.sampled} contoh dari {preview.summary.affected} paket.
                     </p>
                   )}
@@ -1308,13 +1308,13 @@ function Kpi({
 }) {
   return (
     <div className="shrink-0 snap-start px-2 py-0.5 sm:min-w-0 sm:px-2.5 sm:py-1">
-      <p className="text-[11px] text-[#6e6e73]">{label}</p>
+      <p className="text-[11px] text-muted-foreground">{label}</p>
       <p
-        className={`text-base font-semibold tabular-nums tracking-tight ${tone === "warn" ? "text-[#9a6100]" : tone === "good" ? "text-[#1f6b34]" : ""}`}
+        className={`text-base font-semibold tabular-nums tracking-tight ${tone === "warn" ? "text-[#9a6100]" : tone === "good" ? "text-success" : ""}`}
       >
         {value}
       </p>
-      {detail && <p className="truncate text-[11px] text-[#8e8e93]">{detail}</p>}
+      {detail && <p className="truncate text-[11px] text-muted-foreground">{detail}</p>}
     </div>
   );
 }

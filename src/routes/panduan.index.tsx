@@ -36,9 +36,9 @@ function TravelGuideIndex() {
       </p>
       <section className="mt-8" aria-labelledby="guide-list-title">
         <SectionTitle>Artikel terbaru</SectionTitle>
-        <div className="grid gap-3">
+        <div className="divide-y divide-border overflow-hidden rounded-2xl bg-surface">
           {travelGuides.map((guide) => (
-            <article key={guide.slug} className="rounded-2xl bg-surface p-4 shadow-sm">
+            <article key={guide.slug} className="p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-brand-red">
                 {guide.eyebrow}
               </p>
@@ -47,7 +47,7 @@ function TravelGuideIndex() {
               <Link
                 to="/panduan/$slug"
                 params={{ slug: guide.slug }}
-                className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+                className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Baca panduan
               </Link>

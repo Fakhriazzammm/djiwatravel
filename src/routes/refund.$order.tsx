@@ -156,24 +156,24 @@ function RefundPage() {
       {!loading && !error && eligibility && (
         <>
           <section
-            className="mt-6 rounded-2xl border bg-surface p-4"
+            className="mt-6 rounded-2xl bg-surface p-4"
             aria-labelledby="eligibility-title"
           >
             <h2 id="eligibility-title" className="text-lg font-bold">
               Ringkasan pesanan
             </h2>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div className="flex justify-between gap-4">
+            <dl className="mt-3 divide-y divide-border/70 text-sm">
+              <div className="flex min-h-12 items-center justify-between gap-4 py-2">
                 <dt className="text-muted-foreground">Kode pesanan</dt>
-                <dd className="font-semibold">{eligibility.public_order_code}</dd>
+                <dd className="text-right font-semibold">{eligibility.public_order_code}</dd>
               </div>
-              <div className="flex justify-between gap-4">
+              <div className="flex min-h-12 items-center justify-between gap-4 py-2">
                 <dt className="text-muted-foreground">Status</dt>
                 <dd className="font-semibold">{eligibility.status}</dd>
               </div>
-              <div className="flex justify-between gap-4">
+              <div className="flex min-h-12 items-center justify-between gap-4 py-2">
                 <dt className="text-muted-foreground">Provisioning</dt>
-                <dd className="font-semibold">
+                <dd className="text-right font-semibold">
                   {eligibility.provisioning_started ? "Sudah dimulai" : "Belum dimulai"}
                 </dd>
               </div>
@@ -195,7 +195,7 @@ function RefundPage() {
                 type="button"
                 onClick={() => void submitRequest()}
                 disabled={requesting || unavailable}
-                className="mt-4 h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground disabled:opacity-50"
+                className="mt-4 h-12 w-full rounded-xl bg-brand-red font-semibold text-white disabled:opacity-50"
               >
                 {requesting ? "Mengirim…" : "Ajukan refund"}
               </button>

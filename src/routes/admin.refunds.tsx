@@ -18,7 +18,7 @@ function AdminRefunds() {
       title="Refunds"
       subtitle="Read-only refund queue. Tidak ada tombol provider, status mutation, atau financial write."
     >
-      <section className="mt-6 rounded-2xl border border-[#e5e5ea] bg-white p-5">
+      <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
         <div className="flex items-center justify-between gap-3">
           <SectionHeading
             title="Refund requests"
@@ -27,13 +27,13 @@ function AdminRefunds() {
           <StatusPill>{refunds.length} terbaru</StatusPill>
         </div>
         {refunds.length === 0 ? (
-          <div className="mt-5 rounded-xl border border-dashed p-10 text-center text-sm text-[#6b6b72]">
+          <div className="mt-5 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
             Belum ada refund request.
           </div>
         ) : (
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[820px] text-left text-sm">
-              <thead className="border-b text-xs text-[#6b6b72]">
+              <thead className="border-b text-xs text-muted-foreground">
                 <tr>
                   <th className="p-3">Order</th>
                   <th className="p-3">Request status</th>
@@ -50,11 +50,11 @@ function AdminRefunds() {
                     <td className="p-3">
                       <Link
                         to={`/admin/orders/${item.orderId}` as never}
-                        className="font-semibold text-[#0a67c7]"
+                        className="font-semibold text-brand-red"
                       >
                         {item.orderCode}
                       </Link>
-                      <div className="mt-1 font-mono text-[11px] text-[#8a8a91]">{item.id}</div>
+                      <div className="mt-1 font-mono text-[11px] text-muted-foreground">{item.id}</div>
                     </td>
                     <td className="p-3">
                       <StatusPill tone={item.status === "REFUNDED" ? "good" : "warn"}>
@@ -66,10 +66,10 @@ function AdminRefunds() {
                       {projectAdminAmount(item.amount, item.currencyCode, false)}
                     </td>
                     <td className="p-3">{item.eventCount}</td>
-                    <td className="p-3 text-xs text-[#6b6b72]">
+                    <td className="p-3 text-xs text-muted-foreground">
                       {formatAdminDateTime(item.updatedAt)}
                     </td>
-                    <td className="max-w-[240px] p-3 text-xs text-[#b00020]">
+                    <td className="max-w-[240px] p-3 text-xs text-destructive">
                       {item.providerError ?? "No provider result recorded"}
                     </td>
                   </tr>

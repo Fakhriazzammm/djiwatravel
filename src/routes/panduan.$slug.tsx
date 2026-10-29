@@ -78,9 +78,9 @@ function TravelGuideDetail() {
         </div>
         <section className="mt-8" aria-labelledby="guide-steps-title">
           <SectionTitle>Yang perlu disiapkan</SectionTitle>
-          <ol className="space-y-3">
+          <ol className="divide-y divide-border overflow-hidden rounded-2xl bg-surface">
             {guide.steps.map((step, index) => (
-              <li key={step.title} className="rounded-2xl bg-surface p-4 shadow-sm">
+              <li key={step.title} className="p-4">
                 <h2 className="font-bold">
                   <span className="mr-2 text-brand-red">{index + 1}.</span>
                   {step.title}

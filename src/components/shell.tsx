@@ -30,15 +30,15 @@ export function TabBar() {
               to={to}
               activeOptions={{ exact: to === "/" }}
               aria-current={active ? "page" : undefined}
-              className={`tap flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold tracking-[-0.01em] ${
-                active ? "text-brand-red" : "text-muted-foreground"
+              className={`tap flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium tracking-[-0.01em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                active ? "text-foreground" : "text-muted-foreground"
               }`}
             >
-              <span className="relative flex size-8 items-center justify-center rounded-xl">
+              <span className="relative flex size-8 items-center justify-center rounded-full">
                 {active && (
                   <motion.span
                     layoutId="tab-indicator"
-                    className="absolute inset-0 rounded-xl bg-brand-red-soft"
+                    className="absolute inset-0 rounded-full bg-secondary"
                     transition={springSnappy}
                   />
                 )}
@@ -77,7 +77,7 @@ export function BackBar({ title, action }: { title?: string; action?: ReactNode 
     <div className="mb-3 grid h-11 grid-cols-[5.5rem_minmax(0,1fr)_5.5rem] items-center">
       <button
         onClick={() => router.history.back()}
-        className="tap -ml-1.5 flex items-center text-[16px] text-brand-red"
+        className="tap -ml-1.5 flex min-h-11 items-center rounded-lg pr-2 text-[15px] text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Kembali"
       >
         <ChevronLeft className="size-6 shrink-0" strokeWidth={2.2} /> Kembali
@@ -128,7 +128,7 @@ export const btnBase =
 export const btnPrimary = `${btnBase} h-12 bg-primary text-[16px] text-primary-foreground`;
 export const btnRed = `${btnBase} h-12 bg-brand-red text-[16px] text-primary-foreground`;
 export const btnSoft = `${btnBase} h-11 bg-secondary text-[14px] text-secondary-foreground`;
-export const group = "overflow-hidden rounded-2xl bg-surface divide-y";
+export const group = "overflow-hidden rounded-2xl bg-surface divide-y divide-border/70";
 export const row = "flex min-h-12 items-center justify-between gap-3 px-4 py-3";
 export const label =
   "mb-2 px-1 text-[13px] font-medium uppercase tracking-wide text-muted-foreground";

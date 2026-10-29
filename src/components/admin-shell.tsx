@@ -6,10 +6,10 @@ import { FixedLayer } from "@/components/motion-primitives";
 import { signOutBetterAuth } from "@/lib/better-auth-client";
 
 const adminUi = {
-  canvas: "bg-[#f2f2f7] text-[#17181a]",
-  surface: "rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)]",
+  canvas: "bg-background text-foreground",
+  surface: "rounded-2xl bg-surface",
   control: "min-h-11 rounded-xl text-[13px]",
-  label: "text-[11px] font-medium text-[#667085]",
+  label: "text-[11px] font-medium text-muted-foreground",
   value: "tabular-nums text-base font-semibold tracking-tight",
 } as const;
 
@@ -38,7 +38,7 @@ export function AdminPageHeader({
     <div className="flex min-h-11 items-center justify-between gap-3">
       <div className="min-w-0">
         <h1 className="truncate text-[20px] font-bold tracking-tight">{title}</h1>
-        {detail && <p className="mt-0.5 truncate text-xs text-[#6e6e73]">{detail}</p>}
+        {detail && <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
@@ -62,7 +62,7 @@ export function AdminDetailSheet({
       role="dialog"
       aria-modal="false"
       aria-label={title}
-      className="mt-2 rounded-2xl border border-black/[0.06] bg-white p-3"
+      className="mt-2 rounded-2xl bg-surface p-3"
     >
       <div className="mb-2 flex items-center justify-between gap-3">
         <h2 className="font-semibold">{title}</h2>
@@ -70,7 +70,7 @@ export function AdminDetailSheet({
           type="button"
           onClick={onClose}
           aria-label="Tutup detail"
-          className="min-h-11 min-w-11 rounded-xl p-2 text-[#6e6e73] hover:bg-[#f5f5f7]"
+          className="min-h-11 min-w-11 rounded-xl p-2 text-muted-foreground hover:bg-secondary"
         >
           <X className="mx-auto size-4" />
         </button>
@@ -132,11 +132,11 @@ export function AdminShell({
         <aside
           id="admin-mobile-drawer"
           aria-label="Navigasi admin"
-          className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-black/[0.06] bg-white p-4 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+          className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-border bg-surface p-4 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0a84ff]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-red">
                 Djiwa Travel
               </p>
               <h2 className="mt-1 text-lg font-bold">Admin console</h2>
@@ -144,7 +144,7 @@ export function AdminShell({
             <button
               type="button"
               onClick={closeMenu}
-              className="min-h-11 min-w-11 rounded-xl p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff] lg:hidden"
+              className="min-h-11 min-w-11 rounded-xl p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red lg:hidden"
               aria-label="Tutup menu"
             >
               <X className="mx-auto size-5" />
@@ -158,7 +158,7 @@ export function AdminShell({
                   key={href}
                   to={href as never}
                   onClick={closeMenu}
-                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors motion-reduce:transition-none ${active ? "bg-[#eaf3ff] text-[#0a67c7]" : "text-[#6e6e73] hover:bg-[#f5f5f7]"}`}
+                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors motion-reduce:transition-none ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary"}`}
                   aria-current={active ? "page" : undefined}
                 >
                   <Icon className="size-4" strokeWidth={1.8} />
@@ -167,8 +167,8 @@ export function AdminShell({
               );
             })}
           </nav>
-          <div className="absolute bottom-5 left-4 right-4 rounded-2xl bg-[#f7f7f8] p-3 text-xs text-[#6e6e73]">
-            <p className="font-semibold text-[#17181a]">Mode operasional</p>
+          <div className="absolute bottom-5 left-4 right-4 rounded-2xl bg-secondary p-3 text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground">Mode operasional</p>
             <p className="mt-1">Data mengikuti readiness server.</p>
           </div>
         </aside>
@@ -182,12 +182,12 @@ export function AdminShell({
         )}
       </FixedLayer>
       <main className="lg:pl-[272px]">
-        <header className="sticky top-0 z-30 border-b border-black/[0.06] bg-[#f2f2f7]/95 px-3 py-2 backdrop-blur sm:px-5 lg:py-3">
+        <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-3 py-2 backdrop-blur sm:px-5 lg:py-3">
           <div className="mx-auto flex max-w-[1360px] items-center gap-3">
             <button
               ref={menuTriggerRef}
               type="button"
-              className="min-h-11 min-w-11 rounded-xl border border-black/[0.06] bg-white p-2 lg:hidden"
+              className="min-h-11 min-w-11 rounded-xl border border-border bg-surface p-2 lg:hidden"
               aria-label="Buka menu"
               aria-expanded={open}
               aria-controls="admin-mobile-drawer"
@@ -196,21 +196,21 @@ export function AdminShell({
               <Menu className="mx-auto size-5" />
             </button>
             <div className="min-w-0">
-              <p className="hidden text-[11px] text-[#8e8e93] sm:block">Admin / {title}</p>
+              <p className="hidden text-[11px] text-muted-foreground sm:block">Admin / {title}</p>
               <h1 className="truncate text-[17px] font-bold sm:text-xl">{title}</h1>
             </div>
             <div className="ml-auto flex items-center gap-2">
               <span className="hidden rounded-full bg-[#fff4df] px-2.5 py-1 text-[11px] font-semibold text-[#9a6100] sm:inline-flex">
                 Readiness terbatas
               </span>
-              <div className="size-9 rounded-full bg-[#17181a] text-center text-xs font-bold leading-9 text-white">
+              <div className="size-9 rounded-full bg-primary text-center text-xs font-bold leading-9 text-primary-foreground">
                 AD
               </div>
               <button
                 type="button"
                 onClick={() => void handleLogout()}
                 disabled={signingOut}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-black/[0.08] bg-white px-2.5 text-xs font-semibold text-[#4b5563] transition-colors hover:bg-[#f5f5f7] disabled:cursor-wait disabled:opacity-60"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-surface px-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary disabled:cursor-wait disabled:opacity-60"
                 aria-label="Logout"
               >
                 <LogOut className="size-3.5" aria-hidden="true" />
@@ -263,22 +263,22 @@ export function AdminStatStrip({
           key={item.label}
           className="shrink-0 snap-start px-2 py-0.5 sm:min-w-0 sm:px-2.5 sm:py-1.5"
         >
-          <p className="whitespace-nowrap text-[11px] text-[#6e6e73]">{item.label}</p>
+          <p className="whitespace-nowrap text-[11px] text-muted-foreground">{item.label}</p>
           <p
             className={`text-base font-semibold tabular-nums tracking-tight ${
               item.tone === "warn"
                 ? "text-[#9a6100]"
                 : item.tone === "danger"
-                  ? "text-[#c7352d]"
+                  ? "text-destructive"
                   : item.tone === "good"
-                    ? "text-[#1f6b34]"
+                    ? "text-success"
                     : ""
             }`}
           >
             {item.value}
           </p>
           {item.detail && (
-            <p className="whitespace-nowrap text-[11px] text-[#8e8e93]">{item.detail}</p>
+            <p className="whitespace-nowrap text-[11px] text-muted-foreground">{item.detail}</p>
           )}
         </div>
       ))}
@@ -320,17 +320,17 @@ export function AdminSheet({
           className="absolute inset-0 h-full w-full cursor-default"
           onClick={onClose}
         />
-        <div className="relative z-10 max-h-[78dvh] w-full overflow-auto rounded-t-2xl border-t border-black/[0.06] bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl lg:left-[272px]">
+        <div className="relative z-10 max-h-[78dvh] w-full overflow-auto rounded-t-2xl border-t border-border bg-surface p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl lg:left-[272px]">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <h2 className="font-semibold">{title}</h2>
-              {detail && <p className="mt-0.5 text-xs text-[#6e6e73]">{detail}</p>}
+              {detail && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Tutup"
-              className="min-h-9 min-w-9 shrink-0 rounded-xl border border-black/[0.06]"
+              className="min-h-9 min-w-9 shrink-0 rounded-xl border border-border"
             >
               <X className="mx-auto size-4" />
             </button>
@@ -357,7 +357,7 @@ export function AdminPageState({
   return (
     <div className="rounded-2xl border border-[#f1d9a8] bg-[#fffaf0] p-3">
       <p className="font-semibold">{title}</p>
-      <p className="mt-1 text-sm leading-5 text-[#6e6e73]">{detail}</p>
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -365,7 +365,7 @@ export function SectionHeading({ title, detail }: { title: string; detail?: stri
   return (
     <div>
       <h2 className="font-semibold">{title}</h2>
-      {detail && <p className="mt-0.5 text-xs text-[#6e6e73]">{detail}</p>}
+      {detail && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
     </div>
   );
 }
@@ -377,10 +377,10 @@ export function StatusPill({
   tone?: "neutral" | "good" | "warn" | "danger";
 }) {
   const classes = {
-    neutral: "bg-[#f0f0f3] text-[#6e6e73]",
-    good: "bg-[#e8f8ed] text-[#248a3d]",
+    neutral: "bg-secondary text-muted-foreground",
+    good: "bg-[#e8f8ed] text-success",
     warn: "bg-[#fff4df] text-[#9a6100]",
-    danger: "bg-[#fff0ef] text-[#c7352d]",
+    danger: "bg-[#fff0ef] text-destructive",
   };
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${classes[tone]}`}>
@@ -400,7 +400,7 @@ export function DisabledSafeAction({
       type="button"
       disabled
       title={reason}
-      className="min-h-11 cursor-not-allowed rounded-xl border border-[#e5e5ea] px-3 text-sm font-semibold text-[#a1a1a8]"
+      className="min-h-11 cursor-not-allowed rounded-xl border border-border px-3 text-sm font-semibold text-muted-foreground"
     >
       {children}
     </button>

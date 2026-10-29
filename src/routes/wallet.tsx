@@ -222,7 +222,7 @@ export function Wallet() {
         </div>
         <button
           type="button"
-          className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full bg-surface shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border/70 bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Segarkan Wallet"
           onClick={() => void loadWallet()}
           disabled={loading || authLoading || !user}
@@ -240,7 +240,7 @@ export function Wallet() {
       ) : (
         <>
           <section
-            className="relative mt-5 overflow-hidden rounded-[26px] bg-primary p-5 text-primary-foreground shadow-lg"
+            className="relative mt-5 overflow-hidden rounded-2xl bg-primary p-5 text-primary-foreground"
             aria-labelledby="wallet-card-title"
           >
             <div
@@ -286,7 +286,7 @@ export function Wallet() {
             </div>
           </section>
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-border">
             <Summary
               label="Total masuk"
               value={formatted(wallet.total_credited)}
@@ -301,7 +301,7 @@ export function Wallet() {
             />
           </div>
 
-          <section className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-surface p-4 shadow-sm">
+          <section className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-surface p-4">
             <div className="min-w-0">
               <p className="text-sm font-bold">Kelola lebih lengkap di Djiwa Pay</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -318,7 +318,7 @@ export function Wallet() {
           </section>
 
           <section
-            className="mt-5 rounded-[22px] bg-surface p-4 shadow-sm sm:p-5"
+            className="mt-5 rounded-2xl bg-surface p-4 sm:p-5"
             aria-label="Aksi cepat"
           >
             <div className="grid grid-cols-4 gap-2" aria-label="Aksi cepat">
@@ -450,7 +450,7 @@ export function Wallet() {
                     <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {group.label}
                     </h3>
-                    <div className="overflow-hidden rounded-2xl bg-surface">
+                    <div className="divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4">
                       {group.entries.map((entry) => (
                         <LedgerRow key={String(entry.id)} entry={entry} visible={visible} />
                       ))}

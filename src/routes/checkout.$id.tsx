@@ -144,9 +144,9 @@ function Checkout() {
       )}
 
       <div className="flex items-center gap-3 rounded-2xl bg-surface p-4">
-        <span className="shrink-0 text-3xl">🌐</span>
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xl" aria-hidden="true">🌐</span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+          <p className="text-xs font-medium text-muted-foreground">
             Paket internet
           </p>
           <p className="font-semibold">{packageDestinationLabel(pkg)}</p>
@@ -155,7 +155,7 @@ function Checkout() {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">Cakupan: {packageCoverageLabel(pkg)}</p>
         </div>
-        <p className="shrink-0 font-bold">{rupiah(price)}</p>
+        <p className="shrink-0 text-right text-sm font-bold">{rupiah(price)}</p>
       </div>
 
       <h2 className={`${label} mt-6`}>Dikirim ke</h2>
@@ -211,7 +211,7 @@ function Checkout() {
           <button
             key={id}
             onClick={() => setMethod(id)}
-            className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left"
+            className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             <I className="size-6 shrink-0 text-primary" strokeWidth={1.6} />
             <div className="min-w-0 flex-1">

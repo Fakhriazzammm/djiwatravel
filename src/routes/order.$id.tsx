@@ -239,7 +239,7 @@ function OrderPage() {
       <Page>
         <p className="pt-8 text-center text-sm text-muted-foreground">Pesanan tersimpan</p>
         <h1 className="mt-1 text-center text-3xl font-bold">{rupiah(o.amount)}</h1>
-        <div className="mt-6 rounded-2xl bg-surface p-5">
+        <div className="mt-6 rounded-2xl bg-surface p-4">
           <p className="font-semibold">{packageName}</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {locationLabel} · {quotaLabel} · {durationLabel}
@@ -251,7 +251,7 @@ function OrderPage() {
           )}
         </div>
         <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
-        <div className="mt-4 rounded-2xl border border-border p-4 text-center">
+        <div className="mt-4 rounded-2xl bg-surface p-4 text-center">
           <p className="font-semibold">
             {o.paymentUrl ? "Menunggu pembayaran" : "Menyiapkan tagihan pembayaran"}
           </p>
@@ -312,7 +312,7 @@ function OrderPage() {
         <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
         <div className="flex min-h-[55vh] flex-col items-center justify-center text-center">
           <Loader2 className="size-10 animate-spin text-brand-red" />
-          <h1 className="mt-6 text-2xl font-bold">Pembayaran diterima</h1>
+          <h1 className="mt-6 text-2xl font-bold tracking-tight">Pembayaran diterima</h1>
           <p className="mt-2 text-muted-foreground">Sedang menyiapkan eSIM kamu…</p>
         </div>
         <TravelTimeline

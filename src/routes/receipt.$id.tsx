@@ -215,7 +215,7 @@ function ReceiptPage() {
         <Link
           to={ready ? "/my-esim/$id" : "/order/$id"}
           params={{ id: order.id }}
-          className="flex h-11 items-center gap-1.5 text-[16px] text-brand-red"
+          className="flex min-h-11 items-center gap-1.5 rounded-lg pr-2 text-[15px] text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ArrowLeft className="size-4" aria-hidden="true" /> Kembali
         </Link>
@@ -321,17 +321,17 @@ function ReceiptPage() {
       />
 
       {/* Installation tutorial travels with the receipt. */}
-      <section className="mt-8 rounded-2xl bg-surface p-5">
+      <section className="mt-8 rounded-2xl bg-surface p-4">
         <h2 className="text-base font-semibold">Cara pasang eSIM</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Lakukan sebelum berangkat, cukup sekali. Butuh koneksi Wi-Fi.
         </p>
-        <ol className="mt-4 space-y-3">
+        <ol className="mt-4 divide-y divide-border/70">
           {receiptSteps().map((step) => {
             const [number, ...rest] = step.split(". ");
             return (
-              <li key={step} className="flex gap-3">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+              <li key={step} className="flex gap-3 py-3 first:pt-0 last:pb-0">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
                   {number}
                 </span>
                 <span className="pt-0.5 text-sm">{rest.join(". ")}</span>

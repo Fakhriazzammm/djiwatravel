@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { ArrowLeft } from "lucide-react";
-import { Page } from "@/components/shell";
+import { BackBar, Page } from "@/components/shell";
 import { getGuestOrders } from "@/lib/guest-orders.server";
 import { saveGuestAccess } from "@/lib/orders";
 
@@ -55,17 +54,8 @@ function OrderStatus() {
   };
   return (
     <Page tabs={false}>
-      <header className="flex min-h-14 items-center gap-3">
-        <Link
-          to="/"
-          aria-label="Kembali"
-          className="tap inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-brand-red"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
-        <h1 className="text-base font-bold">Cek status pesanan</h1>
-      </header>
-      <div className="mt-5 rounded-2xl bg-surface p-5">
+      <BackBar title="Cek status pesanan" />
+      <div className="mt-5 rounded-2xl bg-surface p-4 sm:p-5">
         <p className="text-sm text-muted-foreground">
           Masukkan kode pesanan dan kedua kontak saat checkout. Data dipakai hanya untuk verifikasi
           akses singkat.

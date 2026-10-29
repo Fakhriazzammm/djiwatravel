@@ -240,7 +240,7 @@ function Profile() {
 
       <section
         aria-labelledby="travel-calendar-heading"
-        className="mt-5 overflow-hidden rounded-2xl bg-surface ring-1 ring-border/50"
+        className="mt-5 overflow-hidden rounded-2xl bg-surface"
       >
         <div className="flex items-center gap-3 p-4">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-brand-red-soft text-brand-red">

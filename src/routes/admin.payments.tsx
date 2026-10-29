@@ -77,7 +77,7 @@ function AdminPayments() {
         <StatusPill tone={payment.lastError ? "danger" : "warn"}>
           {humanizeAdminStatus(payment.status)}
         </StatusPill>
-        <span className="mt-1 block max-w-40 truncate text-[11px] text-[#b00020]">
+        <span className="mt-1 block max-w-40 truncate text-[11px] text-destructive">
           {payment.lastError ?? payment.eventType ?? "Reason unknown"}
         </span>
       </td>
@@ -89,7 +89,7 @@ function AdminPayments() {
       </td>
       <td>{projectAdminCustomer(payment.customer, privateMode).label}</td>
       <td>
-        <Link to={payment.detailHref as never} className="font-semibold text-[#0a67c7]">
+        <Link to={payment.detailHref as never} className="font-semibold text-brand-red">
           {projectAdminIdentifier(payment.displayIdentifier, privateMode)}
         </Link>
       </td>
@@ -116,11 +116,11 @@ function AdminPayments() {
         <AdminSurface className="p-3">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6e6e73]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 Payment monitor
               </p>
               <p className="mt-0.5 text-lg font-bold tabular-nums">
-                {result.total} <span className="text-xs font-medium text-[#6e6e73]">exception</span>
+                {result.total} <span className="text-xs font-medium text-muted-foreground">exception</span>
               </p>
             </div>
             <div className="flex items-center gap-1">
@@ -132,7 +132,7 @@ function AdminPayments() {
                 onClick={() => setPrivateMode((value) => !value)}
                 aria-label="Mode privasi"
                 aria-pressed={privateMode}
-                className="min-h-11 min-w-11 rounded-xl border bg-white p-2"
+                className="min-h-11 min-w-11 rounded-xl border bg-surface p-2"
               >
                 {privateMode ? (
                   <EyeOff className="mx-auto size-4" />
@@ -160,20 +160,20 @@ function AdminPayments() {
         <AdminSurface className="p-2.5">
           <div className="flex gap-2" aria-live="polite">
             <label className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-3 size-4 text-[#8a8a91]" />
+              <Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" />
               <input
                 value={search.q}
                 onChange={(event) => updateSearch({ q: event.target.value, page: 0 })}
                 placeholder="Cari payment / order"
                 aria-label="Cari payment atau order"
-                className="min-h-11 w-full rounded-xl border border-[#e5e5ea] bg-[#f7f7f8] pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]"
+                className="min-h-11 w-full rounded-xl border border-border bg-secondary pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </label>
             <select
               aria-label="Filter status pembayaran"
               value={search.status}
               onChange={(event) => updateSearch({ status: event.target.value, page: 0 })}
-              className="min-h-11 max-w-[132px] rounded-xl border border-[#e5e5ea] bg-white px-2 text-xs"
+              className="min-h-11 max-w-[132px] rounded-xl border border-border bg-surface px-2 text-xs"
             >
               {statuses.map((value) => (
                 <option key={value} value={value}>
@@ -186,7 +186,7 @@ function AdminPayments() {
               onClick={refresh}
               disabled={refreshing}
               aria-label="Refresh payments"
-              className="min-h-11 min-w-11 rounded-xl border border-[#e5e5ea] bg-white p-2"
+              className="min-h-11 min-w-11 rounded-xl border border-border bg-surface p-2"
             >
               <RefreshCw className={`mx-auto size-4 ${refreshing ? "animate-spin" : ""}`} />
             </button>
@@ -194,12 +194,12 @@ function AdminPayments() {
         </AdminSurface>
         <AdminSurface className="p-3">
           {result.rows.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-5 text-center text-sm text-[#6b6b72]">
+            <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
               Tidak ada payment exception yang cocok.
             </div>
           ) : (
             <>
-              <div className="mb-2 flex items-center justify-between text-[11px] text-[#6e6e73]">
+              <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>Exception terbaru</span>
                 <span>
                   {result.rows.length} dari {result.total}
@@ -209,7 +209,7 @@ function AdminPayments() {
                 {result.rows.map((payment) => (
                   <div
                     key={payment.detailHref}
-                    className="block w-full rounded-xl border border-[#e5e5ea] p-2.5 text-left text-xs"
+                    className="block w-full rounded-xl border border-border p-2.5 text-left text-xs"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate font-semibold">
@@ -219,7 +219,7 @@ function AdminPayments() {
                         {humanizeAdminStatus(payment.status)}
                       </StatusPill>
                     </div>
-                    <div className="mt-1 grid grid-cols-2 gap-x-3 text-[11px] text-[#6e6e73]">
+                    <div className="mt-1 grid grid-cols-2 gap-x-3 text-[11px] text-muted-foreground">
                       <span className="truncate">
                         {projectAdminCustomer(payment.customer, privateMode).label}
                       </span>
@@ -229,7 +229,7 @@ function AdminPayments() {
                       </span>
                       <span className="truncate text-right">{ageFrom(payment.updatedAt)}</span>
                     </div>
-                    <p className="mt-1 truncate text-[10px] text-[#b00020]">
+                    <p className="mt-1 truncate text-[10px] text-destructive">
                       {payment.lastError ?? payment.eventType ?? "Reason unknown"}
                     </p>
                   </div>
@@ -237,8 +237,8 @@ function AdminPayments() {
               </div>
               <div className="hidden overflow-auto lg:block">
                 <table className="w-full min-w-[1250px] table-fixed text-left text-xs">
-                  <thead className="sticky top-0 bg-white">
-                    <tr className="border-b text-[#6b6b72]">
+                  <thead className="sticky top-0 bg-surface">
+                    <tr className="border-b text-muted-foreground">
                       <th className="w-32 py-2">
                         <button
                           onClick={() => setSort("status")}
@@ -288,7 +288,7 @@ function AdminPayments() {
               </div>
             </>
           )}
-          <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-[#6b6b72]">
+          <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
             <span>
               Halaman {result.page + 1} · {result.total} total
             </span>

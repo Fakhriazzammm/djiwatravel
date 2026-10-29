@@ -306,7 +306,7 @@ function Destination() {
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
-            className="tap inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-surface px-3.5 text-sm font-semibold shadow-sm ring-1 ring-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="tap inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-border/70 bg-surface px-3.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Buka filter dan urutkan paket"
           >
             <SlidersHorizontal className="size-4 text-brand-red" aria-hidden="true" />
@@ -439,7 +439,7 @@ function Destination() {
                       </span>
                     )}
                     <div className="shrink-0 text-right">
-                      <p className="text-[17px] font-bold tracking-tight text-brand-red">
+                      <p className="text-[17px] font-bold tracking-tight text-foreground">
                         {rupiah(pkg.priceIdr)}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -471,7 +471,7 @@ function Destination() {
                         to="/checkout/$id"
                         params={{ id: pkg.packageCode }}
                         aria-label={`Pilih paket ${pkg.name}`}
-                        className="tap inline-flex min-h-11 min-w-20 items-center justify-center gap-1 rounded-full bg-brand-red px-4 text-sm font-bold text-white shadow-md shadow-brand-red/20 transition duration-150 hover:brightness-95 hover:shadow-lg active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+                        className="tap inline-flex min-h-11 min-w-20 items-center justify-center gap-1 rounded-full bg-brand-red px-4 text-sm font-semibold text-white transition duration-150 hover:brightness-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
                       >
                         Pilih{" "}
                         <ChevronRight className="size-4" strokeWidth={2.5} aria-hidden="true" />

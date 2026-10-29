@@ -84,38 +84,38 @@ function Plan() {
         <p className="mt-3 text-[15px] leading-7 text-muted-foreground">
           Paket eSIM untuk {packageCoverageLabel(plan)} dengan {plan.durationDays} hari masa aktif.
         </p>
-        <dl className="mt-6 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-surface p-4">
+        <dl className="mt-6 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4">
+          <div className="flex min-h-14 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Kuota</dt>
-            <dd className="mt-1 font-bold">{packageDataLabel(plan)}</dd>
+            <dd className="text-right text-sm font-semibold">{packageDataLabel(plan)}</dd>
           </div>
-          <div className="rounded-2xl bg-surface p-4">
+          <div className="flex min-h-14 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Masa aktif</dt>
-            <dd className="mt-1 font-bold">{plan.durationDays} hari</dd>
+            <dd className="text-right text-sm font-semibold">{plan.durationDays} hari</dd>
           </div>
-          <div className="rounded-2xl bg-surface p-4">
+          <div className="flex min-h-14 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Kompatibilitas</dt>
-            <dd className="mt-1 font-bold">Ponsel yang mendukung eSIM</dd>
+            <dd className="max-w-[60%] text-right text-sm font-semibold">Ponsel yang mendukung eSIM</dd>
           </div>
-          <div className="rounded-2xl bg-surface p-4">
+          <div className="flex min-h-14 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Harga</dt>
-            <dd className="mt-1 font-bold text-brand-red">{rupiah(plan.priceIdr)}</dd>
+            <dd className="text-right text-sm font-bold text-brand-red">{rupiah(plan.priceIdr)}</dd>
           </div>
         </dl>
         <section className="mt-8" aria-labelledby="activation-title">
           <h2 id="activation-title" className="text-lg font-bold">
             Cara aktivasi
           </h2>
-          <ol className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-            <li>1. Pastikan perangkat mendukung eSIM dan tidak terkunci operator.</li>
-            <li>2. Selesaikan pembelian melalui checkout Djiwa Travel.</li>
-            <li>3. Pasang profil eSIM saat memakai Wi-Fi, lalu aktifkan data eSIM saat tiba.</li>
+          <ol className="mt-3 divide-y divide-border/70 rounded-2xl bg-surface px-4 text-sm leading-6 text-muted-foreground">
+            <li className="py-3">1. Pastikan perangkat mendukung eSIM dan tidak terkunci operator.</li>
+            <li className="py-3">2. Selesaikan pembelian melalui checkout Djiwa Travel.</li>
+            <li className="py-3">3. Pasang profil eSIM saat memakai Wi-Fi, lalu aktifkan data eSIM saat tiba.</li>
           </ol>
         </section>
         <Link
           to="/checkout/$id"
           params={{ id: plan.packageCode }}
-          className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground"
+          className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand-red px-4 py-3 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
         >
           Pilih paket ini
         </Link>

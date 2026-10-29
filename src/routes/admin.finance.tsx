@@ -137,7 +137,7 @@ function AdminFinance() {
                 } as never)
               }
               aria-pressed={search.days === option.days}
-              className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${search.days === option.days ? "bg-[#eaf3ff] text-[#0a67c7]" : "text-[#6b6b72]"}`}
+              className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${search.days === option.days ? "bg-brand-red-soft text-brand-red" : "text-muted-foreground"}`}
             >
               {option.label}
             </button>
@@ -147,7 +147,7 @@ function AdminFinance() {
           <button
             type="button"
             onClick={() => setPrivateMode((value) => !value)}
-            className="flex min-h-9 items-center gap-2 rounded-lg border border-[#e5e5ea] px-3 text-xs font-semibold"
+            className="flex min-h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold"
           >
             {privateMode ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             {privateMode ? "Privasi aktif" : "Mode privasi"}
@@ -156,7 +156,7 @@ function AdminFinance() {
             type="button"
             onClick={() => void refresh()}
             disabled={busy}
-            className="flex min-h-9 items-center gap-2 rounded-lg border border-[#e5e5ea] px-3 text-xs font-semibold disabled:opacity-60"
+            className="flex min-h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold disabled:opacity-60"
           >
             {busy ? (
               <LoaderCircle className="size-4 animate-spin" />
@@ -198,22 +198,22 @@ function AdminFinance() {
                 detail: `${report.days} hari terakhir`,
               },
             ].map((card) => (
-              <article key={card.label} className="rounded-xl border border-[#e5e5ea] bg-white p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b6b72]">
+              <article key={card.label} className="rounded-xl border border-border bg-surface p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   {card.label}
                 </p>
                 <p className="mt-2 text-xl font-bold">{amount(card.value, privateMode)}</p>
-                <p className="mt-1 text-[11px] text-[#8a8a91]">{card.detail}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{card.detail}</p>
               </article>
             ))}
-            <article className="rounded-xl border border-[#e5e5ea] bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6b6b72]">
+            <article className="rounded-xl border border-border bg-surface p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Total transaksi
               </p>
               <p className="mt-2 text-xl font-bold">
                 {privateMode ? "••••" : report.totals.incomeCount + report.totals.expenseCount}
               </p>
-              <p className="mt-1 text-[11px] text-[#8a8a91]">
+              <p className="mt-1 text-[11px] text-muted-foreground">
                 {report.truncated
                   ? "Melebihi batas tampilan — persempit periode"
                   : "Seluruh baris periode ini"}
@@ -222,25 +222,25 @@ function AdminFinance() {
           </section>
 
           <section className="mt-4 grid gap-3 lg:grid-cols-[1.3fr_.9fr]">
-            <article className="rounded-xl border border-[#e5e5ea] bg-white p-4">
+            <article className="rounded-xl border border-border bg-surface p-4">
               <SectionHeading
                 title="Arus harian"
                 detail="Pemasukan dan pengeluaran per hari, WIB."
               />
               {report.daily.length === 0 ? (
-                <p className="mt-6 text-sm text-[#6b6b72]">Belum ada transaksi pada periode ini.</p>
+                <p className="mt-6 text-sm text-muted-foreground">Belum ada transaksi pada periode ini.</p>
               ) : (
                 <ul className="mt-4 max-h-48 space-y-3 overflow-y-auto overscroll-contain lg:max-h-none">
                   {report.daily.slice(0, 14).map((row) => (
                     <li key={row.day}>
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold">{row.day}</span>
-                        <span className="text-[#6b6b72]">
+                        <span className="text-muted-foreground">
                           masuk {amount(row.income, privateMode)} · keluar{" "}
                           {amount(row.expense, privateMode)}
                         </span>
                       </div>
-                      <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-[#f0f0f3]">
+                      <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-secondary">
                         <div
                           className="bg-[#34c759]"
                           style={{
@@ -255,13 +255,13 @@ function AdminFinance() {
               )}
             </article>
 
-            <article className="rounded-xl border border-[#e5e5ea] bg-white p-4">
+            <article className="rounded-xl border border-border bg-surface p-4">
               <SectionHeading
                 title="Per kategori"
                 detail="Ke mana uang Travel pergi dan dari mana datangnya."
               />
               {report.byCategory.length === 0 ? (
-                <p className="mt-6 text-sm text-[#6b6b72]">Belum ada kategori pada periode ini.</p>
+                <p className="mt-6 text-sm text-muted-foreground">Belum ada kategori pada periode ini.</p>
               ) : (
                 <ul className="mt-4 space-y-2 text-sm">
                   {report.byCategory.slice(0, 10).map((row) => (
@@ -275,7 +275,7 @@ function AdminFinance() {
                         </StatusPill>
                         <span>{row.category}</span>
                       </span>
-                      <span className="text-xs text-[#6b6b72]">
+                      <span className="text-xs text-muted-foreground">
                         {amount(row.amount, privateMode)} · {row.count}x
                       </span>
                     </li>
@@ -286,17 +286,17 @@ function AdminFinance() {
           </section>
 
           <section className="mt-4">
-            <article className="rounded-xl border border-[#e5e5ea] bg-white p-4">
+            <article className="rounded-xl border border-border bg-surface p-4">
               <SectionHeading
                 title="Transaksi terbaru"
                 detail="Baris dari buku Travel, terbaru lebih dulu."
               />
               {report.recent.length === 0 ? (
-                <p className="mt-6 text-sm text-[#6b6b72]">Belum ada transaksi.</p>
+                <p className="mt-6 text-sm text-muted-foreground">Belum ada transaksi.</p>
               ) : (
                 <div className="mt-4 max-h-56 overflow-auto overscroll-contain">
                   <table className="w-full min-w-[560px] text-sm">
-                    <thead className="text-left text-[11px] uppercase tracking-[0.12em] text-[#8a8a91]">
+                    <thead className="text-left text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                       <tr>
                         <th className="pb-2">Waktu (WIB)</th>
                         <th className="pb-2">Jenis</th>
@@ -307,8 +307,8 @@ function AdminFinance() {
                     </thead>
                     <tbody>
                       {report.recent.slice(0, 25).map((entry) => (
-                        <tr key={entry.sourceId} className="border-t border-[#f0f0f3]">
-                          <td className="py-2 text-xs text-[#6b6b72]">
+                        <tr key={entry.sourceId} className="border-t border-border">
+                          <td className="py-2 text-xs text-muted-foreground">
                             {formatAdminDateTime(
                               entry.occurredAtMs > 0
                                 ? new Date(entry.occurredAtMs).toISOString()
@@ -321,7 +321,7 @@ function AdminFinance() {
                             </StatusPill>
                           </td>
                           <td className="py-2 text-xs">{entry.category ?? "—"}</td>
-                          <td className="py-2 text-xs text-[#6b6b72]">
+                          <td className="py-2 text-xs text-muted-foreground">
                             {entry.description ?? "—"}
                           </td>
                           <td className="py-2 text-right font-semibold">
@@ -339,13 +339,13 @@ function AdminFinance() {
       ) : null}
 
       <section className="mt-4">
-        <article className="rounded-xl border border-[#e5e5ea] bg-white p-4">
+        <article className="rounded-xl border border-border bg-surface p-4">
           <SectionHeading
             title="Catat pengeluaran Travel"
             detail="Biaya provider, operasional, atau pengeluaran lain. Masuk ke buku Travel saja."
           />
           <form className="mt-4 grid gap-3 lg:grid-cols-2" onSubmit={onSubmit}>
-            <label className="text-xs font-semibold text-[#6b6b72]">
+            <label className="text-xs font-semibold text-muted-foreground">
               Jumlah (Rp)
               <input
                 inputMode="numeric"
@@ -356,38 +356,38 @@ function AdminFinance() {
                     amount: event.target.value.replace(/[^\d]/g, ""),
                   }))
                 }
-                className="mt-1 min-h-11 w-full rounded-lg border border-[#e5e5ea] px-3 text-sm font-normal text-[#111113]"
+                className="mt-1 min-h-11 w-full rounded-lg border border-border px-3 text-sm font-normal text-foreground"
                 placeholder="150000"
                 required
               />
             </label>
-            <label className="text-xs font-semibold text-[#6b6b72]">
+            <label className="text-xs font-semibold text-muted-foreground">
               Kategori
               <input
                 value={form.category}
                 onChange={(event) =>
                   setForm((value) => ({ ...value, category: event.target.value }))
                 }
-                className="mt-1 min-h-11 w-full rounded-lg border border-[#e5e5ea] px-3 text-sm font-normal text-[#111113]"
+                className="mt-1 min-h-11 w-full rounded-lg border border-border px-3 text-sm font-normal text-foreground"
                 placeholder="Top-up saldo provider"
                 maxLength={60}
                 required
               />
             </label>
-            <label className="text-xs font-semibold text-[#6b6b72]">
+            <label className="text-xs font-semibold text-muted-foreground">
               Keterangan
               <input
                 value={form.description}
                 onChange={(event) =>
                   setForm((value) => ({ ...value, description: event.target.value }))
                 }
-                className="mt-1 min-h-11 w-full rounded-lg border border-[#e5e5ea] px-3 text-sm font-normal text-[#111113]"
+                className="mt-1 min-h-11 w-full rounded-lg border border-border px-3 text-sm font-normal text-foreground"
                 placeholder="Isi saldo eSIM Access 20 USD"
                 maxLength={200}
                 required
               />
             </label>
-            <label className="text-xs font-semibold text-[#6b6b72]">
+            <label className="text-xs font-semibold text-muted-foreground">
               Tanggal
               <input
                 type="date"
@@ -395,18 +395,18 @@ function AdminFinance() {
                 onChange={(event) =>
                   setForm((value) => ({ ...value, occurredOn: event.target.value }))
                 }
-                className="mt-1 min-h-11 w-full rounded-lg border border-[#e5e5ea] px-3 text-sm font-normal text-[#111113]"
+                className="mt-1 min-h-11 w-full rounded-lg border border-border px-3 text-sm font-normal text-foreground"
                 required
               />
             </label>
-            <label className="text-xs font-semibold text-[#6b6b72]">
+            <label className="text-xs font-semibold text-muted-foreground">
               Vendor (opsional)
               <input
                 value={form.merchant}
                 onChange={(event) =>
                   setForm((value) => ({ ...value, merchant: event.target.value }))
                 }
-                className="mt-1 min-h-11 w-full rounded-lg border border-[#e5e5ea] px-3 text-sm font-normal text-[#111113]"
+                className="mt-1 min-h-11 w-full rounded-lg border border-border px-3 text-sm font-normal text-foreground"
                 placeholder="esimaccess"
                 maxLength={80}
               />
@@ -415,7 +415,7 @@ function AdminFinance() {
               <button
                 type="submit"
                 disabled={busy}
-                className="flex min-h-11 items-center gap-2 rounded-lg bg-[#0a84ff] px-4 text-sm font-semibold text-white disabled:opacity-60"
+                className="flex min-h-11 items-center gap-2 rounded-lg bg-brand-red px-4 text-sm font-semibold text-white disabled:opacity-60"
               >
                 {busy ? (
                   <LoaderCircle className="size-4 animate-spin" />
@@ -431,7 +431,7 @@ function AdminFinance() {
               role="status"
               className={`mt-3 text-xs font-semibold ${
                 feedback.tone === "ok"
-                  ? "text-[#1c7c3c]"
+                  ? "text-success"
                   : feedback.tone === "warn"
                     ? "text-[#8a5a00]"
                     : "text-[#c0392b]"

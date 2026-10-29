@@ -44,7 +44,7 @@ export function EsimCard({ o }: { o: Order }) {
   const doneStages = timeline.stages.filter((stage) => stage.state === "done").length;
   return (
     // The wrapper keeps the receipt link outside the card link, so no nested anchors.
-    <div className="rounded-2xl bg-surface p-5">
+    <div className="py-4 first:pt-4 last:pb-4">
       <Link to={ready ? "/my-esim/$id" : "/order/$id"} params={{ id: o.id }} className="tap block">
         <div className="flex items-center gap-3">
           <span className="text-3xl">🌐</span>
@@ -158,7 +158,7 @@ function Section({ title, items }: { title: string; items: Order[] }) {
   return (
     <section className="mt-6">
       <h2 className="mb-3 px-1 text-sm font-medium text-muted-foreground">{title}</h2>
-      <div className="space-y-3">
+      <div className="divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4">
         {items.map((o) => (
           <EsimCard key={o.id} o={o} />
         ))}

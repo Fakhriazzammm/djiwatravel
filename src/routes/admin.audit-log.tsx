@@ -56,7 +56,7 @@ function Page() {
               type="button"
               onClick={() => setHidden((value) => !value)}
               aria-pressed={hidden}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-black/[0.08] px-2.5 text-xs font-semibold"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-semibold"
             >
               {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
               {hidden ? "Tampilkan" : "Sembunyikan"}
@@ -65,7 +65,7 @@ function Page() {
               type="button"
               onClick={() => void refresh()}
               disabled={busy}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-black/[0.08] px-2.5 text-xs font-semibold disabled:opacity-50"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-semibold disabled:opacity-50"
             >
               <RefreshCw className={`size-3.5 ${busy ? "animate-spin" : ""}`} />
               Muat
@@ -76,31 +76,31 @@ function Page() {
         <AdminSurface className="p-3">
           {events.rows.length === 0 ? (
             <div className="flex items-start gap-3 p-1">
-              <FileClock className="mt-0.5 size-5 shrink-0 text-[#8a8a8e]" />
+              <FileClock className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-sm font-semibold">Belum ada peristiwa tercatat</p>
-                <p className="mt-1 text-xs text-[#6e6e73]">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Log terisi otomatis saat webhook pembayaran atau provider diterima.
                 </p>
               </div>
             </div>
           ) : (
-            <div className="divide-y divide-[#f0f0f2]">
+            <div className="divide-y divide-border">
               {events.rows.map((event) => (
                 <Link
                   key={event.displayIdentifier}
                   to={event.detailHref}
                   className="flex min-h-16 items-center gap-3 py-2.5"
                 >
-                  <span className="rounded-xl bg-[#f7f7f8] p-2">
-                    <FileClock className="size-4 text-[#0a84ff]" />
+                  <span className="rounded-xl bg-secondary p-2">
+                    <FileClock className="size-4 text-brand-red" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
                       {projectAdminIdentifier(event.displayIdentifier, hidden)} ·{" "}
                       {humanizeAdminStatus(event.status)}
                     </p>
-                    <p className="truncate text-xs text-[#8e8e93]">
+                    <p className="truncate text-xs text-muted-foreground">
                       {formatAdminDateTime(event.createdAt)} · {ageFrom(event.createdAt)} lalu
                       {event.eventType ? ` · ${event.eventType}` : ""}
                     </p>
@@ -122,7 +122,7 @@ function Page() {
           )}
         </AdminSurface>
 
-        <p className="px-1 text-xs text-[#8e8e93]">
+        <p className="px-1 text-xs text-muted-foreground">
           Menampilkan {events.rows.length} dari {events.total} peristiwa terbaru.
         </p>
       </div>

@@ -27,11 +27,11 @@ function AdminLogin() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f7f8] px-4">
-      <section className="w-full max-w-md rounded-3xl border border-[#e5e5ea] bg-white p-7 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8a8a91]">Djiwa Travel</p>
-        <h1 className="mt-3 text-2xl font-semibold text-[#18181b]">Admin login</h1>
-        <p className="mt-2 text-sm leading-6 text-[#6b6b72]">
+    <main className="flex min-h-screen items-center justify-center bg-secondary px-4">
+      <section className="w-full max-w-md rounded-3xl border border-border bg-surface p-7 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Djiwa Travel</p>
+        <h1 className="mt-3 text-2xl font-semibold text-foreground">Admin login</h1>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Gunakan akun Google yang sudah terdaftar di allowlist admin. Akun traveler tidak mendapat
           akses admin.
         </p>
@@ -39,7 +39,7 @@ function AdminLogin() {
           type="button"
           onClick={() => void continueWithGoogle()}
           disabled={loading}
-          className="mt-6 min-h-11 w-full rounded-xl bg-[#1f2d5c] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          className="mt-6 min-h-11 w-full rounded-xl bg-brand-red px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
         >
           {loading ? googleLabel : "Lanjutkan dengan Google"}
         </button>
@@ -51,7 +51,7 @@ function AdminLogin() {
         <Link
           to="/profile"
           search={{ admin: undefined }}
-          className="mt-5 block text-center text-sm font-semibold text-[#6b6b72]"
+          className="mt-5 block text-center text-sm font-semibold text-muted-foreground"
         >
           Kembali ke area traveler
         </Link>

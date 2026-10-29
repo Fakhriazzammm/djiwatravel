@@ -7,7 +7,6 @@ import {
   ServiceCategoryGrid,
   ServiceSectionHeading,
 } from "@/components/explore/service-category-grid";
-import { DestinationCard } from "@/components/explore/destination-card";
 import { getListableDestinations } from "@/lib/destination-availability.server";
 import { exploreAvailability } from "@/lib/explore-availability";
 
@@ -60,8 +59,8 @@ function Explore() {
   const searchOptions = (q.trim() ? res : destinations).filter((destination) =>
     available.destinations.some((item) => item.code === destination.code),
   );
-  const popular = destinations.filter(
-    (destination) => destination.popular && res.includes(destination),
+  const listedDestinations = [...res].sort(
+    (a, b) => Number(b.popular) - Number(a.popular),
   );
   return (
     <Page>
@@ -72,7 +71,7 @@ function Explore() {
       </header>
       <div className="relative">
         <form
-          className="mt-4 flex h-12 items-center gap-2 rounded-2xl bg-surface px-3 shadow-sm ring-1 ring-border/60 focus-within:ring-2 focus-within:ring-ring"
+          className="mt-4 flex h-12 items-center gap-2 rounded-2xl border border-border/70 bg-surface px-3 focus-within:ring-2 focus-within:ring-ring"
           onSubmit={(event) => {
             event.preventDefault();
             if (!q.trim()) {
@@ -120,7 +119,7 @@ function Explore() {
           )}
         </form>
         {searchFocused && searchOptions.length > 0 && (
-          <div className="absolute inset-x-0 top-[calc(100%+8px)] z-20 max-h-72 overflow-y-auto rounded-2xl bg-surface p-2 shadow-lg ring-1 ring-border/60">
+          <div className="absolute inset-x-0 top-[calc(100%+8px)] z-20 max-h-72 overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-md">
             <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {q.trim() ? "Hasil pencarian" : "Semua negara"}
             </p>
@@ -181,22 +180,43 @@ function Explore() {
         </div>
       )}
       <section className="mt-7">
-        <ServiceSectionHeading title="Layanan perjalanan" detail="Pilih kebutuhanmu" />
-        <ServiceCategoryGrid />
+        <ServiceSectionHeading
+          title="Pilih destinasi"
+          detail={`${listedDestinations.length} tersedia`}
+        />
+        {listedDestinations.length > 0 ? (
+          <div className="divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface">
+            {listedDestinations.map((destination) => (
+              <Link
+                key={destination.code}
+                to="/destination/$code"
+                params={{ code: destination.code.toLowerCase() }}
+                className="tap flex min-h-[68px] items-center gap-3 px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xl" aria-hidden="true">
+                  {destination.flag}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold text-foreground">
+                    {destination.nameId}
+                  </span>
+                  <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                    {destination.region} · Paket eSIM
+                  </span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-2xl bg-surface px-4 py-5 text-sm text-muted-foreground">
+            Belum ada destinasi live dari katalog.
+          </p>
+        )}
       </section>
       <section className="mt-8">
-        <ServiceSectionHeading title="Destinasi populer" detail="Lihat semua" />
-        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 no-scrollbar">
-          {popular.length > 0 ? (
-            popular.map((destination) => (
-              <DestinationCard key={destination.code} destination={destination} available={true} />
-            ))
-          ) : (
-            <p className="rounded-2xl bg-surface p-4 text-sm text-muted-foreground">
-              Belum ada destinasi live dari katalog.
-            </p>
-          )}
-        </div>
+        <ServiceSectionHeading title="Kebutuhan perjalanan" detail="Layanan" />
+        <ServiceCategoryGrid />
       </section>
       {res.length === 0 && available.source !== "error" && (
         <p className="mb-6 text-center text-sm text-muted-foreground">
