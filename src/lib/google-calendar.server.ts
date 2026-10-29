@@ -146,12 +146,25 @@ export async function finishGoogleCalendarConnect(code: string, state: string) {
   const token = (await tokenResponse.json()) as { access_token: string; refresh_token?: string; expires_in?: number };
   if (!token.refresh_token) throw new Error("Refresh token Google tidak diterima");
   await pool.query("update customer_google_calendar_connections set access_token_encrypted=$1,refresh_token_encrypted=$2,token_expires_at=now()+($3 * interval '1 second'),state_hash=null,state_expires_at=null,connected_at=coalesce(connected_at,now()),updated_at=now() where customer_auth_subject=$4", [encrypt(token.access_token), encrypt(token.refresh_token), token.expires_in ?? 3600, pending.customer_auth_subject]);
-  await syncAllForUser(pending.customer_auth_subject);
-  return pending.customer_auth_subject;
+  return syncAllForUser(pending.customer_auth_subject);
 }
 export async function googleCalendarStatus(user: User) {
   const result = await pool.query("select google_account_email,connected_at from customer_google_calendar_connections where customer_auth_subject=$1 and refresh_token_encrypted is not null limit 1", [user.id]);
-  return { connected: Boolean(result.rows[0]), accountEmail: result.rows[0]?.google_account_email ?? null, connectedAt: result.rows[0]?.connected_at ?? null };
+  if (!result.rows[0]) return { connected: false, accountEmail: null, connectedAt: null, pendingCount: 0 };
+  const pending = await pool.query(
+    `select count(*)::int as count
+     from travel_itinerary_items i
+     join travel_trips t on t.id=i.trip_id
+     left join travel_google_calendar_events e on e.itinerary_item_id=i.id
+     where t.customer_auth_subject=$1 and e.itinerary_item_id is null`,
+    [user.id],
+  );
+  return {
+    connected: true,
+    accountEmail: result.rows[0]?.google_account_email ?? null,
+    connectedAt: result.rows[0]?.connected_at ?? null,
+    pendingCount: Number(pending.rows[0]?.count ?? 0),
+  };
 }
 export async function disconnectGoogleCalendar(user: User) {
   await pool.query("delete from customer_google_calendar_connections where customer_auth_subject=$1", [user.id]);
@@ -182,5 +195,16 @@ export async function syncItineraryItem(itemId: string, subject: string) {
 }
 export async function syncAllForUser(subject: string) {
   const result = await pool.query("select i.id from travel_itinerary_items i join travel_trips t on t.id=i.trip_id where t.customer_auth_subject=$1", [subject]);
-  for (const row of result.rows as Array<{ id: string }>) await syncItineraryItem(row.id, subject);
+  let synced = 0;
+  let failed = 0;
+  for (const row of result.rows as Array<{ id: string }>) {
+    try {
+      await syncItineraryItem(row.id, subject);
+      synced += 1;
+    } catch (error) {
+      failed += 1;
+      console.error("[google-calendar] itinerary sync failed", { itemId: row.id, error });
+    }
+  }
+  return { total: result.rows.length, synced, failed };
 }

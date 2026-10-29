@@ -67,6 +67,7 @@ import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api.goog
 import { Route as ApiGoogleCalendarConnectRouteImport } from './routes/api.google-calendar.connect'
 import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api.google-calendar.disconnect'
 import { Route as ApiGoogleCalendarStatusRouteImport } from './routes/api.google-calendar.status'
+import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api.google-calendar.sync'
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
@@ -367,6 +368,11 @@ const ApiGoogleCalendarStatusRoute = ApiGoogleCalendarStatusRouteImport.update({
   path: '/api/google-calendar/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGoogleCalendarSyncRoute = ApiGoogleCalendarSyncRouteImport.update({
+  id: '/api/google-calendar/sync',
+  path: '/api/google-calendar/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTasksEsimSyncRoute = ApiTasksEsimSyncRouteImport.update({
   id: '/api/tasks/esim-sync',
   path: '/api/tasks/esim-sync',
@@ -454,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
+  '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -519,6 +526,7 @@ export interface FileRoutesByTo {
   '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
+  '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -585,6 +593,7 @@ export interface FileRoutesById {
   '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
+  '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -652,6 +661,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/connect'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/status'
+    | '/api/google-calendar/sync'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -717,6 +727,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/connect'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/status'
+    | '/api/google-calendar/sync'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -782,6 +793,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/connect'
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/status'
+    | '/api/google-calendar/sync'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -846,6 +858,7 @@ export interface RootRouteChildren {
   ApiGoogleCalendarConnectRoute: typeof ApiGoogleCalendarConnectRoute
   ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
   ApiGoogleCalendarStatusRoute: typeof ApiGoogleCalendarStatusRoute
+  ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
@@ -1260,6 +1273,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoogleCalendarStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/google-calendar/sync': {
+      id: '/api/google-calendar/sync'
+      path: '/api/google-calendar/sync'
+      fullPath: '/api/google-calendar/sync'
+      preLoaderRoute: typeof ApiGoogleCalendarSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tasks/esim-sync': {
       id: '/api/tasks/esim-sync'
       path: '/api/tasks/esim-sync'
@@ -1390,6 +1410,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleCalendarConnectRoute: ApiGoogleCalendarConnectRoute,
   ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,
   ApiGoogleCalendarStatusRoute: ApiGoogleCalendarStatusRoute,
+  ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
