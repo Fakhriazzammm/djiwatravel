@@ -5,6 +5,7 @@ import { TravelUsageCard } from "../components/travel-usage-card";
 import { TravelChecklist } from "../components/travel-checklist";
 import { OfflineSnapshotBanner } from "../components/offline-snapshot-banner";
 import { TravelSupportDialog } from "../components/travel-support-dialog";
+import { TravelWaitlistCard } from "../components/travel-waitlist-card";
 import { activationTimeline, checklistProgress, usageView } from "../lib/travel-journey";
 import { buildTravelSnapshot } from "../lib/offline-travel-snapshot";
 import { buildSupportContext, supportTopicsFor } from "../lib/travel-support";
@@ -191,5 +192,20 @@ describe("TravelSupportDialog", () => {
       />,
     );
     expect(container.textContent).toBe("");
+  });
+});
+
+describe("TravelWaitlistCard", () => {
+  it("keeps the mobile waitlist sheet above the tab bar and scrollable", () => {
+    render(
+      <TravelWaitlistCard feature="bagasi" label="Bagasi" sub="Segera hadir" icon={() => null} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /bagasi segera hadir/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.className).toContain("max-h-[calc(100dvh-1.5rem)]");
+    expect(dialog.className).toContain("overflow-y-auto");
+    expect(dialog.className).toContain("pb-[calc(1.25rem+env(safe-area-inset-bottom))]");
   });
 });
