@@ -9,9 +9,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { getDest } from "@/lib/catalog";
 import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
-import { regionalCoverage as extendRegionalCoverage } from "@/lib/destination-availability";
+import {
+  regionalCoverage as extendRegionalCoverage,
+  resolveCatalogDestination,
+} from "@/lib/destination-availability";
 import { destinationOgImage } from "@/lib/destination-artwork";
 import { toViewPackages, type ViewPackage } from "@/lib/package-view";
 import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
@@ -123,17 +125,16 @@ export const Route = createFileRoute("/destination/$code")({
   // destination list or the home cards does not pay for it twice.
   staleTime: 0,
   loader: async ({ params }) => {
-    const destination =
-      getDest(params.code) ??
-      getDest(params.code.toUpperCase()) ??
-      getDest(params.code.toLowerCase());
-    if (!destination) throw notFound();
+    const requestedCode = params.code.trim().toUpperCase();
     // Regional provider packages are represented by their member country codes. Querying the
     // provider with the display code (for example ASIA) is rejected by some catalogue accounts,
     // so read the already-authoritative full list and apply the regional coverage locally.
+    const seededDestination = resolveCatalogDestination(requestedCode, []);
     const catalog = await getResellerCatalog(
-      destination.region === "Regional" ? undefined : destination.code,
+      seededDestination?.region === "Regional" ? undefined : requestedCode,
     );
+    const destination = resolveCatalogDestination(requestedCode, catalog.packages);
+    if (!destination) throw notFound();
     const visible = filterPackagesByDestination(
       catalog.packages,
       destination.code,
