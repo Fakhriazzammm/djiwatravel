@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
-import { Check, ChevronDown, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { BackBar, Page, StickyCta } from "@/components/shell";
 import {
   Sheet,
@@ -243,9 +243,9 @@ function Destination() {
   const { availability } = Route.useSearch();
   const [sort, setSort] = useState<SortKey>("recommended");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  const comparisonRef = useRef<HTMLElement>(null);
   const filteredPackages = useMemo(
     () => filterPackagesByAvailability(packages, availability, stockPending),
     [packages, availability, stockPending],
@@ -273,6 +273,7 @@ function Destination() {
     .filter((pkg): pkg is ViewPackage => Boolean(pkg?.sellable));
   useEffect(() => {
     setSelectedCodes([]);
+    setComparisonOpen(false);
     setVisible(PAGE_SIZE);
   }, [destination.code]);
   const toggleComparison = (pkg: ViewPackage) => {
@@ -492,76 +493,6 @@ function Destination() {
               ))}
             </div>
           )}
-          {selectedPackages.length > 0 && (
-            <section
-              ref={comparisonRef}
-              className="mt-6 scroll-mt-4 rounded-2xl bg-surface p-4 shadow-sm"
-              aria-labelledby="comparison-title"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h2 id="comparison-title" className="font-semibold">
-                  Bandingkan paket ({selectedPackages.length}/3)
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCodes([])}
-                  className="rounded-lg px-2 py-1 text-xs font-semibold text-primary underline"
-                >
-                  Hapus pilihan
-                </button>
-              </div>
-              <div
-                className="mt-3 overflow-x-auto"
-                tabIndex={0}
-                aria-label="Tabel perbandingan paket"
-              >
-                <table className="min-w-[36rem] w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-border text-muted-foreground">
-                      <th scope="col" className="px-2 py-2 font-semibold">
-                        Detail
-                      </th>
-                      {selectedPackages.map((pkg) => (
-                        <th scope="col" key={pkg.packageCode} className="px-2 py-2 font-semibold">
-                          {pkg.name}
-                          <Link
-                            to="/checkout/$id"
-                            params={{ id: pkg.packageCode }}
-                            className="mt-1 block text-xs font-semibold text-primary underline"
-                          >
-                            Pilih paket
-                          </Link>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ["Destinasi", (pkg: ViewPackage) => packageDestinationLabel(pkg)],
-                      ["Data", (pkg: ViewPackage) => packageDataLabel(pkg)],
-                      ["Validitas", (pkg: ViewPackage) => `${pkg.durationDays} hari`],
-                      ["Cakupan", (pkg: ViewPackage) => packageCoverageLabel(pkg)],
-                      ["Harga", (pkg: ViewPackage) => rupiah(pkg.priceIdr)],
-                    ].map(([label, value]) => (
-                      <tr key={label as string} className="border-b border-border last:border-0">
-                        <th
-                          scope="row"
-                          className="whitespace-nowrap px-2 py-2 font-semibold text-muted-foreground"
-                        >
-                          {label as string}
-                        </th>
-                        {selectedPackages.map((pkg) => (
-                          <td key={pkg.packageCode} className="px-2 py-2 align-top">
-                            {(value as (pkg: ViewPackage) => string)(pkg)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
           {visible < sorted.length && (
             <button
               type="button"
@@ -586,9 +517,7 @@ function Destination() {
             </div>
             <button
               type="button"
-              onClick={() =>
-                comparisonRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }
+              onClick={() => setComparisonOpen(true)}
               className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"
               aria-label={`Buka perbandingan ${selectedPackages.length} paket`}
             >
@@ -597,6 +526,100 @@ function Destination() {
           </div>
         </StickyCta>
       )}
+      <Sheet open={comparisonOpen && selectedPackages.length > 0} onOpenChange={setComparisonOpen}>
+        <SheetContent
+          side="bottom"
+          className="z-[70] max-h-[88dvh] overflow-y-auto rounded-t-3xl border-border bg-background px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6 sm:left-1/2 sm:right-auto sm:w-[min(100%,44rem)] sm:-translate-x-1/2"
+          aria-describedby="comparison-description"
+        >
+          <SheetHeader className="pr-8 text-left">
+            <SheetTitle>Bandingkan paket ({selectedPackages.length}/3)</SheetTitle>
+            <SheetDescription id="comparison-description">
+              Geser tabel ke samping untuk melihat semua paket.
+            </SheetDescription>
+          </SheetHeader>
+          <div
+            className="mt-4 overflow-x-auto rounded-xl border border-border/70"
+            tabIndex={0}
+            aria-label="Tabel perbandingan paket"
+          >
+            <table className="min-w-[34rem] w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-border bg-secondary/60 text-muted-foreground">
+                  <th
+                    scope="col"
+                    className="sticky left-0 z-10 bg-secondary px-3 py-3 font-semibold"
+                  >
+                    Detail
+                  </th>
+                  {selectedPackages.map((pkg) => (
+                    <th scope="col" key={pkg.packageCode} className="min-w-36 px-3 py-3 align-top">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="line-clamp-2 font-semibold text-foreground">
+                          {pkg.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCodes((current) =>
+                              current.filter((code) => code !== pkg.packageCode),
+                            );
+                            if (selectedPackages.length === 1) setComparisonOpen(false);
+                          }}
+                          className="-mr-1 -mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-label={`Hapus ${pkg.name} dari perbandingan`}
+                        >
+                          <X className="size-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                      <Link
+                        to="/checkout/$id"
+                        params={{ id: pkg.packageCode }}
+                        className="mt-2 inline-flex min-h-9 items-center rounded-lg bg-brand-red px-3 text-xs font-semibold text-white transition hover:bg-brand-red/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        Pilih paket
+                      </Link>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["Destinasi", (pkg: ViewPackage) => packageDestinationLabel(pkg)],
+                  ["Data", (pkg: ViewPackage) => packageDataLabel(pkg)],
+                  ["Validitas", (pkg: ViewPackage) => `${pkg.durationDays} hari`],
+                  ["Cakupan", (pkg: ViewPackage) => packageCoverageLabel(pkg)],
+                  ["Harga", (pkg: ViewPackage) => rupiah(pkg.priceIdr)],
+                ].map(([label, value]) => (
+                  <tr key={label as string} className="border-b border-border last:border-0">
+                    <th
+                      scope="row"
+                      className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-3 font-semibold text-muted-foreground"
+                    >
+                      {label as string}
+                    </th>
+                    {selectedPackages.map((pkg) => (
+                      <td key={pkg.packageCode} className="px-3 py-3 align-top">
+                        {(value as (pkg: ViewPackage) => string)(pkg)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCodes([]);
+              setComparisonOpen(false);
+            }}
+            className="mt-4 min-h-11 w-full rounded-xl border border-border bg-surface text-sm font-semibold text-muted-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Hapus semua pilihan
+          </button>
+        </SheetContent>
+      </Sheet>
     </Page>
   );
 }
