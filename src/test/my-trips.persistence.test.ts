@@ -90,6 +90,31 @@ describe("My Trips isolated persistence flows", () => {
     ).resolves.toMatchObject({ title: "Night train" });
   });
 
+  it("waits for the new itinerary item calendar sync before completing", async () => {
+    let releaseSync!: () => void;
+    syncCalendar.mockImplementation(
+      () => new Promise<void>((resolve) => {
+        releaseSync = resolve;
+      }),
+    );
+    queueOwnedTripAndItem({ id: itemId, title: "Museum" });
+
+    let completed = false;
+    const save = addItineraryItem({
+      tripId,
+      activityDate: "2026-11-01",
+      title: "Museum",
+    }).then(() => {
+      completed = true;
+    });
+    await vi.waitFor(() => expect(syncCalendar).toHaveBeenCalled());
+    expect(completed).toBe(false);
+
+    releaseSync();
+    await save;
+    expect(completed).toBe(true);
+  });
+
   it("persists a booking after checking trip ownership", async () => {
     queueOwnedTripAndItem({ id: itemId, title: "Hotel" });
 

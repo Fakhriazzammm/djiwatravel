@@ -513,9 +513,11 @@ export async function addItineraryItem(input: unknown) {
     ],
   );
   const item = result.rows[0];
-  void syncItineraryItem(item.id, user.id).catch((error) => {
+  try {
+    await syncItineraryItem(item.id, user.id);
+  } catch (error) {
     console.error("[my-trips] failed to sync itinerary item to Google Calendar", error);
-  });
+  }
   return item;
 }
 
