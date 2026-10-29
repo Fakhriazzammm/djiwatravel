@@ -44,6 +44,16 @@ describe("destination availability", () => {
     expect(destinationForCode("jp").nameId).toBe(destinationForCode("JP").nameId);
     expect(destinationForCode("ZZ").code).toBe("ZZ");
   });
+
+  it("uses the ISO country flag for live countries without local metadata", () => {
+    expect(destinationForCode("EC").flag).toBe("🇪🇨");
+    expect(destinationForCode("ec").nameId).toBe("Ekuador");
+  });
+
+  it("keeps the globe fallback for non-country region codes", () => {
+    expect(destinationForCode("GLOBAL").flag).toBe("🌐");
+    expect(destinationForCode("ZZ").flag).toBe("🌐");
+  });
 });
 
 describe("regional coverage", () => {
@@ -128,7 +138,7 @@ describe("listable destinations", () => {
     expect(listed.map((destination) => destination.code)).toContain("DE");
     expect(listed.find((destination) => destination.code === "DE")).toEqual({
       code: "DE",
-      flag: "🌐",
+      flag: "🇩🇪",
       name: "Germany",
       nameId: "Jerman",
       aliases: [],

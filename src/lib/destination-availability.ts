@@ -28,6 +28,13 @@ function localizedRegionName(code: string, locale: string): string | undefined {
   }
 }
 
+function countryFlag(code: string, englishName: string): string {
+  if (!/^[A-Z]{2}$/.test(code) || englishName === "Unknown Region") return "🌐";
+  return String.fromCodePoint(
+    ...[...code].map((letter) => 0x1f1e6 + letter.charCodeAt(0) - "A".charCodeAt(0)),
+  );
+}
+
 /** Display metadata for a code, falling back to the raw code so nothing is ever dropped. */
 export function destinationForCode(code: string): Destination {
   const wanted = code.trim().toUpperCase();
@@ -36,7 +43,7 @@ export function destinationForCode(code: string): Destination {
   return (
     destinations.find((d) => d.code.toUpperCase() === wanted) ?? {
       code: wanted,
-      flag: "🌐",
+      flag: countryFlag(wanted, englishName),
       name: englishName,
       nameId: indonesianName,
       aliases: [],
