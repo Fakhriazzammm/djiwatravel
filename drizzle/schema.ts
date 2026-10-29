@@ -437,6 +437,10 @@ export const customerProfiles = pgTable(
     authUserId: text("auth_user_id").primaryKey().notNull(),
     email: text().notNull(),
     whatsapp: text().notNull(),
+    displayName: text("display_name"),
+    nationality: text(),
+    dateOfBirth: date("date_of_birth"),
+    gender: text(),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .defaultNow()
       .notNull(),
@@ -447,6 +451,10 @@ export const customerProfiles = pgTable(
   (table) => [
     unique("customer_profiles_email_key").on(table.email),
     check("customer_profiles_whatsapp_check", sql`whatsapp ~ '^62[0-9]{7,13}$'`),
+    check(
+      "customer_profiles_gender_check",
+      sql`gender is null or gender = any (array['female'::text, 'male'::text, 'unspecified'::text])`,
+    ),
   ],
 );
 

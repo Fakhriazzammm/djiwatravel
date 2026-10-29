@@ -41,6 +41,62 @@ describe("customer profile format validation", () => {
     ).toEqual({
       email: "traveler@example.com",
       whatsapp: "628123456789",
+      displayName: null,
+      nationality: null,
+      dateOfBirth: null,
+      gender: null,
+    });
+  });
+
+  it("accepts and normalizes optional traveler fields", () => {
+    expect(
+      normalizeCustomerProfile({
+        email: " traveler@example.com ",
+        whatsapp: "0812 3456 789",
+        displayName: "  Rani Putri  ",
+        nationality: " Indonesia ",
+        dateOfBirth: "1995-04-12",
+        gender: "female",
+      }),
+    ).toEqual({
+      email: "traveler@example.com",
+      whatsapp: "628123456789",
+      displayName: "Rani Putri",
+      nationality: "Indonesia",
+      dateOfBirth: "1995-04-12",
+      gender: "female",
+    });
+  });
+
+  it("keeps optional traveler fields nullable for legacy profiles", () => {
+    expect(
+      normalizeCustomerProfile({ email: "traveler@example.com", whatsapp: "6281234567890" }),
+    ).toEqual({
+      email: "traveler@example.com",
+      whatsapp: "6281234567890",
+      displayName: null,
+      nationality: null,
+      dateOfBirth: null,
+      gender: null,
+    });
+    expect(
+      isCustomerProfileComplete({ email: "traveler@example.com", whatsapp: "6281234567890" }),
+    ).toBe(true);
+  });
+
+  it("rejects invalid optional traveler values", () => {
+    expect(
+      validateCustomerProfile({
+        email: "traveler@example.com",
+        whatsapp: "6281234567890",
+        nationality: "A".repeat(81),
+        dateOfBirth: "2999-01-01",
+        gender: "other" as never,
+      }),
+    ).toEqual({
+      nationality: "Kewarganegaraan terlalu panjang.",
+      dateOfBirth: "Tanggal lahir harus sudah lewat.",
+      gender: "Pilih jenis kelamin yang tersedia.",
     });
   });
 });

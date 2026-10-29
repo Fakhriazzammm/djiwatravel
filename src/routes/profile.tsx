@@ -1,15 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, Check, ChevronRight, LogOut } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { signOutBetterAuth } from "@/lib/better-auth-client";
 import { clearTravelLocalData } from "@/lib/travel-local-data";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { Page, Wordmark, group, row, label } from "@/components/shell";
 import { CustomerAuth } from "@/components/customer-auth";
+import { CustomerProfileForm } from "@/components/customer-profile-form";
 import { useOrders } from "@/lib/orders";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import { rupiah } from "@/lib/pricing";
-import { validateCustomerProfile, type CustomerProfileDraft } from "@/lib/customer-profile";
+import {
+  validateCustomerProfile,
+  type CustomerProfileDraft,
+  type CustomerProfileErrors,
+} from "@/lib/customer-profile";
 import {
   CUSTOMER_PROFILE_UPDATED_EVENT,
   loadCustomerProfile,
@@ -45,11 +50,13 @@ function Profile() {
   const item = row;
   const { user, setUser, loading } = useBetterAuthUser();
   const [profile, setProfile] = useState<CustomerProfileDraft>({ email: "", whatsapp: "" });
+  const [savedProfile, setSavedProfile] = useState<CustomerProfileDraft | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const profileSaveLabel = useStagedLabel(savingProfile, ACTION_STAGES.profileSave);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileFieldErrors, setProfileFieldErrors] = useState<CustomerProfileErrors>({});
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [calendarAccount, setCalendarAccount] = useState<string | null>(null);
   const [calendarPendingCount, setCalendarPendingCount] = useState(0);
@@ -84,6 +91,7 @@ function Profile() {
   useEffect(() => {
     if (!user) {
       setProfileSaved(false);
+      setSavedProfile(null);
       setEditingProfile(false);
       setCalendarConnected(false);
       setCalendarAccount(null);
@@ -117,11 +125,14 @@ function Profile() {
       .finally(() => setCalendarStatusLoading(false));
     void loadCustomerProfile()
       .then((saved) => {
-        setProfile(saved ?? { email: user.email ?? "", whatsapp: "" });
+        const nextProfile = saved ?? { email: user.email ?? "", whatsapp: "" };
+        setProfile(nextProfile);
+        setSavedProfile(saved);
         setProfileSaved(Boolean(saved));
       })
       .catch(() => {
         setProfile({ email: user.email ?? "", whatsapp: "" });
+        setSavedProfile(null);
         setProfileSaved(false);
       });
   }, [user]);
@@ -130,30 +141,51 @@ function Profile() {
       const saved = (event as CustomEvent<CustomerProfileDraft>).detail;
       if (!saved) return;
       setProfile(saved);
+      setSavedProfile(saved);
       setProfileSaved(true);
       setEditingProfile(false);
       setProfileError(null);
+      setProfileFieldErrors({});
     };
     window.addEventListener(CUSTOMER_PROFILE_UPDATED_EVENT, onProfileUpdated);
     return () => window.removeEventListener(CUSTOMER_PROFILE_UPDATED_EVENT, onProfileUpdated);
   }, []);
-  const submitProfile = async () => {
+  const submitProfile = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     const errors = validateCustomerProfile(profile);
     if (Object.keys(errors).length > 0) {
       setProfileError(errors.email || errors.whatsapp || "Periksa kembali datamu.");
+      setProfileFieldErrors(errors);
       return;
     }
     setSavingProfile(true);
     try {
-      await saveCustomerProfile(profile);
+      const saved = await saveCustomerProfile(profile);
+      setProfile(saved);
+      setSavedProfile(saved);
       setProfileSaved(true);
       setEditingProfile(false);
       setProfileError(null);
+      setProfileFieldErrors({});
     } catch (error) {
       setProfileError(error instanceof Error ? error.message : "Data belum tersimpan. Coba lagi.");
     } finally {
       setSavingProfile(false);
     }
+  };
+  const cancelProfileEdit = () => {
+    if (savedProfile) setProfile(savedProfile);
+    setEditingProfile(false);
+    setProfileError(null);
+    setProfileFieldErrors({});
+  };
+  const updateProfileField = (
+    field: "displayName" | "whatsapp" | "nationality" | "dateOfBirth" | "gender",
+    value: string,
+  ) => {
+    setProfile((current) => ({ ...current, [field]: value || null }));
+    setProfileFieldErrors((current) => ({ ...current, [field]: undefined }));
+    setProfileError(null);
   };
   const calendarSyncIssue =
     !calendarSyncResolved &&
@@ -288,75 +320,80 @@ function Profile() {
           </div>
         )}
         {user && (!profileSaved || editingProfile) && (
-          <div className="mt-5 border-t pt-4">
-            <p className="font-semibold">Lengkapi data pengiriman</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Email dan WhatsApp dipakai untuk mengirim detail pesanan dan tagihan.
-            </p>
-            <div className="mt-3 space-y-2">
-              <input
-                aria-label="Email pengiriman"
-                type="email"
-                inputMode="email"
-                value={profile.email}
-                onChange={(event) => setProfile({ ...profile, email: event.target.value })}
-                placeholder="Email"
-                className="h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring"
-              />
-              <input
-                aria-label="Nomor WhatsApp"
-                type="tel"
-                inputMode="tel"
-                value={profile.whatsapp}
-                onChange={(event) => setProfile({ ...profile, whatsapp: event.target.value })}
-                placeholder="Nomor WhatsApp (62…)"
-                className="h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            {profileError && (
-              <p role="alert" className="mt-2 text-sm text-destructive">
-                {profileError}
+          <div className="mt-5 border-t pt-5">
+            <div className="mb-5">
+              <p className="font-semibold">Data profil</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Simpan detail traveler agar perjalanan berikutnya terasa lebih ringkas.
               </p>
-            )}
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                disabled={savingProfile}
-                onClick={submitProfile}
-                className="h-11 flex-1 rounded-xl bg-primary font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                {savingProfile ? profileSaveLabel : "Simpan data"}
-              </button>
-              {profileSaved && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingProfile(false);
-                    setProfileError(null);
-                  }}
-                  className="h-11 rounded-xl bg-secondary px-4 font-semibold"
-                >
-                  Batal
-                </button>
-              )}
             </div>
+            <CustomerProfileForm
+              profile={profile}
+              onChange={updateProfileField}
+              onSubmit={(event) => void submitProfile(event)}
+              onCancel={cancelProfileEdit}
+              saving={savingProfile}
+              saveLabel={savingProfile ? profileSaveLabel : "Simpan data"}
+              error={profileError}
+              errors={profileFieldErrors}
+              canCancel={profileSaved}
+            />
           </div>
         )}
         {user && profileSaved && !editingProfile && (
-          <div className="mt-4 flex items-center gap-2">
-            <p className="flex flex-1 items-center gap-2 text-sm text-success">
-              <Check className="size-4" /> Data pengiriman tersimpan
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingProfile(true);
-                setProfileError(null);
-              }}
-              className="tap text-sm font-semibold text-brand-red"
-            >
-              Ubah
-            </button>
+          <div className="mt-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <p className="flex flex-1 items-center gap-2 text-sm text-success">
+                <Check className="size-4" /> Profil tersimpan
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingProfile(true);
+                  setProfileError(null);
+                  setProfileFieldErrors({});
+                }}
+                className="tap text-sm font-semibold text-brand-red"
+              >
+                Ubah
+              </button>
+            </div>
+            <dl className="overflow-hidden rounded-2xl bg-surface divide-y divide-border/70">
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <dt className="text-sm text-muted-foreground">WhatsApp</dt>
+                <dd className="text-right text-sm font-medium">{profile.whatsapp}</dd>
+              </div>
+              {profile.displayName && (
+                <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <dt className="text-sm text-muted-foreground">Nama lengkap</dt>
+                  <dd className="text-right text-sm font-medium">{profile.displayName}</dd>
+                </div>
+              )}
+              {profile.nationality && (
+                <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <dt className="text-sm text-muted-foreground">Kewarganegaraan</dt>
+                  <dd className="text-right text-sm font-medium">{profile.nationality}</dd>
+                </div>
+              )}
+              {profile.dateOfBirth && (
+                <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <dt className="text-sm text-muted-foreground">Tanggal lahir</dt>
+                  <dd className="text-right text-sm font-medium">{profile.dateOfBirth}</dd>
+                </div>
+              )}
+              {profile.gender && (
+                <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <dt className="text-sm text-muted-foreground">Jenis kelamin</dt>
+                  <dd className="text-right text-sm font-medium">
+                    {profile.gender === "female"
+                      ? "Perempuan"
+                      : profile.gender === "male"
+                        ? "Laki-laki"
+                        : "Tidak ingin menyebutkan"}
+                  </dd>
+                </div>
+              )}
+            </dl>
           </div>
         )}
       </div>

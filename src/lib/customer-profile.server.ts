@@ -5,14 +5,34 @@ import { customerProfiles } from "../../drizzle/schema";
 import { db } from "../db/client.server";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import type { AuthenticatedUser } from "./customer-session.server";
+import {
+  CUSTOMER_PROFILE_GENDERS,
+  normalizeCustomerProfile,
+  validateCustomerProfile,
+} from "./customer-profile";
 
-const profileInputSchema = z.object({
-  email: z.string().trim().email().max(254),
-  whatsapp: z
-    .string()
-    .trim()
-    .regex(/^62\d{7,13}$/, "Nomor WhatsApp harus diawali 62"),
-});
+export const customerProfileInputSchema = z
+  .object({
+    email: z.string().trim().email().max(254),
+    whatsapp: z
+      .string()
+      .trim()
+      .regex(/^62\d{7,13}$/, "Nomor WhatsApp harus diawali 62"),
+    displayName: z.string().trim().max(120).nullable().optional(),
+    nationality: z.string().trim().max(80).nullable().optional(),
+    dateOfBirth: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional(),
+    gender: z.enum(CUSTOMER_PROFILE_GENDERS).nullable().optional(),
+  })
+  .superRefine((value, context) => {
+    const errors = validateCustomerProfile(value);
+    for (const [path, message] of Object.entries(errors)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+    }
+  });
 
 export type CanonicalCustomerIdentity = { sourceId: string; email: string };
 
@@ -60,7 +80,14 @@ export async function resolveCanonicalCustomerSourceId(
 
 export async function readCustomerProfile(user: AuthenticatedUser) {
   const rows = await db
-    .select({ email: customerProfiles.email, whatsapp: customerProfiles.whatsapp })
+    .select({
+      email: customerProfiles.email,
+      whatsapp: customerProfiles.whatsapp,
+      displayName: customerProfiles.displayName,
+      nationality: customerProfiles.nationality,
+      dateOfBirth: customerProfiles.dateOfBirth,
+      gender: customerProfiles.gender,
+    })
     .from(customerProfiles)
     .where(eq(customerProfiles.authUserId, user.id))
     .limit(1);
@@ -69,20 +96,44 @@ export async function readCustomerProfile(user: AuthenticatedUser) {
 
 export async function writeCustomerProfile(
   user: AuthenticatedUser,
-  data: z.infer<typeof profileInputSchema>,
+  data: z.infer<typeof customerProfileInputSchema>,
 ) {
   if (data.email.toLowerCase() !== user.email.toLowerCase())
     throw new Error("Email profil harus sama dengan email akun");
-  const whatsapp = normalizeCustomerWhatsapp(data.whatsapp);
-  const values = { authUserId: user.id, email: user.email.toLowerCase(), whatsapp };
+  const normalized = normalizeCustomerProfile(data);
+  const whatsapp = normalizeCustomerWhatsapp(normalized.whatsapp);
+  const values = {
+    authUserId: user.id,
+    email: user.email.toLowerCase(),
+    whatsapp,
+    displayName: normalized.displayName,
+    nationality: normalized.nationality,
+    dateOfBirth: normalized.dateOfBirth,
+    gender: normalized.gender,
+  };
   const [profile] = await db
     .insert(customerProfiles)
     .values(values)
     .onConflictDoUpdate({
       target: customerProfiles.authUserId,
-      set: { email: values.email, whatsapp, updatedAt: new Date().toISOString() },
+      set: {
+        email: values.email,
+        whatsapp,
+        displayName: values.displayName,
+        nationality: values.nationality,
+        dateOfBirth: values.dateOfBirth,
+        gender: values.gender,
+        updatedAt: new Date().toISOString(),
+      },
     })
-    .returning({ email: customerProfiles.email, whatsapp: customerProfiles.whatsapp });
+    .returning({
+      email: customerProfiles.email,
+      whatsapp: customerProfiles.whatsapp,
+      displayName: customerProfiles.displayName,
+      nationality: customerProfiles.nationality,
+      dateOfBirth: customerProfiles.dateOfBirth,
+      gender: customerProfiles.gender,
+    });
   return profile;
 }
 
@@ -91,13 +142,15 @@ export const getCustomerProfile = createServerFn({ method: "GET" }).handler(asyn
 });
 
 export const upsertCustomerProfile = createServerFn({ method: "POST" })
-  .validator(profileInputSchema)
+  .validator(customerProfileInputSchema)
   .handler(async ({ data }) => {
     return writeCustomerProfile(await getAuthenticatedUser(), data);
   });
 
 export const customerProfileContract = {
   read: "GET server function; derives Better Auth user from the HttpOnly session cookie",
-  upsert: "POST { email, whatsapp }; email must equal the authenticated Better Auth email",
-  response: "{ email, whatsapp } | null; guest checkout and Mayar settlement remain unchanged",
+  upsert:
+    "POST { email, whatsapp, displayName?, nationality?, dateOfBirth?, gender? }; email must equal the authenticated Better Auth email",
+  response:
+    "{ email, whatsapp, displayName, nationality, dateOfBirth, gender } | null; guest checkout and Mayar settlement remain unchanged",
 } as const;
