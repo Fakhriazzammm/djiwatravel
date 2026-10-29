@@ -84,11 +84,11 @@ const itinerarySchema = z
     activityDate: z.string().date(),
     startTime: z
       .string()
-      .regex(/^([01]\\d|2[0-3]):[0-5]\\d$/)
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
       .optional(),
     endTime: z
       .string()
-      .regex(/^([01]\\d|2[0-3]):[0-5]\\d$/)
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
       .optional(),
     timezone: z.string().trim().max(80).optional(),
     title: z.string().trim().min(1).max(160),
