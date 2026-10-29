@@ -76,6 +76,20 @@ describe("My Trips isolated persistence flows", () => {
     expect(syncCalendar).toHaveBeenCalledWith(itemId, ownerId);
   });
 
+  it("persists an itinerary that continues past midnight", async () => {
+    queueOwnedTripAndItem({ id: itemId, title: "Night train" });
+
+    await expect(
+      addItineraryItem({
+        tripId,
+        activityDate: "2026-11-01",
+        startTime: "22:00",
+        endTime: "02:00",
+        title: "Night train",
+      }),
+    ).resolves.toMatchObject({ title: "Night train" });
+  });
+
   it("persists a booking after checking trip ownership", async () => {
     queueOwnedTripAndItem({ id: itemId, title: "Hotel" });
 

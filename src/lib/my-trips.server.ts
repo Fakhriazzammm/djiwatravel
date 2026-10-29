@@ -99,10 +99,6 @@ const itinerarySchema = z
     currency: z.string().trim().length(3).optional(),
     bookingReference: z.string().trim().max(120).optional(),
     activityCategory: z.string().trim().max(80).optional(),
-  })
-  .refine((value) => !value.startTime || !value.endTime || value.endTime >= value.startTime, {
-    message: "Waktu selesai harus setelah waktu mulai",
-    path: ["endTime"],
   });
 
 const checklistSchema = z.object({

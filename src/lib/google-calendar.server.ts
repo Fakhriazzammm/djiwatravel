@@ -87,8 +87,11 @@ function eventBody(item: TripItem, trip: { name: string; destination_name: strin
     body.end = { date: dateOnly(item.activity_date, 1) };
   } else {
     const start = `${item.activity_date}T${timeValue(item.start_time)}`;
+    const endDate = item.end_time && item.end_time < item.start_time
+      ? dateOnly(item.activity_date, 1)
+      : item.activity_date;
     const end = item.end_time
-      ? `${item.activity_date}T${timeValue(item.end_time)}`
+      ? `${endDate}T${timeValue(item.end_time)}`
       : `${item.activity_date}T${timeValue(item.start_time)}`;
   const endDateTime = end === start
     ? `${item.activity_date}T${timeValue(item.start_time).replace(/(\d{2}):(\d{2}):\d{2}/, (_, hour, minute) => `${String((Number(hour) + 1) % 24).padStart(2, "0")}:${minute}:00`)}`

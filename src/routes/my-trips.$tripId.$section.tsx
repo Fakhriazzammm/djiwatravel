@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   BedDouble,
   CalendarDays,
+  ChevronRight,
   ClipboardCheck,
   Coffee,
   Hotel,
@@ -481,6 +482,10 @@ export function ItineraryEditor({
             <div>
               <p className="mb-1.5 text-[13px] font-semibold">
                 Waktu <span className="font-normal text-muted-foreground">(opsional)</span>
+              </p>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Jika selesai lebih awal dari mulai, aktivitas dianggap berlanjut sampai hari
+                berikutnya.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5 text-xs text-muted-foreground">
