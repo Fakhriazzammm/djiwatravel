@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pool } from "@/db/client.server";
 import { getAuthenticatedUser } from "@/lib/customer-session.fn";
+import { syncItineraryItem } from "@/lib/google-calendar.server";
 import { buildMyTripsHome } from "./my-trips-home";
 
 const currencies = ["IDR", "JPY", "USD", "SGD", "KRW"] as const;
@@ -500,7 +501,11 @@ export async function addItineraryItem(input: unknown) {
       data.activityCategory ?? null,
     ],
   );
-  return result.rows[0];
+  const item = result.rows[0];
+  void syncItineraryItem(item.id, user.id).catch((error) => {
+    console.error("[my-trips] failed to sync itinerary item to Google Calendar", error);
+  });
+  return item;
 }
 
 export async function toggleChecklist(input: unknown) {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { pool } from "@/db/client.server";
 import { getAuthenticatedUser } from "@/lib/customer-session.fn";
+import { syncItineraryItem } from "@/lib/google-calendar.server";
 import {
   addBooking,
   addChecklistItem,
@@ -16,12 +17,14 @@ import {
 
 vi.mock("@/db/client.server", () => ({ pool: { query: vi.fn(), connect: vi.fn() } }));
 vi.mock("@/lib/customer-session.fn", () => ({ getAuthenticatedUser: vi.fn() }));
+vi.mock("@/lib/google-calendar.server", () => ({ syncItineraryItem: vi.fn() }));
 
 const tripId = "11111111-1111-4111-8111-111111111111";
 const itemId = "22222222-2222-4222-8222-222222222222";
 const ownerId = "better-auth-user-1";
 const query = vi.mocked(pool.query);
 const authenticate = vi.mocked(getAuthenticatedUser);
+const syncCalendar = vi.mocked(syncItineraryItem);
 
 function queueOwnedTripAndItem(row: Record<string, unknown> = { id: itemId }) {
   query.mockResolvedValueOnce({ rows: [{ id: tripId }] } as never);
@@ -32,6 +35,8 @@ describe("My Trips isolated persistence flows", () => {
   beforeEach(() => {
     query.mockReset();
     authenticate.mockReset();
+    syncCalendar.mockReset();
+    syncCalendar.mockResolvedValue(undefined);
     authenticate.mockResolvedValue({ id: ownerId, email: "traveler@example.test" });
   });
 
@@ -67,6 +72,7 @@ describe("My Trips isolated persistence flows", () => {
       null,
       "attraction",
     ]);
+    expect(syncCalendar).toHaveBeenCalledWith(itemId, ownerId);
   });
 
   it("persists a booking after checking trip ownership", async () => {
