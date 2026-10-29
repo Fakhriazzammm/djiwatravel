@@ -1,9 +1,16 @@
-import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { useState } from "react";
 import { CalendarDays, ChevronRight, MapPin } from "lucide-react";
 import { BackBar, Page, btnRed, btnSoft } from "@/components/shell";
 import { TripProgress } from "@/components/trip-progress";
-import { getTrip, patchTrip } from "@/lib/my-trips.server";
+import { deleteTripRecord, getTrip, patchTrip } from "@/lib/my-trips.server";
 import { getTripProgress } from "@/lib/my-trips-home";
 import { isTripAuthenticationError } from "@/lib/trip-actions";
 import { TripWorkspace } from "./my-trips.$tripId.$section";
@@ -134,8 +141,11 @@ function TripDetail() {
 }
 
 function TripHeaderEditor({ trip, onSaved }: { trip: Trip; onSaved: () => void }) {
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: trip.name,
     destinationName: trip.destination_name,
@@ -157,6 +167,25 @@ function TripHeaderEditor({ trip, onSaved }: { trip: Trip; onSaved: () => void }
       onSaved();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function removeTrip() {
+    if (
+      !window.confirm(
+        `Hapus perjalanan “${trip.name}”? Semua agenda, budget, checklist, dan data terkait akan dihapus.`,
+      )
+    )
+      return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteTripRecord({ data: { id: trip.id } });
+      await navigate({ to: "/my-trips" });
+    } catch (cause) {
+      setDeleteError(cause instanceof Error ? cause.message : "Perjalanan belum dapat dihapus.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -236,7 +265,17 @@ function TripHeaderEditor({ trip, onSaved }: { trip: Trip; onSaved: () => void }
         </form>
       ) : (
         <header className="px-1 pt-2">
-          <h1 className="text-[32px] font-bold leading-[1.12] tracking-[-0.04em]">{trip.name}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-[32px] font-bold leading-[1.12] tracking-[-0.04em]">{trip.name}</h1>
+            <button
+              type="button"
+              onClick={() => void removeTrip()}
+              disabled={deleting}
+              className="tap shrink-0 rounded-xl px-2 py-2 text-sm font-semibold text-destructive disabled:opacity-50"
+            >
+              {deleting ? "Menghapus…" : "Hapus"}
+            </button>
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px] text-muted-foreground">
             <span className="flex min-h-8 items-center gap-1.5">
               <MapPin className="size-4" strokeWidth={1.9} />
@@ -257,6 +296,7 @@ function TripHeaderEditor({ trip, onSaved }: { trip: Trip; onSaved: () => void }
                 : "Atur tanggal perjalanan"}
             </button>
           </div>
+          {deleteError && <p className="mt-3 text-sm text-destructive">{deleteError}</p>}
         </header>
       )}
     </>

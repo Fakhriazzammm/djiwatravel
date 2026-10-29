@@ -437,6 +437,17 @@ export async function addBooking(input: unknown) {
   return result.rows[0];
 }
 
+export async function deleteTrip(input: unknown) {
+  const data = itemIdSchema.parse(input);
+  const user = await getAuthenticatedUser();
+  const result = await pool.query(
+    "delete from travel_trips where id=$1 and customer_auth_subject=$2 returning id",
+    [data.id, user.id],
+  );
+  if (!result.rows[0]) throw new Error("Perjalanan tidak ditemukan");
+  return result.rows[0];
+}
+
 export async function deleteTripItem(input: unknown) {
   const data = itemIdSchema.parse(input);
   return deleteOwned("travel_expenses", data.id);
@@ -581,6 +592,9 @@ export const postTrip = createServerFn({ method: "POST" })
 export const patchTrip = createServerFn({ method: "POST" })
   .validator(tripPatchSchema)
   .handler(({ data }) => updateTrip(data));
+export const deleteTripRecord = createServerFn({ method: "POST" })
+  .validator(itemIdSchema)
+  .handler(({ data }) => deleteTrip(data));
 export const getTrip = createServerFn({ method: "GET" })
   .validator(tripIdSchema)
   .handler(({ data }) => getTripDashboard(data.tripId));

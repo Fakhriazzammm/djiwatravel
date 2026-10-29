@@ -7,6 +7,7 @@ import {
   addChecklistItem,
   addExpense,
   addItineraryItem,
+  deleteTrip,
   deleteBooking,
   deleteChecklistItem,
   deleteItineraryItem,
@@ -92,6 +93,16 @@ describe("My Trips isolated persistence flows", () => {
       null,
       null,
     ]);
+  });
+
+  it("deletes only a trip owned by the authenticated user", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: tripId }] } as never);
+
+    await expect(deleteTrip({ id: tripId })).resolves.toEqual({ id: tripId });
+
+    expect(query).toHaveBeenCalledOnce();
+    expect(query.mock.calls[0]?.[0]).toContain("delete from travel_trips");
+    expect(query.mock.calls[0]?.[1]).toEqual([tripId, ownerId]);
   });
 
   it("persists original and converted expense amounts in minor units", async () => {
