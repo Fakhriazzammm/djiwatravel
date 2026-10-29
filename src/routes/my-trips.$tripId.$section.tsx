@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   BedDouble,
   CalendarDays,
@@ -16,12 +17,14 @@ import {
   X,
 } from "lucide-react";
 import { BackBar, Page, btnRed, btnSoft, group, label, row } from "@/components/shell";
+import { TripProgress } from "@/components/trip-progress";
+import { displayBudgetCategory, displayChecklistTitle, getTripProgress } from "@/lib/my-trips-home";
 import {
   deleteBookingRecord,
   deleteChecklist,
   deleteExpense,
   deleteItinerary,
-  getTrip,
+  getTripSection,
   patchBudget,
   patchChecklist,
   postBooking,
@@ -31,7 +34,10 @@ import {
 } from "@/lib/my-trips.server";
 
 export const Route = createFileRoute("/my-trips/$tripId/$section")({
-  loader: ({ params }) => getTrip({ data: { tripId: params.tripId } }),
+  loader: ({ params }) =>
+    getTripSection({
+      data: { tripId: params.tripId, section: params.section as FeatureId },
+    }),
   component: TripSection,
 });
 const labels: Record<string, string> = {
@@ -111,14 +117,26 @@ function TripSection() {
   const { section, tripId } = Route.useParams();
   const data = Route.useLoaderData();
   const router = useRouter();
-  const items = (data[section as FeatureId] ?? []) as Item[];
+  const items = data.items as Item[];
   const trip = data.trip as unknown as {
     id: string;
     name: string;
+    destination_name: string;
+    departure_date: string | null;
+    return_date: string | null;
     primary_currency: string;
     total_budget_minor: number;
+    itinerary_count: number;
+    checklist_total: number;
+    checklist_done: number;
+    booking_count: number;
+    expense_count: number;
   };
-  const refresh = () => router.invalidate();
+  const refresh = () => {
+    void router.invalidate();
+    toast.success("Progres perjalanan diperbarui");
+  };
+  const progress = getTripProgress(trip);
   return (
     <Page>
       <BackBar title={trip.name} />
@@ -128,6 +146,9 @@ function TripSection() {
         </h1>
       </div>
       <TripFeatureNav tripId={tripId} active={section as FeatureId} />
+      <div className="mt-4">
+        <TripProgress {...progress} tripId={tripId} />
+      </div>
       <div className="mt-5 space-y-4">
         {section === "budget" && (
           <BudgetEditor items={items} currency={trip.primary_currency} onSaved={refresh} />
@@ -202,7 +223,7 @@ function BudgetEditor({
           items.map((item) => (
             <div key={item.id} className={row}>
               <span className="min-w-0 flex-1 text-sm font-medium">
-                {String(item.name ?? "Kategori")}
+                {displayBudgetCategory(String(item.name ?? "Kategori"))}
               </span>
               <input
                 type="number"
@@ -673,7 +694,7 @@ function ChecklistEditor({
                   className="size-4 accent-brand-red"
                 />
                 <span className={x.is_completed ? "line-through text-muted-foreground" : ""}>
-                  {String(x.title ?? "")}
+                  {displayChecklistTitle(String(x.title ?? ""))}
                 </span>
               </label>
               <button
@@ -714,7 +735,7 @@ function BookingEditor({
   items: Item[];
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState({ category: "Other", title: "", date: "", provider: "" });
+  const [form, setForm] = useState({ category: "Lainnya", title: "", date: "", provider: "" });
   const [saving, setSaving] = useState(false);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -729,7 +750,7 @@ function BookingEditor({
           provider: form.provider || undefined,
         },
       });
-      setForm({ category: "Other", title: "", date: "", provider: "" });
+      setForm({ category: "Lainnya", title: "", date: "", provider: "" });
       onSaved();
     } finally {
       setSaving(false);

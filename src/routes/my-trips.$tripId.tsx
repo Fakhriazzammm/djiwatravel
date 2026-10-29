@@ -2,7 +2,9 @@ import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-r
 import { useState } from "react";
 import { CalendarDays, ChevronRight, MapPin } from "lucide-react";
 import { BackBar, Page, btnRed, btnSoft } from "@/components/shell";
+import { TripProgress } from "@/components/trip-progress";
 import { getTrip, patchTrip } from "@/lib/my-trips.server";
+import { getTripProgress } from "@/lib/my-trips-home";
 import { TripWorkspace } from "./my-trips.$tripId.$section";
 
 export const Route = createFileRoute("/my-trips/$tripId")({
@@ -53,10 +55,20 @@ function TripDetail() {
   const budget = Number(trip.total_budget_minor ?? 0);
   const spent = Number(data.totals.spentMinor ?? 0);
   const budgetPercent = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+  const progress = getTripProgress({
+    ...trip,
+    itinerary_count: data.itinerary.length,
+    checklist_total: data.checklist.length,
+    checklist_done: data.checklist.filter((item: { is_completed?: unknown }) => item.is_completed)
+      .length,
+    booking_count: data.bookings.length,
+    expense_count: data.expenses.length,
+  });
 
   return (
     <Page>
       <TripHeaderEditor trip={trip} onSaved={() => window.location.reload()} />
+      <TripProgress {...progress} tripId={trip.id} />
 
       <Link
         to="/my-trips/$tripId/$section"
