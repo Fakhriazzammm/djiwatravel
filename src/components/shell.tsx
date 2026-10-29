@@ -10,7 +10,7 @@ const tabs = [
   { to: "/", label: "Beranda", icon: Home },
   { to: "/explore", label: "Jelajah", icon: Compass },
   { to: "/my-trips", label: "Perjalanan", icon: BriefcaseBusiness },
-  { to: "/wallet", label: "Dompet", icon: WalletCards },
+  { to: "/wallet/pay", label: "Dompet", icon: WalletCards },
   { to: "/profile", label: "Profil", icon: User },
 ] as const;
 
