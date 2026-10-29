@@ -338,7 +338,7 @@ export async function getTripSectionData(tripId: string, section: string) {
       ),
     itinerary: () =>
       pool.query(
-        "select * from travel_itinerary_items where trip_id=$1 order by activity_date, start_time nulls last",
+        "select *, activity_date::text as activity_date_text from travel_itinerary_items where trip_id=$1 order by activity_date, start_time nulls last",
         [tripId],
       ),
     checklist: () =>
@@ -378,12 +378,16 @@ export async function getTripSectionData(tripId: string, section: string) {
         ]),
       ),
     },
-    items: result.rows.map((row) => ({
-      ...row,
-      allocated_minor: money(row["allocated_minor"]),
-      original_amount_minor: money(row["original_amount_minor"]),
-      converted_amount_minor: money(row["converted_amount_minor"]),
-    })),
+    items: result.rows.map((row) => {
+      const { activity_date_text, ...item } = row;
+      return {
+        ...item,
+        ...(section === "itinerary" ? { activity_date: activity_date_text } : {}),
+        allocated_minor: money(row["allocated_minor"]),
+        original_amount_minor: money(row["original_amount_minor"]),
+        converted_amount_minor: money(row["converted_amount_minor"]),
+      };
+    }),
   };
 }
 

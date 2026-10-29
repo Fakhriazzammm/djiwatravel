@@ -581,22 +581,34 @@ function groupItineraryByDay(items: Item[]) {
   const groups = new Map<string, Item[]>();
   [...items]
     .sort((a, b) =>
-      `${String(a.activity_date ?? "")}T${String(a.start_time ?? "99:99")}`.localeCompare(
-        `${String(b.activity_date ?? "")}T${String(b.start_time ?? "99:99")}`,
+      `${itineraryDateKey(a.activity_date)}T${String(a.start_time ?? "99:99")}`.localeCompare(
+        `${itineraryDateKey(b.activity_date)}T${String(b.start_time ?? "99:99")}`,
       ),
     )
     .forEach((item) => {
-      const date = String(item.activity_date ?? "");
+      const date = itineraryDateKey(item.activity_date);
       groups.set(date, [...(groups.get(date) ?? []), item]);
     });
   return [...groups.entries()].map(([date, groupedItems]) => ({ date, items: groupedItems }));
 }
 
+function itineraryDateKey(value: unknown) {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? "" : value.toISOString().slice(0, 10);
+  }
+  const raw = String(value ?? "").trim();
+  const dateOnly = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (dateOnly) return dateOnly[1];
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw : parsed.toISOString().slice(0, 10);
+}
+
 function formatItineraryDate(value: string) {
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return { weekday: "Tanggal", full: value };
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return { weekday: "", full: "Tanggal belum diatur" };
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
   return {
-    weekday: new Intl.DateTimeFormat("id-ID", { weekday: "long" }).format(date),
+    weekday: new Intl.DateTimeFormat("id-ID", { weekday: "short" }).format(date),
     full: new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date),
   };
 }
@@ -612,19 +624,15 @@ function ItineraryDay({
 }) {
   const dateLabel = formatItineraryDate(date);
   return (
-    <section className="rounded-2xl bg-surface p-4">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-red">
-            {dateLabel.weekday}
-          </p>
-          <h3 className="mt-1 text-base font-bold capitalize">{dateLabel.full}</h3>
-        </div>
-        <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-          {items.length} aktivitas
-        </span>
+    <section className="rounded-[20px] bg-surface px-4 py-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-[15px] font-semibold capitalize tracking-tight">
+          {dateLabel.weekday ? `${dateLabel.weekday}, ` : ""}
+          {dateLabel.full}
+        </h3>
+        <span className="shrink-0 text-xs text-muted-foreground">{items.length} aktivitas</span>
       </div>
-      <div className="mt-3 divide-y divide-border/60">
+      <div className="mt-2 divide-y divide-border/60">
         {items.map((item) => (
           <ItineraryItem key={item.id} item={item} onDelete={onDelete} />
         ))}
