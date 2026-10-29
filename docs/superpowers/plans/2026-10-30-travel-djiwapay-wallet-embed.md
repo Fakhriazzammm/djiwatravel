@@ -4,7 +4,7 @@
 
 **Goal:** Make the Djiwa Pay wallet feel native inside Djiwa Travel, with no visible iframe wrapper and only the Travel bottom navigation.
 
-**Architecture:** Keep the existing cross-origin iframe so Djiwa Pay remains responsible for wallet data and actions. In Travel page layout, make the frame full-bleed and remove its header/footer chrome; on Pay, allow framing only from the two Travel origins and hide Pay navigation only for the Travel embed.
+**Architecture:** Keep the existing cross-origin iframe so Djiwa Pay remains responsible for wallet data and actions. In Travel page layout, make the frame full-bleed and remove its header/footer chrome; on Pay, allow framing only from the two Travel origins through CSP and keep Pay's existing rule that hides its navigation whenever framed.
 
 **Tech Stack:** TanStack Start/React and Tailwind in Djiwa Travel; React/Vite and Nginx response headers in Djiwa Pay.
 
@@ -40,26 +40,24 @@
 - `layout="page"` fills the space above the Travel tab bar and renders only the wallet iframe.
 - `layout="sheet"` preserves its existing title, close/refresh buttons, and external-open fallback.
 
-- [ ] Remove the header and footer only when `pageLayout` is true.
-- [ ] Remove rounded panel treatment and any iframe border in page layout; keep the iframe full width and height inside the existing top-to-bottom safe area.
-- [ ] Build Djiwa Travel with `npm run build` and manually inspect `/wallet/pay` to confirm the wallet is flush with the page and the Travel Dompet tab remains visible and active.
+- [x] Remove the header and footer only when `pageLayout` is true.
+- [x] Remove rounded panel treatment and any iframe border in page layout; keep the iframe full width and height inside the existing top-to-bottom safe area.
+- [x] Build Djiwa Travel with `npm run build`.
+- [ ] Manually inspect `/wallet/pay` at mobile and desktop sizes and confirm the Travel Dompet tab remains visible and active (authenticated browser capture unavailable in this run).
 - [ ] Open a wallet sheet route and confirm the sheet controls remain present.
 
 ### Task 2: Restrict and scope the Pay embed
 
 **Files:**
-- Modify in a clean worktree: `/Users/apple/djiwatentramapp/apps/djiwapay/src/lib/embed-context.ts`
 - Modify on the Pay VPS: the active Nginx server block for `djiwapay.web.id` and its legacy Pay hostname, after identifying the exact file with `nginx -T`.
 
 **Interfaces:**
-- `resolvePayFrameContext` continues to return `framed`, `hostOrigin`, `host`, and `hideBottomNav`.
-- `hideBottomNav` is true only when the frame parent is `djiwatravel.com` or `www.djiwatravel.com`.
+- Keep Pay's existing behavior of hiding its bottom nav whenever framed. CSP, rather than a referrer check, is the authority that limits embedding to Travel; this remains stable across SSO redirects.
 - Pay response policy is `Content-Security-Policy: frame-ancestors 'self' https://djiwatravel.com https://www.djiwatravel.com`.
 
-- [ ] Change unknown framed hosts to retain Pay navigation; keep standalone navigation unchanged.
-- [ ] Inspect the live Pay Nginx configuration and add the `frame-ancestors` header only to the Pay virtual host. Do not add `X-Frame-Options: SAMEORIGIN`, which would block the intended cross-origin frame.
-- [ ] Run `nginx -t` before reloading Nginx; inspect the final response headers on both Pay hostnames.
-- [ ] Build Djiwa Pay with `bun run build:djiwapay` in the clean worktree.
+- [x] Leave Djiwa Pay source untouched; preserve standalone mode behavior.
+- [x] Inspect the live Pay Nginx configuration and add the `frame-ancestors` header only to the Pay virtual host. Do not add `X-Frame-Options: SAMEORIGIN`, which would block the intended cross-origin frame.
+- [x] Run `nginx -t` before reloading Nginx; inspect the final response headers on both Pay hostnames.
 - [ ] Manually verify an approved Travel frame loads and an unrelated-origin frame is denied.
 
 ### Task 3: Verify the cross-app wallet flow and release boundaries
@@ -72,6 +70,6 @@
 - Djiwa Pay remains the wallet and transaction backend owner.
 
 - [ ] Manually verify the shared-auth bridge, wallet display, refresh, and navigation out of the frame. Do not initiate a top-up or transaction during verification.
-- [ ] Deploy the Pay build/header change only to the Djiwa Tentram VPS and confirm its service, headers, and public Pay routes.
-- [ ] Deploy Djiwa Travel only if Task 1 changes its shipped source; verify its own deployed SHA, public `/wallet/pay`, and active Travel tab bar.
+- [x] Deploy the Pay header policy only to the Djiwa Tentram VPS and confirm Nginx health, headers, and public Pay routes.
+- [ ] Deploy Djiwa Travel after reconciling its production checkout: it contains unrelated uncommitted source edits and serves commit `1d84a78`, while this isolated implementation is based on `origin/main`. Do not replace its artifact from this older base.
 - [ ] Report each VPS and deployed SHA separately; leave unrelated Djiwa Pay worktree changes untouched.

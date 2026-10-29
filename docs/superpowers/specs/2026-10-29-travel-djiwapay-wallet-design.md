@@ -10,7 +10,7 @@ When a traveler opens the wallet from Djiwa Travel, render the Djiwa Pay wallet 
 - Djiwa Pay already detects framed pages and hides its own bottom navigation. Commits `e040a07`, `9e8ecd70`, and `dc3146d0` are present on the Djiwa Pay repository's `main` and `origin/main`.
 - Helipod read-only inventory shows separate running VPS records for the `djiwatravel` and `djiwatentram` projects. The public wallet domains respond with HTTP 200.
 - Current source uses `djiwapay.web.id` as the Pay origin and allows `pay.djiwatentram.web.id` as a legacy origin.
-- The Pay domain response did not show a `Content-Security-Policy` `frame-ancestors` directive or `X-Frame-Options` header. The current frame detector also hides Pay navigation inside any frame by default.
+- The Pay domain response did not show a `Content-Security-Policy` `frame-ancestors` directive or `X-Frame-Options` header. Pay currently hides its own navigation inside any frame; preserve this because the referrer may change during SSO, and use CSP as the authority that permits only Djiwa Travel to frame Pay.
 - The Djiwa Pay repository has unrelated uncommitted edits around auth, domains, and deployment. Preserve them and keep this work limited to wallet embedding and its required server headers.
 
 ## Goals
@@ -32,7 +32,7 @@ When a traveler opens the wallet from Djiwa Travel, render the Djiwa Pay wallet 
 
 ## Approaches
 
-1. **Keep the iframe, make it visually seamless, and secure its boundary (recommended).** The Travel shell already provides the requested navigation, and Pay already suppresses its duplicate nav when framed. Remove the wrapper chrome in page layout, tighten frame detection to the approved host, and add an allowlist `frame-ancestors` policy. This keeps wallet ownership in Pay and requires changes only where needed.
+1. **Keep the iframe, make it visually seamless, and secure its boundary (recommended).** The Travel shell already provides the requested navigation, and Pay already suppresses its duplicate nav when framed. Remove the wrapper chrome in page layout and add an allowlist `frame-ancestors` policy. This keeps wallet ownership in Pay and requires changes only where needed.
 2. **Render a shared Travel shell inside Pay.** This duplicates or shares navigation code across independently deployed apps and makes the apps more tightly coupled. It adds release coordination without improving the current flow.
 
 Use approach 1.
@@ -40,10 +40,10 @@ Use approach 1.
 ## Implementation outline
 
 1. Keep `/wallet/pay` as the Travel entry point. In page layout, remove the Djiwa Pay Browser header/footer/panel chrome and make the iframe occupy the full available area between the top safe area and the Travel bottom tab bar. Preserve sheet layout controls.
-2. Make the Pay frame state explicit: suppress Pay's bottom nav only for the approved Travel embed context; preserve the standalone Pay nav.
+2. Preserve Pay's existing rule to hide its bottom nav whenever framed. The CSP allowlist blocks unapproved framing, while this rule avoids a duplicate bar if SSO changes the document referrer. Standalone Pay remains unframed and keeps its own nav.
 3. Add response security policy on the Pay origin that allows framing only by `https://djiwatravel.com` and `https://www.djiwatravel.com`. Avoid `X-Frame-Options: SAMEORIGIN`, which would block the intended cross-origin embed.
 4. Verify the auth bridge, authenticated wallet loading, refresh, and safe navigation back to Travel. Confirm top-up and other wallet actions still call the existing Pay backend.
-5. Build and run focused checks in each repository. Deploy Pay changes to the `djiwatentram` VPS; deploy Travel only if its code changes. Confirm each deployed SHA, service health, response headers, and public routes.
+5. Build Djiwa Travel. Deploy the Travel UI change and Pay's header policy to their separate VPS instances; confirm each service health, response headers, and public routes.
 
 ## Acceptance criteria
 

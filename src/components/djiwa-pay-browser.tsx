@@ -77,47 +77,51 @@ export function DjiwaPayBrowser({
             }}
           >
             <motion.section
-              role="dialog"
+              role={pageLayout ? undefined : "dialog"}
               data-layout={layout}
-              aria-modal="true"
-              aria-labelledby="djiwa-pay-browser-title"
+              aria-modal={pageLayout ? undefined : true}
+              aria-labelledby={pageLayout ? undefined : "djiwa-pay-browser-title"}
               className={
-                "mx-auto flex h-full w-full max-w-md flex-col overflow-hidden bg-surface " +
-                (pageLayout ? "" : "rounded-[26px] shadow-2xl ring-1 ring-black/10")
+                "mx-auto flex h-full w-full flex-col overflow-hidden bg-background " +
+                (pageLayout
+                  ? "max-w-none"
+                  : "max-w-md rounded-[26px] bg-surface shadow-2xl ring-1 ring-black/10")
               }
-              initial={reduce ? { y: 0, scale: 1 } : { y: 24, scale: 0.98 }}
+              initial={pageLayout || reduce ? { y: 0, scale: 1 } : { y: 24, scale: 0.98 }}
               animate={{ y: 0, scale: 1 }}
-              exit={reduce ? { y: 8, scale: 0.99 } : { y: 18, scale: 0.98 }}
+              exit={pageLayout || reduce ? { y: 0, scale: 1 } : { y: 18, scale: 0.98 }}
               transition={{ type: "spring", stiffness: 360, damping: 30 }}
             >
-              <header className="flex shrink-0 items-center justify-between border-b border-border/70 px-4 py-3 safe-top">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-red">
-                    Djiwa Travel
-                  </p>
-                  <h2 id="djiwa-pay-browser-title" className="truncate text-lg font-bold">
-                    Djiwa Pay
-                  </h2>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label="Refresh Djiwa Pay"
-                    onClick={() => setFrameVersion((current) => current + 1)}
-                  >
-                    <RefreshCw className="size-5" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label="Tutup Djiwa Pay"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    <X className="size-5" aria-hidden="true" />
-                  </button>
-                </div>
-              </header>
+              {!pageLayout ? (
+                <header className="flex shrink-0 items-center justify-between border-b border-border/70 px-4 py-3 safe-top">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-red">
+                      Djiwa Travel
+                    </p>
+                    <h2 id="djiwa-pay-browser-title" className="truncate text-lg font-bold">
+                      Djiwa Pay
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label="Refresh Djiwa Pay"
+                      onClick={() => setFrameVersion((current) => current + 1)}
+                    >
+                      <RefreshCw className="size-5" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label="Tutup Djiwa Pay"
+                      onClick={() => onOpenChange(false)}
+                    >
+                      <X className="size-5" aria-hidden="true" />
+                    </button>
+                  </div>
+                </header>
+              ) : null}
 
               <div className="min-h-0 flex-1 bg-background">
                 <iframe
@@ -131,20 +135,22 @@ export function DjiwaPayBrowser({
                 />
               </div>
 
-              <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border/70 bg-surface px-4 py-2.5 safe-bottom">
-                <p className="min-w-0 text-[11px] leading-4 text-muted-foreground">
-                  Tidak tampil atau perlu pembayaran?
-                </p>
-                <a
-                  href={DJIWA_PAY_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="tap inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-brand-red px-3 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
-                >
-                  Buka di browser
-                  <ExternalLink className="size-3.5" aria-hidden="true" />
-                </a>
-              </footer>
+              {!pageLayout ? (
+                <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border/70 bg-surface px-4 py-2.5 safe-bottom">
+                  <p className="min-w-0 text-[11px] leading-4 text-muted-foreground">
+                    Tidak tampil atau perlu pembayaran?
+                  </p>
+                  <a
+                    href={DJIWA_PAY_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="tap inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-brand-red px-3 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
+                  >
+                    Buka di browser
+                    <ExternalLink className="size-3.5" aria-hidden="true" />
+                  </a>
+                </footer>
+              ) : null}
             </motion.section>
           </motion.div>
         )}
