@@ -1,7 +1,6 @@
 import { ArrowRight, Globe2, Smartphone } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { EsimHomeCatalogSearch } from "@/components/esim-home-catalog-search";
 import { buildEsimHomeSummary, type EsimHomeTarget } from "@/lib/esim-home-summary";
 import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 import type { Order } from "@/lib/orders";
@@ -52,7 +51,13 @@ function SummaryLink({
   }
 }
 
-export function EsimHomeSummaryCard({ orders }: { orders: Order[] | null }) {
+export function EsimHomeSummaryCard({
+  orders,
+  onSearchPackages,
+}: {
+  orders: Order[] | null;
+  onSearchPackages: () => void;
+}) {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   if (orders === null) {
@@ -79,7 +84,43 @@ export function EsimHomeSummaryCard({ orders }: { orders: Order[] | null }) {
   const progress =
     summary.remainingPercent === null ? null : Math.max(0, Math.min(100, summary.remainingPercent));
 
-  if (summary.kind === "empty") return <EsimHomeCatalogSearch />;
+  if (summary.kind === "empty") {
+    return (
+      <article
+        data-testid="esim-home-summary"
+        data-state="empty"
+        className="rounded-2xl border border-border/70 bg-surface p-3.5 shadow-[0_8px_24px_-20px_rgba(23,43,77,0.35)]"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="flex min-w-0 items-center gap-2 text-[14px] font-bold text-[#172b4d]">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-brand-red-soft text-brand-red">
+              <Smartphone className="size-4" aria-hidden="true" />
+            </span>
+            eSIM perjalanan
+          </h2>
+          <SummaryLink
+            target={{ kind: "finder" }}
+            className="tap inline-flex min-h-11 shrink-0 items-center gap-1 text-[12px] font-bold text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Semua paket <ArrowRight className="size-3.5" aria-hidden="true" />
+          </SummaryLink>
+        </div>
+        <p className="mt-2 text-[14px] font-bold text-[#172b4d]">Belum punya eSIM?</p>
+        <p className="mt-0.5 text-[12px] leading-5 text-muted-foreground">
+          Cari paket sesuai destinasi dan kuota perjalananmu.
+        </p>
+        <button
+          type="button"
+          onClick={onSearchPackages}
+          aria-haspopup="dialog"
+          className="tap mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-brand-red px-3 text-[12px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Cari paket eSIM
+          <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
+        </button>
+      </article>
+    );
+  }
 
   const displayedOrderId =
     selectedOrder?.id ??

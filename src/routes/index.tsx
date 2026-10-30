@@ -12,6 +12,7 @@ import { destinationPhoto } from "@/lib/destination-artwork";
 import { travelGuides } from "@/lib/travel-guides";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
 import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";
+import { EsimPackageResults } from "@/components/esim-package-results";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 import { useReducedMotion } from "motion/react";
 
@@ -58,7 +59,7 @@ function Home() {
   const [hello, setHello] = useState("Halo");
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [searchHint, setSearchHint] = useState("Cari negara atau wilayah");
+  const [searchHint, setSearchHint] = useState("Cari destinasi atau paket eSIM");
   const reduceMotion = useReducedMotion();
   const nav = useNavigate();
   const orders = useOrders();
@@ -66,7 +67,7 @@ function Home() {
   useEffect(() => setHello(greeting()), []);
   useEffect(() => {
     if (reduceMotion || query) {
-      setSearchHint("Cari negara atau wilayah");
+      setSearchHint("Cari destinasi atau paket eSIM");
       return;
     }
 
@@ -174,7 +175,7 @@ function Home() {
           >
             <div className="flex items-center justify-between gap-3">
               <h2 id="home-search-title" className="text-lg font-bold">
-                Cari destinasi
+                Cari destinasi & paket eSIM
               </h2>
               <button
                 type="button"
@@ -191,14 +192,20 @@ function Home() {
                 autoFocus
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={reduceMotion ? "Jepang, Korea, Eropa…" : searchHint}
+                aria-label="Cari destinasi atau paket eSIM"
+                placeholder={reduceMotion ? "Jepang, Korea, 5 GB…" : searchHint}
                 className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
               />
             </label>
             <div className="mt-4 max-h-[min(55vh,24rem)] overflow-y-auto">
+              {query.trim().length > 0 && (
+                <p className="px-1 pb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                  Destinasi
+                </p>
+              )}
               {search(query).length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Belum ada destinasi untuk “{query}”. Coba nama negara lain.
+                <p className="py-3 text-center text-sm text-muted-foreground">
+                  Tidak ada destinasi yang cocok.
                 </p>
               ) : (
                 <div className="divide-y divide-border rounded-2xl bg-surface">
@@ -222,6 +229,7 @@ function Home() {
                   ))}
                 </div>
               )}
+              <EsimPackageResults query={query} onNavigate={() => setSearchOpen(false)} />
             </div>
             <button
               type="button"
@@ -238,7 +246,7 @@ function Home() {
       )}
 
       <Reveal as="section" className="mt-6">
-        <EsimHomeSummaryCard orders={orders} />
+        <EsimHomeSummaryCard orders={orders} onSearchPackages={() => setSearchOpen(true)} />
       </Reveal>
 
       <Stagger className="block">

@@ -9,10 +9,7 @@ import {
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";
-import { searchHomeEsimCatalog } from "@/lib/esim-home-catalog.fn";
 import type { Order } from "@/lib/orders";
-
-vi.mock("@/lib/esim-home-catalog.fn", () => ({ searchHomeEsimCatalog: vi.fn() }));
 
 const NOW = Date.parse("2026-10-31T00:00:00Z");
 
@@ -32,12 +29,12 @@ function order(overrides: Partial<Order> = {}): Order {
   };
 }
 
-function renderCard(orders: Order[] | null) {
+function renderCard(orders: Order[] | null, onSearchPackages: () => void = vi.fn()) {
   const rootRoute = createRootRoute({ component: () => <Outlet /> });
   const homeRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: () => <EsimHomeSummaryCard orders={orders} />,
+    component: () => <EsimHomeSummaryCard orders={orders} onSearchPackages={onSearchPackages} />,
   });
   const finderRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -94,66 +91,20 @@ describe("EsimHomeSummaryCard", () => {
     expect(screen.getByTestId("esim-home-summary-loading")).toHaveAttribute("aria-busy", "true");
   });
 
-  it("offers an in-card catalog search and a full catalog link when no eSIM exists", async () => {
-    renderCard([]);
+  it("points customers without an eSIM to the shared search and the full catalog", async () => {
+    const onSearchPackages = vi.fn();
+    renderCard([], onSearchPackages);
 
     await waitFor(() =>
       expect(screen.getByTestId("esim-home-summary")).toHaveAttribute("data-state", "empty"),
     );
-    expect(screen.getByRole("searchbox", { name: /cari paket eSIM/i })).toBeInTheDocument();
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /cari paket eSIM/i }));
+    expect(onSearchPackages).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("link", { name: /semua paket/i })).toHaveAttribute(
       "href",
       "/esim/finder",
     );
-  });
-
-  it("searches the catalog and opens the selected package", async () => {
-    vi.mocked(searchHomeEsimCatalog).mockResolvedValue({
-      packages: [
-        {
-          packageCode: "JP-5GB-7D",
-          name: "Japan 5GB 7Days",
-          locationCodes: ["JP"],
-          volumeBytes: 5_000_000_000,
-          durationDays: 7,
-          unlimited: false,
-          priceIdr: 125_000,
-          sellable: true,
-        },
-      ],
-      stale: true,
-      hasMore: true,
-    });
-    renderCard([]);
-    const search = await screen.findByRole("searchbox", { name: /cari paket eSIM/i });
-    fireEvent.change(search, { target: { value: "Jepang" } });
-
-    const result = await screen.findByRole("button", { name: /Jepang.*5 GB.*125.000/i });
-    expect(searchHomeEsimCatalog).toHaveBeenCalledWith({ data: "Jepang" });
-    expect(screen.getByRole("link", { name: "Lihat semua paket" })).toHaveAttribute(
-      "href",
-      "/esim/finder",
-    );
-    expect(screen.getByText(/Harga katalog tersimpan/)).toBeInTheDocument();
-    fireEvent.click(result);
-    expect(screen.getByRole("link", { name: /lihat detail paket/i })).toHaveAttribute(
-      "href",
-      "/checkout/JP-5GB-7D",
-    );
-  });
-
-  it("allows retrying when the catalog is temporarily unavailable", async () => {
-    vi.mocked(searchHomeEsimCatalog)
-      .mockRejectedValueOnce(new Error("unavailable"))
-      .mockResolvedValueOnce({ packages: [], stale: false, hasMore: false });
-    renderCard([]);
-    const search = await screen.findByRole("searchbox", { name: /cari paket eSIM/i });
-    fireEvent.change(search, { target: { value: "Jepang" } });
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Daftar paket belum bisa dimuat");
-    fireEvent.click(screen.getByRole("button", { name: "Coba lagi" }));
-    expect(await screen.findByText("Paket tidak ditemukan. Coba kata lain.")).toBeInTheDocument();
-    expect(searchHomeEsimCatalog).toHaveBeenCalledTimes(2);
   });
 
   it("lets a customer switch between purchased eSIMs on the home card", async () => {

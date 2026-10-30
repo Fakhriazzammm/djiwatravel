@@ -12,6 +12,11 @@ describe("Home eSIM dashboard integration", () => {
     expect(homeSource).toContain(
       'import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";',
     );
+    expect(homeSource).toContain(
+      'import { EsimPackageResults } from "@/components/esim-package-results";',
+    );
+    expect(homeSource).toContain("onSearchPackages={() => setSearchOpen(true)}");
+    expect(homeSource).toContain("<EsimPackageResults");
     expect(cardPosition).toBeGreaterThan(-1);
     expect(cardPosition).toBeLessThan(destinationPosition);
     expect(homeSource).not.toContain("Perjalanan aktif");

@@ -23,7 +23,7 @@ full `/my-esim` hub for customers with multiple purchases.
 | State | Customer answer | Primary action | Destination |
 | --- | --- | --- | --- |
 | Loading | `Menyiapkan eSIM kamu…` | none | skeleton |
-| Empty | `Belum punya eSIM?` and a short connection benefit | `Beli eSIM sekarang` | `/esim/finder` |
+| Empty | `Belum punya eSIM?` and a short connection benefit | `Cari paket eSIM` (opens the Home search) | `/checkout/$packageCode` after search; `Semua paket` to `/esim/finder` |
 | Payment/provisioning | Explain that payment or provider processing is still in progress | `Lanjutkan pembayaran` or `Lihat status` | `/order/$id` |
 | Ready | `eSIM siap dipasang` plus package and destination | `Pasang eSIM` | `/my-esim/$id` |
 | Active | Package, destination, measured remaining quota or an explicit unavailable/unlimited label | `Lihat detail eSIM` | `/my-esim/$id` |
@@ -62,15 +62,17 @@ ready/installed order is treated as terminal by `effectiveOrderStatus`.
 The second iteration keeps the same placement and state model but makes the
 card denser:
 
-- Empty state renders `EsimHomeCatalogSearch` instead of a banner: a search
-  field (`Cari paket eSIM`, minimum two characters, 300 ms debounce), popular
-  destination shortcuts, up to four matching packages, a selectable result, and
-  `Lihat detail paket` to `/checkout/$packageCode`. `Semua paket` still links to
-  `/esim/finder`. Results come from `searchHomeEsimCatalog`, which filters the
-  reseller catalog, applies `isRecommendablePackage` and the sellability check
-  on the server, and returns only `ViewPackage` fields so provider cost and
-  markup never reach the browser. A stale or truncated catalog is disclosed in
-  the card; a failed lookup offers `Coba lagi`.
+- Empty state is a compact call to action, not a second search field: a
+  `Cari paket eSIM` button opens the single Home search dialog, and `Semua paket`
+  links to `/esim/finder`. The Home dialog (`Cari destinasi & paket eSIM`) owns
+  the only query input: it lists matching destinations and, for queries of at
+  least two characters, `EsimPackageResults` with up to four `searchHomeEsimCatalog`
+  packages that link to `/checkout/$packageCode`. The dialog closes on
+  navigation. The server function filters the reseller catalog, applies
+  `isRecommendablePackage` and the sellability check, and returns only
+  `ViewPackage` fields so provider cost and markup never reach the browser; a
+  stale or truncated catalog is disclosed in the results, and a failed lookup
+  offers `Coba lagi`.
 - Owned-eSIM states use the compact dark panel with the brand-red accent, a
   circular quota ring instead of a wide progress bar, and a two-up action row.
   When multiple orders exist, a `Pilih eSIM` selector switches which order the
