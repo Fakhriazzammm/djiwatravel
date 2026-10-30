@@ -1,6 +1,7 @@
 import { ChevronRight, Clock3, Globe2, QrCode, Search, Smartphone } from "lucide-react";
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { motion, useReducedMotion } from "motion/react";
 import {
   buildEsimHomeSummary,
   esimHomeOrderLocation,
@@ -63,6 +64,8 @@ function SummaryLink({
 
 const ROW_CLASS =
   "tap flex min-h-[52px] w-full items-center gap-3 px-4 text-left text-[13.5px] leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
+const SUMMARY_CARD_CLASS =
+  "overflow-hidden rounded-[24px] border border-border/60 bg-secondary shadow-[0_8px_24px_-22px_rgba(0,0,0,0.3)]";
 
 function RowShell({ children }: { children: ReactNode }) {
   return (
@@ -191,6 +194,33 @@ function Tile({ tone, children }: { tone: "blue" | "orange" | "red"; children: R
   );
 }
 
+function FloatingEsimArtwork() {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <span className="relative grid size-14 shrink-0 place-items-center" aria-hidden="true">
+      <span className="absolute inset-1 rounded-full border border-border/60 bg-surface/70" />
+      <motion.img
+        src="/assets/esim/esim-chip-color-v1.png"
+        alt=""
+        width={256}
+        height={228}
+        loading="eager"
+        decoding="async"
+        draggable={false}
+        initial={false}
+        animate={
+          reduceMotion ? { y: 0, rotate: 0 } : { y: [0, -4, 0], rotate: [0, 1.2, 0, -1.2, 0] }
+        }
+        transition={
+          reduceMotion ? { duration: 0 } : { duration: 4.6, ease: "easeInOut", repeat: Infinity }
+        }
+        className="relative z-10 size-[54px] object-contain drop-shadow-[0_3px_5px_rgba(0,0,0,0.14)]"
+      />
+    </span>
+  );
+}
+
 function metaLine(summary: EsimHomeSummary, order: Order | undefined): string {
   if (summary.kind === "active" || summary.kind === "low") {
     return [
@@ -272,21 +302,15 @@ export function EsimHomeSummaryCard({
 
   if (summary.kind === "empty") {
     return (
-      <article
-        data-testid="esim-home-summary"
-        data-state="empty"
-        className="overflow-hidden rounded-[24px] border border-border/60 bg-surface shadow-[0_10px_30px_-26px_rgba(23,43,77,0.55)]"
-      >
-        <div className="flex items-center justify-between gap-2 px-4 pt-3.5">
-          <h2 className="flex min-w-0 items-center gap-2.5 text-[13px] font-bold tracking-[-0.01em] text-[#172b4d]">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-[9px] bg-brand-red-soft text-brand-red">
-              <Smartphone className="size-[15px]" aria-hidden="true" />
-            </span>
+      <article data-testid="esim-home-summary" data-state="empty" className={SUMMARY_CARD_CLASS}>
+        <div className="flex min-h-[58px] items-center justify-between gap-2 px-4 pt-1">
+          <h2 className="min-w-0 text-[13px] font-bold tracking-[-0.01em] text-foreground">
             eSIM perjalanan
           </h2>
+          <FloatingEsimArtwork />
         </div>
-        <div className="px-4 pt-2">
-          <p className="text-[15px] font-bold tracking-[-0.015em] text-[#172b4d]">
+        <div className="px-4 pt-1">
+          <p className="text-[15px] font-bold tracking-[-0.015em] text-foreground">
             Belum punya eSIM?
           </p>
           <p className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground">
@@ -298,9 +322,9 @@ export function EsimHomeSummaryCard({
             type="button"
             onClick={onSearchPackages}
             aria-haspopup="dialog"
-            className={`${ROW_CLASS} font-semibold text-[#172b4d]`}
+            className={`${ROW_CLASS} font-semibold text-foreground`}
           >
-            <span className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-brand-red-soft text-brand-red">
+            <span className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-surface text-muted-foreground">
               <Search className="size-[15px]" aria-hidden="true" />
             </span>
             <RowShell>
@@ -313,9 +337,9 @@ export function EsimHomeSummaryCard({
           <SummaryLink
             target={{ kind: "finder" }}
             ariaLabel="Semua paket eSIM"
-            className={`${ROW_CLASS} border-t border-[rgba(60,60,67,0.12)] font-semibold text-[#172b4d]`}
+            className={`${ROW_CLASS} border-t border-[rgba(60,60,67,0.12)] font-semibold text-foreground`}
           >
-            <span className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-[#E9F2FF] text-[#0A84FF]">
+            <span className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-surface text-muted-foreground">
               <Globe2 className="size-[15px]" aria-hidden="true" />
             </span>
             <RowShell>
@@ -366,22 +390,20 @@ export function EsimHomeSummaryCard({
     <article
       data-testid="esim-home-summary"
       data-state={summary.kind}
-      className="overflow-hidden rounded-[24px] border border-border/60 bg-surface shadow-[0_10px_30px_-26px_rgba(23,43,77,0.55)]"
+      className={SUMMARY_CARD_CLASS}
     >
-      <div className="flex items-center justify-between gap-2 px-4 pt-3.5">
-        <h2 className="flex min-w-0 items-center gap-2.5 text-[13px] font-bold tracking-[-0.01em] text-[#172b4d]">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-[9px] bg-brand-red-soft text-brand-red">
-            <Globe2 className="size-[15px]" aria-hidden="true" />
-          </span>
-          eSIM kamu
-        </h2>
-        <Badge label={badge.label} tone={badge.tone} />
+      <div className="flex min-h-[58px] items-center justify-between gap-2 px-4 pt-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="text-[13px] font-bold tracking-[-0.01em] text-foreground">eSIM kamu</h2>
+          <Badge label={badge.label} tone={badge.tone} />
+        </div>
+        <FloatingEsimArtwork />
       </div>
 
-      <div className="px-4 pb-3.5 pt-3">
+      <div className="px-4 pb-3.5 pt-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[16.5px] font-bold leading-[1.25] tracking-[-0.022em] text-[#172b4d]">
+            <p className="text-[16.5px] font-bold leading-[1.25] tracking-[-0.022em] text-foreground">
               {summary.kind === "active" || summary.kind === "low" || summary.kind === "ready" ? (
                 <>
                   <span aria-hidden="true">{summary.flag}</span> {summary.location ?? summary.title}
@@ -412,7 +434,7 @@ export function EsimHomeSummaryCard({
           <>
             {summary.quotaValue ? (
               <p className="mt-3 text-[12px] leading-5 text-muted-foreground">
-                <span className="text-[15px] font-bold tracking-[-0.01em] text-[#172b4d]">
+                <span className="text-[15px] font-bold tracking-[-0.01em] text-foreground">
                   {summary.quotaValue}
                 </span>{" "}
                 {summary.quotaCaption}
@@ -466,7 +488,7 @@ export function EsimHomeSummaryCard({
             <SummaryLink
               target={{ kind: "list" }}
               ariaLabel="Lihat semua eSIM"
-              className={`${ROW_CLASS} font-semibold text-[#172b4d]`}
+              className={`${ROW_CLASS} font-semibold text-foreground`}
             >
               <RowShell>Lihat semua eSIM</RowShell>
             </SummaryLink>
