@@ -47,7 +47,11 @@ describe("travel guide SEO registry", () => {
     }
     const citedGuides = added.filter((guide) => guide.sources?.length);
     expect(citedGuides).toHaveLength(added.length);
-    expect(citedGuides.every((guide) => guide.sources?.every((source) => source.url.startsWith("https://")))).toBe(true);
+    expect(
+      citedGuides.every((guide) =>
+        guide.sources?.every((source) => source.url.startsWith("https://")),
+      ),
+    ).toBe(true);
   });
 
   it("renders guide images and cited source links in article pages", () => {
