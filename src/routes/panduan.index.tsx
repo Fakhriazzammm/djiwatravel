@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Page, BackBar, SectionTitle } from "@/components/shell";
-import { travelGuides } from "@/lib/travel-guides";
+import { formatTravelGuideDate, getNewestTravelGuides } from "@/lib/travel-guides";
 
 const BASE_URL = "https://djiwatravel.com";
 
@@ -26,9 +26,7 @@ export const Route = createFileRoute("/panduan/")({
 });
 
 function TravelGuideIndex() {
-  const newestGuides = [...travelGuides].sort(
-    (a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt),
-  );
+  const newestGuides = getNewestTravelGuides();
 
   return (
     <Page>
@@ -57,6 +55,12 @@ function TravelGuideIndex() {
                 {guide.eyebrow}
               </p>
               <h2 className="mt-2 text-lg font-bold leading-snug">{guide.title}</h2>
+              <time
+                dateTime={guide.publishedAt}
+                className="mt-1 block text-xs font-medium text-muted-foreground"
+              >
+                Terbit {formatTravelGuideDate(guide.publishedAt)}
+              </time>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{guide.description}</p>
               <Link
                 to="/panduan/$slug"

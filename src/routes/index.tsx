@@ -9,14 +9,14 @@ import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { destinationPhoto } from "@/lib/destination-artwork";
-import { travelGuides } from "@/lib/travel-guides";
+import { formatTravelGuideDate, getNewestTravelGuides } from "@/lib/travel-guides";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
 import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";
 import { EsimPackageResults } from "@/components/esim-package-results";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 import { useReducedMotion } from "motion/react";
 
-const featuredGuides = travelGuides.slice(0, 3);
+const featuredGuides = getNewestTravelGuides(3);
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -352,6 +352,12 @@ function Home() {
                   <span className="mt-0.5 block text-[14px] font-semibold leading-snug">
                     {guide.title}
                   </span>
+                  <time
+                    dateTime={guide.publishedAt}
+                    className="mt-1 block text-xs font-medium text-muted-foreground"
+                  >
+                    Terbit {formatTravelGuideDate(guide.publishedAt)}
+                  </time>
                 </span>
                 <ChevronRight
                   className="size-5 shrink-0 text-muted-foreground"

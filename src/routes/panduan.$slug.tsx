@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { BackBar, Page, SectionTitle } from "@/components/shell";
-import { getTravelGuide } from "@/lib/travel-guides";
+import { formatTravelGuideDate, getTravelGuide } from "@/lib/travel-guides";
 import { GuideShareActions } from "@/components/guide-share-actions";
 
 const BASE_URL = "https://djiwatravel.com";
@@ -82,7 +82,13 @@ function TravelGuideDetail() {
           </figure>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
-          {guide.readTime} · Diperbarui {guide.updatedAt}
+          <time dateTime={guide.publishedAt}>
+            Terbit {formatTravelGuideDate(guide.publishedAt)}
+          </time>
+          {guide.updatedAt !== guide.publishedAt && (
+            <> · Diperbarui {formatTravelGuideDate(guide.updatedAt)}</>
+          )}
+          {` · ${guide.readTime}`}
         </p>
         <GuideShareActions title={guide.title} url={`${BASE_URL}/panduan/${guide.slug}`} />
         <div className="mt-8 space-y-5 text-[15px] leading-7 text-foreground">

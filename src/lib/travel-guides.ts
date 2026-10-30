@@ -317,4 +317,20 @@ export function getTravelGuide(slug: string): TravelGuide | undefined {
   return travelGuides.find((guide) => guide.slug === slug);
 }
 
+export function getNewestTravelGuides(limit?: number): TravelGuide[] {
+  const newestFirst = [...travelGuides].sort(
+    (a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt),
+  );
+  return limit === undefined ? newestFirst : newestFirst.slice(0, limit);
+}
+
+export function formatTravelGuideDate(value: string): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T00:00:00Z`));
+}
+
 export const travelGuideSlugs = travelGuides.map(({ slug }) => slug);
