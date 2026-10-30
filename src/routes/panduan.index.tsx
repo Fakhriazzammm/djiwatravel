@@ -26,6 +26,10 @@ export const Route = createFileRoute("/panduan/")({
 });
 
 function TravelGuideIndex() {
+  const newestGuides = [...travelGuides].sort(
+    (a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt),
+  );
+
   return (
     <Page>
       <BackBar title="Panduan Travel" />
@@ -37,7 +41,7 @@ function TravelGuideIndex() {
       <section className="mt-8" aria-labelledby="guide-list-title">
         <SectionTitle>Artikel terbaru</SectionTitle>
         <div className="divide-y divide-border overflow-hidden rounded-2xl bg-surface">
-          {travelGuides.map((guide) => (
+          {newestGuides.map((guide) => (
             <article key={guide.slug} className="p-4">
               {guide.image && (
                 <img
