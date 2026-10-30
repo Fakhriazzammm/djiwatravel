@@ -20,6 +20,7 @@ import { CUSTOMER_PROFILE_UPDATED_EVENT, loadCustomerProfile } from "@/lib/custo
 import { toViewPackage } from "@/lib/package-view";
 import { DeviceCompatibility } from "@/components/device-compatibility";
 import { nextFrame, paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
+import { trackAnalytics } from "@/lib/analytics";
 
 export const Route = createFileRoute("/checkout/$id")({
   loader: async ({ params }) => {
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/checkout/$id")({
       { name: "description", content: "Bayar eSIM dengan QRIS atau Virtual Account." },
       { property: "og:title", content: "Checkout — Djiwa Travel" },
       { property: "og:description", content: "Bayar eSIM dengan QRIS atau Virtual Account." },
-      { property: "robots", content: "noindex" },
+      { name: "robots", content: "noindex" },
     ],
   }),
   component: Checkout,
@@ -97,6 +98,7 @@ function Checkout() {
 
   const pay = async () => {
     if (submitting) return;
+    trackAnalytics("checkout_start", `/plan/${pkg.packageCode}`);
     setSubmitting(true);
     setPaymentProgress("preparing");
     setError("");

@@ -176,21 +176,17 @@ export const Route = createFileRoute("/destination/$code")({
       : "Paket eSIM untuk traveler Indonesia. Aktif otomatis, bayar QRIS atau VA.";
     const code = loaderData?.destination.code.toLowerCase() ?? "";
     const image = destinationOgImage(code, BASE_URL);
-    const sellablePackages = loaderData?.packages.filter((pkg) => pkg.sellable) ?? [];
-    const productSchema = sellablePackages.map((pkg) => ({
-      "@type": "Product",
-      name: packageDestinationLabel(pkg),
-      description: `${packageDataLabel(pkg)} untuk ${packageCoverageLabel(pkg)} selama ${pkg.durationDays} hari.`,
-      sku: pkg.packageCode,
-      brand: { "@type": "Brand", name: "Djiwa Travel" },
-      offers: {
-        "@type": "Offer",
-        url: `${BASE_URL}/checkout/${encodeURIComponent(pkg.packageCode)}`,
-        priceCurrency: "IDR",
-        price: pkg.priceIdr,
-        availability: "https://schema.org/InStock",
-      },
-    }));
+    const listedPackages = loaderData?.packages ?? [];
+    const packageListSchema = {
+      "@type": "ItemList",
+      name: `Paket eSIM ${loaderData?.destination.nameId ?? ""}`,
+      itemListElement: listedPackages.map((pkg, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: packageDestinationLabel(pkg),
+        url: `${BASE_URL}/plan/${encodeURIComponent(pkg.packageCode)}`,
+      })),
+    };
     const breadcrumbSchema = {
       "@type": "BreadcrumbList",
       itemListElement: [
@@ -225,7 +221,7 @@ export const Route = createFileRoute("/destination/$code")({
               type: "application/ld+json",
               children: JSON.stringify({
                 "@context": "https://schema.org",
-                "@graph": [breadcrumbSchema, ...productSchema],
+                "@graph": [breadcrumbSchema, packageListSchema],
               }),
             },
           ]
@@ -286,6 +282,11 @@ function Destination() {
     <Page>
       <BackBar title={`${destination.flag} ${destination.nameId}`} fallbackTo="/esim/finder" />
       <h1 className="large-title">Paket eSIM untuk {destination.nameId}</h1>
+      <p className="mt-3 max-w-prose text-[15px] leading-7 text-muted-foreground">
+        Bandingkan paket eSIM {destination.nameId} berdasarkan kuota, masa aktif, cakupan, dan
+        harga yang tercantum. Pilih masa aktif sesuai lama perjalanan, lalu buka detail paket untuk
+        memeriksa informasi sebelum checkout.
+      </p>
       <p className="mt-2 inline-flex rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
         {destination.region === "Regional"
           ? "Cakupan regional · beberapa negara"

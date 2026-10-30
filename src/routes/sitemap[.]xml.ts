@@ -34,7 +34,7 @@ export const Route = createFileRoute("/sitemap.xml")({
       GET: async () => {
         const [indexed, plans] = await Promise.all([
           getListableDestinations(5_000),
-          getIndexablePlans(5_000).catch(() => []),
+          getIndexablePlans(5_000),
         ]);
         const entries = [
           ...STATIC_PATHS.map(({ path, priority, changefreq }) =>
