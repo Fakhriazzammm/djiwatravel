@@ -11,6 +11,7 @@ import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { destinationPhoto } from "@/lib/destination-artwork";
 import { travelGuides } from "@/lib/travel-guides";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
+import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 import { useReducedMotion } from "motion/react";
 
@@ -111,14 +112,6 @@ function Home() {
       cancelled = true;
     };
   }, []);
-  const active = orders?.find((o) => o.status === "READY" || o.status === "INSTALLED");
-  const activeName = active?.packageName ?? active?.packageId;
-  const activeLocation = active?.locationCodes?.join(", ") || "Regional";
-  const activeQuota =
-    active?.volumeBytes == null
-      ? "Unlimited"
-      : `${(active.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
-  const activeDuration = active?.durationDays ?? 0;
   const accountLabel = user?.name?.trim().split(/\s+/)[0] || "Akun";
 
   const services = [
@@ -244,32 +237,9 @@ function Home() {
         </div>
       )}
 
-      {active && (
-        <Reveal as="section" className="mt-6">
-          <SectionTitle action={<Link to="/my-esim">Lihat Semua ›</Link>}>
-            Perjalanan aktif
-          </SectionTitle>
-          <Link
-            to="/my-esim/$id"
-            params={{ id: active.id }}
-            className="tap flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <span
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xl"
-              aria-hidden="true"
-            >
-              🌐
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-semibold">{activeName}</span>
-              <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                {activeLocation} · {activeQuota} · {activeDuration} hari
-              </span>
-            </span>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          </Link>
-        </Reveal>
-      )}
+      <Reveal as="section" className="mt-6">
+        <EsimHomeSummaryCard orders={orders} />
+      </Reveal>
 
       <Stagger className="block">
         <Reveal as="section" className="mt-7">
