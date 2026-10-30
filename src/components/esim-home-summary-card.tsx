@@ -60,16 +60,16 @@ export function EsimHomeSummaryCard({ orders }: { orders: Order[] | null }) {
         className="overflow-hidden rounded-3xl bg-primary p-5 text-primary-foreground"
       >
         <div className="flex items-center gap-3">
-          <span className="flex size-11 shrink-0 animate-pulse items-center justify-center rounded-2xl bg-white/10">
+          <span className="flex size-11 shrink-0 animate-pulse motion-reduce:animate-none items-center justify-center rounded-2xl bg-white/10">
             <Smartphone className="size-5 text-white/70" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-3 w-24 animate-pulse rounded-full bg-white/20" />
-            <div className="h-5 w-44 max-w-full animate-pulse rounded-full bg-white/20" />
+            <div className="h-3 w-24 animate-pulse motion-reduce:animate-none rounded-full bg-white/20" />
+            <div className="h-5 w-44 max-w-full animate-pulse motion-reduce:animate-none rounded-full bg-white/20" />
           </div>
         </div>
-        <div className="mt-5 h-3 w-36 animate-pulse rounded-full bg-white/15" />
-        <div className="mt-4 h-11 animate-pulse rounded-xl bg-white/10" />
+        <div className="mt-5 h-3 w-36 animate-pulse motion-reduce:animate-none rounded-full bg-white/15" />
+        <div className="mt-4 h-11 animate-pulse motion-reduce:animate-none rounded-xl bg-white/10" />
       </section>
     );
   }

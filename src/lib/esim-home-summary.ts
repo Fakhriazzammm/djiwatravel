@@ -62,7 +62,7 @@ function checkoutAction(order: Order, status: OrderStatus): EsimHomeAction {
   };
 }
 
-function quotaLabel(order: Order, usage: UsageView): string {
+function quotaLabel(usage: UsageView): string {
   if (
     usage.kind === "measured" &&
     usage.remainingBytes !== null &&
@@ -112,7 +112,7 @@ function buildActiveSummary(
     eyebrow: low ? "Kuota hampir habis" : "eSIM aktif",
     title: order.packageName ?? order.packageId,
     subtitle: packageSubtitle(order),
-    quotaLabel: quotaLabel(order, usage),
+    quotaLabel: quotaLabel(usage),
     remainingPercent: usage.remainingPercent,
     target: { kind: "detail", id: order.id },
     primaryAction: low ? renewalAction : detailAction,
@@ -175,7 +175,9 @@ function buildHistorySummary(
     remainingPercent: null,
     target: { kind: "list" },
     primaryAction: checkoutAction(order, status),
-    secondaryAction: { label: "Lihat semua eSIM", target: { kind: "list" } },
+    secondaryAction: hasMultiple
+      ? undefined
+      : { label: "Lihat semua eSIM", target: { kind: "list" } },
     hasMultiple,
   };
 }
