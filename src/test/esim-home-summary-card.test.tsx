@@ -101,25 +101,67 @@ describe("EsimHomeSummaryCard", () => {
     expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /cari paket eSIM/i }));
     expect(onSearchPackages).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("link", { name: /semua paket/i })).toHaveAttribute(
-      "href",
-      "/esim/finder",
-    );
+    const catalogLinks = screen.getAllByRole("link", { name: /semua paket/i });
+    expect(catalogLinks).toHaveLength(1);
+    expect(catalogLinks[0]).toHaveAttribute("href", "/esim/finder");
   });
 
-  it("lets a customer switch between purchased eSIMs on the home card", async () => {
+  it("lets a customer switch between purchased eSIMs with the page dots", async () => {
     renderCard([
       order({ packageName: "Jepang 5GB", usedGb: 2.5 }),
       order({ id: "order-2", packageName: "Singapura 5GB", locationCodes: ["SG"], usedGb: 1 }),
     ]);
 
-    const select = await screen.findByRole("combobox", { name: "Pilih eSIM" });
-    fireEvent.change(select, { target: { value: "order-2" } });
-    expect(screen.getByText("Singapura 5GB", { selector: "p" })).toBeInTheDocument();
+    expect(await screen.findByRole("radiogroup", { name: "Pilih eSIM" })).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(screen.getByText(/Jepang/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Singapura/ }));
+    expect(screen.getByText(/Singapura/)).toBeInTheDocument();
     expect(screen.getByText("4.0 GB")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /lihat eSIM/i })).toHaveAttribute(
       "href",
       "/my-esim/order-2",
+    );
+  });
+
+  it("moves between eSIMs with the arrow keys", async () => {
+    renderCard([
+      order({ usedGb: 2.5 }),
+      order({ id: "order-2", packageName: "Singapura 5GB", locationCodes: ["SG"], usedGb: 1 }),
+    ]);
+
+    const group = await screen.findByRole("radiogroup", { name: "Pilih eSIM" });
+    const radios = screen.getAllByRole("radio");
+    expect(radios[0]).toHaveAttribute("tabindex", "0");
+    expect(radios[1]).toHaveAttribute("tabindex", "-1");
+    fireEvent.keyDown(group, { key: "ArrowRight" });
+    expect(screen.getByText("4.0 GB")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Singapura/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
+
+  it("prioritizes an unfinished payment over an already active eSIM", async () => {
+    renderCard([
+      order({ usedGb: 2.5 }),
+      order({
+        id: "order-2",
+        packageName: "Singapura 5GB",
+        locationCodes: ["SG"],
+        status: "WAITING_PAYMENT",
+        createdAt: NOW + 1_000,
+      }),
+    ]);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("esim-home-summary")).toHaveAttribute("data-state", "pending"),
+    );
+    expect(screen.getByText("Menunggu bayar")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Lanjutkan pembayaran" })).toHaveAttribute(
+      "href",
+      "/order/order-2",
     );
   });
 
@@ -129,6 +171,7 @@ describe("EsimHomeSummaryCard", () => {
     await waitFor(() =>
       expect(screen.getByTestId("esim-home-summary")).toHaveAttribute("data-state", "active"),
     );
+    expect(screen.getByText("Aktif")).toBeInTheDocument();
     expect(screen.getByText("2.5 GB")).toBeInTheDocument();
     expect(screen.getByText("dari 5.0 GB · 50% tersisa")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Sisa kuota eSIM" })).toHaveAttribute(
@@ -137,16 +180,35 @@ describe("EsimHomeSummaryCard", () => {
     );
   });
 
+  it("states that usage is unavailable instead of inventing a percentage", async () => {
+    renderCard([order()]);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Pemakaian belum dilaporkan penyedia/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("shows the real active-until date when the provider order carries one", async () => {
+    const expiresAt = Date.now() + 5 * 86_400_000;
+    const date = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(
+      new Date(expiresAt),
+    );
+    renderCard([order({ usedGb: 2.5, expiresAt })]);
+
+    expect(await screen.findByText(new RegExp(`Aktif hingga ${date}`))).toBeInTheDocument();
+  });
+
   it("makes low quota visible and offers renewal", async () => {
     renderCard([order({ usedGb: 4.5 })]);
 
-    await waitFor(() => expect(screen.getByText("Kuota hampir habis")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Kuota menipis")).toBeInTheDocument());
     expect(screen.getByRole("link", { name: /Beli paket lagi/ })).toBeInTheDocument();
   });
 
   it("offers installation for a ready eSIM", async () => {
     renderCard([order({ status: "READY" })]);
-    await waitFor(() => expect(screen.getByText("eSIM siap dipasang")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Siap dipasang")).toBeInTheDocument());
     expect(screen.getByRole("link", { name: /Pasang eSIM/ })).toHaveAttribute(
       "href",
       "/my-esim/order-1",
@@ -156,6 +218,7 @@ describe("EsimHomeSummaryCard", () => {
   it("offers status instead of another purchase for a provisioning failure", async () => {
     renderCard([order({ status: "PROVISIONING_FAILED" })]);
     await waitFor(() => expect(screen.getByText("eSIM perlu bantuan")).toBeInTheDocument());
+    expect(screen.getByText("Butuh bantuan")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Lihat status/ })).toHaveAttribute(
       "href",
       "/order/order-1",
@@ -183,5 +246,6 @@ describe("EsimHomeSummaryCard", () => {
       "href",
       "/my-esim",
     );
+    expect(screen.queryByRole("radiogroup", { name: "Pilih eSIM" })).not.toBeInTheDocument();
   });
 });
