@@ -1,6 +1,6 @@
 import { redirect } from "@tanstack/react-router";
 
-import { isAdminRequest } from "@/lib/admin-guard.server";
+import { isAdminRequest } from "@/lib/admin-guard.fn";
 
 /**
  * Route guard for /admin/*.

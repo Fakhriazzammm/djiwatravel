@@ -8,7 +8,7 @@ import {
   SectionHeading,
   StatusPill,
 } from "@/components/admin-shell";
-import { getAdminReadiness } from "@/lib/admin-readiness.server";
+import { getAdminReadiness } from "@/lib/admin-readiness.fn";
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),

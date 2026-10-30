@@ -139,17 +139,24 @@ export function walletScopeInput(data: unknown = {}): { scope: WalletScope } {
   return { scope: parseWalletScope(scope) };
 }
 
+export const getCustomerWalletInput = walletScopeInput;
+export const getCustomerWalletHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof getCustomerWalletInput>;
+}) => {
+  const { getRequestHeader } = await import("@tanstack/react-start/server");
+  return readCanonicalWalletForRequest(
+    new Request("https://djiwatravel.com/api/customer-wallet", {
+      headers: { cookie: getRequestHeader("cookie") ?? "" },
+    }),
+    data.scope,
+  );
+};
+
 export const getCustomerWallet = createServerFn({ method: "GET" })
   .validator(walletScopeInput)
-  .handler(async ({ data }) => {
-    const { getRequestHeader } = await import("@tanstack/react-start/server");
-    return readCanonicalWalletForRequest(
-      new Request("https://djiwatravel.com/api/customer-wallet", {
-        headers: { cookie: getRequestHeader("cookie") ?? "" },
-      }),
-      data.scope,
-    );
-  });
+  .handler(getCustomerWalletHandler);
 
 export const customerWalletContract = {
   auth: "Better Auth session and canonical customer profile are required",

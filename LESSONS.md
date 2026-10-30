@@ -149,3 +149,22 @@ Use this structure for each new lesson:
   healthy, and publicly reachable as separate states.
 - Verification boundary: a deploy command can prove its own checks only for the
   target it reached; it does not prove the separate Djiwa Tentram VPS.
+
+### 2026-10-30 — Server-only mocks can freeze browser hydration
+
+- Symptom: production returns HTML and assets with HTTP 200, but the page stays
+  white or becomes unresponsive after the splash disappears.
+- Evidence: the served destination/order chunks contained `[import-protection
+  mock]`; awaiting the mock's thenable prevented browser progress. Removing its
+  thenable behavior in an isolated browser request exposed invalid mock data.
+- Root cause: browser routes imported callable exports from `.server.ts` modules.
+  Import protection replaced them with mocks instead of usable server RPC stubs.
+- Safe fix: declare RPCs in `.fn.ts`, dynamically import validated server handlers,
+  and keep provider data, credentials, and ownership checks in `.server.ts`.
+  Checkout and plan RPCs return display projections only. Shared support contact
+  constants belong in a client-safe module.
+- Prevention rule: production import-protection violations must fail the build.
+  Test hydration and client navigation against the built Node artifact; HTTP 200
+  and splash animation alone cannot prove an interactive application.
+- Verification boundary: local built-artifact browser checks establish the fix;
+  production remains unchanged until a separately authorized release.

@@ -23,7 +23,7 @@ import {
 } from "@/components/shell";
 import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
 import { hasGuestOrderAccess, refreshOrdersFromServer, useOrders } from "@/lib/orders";
-import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import { TravelTimeline } from "@/components/travel-timeline";
 import { TravelChecklist } from "@/components/travel-checklist";

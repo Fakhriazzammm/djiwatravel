@@ -8,7 +8,7 @@ import {
   ServiceCategoryGrid,
   ServiceSectionHeading,
 } from "@/components/explore/service-category-grid";
-import { getListableDestinations } from "@/lib/destination-availability.server";
+import { getListableDestinations } from "@/lib/destination-availability.fn";
 import { exploreAvailability } from "@/lib/explore-availability";
 
 export const Route = createFileRoute("/explore")({
@@ -157,34 +157,40 @@ function Explore() {
               initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: reduceMotion ? 0 : -4 }}
-              transition={reduceMotion ? { duration: 0.1 } : { duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
+              transition={
+                reduceMotion ? { duration: 0.1 } : { duration: 0.18, ease: [0.32, 0.72, 0, 1] }
+              }
               className="absolute inset-x-0 top-[calc(100%+8px)] z-20 max-h-72 overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-md"
             >
               <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Hasil pencarian
               </p>
-              {searchOptions.length > 0 ? searchOptions.map((destination) => (
-                <motion.button
-                  layout={!reduceMotion}
-                  key={destination.code}
-                  type="button"
-                  className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm hover:bg-secondary"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    setQ(destination.nameId);
-                    setSearchFocused(false);
-                    setSearchMessage("");
-                    void router.navigate({
-                      to: "/destination/$code",
-                      params: { code: destination.code.toLowerCase() },
-                    });
-                  }}
-                >
-                  <span aria-hidden="true">{destination.flag}</span>
-                  <span className="font-medium">{destination.nameId}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{destination.region}</span>
-                </motion.button>
-              )) : (
+              {searchOptions.length > 0 ? (
+                searchOptions.map((destination) => (
+                  <motion.button
+                    layout={!reduceMotion}
+                    key={destination.code}
+                    type="button"
+                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm hover:bg-secondary"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setQ(destination.nameId);
+                      setSearchFocused(false);
+                      setSearchMessage("");
+                      void router.navigate({
+                        to: "/destination/$code",
+                        params: { code: destination.code.toLowerCase() },
+                      });
+                    }}
+                  >
+                    <span aria-hidden="true">{destination.flag}</span>
+                    <span className="font-medium">{destination.nameId}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {destination.region}
+                    </span>
+                  </motion.button>
+                ))
+              ) : (
                 <p className="px-3 py-3 text-sm text-muted-foreground" role="status">
                   Tidak ada destinasi yang cocok.
                 </p>

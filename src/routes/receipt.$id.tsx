@@ -13,7 +13,7 @@ import {
   useOrders,
   type Order,
 } from "@/lib/orders";
-import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
+import { verifyMayarPayment } from "@/lib/mayar-settlement.fn";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import {
@@ -26,7 +26,7 @@ import {
   type ReceiptDocument,
 } from "@/lib/receipt-print";
 import { rupiah } from "@/lib/pricing";
-import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { OfflineSnapshotBanner } from "@/components/offline-snapshot-banner";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
 import {

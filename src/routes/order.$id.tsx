@@ -33,9 +33,9 @@ import {
   shouldNotifyReady,
   writeNotifyPreference,
 } from "@/lib/esim-notify";
-import { verifyMayarPayment } from "@/lib/mayar-settlement.server";
+import { verifyMayarPayment } from "@/lib/mayar-settlement.fn";
 import { paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
-import { SUPPORT_WHATSAPP_URL } from "@/lib/guest-order-access.server";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
 import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
 import { TravelTimeline } from "@/components/travel-timeline";

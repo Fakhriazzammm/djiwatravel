@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
 import { Wallet } from "@/routes/wallet";
-import { getCustomerWallet } from "@/lib/customer-wallet.server";
+import { getCustomerWallet } from "@/lib/customer-wallet.fn";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -11,11 +11,14 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   return {
     ...router,
     Outlet: () => null,
-    useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => unknown }) =>
-      select({ location: { pathname: "/wallet" } }),
+    useRouterState: ({
+      select,
+    }: {
+      select: (state: { location: { pathname: string } }) => unknown;
+    }) => select({ location: { pathname: "/wallet" } }),
   };
 });
-vi.mock("@/lib/customer-wallet.server", () => ({ getCustomerWallet: vi.fn() }));
+vi.mock("@/lib/customer-wallet.fn", () => ({ getCustomerWallet: vi.fn() }));
 vi.mock("@/lib/use-better-auth-user", () => ({ useBetterAuthUser: vi.fn() }));
 vi.mock("@/components/shell", () => ({
   Page: ({ children }: { children: ReactNode }) => <div>{children}</div>,

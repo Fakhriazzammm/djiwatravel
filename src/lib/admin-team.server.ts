@@ -41,7 +41,9 @@ export function buildAdminTeamView(emails: readonly string[]): AdminTeamView {
   };
 }
 
-export const getAdminTeam = createServerFn({ method: "GET" }).handler(async () => {
+export const getAdminTeamHandler = async () => {
   await requireAdmin();
   return buildAdminTeamView(adminEmails());
-});
+};
+
+export const getAdminTeam = createServerFn({ method: "GET" }).handler(getAdminTeamHandler);

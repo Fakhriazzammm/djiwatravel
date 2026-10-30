@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations, search } from "@/lib/catalog";
-import { getHomeDestinationFeed } from "@/lib/destination-availability.server";
+import { getHomeDestinationFeed } from "@/lib/destination-availability.fn";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
@@ -25,10 +25,14 @@ export const Route = createFileRoute("/")({
         content:
           "Pilih paket eSIM untuk perjalanan internasional. Bandingkan kuota dan masa aktif, lalu siapkan koneksi sebelum berangkat bersama Djiwa Travel.",
       },
-      { property: "og:title", content: "eSIM Internasional untuk Traveler Indonesia | Djiwa Travel" },
+      {
+        property: "og:title",
+        content: "eSIM Internasional untuk Traveler Indonesia | Djiwa Travel",
+      },
       {
         property: "og:description",
-        content: "Pilih paket eSIM internasional untuk traveler Indonesia dan siapkan koneksi sebelum berangkat.",
+        content:
+          "Pilih paket eSIM internasional untuk traveler Indonesia dan siapkan koneksi sebelum berangkat.",
       },
       { property: "og:url", content: "https://djiwatravel.com/" },
     ],

@@ -350,9 +350,13 @@ export async function duplicateTripRecord(tripId: string) {
   }
 }
 
+export const duplicateTripInput = (data: z.input<typeof tripIdSchema>) => tripIdSchema.parse(data);
+export const duplicateTripHandler = ({ data }: { data: ReturnType<typeof duplicateTripInput> }) =>
+  duplicateTripRecord(data.tripId);
+
 export const duplicateTrip = createServerFn({ method: "POST" })
   .validator(tripIdSchema)
-  .handler(({ data }) => duplicateTripRecord(data.tripId));
+  .handler(duplicateTripHandler);
 
 /** Return the newest active share link for an owned trip, if sharing is enabled. */
 export async function getActiveTripShare(tripId: string) {
@@ -834,7 +838,7 @@ export async function addChecklistItem(input: unknown) {
   return result.rows[0];
 }
 
-export const getMyTrips = createServerFn({ method: "GET" }).handler(async () => {
+export const getMyTripsHandler = async () => {
   try {
     return await listTrips();
   } catch (error) {
@@ -844,8 +848,10 @@ export const getMyTrips = createServerFn({ method: "GET" }).handler(async () => 
     console.error("[my-trips] failed to load trips", error);
     return [];
   }
-});
-export const getMyTripsHome = createServerFn({ method: "GET" }).handler(async () => {
+};
+
+export const getMyTrips = createServerFn({ method: "GET" }).handler(getMyTripsHandler);
+export const getMyTripsHomeHandler = async () => {
   try {
     const trips = await listTrips();
     const focusId = buildMyTripsHome(trips, [], []).focusTrip?.id;
@@ -874,61 +880,162 @@ export const getMyTripsHome = createServerFn({ method: "GET" }).handler(async ()
     console.error("[my-trips] failed to load home", error);
     return buildMyTripsHome([], [], []);
   }
-});
+};
+
+export const getMyTripsHome = createServerFn({ method: "GET" }).handler(getMyTripsHomeHandler);
+export const postTripInput = (data: z.input<typeof tripSchema>) => tripSchema.parse(data);
+export const postTripHandler = ({ data }: { data: ReturnType<typeof postTripInput> }) =>
+  createTrip(data);
+
 export const postTrip = createServerFn({ method: "POST" })
   .validator(tripSchema)
-  .handler(({ data }) => createTrip(data));
+  .handler(postTripHandler);
+export const patchTripInput = (data: z.input<typeof tripPatchSchema>) =>
+  tripPatchSchema.parse(data);
+export const patchTripHandler = ({ data }: { data: ReturnType<typeof patchTripInput> }) =>
+  updateTrip(data);
+
 export const patchTrip = createServerFn({ method: "POST" })
   .validator(tripPatchSchema)
-  .handler(({ data }) => updateTrip(data));
+  .handler(patchTripHandler);
+export const deleteTripRecordInput = (data: z.input<typeof itemIdSchema>) =>
+  itemIdSchema.parse(data);
+export const deleteTripRecordHandler = ({
+  data,
+}: {
+  data: ReturnType<typeof deleteTripRecordInput>;
+}) => deleteTrip(data);
+
 export const deleteTripRecord = createServerFn({ method: "POST" })
   .validator(itemIdSchema)
-  .handler(({ data }) => deleteTrip(data));
+  .handler(deleteTripRecordHandler);
+export const getTripInput = (data: z.input<typeof tripIdSchema>) => tripIdSchema.parse(data);
+export const getTripHandler = ({ data }: { data: ReturnType<typeof getTripInput> }) =>
+  getTripDashboard(data.tripId);
+
 export const getTrip = createServerFn({ method: "GET" })
   .validator(tripIdSchema)
-  .handler(({ data }) => getTripDashboard(data.tripId));
+  .handler(getTripHandler);
+export const getTripSectionInput = (data: z.input<typeof tripSectionSchema>) =>
+  tripSectionSchema.parse(data);
+export const getTripSectionHandler = ({ data }: { data: ReturnType<typeof getTripSectionInput> }) =>
+  getTripSectionData(data.tripId, data.section);
+
 export const getTripSection = createServerFn({ method: "GET" })
   .validator(tripSectionSchema)
-  .handler(({ data }) => getTripSectionData(data.tripId, data.section));
+  .handler(getTripSectionHandler);
+export const postExpenseInput = (data: z.input<typeof expenseSchema>) => expenseSchema.parse(data);
+export const postExpenseHandler = ({ data }: { data: ReturnType<typeof postExpenseInput> }) =>
+  addExpense(data);
+
 export const postExpense = createServerFn({ method: "POST" })
   .validator(expenseSchema)
-  .handler(({ data }) => addExpense(data));
+  .handler(postExpenseHandler);
+export const postItineraryInput = (data: z.input<typeof itinerarySchema>) =>
+  itinerarySchema.parse(data);
+export const postItineraryHandler = ({ data }: { data: ReturnType<typeof postItineraryInput> }) =>
+  addItineraryItem(data);
+
 export const postItinerary = createServerFn({ method: "POST" })
   .validator(itinerarySchema)
-  .handler(({ data }) => addItineraryItem(data));
+  .handler(postItineraryHandler);
+export const postChecklistInput = (data: z.input<typeof checklistSchema>) =>
+  checklistSchema.parse(data);
+export const postChecklistHandler = ({ data }: { data: ReturnType<typeof postChecklistInput> }) =>
+  addChecklistItem(data);
+
 export const postChecklist = createServerFn({ method: "POST" })
   .validator(checklistSchema)
-  .handler(({ data }) => addChecklistItem(data));
+  .handler(postChecklistHandler);
+export const patchChecklistInput = (data: unknown) =>
+  z.object({ id: z.string().uuid(), completed: z.boolean() }).parse(data);
+export const patchChecklistHandler = ({ data }: { data: ReturnType<typeof patchChecklistInput> }) =>
+  toggleChecklist(data);
+
 export const patchChecklist = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid(), completed: z.boolean() }))
-  .handler(({ data }) => toggleChecklist(data));
+  .handler(patchChecklistHandler);
+export const patchBudgetInput = (data: z.input<typeof budgetPatchSchema>) =>
+  budgetPatchSchema.parse(data);
+export const patchBudgetHandler = ({ data }: { data: ReturnType<typeof patchBudgetInput> }) =>
+  patchBudgetCategory(data);
+
 export const patchBudget = createServerFn({ method: "POST" })
   .validator(budgetPatchSchema)
-  .handler(({ data }) => patchBudgetCategory(data));
+  .handler(patchBudgetHandler);
+export const postBookingInput = (data: z.input<typeof bookingSchema>) => bookingSchema.parse(data);
+export const postBookingHandler = ({ data }: { data: ReturnType<typeof postBookingInput> }) =>
+  addBooking(data);
+
 export const postBooking = createServerFn({ method: "POST" })
   .validator(bookingSchema)
-  .handler(({ data }) => addBooking(data));
+  .handler(postBookingHandler);
+export const deleteExpenseInput = (data: z.input<typeof itemIdSchema>) => itemIdSchema.parse(data);
+export const deleteExpenseHandler = ({ data }: { data: ReturnType<typeof deleteExpenseInput> }) =>
+  deleteTripItem(data);
+
 export const deleteExpense = createServerFn({ method: "POST" })
   .validator(itemIdSchema)
-  .handler(({ data }) => deleteTripItem(data));
+  .handler(deleteExpenseHandler);
+export const deleteItineraryInput = (data: z.input<typeof itemIdSchema>) =>
+  itemIdSchema.parse(data);
+export const deleteItineraryHandler = ({
+  data,
+}: {
+  data: ReturnType<typeof deleteItineraryInput>;
+}) => deleteItineraryItem(data);
+
 export const deleteItinerary = createServerFn({ method: "POST" })
   .validator(itemIdSchema)
-  .handler(({ data }) => deleteItineraryItem(data));
+  .handler(deleteItineraryHandler);
+export const deleteChecklistInput = (data: z.input<typeof itemIdSchema>) =>
+  itemIdSchema.parse(data);
+export const deleteChecklistHandler = ({
+  data,
+}: {
+  data: ReturnType<typeof deleteChecklistInput>;
+}) => deleteChecklistItem(data);
+
 export const deleteChecklist = createServerFn({ method: "POST" })
   .validator(itemIdSchema)
-  .handler(({ data }) => deleteChecklistItem(data));
+  .handler(deleteChecklistHandler);
+export const deleteBookingRecordInput = (data: z.input<typeof itemIdSchema>) =>
+  itemIdSchema.parse(data);
+export const deleteBookingRecordHandler = ({
+  data,
+}: {
+  data: ReturnType<typeof deleteBookingRecordInput>;
+}) => deleteBooking(data);
+
 export const deleteBookingRecord = createServerFn({ method: "POST" })
   .validator(itemIdSchema)
-  .handler(({ data }) => deleteBooking(data));
+  .handler(deleteBookingRecordHandler);
+export const postTripShareInput = (data: z.input<typeof tripIdSchema>) => tripIdSchema.parse(data);
+export const postTripShareHandler = ({ data }: { data: ReturnType<typeof postTripShareInput> }) =>
+  createTripShareLink(data.tripId);
+
 export const postTripShare = createServerFn({ method: "POST" })
   .validator(tripIdSchema)
-  .handler(({ data }) => createTripShareLink(data.tripId));
+  .handler(postTripShareHandler);
+export const deleteTripShareInput = (data: z.input<typeof tripIdSchema>) =>
+  tripIdSchema.parse(data);
+export const deleteTripShareHandler = ({
+  data,
+}: {
+  data: ReturnType<typeof deleteTripShareInput>;
+}) => revokeTripShareLink(data.tripId);
+
 export const deleteTripShare = createServerFn({ method: "POST" })
   .validator(tripIdSchema)
-  .handler(({ data }) => revokeTripShareLink(data.tripId));
+  .handler(deleteTripShareHandler);
+export const getSharedTripInput = (data: z.input<typeof shareTokenSchema>) =>
+  shareTokenSchema.parse(data);
+export const getSharedTripHandler = ({ data }: { data: ReturnType<typeof getSharedTripInput> }) =>
+  loadSharedTrip(data.token);
+
 export const getSharedTrip = createServerFn({ method: "GET" })
   .validator(shareTokenSchema)
-  .handler(({ data }) => loadSharedTrip(data.token));
+  .handler(getSharedTripHandler);
 
 export const myTripsContract = {
   auth: "Better Auth HttpOnly session; all queries are scoped to user.id",

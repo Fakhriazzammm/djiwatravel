@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminRefundRequests } from "@/lib/admin-read-model.server";
+import { getAdminRefundRequests } from "@/lib/admin-read-model.fn";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { formatAdminDateTime, humanizeAdminStatus, projectAdminAmount } from "@/lib/admin-display";
 
@@ -54,7 +54,9 @@ function AdminRefunds() {
                       >
                         {item.orderCode}
                       </Link>
-                      <div className="mt-1 font-mono text-[11px] text-muted-foreground">{item.id}</div>
+                      <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                        {item.id}
+                      </div>
                     </td>
                     <td className="p-3">
                       <StatusPill tone={item.status === "REFUNDED" ? "good" : "warn"}>

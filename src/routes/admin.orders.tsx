@@ -2,7 +2,7 @@ import { ClipboardList, Eye, EyeOff } from "lucide-react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminOrders } from "@/lib/admin-read-model.server";
+import { getAdminOrders } from "@/lib/admin-read-model.fn";
 import {
   formatAdminDateTime,
   humanizeAdminStatus,

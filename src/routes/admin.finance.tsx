@@ -5,7 +5,7 @@ import { useState } from "react";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/admin-guard";
-import { getTravelFinanceReport, submitTravelExpense } from "@/lib/admin-finance.server";
+import { getTravelFinanceReport, submitTravelExpense } from "@/lib/admin-finance.fn";
 import { formatAdminDateTime } from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 import {
@@ -228,7 +228,9 @@ function AdminFinance() {
                 detail="Pemasukan dan pengeluaran per hari, WIB."
               />
               {report.daily.length === 0 ? (
-                <p className="mt-6 text-sm text-muted-foreground">Belum ada transaksi pada periode ini.</p>
+                <p className="mt-6 text-sm text-muted-foreground">
+                  Belum ada transaksi pada periode ini.
+                </p>
               ) : (
                 <ul className="mt-4 max-h-48 space-y-3 overflow-y-auto overscroll-contain lg:max-h-none">
                   {report.daily.slice(0, 14).map((row) => (
@@ -261,7 +263,9 @@ function AdminFinance() {
                 detail="Ke mana uang Travel pergi dan dari mana datangnya."
               />
               {report.byCategory.length === 0 ? (
-                <p className="mt-6 text-sm text-muted-foreground">Belum ada kategori pada periode ini.</p>
+                <p className="mt-6 text-sm text-muted-foreground">
+                  Belum ada kategori pada periode ini.
+                </p>
               ) : (
                 <ul className="mt-4 space-y-2 text-sm">
                   {report.byCategory.slice(0, 10).map((row) => (

@@ -9,7 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
+import { getSellableDestinationCodes } from "@/lib/destination-availability.fn";
 import {
   regionalCoverage as extendRegionalCoverage,
   resolveCatalogDestination,
@@ -283,8 +283,8 @@ function Destination() {
       <BackBar title={`${destination.flag} ${destination.nameId}`} fallbackTo="/esim/finder" />
       <h1 className="large-title">Paket eSIM untuk {destination.nameId}</h1>
       <p className="mt-3 max-w-prose text-[15px] leading-7 text-muted-foreground">
-        Bandingkan paket eSIM {destination.nameId} berdasarkan kuota, masa aktif, cakupan, dan
-        harga yang tercantum. Pilih masa aktif sesuai lama perjalanan, lalu buka detail paket untuk
+        Bandingkan paket eSIM {destination.nameId} berdasarkan kuota, masa aktif, cakupan, dan harga
+        yang tercantum. Pilih masa aktif sesuai lama perjalanan, lalu buka detail paket untuk
         memeriksa informasi sebelum checkout.
       </p>
       <p className="mt-2 inline-flex rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">

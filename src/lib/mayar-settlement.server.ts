@@ -258,66 +258,74 @@ function verifiedPaidAt(transaction: MayarTransaction) {
 }
 
 /** Verify Mayar first, then settle Finance, local Travel state, and provisioning. */
-export const verifyMayarPayment = createServerFn({ method: "POST" })
-  .validator(verifySchema)
-  .handler(async ({ data }) => {
-    const accessHash = hashGuestAccessToken(data.accessToken);
-    const rows = await db
-      .select({ order: customerOrders })
-      .from(customerOrders)
-      .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
-      .where(
-        and(
-          eq(customerOrders.id, data.orderId),
-          eq(guestOrderAccess.accessTokenHash, accessHash),
-          gt(guestOrderAccess.expiresAt, new Date().toISOString()),
-        ),
-      )
-      .limit(1);
-    const order = rows[0]?.order;
-    if (!order) throw new Error("Pesanan tidak ditemukan");
-
-    const mayar = readMayarSnapshot(order.priceSnapshot);
-    if (!mayar.transactionId) {
-      assertPaymentNotExpired(order.status, order.paymentExpiresAt);
-      return { status: order.status, settled: false, reason: "invoice_not_created" as const };
-    }
-    if (SETTLED_STATUSES.has(order.status))
-      return {
-        status: order.status,
-        settled: true,
-        provisioning: await startProvisioning(order.id),
-      };
-
-    const transaction = await fetchMayarTransaction(mayar.transactionId);
-    if (String(transaction.status ?? "").toLowerCase() !== "paid") {
-      // Only an unpaid order is bound by our own payment window: a payment Mayar already confirmed
-      // must settle instead of being refused because our local window ran out.
-      assertPaymentNotExpired(order.status, order.paymentExpiresAt);
-      return { status: order.status, settled: false, reason: "payment_pending" as const };
-    }
-    const amount = Number(transaction.amount);
-    const expectedAmount = Number(order.totalAmount);
-    if (
-      !Number.isSafeInteger(amount) ||
-      amount <= 0 ||
-      !Number.isSafeInteger(expectedAmount) ||
-      amount !== expectedAmount
+export const verifyMayarPaymentInput = (data: z.input<typeof verifySchema>) =>
+  verifySchema.parse(data);
+export const verifyMayarPaymentHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof verifyMayarPaymentInput>;
+}) => {
+  const accessHash = hashGuestAccessToken(data.accessToken);
+  const rows = await db
+    .select({ order: customerOrders })
+    .from(customerOrders)
+    .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
+    .where(
+      and(
+        eq(customerOrders.id, data.orderId),
+        eq(guestOrderAccess.accessTokenHash, accessHash),
+        gt(guestOrderAccess.expiresAt, new Date().toISOString()),
+      ),
     )
-      return { status: order.status, settled: false, reason: "amount_mismatch" as const };
+    .limit(1);
+  const order = rows[0]?.order;
+  if (!order) throw new Error("Pesanan tidak ditemukan");
 
-    const result = await settleVerifiedTravelPayment({
-      orderId: order.id,
-      orderNumber: order.publicOrderCode,
-      amount: expectedAmount,
-      paidAt: verifiedPaidAt(transaction),
-      transactionId: mayar.transactionId,
-      ...(mayar.invoiceId ? { invoiceId: mayar.invoiceId } : {}),
-    });
+  const mayar = readMayarSnapshot(order.priceSnapshot);
+  if (!mayar.transactionId) {
+    assertPaymentNotExpired(order.status, order.paymentExpiresAt);
+    return { status: order.status, settled: false, reason: "invoice_not_created" as const };
+  }
+  if (SETTLED_STATUSES.has(order.status))
     return {
-      status: result.local.status,
+      status: order.status,
       settled: true,
-      duplicate: result.local.duplicate,
       provisioning: await startProvisioning(order.id),
     };
+
+  const transaction = await fetchMayarTransaction(mayar.transactionId);
+  if (String(transaction.status ?? "").toLowerCase() !== "paid") {
+    // Only an unpaid order is bound by our own payment window: a payment Mayar already confirmed
+    // must settle instead of being refused because our local window ran out.
+    assertPaymentNotExpired(order.status, order.paymentExpiresAt);
+    return { status: order.status, settled: false, reason: "payment_pending" as const };
+  }
+  const amount = Number(transaction.amount);
+  const expectedAmount = Number(order.totalAmount);
+  if (
+    !Number.isSafeInteger(amount) ||
+    amount <= 0 ||
+    !Number.isSafeInteger(expectedAmount) ||
+    amount !== expectedAmount
+  )
+    return { status: order.status, settled: false, reason: "amount_mismatch" as const };
+
+  const result = await settleVerifiedTravelPayment({
+    orderId: order.id,
+    orderNumber: order.publicOrderCode,
+    amount: expectedAmount,
+    paidAt: verifiedPaidAt(transaction),
+    transactionId: mayar.transactionId,
+    ...(mayar.invoiceId ? { invoiceId: mayar.invoiceId } : {}),
   });
+  return {
+    status: result.local.status,
+    settled: true,
+    duplicate: result.local.duplicate,
+    provisioning: await startProvisioning(order.id),
+  };
+};
+
+export const verifyMayarPayment = createServerFn({ method: "POST" })
+  .validator(verifySchema)
+  .handler(verifyMayarPaymentHandler);

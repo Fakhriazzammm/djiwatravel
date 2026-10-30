@@ -3,7 +3,7 @@ import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminPayments } from "@/lib/admin-read-model.server";
+import { getAdminPayments } from "@/lib/admin-read-model.fn";
 import { MAX_PAYMENT_PAGE, normalizePaymentQuery, type PaymentSortKey } from "@/lib/admin-metrics";
 import {
   ageFrom,
@@ -126,7 +126,8 @@ function AdminPayments() {
                 Payment monitor
               </p>
               <p className="mt-0.5 text-lg font-bold tabular-nums">
-                {result.total} <span className="text-xs font-medium text-muted-foreground">exception</span>
+                {result.total}{" "}
+                <span className="text-xs font-medium text-muted-foreground">exception</span>
               </p>
             </div>
             <div className="flex items-center gap-1">

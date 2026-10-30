@@ -185,43 +185,47 @@ export type PricingPreviewResult = {
   balanceUnitsKnown: boolean;
 };
 
+export const previewCataloguePricingInput = (data: unknown) =>
+  applySchema.omit({ allowLoss: true, reason: true }).parse(data);
+export const previewCataloguePricingHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof previewCataloguePricingInput>;
+}): Promise<PricingPreviewResult> => {
+  await requireAdmin();
+  const rules = await getActivePriceRules();
+  const snapshot = await getBalanceSnapshot();
+  const { targets, allRows } = await resolveSelection(data.selection, rules, snapshot.balanceUnits);
+
+  const preview = previewPriceRule({
+    rows: targets.map((row) => ({
+      packageCode: row.packageCode,
+      name: row.name,
+      providerPriceUnits: row.providerPriceUnits,
+      sellingPriceIdr: row.sellingPriceIdr,
+    })),
+    markupPercent: data.markup.markupPercent,
+    fixedMarkupIdr: data.markup.fixedMarkupIdr,
+    usdToIdr: RESELLER_CONFIG.usdToIdr,
+    roundingIdr: RESELLER_CONFIG.roundingIdr,
+    balanceUnits: snapshot.balanceUnits,
+  });
+  const scopes = planBulkScopes(targets, allRows, data.scopeTarget);
+
+  return {
+    summary: preview.summary,
+    sample: preview.rows.slice(0, 50),
+    sampled: Math.min(50, preview.rows.length),
+    scopes: { country: scopes.countryScopes.length, package: scopes.packageScopes.length },
+    usdToIdr: RESELLER_CONFIG.usdToIdr,
+    roundingIdr: RESELLER_CONFIG.roundingIdr,
+    balanceUnitsKnown: snapshot.balanceUnits !== null,
+  };
+};
+
 export const previewCataloguePricing = createServerFn({ method: "POST" })
   .validator((data: unknown) => applySchema.omit({ allowLoss: true, reason: true }).parse(data))
-  .handler(async ({ data }): Promise<PricingPreviewResult> => {
-    await requireAdmin();
-    const rules = await getActivePriceRules();
-    const snapshot = await getBalanceSnapshot();
-    const { targets, allRows } = await resolveSelection(
-      data.selection,
-      rules,
-      snapshot.balanceUnits,
-    );
-
-    const preview = previewPriceRule({
-      rows: targets.map((row) => ({
-        packageCode: row.packageCode,
-        name: row.name,
-        providerPriceUnits: row.providerPriceUnits,
-        sellingPriceIdr: row.sellingPriceIdr,
-      })),
-      markupPercent: data.markup.markupPercent,
-      fixedMarkupIdr: data.markup.fixedMarkupIdr,
-      usdToIdr: RESELLER_CONFIG.usdToIdr,
-      roundingIdr: RESELLER_CONFIG.roundingIdr,
-      balanceUnits: snapshot.balanceUnits,
-    });
-    const scopes = planBulkScopes(targets, allRows, data.scopeTarget);
-
-    return {
-      summary: preview.summary,
-      sample: preview.rows.slice(0, 50),
-      sampled: Math.min(50, preview.rows.length),
-      scopes: { country: scopes.countryScopes.length, package: scopes.packageScopes.length },
-      usdToIdr: RESELLER_CONFIG.usdToIdr,
-      roundingIdr: RESELLER_CONFIG.roundingIdr,
-      balanceUnitsKnown: snapshot.balanceUnits !== null,
-    };
-  });
+  .handler(previewCataloguePricingHandler);
 
 async function writeScopeRule(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -287,143 +291,154 @@ export type PricingApplyResult = {
   snapshotRules: number;
 };
 
-export const applyCataloguePricing = createServerFn({ method: "POST" })
-  .validator((data: unknown) => applySchema.parse(data))
-  .handler(async ({ data }): Promise<PricingApplyResult> => {
-    await requireAdmin();
-    const problems = validatePriceRuleInput({
-      markupPercent: data.markup.markupPercent,
-      fixedMarkupIdr: data.markup.fixedMarkupIdr,
-    });
-    if (problems.length > 0) throw new Error(problems.join(" "));
+export const applyCataloguePricingInput = (data: unknown) => applySchema.parse(data);
+export const applyCataloguePricingHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof applyCataloguePricingInput>;
+}): Promise<PricingApplyResult> => {
+  await requireAdmin();
+  const problems = validatePriceRuleInput({
+    markupPercent: data.markup.markupPercent,
+    fixedMarkupIdr: data.markup.fixedMarkupIdr,
+  });
+  if (problems.length > 0) throw new Error(problems.join(" "));
 
-    const actor = await currentActor();
-    const rules = await getActivePriceRules();
-    const snapshot = await getBalanceSnapshot();
-    const { targets, allRows } = await resolveSelection(
-      data.selection,
-      rules,
-      snapshot.balanceUnits,
+  const actor = await currentActor();
+  const rules = await getActivePriceRules();
+  const snapshot = await getBalanceSnapshot();
+  const { targets, allRows } = await resolveSelection(data.selection, rules, snapshot.balanceUnits);
+
+  // Money guardrail: a bulk action must never silently sell below our own provider cost.
+  const preview = previewPriceRule({
+    rows: targets.map((row) => ({
+      packageCode: row.packageCode,
+      name: row.name,
+      providerPriceUnits: row.providerPriceUnits,
+      sellingPriceIdr: row.sellingPriceIdr,
+    })),
+    markupPercent: data.markup.markupPercent,
+    fixedMarkupIdr: data.markup.fixedMarkupIdr,
+    usdToIdr: RESELLER_CONFIG.usdToIdr,
+    roundingIdr: RESELLER_CONFIG.roundingIdr,
+    balanceUnits: snapshot.balanceUnits,
+  });
+  if (preview.summary.lossMaking > 0 && !data.allowLoss) {
+    throw new Error(
+      `${preview.summary.lossMaking} paket akan dijual di bawah harga provider (rugi). Perbaiki profit atau ulangi dengan izin rugi.`,
     );
+  }
 
-    // Money guardrail: a bulk action must never silently sell below our own provider cost.
-    const preview = previewPriceRule({
-      rows: targets.map((row) => ({
-        packageCode: row.packageCode,
-        name: row.name,
-        providerPriceUnits: row.providerPriceUnits,
-        sellingPriceIdr: row.sellingPriceIdr,
-      })),
-      markupPercent: data.markup.markupPercent,
-      fixedMarkupIdr: data.markup.fixedMarkupIdr,
-      usdToIdr: RESELLER_CONFIG.usdToIdr,
-      roundingIdr: RESELLER_CONFIG.roundingIdr,
-      balanceUnits: snapshot.balanceUnits,
-    });
-    if (preview.summary.lossMaking > 0 && !data.allowLoss) {
-      throw new Error(
-        `${preview.summary.lossMaking} paket akan dijual di bawah harga provider (rugi). Perbaiki profit atau ulangi dengan izin rugi.`,
-      );
-    }
+  const scopes = planBulkScopes(targets, allRows, data.scopeTarget);
+  const fields: { markupType: PriceRuleMarkupType; value: number }[] = [];
+  if (data.markup.markupPercent !== null)
+    fields.push({ markupType: "percentage", value: data.markup.markupPercent });
+  if (data.markup.fixedMarkupIdr !== null)
+    fields.push({ markupType: "fixed", value: data.markup.fixedMarkupIdr });
 
-    const scopes = planBulkScopes(targets, allRows, data.scopeTarget);
-    const fields: { markupType: PriceRuleMarkupType; value: number }[] = [];
-    if (data.markup.markupPercent !== null)
-      fields.push({ markupType: "percentage", value: data.markup.markupPercent });
-    if (data.markup.fixedMarkupIdr !== null)
-      fields.push({ markupType: "fixed", value: data.markup.fixedMarkupIdr });
+  const batchId = globalThis.crypto.randomUUID();
+  const batchMode =
+    scopes.countryScopes.length + scopes.packageScopes.length > 1 || targets.length > 1
+      ? "bulk"
+      : "single";
 
-    const batchId = globalThis.crypto.randomUUID();
-    const batchMode =
-      scopes.countryScopes.length + scopes.packageScopes.length > 1 || targets.length > 1
-        ? "bulk"
-        : "single";
-
-    await db.transaction(async (tx) => {
-      const groups: { scopeType: PriceRuleScope; keys: (string | null)[] }[] = [
-        { scopeType: "country", keys: scopes.countryScopes },
-        { scopeType: "package", keys: scopes.packageScopes },
-      ];
-      for (const group of groups) {
-        for (const key of group.keys) {
-          for (const field of fields) {
-            await writeScopeRule(tx, {
-              scopeType: group.scopeType,
-              scopeKey: key,
-              markupType: field.markupType,
-              markupValue: field.value,
-              actor,
-              reason: data.reason,
-              batchId,
-              batchMode,
-            });
-          }
+  await db.transaction(async (tx) => {
+    const groups: { scopeType: PriceRuleScope; keys: (string | null)[] }[] = [
+      { scopeType: "country", keys: scopes.countryScopes },
+      { scopeType: "package", keys: scopes.packageScopes },
+    ];
+    for (const group of groups) {
+      for (const key of group.keys) {
+        for (const field of fields) {
+          await writeScopeRule(tx, {
+            scopeType: group.scopeType,
+            scopeKey: key,
+            markupType: field.markupType,
+            markupValue: field.value,
+            actor,
+            reason: data.reason,
+            batchId,
+            batchMode,
+          });
         }
       }
-    });
-
-    clearResellerCatalogCache();
-    const refreshed = await refreshPriceRuleSnapshot();
-
-    return {
-      batchId,
-      affectedPackages: targets.length,
-      countryRules: scopes.countryScopes.length,
-      packageRules: scopes.packageScopes.length,
-      fields: fields.map((field) =>
-        field.markupType === "percentage" ? `profit ${field.value}%` : `profit Rp${field.value}`,
-      ),
-      catalogueCacheCleared: true,
-      snapshotRules: refreshed.length,
-    };
+    }
   });
+
+  clearResellerCatalogCache();
+  const refreshed = await refreshPriceRuleSnapshot();
+
+  return {
+    batchId,
+    affectedPackages: targets.length,
+    countryRules: scopes.countryScopes.length,
+    packageRules: scopes.packageScopes.length,
+    fields: fields.map((field) =>
+      field.markupType === "percentage" ? `profit ${field.value}%` : `profit Rp${field.value}`,
+    ),
+    catalogueCacheCleared: true,
+    snapshotRules: refreshed.length,
+  };
+};
+
+export const applyCataloguePricing = createServerFn({ method: "POST" })
+  .validator((data: unknown) => applySchema.parse(data))
+  .handler(applyCataloguePricingHandler);
+
+export const rollbackPricingBatchInput = (data: unknown) =>
+  z.object({ batchId: z.string().uuid(), reason: z.string().trim().min(4).max(200) }).parse(data);
+export const rollbackPricingBatchHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof rollbackPricingBatchInput>;
+}): Promise<{ rolledBack: number; restored: number }> => {
+  await requireAdmin();
+  const actor = await currentActor();
+
+  const result = await db.transaction(async (tx) => {
+    const active = await tx.execute(
+      sql`select ${RULE_COLUMNS} from esim_price_rules where batch_id = ${data.batchId}::uuid and active`,
+    );
+    const rulesToRollback = (active.rows as Row[]).map(toPriceRule);
+    let restored = 0;
+    for (const rule of rulesToRollback) {
+      await tx.execute(
+        sql`update esim_price_rules set active = false, effective_until = now() where id = ${rule.id}::uuid`,
+      );
+      await tx.execute(
+        sql`insert into esim_price_rule_events
+                (rule_id, action, scope_type, scope_key, markup_type, before_json, after_json, actor_id, reason, batch_id)
+              values (${rule.id}::uuid, 'rolled_back', ${rule.scopeType}, ${rule.scopeKey}, ${rule.markupType},
+                ${JSON.stringify({ markupValue: rule.markupValue, version: rule.version })}::jsonb, null,
+                ${actor}, ${data.reason}, ${data.batchId}::uuid)`,
+      );
+      const superseded = await tx.execute(
+        sql`select id::text as id from esim_price_rules
+              where supersedes_id is null and id = (
+                select supersedes_id from esim_price_rules where id = ${rule.id}::uuid
+              ) and active = false`,
+      );
+      const target = (superseded.rows as Row[])[0];
+      if (target) {
+        await tx.execute(
+          sql`update esim_price_rules set active = true, effective_until = null where id = ${text(target, "id")}::uuid`,
+        );
+        restored += 1;
+      }
+    }
+    return { rolledBack: rulesToRollback.length, restored };
+  });
+
+  clearResellerCatalogCache();
+  await refreshPriceRuleSnapshot();
+  return result;
+};
 
 export const rollbackPricingBatch = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     z.object({ batchId: z.string().uuid(), reason: z.string().trim().min(4).max(200) }).parse(data),
   )
-  .handler(async ({ data }): Promise<{ rolledBack: number; restored: number }> => {
-    await requireAdmin();
-    const actor = await currentActor();
-
-    const result = await db.transaction(async (tx) => {
-      const active = await tx.execute(
-        sql`select ${RULE_COLUMNS} from esim_price_rules where batch_id = ${data.batchId}::uuid and active`,
-      );
-      const rulesToRollback = (active.rows as Row[]).map(toPriceRule);
-      let restored = 0;
-      for (const rule of rulesToRollback) {
-        await tx.execute(
-          sql`update esim_price_rules set active = false, effective_until = now() where id = ${rule.id}::uuid`,
-        );
-        await tx.execute(
-          sql`insert into esim_price_rule_events
-                (rule_id, action, scope_type, scope_key, markup_type, before_json, after_json, actor_id, reason, batch_id)
-              values (${rule.id}::uuid, 'rolled_back', ${rule.scopeType}, ${rule.scopeKey}, ${rule.markupType},
-                ${JSON.stringify({ markupValue: rule.markupValue, version: rule.version })}::jsonb, null,
-                ${actor}, ${data.reason}, ${data.batchId}::uuid)`,
-        );
-        const superseded = await tx.execute(
-          sql`select id::text as id from esim_price_rules
-              where supersedes_id is null and id = (
-                select supersedes_id from esim_price_rules where id = ${rule.id}::uuid
-              ) and active = false`,
-        );
-        const target = (superseded.rows as Row[])[0];
-        if (target) {
-          await tx.execute(
-            sql`update esim_price_rules set active = true, effective_until = null where id = ${text(target, "id")}::uuid`,
-          );
-          restored += 1;
-        }
-      }
-      return { rolledBack: rulesToRollback.length, restored };
-    });
-
-    clearResellerCatalogCache();
-    await refreshPriceRuleSnapshot();
-    return result;
-  });
+  .handler(rollbackPricingBatchHandler);
 
 export type PriceRuleEventView = {
   id: string;
@@ -439,39 +454,47 @@ export type PriceRuleEventView = {
   createdAt: string;
 };
 
-export const readPriceRuleHistory = createServerFn({ method: "GET" })
-  .validator((data: unknown) =>
-    z.object({ limit: z.number().int().min(1).max(50).default(12) }).parse(data ?? {}),
-  )
-  .handler(async ({ data }): Promise<PriceRuleEventView[]> => {
-    await requireAdmin();
-    const result = await db.execute(
-      sql`select id::text as id, action, scope_type, scope_key, markup_type,
+export const readPriceRuleHistoryInput = (data: unknown) =>
+  z.object({ limit: z.number().int().min(1).max(50).default(12) }).parse(data ?? {});
+export const readPriceRuleHistoryHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof readPriceRuleHistoryInput>;
+}): Promise<PriceRuleEventView[]> => {
+  await requireAdmin();
+  const result = await db.execute(
+    sql`select id::text as id, action, scope_type, scope_key, markup_type,
                  before_json, after_json, actor_id, reason, batch_id::text as batch_id, created_at::text as created_at
           from esim_price_rule_events
           order by created_at desc
           limit ${data.limit}`,
-    );
-    return (result.rows as Row[]).map((row) => {
-      const after = (row["after_json"] ?? null) as { markupValue?: unknown } | null;
-      const before = (row["before_json"] ?? null) as { markupValue?: unknown } | null;
-      return {
-        id: text(row, "id") ?? "",
-        action: text(row, "action") ?? "updated",
-        scopeType: text(row, "scope_type") ?? "global",
-        scopeKey: text(row, "scope_key"),
-        markupType: text(row, "markup_type"),
-        beforeValue:
-          before && Number.isFinite(Number(before.markupValue)) ? Number(before.markupValue) : null,
-        afterValue:
-          after && Number.isFinite(Number(after.markupValue)) ? Number(after.markupValue) : null,
-        actorId: text(row, "actor_id") ?? "unknown",
-        reason: text(row, "reason") ?? "",
-        batchId: text(row, "batch_id"),
-        createdAt: text(row, "created_at") ?? "",
-      };
-    });
+  );
+  return (result.rows as Row[]).map((row) => {
+    const after = (row["after_json"] ?? null) as { markupValue?: unknown } | null;
+    const before = (row["before_json"] ?? null) as { markupValue?: unknown } | null;
+    return {
+      id: text(row, "id") ?? "",
+      action: text(row, "action") ?? "updated",
+      scopeType: text(row, "scope_type") ?? "global",
+      scopeKey: text(row, "scope_key"),
+      markupType: text(row, "markup_type"),
+      beforeValue:
+        before && Number.isFinite(Number(before.markupValue)) ? Number(before.markupValue) : null,
+      afterValue:
+        after && Number.isFinite(Number(after.markupValue)) ? Number(after.markupValue) : null,
+      actorId: text(row, "actor_id") ?? "unknown",
+      reason: text(row, "reason") ?? "",
+      batchId: text(row, "batch_id"),
+      createdAt: text(row, "created_at") ?? "",
+    };
   });
+};
+
+export const readPriceRuleHistory = createServerFn({ method: "GET" })
+  .validator((data: unknown) =>
+    z.object({ limit: z.number().int().min(1).max(50).default(12) }).parse(data ?? {}),
+  )
+  .handler(readPriceRuleHistoryHandler);
 
 const inlinePriceSchema = z.object({
   packageCode: z.string().trim().min(1).max(120),
@@ -496,96 +519,103 @@ export type InlinePriceResult = {
  * price the operator just typed. The audit reason is generated with the before/after values, so a
  * quick edit still leaves a reviewable trail.
  */
+export const setPackagePriceInlineInput = (data: unknown) => inlinePriceSchema.parse(data);
+export const setPackagePriceInlineHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof setPackagePriceInlineInput>;
+}): Promise<InlinePriceResult> => {
+  await requireAdmin();
+  const actor = await currentActor();
+  const rules = await getActivePriceRules();
+  const snapshot = await getBalanceSnapshot();
+  const catalog = await getResellerCatalog();
+  const row = buildAdminCatalogRows(catalog.packages, {
+    rules,
+    balanceUnits: snapshot.balanceUnits,
+    usdToIdr: RESELLER_CONFIG.usdToIdr,
+  }).find(
+    (candidate) => candidate.packageCode.toUpperCase() === data.packageCode.trim().toUpperCase(),
+  );
+  if (!row) throw new Error(`Paket ${data.packageCode} tidak ditemukan di katalog provider.`);
+
+  let pinned: { markupPercent: number; fixedMarkupIdr: number };
+  if (data.mode === "percent") {
+    if (!Number.isFinite(data.value) || data.value < 0 || data.value > 500) {
+      throw new Error("Profit persen harus angka 0–500.");
+    }
+    pinned = { markupPercent: Math.round(data.value * 100) / 100, fixedMarkupIdr: 0 };
+  } else {
+    if (!Number.isFinite(data.value) || data.value <= 0)
+      throw new Error("Harga jual harus angka lebih dari 0.");
+    const fixed = Math.round(data.value) - row.providerCostIdr;
+    if (fixed < 0) {
+      throw new Error(
+        `Harga jual ${Math.round(data.value)} di bawah harga provider (${row.providerCostIdr}).`,
+      );
+    }
+    pinned = { markupPercent: 0, fixedMarkupIdr: fixed };
+  }
+
+  const proposal = previewPriceRule({
+    rows: [
+      {
+        packageCode: row.packageCode,
+        name: row.name,
+        providerPriceUnits: row.providerPriceUnits,
+        sellingPriceIdr: row.sellingPriceIdr,
+      },
+    ],
+    markupPercent: pinned.markupPercent,
+    fixedMarkupIdr: pinned.fixedMarkupIdr,
+    usdToIdr: RESELLER_CONFIG.usdToIdr,
+    roundingIdr: RESELLER_CONFIG.roundingIdr,
+    balanceUnits: snapshot.balanceUnits,
+  });
+  if (proposal.summary.lossMaking > 0)
+    throw new Error("Harga jual tidak boleh di bawah harga provider.");
+  const afterPriceIdr = proposal.rows[0]?.afterPriceIdr ?? row.sellingPriceIdr;
+
+  const batchId = globalThis.crypto.randomUUID();
+  const reason = `Edit cepat ${row.packageCode}: harga ${row.sellingPriceIdr} → ${afterPriceIdr} (${pinned.markupPercent}% + ${pinned.fixedMarkupIdr})`;
+
+  await db.transaction(async (tx) => {
+    await writeScopeRule(tx, {
+      scopeType: "package",
+      scopeKey: row.packageCode,
+      markupType: "percentage",
+      markupValue: pinned.markupPercent,
+      actor,
+      reason,
+      batchId,
+      batchMode: "single",
+    });
+    await writeScopeRule(tx, {
+      scopeType: "package",
+      scopeKey: row.packageCode,
+      markupType: "fixed",
+      markupValue: pinned.fixedMarkupIdr,
+      actor,
+      reason,
+      batchId,
+      batchMode: "single",
+    });
+  });
+
+  clearResellerCatalogCache();
+  await refreshPriceRuleSnapshot();
+
+  return {
+    packageCode: row.packageCode,
+    beforePriceIdr: row.sellingPriceIdr,
+    afterPriceIdr,
+    pinned,
+    batchId,
+  };
+};
+
 export const setPackagePriceInline = createServerFn({ method: "POST" })
   .validator((data: unknown) => inlinePriceSchema.parse(data))
-  .handler(async ({ data }): Promise<InlinePriceResult> => {
-    await requireAdmin();
-    const actor = await currentActor();
-    const rules = await getActivePriceRules();
-    const snapshot = await getBalanceSnapshot();
-    const catalog = await getResellerCatalog();
-    const row = buildAdminCatalogRows(catalog.packages, {
-      rules,
-      balanceUnits: snapshot.balanceUnits,
-      usdToIdr: RESELLER_CONFIG.usdToIdr,
-    }).find(
-      (candidate) => candidate.packageCode.toUpperCase() === data.packageCode.trim().toUpperCase(),
-    );
-    if (!row) throw new Error(`Paket ${data.packageCode} tidak ditemukan di katalog provider.`);
-
-    let pinned: { markupPercent: number; fixedMarkupIdr: number };
-    if (data.mode === "percent") {
-      if (!Number.isFinite(data.value) || data.value < 0 || data.value > 500) {
-        throw new Error("Profit persen harus angka 0–500.");
-      }
-      pinned = { markupPercent: Math.round(data.value * 100) / 100, fixedMarkupIdr: 0 };
-    } else {
-      if (!Number.isFinite(data.value) || data.value <= 0)
-        throw new Error("Harga jual harus angka lebih dari 0.");
-      const fixed = Math.round(data.value) - row.providerCostIdr;
-      if (fixed < 0) {
-        throw new Error(
-          `Harga jual ${Math.round(data.value)} di bawah harga provider (${row.providerCostIdr}).`,
-        );
-      }
-      pinned = { markupPercent: 0, fixedMarkupIdr: fixed };
-    }
-
-    const proposal = previewPriceRule({
-      rows: [
-        {
-          packageCode: row.packageCode,
-          name: row.name,
-          providerPriceUnits: row.providerPriceUnits,
-          sellingPriceIdr: row.sellingPriceIdr,
-        },
-      ],
-      markupPercent: pinned.markupPercent,
-      fixedMarkupIdr: pinned.fixedMarkupIdr,
-      usdToIdr: RESELLER_CONFIG.usdToIdr,
-      roundingIdr: RESELLER_CONFIG.roundingIdr,
-      balanceUnits: snapshot.balanceUnits,
-    });
-    if (proposal.summary.lossMaking > 0)
-      throw new Error("Harga jual tidak boleh di bawah harga provider.");
-    const afterPriceIdr = proposal.rows[0]?.afterPriceIdr ?? row.sellingPriceIdr;
-
-    const batchId = globalThis.crypto.randomUUID();
-    const reason = `Edit cepat ${row.packageCode}: harga ${row.sellingPriceIdr} → ${afterPriceIdr} (${pinned.markupPercent}% + ${pinned.fixedMarkupIdr})`;
-
-    await db.transaction(async (tx) => {
-      await writeScopeRule(tx, {
-        scopeType: "package",
-        scopeKey: row.packageCode,
-        markupType: "percentage",
-        markupValue: pinned.markupPercent,
-        actor,
-        reason,
-        batchId,
-        batchMode: "single",
-      });
-      await writeScopeRule(tx, {
-        scopeType: "package",
-        scopeKey: row.packageCode,
-        markupType: "fixed",
-        markupValue: pinned.fixedMarkupIdr,
-        actor,
-        reason,
-        batchId,
-        batchMode: "single",
-      });
-    });
-
-    clearResellerCatalogCache();
-    await refreshPriceRuleSnapshot();
-
-    return {
-      packageCode: row.packageCode,
-      beforePriceIdr: row.sellingPriceIdr,
-      afterPriceIdr,
-      pinned,
-      batchId,
-    };
-  });
+  .handler(setPackagePriceInlineHandler);
 
 export { priceRuleDefaults };

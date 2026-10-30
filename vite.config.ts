@@ -17,7 +17,7 @@ export default defineConfig({
       // hydration before React attaches any button or form handlers.
       importProtection: {
         enabled: true,
-        behavior: { dev: "mock", build: "mock" },
+        behavior: { dev: "mock", build: "error" },
       },
     }),
     nitro({ preset: "node-server" }),

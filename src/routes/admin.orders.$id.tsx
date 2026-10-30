@@ -3,7 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminOrderDetail } from "@/lib/admin-read-model.server";
+import { getAdminOrderDetail } from "@/lib/admin-read-model.fn";
 import {
   formatAdminDateTime,
   humanizeAdminStatus,
@@ -208,7 +208,9 @@ function AdminOrderDetail() {
           detail="Intent/reconciliation fields are not assumed; only Travel payment webhook records are shown."
         />
         {order.payment.webhooks.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No payment webhook evidence recorded.</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            No payment webhook evidence recorded.
+          </p>
         ) : (
           <div className="mt-4 max-h-56 divide-y overflow-y-auto overscroll-contain lg:max-h-none">
             {order.payment.webhooks.map((event) => (

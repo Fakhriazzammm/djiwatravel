@@ -18,6 +18,6 @@ describe("production build output", () => {
   it("protects server-only imports from the browser bundle", () => {
     const source = readFileSync(path.resolve(process.cwd(), "vite.config.ts"), "utf8");
     expect(source).toContain("enabled: true");
-    expect(source).toContain('build: "mock"');
+    expect(source).toContain('build: "error"');
   });
 });

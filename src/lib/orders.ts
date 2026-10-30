@@ -1,8 +1,8 @@
 // Demo order store (browser). Replace with Cloud tables + webhooks when going live.
 import { useEffect, useState } from "react";
 import type { EsimProfile } from "./providers";
-import { createGuestOrderDraft, getGuestOrders } from "./guest-orders.server";
-import { claimGuestOrderForMember, getMemberOrders } from "./member-orders.server";
+import { createGuestOrderDraft, getGuestOrders } from "./guest-orders.fn";
+import { claimGuestOrderForMember, getMemberOrders } from "./member-orders.fn";
 import { rebuildMayarInvoice } from "./mayar-gateway";
 import { createMayarInvoice } from "./mayar-gateway";
 import { mapGuestOrderRecord } from "./guest-order-view";

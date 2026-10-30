@@ -132,7 +132,7 @@ function toGuestOrderRecord(
  * or phone number participates. Provisioning is refreshed for settled orders before the read is
  * returned, so a customer who returns later sees the current state instead of a frozen one.
  */
-export const getMemberOrders = createServerFn({ method: "GET" }).handler(async () => {
+export const getMemberOrdersHandler = async () => {
   const user = await getAuthenticatedUser();
   const rows = await memberOrderRows(user.id);
 
@@ -144,7 +144,9 @@ export const getMemberOrders = createServerFn({ method: "GET" }).handler(async (
 
   const refreshed = rows.length ? await memberOrderRows(user.id) : rows;
   return refreshed.map(toGuestOrderRecord);
-});
+};
+
+export const getMemberOrders = createServerFn({ method: "GET" }).handler(getMemberOrdersHandler);
 
 const claimSchema = z.object({
   orderId: z.string().uuid(),
@@ -161,60 +163,68 @@ const claimSchema = z.object({
  * Idempotent: re-claiming an already-owned order returns `already_member` and the order keeps
  * appearing exactly once in the member history.
  */
+export const claimGuestOrderForMemberInput = (data: z.input<typeof claimSchema>) =>
+  claimSchema.parse(data);
+export const claimGuestOrderForMemberHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof claimGuestOrderForMemberInput>;
+}) => {
+  const user = await getAuthenticatedUser();
+  const rows = await db
+    .select({
+      id: customerOrders.id,
+      customerAuthSubject: customerOrders.customerAuthSubject,
+    })
+    .from(customerOrders)
+    .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
+    .where(eq(customerOrders.id, data.orderId))
+    .limit(1);
+  const order = rows[0];
+  if (!order) throw new Error("Pesanan tidak ditemukan");
+
+  const tokenHash = hashGuestAccessToken(data.accessToken);
+  const accessRows = await db
+    .select({ accessTokenHash: guestOrderAccess.accessTokenHash })
+    .from(guestOrderAccess)
+    .where(eq(guestOrderAccess.orderId, data.orderId))
+    .limit(1);
+  const guestTokenVerified = accessRows[0]?.accessTokenHash === tokenHash;
+
+  const decision: ClaimDecision = claimGuestOrder({
+    authSubject: user.id,
+    guestTokenVerified,
+    orderSubject: order.customerAuthSubject,
+  });
+
+  await db.insert(orderClaimEvents).values({
+    orderId: data.orderId,
+    customerAuthSubject: user.id,
+    outcome: decision.claim
+      ? "CLAIMED"
+      : decision.reason === "already_member"
+        ? "ALREADY_MEMBER"
+        : decision.reason === "owned_by_other"
+          ? "OWNED_BY_OTHER"
+          : "UNVERIFIED",
+    // Only a fingerprint is stored; the bearer token itself never reaches the database.
+    presentedTokenHash: decision.claim ? tokenHash : null,
+  });
+
+  if (!decision.claim) return { claimed: false, reason: decision.reason };
+
+  // Conditional on the subject still being empty so two concurrent claims cannot both win.
+  const updated = await db
+    .update(customerOrders)
+    .set({ customerAuthSubject: user.id, customerAuthLinkedAt: new Date().toISOString() })
+    .where(and(eq(customerOrders.id, data.orderId), isNull(customerOrders.customerAuthSubject)))
+    .returning({ id: customerOrders.id });
+  return { claimed: updated.length > 0, reason: decision.reason };
+};
+
 export const claimGuestOrderForMember = createServerFn({ method: "POST" })
   .validator(claimSchema)
-  .handler(async ({ data }) => {
-    const user = await getAuthenticatedUser();
-    const rows = await db
-      .select({
-        id: customerOrders.id,
-        customerAuthSubject: customerOrders.customerAuthSubject,
-      })
-      .from(customerOrders)
-      .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
-      .where(eq(customerOrders.id, data.orderId))
-      .limit(1);
-    const order = rows[0];
-    if (!order) throw new Error("Pesanan tidak ditemukan");
-
-    const tokenHash = hashGuestAccessToken(data.accessToken);
-    const accessRows = await db
-      .select({ accessTokenHash: guestOrderAccess.accessTokenHash })
-      .from(guestOrderAccess)
-      .where(eq(guestOrderAccess.orderId, data.orderId))
-      .limit(1);
-    const guestTokenVerified = accessRows[0]?.accessTokenHash === tokenHash;
-
-    const decision: ClaimDecision = claimGuestOrder({
-      authSubject: user.id,
-      guestTokenVerified,
-      orderSubject: order.customerAuthSubject,
-    });
-
-    await db.insert(orderClaimEvents).values({
-      orderId: data.orderId,
-      customerAuthSubject: user.id,
-      outcome: decision.claim
-        ? "CLAIMED"
-        : decision.reason === "already_member"
-          ? "ALREADY_MEMBER"
-          : decision.reason === "owned_by_other"
-            ? "OWNED_BY_OTHER"
-            : "UNVERIFIED",
-      // Only a fingerprint is stored; the bearer token itself never reaches the database.
-      presentedTokenHash: decision.claim ? tokenHash : null,
-    });
-
-    if (!decision.claim) return { claimed: false, reason: decision.reason };
-
-    // Conditional on the subject still being empty so two concurrent claims cannot both win.
-    const updated = await db
-      .update(customerOrders)
-      .set({ customerAuthSubject: user.id, customerAuthLinkedAt: new Date().toISOString() })
-      .where(and(eq(customerOrders.id, data.orderId), isNull(customerOrders.customerAuthSubject)))
-      .returning({ id: customerOrders.id });
-    return { claimed: updated.length > 0, reason: decision.reason };
-  });
+  .handler(claimGuestOrderForMemberHandler);
 
 export const memberOrderContract = {
   identity: "resolved server-side from the verified Better Auth session cookie",

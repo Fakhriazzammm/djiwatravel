@@ -51,14 +51,14 @@ async function readSignedInEmail(): Promise<string | null> {
   }
 }
 
-export const getAdminEmail = createServerFn({ method: "GET" }).handler(async () =>
-  readSignedInEmail(),
-);
+export const getAdminEmailHandler = async () => readSignedInEmail();
+
+export const getAdminEmail = createServerFn({ method: "GET" }).handler(getAdminEmailHandler);
 
 /** True only for an allow-listed admin with a valid Better Auth session. */
-export const isAdminRequest = createServerFn({ method: "GET" }).handler(async () =>
-  isAdminEmail(await readSignedInEmail()),
-);
+export const isAdminRequestHandler = async () => isAdminEmail(await readSignedInEmail());
+
+export const isAdminRequest = createServerFn({ method: "GET" }).handler(isAdminRequestHandler);
 
 /** No shadow role store: the canonical Better Auth control-plane contract is not verified here. */
 export const ADMIN_INVITE_READINESS = {

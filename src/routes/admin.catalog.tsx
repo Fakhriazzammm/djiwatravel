@@ -21,7 +21,7 @@ import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/componen
 import { FixedLayer } from "@/components/motion-primitives";
 import { useTypingPlaceholder } from "@/hooks/use-typing-placeholder";
 import { formatAdminDateTime } from "@/lib/admin-display";
-import { readAdminCatalogPage } from "@/lib/admin-catalog.server";
+import { readAdminCatalogPage } from "@/lib/admin-catalog.fn";
 import { validatePriceRuleInput } from "@/lib/price-rules";
 import {
   applyCataloguePricing,
@@ -29,9 +29,8 @@ import {
   setPackagePriceInline,
   readPriceRuleHistory,
   rollbackPricingBatch,
-  type PriceRuleEventView,
-  type PricingPreviewResult,
-} from "@/lib/price-rules.server";
+} from "@/lib/price-rules.fn";
+import { type PriceRuleEventView, type PricingPreviewResult } from "@/lib/price-rules.server";
 import { requireAdmin } from "@/lib/admin-guard";
 
 const searchSchema = z.object({
@@ -705,7 +704,9 @@ function AdminCatalogPage() {
                     <td className="px-2 py-1.5 tabular-nums">{row.durationDays}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">
                       <p>US${(row.providerPriceUnits / 10_000).toFixed(2)}</p>
-                      <p className="text-[11px] text-muted-foreground">{idr(row.providerCostIdr)}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {idr(row.providerCostIdr)}
+                      </p>
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums">
                       {inline?.packageCode === row.packageCode && inline.mode === "percent" ? (
@@ -792,7 +793,10 @@ function AdminCatalogPage() {
                 ))}
                 {slice.rows.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-[13px] text-muted-foreground">
+                    <td
+                      colSpan={10}
+                      className="px-3 py-8 text-center text-[13px] text-muted-foreground"
+                    >
                       Tidak ada paket pada filter ini.
                     </td>
                   </tr>
@@ -830,7 +834,9 @@ function AdminCatalogPage() {
                   </button>
                   {inline?.packageCode === row.packageCode ? (
                     <div className="mt-1 flex items-center gap-1 text-[12px]">
-                      <span className="text-muted-foreground">{inline.mode === "price" ? "Rp" : "%"}</span>
+                      <span className="text-muted-foreground">
+                        {inline.mode === "price" ? "Rp" : "%"}
+                      </span>
                       <input
                         autoFocus
                         value={inline.value}
@@ -1114,7 +1120,9 @@ function AdminCatalogPage() {
                         {formatAdminDateTime(rule.effectiveFrom)}
                       </span>
                       {rule.reason && (
-                        <span className="truncate text-[11px] text-muted-foreground">· {rule.reason}</span>
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          · {rule.reason}
+                        </span>
                       )}
                     </li>
                   ))}

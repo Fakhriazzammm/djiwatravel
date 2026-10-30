@@ -85,7 +85,7 @@ export function toSafeAdminProviderWebhook(event: Row) {
   };
 }
 
-export const getAdminOrders = createServerFn({ method: "GET" }).handler(async () => {
+export const getAdminOrdersHandler = async () => {
   await requireAdmin();
   const result = await db.execute(sql`
     select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
@@ -119,14 +119,19 @@ export const getAdminOrders = createServerFn({ method: "GET" }).handler(async ()
     itemSummary: text(row, "item_summary"),
     provisioningStatus: text(row, "provisioning_status"),
   }));
-});
+};
 
-export const getAdminOrderDetail = createServerFn({ method: "GET" })
-  .validator((data: { id: string }) => data)
-  .handler(async ({ data }) => {
-    await requireAdmin();
-    if (!UUID_RE.test(data.id)) return null;
-    const orderResult = await db.execute(sql`
+export const getAdminOrders = createServerFn({ method: "GET" }).handler(getAdminOrdersHandler);
+
+export const getAdminOrderDetailInput = (data: { id: string }) => data;
+export const getAdminOrderDetailHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof getAdminOrderDetailInput>;
+}) => {
+  await requireAdmin();
+  if (!UUID_RE.test(data.id)) return null;
+  const orderResult = await db.execute(sql`
       select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
              o.payment_provider, o.payment_reference, o.paid_at, o.created_at, o.updated_at,
              o.payment_expires_at, o.esim_activation_expires_at,
@@ -143,20 +148,20 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
        where o.id = ${data.id}::uuid
        limit 1
     `);
-    const row = orderResult.rows[0] as Row | undefined;
-    if (!row) return null;
+  const row = orderResult.rows[0] as Row | undefined;
+  if (!row) return null;
 
-    const [itemsResult, webhookResult, providerWebhookResult] = await Promise.all([
-      db.execute(sql`
+  const [itemsResult, webhookResult, providerWebhookResult] = await Promise.all([
+    db.execute(sql`
         select package_name_snapshot, quantity, line_total
           from public.customer_order_items where order_id = ${data.id}::uuid order by id
       `),
-      db.execute(sql`
+    db.execute(sql`
         select event_type, status, amount, currency_code,
                processed_at, processing_error, created_at
           from public.payment_webhook_events where order_id = ${data.id}::uuid order by created_at desc limit 20
       `),
-      db.execute(sql`
+    db.execute(sql`
         select notify_type, processed_at, processing_error, provider_event_at, synced_at
           from public.provider_webhook_events
          where notify_id in (
@@ -164,46 +169,50 @@ export const getAdminOrderDetail = createServerFn({ method: "GET" })
          )
          order by coalesce(provider_event_at, synced_at) desc nulls last limit 20
       `),
-    ]);
+  ]);
 
-    const paymentWebhooks = (webhookResult.rows as Row[]).map(toSafeAdminPaymentWebhook);
+  const paymentWebhooks = (webhookResult.rows as Row[]).map(toSafeAdminPaymentWebhook);
 
-    return {
-      displayIdentifier: maskReference(text(row, "public_order_code")),
-      status: text(row, "status")!,
-      currencyCode: text(row, "currency_code")!,
-      totalAmount: number(row, "total_amount"),
-      paymentProviderLabel: paymentProviderLabel(row),
-      paymentReference: maskReference(text(row, "payment_reference")),
+  return {
+    displayIdentifier: maskReference(text(row, "public_order_code")),
+    status: text(row, "status")!,
+    currencyCode: text(row, "currency_code")!,
+    totalAmount: number(row, "total_amount"),
+    paymentProviderLabel: paymentProviderLabel(row),
+    paymentReference: maskReference(text(row, "payment_reference")),
+    paidAt: text(row, "paid_at"),
+    createdAt: text(row, "created_at")!,
+    updatedAt: text(row, "updated_at")!,
+    paymentExpiresAt: text(row, "payment_expires_at"),
+    esimActivationExpiresAt: text(row, "esim_activation_expires_at"),
+    customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
+    provisioning: {
+      status: text(row, "provisioning_status"),
+      attemptCount: number(row, "attempt_count"),
+      provisioningAttempts: number(row, "provisioning_attempts"),
+      lastError: safeError(row, "last_provisioning_error"),
+      createdAt: text(row, "provisioning_created_at"),
+      updatedAt: text(row, "provisioning_updated_at"),
+    },
+    items: (itemsResult.rows as Row[]).map((item) => ({
+      packageName: text(item, "package_name_snapshot") ?? "Paket belum tersedia",
+      quantity: number(item, "quantity"),
+      lineTotal: number(item, "line_total"),
+    })),
+    payment: {
+      status: paymentWebhooks[0]?.status ?? (text(row, "paid_at") ? "PAID" : null),
+      providerLabel: paymentProviderLabel(row),
+      reference: maskReference(text(row, "payment_reference")),
       paidAt: text(row, "paid_at"),
-      createdAt: text(row, "created_at")!,
-      updatedAt: text(row, "updated_at")!,
-      paymentExpiresAt: text(row, "payment_expires_at"),
-      esimActivationExpiresAt: text(row, "esim_activation_expires_at"),
-      customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
-      provisioning: {
-        status: text(row, "provisioning_status"),
-        attemptCount: number(row, "attempt_count"),
-        provisioningAttempts: number(row, "provisioning_attempts"),
-        lastError: safeError(row, "last_provisioning_error"),
-        createdAt: text(row, "provisioning_created_at"),
-        updatedAt: text(row, "provisioning_updated_at"),
-      },
-      items: (itemsResult.rows as Row[]).map((item) => ({
-        packageName: text(item, "package_name_snapshot") ?? "Paket belum tersedia",
-        quantity: number(item, "quantity"),
-        lineTotal: number(item, "line_total"),
-      })),
-      payment: {
-        status: paymentWebhooks[0]?.status ?? (text(row, "paid_at") ? "PAID" : null),
-        providerLabel: paymentProviderLabel(row),
-        reference: maskReference(text(row, "payment_reference")),
-        paidAt: text(row, "paid_at"),
-        webhooks: paymentWebhooks,
-      },
-      providerWebhooks: (providerWebhookResult.rows as Row[]).map(toSafeAdminProviderWebhook),
-    };
-  });
+      webhooks: paymentWebhooks,
+    },
+    providerWebhooks: (providerWebhookResult.rows as Row[]).map(toSafeAdminProviderWebhook),
+  };
+};
+
+export const getAdminOrderDetail = createServerFn({ method: "GET" })
+  .validator((data: { id: string }) => data)
+  .handler(getAdminOrderDetailHandler);
 
 const paymentSortSql: Record<PaymentQuery["sort"], string> = {
   createdAt: "created_at",
@@ -212,22 +221,26 @@ const paymentSortSql: Record<PaymentQuery["sort"], string> = {
   status: "status",
 };
 
-export const getAdminPayments = createServerFn({ method: "GET" })
-  .validator((data: Partial<PaymentQuery> = {}) => normalizePaymentQuery(data))
-  .handler(async ({ data }) => {
-    await requireAdmin();
-    const query = normalizePaymentQuery(data);
-    const search = query.query ? `%${query.query.replace(/[%_]/g, "\\$&")}%` : null;
-    const filters = [
-      query.status !== "ALL" ? sql`status = ${query.status}` : sql`true`,
-      search
-        ? sql`(public_order_code ilike ${search} or status ilike ${search} or event_type ilike ${search} or coalesce(payment_provider, '') ilike ${search})`
-        : sql`true`,
-    ];
-    const where = sql.join(filters, sql` and `);
-    const sortColumn = paymentSortSql[query.sort];
-    const direction = query.dir === "asc" ? sql.raw("asc") : sql.raw("desc");
-    const base = sql`
+export const getAdminPaymentsInput = (data: Partial<PaymentQuery> = {}) =>
+  normalizePaymentQuery(data);
+export const getAdminPaymentsHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof getAdminPaymentsInput>;
+}) => {
+  await requireAdmin();
+  const query = normalizePaymentQuery(data);
+  const search = query.query ? `%${query.query.replace(/[%_]/g, "\\$&")}%` : null;
+  const filters = [
+    query.status !== "ALL" ? sql`status = ${query.status}` : sql`true`,
+    search
+      ? sql`(public_order_code ilike ${search} or status ilike ${search} or event_type ilike ${search} or coalesce(payment_provider, '') ilike ${search})`
+      : sql`true`,
+  ];
+  const where = sql.join(filters, sql` and `);
+  const sortColumn = paymentSortSql[query.sort];
+  const direction = query.dir === "asc" ? sql.raw("asc") : sql.raw("desc");
+  const base = sql`
       with payment_exceptions as (
         select w.id::text as id, w.order_id, o.public_order_code,
                w.status, w.event_type, w.amount, w.currency_code, w.processing_error as last_error,
@@ -251,43 +264,47 @@ export const getAdminPayments = createServerFn({ method: "GET" })
          where o.status = 'PAYMENT_PENDING' and not exists (select 1 from public.payment_webhook_events w where w.order_id = o.id and w.status = 'PAID')
       )
     `;
-    const [countResult, result] = await Promise.all([
-      db.execute(sql`${base} select count(*)::int as total from payment_exceptions where ${where}`),
-      db.execute(
-        sql`${base} select * from payment_exceptions where ${where} order by ${sql.raw(sortColumn)} ${direction}, id desc limit ${query.pageSize} offset ${query.page * query.pageSize}`,
-      ),
-    ]);
-    const rows = result.rows as Row[];
-    const total = Number((countResult.rows[0] as Row | undefined)?.["total"] ?? 0);
-    return {
-      rows: rows.map((row) => ({
-        displayIdentifier: maskReference(text(row, "id")),
-        detailHref: `/admin/orders/${text(row, "order_id")!}`,
-        status: text(row, "status")!,
-        amount: nullableNumber(row, "amount"),
-        currencyCode: text(row, "currency_code"),
-        eventType: safeEventType(row, "event_type", ["payment.received", "payment_pending"]),
-        paymentProviderLabel: paymentProviderLabel(row),
-        paymentReference: maskReference(text(row, "payment_reference")),
-        itemSummary: text(row, "item_summary"),
-        orderCreatedAt: text(row, "order_created_at"),
-        orderUpdatedAt: text(row, "order_updated_at"),
-        attemptCount: nullableNumber(row, "attempt_count"),
-        nextReconcileAt: text(row, "next_reconcile_at"),
-        lastError: safeError(row, "last_error"),
-        createdAt: text(row, "created_at")!,
-        updatedAt: text(row, "updated_at")!,
-        exceptionAt: text(row, "updated_at")!,
-        customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
-      })),
-      total,
-      page: query.page,
-      pageSize: query.pageSize,
-      hasMore: (query.page + 1) * query.pageSize < total,
-    };
-  });
+  const [countResult, result] = await Promise.all([
+    db.execute(sql`${base} select count(*)::int as total from payment_exceptions where ${where}`),
+    db.execute(
+      sql`${base} select * from payment_exceptions where ${where} order by ${sql.raw(sortColumn)} ${direction}, id desc limit ${query.pageSize} offset ${query.page * query.pageSize}`,
+    ),
+  ]);
+  const rows = result.rows as Row[];
+  const total = Number((countResult.rows[0] as Row | undefined)?.["total"] ?? 0);
+  return {
+    rows: rows.map((row) => ({
+      displayIdentifier: maskReference(text(row, "id")),
+      detailHref: `/admin/orders/${text(row, "order_id")!}`,
+      status: text(row, "status")!,
+      amount: nullableNumber(row, "amount"),
+      currencyCode: text(row, "currency_code"),
+      eventType: safeEventType(row, "event_type", ["payment.received", "payment_pending"]),
+      paymentProviderLabel: paymentProviderLabel(row),
+      paymentReference: maskReference(text(row, "payment_reference")),
+      itemSummary: text(row, "item_summary"),
+      orderCreatedAt: text(row, "order_created_at"),
+      orderUpdatedAt: text(row, "order_updated_at"),
+      attemptCount: nullableNumber(row, "attempt_count"),
+      nextReconcileAt: text(row, "next_reconcile_at"),
+      lastError: safeError(row, "last_error"),
+      createdAt: text(row, "created_at")!,
+      updatedAt: text(row, "updated_at")!,
+      exceptionAt: text(row, "updated_at")!,
+      customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
+    })),
+    total,
+    page: query.page,
+    pageSize: query.pageSize,
+    hasMore: (query.page + 1) * query.pageSize < total,
+  };
+};
 
-export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(async () => {
+export const getAdminPayments = createServerFn({ method: "GET" })
+  .validator((data: Partial<PaymentQuery> = {}) => normalizePaymentQuery(data))
+  .handler(getAdminPaymentsHandler);
+
+export const getAdminProvisioningHandler = async () => {
   await requireAdmin();
   const result = await db.execute(sql`
     select p.id, p.order_id, o.public_order_code, o.status as order_status,
@@ -312,9 +329,13 @@ export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(as
     updatedAt: text(row, "updated_at")!,
     customer: toAdminCustomer(text(row, "customer_email"), text(row, "customer_whatsapp")),
   }));
-});
+};
 
-export const getAdminSupportCases = createServerFn({ method: "GET" }).handler(async () => {
+export const getAdminProvisioning = createServerFn({ method: "GET" }).handler(
+  getAdminProvisioningHandler,
+);
+
+export const getAdminSupportCasesHandler = async () => {
   await requireAdmin();
   const result = await db.execute(sql`
     select c.id, c.public_case_code, c.category, c.subject, c.description,
@@ -341,9 +362,13 @@ export const getAdminSupportCases = createServerFn({ method: "GET" }).handler(as
     createdAt: text(row, "created_at")!,
     updatedAt: text(row, "updated_at")!,
   }));
-});
+};
 
-export const getAdminRefundRequests = createServerFn({ method: "GET" }).handler(async () => {
+export const getAdminSupportCases = createServerFn({ method: "GET" }).handler(
+  getAdminSupportCasesHandler,
+);
+
+export const getAdminRefundRequestsHandler = async () => {
   await requireAdmin();
   const result = await db.execute(sql`
     select r.id, r.order_id, o.public_order_code, o.status as order_status,
@@ -368,91 +393,104 @@ export const getAdminRefundRequests = createServerFn({ method: "GET" }).handler(
     createdAt: text(row, "created_at")!,
     updatedAt: text(row, "updated_at")!,
   }));
+};
+
+export const getAdminRefundRequests = createServerFn({ method: "GET" }).handler(
+  getAdminRefundRequestsHandler,
+);
+
+export const getAdminDashboardInput = (data: { period?: "daily" | "weekly" | "monthly" } = {}) => ({
+  period: data.period ?? "daily",
 });
+export const getAdminDashboardHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof getAdminDashboardInput>;
+}) => {
+  await requireAdmin();
+  const period = data.period;
+  const periodStart =
+    period === "daily"
+      ? sql`date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`
+      : period === "weekly"
+        ? sql`date_trunc('week', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`
+        : sql`date_trunc('month', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
+  const periodEnd =
+    period === "daily"
+      ? sql`${periodStart} + interval '1 day'`
+      : period === "weekly"
+        ? sql`${periodStart} + interval '7 days'`
+        : sql`${periodStart} + interval '1 month'`;
+  const [
+    countResult,
+    dailyResult,
+    statusResult,
+    exceptionResult,
+    paymentExceptionCountResult,
+    freshnessResult,
+  ] = await Promise.all([
+    db.execute(
+      sql`select count(*)::int as total, count(*) filter (where paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(total_amount) filter (where currency_code = 'IDR' and (paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr, count(*) filter (where status in ('READY','INSTALLED'))::int as provisioning_ready, count(*) filter (where status = 'PROVISIONING_FAILED')::int as provisioning_failed, count(*) filter (where status in ('PAYMENT_CONFIRMED','PROVISIONING'))::int as paid_not_ready from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd}`,
+    ),
+    db.execute(
+      sql`select date_trunc('day', created_at at time zone 'Asia/Jakarta')::date::text as day, count(*)::int as count from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd} group by 1 order by 1`,
+    ),
+    db.execute(
+      sql`select status, count(*)::int as count from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd} group by status order by count desc`,
+    ),
+    db.execute(
+      sql`with exceptions as (select o.id, o.public_order_code, o.status, o.total_amount as amount, o.currency_code, o.updated_at as exception_at, 'order' as kind, a.email as customer_email, a.whatsapp as customer_whatsapp from public.customer_orders o left join public.guest_order_access a on a.order_id=o.id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and o.status in ('ORDER_CREATED','PAYMENT_PENDING','PAYMENT_CONFIRMED','PROVISIONING_FAILED') union all select w.order_id, o.public_order_code, w.status, w.amount, w.currency_code, w.created_at, 'payment', a.email, a.whatsapp from public.payment_webhook_events w join public.customer_orders o on o.id=w.order_id left join public.guest_order_access a on a.order_id=o.id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED'))) select * from exceptions order by exception_at desc limit ${LIMIT}`,
+    ),
+    db.execute(
+      sql`select count(*)::int as total from public.payment_webhook_events w join public.customer_orders o on o.id=w.order_id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED'))`,
+    ),
+    db.execute(
+      sql`select greatest(max(updated_at), max(created_at))::text as last_data_at from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd}`,
+    ),
+  ]);
+  const row = (countResult.rows[0] as Row | undefined) ?? {};
+  return {
+    period,
+    updatedAt: text((freshnessResult.rows[0] as Row | undefined) ?? {}, "last_data_at"),
+    counts: {
+      total: number(row, "total"),
+      paid: number(row, "paid"),
+      grossIdr: nullableNumber(row, "gross_idr"),
+      paymentExceptions: number(
+        (paymentExceptionCountResult.rows[0] as Row | undefined) ?? {},
+        "total",
+      ),
+      provisioningReady: number(row, "provisioning_ready"),
+      provisioningFailed: number(row, "provisioning_failed"),
+      paidNotReady: number(row, "paid_not_ready"),
+    },
+    daily: (dailyResult.rows as Row[]).map((r) => ({
+      day: text(r, "day")!,
+      count: number(r, "count"),
+    })),
+    statuses: (statusResult.rows as Row[]).map((r) => ({
+      status: text(r, "status")!,
+      count: number(r, "count"),
+    })),
+    items: (exceptionResult.rows as Row[]).map((item) => ({
+      detailHref: `/admin/orders/${text(item, "id")!}`,
+      displayIdentifier: maskReference(text(item, "public_order_code")),
+      status: text(item, "status")!,
+      kind: text(item, "kind")!,
+      amount: nullableNumber(item, "amount"),
+      currencyCode: text(item, "currency_code"),
+      exceptionAt: text(item, "exception_at")!,
+      customer: toAdminCustomer(text(item, "customer_email"), text(item, "customer_whatsapp")),
+    })),
+    providerBalance: await loadAdminProviderBalance(RESELLER_CONFIG.usdToIdr),
+  };
+};
 
 export const getAdminDashboard = createServerFn({ method: "GET" })
   .validator((data: { period?: "daily" | "weekly" | "monthly" } = {}) => ({
     period: data.period ?? "daily",
   }))
-  .handler(async ({ data }) => {
-    await requireAdmin();
-    const period = data.period;
-    const periodStart =
-      period === "daily"
-        ? sql`date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`
-        : period === "weekly"
-          ? sql`date_trunc('week', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`
-          : sql`date_trunc('month', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
-    const periodEnd =
-      period === "daily"
-        ? sql`${periodStart} + interval '1 day'`
-        : period === "weekly"
-          ? sql`${periodStart} + interval '7 days'`
-          : sql`${periodStart} + interval '1 month'`;
-    const [
-      countResult,
-      dailyResult,
-      statusResult,
-      exceptionResult,
-      paymentExceptionCountResult,
-      freshnessResult,
-    ] = await Promise.all([
-      db.execute(
-        sql`select count(*)::int as total, count(*) filter (where paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(total_amount) filter (where currency_code = 'IDR' and (paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr, count(*) filter (where status in ('READY','INSTALLED'))::int as provisioning_ready, count(*) filter (where status = 'PROVISIONING_FAILED')::int as provisioning_failed, count(*) filter (where status in ('PAYMENT_CONFIRMED','PROVISIONING'))::int as paid_not_ready from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd}`,
-      ),
-      db.execute(
-        sql`select date_trunc('day', created_at at time zone 'Asia/Jakarta')::date::text as day, count(*)::int as count from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd} group by 1 order by 1`,
-      ),
-      db.execute(
-        sql`select status, count(*)::int as count from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd} group by status order by count desc`,
-      ),
-      db.execute(
-        sql`with exceptions as (select o.id, o.public_order_code, o.status, o.total_amount as amount, o.currency_code, o.updated_at as exception_at, 'order' as kind, a.email as customer_email, a.whatsapp as customer_whatsapp from public.customer_orders o left join public.guest_order_access a on a.order_id=o.id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and o.status in ('ORDER_CREATED','PAYMENT_PENDING','PAYMENT_CONFIRMED','PROVISIONING_FAILED') union all select w.order_id, o.public_order_code, w.status, w.amount, w.currency_code, w.created_at, 'payment', a.email, a.whatsapp from public.payment_webhook_events w join public.customer_orders o on o.id=w.order_id left join public.guest_order_access a on a.order_id=o.id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED'))) select * from exceptions order by exception_at desc limit ${LIMIT}`,
-      ),
-      db.execute(
-        sql`select count(*)::int as total from public.payment_webhook_events w join public.customer_orders o on o.id=w.order_id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED'))`,
-      ),
-      db.execute(
-        sql`select greatest(max(updated_at), max(created_at))::text as last_data_at from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd}`,
-      ),
-    ]);
-    const row = (countResult.rows[0] as Row | undefined) ?? {};
-    return {
-      period,
-      updatedAt: text((freshnessResult.rows[0] as Row | undefined) ?? {}, "last_data_at"),
-      counts: {
-        total: number(row, "total"),
-        paid: number(row, "paid"),
-        grossIdr: nullableNumber(row, "gross_idr"),
-        paymentExceptions: number(
-          (paymentExceptionCountResult.rows[0] as Row | undefined) ?? {},
-          "total",
-        ),
-        provisioningReady: number(row, "provisioning_ready"),
-        provisioningFailed: number(row, "provisioning_failed"),
-        paidNotReady: number(row, "paid_not_ready"),
-      },
-      daily: (dailyResult.rows as Row[]).map((r) => ({
-        day: text(r, "day")!,
-        count: number(r, "count"),
-      })),
-      statuses: (statusResult.rows as Row[]).map((r) => ({
-        status: text(r, "status")!,
-        count: number(r, "count"),
-      })),
-      items: (exceptionResult.rows as Row[]).map((item) => ({
-        detailHref: `/admin/orders/${text(item, "id")!}`,
-        displayIdentifier: maskReference(text(item, "public_order_code")),
-        status: text(item, "status")!,
-        kind: text(item, "kind")!,
-        amount: nullableNumber(item, "amount"),
-        currencyCode: text(item, "currency_code"),
-        exceptionAt: text(item, "exception_at")!,
-        customer: toAdminCustomer(text(item, "customer_email"), text(item, "customer_whatsapp")),
-      })),
-      providerBalance: await loadAdminProviderBalance(RESELLER_CONFIG.usdToIdr),
-    };
-  });
+  .handler(getAdminDashboardHandler);
 
 /** Provider credit shown on the dashboard; never throws, so the dashboard still renders. */
 async function loadAdminProviderBalance(fxRateIdr: number): Promise<ProviderBalanceView> {

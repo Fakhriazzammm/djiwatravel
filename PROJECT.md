@@ -94,7 +94,10 @@ Route groups are discoverable from these prefixes and files:
 Use `.server.ts`/`.server.tsx` for modules that access PostgreSQL, secrets,
 provider APIs, filesystem state, or privileged authorization. Server functions
 and loaders/actions should call those modules; do not import credentials or
-database clients into browser code. Shared presentational logic belongs in
+database clients into browser code. Browser-callable `createServerFn` declarations belong in `.fn.ts` modules, which
+dynamically import validated handlers from `.server.ts`; browser code must not
+import callable exports directly from `.server.ts`. Production import-protection
+violations fail the build instead of shipping mocks. Shared presentational logic belongs in
 `src/components/`, `src/hooks/`, and non-server `src/lib/` modules.
 
 Tests are under [`src/test/`](src/test/), with server, route-auth, wallet,

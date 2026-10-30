@@ -100,76 +100,83 @@ export type AdminCatalogReadInput = {
   sortDir?: AdminCatalogSortDir;
 };
 
+export const readAdminCatalogPageInput = (data: unknown) => readSchema.parse(data ?? {});
+export const readAdminCatalogPageHandler = async ({
+  data,
+}: {
+  data: ReturnType<typeof readAdminCatalogPageInput>;
+}): Promise<AdminCatalogPayload> => {
+  await requireAdmin();
+  const [catalog, rules, snapshot] = await Promise.all([
+    getResellerCatalog(),
+    getActivePriceRules(),
+    getBalanceSnapshot(),
+  ]);
+
+  const rows = buildAdminCatalogRows(catalog.packages, {
+    rules,
+    balanceUnits: snapshot.balanceUnits,
+    usdToIdr: RESELLER_CONFIG.usdToIdr,
+  });
+  const filtered = filterAdminCatalogRows(rows, data.filter);
+  const sorted = sortAdminCatalogRows(filtered, data.sortKey, data.sortDir);
+  const slice = paginateAdminCatalogRows(sorted, data.page, data.pageSize, rows.length);
+
+  const usd = snapshot.balanceUnits === null ? null : snapshot.balanceUnits / 10_000;
+  const generatedAt = Date.now();
+
+  return {
+    slice,
+    kpi: summarizeAdminCatalog(rows, filtered.length),
+    ruleSummary: summarizeActiveRules(rules),
+    rules: rules.map((rule) => ({
+      id: rule.id,
+      scopeType: rule.scopeType,
+      scopeKey: rule.scopeKey,
+      markupType: rule.markupType,
+      markupValue: rule.markupValue,
+      version: rule.version,
+      createdBy: rule.createdBy,
+      reason: rule.reason,
+      effectiveFrom: rule.effectiveFrom,
+      batchId: rule.batchId ?? null,
+    })),
+    balance: {
+      state: snapshot.balanceUnits === null ? "unavailable" : "ok",
+      usd,
+      idrReference: usd === null ? null : Math.round(usd * RESELLER_CONFIG.usdToIdr),
+      fxRateIdr: RESELLER_CONFIG.usdToIdr,
+      source: snapshot.source,
+      capturedAt:
+        snapshot.capturedAtMs === null ? null : new Date(snapshot.capturedAtMs).toISOString(),
+      sellableCeilingUsd: affordableCeilingUsd(snapshot),
+      sellabilityMode:
+        process.env["TRAVEL_SELLABILITY_MODE"] === "on"
+          ? "on"
+          : process.env["TRAVEL_SELLABILITY_MODE"] === "shadow"
+            ? "shadow"
+            : "off",
+    },
+    meta: {
+      source: catalog.source,
+      syncedAt: catalog.syncedAt === null ? null : new Date(catalog.syncedAt).toISOString(),
+      stale: catalog.stale,
+      generatedAt: new Date(generatedAt).toISOString(),
+      freshnessAgeSeconds:
+        catalog.syncedAt === null
+          ? null
+          : Math.max(0, Math.round((generatedAt - catalog.syncedAt) / 1000)),
+    },
+    defaults: {
+      markupPercent: RESELLER_CONFIG.markupPercent,
+      fixedMarkupIdr: RESELLER_CONFIG.fixedMarkupIdr,
+      usdToIdr: RESELLER_CONFIG.usdToIdr,
+      roundingIdr: RESELLER_CONFIG.roundingIdr,
+    },
+    maxBatch: MAX_BATCH_PACKAGES,
+  };
+};
+
 export const readAdminCatalogPage = createServerFn({ method: "POST" })
   .validator((data: unknown) => readSchema.parse(data ?? {}))
-  .handler(async ({ data }): Promise<AdminCatalogPayload> => {
-    await requireAdmin();
-    const [catalog, rules, snapshot] = await Promise.all([
-      getResellerCatalog(),
-      getActivePriceRules(),
-      getBalanceSnapshot(),
-    ]);
-
-    const rows = buildAdminCatalogRows(catalog.packages, {
-      rules,
-      balanceUnits: snapshot.balanceUnits,
-      usdToIdr: RESELLER_CONFIG.usdToIdr,
-    });
-    const filtered = filterAdminCatalogRows(rows, data.filter);
-    const sorted = sortAdminCatalogRows(filtered, data.sortKey, data.sortDir);
-    const slice = paginateAdminCatalogRows(sorted, data.page, data.pageSize, rows.length);
-
-    const usd = snapshot.balanceUnits === null ? null : snapshot.balanceUnits / 10_000;
-    const generatedAt = Date.now();
-
-    return {
-      slice,
-      kpi: summarizeAdminCatalog(rows, filtered.length),
-      ruleSummary: summarizeActiveRules(rules),
-      rules: rules.map((rule) => ({
-        id: rule.id,
-        scopeType: rule.scopeType,
-        scopeKey: rule.scopeKey,
-        markupType: rule.markupType,
-        markupValue: rule.markupValue,
-        version: rule.version,
-        createdBy: rule.createdBy,
-        reason: rule.reason,
-        effectiveFrom: rule.effectiveFrom,
-        batchId: rule.batchId ?? null,
-      })),
-      balance: {
-        state: snapshot.balanceUnits === null ? "unavailable" : "ok",
-        usd,
-        idrReference: usd === null ? null : Math.round(usd * RESELLER_CONFIG.usdToIdr),
-        fxRateIdr: RESELLER_CONFIG.usdToIdr,
-        source: snapshot.source,
-        capturedAt:
-          snapshot.capturedAtMs === null ? null : new Date(snapshot.capturedAtMs).toISOString(),
-        sellableCeilingUsd: affordableCeilingUsd(snapshot),
-        sellabilityMode:
-          process.env["TRAVEL_SELLABILITY_MODE"] === "on"
-            ? "on"
-            : process.env["TRAVEL_SELLABILITY_MODE"] === "shadow"
-              ? "shadow"
-              : "off",
-      },
-      meta: {
-        source: catalog.source,
-        syncedAt: catalog.syncedAt === null ? null : new Date(catalog.syncedAt).toISOString(),
-        stale: catalog.stale,
-        generatedAt: new Date(generatedAt).toISOString(),
-        freshnessAgeSeconds:
-          catalog.syncedAt === null
-            ? null
-            : Math.max(0, Math.round((generatedAt - catalog.syncedAt) / 1000)),
-      },
-      defaults: {
-        markupPercent: RESELLER_CONFIG.markupPercent,
-        fixedMarkupIdr: RESELLER_CONFIG.fixedMarkupIdr,
-        usdToIdr: RESELLER_CONFIG.usdToIdr,
-        roundingIdr: RESELLER_CONFIG.roundingIdr,
-      },
-      maxBatch: MAX_BATCH_PACKAGES,
-    };
-  });
+  .handler(readAdminCatalogPageHandler);

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { normalizeWhatsapp, WHATSAPP_PATTERN } from "./phone";
 
-export const SUPPORT_WHATSAPP_URL = "https://wa.me/6285156399831";
+export { SUPPORT_WHATSAPP_URL } from "./support-contact";
 export const GUEST_ACCESS_TTL_MS = 60 * 60 * 1000;
 
 export function isGuestAccessExpired(expiresAt: string | Date, now = Date.now()): boolean {

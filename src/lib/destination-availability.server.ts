@@ -134,6 +134,8 @@ export async function getHomeDestinations(limit = 6): Promise<HomeDestinations> 
  * so the first paint never waits on the reseller provider. A provider failure returns an empty
  * `popular` list and the caller keeps what it already rendered.
  */
-export const getHomeDestinationFeed = createServerFn({ method: "GET" }).handler(async () =>
-  getHomeDestinations(),
+export const getHomeDestinationFeedHandler = async () => getHomeDestinations();
+
+export const getHomeDestinationFeed = createServerFn({ method: "GET" }).handler(
+  getHomeDestinationFeedHandler,
 );

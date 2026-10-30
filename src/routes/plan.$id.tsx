@@ -7,7 +7,7 @@ import {
   packageDestinationLabel,
 } from "@/lib/package-copy";
 import { breadcrumbJsonLd, jsonLdScript, productJsonLd, SEO_BASE_URL } from "@/lib/seo";
-import { getIndexablePlan } from "@/lib/seo-indexability.server";
+import { getIndexablePlan } from "@/lib/seo-indexability.fn";
 
 export const Route = createFileRoute("/plan/$id")({
   loader: async ({ params }) => {
@@ -95,7 +95,9 @@ function Plan() {
           </div>
           <div className="flex min-h-14 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Kompatibilitas</dt>
-            <dd className="max-w-[60%] text-right text-sm font-semibold">Ponsel yang mendukung eSIM</dd>
+            <dd className="max-w-[60%] text-right text-sm font-semibold">
+              Ponsel yang mendukung eSIM
+            </dd>
           </div>
           <div className="flex min-h-14 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Harga</dt>
@@ -107,9 +109,13 @@ function Plan() {
             Cara aktivasi
           </h2>
           <ol className="mt-3 divide-y divide-border/70 rounded-2xl bg-surface px-4 text-sm leading-6 text-muted-foreground">
-            <li className="py-3">1. Pastikan perangkat mendukung eSIM dan tidak terkunci operator.</li>
+            <li className="py-3">
+              1. Pastikan perangkat mendukung eSIM dan tidak terkunci operator.
+            </li>
             <li className="py-3">2. Selesaikan pembelian melalui checkout Djiwa Travel.</li>
-            <li className="py-3">3. Pasang profil eSIM saat memakai Wi-Fi, lalu aktifkan data eSIM saat tiba.</li>
+            <li className="py-3">
+              3. Pasang profil eSIM saat memakai Wi-Fi, lalu aktifkan data eSIM saat tiba.
+            </li>
           </ol>
         </section>
         <Link

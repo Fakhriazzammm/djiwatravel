@@ -1,3 +1,5 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { QrCode, Landmark, Check } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -22,18 +24,22 @@ import { DeviceCompatibility } from "@/components/device-compatibility";
 import { nextFrame, paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
 import { trackAnalytics } from "@/lib/analytics";
 
-export const Route = createFileRoute("/checkout/$id")({
-  loader: async ({ params }) => {
+const loadCheckout = createServerFn({ method: "GET" })
+  .validator(z.string().trim().min(1).max(160))
+  .handler(async ({ data }) => {
     // Price the page from the provider's current catalogue, so what the customer sees is what the
     // order is created with (and what the provider will accept).
-    const live = await loadLiveResellerPackage(params.id).catch(() => null);
+    const live = await loadLiveResellerPackage(data).catch(() => null);
     const catalog = await getResellerCatalog();
-    const pkg = live ?? resolveCheckoutPackage(catalog.packages, params.id);
+    const pkg = live ?? resolveCheckoutPackage(catalog.packages, data);
     if (!pkg) throw notFound();
     const sellability = await getSellabilityState([pkg]);
     // Display fields only: the full record carries our cost basis (lib/package-view.ts).
     return { pkg: toViewPackage(pkg, !sellability.hidden.has(pkg.packageCode)) };
-  },
+  });
+
+export const Route = createFileRoute("/checkout/$id")({
+  loader: ({ params }) => loadCheckout({ data: params.id }),
   head: () => ({
     meta: [
       { title: "Checkout — Djiwa Travel" },
@@ -146,11 +152,14 @@ function Checkout() {
       )}
 
       <div className="flex items-center gap-3 rounded-2xl bg-surface p-4">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xl" aria-hidden="true">🌐</span>
+        <span
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xl"
+          aria-hidden="true"
+        >
+          🌐
+        </span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-muted-foreground">
-            Paket internet
-          </p>
+          <p className="text-xs font-medium text-muted-foreground">Paket internet</p>
           <p className="font-semibold">{packageDestinationLabel(pkg)}</p>
           <p className="text-sm text-muted-foreground">
             {packageDataLabel(pkg)} · {pkg.durationDays} hari masa aktif

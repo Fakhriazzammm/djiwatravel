@@ -2,7 +2,7 @@ import { Eye, EyeOff, FileClock, RefreshCw } from "lucide-react";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminPayments } from "@/lib/admin-read-model.server";
+import { getAdminPayments } from "@/lib/admin-read-model.fn";
 import { normalizePaymentQuery } from "@/lib/admin-metrics";
 import {
   ageFrom,
