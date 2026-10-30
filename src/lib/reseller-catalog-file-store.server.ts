@@ -1,5 +1,5 @@
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import type {
   ResellerCatalogCacheEntry,
   ResellerCatalogCacheStore,
@@ -12,7 +12,11 @@ type SnapshotFile = Record<string, ResellerCatalogCacheEntry>;
  * The file is never served publicly and writes are atomic.
  */
 export function createResellerCatalogFileStore(
-  filePath = process.env["RESELLER_CATALOG_CACHE_FILE"],
+  filePath =
+    process.env["RESELLER_CATALOG_CACHE_FILE"] ??
+    (process.env["NODE_ENV"] === "production"
+      ? join(process.cwd(), ".data", "reseller-catalog.json")
+      : undefined),
 ): ResellerCatalogCacheStore | undefined {
   if (!filePath) return undefined;
 

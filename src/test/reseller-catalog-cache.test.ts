@@ -66,14 +66,18 @@ describe("reseller catalog cache", () => {
     expect(loadResellerCatalog).toHaveBeenNthCalledWith(2, { locationCode: "TH" });
   });
 
-  it("fails closed after the bounded stale window", async () => {
+  it("serves the last global snapshot after the bounded stale window", async () => {
     let now = 1_000;
     configureResellerCatalogCache({ now: () => now, ttlMs: 100, maxStaleMs: 500 });
     loadResellerCatalog.mockResolvedValueOnce([pkg]).mockRejectedValueOnce(new Error("offline"));
     await getResellerCatalog();
     now = 1_600;
 
-    await expect(getResellerCatalog()).rejects.toThrow("offline");
+    await expect(getResellerCatalog()).resolves.toMatchObject({
+      packages: [pkg],
+      stale: true,
+      source: "cache",
+    });
   });
 
   it("supports an injected store without requiring persistence or a migration", async () => {

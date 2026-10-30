@@ -152,7 +152,7 @@ export async function getResellerCatalog(locationCode?: string): Promise<Catalog
     recordCatalogMetric("snapshotAgeMs", state.age);
     return { ...current, stale: false, source: "cache" };
   }
-  if (current && state.staleAllowed) {
+  if (current) {
     recordCatalogMetric("staleServed");
     recordCatalogMetric("snapshotAgeMs", state.age);
     void refresh(key, () => loadResellerCatalog(queryForLocation(locationCode))).catch(
