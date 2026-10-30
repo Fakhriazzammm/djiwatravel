@@ -19,6 +19,7 @@ import { z } from "zod";
 
 import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { FixedLayer } from "@/components/motion-primitives";
+import { useTypingPlaceholder } from "@/hooks/use-typing-placeholder";
 import { formatAdminDateTime } from "@/lib/admin-display";
 import { readAdminCatalogPage } from "@/lib/admin-catalog.server";
 import { validatePriceRuleInput } from "@/lib/price-rules";
@@ -103,6 +104,11 @@ function AdminCatalogPage() {
   const { slice, kpi, balance, meta, ruleSummary } = data;
 
   const [qDraft, setQDraft] = useState(search.q);
+  const searchPlaceholder = useTypingPlaceholder({
+    fallback: "Cari kode, nama paket, atau negara…",
+    examples: ["Jepang", "paket 10 GB", "Asia"],
+    paused: Boolean(qDraft),
+  });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [scopeAllFiltered, setScopeAllFiltered] = useState(false);
   const [markupPercent, setMarkupPercent] = useState<string>("");
@@ -399,7 +405,7 @@ function AdminCatalogPage() {
               onKeyDown={(event) => {
                 if (event.key === "Enter") navigate({ q: qDraft, page: 1 });
               }}
-              placeholder="Cari kode, nama paket, atau negara…"
+              placeholder={searchPlaceholder}
               aria-label="Cari paket"
               className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
             />

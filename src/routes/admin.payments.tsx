@@ -15,6 +15,7 @@ import {
   projectAdminTitle,
 } from "@/lib/admin-display";
 import { AdminShell, AdminStatStrip, AdminSurface, StatusPill } from "@/components/admin-shell";
+import { useTypingPlaceholder } from "@/hooks/use-typing-placeholder";
 
 const paymentSearch = z.object({
   q: z.string().default(""),
@@ -49,6 +50,11 @@ function AdminPayments() {
   const search = Route.useSearch();
   const [privateMode, setPrivateMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const searchPlaceholder = useTypingPlaceholder({
+    fallback: "Cari payment / order",
+    examples: ["PAY-2026", "email customer", "order code"],
+    paused: Boolean(search.q),
+  });
   const updateSearch = (patch: Record<string, string | number>) =>
     void router.navigate({ to: "/admin/payments", search: { ...search, ...patch } } as never);
   const setSort = (key: PaymentSortKey) =>
@@ -164,7 +170,7 @@ function AdminPayments() {
               <input
                 value={search.q}
                 onChange={(event) => updateSearch({ q: event.target.value, page: 0 })}
-                placeholder="Cari payment / order"
+                placeholder={searchPlaceholder}
                 aria-label="Cari payment atau order"
                 className="min-h-11 w-full rounded-xl border border-border bg-secondary pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />

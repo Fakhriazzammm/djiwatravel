@@ -12,9 +12,13 @@ export default defineConfig({
     tailwindcss(),
     ...tanstackStart({
       server: { entry: "server" },
-      // Existing route loaders call server modules directly. Keep the current
-      // application contract while those boundaries are migrated incrementally.
-      importProtection: { enabled: false },
+      // Keep server-only route loaders and provider modules out of the browser bundle.
+      // Without this protection a server module can evaluate in the browser and abort
+      // hydration before React attaches any button or form handlers.
+      importProtection: {
+        enabled: true,
+        behavior: { dev: "mock", build: "mock" },
+      },
     }),
     nitro({ preset: "node-server" }),
     react(),

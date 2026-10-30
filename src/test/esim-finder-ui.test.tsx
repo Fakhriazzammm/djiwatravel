@@ -11,7 +11,8 @@ describe("eSIM Finder destination selection contract", () => {
 
     expect(source).toContain("const [destinationQuery, setDestinationQuery] = useState(\"\")");
     expect(source).toContain("item.nameId} ${item.region} ${item.code");
-    expect(source).toContain('placeholder="Cari negara atau kawasan"');
+    expect(source).toContain('fallback: "Cari negara atau kawasan"');
+    expect(source).toContain("const destinationPlaceholder = useTypingPlaceholder");
     expect(source).toContain('aria-label="Cari destinasi eSIM"');
     expect(source).toContain('to="/destination/$code"');
     expect(source).toContain('search={{ availability: "all" }}');

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { ChevronRight, Search } from "lucide-react";
 import { BackBar, Page } from "@/components/shell";
 import { useState } from "react";
+import { useTypingPlaceholder } from "@/hooks/use-typing-placeholder";
 import { getListableDestinations } from "@/lib/destination-availability.server";
 import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
 export const Route = createFileRoute("/esim/finder")({
@@ -35,6 +36,12 @@ function Finder() {
   const available = Route.useLoaderData();
   const router = useRouter();
   const [destinationQuery, setDestinationQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const destinationPlaceholder = useTypingPlaceholder({
+    fallback: "Cari negara atau kawasan",
+    examples: ["Jepang", "Singapura", "Thailand", "Eropa"],
+    paused: searchFocused || Boolean(destinationQuery),
+  });
   const visibleDestinations = available.destinations.filter((item) =>
     `${item.nameId} ${item.region} ${item.code}`
       .toLocaleLowerCase("id-ID")
@@ -63,8 +70,10 @@ function Finder() {
             <Search className="size-4 text-muted-foreground" aria-hidden="true" />
             <input
               value={destinationQuery}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
               onChange={(event) => setDestinationQuery(event.target.value)}
-              placeholder="Cari negara atau kawasan"
+              placeholder={destinationPlaceholder}
               aria-label="Cari destinasi eSIM"
               className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
