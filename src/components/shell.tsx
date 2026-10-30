@@ -75,12 +75,28 @@ export function Page({ children, tabs = true }: { children: ReactNode; tabs?: bo
 }
 
 /** iOS nav bar: back left, title centered, optional action right. */
-export function BackBar({ title, action }: { title?: string; action?: ReactNode }) {
+export function BackBar({
+  title,
+  action,
+  fallbackTo = "/",
+}: {
+  title?: string;
+  action?: ReactNode;
+  fallbackTo?: string;
+}) {
   const router = useRouter();
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.history.back();
+      return;
+    }
+    void router.navigate({ to: fallbackTo });
+  };
   return (
     <div className="mb-3 grid h-11 grid-cols-[5.5rem_minmax(0,1fr)_5.5rem] items-center">
       <button
-        onClick={() => router.history.back()}
+        type="button"
+        onClick={goBack}
         className="tap -ml-1.5 flex min-h-11 items-center rounded-lg pr-2 text-[15px] text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Kembali"
       >

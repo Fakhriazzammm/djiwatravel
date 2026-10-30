@@ -284,7 +284,7 @@ function Destination() {
   };
   return (
     <Page>
-      <BackBar title={`${destination.flag} ${destination.nameId}`} />
+      <BackBar title={`${destination.flag} ${destination.nameId}`} fallbackTo="/esim/finder" />
       <h1 className="large-title">Paket eSIM untuk {destination.nameId}</h1>
       <p className="mt-2 inline-flex rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
         {destination.region === "Regional"
