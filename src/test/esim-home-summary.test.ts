@@ -56,6 +56,48 @@ describe("buildEsimHomeSummary", () => {
     expect(summary.quotaLabel).not.toMatch(/Sisa 0(?:\.0)? GB/);
   });
 
+  it("exposes the destination, flag, data and real expiry for the grouped card", () => {
+    const summary = buildEsimHomeSummary(
+      [order({ usedGb: 2.5, expiresAt: Date.parse("2026-11-12T06:00:00Z") })],
+      NOW,
+    );
+
+    expect(summary.kind).toBe("active");
+    expect(summary.location).toBe("Jepang");
+    expect(summary.flag).toBe("🇯🇵");
+    expect(summary.dataLabel).toBe("5.0 GB");
+    expect(summary.expiresLabel).toBe("Aktif hingga 12 Nov");
+  });
+
+  it("omits the expiry line when the order has no usable expiry date", () => {
+    expect(buildEsimHomeSummary([order()], NOW).expiresLabel).toBeUndefined();
+    expect(
+      buildEsimHomeSummary([order({ expiresAt: NOW - 1_000 })], NOW).expiresLabel,
+    ).toBeUndefined();
+  });
+
+  it("surfaces an unfinished payment before a healthy active eSIM", () => {
+    const summary = buildEsimHomeSummary(
+      [
+        order({ id: "active", usedGb: 2.5 }),
+        order({
+          id: "unpaid",
+          packageId: "SG-5GB-7D",
+          locationCodes: ["SG"],
+          status: "WAITING_PAYMENT",
+          createdAt: NOW + 1_000,
+        }),
+      ],
+      NOW,
+    );
+
+    expect(summary.kind).toBe("pending");
+    expect(summary.title).toBe("Pembayaran belum selesai");
+    expect(summary.target).toEqual({ kind: "order", id: "unpaid" });
+    expect(summary.orderCode).toBeUndefined();
+    expect(summary.amountLabel).toBe("Rp125.000");
+  });
+
   it("keeps a small remaining balance visible in MB rather than rounding it to zero GB", () => {
     const summary = buildEsimHomeSummary([order({ usedGb: 4.98 })], NOW);
     expect(summary.kind).toBe("low");
