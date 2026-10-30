@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { getTravelGuide, travelGuides, travelGuideSlugs } from "@/lib/travel-guides";
@@ -29,9 +30,30 @@ describe("travel guide SEO registry", () => {
     const sitemap = readFileSync(resolve(process.cwd(), "src/routes/sitemap[.]xml.ts"), "utf8");
     expect(detail).toContain('rel: "canonical"');
     expect(detail).toContain('property: "og:type", content: "article"');
+    expect(detail).toContain("<GuideShareActions title={guide.title}");
     expect(detail).toContain('"@type": "Article"');
     expect(detail).toContain('"@type": "BreadcrumbList"');
     expect(sitemap).toContain("travelGuideSlugs.map");
     expect(sitemap).not.toMatch(/urlEntry\(`\/(?:admin|api|checkout|order|receipt|my-esim)/);
+  });
+
+  it("attaches an original image and descriptive alternative text to every guide", () => {
+    const added = travelGuides.filter((guide) => guide.image);
+    expect(added).toHaveLength(travelGuides.length);
+    expect(added.every((guide) => guide.imageAlt)).toBe(true);
+    for (const guide of added) {
+      expect(guide.image).toMatch(/^\/assets\/guides\/.+\.jpg$/);
+      expect(existsSync(resolve(process.cwd(), `public${guide.image}`))).toBe(true);
+    }
+    const citedGuides = added.filter((guide) => guide.sources?.length);
+    expect(citedGuides).toHaveLength(3);
+    expect(citedGuides.every((guide) => guide.sources?.every((source) => source.url.startsWith("https://")))).toBe(true);
+  });
+
+  it("renders guide images and cited source links in article pages", () => {
+    const detail = readFileSync(resolve(process.cwd(), "src/routes/panduan.$slug.tsx"), "utf8");
+    expect(detail).toContain("guide.image");
+    expect(detail).toContain("guide.sources");
+    expect(detail).toContain('property: "og:image"');
   });
 });

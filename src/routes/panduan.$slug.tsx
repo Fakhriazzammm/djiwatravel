@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { BackBar, Page, SectionTitle } from "@/components/shell";
 import { getTravelGuide } from "@/lib/travel-guides";
+import { GuideShareActions } from "@/components/guide-share-actions";
 
 const BASE_URL = "https://djiwatravel.com";
 
@@ -43,9 +44,9 @@ export const Route = createFileRoute("/panduan/$slug")({
         { property: "og:type", content: "article" },
         { property: "og:url", content: url },
         { property: "og:locale", content: "id_ID" },
-        { property: "og:image", content: `${BASE_URL}/icon-512.png` },
+        { property: "og:image", content: loaderData.image ? `${BASE_URL}${loaderData.image}` : `${BASE_URL}/icon-512.png` },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:image", content: `${BASE_URL}/icon-512.png` },
+        { name: "twitter:image", content: loaderData.image ? `${BASE_URL}${loaderData.image}` : `${BASE_URL}/icon-512.png` },
       ],
       links: [{ rel: "canonical", href: url }],
       scripts: [
@@ -68,14 +69,46 @@ function TravelGuideDetail() {
         </p>
         <h1 className="large-title mt-2">{guide.heading}</h1>
         <p className="mt-3 text-[15px] leading-7 text-muted-foreground">{guide.description}</p>
+        {guide.image && (
+          <figure className="mt-6 overflow-hidden rounded-2xl bg-secondary">
+            <img
+              src={guide.image}
+              alt={guide.imageAlt ?? "Ilustrasi panduan perjalanan Djiwa Travel"}
+              width={1200}
+              height={800}
+              fetchPriority="high"
+              className="aspect-[3/2] w-full object-cover"
+            />
+          </figure>
+        )}
         <p className="mt-3 text-xs text-muted-foreground">
           {guide.readTime} · Diperbarui {guide.updatedAt}
         </p>
+        <GuideShareActions title={guide.title} url={`${BASE_URL}/panduan/${guide.slug}`} />
         <div className="mt-8 space-y-5 text-[15px] leading-7 text-foreground">
           {guide.paragraphs.map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>
           ))}
         </div>
+        {guide.sources && guide.sources.length > 0 && (
+          <section className="mt-8" aria-labelledby="guide-sources-title">
+            <SectionTitle>Sumber resmi</SectionTitle>
+            <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-6 text-muted-foreground">
+              {guide.sources.map((source) => (
+                <li key={source.url}>
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-foreground underline underline-offset-4"
+                  >
+                    {source.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <section className="mt-8" aria-labelledby="guide-steps-title">
           <SectionTitle>Yang perlu disiapkan</SectionTitle>
           <ol className="divide-y divide-border overflow-hidden rounded-2xl bg-surface">

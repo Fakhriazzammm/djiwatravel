@@ -19,16 +19,16 @@ const featuredGuides = travelGuides.slice(0, 3);
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Djiwa Travel — Mau pergi ke mana?" },
+      { title: "eSIM Internasional untuk Traveler Indonesia | Djiwa Travel" },
       {
         name: "description",
         content:
-          "eSIM internasional untuk traveler Indonesia. Pilih tujuan, bayar QRIS, langsung online.",
+          "Pilih paket eSIM untuk perjalanan internasional. Bandingkan kuota dan masa aktif, lalu siapkan koneksi sebelum berangkat bersama Djiwa Travel.",
       },
-      { property: "og:title", content: "Djiwa Travel — Mau pergi ke mana?" },
+      { property: "og:title", content: "eSIM Internasional untuk Traveler Indonesia | Djiwa Travel" },
       {
         property: "og:description",
-        content: "eSIM internasional untuk traveler Indonesia. Bayar QRIS, langsung online.",
+        content: "Pilih paket eSIM internasional untuk traveler Indonesia dan siapkan koneksi sebelum berangkat.",
       },
       { property: "og:url", content: "https://djiwatravel.com/" },
     ],
