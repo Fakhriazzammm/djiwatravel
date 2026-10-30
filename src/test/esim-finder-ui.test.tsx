@@ -5,17 +5,17 @@ import { describe, expect, it } from "vitest";
 const readFinderRoute = () =>
   readFileSync(join(process.cwd(), "src/routes/esim.finder.tsx"), "utf8");
 
-describe("eSIM Finder preference sheet contract", () => {
-  it("opens the preference form from the bottom after choosing a destination", () => {
+describe("eSIM Finder destination selection contract", () => {
+  it("filters live destinations and links each one to its available eSIM packages", () => {
     const source = readFinderRoute();
 
-    expect(source).toContain("import { Sheet, SheetContent, SheetDescription, SheetTitle }");
-    expect(source).toContain("const [formOpen, setFormOpen] = useState(false)");
-    expect(source).toContain("onClick={() => {");
-    expect(source).toContain("setFormOpen(true);");
-    expect(source).toContain("<Sheet open={formOpen} onOpenChange={setFormOpen}>");
-    expect(source).toContain('side="bottom"');
-    expect(source).toContain('aria-describedby="finder-preferences-description"');
-    expect(source).not.toContain("</section>\n        <form");
+    expect(source).toContain("const [destinationQuery, setDestinationQuery] = useState(\"\")");
+    expect(source).toContain("item.nameId} ${item.region} ${item.code");
+    expect(source).toContain('placeholder="Cari negara atau kawasan"');
+    expect(source).toContain('aria-label="Cari destinasi eSIM"');
+    expect(source).toContain('to="/destination/$code"');
+    expect(source).toContain('search={{ availability: "all" }}');
+    expect(source).toContain("Lihat semua paket eSIM untuk ${item.nameId}");
+    expect(source).toContain('onClick={() => void router.invalidate()}');
   });
 });
