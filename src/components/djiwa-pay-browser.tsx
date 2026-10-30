@@ -148,9 +148,10 @@ export function DjiwaPayBrowser({
                 ) : bridgeState === "error" ? (
                   <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
                     <div>
-                      <p className="font-semibold text-foreground">Sesi Djiwa Pay belum siap</p>
+                      <p className="font-semibold text-foreground">Silakan login terlebih dahulu</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Coba lagi untuk meneruskan sesi Djiwa Travel Anda.
+                        Masuk ke akun Djiwa Travel Anda, lalu coba lagi untuk melanjutkan ke Djiwa
+                        Pay.
                       </p>
                     </div>
                     <button

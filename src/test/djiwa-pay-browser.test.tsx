@@ -46,7 +46,10 @@ describe("Djiwa Pay in-app browser", () => {
   });
 
   it("does not load the raw Pay page while shared auth is pending", () => {
-    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
 
     render(<DjiwaPayBrowser open sharedAuth onOpenChange={vi.fn()} />);
 
@@ -78,7 +81,12 @@ describe("Djiwa Pay in-app browser", () => {
 
     render(<DjiwaPayBrowser open sharedAuth onOpenChange={vi.fn()} />);
 
-    expect(await screen.findByText("Sesi Djiwa Pay belum siap")).toBeInTheDocument();
+    expect(await screen.findByText("Silakan login terlebih dahulu")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Masuk ke akun Djiwa Travel Anda, lalu coba lagi untuk melanjutkan ke Djiwa Pay.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Coba lagi" })).toBeInTheDocument();
     expect(screen.queryByTitle("Djiwa Pay")).not.toBeInTheDocument();
   });
