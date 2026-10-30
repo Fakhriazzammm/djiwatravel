@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { BackBar, Page } from "@/components/shell";
 import { displayChecklistTitle } from "@/lib/my-trips-home";
-import { getTrip, patchChecklist } from "@/lib/my-trips.fn";
+import { getTrip, patchChecklist } from "@/lib/my-trips.server";
 import { isTripAuthenticationError, runTripMutation } from "@/lib/trip-actions";
 
 export const Route = createFileRoute("/my-trips/$tripId/travel")({

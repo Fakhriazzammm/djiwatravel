@@ -9,7 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { getSellableDestinationCodes } from "@/lib/destination-availability.fn";
+import { getSellableDestinationCodes } from "@/lib/destination-availability.server";
 import {
   regionalCoverage as extendRegionalCoverage,
   resolveCatalogDestination,

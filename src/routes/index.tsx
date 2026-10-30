@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations, search } from "@/lib/catalog";
-import { getHomeDestinationFeed } from "@/lib/destination-availability.fn";
+import { getHomeDestinationFeed } from "@/lib/destination-availability.server";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";

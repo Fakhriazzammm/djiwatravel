@@ -15,7 +15,7 @@ import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
 import { FixedLayer } from "@/components/motion-primitives";
 import { PendingSpinner } from "@/components/route-loading";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
-import { getCustomerAppConfig } from "@/lib/customer-app-config.fn";
+import { getCustomerAppConfig } from "@/lib/customer-app-config.server";
 import { DEFAULT_TOPUP_PRESETS, DEFAULT_MINIMUM_TOPUP } from "@/lib/customer-app-config";
 
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
@@ -23,7 +23,7 @@ import {
   getCustomerWallet,
   type CustomerWalletResponse,
   type CustomerWalletLedgerEntry,
-} from "@/lib/customer-wallet.fn";
+} from "@/lib/customer-wallet.server";
 import {
   groupWalletLedger,
   ledgerStatusLabel,

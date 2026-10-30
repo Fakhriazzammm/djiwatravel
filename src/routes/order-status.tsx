@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { BackBar, Page } from "@/components/shell";
-import { getGuestOrders } from "@/lib/guest-orders.fn";
+import { getGuestOrders } from "@/lib/guest-orders.server";
 import { saveGuestAccess } from "@/lib/orders";
 
 export const Route = createFileRoute("/order-status")({ component: OrderStatus });

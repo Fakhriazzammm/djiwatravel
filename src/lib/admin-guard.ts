@@ -1,10 +1,6 @@
-import { createServerFn } from "@tanstack/react-start";
 import { redirect } from "@tanstack/react-router";
 
-const isAdminRequest = createServerFn({ method: "GET" }).handler(async () => {
-  const { isAdminRequest: readAdminRequest } = await import("@/lib/admin-guard.server");
-  return readAdminRequest();
-});
+import { isAdminRequest } from "@/lib/admin-guard.server";
 
 /**
  * Route guard for /admin/*.

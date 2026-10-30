@@ -1,7 +1,7 @@
 import { BrainCircuit, ChevronDown, Sparkles } from "lucide-react";
 import { useState } from "react";
 import type { AIInsight } from "@/lib/ai/contracts";
-import { generateAdminAIInsight } from "@/lib/admin-ai-insight.fn";
+import { generateAdminAIInsight } from "@/lib/ai/admin-insight.server";
 
 export function AdminAIInsight({ page }: { page: string }) {
   const [open, setOpen] = useState(false);

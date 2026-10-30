@@ -5,7 +5,7 @@ import { Page, BackBar, StickyCta, btnRed, group, label } from "@/components/she
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
 import { loadLiveResellerPackage } from "@/lib/esim-access-catalog";
 import { resolveCheckoutPackage } from "@/lib/checkout-package";
-import { getSellabilityState } from "@/lib/sellability.fn";
+import { getSellabilityState } from "@/lib/sellability.server";
 import { rupiah } from "@/lib/pricing";
 import { createOrder } from "@/lib/orders";
 import {

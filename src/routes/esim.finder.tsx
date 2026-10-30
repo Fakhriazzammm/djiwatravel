@@ -3,7 +3,7 @@ import { ChevronRight, Search } from "lucide-react";
 import { BackBar, Page } from "@/components/shell";
 import { useState } from "react";
 import { useTypingPlaceholder } from "@/hooks/use-typing-placeholder";
-import { getListableDestinations } from "@/lib/destination-availability.fn";
+import { getListableDestinations } from "@/lib/destination-availability.server";
 import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
 export const Route = createFileRoute("/esim/finder")({
   loader: async () => {

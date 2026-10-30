@@ -3,7 +3,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminOrderDetail } from "@/lib/admin-read-model.fn";
+import { getAdminOrderDetail } from "@/lib/admin-read-model.server";
 import {
   formatAdminDateTime,
   humanizeAdminStatus,

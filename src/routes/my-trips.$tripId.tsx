@@ -34,7 +34,7 @@ import {
   getTrip,
   patchTrip,
   postTripShare,
-} from "@/lib/my-trips.fn";
+} from "@/lib/my-trips.server";
 import { isTripAuthenticationError } from "@/lib/trip-actions";
 import { TripWorkspace } from "./my-trips.$tripId.$section";
 

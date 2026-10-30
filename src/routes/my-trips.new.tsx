@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { BackBar, Page, btnRed, group, label, row } from "@/components/shell";
-import { postTrip } from "@/lib/my-trips.fn";
+import { postTrip } from "@/lib/my-trips.server";
 
 export const Route = createFileRoute("/my-trips/new")({ component: NewTrip });
 function NewTrip() {

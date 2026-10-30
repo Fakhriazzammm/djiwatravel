@@ -21,7 +21,7 @@ import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/componen
 import { FixedLayer } from "@/components/motion-primitives";
 import { useTypingPlaceholder } from "@/hooks/use-typing-placeholder";
 import { formatAdminDateTime } from "@/lib/admin-display";
-import { readAdminCatalogPage } from "@/lib/admin-catalog.fn";
+import { readAdminCatalogPage } from "@/lib/admin-catalog.server";
 import { validatePriceRuleInput } from "@/lib/price-rules";
 import {
   applyCataloguePricing,
@@ -31,7 +31,7 @@ import {
   rollbackPricingBatch,
   type PriceRuleEventView,
   type PricingPreviewResult,
-} from "@/lib/price-rules.fn";
+} from "@/lib/price-rules.server";
 import { requireAdmin } from "@/lib/admin-guard";
 
 const searchSchema = z.object({

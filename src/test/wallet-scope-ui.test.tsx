@@ -3,10 +3,10 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Wallet } from "@/routes/wallet";
-import { getCustomerWallet } from "@/lib/customer-wallet.fn";
+import { getCustomerWallet } from "@/lib/customer-wallet.server";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 
-vi.mock("@/lib/customer-wallet.fn", () => ({ getCustomerWallet: vi.fn() }));
+vi.mock("@/lib/customer-wallet.server", () => ({ getCustomerWallet: vi.fn() }));
 vi.mock("@/lib/use-better-auth-user", () => ({ useBetterAuthUser: vi.fn() }));
 vi.mock("@tanstack/react-router", async () => {
   const actual =

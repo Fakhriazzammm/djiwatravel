@@ -1,7 +1,7 @@
 import { ShieldCheck, UserRound, UsersRound } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminTeam } from "@/lib/admin-team.fn";
+import { getAdminTeam } from "@/lib/admin-team.server";
 import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/team")({
