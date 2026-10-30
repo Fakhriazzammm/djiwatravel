@@ -6,6 +6,15 @@ import { Wallet } from "@/routes/wallet";
 import { getCustomerWallet } from "@/lib/customer-wallet.server";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const router = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ...router,
+    Outlet: () => null,
+    useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => unknown }) =>
+      select({ location: { pathname: "/wallet" } }),
+  };
+});
 vi.mock("@/lib/customer-wallet.server", () => ({ getCustomerWallet: vi.fn() }));
 vi.mock("@/lib/use-better-auth-user", () => ({ useBetterAuthUser: vi.fn() }));
 vi.mock("@/components/shell", () => ({

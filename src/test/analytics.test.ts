@@ -37,6 +37,13 @@ describe("privacy-safe analytics attribution", () => {
     }
   });
 
+  it("allows public plan paths with uppercase provider package codes", () => {
+    for (const path of ["/plan/JC063", "/plan/JP-5GB-15D"]) {
+      expect(isAnalyticsPublicPath(path)).toBe(true);
+      expect(buildAnalyticsEvent("page_view", path)?.path).toBe(path);
+    }
+  });
+
   it("keeps attribution stable for a session", () => {
     const first = buildAnalyticsEvent("page_view", "/explore");
     window.history.replaceState({}, "", "/explore?utm_source=other&utm_medium=paid");

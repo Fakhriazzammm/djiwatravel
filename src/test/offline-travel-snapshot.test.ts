@@ -143,7 +143,7 @@ describe("travel snapshot", () => {
   });
 
   it("does not throw when storage rejects the write", () => {
-    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    const spy = vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
       throw new Error("quota");
     });
     expect(writeTravelSnapshot(buildTravelSnapshot(order(), 1_000))).toBe(false);

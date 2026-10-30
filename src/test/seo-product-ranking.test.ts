@@ -77,4 +77,49 @@ describe("public product SEO contract", () => {
     expect(plan).toContain('to="/checkout/$id"');
     expect(plan).not.toContain('redirect({ to: "/checkout/$id"');
   });
+
+  it("applies private path exclusions to named crawler groups", () => {
+    const robots = readFileSync(resolve(process.cwd(), "public/robots.txt"), "utf8");
+    for (const agent of ["Googlebot", "Bingbot"]) {
+      const group = robots.split(`User-agent: ${agent}`)[1]?.split("User-agent:")[0] ?? "";
+      expect(group).toContain("Disallow: /admin");
+      expect(group).toContain("Disallow: /api/");
+    }
+  });
+
+  it("uses the standard robots meta name on checkout", () => {
+    const checkout = read("routes/checkout.$id.tsx");
+    expect(checkout).toContain('{ name: "robots", content: "noindex" }');
+    expect(checkout).not.toContain('{ property: "robots"');
+  });
+
+  it("includes public package pages in analytics allowlist", () => {
+    const analytics = read("lib/analytics.ts");
+    expect(analytics).toContain('^\\/plan\\/[a-z0-9-]+\\/?$');
+  });
+
+  it("keeps private trip pages out of search results", () => {
+    const trips = read("routes/my-trips.index.tsx");
+    expect(trips).toContain('{ name: "robots", content: "noindex, nofollow" }');
+  });
+
+  it("describes destination package links as an ItemList, not many Product offers", () => {
+    const destination = read("routes/destination.$code.tsx");
+    expect(destination).toContain('"@type": "ItemList"');
+    expect(destination).toContain('"@type": "ListItem"');
+    expect(destination).not.toContain('"@type": "Product"');
+  });
+
+  it("keeps every published travel guide uniquely addressable and linked from the sitemap", () => {
+    const guides = read("lib/travel-guides.ts");
+    const sitemap = read("routes/sitemap[.]xml.ts");
+    expect(guides.match(/slug: "/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(sitemap).toContain("travelGuideSlugs.map");
+  });
+
+  it("records checkout starts against a public package URL without customer data", () => {
+    const checkout = read("routes/checkout.$id.tsx");
+    expect(checkout).toContain('trackAnalytics("checkout_start", `/plan/${pkg.packageCode}`)');
+    expect(checkout).not.toMatch(/trackAnalytics\([^\n]*(?:email|wa|whatsapp|order)/i);
+  });
 });

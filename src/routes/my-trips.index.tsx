@@ -30,6 +30,7 @@ export const Route = createFileRoute("/my-trips/")({
     meta: [
       { title: "My Trips — Djiwa Travel" },
       { name: "description", content: "Rencanakan perjalananmu dengan tenang." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   pendingComponent: () => (

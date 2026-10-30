@@ -39,6 +39,16 @@ function TravelGuideIndex() {
         <div className="divide-y divide-border overflow-hidden rounded-2xl bg-surface">
           {travelGuides.map((guide) => (
             <article key={guide.slug} className="p-4">
+              {guide.image && (
+                <img
+                  src={guide.image}
+                  alt={guide.imageAlt ?? ""}
+                  width={1200}
+                  height={800}
+                  loading="lazy"
+                  className="mb-4 aspect-[3/2] w-full rounded-xl object-cover"
+                />
+              )}
               <p className="text-xs font-bold uppercase tracking-wide text-brand-red">
                 {guide.eyebrow}
               </p>

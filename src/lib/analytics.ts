@@ -21,6 +21,7 @@ const PUBLIC_PATHS = [
   /^\/explore\/?$/,
   /^\/(?:esim\/finder|finder)\/?$/,
   /^\/destination\/[a-z0-9-]+\/?$/,
+  /^\/plan\/[a-z0-9-]+\/?$/i,
   /^\/panduan(?:\/.*)?$/,
 ];
 

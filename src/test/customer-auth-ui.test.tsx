@@ -14,12 +14,11 @@ function openGoogleAuth() {
 }
 
 describe("Customer Google authentication", () => {
-  it("starts OAuth with the public origin callback", async () => {
+  it("starts OAuth with the current public URL as the callback", async () => {
+    window.history.replaceState(null, "", "/checkout?plan=jp#pay");
     vi.mocked(signInGoogle).mockResolvedValue(undefined);
     fireEvent.click(openGoogleAuth());
-    await waitFor(() =>
-      expect(signInGoogle).toHaveBeenCalledWith(`${window.location.origin}/profile`),
-    );
+    await waitFor(() => expect(signInGoogle).toHaveBeenCalledWith(window.location.href));
   });
 
   it("shows a user-visible error when OAuth initiation fails", async () => {
