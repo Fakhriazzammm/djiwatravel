@@ -310,17 +310,30 @@ export async function createOrder(
   const access = readGuestAccess();
   access[saved.id] = accessToken;
   localStorage.setItem(ACCESS_KEY, JSON.stringify(access));
-  const invoice = await createInvoiceWithRetry({
-    orderId: saved.id,
-    accessToken,
-    amountIdr: saved.amount,
-    customerName: o.email.split("@")[0] || "Customer",
-    customerEmail: o.email,
-    customerMobile: o.whatsapp,
-    description: `Djiwa Travel ${saved.publicOrderCode}`,
-    redirectUrl: `${window.location.origin}/receipt/${saved.id}`,
-  });
+  // Once the draft is persisted, the guest access token is the recovery credential. Clear the
+  // draft key now so a later purchase cannot reuse this order's idempotency key.
   sessionStorage.removeItem("djiwa.pending-order");
+  let paymentUrl: string | undefined;
+  let paymentReference: string | undefined;
+  try {
+    const invoice = await createInvoiceWithRetry({
+      orderId: saved.id,
+      accessToken,
+      amountIdr: saved.amount,
+      customerName: o.email.split("@")[0] || "Customer",
+      customerEmail: o.email,
+      customerMobile: o.whatsapp,
+      description: `Djiwa Travel ${saved.publicOrderCode}`,
+      redirectUrl: `${window.location.origin}/receipt/${saved.id}`,
+    });
+    paymentUrl = invoice.paymentUrl;
+    paymentReference = invoice.invoiceId;
+  } catch {
+    // The order and its guest access token already exist. Keep the customer on its order page,
+    // where ensurePaymentLink() can safely reconcile/rebuild the Mayar invoice without creating a
+    // second order. Do not turn an invoice outage into a false "order was not saved" message.
+    console.warn("[checkout] order saved; payment link needs recovery");
+  }
   const order: Order = {
     id: saved.id,
     publicOrderCode: saved.publicOrderCode,
@@ -332,8 +345,8 @@ export async function createOrder(
     method: o.method,
     status: "WAITING_PAYMENT",
     paymentExpiresAt: saved.paymentExpiresAtMs,
-    paymentUrl: invoice.paymentUrl,
-    paymentReference: invoice.invoiceId,
+    ...(paymentUrl ? { paymentUrl } : {}),
+    ...(paymentReference ? { paymentReference } : {}),
     createdAt: saved.createdAtMs,
     priceSnapshot: {
       amountIdr: saved.amount,
