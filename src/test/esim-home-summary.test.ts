@@ -79,7 +79,12 @@ describe("buildEsimHomeSummary", () => {
     const summary = buildEsimHomeSummary(
       [
         order({ id: "old", status: "CANCELLED", createdAt: NOW - 86_400_000 * 4 }),
-        order({ id: "latest", packageId: "TH-3GB-7D", status: "EXPIRED", createdAt: NOW - 86_400_000 }),
+        order({
+          id: "latest",
+          packageId: "TH-3GB-7D",
+          status: "EXPIRED",
+          createdAt: NOW - 86_400_000,
+        }),
       ],
       NOW,
     );

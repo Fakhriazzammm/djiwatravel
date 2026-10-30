@@ -63,11 +63,16 @@ function checkoutAction(order: Order, status: OrderStatus): EsimHomeAction {
 }
 
 function quotaLabel(order: Order, usage: UsageView): string {
-  if (usage.kind === "measured" && usage.remainingBytes !== null && usage.remainingPercent !== null) {
+  if (
+    usage.kind === "measured" &&
+    usage.remainingBytes !== null &&
+    usage.remainingPercent !== null
+  ) {
     return `Sisa ${formatGb(usage.remainingBytes)} (${usage.remainingPercent}%)`;
   }
   if (usage.kind === "unlimited") return "Unlimited";
-  if (usage.totalBytes !== null) return `Pemakaian belum dilaporkan penyedia · total ${formatGb(usage.totalBytes)}`;
+  if (usage.totalBytes !== null)
+    return `Pemakaian belum dilaporkan penyedia · total ${formatGb(usage.totalBytes)}`;
   return "Pemakaian belum tersedia dari penyedia";
 }
 
@@ -85,7 +90,11 @@ function emptySummary(): EsimHomeSummary {
   };
 }
 
-function buildActiveSummary(order: Order, status: "INSTALLED", hasMultiple: boolean): EsimHomeSummary {
+function buildActiveSummary(
+  order: Order,
+  status: "INSTALLED",
+  hasMultiple: boolean,
+): EsimHomeSummary {
   const usage = usageView({
     volumeBytes: order.volumeBytes,
     usedGb: order.usedGb,
@@ -130,7 +139,11 @@ function buildReadySummary(order: Order, hasMultiple: boolean): EsimHomeSummary 
   };
 }
 
-function buildPendingSummary(order: Order, status: OrderStatus, hasMultiple: boolean): EsimHomeSummary {
+function buildPendingSummary(
+  order: Order,
+  status: OrderStatus,
+  hasMultiple: boolean,
+): EsimHomeSummary {
   const paymentPending = status === "ORDER_CREATED" || status === "WAITING_PAYMENT";
   return {
     kind: "pending",
@@ -148,7 +161,11 @@ function buildPendingSummary(order: Order, status: OrderStatus, hasMultiple: boo
   };
 }
 
-function buildHistorySummary(order: Order, status: OrderStatus, hasMultiple: boolean): EsimHomeSummary {
+function buildHistorySummary(
+  order: Order,
+  status: OrderStatus,
+  hasMultiple: boolean,
+): EsimHomeSummary {
   return {
     kind: "history",
     eyebrow: "Riwayat eSIM",
@@ -166,7 +183,10 @@ function buildHistorySummary(order: Order, status: OrderStatus, hasMultiple: boo
 export function buildEsimHomeSummary(orders: Order[], now = Date.now()): EsimHomeSummary {
   if (orders.length === 0) return emptySummary();
 
-  const resolved = orders.map((order) => ({ order, status: effectiveOrderStatus(order.status, order.expiresAt, now) }));
+  const resolved = orders.map((order) => ({
+    order,
+    status: effectiveOrderStatus(order.status, order.expiresAt, now),
+  }));
   const hasMultiple = orders.length > 1;
   const installed = resolved.filter(({ status }) => status === "INSTALLED");
   const lowInstalled = installed
@@ -178,16 +198,23 @@ export function buildEsimHomeSummary(orders: Order[], now = Date.now()): EsimHom
   const active = newest(installed.map(({ order }) => order));
   if (active) return buildActiveSummary(active, "INSTALLED", hasMultiple);
 
-  const ready = newest(resolved.filter(({ status }) => status === "READY").map(({ order }) => order));
+  const ready = newest(
+    resolved.filter(({ status }) => status === "READY").map(({ order }) => order),
+  );
   if (ready) return buildReadySummary(ready, hasMultiple);
 
-  const pending = newest(resolved.filter(({ status }) => PENDING_STATUSES.includes(status)).map(({ order }) => order));
+  const pending = newest(
+    resolved.filter(({ status }) => PENDING_STATUSES.includes(status)).map(({ order }) => order),
+  );
   if (pending) {
     const status = resolved.find(({ order }) => order.id === pending.id)?.status ?? pending.status;
     return buildPendingSummary(pending, status, hasMultiple);
   }
 
   const history = newest(resolved.map(({ order }) => order));
-  const historyStatus = resolved.find(({ order }) => order.id === history?.id)?.status ?? history?.status;
-  return history && historyStatus ? buildHistorySummary(history, historyStatus, hasMultiple) : emptySummary();
+  const historyStatus =
+    resolved.find(({ order }) => order.id === history?.id)?.status ?? history?.status;
+  return history && historyStatus
+    ? buildHistorySummary(history, historyStatus, hasMultiple)
+    : emptySummary();
 }
