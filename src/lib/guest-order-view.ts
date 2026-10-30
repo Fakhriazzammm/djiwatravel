@@ -11,6 +11,7 @@ export type GuestOrderStatus =
   | "REFUNDED";
 
 import type { EsimProfile } from "./providers";
+import type { EsimStoredUsage } from "./esim-stored-usage";
 import { effectivePaymentStatus } from "./payment-expiry";
 
 export type GuestOrderRecord = {
@@ -27,12 +28,15 @@ export type GuestOrderRecord = {
   paymentReference?: string | null;
   paymentUrl?: string;
   providerOrderNo?: string;
+  profileStatus?: string | null;
+  usage?: EsimStoredUsage;
   esim?: EsimProfile;
   packageSnapshot: {
     name: string;
     locationCodes: string[];
     durationDays: number;
     volumeBytes: number | null;
+    unlimited?: boolean;
     supportsTopUp: boolean;
   };
 };
@@ -45,6 +49,7 @@ export type GuestOrderView = {
   locationCodes: string[];
   durationDays: number;
   volumeBytes: number | null;
+  unlimited?: boolean;
   supportsTopUp: boolean;
   amount: number;
   method: "qris" | "va";
@@ -53,6 +58,9 @@ export type GuestOrderView = {
   createdAt: number;
   expiresAt?: number;
   paymentExpiresAt?: number | null;
+  usedGb?: number;
+  usageVolumeBytes?: number;
+  usageMeasuredAt?: number;
   priceSnapshot: { amountIdr: number; capturedAt: number; currency: "IDR"; packageId: string };
 };
 
@@ -77,9 +85,13 @@ export function mapGuestOrderRecord(record: GuestOrderRecord): GuestOrderView {
       : serverStatus === "PAYMENT_CONFIRMED"
         ? "PAID"
         : serverStatus;
-  const status = knownStatuses.has(normalizedStatus as GuestOrderStatus)
+  const savedStatus = knownStatuses.has(normalizedStatus as GuestOrderStatus)
     ? (normalizedStatus as GuestOrderStatus)
     : "ORDER_CREATED";
+  const status =
+    savedStatus === "READY" && ["IN_USE", "USED_UP"].includes(record.profileStatus ?? "")
+      ? "INSTALLED"
+      : savedStatus;
   return {
     id: record.id,
     publicOrderCode: record.publicOrderCode,
@@ -88,12 +100,16 @@ export function mapGuestOrderRecord(record: GuestOrderRecord): GuestOrderView {
     locationCodes: record.packageSnapshot.locationCodes,
     durationDays: record.packageSnapshot.durationDays,
     volumeBytes: record.packageSnapshot.volumeBytes,
+    ...(record.packageSnapshot.unlimited === true ? { unlimited: true } : {}),
     supportsTopUp: record.packageSnapshot.supportsTopUp,
     amount: record.amount,
     method: record.paymentMethod === "va" ? "va" : "qris",
     ...(record.paymentReference == null ? {} : { paymentReference: record.paymentReference }),
     ...(record.paymentUrl == null ? {} : { paymentUrl: record.paymentUrl }),
     ...(record.providerOrderNo == null ? {} : { providerOrderNo: record.providerOrderNo }),
+    ...(record.usage == null ? {} : { usedGb: record.usage.usedBytes / 1_000_000_000 }),
+    ...(record.usage?.totalBytes == null ? {} : { usageVolumeBytes: record.usage.totalBytes }),
+    ...(record.usage?.measuredAtMs == null ? {} : { usageMeasuredAt: record.usage.measuredAtMs }),
     ...(record.esim == null ? {} : { esim: record.esim }),
     status,
     createdAt: record.createdAtMs,

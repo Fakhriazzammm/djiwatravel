@@ -1,5 +1,11 @@
 import { AlertTriangle, Gauge } from "lucide-react";
-import { formatGb, LOW_QUOTA_PERCENT, type UsageView } from "@/lib/travel-journey";
+import {
+  formatData,
+  formatGb,
+  formatRemainingPercent,
+  LOW_QUOTA_PERCENT,
+  type UsageView,
+} from "@/lib/travel-journey";
 import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 
 export function TravelUsageCard({ view, compact = false }: { view: UsageView; compact?: boolean }) {
@@ -21,7 +27,7 @@ export function TravelUsageCard({ view, compact = false }: { view: UsageView; co
       view.remainingPercent !== null ? (
         <>
           <p className={`${compact ? "text-2xl" : "text-3xl"} mt-3 font-bold`}>
-            {formatGb(view.remainingBytes)}
+            {formatData(view.remainingBytes)}
           </p>
           <p className="text-sm text-muted-foreground">
             tersisa dari {formatGb(view.totalBytes ?? 0)}
@@ -34,13 +40,14 @@ export function TravelUsageCard({ view, compact = false }: { view: UsageView; co
             />
           </div>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            Sisa {view.remainingPercent}% · terpakai {formatGb(view.usedBytes ?? 0)}
+            Sisa {formatRemainingPercent(view)} · terpakai {formatGb(view.usedBytes ?? 0)}
           </p>
 
           {view.low && (
             <p className="mt-3 flex items-start gap-2 rounded-xl bg-brand-red-soft px-3 py-2 text-[12px] font-medium text-brand-red">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-              Kuota tinggal {view.remainingPercent}%. Siapkan paket tambahan sebelum kuota habis.
+              Kuota tinggal {formatRemainingPercent(view)}. Siapkan paket tambahan sebelum kuota
+              habis.
             </p>
           )}
         </>

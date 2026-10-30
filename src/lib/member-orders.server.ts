@@ -18,6 +18,7 @@ import { refreshTravelOrderProvisioning } from "./esim-provisioning-refresh.serv
 import { hashGuestAccessToken } from "./guest-order-access.server";
 import { claimGuestOrder, type ClaimDecision } from "./travel-order-identity";
 import type { GuestOrderRecord } from "./guest-order-view";
+import { readStoredUsageForOrders } from "./esim-stored-usage.server";
 
 /**
  * Exact ownership predicate used by the member read path.
@@ -56,6 +57,7 @@ const memberOrderSelection = {
   qrPayloadEncrypted: esimProfiles.qrPayloadEncrypted,
   activationCodeEncrypted: esimProfiles.activationCodeEncrypted,
   installable: esimProfiles.installable,
+  profileStatus: esimProfiles.profileStatus,
 } as const;
 
 function memberOrderRows(authSubject: string) {
@@ -99,6 +101,7 @@ function toGuestOrderRecord(
     paymentReference: row.paymentReference,
     ...(paymentUrl ? { paymentUrl } : {}),
     ...(row.providerOrderNo ? { providerOrderNo: row.providerOrderNo } : {}),
+    ...(row.profileStatus ? { profileStatus: row.profileStatus } : {}),
     // eSIM secrets are only decrypted for rows the member read path already proved belong to the
     // caller, and only once the profile is installable.
     ...(row.installable && row.iccid && (qrPayload || activationCode)
@@ -120,6 +123,7 @@ function toGuestOrderRecord(
         : [],
       durationDays: typeof snapshot["durationDays"] === "number" ? snapshot["durationDays"] : 0,
       volumeBytes: typeof snapshot["volumeBytes"] === "number" ? snapshot["volumeBytes"] : null,
+      ...(snapshot["unlimited"] === true ? { unlimited: true } : {}),
       supportsTopUp: snapshot["supportsTopUp"] === true,
     },
   };
@@ -143,7 +147,15 @@ export const getMemberOrdersHandler = async () => {
   );
 
   const refreshed = rows.length ? await memberOrderRows(user.id) : rows;
-  return refreshed.map(toGuestOrderRecord);
+  const records = refreshed.map(toGuestOrderRecord);
+  // Ownership was already checked by memberOrderRows; an unavailable usage read must not hide orders.
+  const usageByOrder = await readStoredUsageForOrders(
+    records.map((record) => record.providerOrderNo),
+  ).catch(() => new Map());
+  return records.map((record) => {
+    const usage = record.providerOrderNo ? usageByOrder.get(record.providerOrderNo) : undefined;
+    return usage ? { ...record, usage } : record;
+  });
 };
 
 export const getMemberOrders = createServerFn({ method: "GET" }).handler(getMemberOrdersHandler);

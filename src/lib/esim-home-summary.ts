@@ -1,6 +1,13 @@
 import { effectiveOrderStatus } from "./esim-status";
 import type { Order, OrderStatus } from "./orders";
-import { formatGb, reorderIntent, usageView, type UsageView } from "./travel-journey";
+import {
+  formatData,
+  formatGb,
+  formatRemainingPercent,
+  reorderIntent,
+  usageView,
+  type UsageView,
+} from "./travel-journey";
 
 export type EsimHomeTarget =
   | { kind: "finder" }
@@ -23,6 +30,9 @@ export type EsimHomeSummary = {
   subtitle: string;
   quotaLabel: string | null;
   remainingPercent: number | null;
+  quotaValue?: string;
+  quotaCaption?: string;
+  measuredAt?: number;
   target: EsimHomeTarget;
   primaryAction: EsimHomeAction;
   secondaryAction?: EsimHomeAction;
@@ -41,7 +51,16 @@ function newest(orders: Order[]): Order | null {
 }
 
 function locationLabel(order: Order): string {
-  return order.locationCodes?.join(", ") || "Regional";
+  const codes = order.locationCodes ?? [];
+  if (codes.length === 0) return "Internasional";
+  if (codes.length > 1) return `Regional · ${codes.length} negara`;
+  const code = codes[0]?.trim().toUpperCase() ?? "";
+  if (!/^[A-Z]{2}$/.test(code)) return code || "Internasional";
+  try {
+    return new Intl.DisplayNames(["id-ID"], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
 }
 
 function packageSubtitle(order: Order): string {
@@ -57,7 +76,7 @@ function checkoutAction(order: Order, status: OrderStatus): EsimHomeAction {
     locationCodes: order.locationCodes,
   });
   return {
-    label: reorder.label,
+    label: "Beli paket lagi",
     target: { kind: "checkout", id: reorder.packageId },
   };
 }
@@ -68,7 +87,7 @@ function quotaLabel(usage: UsageView): string {
     usage.remainingBytes !== null &&
     usage.remainingPercent !== null
   ) {
-    return `Sisa ${formatGb(usage.remainingBytes)} (${usage.remainingPercent}%)`;
+    return `Sisa ${formatData(usage.remainingBytes)} (${formatRemainingPercent(usage)})`;
   }
   if (usage.kind === "unlimited") return "Unlimited";
   if (usage.totalBytes !== null)
@@ -80,12 +99,12 @@ function emptySummary(): EsimHomeSummary {
   return {
     kind: "empty",
     eyebrow: "eSIM internasional",
-    title: "Belum punya eSIM?",
-    subtitle: "Beli paket data sebelum berangkat dan tetap terhubung selama perjalanan.",
+    title: "Internet siap sebelum berangkat",
+    subtitle: "Pilih eSIM untuk destinasi perjalananmu.",
     quotaLabel: null,
     remainingPercent: null,
     target: { kind: "finder" },
-    primaryAction: { label: "Beli eSIM sekarang", target: { kind: "finder" } },
+    primaryAction: { label: "Cari eSIM", target: { kind: "finder" } },
     hasMultiple: false,
   };
 }
@@ -96,13 +115,15 @@ function buildActiveSummary(
   hasMultiple: boolean,
 ): EsimHomeSummary {
   const usage = usageView({
-    volumeBytes: order.volumeBytes,
-    usedGb: order.usedGb,
+    volumeBytes: order.usageVolumeBytes ?? order.volumeBytes ?? null,
+    usedGb: order.usedGb ?? null,
+    measuredAt: order.usageMeasuredAt ?? null,
+    unlimited: order.unlimited === true,
     active: true,
   });
   const low = usage.kind === "measured" && usage.low;
   const detailAction: EsimHomeAction = {
-    label: "Lihat detail eSIM",
+    label: "Lihat eSIM",
     target: { kind: "detail", id: order.id },
   };
   const renewalAction = checkoutAction(order, status);
@@ -114,6 +135,13 @@ function buildActiveSummary(
     subtitle: packageSubtitle(order),
     quotaLabel: quotaLabel(usage),
     remainingPercent: usage.remainingPercent,
+    ...(usage.kind === "measured" && usage.remainingBytes !== null && usage.totalBytes !== null
+      ? {
+          quotaValue: formatData(usage.remainingBytes),
+          quotaCaption: `dari ${formatGb(usage.totalBytes)} · ${formatRemainingPercent(usage)} tersisa`,
+        }
+      : {}),
+    ...(usage.measuredAt === null ? {} : { measuredAt: usage.measuredAt }),
     target: { kind: "detail", id: order.id },
     primaryAction: low ? renewalAction : detailAction,
     secondaryAction: low ? detailAction : renewalAction,
@@ -127,7 +155,12 @@ function buildReadySummary(order: Order, hasMultiple: boolean): EsimHomeSummary 
     eyebrow: "eSIM siap dipasang",
     title: order.packageName ?? order.packageId,
     subtitle: packageSubtitle(order),
-    quotaLabel: order.volumeBytes == null ? "Unlimited" : `${formatGb(order.volumeBytes)} total`,
+    quotaLabel:
+      order.unlimited === true
+        ? "Unlimited"
+        : order.volumeBytes != null && order.volumeBytes > 0
+          ? `${formatGb(order.volumeBytes)} total`
+          : "Informasi kuota tersedia di detail eSIM",
     remainingPercent: null,
     target: { kind: "detail", id: order.id },
     primaryAction: {
@@ -145,10 +178,15 @@ function buildPendingSummary(
   hasMultiple: boolean,
 ): EsimHomeSummary {
   const paymentPending = status === "ORDER_CREATED" || status === "WAITING_PAYMENT";
+  const failed = status === "PROVISIONING_FAILED";
   return {
     kind: "pending",
-    eyebrow: "Pesanan eSIM",
-    title: paymentPending ? "Pembayaran belum selesai" : "eSIM sedang disiapkan",
+    eyebrow: failed ? "Butuh bantuan" : "Pesanan eSIM",
+    title: failed
+      ? "eSIM perlu bantuan"
+      : paymentPending
+        ? "Pembayaran belum selesai"
+        : "eSIM sedang disiapkan",
     subtitle: `${order.packageName ?? order.packageId} · ${packageSubtitle(order)}`,
     quotaLabel: null,
     remainingPercent: null,
@@ -175,9 +213,9 @@ function buildHistorySummary(
     remainingPercent: null,
     target: { kind: "list" },
     primaryAction: checkoutAction(order, status),
-    secondaryAction: hasMultiple
-      ? undefined
-      : { label: "Lihat semua eSIM", target: { kind: "list" } },
+    ...(!hasMultiple
+      ? { secondaryAction: { label: "Lihat semua eSIM", target: { kind: "list" as const } } }
+      : {}),
     hasMultiple,
   };
 }
@@ -192,7 +230,15 @@ export function buildEsimHomeSummary(orders: Order[], now = Date.now()): EsimHom
   const hasMultiple = orders.length > 1;
   const installed = resolved.filter(({ status }) => status === "INSTALLED");
   const lowInstalled = installed
-    .map(({ order, status }) => ({ order, status, usage: usageView({ ...order, active: true }) }))
+    .map(({ order }) => ({
+      order,
+      usage: usageView({
+        volumeBytes: order.usageVolumeBytes ?? order.volumeBytes ?? null,
+        usedGb: order.usedGb ?? null,
+        unlimited: order.unlimited === true,
+        active: true,
+      }),
+    }))
     .filter(({ usage }) => usage.kind === "measured" && usage.low);
   const low = newest(lowInstalled.map(({ order }) => order));
   if (low) return buildActiveSummary(low, "INSTALLED", hasMultiple);
@@ -212,6 +258,11 @@ export function buildEsimHomeSummary(orders: Order[], now = Date.now()): EsimHom
     const status = resolved.find(({ order }) => order.id === pending.id)?.status ?? pending.status;
     return buildPendingSummary(pending, status, hasMultiple);
   }
+
+  const failed = newest(
+    resolved.filter(({ status }) => status === "PROVISIONING_FAILED").map(({ order }) => order),
+  );
+  if (failed) return buildPendingSummary(failed, "PROVISIONING_FAILED", hasMultiple);
 
   const history = newest(resolved.map(({ order }) => order));
   const historyStatus =

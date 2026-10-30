@@ -3,7 +3,14 @@ import { ReceiptText } from "lucide-react";
 import { Page, Wordmark, btnPrimary } from "@/components/shell";
 import { useOrders, type Order } from "@/lib/orders";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
-import { activationTimeline, type ActivationStageState } from "@/lib/travel-journey";
+import {
+  activationTimeline,
+  formatData,
+  formatGb,
+  formatRemainingPercent,
+  usageView,
+  type ActivationStageState,
+} from "@/lib/travel-journey";
 
 /**
  * Compact form of the activation timeline. The full card lives on the detail page; here the
@@ -34,12 +41,20 @@ export function EsimCard({ o }: { o: Order }) {
   const packageName = o.packageName ?? o.packageId;
   const locationLabel = o.locationCodes?.join(", ") || "Regional";
   const durationDays = o.durationDays ?? 0;
-  const total = o.volumeBytes == null ? null : o.volumeBytes / 1_000_000_000;
-  const left = total === null ? null : Math.max(0, total - (o.usedGb ?? 0));
-  const quotaLabel = total === null ? "Unlimited" : `${total.toFixed(1)} GB`;
-  const pct = total && left !== null ? Math.round((left / total) * 100) : 100;
   const status = effectiveOrderStatus(o.status, o.expiresAt);
   const ready = status === "READY" || status === "INSTALLED";
+  const quotaLabel =
+    o.unlimited === true
+      ? "Unlimited"
+      : o.volumeBytes != null && o.volumeBytes > 0
+        ? formatGb(o.volumeBytes)
+        : "Kuota belum tersedia";
+  const usage = usageView({
+    volumeBytes: o.usageVolumeBytes ?? o.volumeBytes ?? null,
+    usedGb: o.usedGb ?? null,
+    unlimited: o.unlimited === true,
+    active: status === "INSTALLED",
+  });
   const timeline = activationTimeline(status);
   const doneStages = timeline.stages.filter((stage) => stage.state === "done").length;
   return (
@@ -75,19 +90,27 @@ export function EsimCard({ o }: { o: Order }) {
             </p>
           </div>
         )}
-        {ready && (
-          <>
-            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary">
-              <div
-                className={`h-full rounded-full ${pct < 20 ? "bg-brand-red" : "bg-primary"}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <div className="mt-2 flex justify-between text-sm">
-              <span>{left !== null ? `${left.toFixed(1)} GB tersisa` : "Unlimited"}</span>
-              <span className="text-muted-foreground">{pct}%</span>
-            </div>
-          </>
+        {status === "INSTALLED" &&
+          usage.kind === "measured" &&
+          usage.remainingPercent !== null &&
+          usage.remainingBytes !== null && (
+            <>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className={`h-full rounded-full ${usage.low ? "bg-brand-red" : "bg-primary"}`}
+                  style={{ width: `${usage.remainingPercent}%` }}
+                />
+              </div>
+              <div className="mt-2 flex justify-between text-sm">
+                <span>{formatData(usage.remainingBytes)} tersisa</span>
+                <span className="text-muted-foreground">{formatRemainingPercent(usage)}</span>
+              </div>
+            </>
+          )}
+        {status === "INSTALLED" && usage.kind !== "measured" && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            {usage.kind === "unlimited" ? "Unlimited" : usage.note}
+          </p>
         )}
       </Link>
       <Link

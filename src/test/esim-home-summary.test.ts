@@ -25,10 +25,10 @@ describe("buildEsimHomeSummary", () => {
     const summary = buildEsimHomeSummary([]);
 
     expect(summary.kind).toBe("empty");
-    expect(summary.title).toBe("Belum punya eSIM?");
+    expect(summary.title).toBe("Internet siap sebelum berangkat");
     expect(summary.target).toEqual({ kind: "finder" });
     expect(summary.primaryAction).toEqual({
-      label: "Beli eSIM sekarang",
+      label: "Cari eSIM",
       target: { kind: "finder" },
     });
   });
@@ -44,16 +44,23 @@ describe("buildEsimHomeSummary", () => {
 
     expect(summary.kind).toBe("low");
     expect(summary.remainingPercent).toBe(10);
-    expect(summary.primaryAction.label).toBe("Perpanjang paket");
+    expect(summary.primaryAction.label).toBe("Beli paket lagi");
     expect(summary.primaryAction.target).toEqual({ kind: "checkout", id: "JP-5GB-7D" });
   });
 
   it("describes an installed order with unavailable usage instead of inventing zero", () => {
-    const summary = buildEsimHomeSummary([order({ usedGb: undefined })], NOW);
+    const summary = buildEsimHomeSummary([order()], NOW);
 
     expect(summary.kind).toBe("active");
     expect(summary.quotaLabel).toMatch(/pemakaian belum dilaporkan penyedia/i);
     expect(summary.quotaLabel).not.toMatch(/Sisa 0(?:\.0)? GB/);
+  });
+
+  it("keeps a small remaining balance visible in MB rather than rounding it to zero GB", () => {
+    const summary = buildEsimHomeSummary([order({ usedGb: 4.98 })], NOW);
+    expect(summary.kind).toBe("low");
+    expect(summary.quotaValue).toBe("20 MB");
+    expect(summary.quotaCaption).toContain("<1% tersisa");
   });
 
   it("routes a ready order to its detail page for installation", () => {
@@ -75,6 +82,16 @@ describe("buildEsimHomeSummary", () => {
     expect(summary.primaryAction.target).toEqual({ kind: "order", id: "pending-1" });
   });
 
+  it("points a failed provisioning order to its status, avoiding a duplicate purchase", () => {
+    const summary = buildEsimHomeSummary([order({ status: "PROVISIONING_FAILED" })], NOW);
+    expect(summary.kind).toBe("pending");
+    expect(summary.title).toBe("eSIM perlu bantuan");
+    expect(summary.primaryAction).toEqual({
+      label: "Lihat status",
+      target: { kind: "order", id: "order-1" },
+    });
+  });
+
   it("uses latest terminal history when no active or pending order remains", () => {
     const summary = buildEsimHomeSummary(
       [
@@ -90,7 +107,7 @@ describe("buildEsimHomeSummary", () => {
     );
 
     expect(summary.kind).toBe("history");
-    expect(summary.primaryAction.label).toBe("Perpanjang paket");
+    expect(summary.primaryAction.label).toBe("Beli paket lagi");
     expect(summary.primaryAction.target).toEqual({ kind: "checkout", id: "TH-3GB-7D" });
   });
 

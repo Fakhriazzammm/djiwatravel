@@ -193,6 +193,23 @@ export function formatGb(bytes: number): string {
   return `${(bytes / BYTES_PER_GB).toFixed(1)} GB`;
 }
 
+/** Avoid rounding a small but nonzero remaining balance down to 0.0 GB. */
+export function formatData(bytes: number): string {
+  if (bytes > 0 && bytes < 100_000_000) {
+    return `${Math.max(1, Math.round(bytes / 1_000_000))} MB`;
+  }
+  return formatGb(bytes);
+}
+
+export function formatRemainingPercent(
+  view: Pick<UsageView, "remainingBytes" | "remainingPercent">,
+): string {
+  if (view.remainingBytes !== null && view.remainingBytes > 0 && view.remainingPercent === 0) {
+    return "<1%";
+  }
+  return `${view.remainingPercent ?? 0}%`;
+}
+
 function finiteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -201,6 +218,7 @@ export function usageView(input: {
   volumeBytes?: number | null;
   usedGb?: number | null;
   measuredAt?: number | null;
+  unlimited?: boolean;
   active: boolean;
 }): UsageView {
   const total = finiteNumber(input.volumeBytes);
@@ -222,6 +240,14 @@ export function usageView(input: {
 
   const knownTotal = total !== null && total > 0 ? total : null;
 
+  if (input.unlimited === true) {
+    return {
+      ...empty,
+      kind: "unlimited",
+      note: "Paket ini tidak dibatasi kuota tetap.",
+    };
+  }
+
   if (knownTotal === null && usedBytes === null) {
     return {
       ...empty,
@@ -233,8 +259,8 @@ export function usageView(input: {
   if (knownTotal === null) {
     return {
       ...empty,
-      kind: "unlimited",
-      note: "Paket ini tidak dibatasi kuota tetap.",
+      kind: "unavailable",
+      note: "Total kuota belum tersedia dari penyedia.",
       usedBytes,
     };
   }

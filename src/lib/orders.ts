@@ -27,6 +27,7 @@ export type Order = {
   locationCodes?: string[];
   durationDays?: number;
   volumeBytes?: number | null;
+  unlimited?: boolean;
   supportsTopUp?: boolean;
   paymentUrl?: string;
   paymentReference?: string;
@@ -40,6 +41,8 @@ export type Order = {
   paymentExpiresAt?: number | null;
   esim?: EsimProfile;
   usedGb?: number;
+  usageVolumeBytes?: number;
+  usageMeasuredAt?: number;
   providerOrderNo?: string;
   priceSnapshot?: { amountIdr: number; capturedAt: number; currency: "IDR"; packageId: string };
   /** True when this order came from the verified member read path rather than a local guest token. */

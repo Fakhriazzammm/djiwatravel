@@ -120,10 +120,16 @@ describe("usageView", () => {
     expect(view.low).toBe(true);
   });
 
-  it("treats a package without a fixed volume as unlimited", () => {
-    const view = usageView({ volumeBytes: null, usedGb: 3, active: true });
+  it("shows unlimited only when the package explicitly says it is unlimited", () => {
+    const view = usageView({ volumeBytes: null, usedGb: 3, active: true, unlimited: true });
     expect(view.kind).toBe("unlimited");
     expect(view.remainingBytes).toBeNull();
+  });
+
+  it("does not call an unknown total unlimited", () => {
+    const view = usageView({ volumeBytes: null, usedGb: 3, active: true });
+    expect(view.kind).toBe("unavailable");
+    expect(view.note).toMatch(/total kuota belum tersedia/i);
   });
 
   it("ignores non-numeric provider payloads", () => {

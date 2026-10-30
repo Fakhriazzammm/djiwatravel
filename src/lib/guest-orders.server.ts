@@ -24,6 +24,7 @@ import { decryptEsimSecret } from "./esim-secret-crypto";
 import { readMayarSnapshot } from "./payment-snapshot";
 import { effectivePaymentStatus } from "./payment-expiry";
 import { refreshTravelOrderProvisioning } from "./esim-provisioning-refresh.server";
+import { readStoredUsageForOrders } from "./esim-stored-usage.server";
 
 const createGuestOrderSchema = z.object({
   packageCode: z.string().trim().min(1).max(160),
@@ -103,6 +104,7 @@ export const createGuestOrderDraftHandler = async ({
     name: pkg.name,
     locationCodes: pkg.locationCodes,
     volumeBytes: pkg.volumeBytes,
+    ...(pkg.unlimited === true ? { unlimited: true } : {}),
     durationDays: pkg.durationDays,
     speed: pkg.speed ?? null,
     supportsTopUp: pkg.supportsTopUp,
@@ -271,6 +273,7 @@ export const getGuestOrdersHandler = async ({
         paymentReference: row.paymentReference,
         ...(paymentUrl ? { paymentUrl } : {}),
         ...(row.providerOrderNo ? { providerOrderNo: row.providerOrderNo } : {}),
+        ...(row.profileStatus ? { profileStatus: row.profileStatus } : {}),
         ...(esim ? { esim } : {}),
         packageSnapshot: {
           name: typeof snapshot["name"] === "string" ? snapshot["name"] : row.packageCode,
@@ -281,12 +284,21 @@ export const getGuestOrdersHandler = async ({
             : [],
           durationDays: typeof snapshot["durationDays"] === "number" ? snapshot["durationDays"] : 0,
           volumeBytes: typeof snapshot["volumeBytes"] === "number" ? snapshot["volumeBytes"] : null,
+          ...(snapshot["unlimited"] === true ? { unlimited: true } : {}),
           supportsTopUp: snapshot["supportsTopUp"] === true,
         },
       };
     }),
   );
-  return records.filter((record) => record !== null);
+  const authorizedRecords = records.filter((record) => record !== null);
+  // Only records that passed the guest-token predicate may supply provider order numbers here.
+  const usageByOrder = await readStoredUsageForOrders(
+    authorizedRecords.map((record) => record.providerOrderNo),
+  ).catch(() => new Map());
+  return authorizedRecords.map((record) => {
+    const usage = record.providerOrderNo ? usageByOrder.get(record.providerOrderNo) : undefined;
+    return usage ? { ...record, usage } : record;
+  });
 };
 
 export const getGuestOrders = createServerFn({ method: "POST" })

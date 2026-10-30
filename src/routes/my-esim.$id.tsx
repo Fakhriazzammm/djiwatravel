@@ -126,11 +126,17 @@ function Detail() {
   const locationLabel = o.locationCodes?.join(", ") || "Regional";
   const durationDays = o.durationDays ?? 0;
   const quotaLabel =
-    o.volumeBytes == null ? "Unlimited" : `${(o.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
+    o.unlimited === true
+      ? "Unlimited"
+      : o.volumeBytes != null && o.volumeBytes > 0
+        ? `${(o.volumeBytes / 1_000_000_000).toFixed(1)} GB`
+        : "Kuota belum tersedia";
   const timeline = activationTimeline(status);
   const usage = usageView({
-    volumeBytes: o.volumeBytes ?? null,
+    volumeBytes: o.usageVolumeBytes ?? o.volumeBytes ?? null,
     usedGb: o.usedGb ?? null,
+    measuredAt: o.usageMeasuredAt ?? null,
+    unlimited: o.unlimited === true,
     active: canInstall,
   });
   const checklist = buildTravelChecklist({

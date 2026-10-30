@@ -94,11 +94,8 @@ describe("EsimHomeSummaryCard", () => {
     await waitFor(() =>
       expect(screen.getByTestId("esim-home-summary")).toHaveAttribute("data-state", "empty"),
     );
-    expect(screen.getByText("Belum punya eSIM?")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Beli eSIM sekarang" })).toHaveAttribute(
-      "href",
-      "/esim/finder",
-    );
+    expect(screen.getByText("Internet siap sebelum berangkat")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Cari eSIM/ })).toHaveAttribute("href", "/esim/finder");
   });
 
   it("shows measured quota on an active eSIM", async () => {
@@ -107,14 +104,34 @@ describe("EsimHomeSummaryCard", () => {
     await waitFor(() =>
       expect(screen.getByTestId("esim-home-summary")).toHaveAttribute("data-state", "active"),
     );
-    expect(screen.getByText("Sisa 2.5 GB (50%)")).toBeInTheDocument();
+    expect(screen.getByText("2.5 GB")).toBeInTheDocument();
+    expect(screen.getByText("dari 5.0 GB · 50% tersisa")).toBeInTheDocument();
   });
 
   it("makes low quota visible and offers renewal", async () => {
     renderCard([order({ usedGb: 4.5 })]);
 
     await waitFor(() => expect(screen.getByText("Kuota hampir habis")).toBeInTheDocument());
-    expect(screen.getByRole("link", { name: "Perpanjang paket" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Beli paket lagi/ })).toBeInTheDocument();
+  });
+
+  it("offers installation for a ready eSIM", async () => {
+    renderCard([order({ status: "READY" })]);
+    await waitFor(() => expect(screen.getByText("eSIM siap dipasang")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: /Pasang eSIM/ })).toHaveAttribute(
+      "href",
+      "/my-esim/order-1",
+    );
+  });
+
+  it("offers status instead of another purchase for a provisioning failure", async () => {
+    renderCard([order({ status: "PROVISIONING_FAILED" })]);
+    await waitFor(() => expect(screen.getByText("eSIM perlu bantuan")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: /Lihat status/ })).toHaveAttribute(
+      "href",
+      "/order/order-1",
+    );
+    expect(screen.queryByRole("link", { name: /Beli paket lagi/ })).not.toBeInTheDocument();
   });
 
   it("lets a customer continue an unfinished payment", async () => {
