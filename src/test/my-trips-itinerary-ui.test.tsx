@@ -1,9 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ItineraryEditor } from "@/routes/my-trips.$tripId.$section";
-import { postItinerary } from "@/lib/my-trips.server";
+import { postItinerary } from "@/lib/my-trips.fn";
 
-vi.mock("@/lib/my-trips.server", () => ({
+vi.mock("@/lib/my-trips.fn", () => ({
   deleteBookingRecord: vi.fn(),
   deleteChecklist: vi.fn(),
   deleteExpense: vi.fn(),

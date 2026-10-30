@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, Clock3, Compass, MapPin, Plane, ShieldCheck } from "lucide-react";
 import { Page, Wordmark } from "@/components/shell";
-import { getSharedTrip } from "@/lib/my-trips.server";
+import { getSharedTrip } from "@/lib/my-trips.fn";
 
 export const Route = createFileRoute("/share/$token")({
   loader: async ({ params }) => {

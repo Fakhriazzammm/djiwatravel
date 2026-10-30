@@ -2,7 +2,7 @@ import { CircleX, Eye, EyeOff, LoaderCircle, ShieldCheck } from "lucide-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminProvisioning } from "@/lib/admin-read-model.server";
+import { getAdminProvisioning } from "@/lib/admin-read-model.fn";
 import {
   formatAdminDateTime,
   humanizeAdminStatus,

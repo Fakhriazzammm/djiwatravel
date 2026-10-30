@@ -36,7 +36,7 @@ import {
   postChecklist,
   postExpense,
   postItinerary,
-} from "@/lib/my-trips.server";
+} from "@/lib/my-trips.fn";
 
 export const Route = createFileRoute("/my-trips/$tripId/$section")({
   loader: async ({ params, location }) => {

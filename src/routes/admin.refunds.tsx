@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminRefundRequests } from "@/lib/admin-read-model.server";
+import { getAdminRefundRequests } from "@/lib/admin-read-model.fn";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { formatAdminDateTime, humanizeAdminStatus, projectAdminAmount } from "@/lib/admin-display";
 

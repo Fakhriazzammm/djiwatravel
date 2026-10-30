@@ -5,7 +5,7 @@ import { useState } from "react";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/admin-guard";
-import { getTravelFinanceReport, submitTravelExpense } from "@/lib/admin-finance.server";
+import { getTravelFinanceReport, submitTravelExpense } from "@/lib/admin-finance.fn";
 import { formatAdminDateTime } from "@/lib/admin-display";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 import {

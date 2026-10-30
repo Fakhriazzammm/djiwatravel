@@ -7,7 +7,7 @@ import {
   packageDestinationLabel,
 } from "@/lib/package-copy";
 import { breadcrumbJsonLd, jsonLdScript, productJsonLd, SEO_BASE_URL } from "@/lib/seo";
-import { getIndexablePlan } from "@/lib/seo-indexability.server";
+import { getIndexablePlan } from "@/lib/seo-indexability.fn";
 
 export const Route = createFileRoute("/plan/$id")({
   loader: async ({ params }) => {

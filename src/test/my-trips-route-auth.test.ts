@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getTrip } from "@/lib/my-trips.server";
+import { getTrip } from "@/lib/my-trips.fn";
 import { Route } from "@/routes/my-trips.$tripId";
 
-vi.mock("@/lib/my-trips.server", () => ({
+vi.mock("@/lib/my-trips.fn", () => ({
   getTrip: vi.fn(),
   patchTrip: vi.fn(),
 }));

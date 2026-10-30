@@ -3,7 +3,7 @@ import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminPayments } from "@/lib/admin-read-model.server";
+import { getAdminPayments } from "@/lib/admin-read-model.fn";
 import { MAX_PAYMENT_PAGE, normalizePaymentQuery, type PaymentSortKey } from "@/lib/admin-metrics";
 import {
   ageFrom,

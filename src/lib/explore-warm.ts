@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import { refreshPriceRuleSnapshot } from "./price-rules.server";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 
 /**
@@ -22,6 +21,7 @@ export const warmResellerCatalog = createServerFn({ method: "POST" }).handler(as
     // A catalogue warm-up failure must never affect the page: the routes load it themselves.
   }
   try {
+    const { refreshPriceRuleSnapshot } = await import("./price-rules.server");
     rules = (await refreshPriceRuleSnapshot()).length;
   } catch {
     // Without rules the reseller defaults still apply, which is the pre-workspace behaviour.

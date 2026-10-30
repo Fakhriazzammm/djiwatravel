@@ -8,7 +8,7 @@ import {
   ServiceCategoryGrid,
   ServiceSectionHeading,
 } from "@/components/explore/service-category-grid";
-import { getListableDestinations } from "@/lib/destination-availability.server";
+import { getListableDestinations } from "@/lib/destination-availability.fn";
 import { exploreAvailability } from "@/lib/explore-availability";
 
 export const Route = createFileRoute("/explore")({

@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { partitionSellability, sellabilityMode, type SellablePackage } from "./sellability";
-import { getBalanceSnapshot } from "./sellability.server";
 
 const sellabilityInput = z.object({
   packages: z
@@ -35,6 +34,7 @@ export type SellabilityRead = {
 export const readSellability = createServerFn({ method: "POST" })
   .validator(sellabilityInput)
   .handler(async ({ data }): Promise<SellabilityRead> => {
+    const { getBalanceSnapshot } = await import("./sellability.server");
     const mode = sellabilityMode();
     const snapshot = await getBalanceSnapshot();
     const balanceKnown = snapshot.balanceUnits !== null && Number.isFinite(snapshot.balanceUnits);

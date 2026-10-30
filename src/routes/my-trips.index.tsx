@@ -20,7 +20,7 @@ import { FixedLayer } from "@/components/motion-primitives";
 import { Page } from "@/components/shell";
 import { destinationPhoto } from "@/lib/destination-artwork";
 import { getMyTripsActions } from "@/lib/my-trips-home";
-import { getMyTripsHome } from "@/lib/my-trips.server";
+import { getMyTripsHome } from "@/lib/my-trips.fn";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { pressable, springSheet } from "@/lib/motion";
 

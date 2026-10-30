@@ -3,7 +3,7 @@ import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-guard";
-import { getAdminDashboard } from "@/lib/admin-read-model.server";
+import { getAdminDashboard } from "@/lib/admin-read-model.fn";
 import {
   ageFrom,
   formatAdminDateTime,
