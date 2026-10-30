@@ -25,10 +25,10 @@ describe("buildEsimHomeSummary", () => {
     const summary = buildEsimHomeSummary([]);
 
     expect(summary.kind).toBe("empty");
-    expect(summary.title).toBe("Internet siap sebelum berangkat");
+    expect(summary.title).toBe("Belum punya eSIM?");
     expect(summary.target).toEqual({ kind: "finder" });
     expect(summary.primaryAction).toEqual({
-      label: "Cari eSIM",
+      label: "Cari paket eSIM",
       target: { kind: "finder" },
     });
   });

@@ -1,4 +1,4 @@
-import { ChevronRight, Clock3, Globe2, QrCode, Search, Smartphone } from "lucide-react";
+import { ChevronRight, Clock3, QrCode, Search, Smartphone } from "lucide-react";
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "motion/react";
@@ -63,7 +63,7 @@ function SummaryLink({
 }
 
 const ROW_CLASS =
-  "tap flex min-h-[52px] w-full items-center gap-3 px-4 text-left text-[13.5px] leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
+  "tap flex min-h-11 w-full items-center gap-3 px-4 text-left text-[13.5px] leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
 const SUMMARY_CARD_CLASS =
   "overflow-hidden rounded-[24px] border border-border/60 bg-secondary shadow-[0_8px_24px_-22px_rgba(0,0,0,0.3)]";
 
@@ -198,7 +198,7 @@ function FloatingEsimArtwork() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <span className="relative grid size-14 shrink-0 place-items-center" aria-hidden="true">
+    <span className="relative grid size-12 shrink-0 place-items-center" aria-hidden="true">
       <span className="absolute inset-1 rounded-full border border-border/60 bg-surface/70" />
       <motion.img
         src="/assets/esim/esim-chip-color-v1.png"
@@ -215,7 +215,7 @@ function FloatingEsimArtwork() {
         transition={
           reduceMotion ? { duration: 0 } : { duration: 4.6, ease: "easeInOut", repeat: Infinity }
         }
-        className="relative z-10 size-[54px] object-contain drop-shadow-[0_3px_5px_rgba(0,0,0,0.14)]"
+        className="relative z-10 size-11 object-contain drop-shadow-[0_3px_5px_rgba(0,0,0,0.14)]"
       />
     </span>
   );
@@ -303,51 +303,37 @@ export function EsimHomeSummaryCard({
   if (summary.kind === "empty") {
     return (
       <article data-testid="esim-home-summary" data-state="empty" className={SUMMARY_CARD_CLASS}>
-        <div className="flex min-h-[58px] items-center justify-between gap-2 px-4 pt-1">
+        <div className="flex h-12 items-center justify-between gap-2 px-4">
           <h2 className="min-w-0 text-[13px] font-bold tracking-[-0.01em] text-foreground">
             eSIM perjalanan
           </h2>
           <FloatingEsimArtwork />
         </div>
-        <div className="px-4 pt-1">
+        <div className="px-4 pt-1.5">
           <p className="text-[15px] font-bold tracking-[-0.015em] text-foreground">
-            Belum punya eSIM?
+            {summary.title}
           </p>
           <p className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground">
-            Internet siap sebelum berangkat. Pilih paket sesuai destinasi dan kuota.
+            {summary.subtitle}
           </p>
         </div>
-        <div className="mt-3 border-t border-[rgba(60,60,67,0.12)]">
+        <div className="flex items-center gap-2 px-4 pb-3 pt-2.5">
           <button
             type="button"
             onClick={onSearchPackages}
             aria-haspopup="dialog"
-            className={`${ROW_CLASS} font-semibold text-foreground`}
+            className="tap flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-red px-3 text-[12.5px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <span className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-surface text-muted-foreground">
-              <Search className="size-[15px]" aria-hidden="true" />
-            </span>
-            <RowShell>
-              Cari paket eSIM
-              <span className="mt-0.5 block text-[10.5px] font-normal text-muted-foreground">
-                Jepang, Korea, 5 GB…
-              </span>
-            </RowShell>
+            <Search className="size-4 shrink-0" aria-hidden="true" />
+            {summary.primaryAction.label}
           </button>
           <SummaryLink
             target={{ kind: "finder" }}
             ariaLabel="Semua paket eSIM"
-            className={`${ROW_CLASS} border-t border-[rgba(60,60,67,0.12)] font-semibold text-foreground`}
+            className="tap flex min-h-11 shrink-0 items-center gap-0.5 rounded-xl px-2 text-[12px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <span className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-surface text-muted-foreground">
-              <Globe2 className="size-[15px]" aria-hidden="true" />
-            </span>
-            <RowShell>
-              Semua paket
-              <span className="mt-0.5 block text-[10.5px] font-normal text-muted-foreground">
-                Bandingkan kuota dan harga
-              </span>
-            </RowShell>
+            Semua paket
+            <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
           </SummaryLink>
         </div>
       </article>
@@ -392,7 +378,7 @@ export function EsimHomeSummaryCard({
       data-state={summary.kind}
       className={SUMMARY_CARD_CLASS}
     >
-      <div className="flex min-h-[58px] items-center justify-between gap-2 px-4 pt-1">
+      <div className="flex min-h-[50px] items-center justify-between gap-2 px-4">
         <div className="flex min-w-0 items-center gap-2">
           <h2 className="text-[13px] font-bold tracking-[-0.01em] text-foreground">eSIM kamu</h2>
           <Badge label={badge.label} tone={badge.tone} />
@@ -400,7 +386,7 @@ export function EsimHomeSummaryCard({
         <FloatingEsimArtwork />
       </div>
 
-      <div className="px-4 pb-3.5 pt-2">
+      <div className="px-4 pb-3 pt-1.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[16.5px] font-bold leading-[1.25] tracking-[-0.022em] text-foreground">
@@ -433,14 +419,14 @@ export function EsimHomeSummaryCard({
         {(summary.kind === "active" || summary.kind === "low") && (
           <>
             {summary.quotaValue ? (
-              <p className="mt-3 text-[12px] leading-5 text-muted-foreground">
+              <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
                 <span className="text-[15px] font-bold tracking-[-0.01em] text-foreground">
                   {summary.quotaValue}
                 </span>{" "}
                 {summary.quotaCaption}
               </p>
             ) : (
-              <p className="mt-3 text-[12px] leading-5 text-muted-foreground">
+              <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
                 {summary.quotaLabel}
               </p>
             )}
@@ -453,13 +439,13 @@ export function EsimHomeSummaryCard({
         )}
 
         {summary.kind === "ready" && (
-          <p className="mt-3 text-[12px] leading-5 text-muted-foreground">
+          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
             Pindai QR atau salin detail eSIM sebelum berangkat.
           </p>
         )}
 
         {summary.kind === "pending" && (
-          <p className="mt-3 text-[12px] leading-5 text-muted-foreground">
+          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
             {displayedOrder?.status === "ORDER_CREATED" ||
             displayedOrder?.status === "WAITING_PAYMENT"
               ? "Selesaikan pembayaran sebelum pesanan dibatalkan."
@@ -470,7 +456,7 @@ export function EsimHomeSummaryCard({
         )}
 
         {summary.kind === "history" && (
-          <p className="mt-3 text-[12px] leading-5 text-muted-foreground">
+          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
             Masa aktif paket ini sudah berakhir. Beli paket lagi untuk terhubung kembali.
           </p>
         )}

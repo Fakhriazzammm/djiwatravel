@@ -98,6 +98,16 @@ The page dots use a single tab stop with arrow, Home, and End keyboard controls.
 Each control has a 44px touch target; the visible dot remains small so the
 card stays compact.
 
+## Prototype alignment: compact empty state
+
+The empty state uses the approved prototype hierarchy: a short customer-facing
+message, a prominent `Cari paket eSIM` button that opens the shared Home search,
+and a compact `Semua paket` link to `/esim/finder`. Keep the Home search above
+the card as the single search input; do not add a second input inside the card.
+Target 150–180 px at mobile widths. Owned eSIM states keep their live order
+data and contextual actions, with shorter 44 px action rows and a reduced
+header so the card stays compact.
+
 ## Non-goals
 
 - No new database tables, provider endpoints, or payment authority.

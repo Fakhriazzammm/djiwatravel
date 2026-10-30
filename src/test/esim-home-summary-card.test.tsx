@@ -91,7 +91,7 @@ describe("EsimHomeSummaryCard", () => {
     expect(screen.getByTestId("esim-home-summary-loading")).toHaveAttribute("aria-busy", "true");
   });
 
-  it("points customers without an eSIM to the shared search and the full catalog", async () => {
+  it("opens the shared Home search and links to the full catalog for customers without an eSIM", async () => {
     const onSearchPackages = vi.fn();
     renderCard([], onSearchPackages);
 

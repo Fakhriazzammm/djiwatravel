@@ -155,12 +155,12 @@ function emptySummary(): EsimHomeSummary {
   return {
     kind: "empty",
     eyebrow: "eSIM internasional",
-    title: "Internet siap sebelum berangkat",
-    subtitle: "Pilih eSIM untuk destinasi perjalananmu.",
+    title: "Belum punya eSIM?",
+    subtitle: "Pilih paket internet untuk negara tujuanmu.",
     quotaLabel: null,
     remainingPercent: null,
     target: { kind: "finder" },
-    primaryAction: { label: "Cari eSIM", target: { kind: "finder" } },
+    primaryAction: { label: "Cari paket eSIM", target: { kind: "finder" } },
     hasMultiple: false,
   };
 }
