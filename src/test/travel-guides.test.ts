@@ -46,7 +46,7 @@ describe("travel guide SEO registry", () => {
       expect(existsSync(resolve(process.cwd(), `public${guide.image}`))).toBe(true);
     }
     const citedGuides = added.filter((guide) => guide.sources?.length);
-    expect(citedGuides).toHaveLength(3);
+    expect(citedGuides).toHaveLength(added.length);
     expect(citedGuides.every((guide) => guide.sources?.every((source) => source.url.startsWith("https://")))).toBe(true);
   });
 
