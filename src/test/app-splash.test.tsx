@@ -35,6 +35,18 @@ describe("AppSplash", () => {
     expect(screen.getByText(/Menyiapkan Djiwa Travel/)).toBeTruthy();
   });
 
+  it("includes a CSS rotation fallback for the first-paint spinner", () => {
+    render(<AppSplash />);
+    const splash = screen.getByTestId("app-splash");
+
+    expect(splash.querySelector(".pending-spinner-ring")).toBeTruthy();
+    expect(
+      Array.from(document.querySelectorAll("style")).some((style) =>
+        style.textContent?.includes("djiwa-splash-spin"),
+      ),
+    ).toBe(true);
+  });
+
   it("hides itself after the mount window", async () => {
     render(<AppSplash />);
     await act(async () => {

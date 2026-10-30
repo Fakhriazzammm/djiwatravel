@@ -84,7 +84,7 @@ export function PendingSpinner({
   className?: string;
 }) {
   const ring =
-    "absolute inset-0 rounded-full border-2 border-brand-red border-b-transparent border-r-transparent";
+    "pending-spinner-ring absolute inset-0 rounded-full border-2 border-brand-red border-b-transparent border-r-transparent";
   return (
     <span className={`relative flex ${className} items-center justify-center`} aria-hidden="true">
       <span className="absolute inset-0 rounded-full border-2 border-border" />

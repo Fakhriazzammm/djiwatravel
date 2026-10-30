@@ -22,8 +22,13 @@ const SPLASH_MIN_VISIBLE_MS = 240;
 
 const FALLBACK_CSS = `
 @keyframes djiwa-splash-out { from { opacity: 1; visibility: visible; } to { opacity: 0; visibility: hidden; } }
+@keyframes djiwa-splash-spin { to { transform: rotate(360deg); } }
 .djiwa-splash { animation: djiwa-splash-out 240ms ease 1100ms forwards; }
-@media (prefers-reduced-motion: reduce) { .djiwa-splash { animation-duration: 1ms; animation-delay: 1200ms; } }
+.djiwa-splash .pending-spinner-ring { animation: djiwa-splash-spin 900ms linear infinite; transform-origin: center; }
+@media (prefers-reduced-motion: reduce) {
+  .djiwa-splash { animation-duration: 1ms; animation-delay: 1200ms; }
+  .djiwa-splash .pending-spinner-ring { animation: none; }
+}
 `;
 
 export function AppSplash() {
