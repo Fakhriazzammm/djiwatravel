@@ -25,6 +25,33 @@ The route source is [`src/routes/`](src/routes/), shared UI is in
 [`src/routes/__root.tsx`](src/routes/__root.tsx); it must preserve the router
 `<Outlet />` contract.
 
+## End-to-end feature contract
+
+Every new feature or feature repair is delivered as one complete capability
+across the two product surfaces:
+
+| Surface | Required question | Typical implementation |
+| --- | --- | --- |
+| Customer | How does a customer discover, use, complete, and recover from it? | Customer route/component, session-aware loader/action, visible loading/empty/error/success states, and accessible next action. |
+| Admin | How does the team enable, configure, monitor, moderate, fulfill, or troubleshoot it for customers? | `admin.*` route or an existing admin settings/operations surface, protected reads/actions, audit/freshness state, and safe retry or correction control. |
+| Shared contract | What makes the two surfaces agree? | Server-owned source of truth, authorization/ownership, migration/provider contract, idempotency, and tests covering the customer result after an admin change. |
+
+Before implementation, record a surface matrix with the customer entry/result,
+admin entry/control, source of truth, permissions, loading/empty/error states,
+and proof command. A customer-only implementation is not complete when the
+team cannot operate or support the capability. An admin-only control is not
+complete when its effect is not observable in the customer journey. If a side
+is genuinely not applicable, document the reason and the checked routes and
+modules instead of silently omitting it.
+
+The minimum trace is:
+
+`customer route → customer state/action → shared server contract → database/provider → admin control/read model → customer-visible result`
+
+For cross-surface changes, verify both route groups and both authorization
+paths. Do not create a second source of truth in Admin for wallet, ledger,
+settlement, Mayar, Better Auth identity, or other owned integrations.
+
 ## Ownership and cross-project contracts
 
 ### Better Auth and customer identity

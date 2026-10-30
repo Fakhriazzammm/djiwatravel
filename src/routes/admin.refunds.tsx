@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminRefundRequests } from "@/lib/admin-read-model.fn";
+import { decideAdminRefund } from "@/lib/admin-refunds.fn";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { formatAdminDateTime, humanizeAdminStatus, projectAdminAmount } from "@/lib/admin-display";
 
@@ -13,11 +15,28 @@ export const Route = createFileRoute("/admin/refunds")({
 
 function AdminRefunds() {
   const refunds = Route.useLoaderData();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const decide = async (requestId: string, decision: "approve" | "reject") => {
+    const reason = window.prompt(decision === "approve" ? "Alasan persetujuan refund" : "Alasan penolakan refund");
+    if (!reason?.trim()) return;
+    setBusy(requestId);
+    setNotice(null);
+    try {
+      await decideAdminRefund({ data: { requestId, decision, reason: reason.trim() } });
+      setNotice("Keputusan refund tercatat. Provider belum dipanggil.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Keputusan refund gagal.");
+    } finally {
+      setBusy(null);
+    }
+  };
   return (
     <AdminShell
       title="Refunds"
-      subtitle="Read-only refund queue. Tidak ada tombol provider, status mutation, atau financial write."
+      subtitle="Keputusan refund tercatat secara audit; eksekusi provider tetap fail-closed."
     >
+      {notice && <p role="status" className="mt-3 rounded-xl bg-secondary p-3 text-sm">{notice}</p>}
       <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
         <div className="flex items-center justify-between gap-3">
           <SectionHeading
@@ -42,6 +61,7 @@ function AdminRefunds() {
                   <th className="p-3">Events</th>
                   <th className="p-3">Updated</th>
                   <th className="p-3">Provider note</th>
+                  <th className="p-3">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -73,6 +93,14 @@ function AdminRefunds() {
                     </td>
                     <td className="max-w-[240px] p-3 text-xs text-destructive">
                       {item.providerError ?? "No provider result recorded"}
+                    </td>
+                    <td className="p-3">
+                      {item.status === "REQUESTED" ? (
+                        <div className="flex gap-2">
+                          <button type="button" disabled={busy === item.id} onClick={() => void decide(item.id, "approve")} className="min-h-9 rounded-lg bg-brand-red px-2.5 text-xs font-semibold text-white disabled:opacity-50">Setujui</button>
+                          <button type="button" disabled={busy === item.id} onClick={() => void decide(item.id, "reject")} className="min-h-9 rounded-lg border border-border px-2.5 text-xs font-semibold disabled:opacity-50">Tolak</button>
+                        </div>
+                      ) : <span className="text-xs text-muted-foreground">Sudah diputuskan</span>}
                     </td>
                   </tr>
                 ))}

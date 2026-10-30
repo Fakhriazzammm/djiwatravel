@@ -9,6 +9,8 @@ describe("admin UI contracts", () => {
     expect(new Set(hrefs).size).toBe(hrefs.length);
     expect(hrefs).toEqual([
       "/admin/dashboard",
+      "/admin/customers",
+      "/admin/analytics",
       "/admin/orders",
       "/admin/payments",
       "/admin/refunds",
@@ -16,6 +18,8 @@ describe("admin UI contracts", () => {
       "/admin/finance",
       "/admin/catalog",
       "/admin/provisioning",
+      "/admin/audit-log",
+      "/admin/team",
       "/admin/settings",
     ]);
     expect(isAdminNavigationActive("/admin/orders/abc", "/admin/orders")).toBe(true);
@@ -54,7 +58,7 @@ describe("admin UI contracts", () => {
   });
   it("keeps aliases guarded and explicit", () => {
     // "catalog" is a real workspace now, so it is asserted by admin-p0-scope instead.
-    for (const name of ["analytics", "customers", "overview"]) {
+    for (const name of ["overview"]) {
       const source = read(`routes/admin.${name}.tsx`);
       expect(source).toContain("requireAdmin");
       expect(source).toContain('to: "/admin/dashboard"');

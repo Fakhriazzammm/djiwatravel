@@ -1,8 +1,9 @@
 import { CircleX, Eye, EyeOff, LoaderCircle, ShieldCheck } from "lucide-react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminProvisioning } from "@/lib/admin-read-model.fn";
+import { retryAdminProvisioning } from "@/lib/admin-provisioning.fn";
 import {
   formatAdminDateTime,
   humanizeAdminStatus,
@@ -25,8 +26,11 @@ export const Route = createFileRoute("/admin/provisioning")({
 });
 function AdminProvisioning() {
   const queue = Route.useLoaderData();
+  const router = useRouter();
   const [privateMode, setPrivateMode] = useState(false);
   const [open, setOpen] = useState(false);
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const failed = queue.filter((x) => x.status === "FAILED").length;
   const active = queue.filter((x) => x.status === "PROVISIONING").length;
   const ready = queue.filter((x) => x.status === "READY").length;
@@ -56,12 +60,38 @@ function AdminProvisioning() {
             {projectAdminPrivacy(x.lastError, privateMode)}
           </p>
         )}
+        {x.status === "FAILED" && (
+          <button
+            type="button"
+            onClick={async (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const orderId = x.detailHref.split("/").pop() ?? "";
+              setRetrying(orderId);
+              setNotice(null);
+              try {
+                await retryAdminProvisioning({ data: { orderId } });
+                setNotice(`Retry provisioning untuk ${x.displayIdentifier} dikirim.`);
+                await router.invalidate();
+              } catch (error) {
+                setNotice(error instanceof Error ? error.message : "Retry provisioning gagal.");
+              } finally {
+                setRetrying(null);
+              }
+            }}
+            disabled={retrying === x.detailHref.split("/").pop()}
+            className="mt-2 min-h-9 rounded-lg bg-brand-red px-3 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {retrying === x.detailHref.split("/").pop() ? "Mengirim…" : "Retry provisioning"}
+          </button>
+        )}
       </Link>
     );
   };
   return (
     <AdminShell title="Provisioning" subtitle="Queue eSIM Travel">
       <div className="space-y-2">
+        {notice && <p role="status" className="rounded-xl bg-secondary p-3 text-sm">{notice}</p>}
         <div className="flex items-center justify-between gap-2">
           <SectionHeading
             title="Queue status"

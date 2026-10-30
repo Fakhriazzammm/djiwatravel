@@ -7,9 +7,8 @@ import { maskEmail, maskWhatsapp, toAdminCustomer } from "@/lib/admin-display";
 
 const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "utf8");
 
-// Routes that must stay as guarded redirects. "catalog" was promoted to a first-class
-// workspace (Katalog & Pricing), so it is no longer part of this list.
-const legacyRoutes = ["analytics", "customers", "index", "overview"];
+// Routes that remain compatibility redirects. Customer and analytics are now real workspaces.
+const legacyRoutes = ["index", "overview"];
 
 describe("simplified admin P0 scope", () => {
   it("keeps only curated destinations and never re-exposes legacy routes", () => {
@@ -18,6 +17,8 @@ describe("simplified admin P0 scope", () => {
     // back into the sidebar.
     expect(adminNavigation.map(([label]) => label)).toEqual([
       "Dashboard",
+      "Customers",
+      "Analytics",
       "Orders",
       "Payments",
       "Refunds",
@@ -25,6 +26,8 @@ describe("simplified admin P0 scope", () => {
       "Keuangan",
       "Katalog",
       "Provisioning",
+      "Audit log",
+      "Team",
       "Settings",
     ]);
     const visibleHrefs = adminNavigation.map(([, href]) => href);
@@ -69,6 +72,18 @@ describe("simplified admin P0 scope", () => {
     const source = read("routes/admin.dashboard.tsx");
     expect(source).toContain("Ringkasan operasional Djiwa Travel");
     expect(source).not.toContain("Read model operasional belum tersedia");
+  });
+
+  it("requires live customer and analytics workspaces", () => {
+    for (const [route, marker] of [
+      ["customers", "getAdminCustomers"],
+      ["analytics", "getAdminDashboard"],
+    ] as const) {
+      const source = read(`routes/admin.${route}.tsx`);
+      expect(source).toContain("requireAdmin");
+      expect(source).toContain(marker);
+      expect(source).not.toContain('to: "/admin/dashboard"');
+    }
   });
 
   it("masks customer contacts and never returns raw values", () => {

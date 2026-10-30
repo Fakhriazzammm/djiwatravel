@@ -11,6 +11,7 @@ Before work, read the relevant sections of:
 - `LESSONS.md` for verified operational guardrails; and
 - `README.md` for onboarding and commands.
 
-Preserve unrelated changes, keep secrets server-side, verify source and target
-environment boundaries, and report local/commit/push/deploy/health status
-separately as required by `AGENTS.md`.
+Preserve unrelated changes, keep secrets server-side, deliver every feature or
+feature fix end-to-end across the customer journey and the corresponding Admin
+operation/control, verify source and target environment boundaries, and report
+local/commit/push/deploy/health status separately as required by `AGENTS.md`.

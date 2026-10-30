@@ -20,7 +20,25 @@ dibutuhkan:
 
 Sebelum mengubah kode: pastikan repo/branch/environment/database/VPS target,
 baca `git status --short`, ikuti alur route → server module → database/provider,
-dan pertahankan perubahan yang tidak terkait.
+petakan customer journey dan admin operation/control untuk fitur yang sama,
+dan pertahankan perubahan yang tidak terkait. Implementasi belum selesai jika
+customer belum bisa menggunakan fitur atau admin belum bisa mengatur,
+memantau, memenuhi, dan memulihkan fitur tersebut. Bila salah satu sisi tidak
+relevan, tulis alasannya dan bukti pemeriksaannya.
+
+## End-to-end feature checklist
+
+Sebelum menyebut fitur/perbaikan selesai, pastikan:
+
+- customer entry, action, result, and recovery sudah berjalan;
+- admin enable/configure/inspect/fulfill/retry/disable sudah tersedia sesuai
+  kebutuhan operasional;
+- server ownership/permissions, database/provider, migration, dan source of
+  truth sudah ditelusuri;
+- loading, empty, unavailable, error, dan retry states ada di kedua surface;
+- test focused dan verifikasi customer-after-admin-change sudah dijalankan;
+- handoff menyebut file berubah, command/bukti, dan status local/commit/push/
+  deploy/health/public secara terpisah.
 
 ## Development command matrix
 

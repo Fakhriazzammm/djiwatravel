@@ -46,6 +46,22 @@ from memory:
 - Follow the route → loader/action/server module → database/provider trace.
   Keep server-only imports in server modules and make webhooks/idempotent jobs
   safe to retry.
+- Treat every feature or feature fix as an end-to-end product change. Before
+  coding, identify the customer journey (how a customer uses it) and the admin
+  journey (how the team enables, configures, monitors, moderates, fulfills, or
+  troubleshoots it). Implement and verify both surfaces in the same change;
+  do not stop after the customer UI or after an admin CRUD screen works.
+- The end-to-end trace must cover customer UI/state, admin UI/state, shared
+  server actions/loaders, authorization and ownership, database/migration or
+  provider changes, retry/error behavior, focused tests, and release checks.
+  A feature is incomplete when either customer use or admin operation cannot
+  be completed safely. If one side is genuinely not applicable, record the
+  reason, the checked routes/modules, and the verification evidence in the
+  handoff and plan/review notes.
+- For each feature, write a small surface matrix before implementation:
+  customer entry/result, admin entry/control, source of truth, permissions,
+  empty/loading/error states, and the test proving the contract. Keep the
+  customer and admin behavior consistent when an admin setting changes.
 - Use additive, reviewable numbered SQL migrations. Run the local focused
   checks first, then the relevant build/full suite; never treat a known
   baseline failure as a new regression without comparing output.
@@ -54,6 +70,7 @@ from memory:
   artifact, active service/listener, localhost routes, public routes, and
   rollback boundary separately. Do not push, merge, or deploy unless asked.
 
-When reporting, include changed files, verification commands and results,
-known unrelated failures, and whether the result is local, committed, pushed,
-deployed, internally healthy, or publicly reachable.
+When reporting, include the customer/admin surface matrix, changed files,
+verification commands and results, known unrelated failures, and whether the
+result is local, committed, pushed, deployed, internally healthy, or publicly
+reachable.

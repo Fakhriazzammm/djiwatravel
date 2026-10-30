@@ -104,6 +104,26 @@ clear column labels, filters, pagination, and safe destructive confirmation.
 Never invent metrics when production data is unavailable; redact activation
 codes, tokens, and raw customer identifiers.
 
+### Paired customer/admin delivery
+
+Customer and Admin are two views of the same capability, not separate
+afterthoughts. For every new feature or feature fix, design the pair together:
+
+- Customer gets a clear entry point, understandable progress/result, recovery
+  path, and accessible action.
+- Admin gets the smallest safe control needed to enable, configure, inspect,
+  fulfill, moderate, retry, or disable that capability for customers.
+- Both surfaces use the same server-owned source of truth and communicate
+  loading, empty, unavailable, and error states without implying success.
+- An admin setting must produce a customer-observable result, and the design
+  review must name the route/state that proves it. If no Admin surface is
+  needed, the review must state why and confirm that support/operations do not
+  require one.
+
+The design review for a feature should therefore answer: “What does the
+customer do?”, “What does Admin control or inspect?”, and “How do we know the
+two surfaces remain consistent?”
+
 ## Motion and interaction
 
 Use press feedback for touch, short opacity/position transitions for state
@@ -154,6 +174,12 @@ use a basic glyph in these cases.
 
 - Does the change serve an actual surface such as `/my-trips`, `/profile`,
   checkout, wallet, or an `admin.*` route?
+- Does the feature have both a customer journey and an admin operation/control,
+  or a documented reason and evidence why one side is not applicable?
+- Does changing the admin setting/control produce a verified customer-visible
+  result through the shared source of truth?
+- Are customer and admin loading, empty, unavailable, error, permission, and
+  recovery states covered?
 - Is the hierarchy clear at 375px width before desktop polish?
 - Are loading, empty, error, disabled, focus, and reduced-motion states covered?
 - Is the primary action reachable with one hand and at least 44px high?

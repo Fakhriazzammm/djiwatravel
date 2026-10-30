@@ -1,5 +1,7 @@
 import {
   CreditCard,
+  BarChart3,
+  FileClock,
   Gauge,
   LifeBuoy,
   ListChecks,
@@ -7,11 +9,15 @@ import {
   Settings,
   ShieldCheck,
   Tags,
+  UserRound,
+  UsersRound,
   Wallet,
 } from "lucide-react";
 
 export const adminNavigation = [
   ["Dashboard", "/admin/dashboard", Gauge],
+  ["Customers", "/admin/customers", UsersRound],
+  ["Analytics", "/admin/analytics", BarChart3],
   ["Orders", "/admin/orders", ListChecks],
   ["Payments", "/admin/payments", CreditCard],
   ["Refunds", "/admin/refunds", RotateCcw],
@@ -19,6 +25,8 @@ export const adminNavigation = [
   ["Keuangan", "/admin/finance", Wallet],
   ["Katalog", "/admin/catalog", Tags],
   ["Provisioning", "/admin/provisioning", ShieldCheck],
+  ["Audit log", "/admin/audit-log", FileClock],
+  ["Team", "/admin/team", UserRound],
   ["Settings", "/admin/settings", Settings],
 ] as const;
 
