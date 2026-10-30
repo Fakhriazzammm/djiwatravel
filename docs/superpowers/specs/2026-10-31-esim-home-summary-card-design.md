@@ -57,6 +57,28 @@ ready/installed order is treated as terminal by `effectiveOrderStatus`.
 - Respect the existing motion/reduced-motion primitives by using the Home
   `Reveal` wrapper and no new motion loop.
 
+## Iteration: compact card and in-card catalog search
+
+The second iteration keeps the same placement and state model but makes the
+card denser:
+
+- Empty state renders `EsimHomeCatalogSearch` instead of a banner: a search
+  field (`Cari paket eSIM`, minimum two characters, 300 ms debounce), popular
+  destination shortcuts, up to four matching packages, a selectable result, and
+  `Lihat detail paket` to `/checkout/$packageCode`. `Semua paket` still links to
+  `/esim/finder`. Results come from `searchHomeEsimCatalog`, which filters the
+  reseller catalog, applies `isRecommendablePackage` and the sellability check
+  on the server, and returns only `ViewPackage` fields so provider cost and
+  markup never reach the browser. A stale or truncated catalog is disclosed in
+  the card; a failed lookup offers `Coba lagi`.
+- Owned-eSIM states use the compact dark panel with the brand-red accent, a
+  circular quota ring instead of a wide progress bar, and a two-up action row.
+  When multiple orders exist, a `Pilih eSIM` selector switches which order the
+  card summarizes, and `Lihat semua eSIM` remains the route to `/my-esim`.
+- The ring keeps `role="progressbar"` with `aria-valuemin`, `aria-valuemax`,
+  `aria-valuenow`, and a text percentage label, so the gauge is not the only
+  status signal.
+
 ## Non-goals
 
 - No new database tables, provider endpoints, or payment authority.
