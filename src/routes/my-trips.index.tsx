@@ -296,7 +296,23 @@ function TodayView({
   const focusTrip = data.focusTrip;
 
   if (!focusTrip) {
-    return <EmptyTrips trips={data.trips} user={user} loading={authLoading} />;
+    return (
+      <>
+        <EmptyTrips trips={data.trips} user={user} loading={authLoading} />
+        {data.trips.length > 0 && (
+          <section aria-labelledby="all-trips-heading" className="mt-6 space-y-3 pb-5">
+            <SectionHeading
+              id="all-trips-heading"
+              title="Semua perjalanan"
+              subtitle={`${data.trips.length} perjalanan tersimpan`}
+            />
+            {data.trips.map((trip) => (
+              <LogbookCard key={trip.id} trip={trip} />
+            ))}
+          </section>
+        )}
+      </>
+    );
   }
 
   return (
@@ -340,6 +356,18 @@ function TodayView({
           </Link>
         )}
       </section>
+      {data.trips.length > 1 && (
+        <section aria-labelledby="all-trips-heading" className="space-y-3">
+          <SectionHeading
+            id="all-trips-heading"
+            title="Semua perjalanan"
+            subtitle={`${data.trips.length} perjalanan tersimpan`}
+          />
+          {data.trips.map((trip) => (
+            <LogbookCard key={trip.id} trip={trip} />
+          ))}
+        </section>
+      )}
     </div>
   );
 }

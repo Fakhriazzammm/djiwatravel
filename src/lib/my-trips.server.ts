@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { pool } from "@/db/client.server";
 import { getAuthenticatedUser } from "@/lib/customer-session.fn";
@@ -79,27 +80,26 @@ const expenseSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
 });
 
-const itinerarySchema = z
-  .object({
-    tripId: z.string().uuid(),
-    activityDate: z.string().date(),
-    startTime: z
-      .string()
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-      .optional(),
-    endTime: z
-      .string()
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-      .optional(),
-    timezone: z.string().trim().max(80).optional(),
-    title: z.string().trim().min(1).max(160),
-    location: z.string().trim().max(200).optional(),
-    notes: z.string().trim().max(2000).optional(),
-    estimatedCostMinor: z.number().int().min(0).optional(),
-    currency: z.string().trim().length(3).optional(),
-    bookingReference: z.string().trim().max(120).optional(),
-    activityCategory: z.string().trim().max(80).optional(),
-  });
+const itinerarySchema = z.object({
+  tripId: z.string().uuid(),
+  activityDate: z.string().date(),
+  startTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
+  endTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
+  timezone: z.string().trim().max(80).optional(),
+  title: z.string().trim().min(1).max(160),
+  location: z.string().trim().max(200).optional(),
+  notes: z.string().trim().max(2000).optional(),
+  estimatedCostMinor: z.number().int().min(0).optional(),
+  currency: z.string().trim().length(3).optional(),
+  bookingReference: z.string().trim().max(120).optional(),
+  activityCategory: z.string().trim().max(80).optional(),
+});
 
 const checklistSchema = z.object({
   tripId: z.string().uuid(),
@@ -126,15 +126,37 @@ const tripSectionSchema = z.object({
   tripId: z.string().uuid(),
   section: z.enum(["budget", "expenses", "itinerary", "checklist", "bookings"]),
 });
+const shareTokenSchema = z.object({ token: z.string().trim().min(20).max(128) });
 
-function statusFor(
-  departure: string,
-  returnDate: string,
-  today = new Date().toISOString().slice(0, 10),
-) {
-  if (today < departure) return "upcoming" as const;
-  if (today > returnDate) return "past" as const;
+function statusFor(departure: string, returnDate: string, today = todayInJakarta()) {
+  const start = dateText(departure) ?? departure;
+  const end = dateText(returnDate) ?? returnDate;
+  if (today < start) return "upcoming" as const;
+  if (today > end) return "past" as const;
   return "ongoing" as const;
+}
+
+function todayInJakarta() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+/** Postgres returns `date` columns as local Date objects; keep API dates as YYYY-MM-DD. */
+function dateText(value: unknown): string | null {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(
+      value.getDate(),
+    ).padStart(2, "0")}`;
+  }
+  const raw = String(value);
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match?.[1] ?? raw;
 }
 
 function money(value: unknown) {
@@ -161,14 +183,20 @@ export async function listTrips() {
      where t.customer_auth_subject=$1 group by t.id order by t.departure_date asc`,
     [user.id],
   );
-  return result.rows.map((row) => ({
-    ...row,
-    total_budget_minor: money(row.total_budget_minor),
-    spent_minor: money(row.spent_minor),
-    status: statusFor(String(row.departure_date), String(row.return_date)),
-    checklist_total: Number(row.checklist_total ?? 0),
-    checklist_done: Number(row.checklist_done ?? 0),
-  }));
+  return result.rows.map((row) => {
+    const departureDate = dateText(row.departure_date);
+    const returnDate = dateText(row.return_date);
+    return {
+      ...row,
+      departure_date: departureDate,
+      return_date: returnDate,
+      total_budget_minor: money(row.total_budget_minor),
+      spent_minor: money(row.spent_minor),
+      status: statusFor(departureDate ?? "", returnDate ?? ""),
+      checklist_total: Number(row.checklist_total ?? 0),
+      checklist_done: Number(row.checklist_done ?? 0),
+    };
+  });
 }
 
 export async function updateTrip(input: unknown) {
@@ -255,56 +283,235 @@ export async function createTrip(input: unknown) {
   }
 }
 
+/**
+ * Copy the planning surface of a trip (budget, agenda, checklist, bookings)
+ * into a new trip owned by the same customer. Expenses and checklist progress
+ * are intentionally not copied: a duplicate is a fresh plan, not a clone of
+ * past spending.
+ */
+export async function duplicateTripRecord(tripId: string) {
+  const user = await getAuthenticatedUser();
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const source = await client.query(
+      `select name,destination_code,destination_name,departure_date::text as departure_date,
+        return_date::text as return_date,travelers_count,primary_currency,total_budget_minor,timezone
+       from travel_trips where id=$1 and customer_auth_subject=$2`,
+      [tripId, user.id],
+    );
+    if (!source.rows[0]) throw new Error("Perjalanan tidak ditemukan");
+    const t = source.rows[0];
+    const copyName = `${String(t.name).slice(0, 110)} (salinan)`;
+    const copied = await client.query(
+      `insert into travel_trips (customer_auth_subject,name,destination_code,destination_name,departure_date,return_date,travelers_count,primary_currency,total_budget_minor,timezone)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
+      [
+        user.id,
+        copyName,
+        t.destination_code,
+        t.destination_name,
+        t.departure_date,
+        t.return_date,
+        t.travelers_count,
+        t.primary_currency,
+        t.total_budget_minor,
+        t.timezone,
+      ],
+    );
+    const id = copied.rows[0].id as string;
+    await client.query(
+      `insert into travel_budget_categories (trip_id,name,category_key,allocated_minor,currency,sort_order)
+       select $1,name,category_key,allocated_minor,currency,sort_order from travel_budget_categories where trip_id=$2`,
+      [id, tripId],
+    );
+    await client.query(
+      `insert into travel_itinerary_items (trip_id,activity_date,start_time,end_time,timezone,title,location,notes,estimated_cost_minor,currency,booking_reference,activity_category)
+       select $1,activity_date,start_time,end_time,timezone,title,location,notes,estimated_cost_minor,currency,booking_reference,activity_category from travel_itinerary_items where trip_id=$2`,
+      [id, tripId],
+    );
+    await client.query(
+      `insert into travel_checklist_items (trip_id,title,due_date,sort_order,is_default)
+       select $1,title,due_date,sort_order,is_default from travel_checklist_items where trip_id=$2`,
+      [id, tripId],
+    );
+    await client.query(
+      `insert into travel_bookings (trip_id,category,title,booking_date,provider,reference_number,notes,status)
+       select $1,category,title,booking_date,provider,reference_number,notes,'manual' from travel_bookings where trip_id=$2`,
+      [id, tripId],
+    );
+    await client.query("commit");
+    return { id };
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export const duplicateTrip = createServerFn({ method: "POST" })
+  .validator(tripIdSchema)
+  .handler(({ data }) => duplicateTripRecord(data.tripId));
+
+/** Return the newest active share link for an owned trip, if sharing is enabled. */
+export async function getActiveTripShare(tripId: string) {
+  try {
+    const result = await pool.query(
+      `select token, created_at from travel_trip_shares
+       where trip_id=$1 and revoked_at is null
+       order by created_at desc limit 1`,
+      [tripId],
+    );
+    return result.rows[0]
+      ? { token: String(result.rows[0].token), createdAt: result.rows[0].created_at as string }
+      : null;
+  } catch (error) {
+    // Keep My Trips readable while a pre-migration deployment is rolling out.
+    console.error("[my-trips] share lookup failed", error);
+    return null;
+  }
+}
+
+export async function createTripShareLink(tripId: string) {
+  const user = await getAuthenticatedUser();
+  await ownedTrip(tripId, user.id);
+  const token = randomBytes(24).toString("base64url");
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query(
+      "update travel_trip_shares set revoked_at=now() where trip_id=$1 and revoked_at is null",
+      [tripId],
+    );
+    const result = await client.query(
+      `insert into travel_trip_shares (trip_id,token,created_by) values ($1,$2,$3)
+       returning token, created_at`,
+      [tripId, token, user.id],
+    );
+    await client.query("commit");
+    return {
+      token: String(result.rows[0].token),
+      createdAt: result.rows[0].created_at as string,
+    };
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function revokeTripShareLink(tripId: string) {
+  const user = await getAuthenticatedUser();
+  const result = await pool.query(
+    `update travel_trip_shares s set revoked_at=now()
+     from travel_trips t
+     where s.trip_id=t.id and s.trip_id=$1 and t.customer_auth_subject=$2 and s.revoked_at is null
+     returning s.id`,
+    [tripId, user.id],
+  );
+  return { revoked: Boolean(result.rows[0]) };
+}
+
+/**
+ * Public read model for a shared itinerary. The bearer token is the capability;
+ * it never exposes expenses, checklist, documents, or booking references.
+ */
+export async function loadSharedTrip(token: string) {
+  if (!shareTokenSchema.safeParse({ token }).success) return null;
+  const share = await pool.query(
+    `select s.token, s.created_at as shared_at,
+      t.id, t.name, t.destination_code, t.destination_name,
+      t.departure_date::text as departure_date, t.return_date::text as return_date,
+      t.travelers_count, t.primary_currency, t.timezone
+     from travel_trip_shares s
+     join travel_trips t on t.id=s.trip_id
+     where s.token=$1 and s.revoked_at is null
+     limit 1`,
+    [token],
+  );
+  if (!share.rows[0]) return null;
+  const trip = share.rows[0];
+  const itinerary = await pool.query(
+    `select id, activity_date::text as activity_date, start_time, end_time, timezone,
+      title, location, notes, activity_category
+     from travel_itinerary_items
+     where trip_id=$1
+     order by activity_date, start_time nulls last`,
+    [trip.id],
+  );
+  return {
+    trip,
+    sharedAt: trip.shared_at as string,
+    itinerary: itinerary.rows,
+  };
+}
+
 export async function getTripDashboard(tripId: string) {
   const user = await getAuthenticatedUser();
   const trip = await ownedTrip(tripId, user.id);
-  const [budget, expenses, itinerary, checklist, bookings, places, documents] = await Promise.all([
-    pool.query("select * from travel_budget_categories where trip_id=$1 order by sort_order", [
-      tripId,
-    ]),
-    pool.query(
-      "select * from travel_expenses where trip_id=$1 order by transaction_date desc, created_at desc",
-      [tripId],
-    ),
-    pool.query(
-      "select * from travel_itinerary_items where trip_id=$1 order by activity_date, start_time nulls last",
-      [tripId],
-    ),
-    pool.query(
-      "select * from travel_checklist_items where trip_id=$1 order by sort_order, created_at",
-      [tripId],
-    ),
-    pool.query(
-      "select * from travel_bookings where trip_id=$1 order by booking_date nulls last, created_at desc",
-      [tripId],
-    ),
-    pool.query(
-      "select * from travel_saved_places where trip_id=$1 order by planned_visit_date nulls last, created_at desc",
-      [tripId],
-    ),
-    pool.query(
-      "select id,category,title,notes,created_at from travel_documents where trip_id=$1 order by created_at desc",
-      [tripId],
-    ),
-  ]);
+  const [budget, expenses, itinerary, checklist, bookings, places, documents, share] =
+    await Promise.all([
+      pool.query("select * from travel_budget_categories where trip_id=$1 order by sort_order", [
+        tripId,
+      ]),
+      pool.query(
+        "select * from travel_expenses where trip_id=$1 order by transaction_date desc, created_at desc",
+        [tripId],
+      ),
+      pool.query(
+        "select * from travel_itinerary_items where trip_id=$1 order by activity_date, start_time nulls last",
+        [tripId],
+      ),
+      pool.query(
+        "select * from travel_checklist_items where trip_id=$1 order by sort_order, created_at",
+        [tripId],
+      ),
+      pool.query(
+        "select * from travel_bookings where trip_id=$1 order by booking_date nulls last, created_at desc",
+        [tripId],
+      ),
+      pool.query(
+        "select * from travel_saved_places where trip_id=$1 order by planned_visit_date nulls last, created_at desc",
+        [tripId],
+      ),
+      pool.query(
+        "select id,category,title,notes,created_at from travel_documents where trip_id=$1 order by created_at desc",
+        [tripId],
+      ),
+      getActiveTripShare(tripId),
+    ]);
   const totalSpent = expenses.rows.reduce((sum, row) => sum + money(row.converted_amount_minor), 0);
+  const departureDate = dateText(trip["departure_date"]);
+  const returnDate = dateText(trip["return_date"]);
   return {
     trip: {
       ...trip,
+      departure_date: departureDate,
+      return_date: returnDate,
       total_budget_minor: money(trip["total_budget_minor"]),
-      status: statusFor(String(trip["departure_date"]), String(trip["return_date"])),
+      status: statusFor(departureDate ?? "", returnDate ?? ""),
     },
     budget: budget.rows.map((row) => ({ ...row, allocated_minor: money(row.allocated_minor) })),
     expenses: expenses.rows.map((row) => ({
       ...row,
+      transaction_date: dateText(row.transaction_date),
       original_amount_minor: money(row.original_amount_minor),
       converted_amount_minor: money(row.converted_amount_minor),
     })),
-    itinerary: itinerary.rows,
-    checklist: checklist.rows,
-    bookings: bookings.rows,
-    places: places.rows,
+    itinerary: itinerary.rows.map((row) => ({
+      ...row,
+      activity_date: dateText(row.activity_date),
+    })),
+    checklist: checklist.rows.map((row) => ({ ...row, due_date: dateText(row.due_date) })),
+    bookings: bookings.rows.map((row) => ({ ...row, booking_date: dateText(row.booking_date) })),
+    places: places.rows.map((row) => ({
+      ...row,
+      planned_visit_date: dateText(row.planned_visit_date),
+    })),
     documents: documents.rows,
+    share,
     totals: {
       spentMinor: totalSpent,
       remainingMinor: money(trip["total_budget_minor"]) - totalSpent,
@@ -312,20 +519,129 @@ export async function getTripDashboard(tripId: string) {
   };
 }
 
+export type TripSectionSummary = {
+  allocatedMinor: number;
+  spentMinor: number;
+  uncategorizedSpentMinor: number;
+  uncategorizedCount: number;
+  budgetMinor: number;
+};
+
+export type TripSectionCategory = {
+  id: string;
+  name: string;
+  allocated_minor: number;
+  currency: string;
+};
+
+const emptySummary = (budgetMinor: number): TripSectionSummary => ({
+  allocatedMinor: 0,
+  spentMinor: 0,
+  uncategorizedSpentMinor: 0,
+  uncategorizedCount: 0,
+  budgetMinor,
+});
+
+function normalizeSectionItem(row: Record<string, unknown>) {
+  const { activity_date_text, ...item } = row;
+  return {
+    ...item,
+    ...(dateText(row["activity_date"]) ? { activity_date: dateText(row["activity_date"]) } : {}),
+    ...(dateText(row["due_date"]) ? { due_date: dateText(row["due_date"]) } : {}),
+    ...(dateText(row["booking_date"]) ? { booking_date: dateText(row["booking_date"]) } : {}),
+    ...(dateText(row["transaction_date"])
+      ? { transaction_date: dateText(row["transaction_date"]) }
+      : {}),
+    ...(activity_date_text ? { activity_date: activity_date_text } : {}),
+    allocated_minor: money(row["allocated_minor"]),
+    original_amount_minor: money(row["original_amount_minor"]),
+    converted_amount_minor: money(row["converted_amount_minor"]),
+    spent_minor: money(row["spent_minor"]),
+    expense_count: Number(row["expense_count"] ?? 0),
+  };
+}
+
 /** Load only the selected section so navigation is responsive on mobile. */
 export async function getTripSectionData(tripId: string, section: string) {
   const user = await getAuthenticatedUser();
   const trip = await ownedTrip(tripId, user.id);
-  const queries: Record<string, () => Promise<{ rows: Record<string, unknown>[] }>> = {
-    budget: () =>
-      pool.query("select * from travel_budget_categories where trip_id=$1 order by sort_order", [
-        tripId,
-      ]),
-    expenses: () =>
+  const budgetMinor = money(trip["total_budget_minor"]);
+  const departureDate = dateText(trip["departure_date"]);
+  const returnDate = dateText(trip["return_date"]);
+  const tripView = {
+    ...trip,
+    departure_date: departureDate,
+    return_date: returnDate,
+    total_budget_minor: budgetMinor,
+    status: statusFor(departureDate ?? "", returnDate ?? ""),
+  };
+
+  if (section === "budget") {
+    const [categories, uncategorized] = await Promise.all([
       pool.query(
-        "select * from travel_expenses where trip_id=$1 order by transaction_date desc, created_at desc",
+        `select c.*, coalesce(sum(e.converted_amount_minor), 0) as spent_minor,
+          count(e.id) as expense_count
+         from travel_budget_categories c
+         left join travel_expenses e on e.category_id=c.id
+         where c.trip_id=$1
+         group by c.id
+         order by c.sort_order`,
         [tripId],
       ),
+      pool.query(
+        `select coalesce(sum(converted_amount_minor), 0) as spent_minor, count(*) as expense_count
+         from travel_expenses where trip_id=$1 and category_id is null`,
+        [tripId],
+      ),
+    ]);
+    const items = categories.rows.map(normalizeSectionItem);
+    const uncategorizedSpentMinor = money(uncategorized.rows[0]?.["spent_minor"]);
+    const uncategorizedCount = Number(uncategorized.rows[0]?.["expense_count"] ?? 0);
+    const allocatedMinor = items.reduce((sum, item) => sum + Number(item.allocated_minor ?? 0), 0);
+    const categorySpent = items.reduce((sum, item) => sum + Number(item.spent_minor ?? 0), 0);
+    return {
+      trip: tripView,
+      items,
+      categories: [] as TripSectionCategory[],
+      summary: {
+        allocatedMinor,
+        spentMinor: categorySpent + uncategorizedSpentMinor,
+        uncategorizedSpentMinor,
+        uncategorizedCount,
+        budgetMinor,
+      } satisfies TripSectionSummary,
+    };
+  }
+
+  if (section === "expenses") {
+    const [expenses, categories] = await Promise.all([
+      pool.query(
+        `select e.*, c.name as category_name
+         from travel_expenses e
+         left join travel_budget_categories c on c.id=e.category_id
+         where e.trip_id=$1
+         order by e.transaction_date desc, e.created_at desc`,
+        [tripId],
+      ),
+      pool.query(
+        "select id, name, allocated_minor, currency from travel_budget_categories where trip_id=$1 order by sort_order",
+        [tripId],
+      ),
+    ]);
+    return {
+      trip: tripView,
+      items: expenses.rows.map(normalizeSectionItem),
+      categories: categories.rows.map((row) => ({
+        id: String(row.id),
+        name: String(row.name),
+        allocated_minor: money(row.allocated_minor),
+        currency: String(row.currency).trim(),
+      })) satisfies TripSectionCategory[],
+      summary: null,
+    };
+  }
+
+  const queries: Record<string, () => Promise<{ rows: Record<string, unknown>[] }>> = {
     itinerary: () =>
       pool.query(
         "select *, activity_date::text as activity_date_text from travel_itinerary_items where trip_id=$1 order by activity_date, start_time nulls last",
@@ -346,21 +662,10 @@ export async function getTripSectionData(tripId: string, section: string) {
   if (!selectedQuery) throw new Error("Section perjalanan tidak valid");
   const result = await selectedQuery();
   return {
-    trip: {
-      ...trip,
-      total_budget_minor: money(trip["total_budget_minor"]),
-      status: statusFor(String(trip["departure_date"]), String(trip["return_date"])),
-    },
-    items: result.rows.map((row) => {
-      const { activity_date_text, ...item } = row;
-      return {
-        ...item,
-        ...(section === "itinerary" ? { activity_date: activity_date_text } : {}),
-        allocated_minor: money(row["allocated_minor"]),
-        original_amount_minor: money(row["original_amount_minor"]),
-        converted_amount_minor: money(row["converted_amount_minor"]),
-      };
-    }),
+    trip: tripView,
+    items: result.rows.map(normalizeSectionItem),
+    categories: [] as TripSectionCategory[],
+    summary: emptySummary(budgetMinor),
   };
 }
 
@@ -445,6 +750,15 @@ export async function addExpense(input: unknown) {
   const data = expenseSchema.parse(input);
   const user = await getAuthenticatedUser();
   await ownedTrip(data.tripId, user.id);
+  if (data.categoryId) {
+    const category = await pool.query(
+      `select c.id from travel_budget_categories c
+       join travel_trips t on t.id=c.trip_id
+       where c.id=$1 and c.trip_id=$2 and t.customer_auth_subject=$3 limit 1`,
+      [data.categoryId, data.tripId, user.id],
+    );
+    if (!category.rows[0]) throw new Error("Kategori anggaran tidak ditemukan");
+  }
   const result = await pool.query(
     `insert into travel_expenses (trip_id,category_id,description,transaction_date,original_amount_minor,original_currency,exchange_rate,exchange_rate_source,exchange_rate_status,exchange_rate_as_of,converted_amount_minor,converted_currency,payment_method,notes)
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),$10,$11,$12,$13) returning *`,
@@ -606,6 +920,15 @@ export const deleteChecklist = createServerFn({ method: "POST" })
 export const deleteBookingRecord = createServerFn({ method: "POST" })
   .validator(itemIdSchema)
   .handler(({ data }) => deleteBooking(data));
+export const postTripShare = createServerFn({ method: "POST" })
+  .validator(tripIdSchema)
+  .handler(({ data }) => createTripShareLink(data.tripId));
+export const deleteTripShare = createServerFn({ method: "POST" })
+  .validator(tripIdSchema)
+  .handler(({ data }) => revokeTripShareLink(data.tripId));
+export const getSharedTrip = createServerFn({ method: "GET" })
+  .validator(shareTokenSchema)
+  .handler(({ data }) => loadSharedTrip(data.token));
 
 export const myTripsContract = {
   auth: "Better Auth HttpOnly session; all queries are scoped to user.id",
