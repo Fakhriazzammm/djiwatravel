@@ -46,6 +46,21 @@ describe("my trips home read model", () => {
     expect(result.checklist).toEqual([]);
   });
 
+  it("keeps every saved trip available for the home list", () => {
+    const result = buildMyTripsHome(
+      [
+        trip("now", "ongoing", "2026-10-20"),
+        trip("next", "upcoming", "2026-11-01"),
+        trip("past", "past", "2026-01-01"),
+      ],
+      [],
+      [],
+    );
+
+    expect(result.focusTrip?.id).toBe("now");
+    expect(result.trips.map((item) => item.id)).toEqual(["now", "next", "past"]);
+  });
+
   it("keeps the empty state actionable with a new-trip action", () => {
     expect(getMyTripsActions(false)).toEqual([{ id: "new-trip", label: "Buat perjalanan" }]);
   });

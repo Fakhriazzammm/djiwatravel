@@ -14,7 +14,7 @@ import {
   Utensils,
   WalletCards,
 } from "lucide-react";
-import { BackBar, Page, btnRed, btnSoft, group, label, row } from "@/components/shell";
+import { BackBar, Page, btnRed, btnSoft, group } from "@/components/shell";
 import {
   Sheet,
   SheetContent,
@@ -101,9 +101,15 @@ type Item = {
   id: string;
   name?: unknown;
   allocated_minor?: unknown;
+  spent_minor?: unknown;
+  expense_count?: unknown;
   description?: unknown;
   original_currency?: unknown;
   original_amount_minor?: unknown;
+  converted_currency?: unknown;
+  converted_amount_minor?: unknown;
+  category_id?: unknown;
+  category_name?: unknown;
   activity_date?: unknown;
   start_time?: unknown;
   end_time?: unknown;
@@ -114,6 +120,19 @@ type Item = {
   booking_reference?: unknown;
   is_completed?: unknown;
   status?: unknown;
+};
+type BudgetSummary = {
+  allocatedMinor: number;
+  spentMinor: number;
+  uncategorizedSpentMinor: number;
+  uncategorizedCount: number;
+  budgetMinor: number;
+};
+type CategoryOption = {
+  id: string;
+  name: string;
+  allocated_minor: number;
+  currency: string;
 };
 const today = () => {
   const date = new Date();
@@ -141,6 +160,8 @@ function TripSection() {
     total_budget_minor: number;
   };
   const refresh = () => router.invalidate();
+  const summary = data.summary as BudgetSummary | null;
+  const categories = data.categories as CategoryOption[];
   return (
     <Page>
       <BackBar title={trip.destination_name || trip.name} />
@@ -156,13 +177,19 @@ function TripSection() {
       <TripFeatureNav tripId={tripId} active={section as FeatureId} />
       <div className="mt-5 space-y-4">
         {section === "budget" && (
-          <BudgetEditor items={items} currency={trip.primary_currency} onSaved={refresh} />
+          <BudgetEditor
+            items={items}
+            currency={trip.primary_currency}
+            summary={summary}
+            onSaved={refresh}
+          />
         )}
         {section === "expenses" && (
           <ExpenseEditor
             tripId={tripId}
             currency={trip.primary_currency}
             items={items}
+            categories={categories}
             onSaved={refresh}
           />
         )}
@@ -190,17 +217,29 @@ function TripSection() {
 function BudgetEditor({
   items,
   currency,
+  summary,
   onSaved,
 }: {
   items: Item[];
   currency: string;
+  summary: BudgetSummary | null;
   onSaved: () => Promise<void>;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(items.map((x) => [x.id, String(Number(x.allocated_minor ?? 0) / 100)])),
   );
   const [saving, setSaving] = useState<string | null>(null);
-  const total = items.reduce((sum, item) => sum + Number(item.allocated_minor ?? 0), 0);
+  const allocated =
+    summary?.allocatedMinor ??
+    items.reduce((sum, item) => sum + Number(item.allocated_minor ?? 0), 0);
+  const spent =
+    summary?.spentMinor ?? items.reduce((sum, item) => sum + Number(item.spent_minor ?? 0), 0);
+  const budget = summary?.budgetMinor ?? 0;
+  const target = budget > 0 ? budget : allocated;
+  const remaining = target - spent;
+  const percent = target > 0 ? Math.min(100, Math.round((spent / target) * 100)) : 0;
+  const unallocated = Math.max(0, target - allocated);
+
   async function save(id: string) {
     setSaving(id);
     try {
@@ -215,42 +254,163 @@ function BudgetEditor({
       setSaving(null);
     }
   }
+
   return (
-    <section>
-      <div className="mb-4 rounded-[22px] bg-foreground p-5 text-background">
-        <p className="text-xs font-medium text-background/65">Total alokasi perjalanan</p>
-        <p className="mt-1 text-2xl font-bold">{money(total, currency)}</p>
-        <p className="mt-1 text-xs text-background/65">Atur batas untuk tiap kategori di bawah.</p>
+    <section className="space-y-4">
+      <div className="rounded-[24px] bg-foreground p-5 text-background">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-background/65">Realisasi anggaran</p>
+            <p className="mt-1 text-[28px] font-bold leading-tight tracking-[-0.03em]">
+              {money(spent, currency)}
+            </p>
+            <p className="mt-1 text-xs text-background/65">
+              dari {target > 0 ? money(target, currency) : "anggaran yang belum diatur"}
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full bg-background/15 px-2.5 py-1 text-xs font-bold tabular-nums">
+            {percent}%
+          </span>
+        </div>
+        <div
+          className="mt-4 h-2 overflow-hidden rounded-full bg-background/20"
+          role="progressbar"
+          aria-label="Realisasi anggaran perjalanan"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+        >
+          <div
+            className="h-full rounded-full bg-background transition-[width] duration-500"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 text-[11px] text-background/70">
+          <div>
+            <p>Sisa anggaran</p>
+            <p className="mt-0.5 text-sm font-semibold text-background">
+              {money(remaining, currency)}
+            </p>
+          </div>
+          <div>
+            <p>Dialokasikan</p>
+            <p className="mt-0.5 text-sm font-semibold text-background">
+              {money(allocated, currency)}
+            </p>
+          </div>
+        </div>
       </div>
+
+      {summary && summary.uncategorizedSpentMinor > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-semibold">Pengeluaran belum berkategori</p>
+          <p className="mt-0.5 text-[13px] text-amber-800">
+            {money(summary.uncategorizedSpentMinor, currency)} dari {summary.uncategorizedCount}{" "}
+            transaksi belum masuk kategori. Pilih kategori saat mencatat pengeluaran agar
+            realisasinya terpetakan.
+          </p>
+        </div>
+      )}
+
+      {target > 0 && unallocated > 0 && (
+        <p className="px-1 text-xs text-muted-foreground">
+          {money(unallocated, currency)} dari anggaran belum dialokasikan ke kategori.
+        </p>
+      )}
+
       <section>
-        <p className={label}>Kategori anggaran</p>
-        <div className={`${group} divide-y divide-border/60`}>
+        <div className="mb-2 flex items-end justify-between gap-3 px-1">
+          <p className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
+            Anggaran per kategori
+          </p>
+          <span className="text-[11px] text-muted-foreground">{items.length} kategori</span>
+        </div>
+        <div className="space-y-2.5">
           {items.length ? (
-            items.map((item) => (
-              <div key={item.id} className="flex min-h-[68px] items-center gap-3 px-4 py-3">
-                <span className="min-w-0 flex-1 text-sm font-semibold">
-                  {displayBudgetCategory(String(item.name ?? "Kategori"))}
-                </span>
-                <input
-                  aria-label={`Anggaran ${displayBudgetCategory(String(item.name ?? "Kategori"))}`}
-                  type="number"
-                  min="0"
-                  value={values[item.id]}
-                  onChange={(e) => setValues({ ...values, [item.id]: e.target.value })}
-                  className="min-h-11 w-28 rounded-xl bg-secondary px-3 text-right text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => void save(item.id)}
-                  disabled={saving === item.id}
-                  className="min-h-11 rounded-full px-3 text-xs font-bold text-brand-red disabled:opacity-50"
+            items.map((item) => {
+              const allocation = Number(item.allocated_minor ?? 0);
+              const categorySpent = Number(item.spent_minor ?? 0);
+              const categoryRemaining = allocation - categorySpent;
+              const categoryPercent =
+                allocation > 0
+                  ? Math.min(100, Math.round((categorySpent / allocation) * 100))
+                  : categorySpent > 0
+                    ? 100
+                    : 0;
+              const dirty = values[item.id] !== String(allocation / 100);
+              return (
+                <div
+                  key={item.id}
+                  className="rounded-2xl bg-surface p-4 shadow-[0_2px_12px_rgba(15,23,42,0.035)] ring-1 ring-border/50"
                 >
-                  {saving === item.id ? "…" : "Simpan"}
-                </button>
-              </div>
-            ))
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {displayBudgetCategory(String(item.name ?? "Kategori"))}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {Number(item.expense_count ?? 0)} transaksi
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                        categoryRemaining < 0
+                          ? "bg-brand-red-soft text-brand-red"
+                          : "bg-secondary text-muted-foreground"
+                      }`}
+                    >
+                      {categoryRemaining < 0
+                        ? `Lewat ${money(Math.abs(categoryRemaining), currency)}`
+                        : `Sisa ${money(categoryRemaining, currency)}`}
+                    </span>
+                  </div>
+                  <div
+                    className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary"
+                    role="progressbar"
+                    aria-label={`Realisasi anggaran ${displayBudgetCategory(String(item.name ?? "Kategori"))}`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={categoryPercent}
+                  >
+                    <div
+                      className={`h-full rounded-full transition-[width] duration-500 ${
+                        categoryRemaining < 0 ? "bg-brand-red" : "bg-foreground"
+                      }`}
+                      style={{ width: `${categoryPercent}%` }}
+                    />
+                  </div>
+                  <div className="mt-3 flex items-end gap-2">
+                    <label className="min-w-0 flex-1 text-[11px] font-medium text-muted-foreground">
+                      Batas kategori
+                      <input
+                        aria-label={`Anggaran ${displayBudgetCategory(String(item.name ?? "Kategori"))}`}
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        value={values[item.id]}
+                        onChange={(e) => setValues({ ...values, [item.id]: e.target.value })}
+                        className="mt-1 min-h-11 w-full rounded-xl bg-secondary px-3 text-right text-sm font-semibold text-foreground outline-none focus:ring-2 focus:ring-brand-red/25"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void save(item.id)}
+                      disabled={saving === item.id || !dirty}
+                      className="tap min-h-11 shrink-0 rounded-xl px-3 text-xs font-bold text-brand-red disabled:text-muted-foreground/50"
+                    >
+                      {saving === item.id ? "Menyimpan…" : dirty ? "Simpan" : "Tersimpan"}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-right text-[11px] text-muted-foreground">
+                    Terpakai {money(categorySpent, currency)}
+                  </p>
+                </div>
+              );
+            })
           ) : (
-            <p className="p-4 text-sm text-muted-foreground">Belum ada kategori budget.</p>
+            <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">
+              Belum ada kategori budget.
+            </p>
           )}
         </div>
       </section>
@@ -262,16 +422,31 @@ function ExpenseEditor({
   tripId,
   currency,
   items,
+  categories,
   onSaved,
 }: {
   tripId: string;
   currency: string;
   items: Item[];
+  categories: CategoryOption[];
   onSaved: () => Promise<void>;
 }) {
-  const [form, setForm] = useState({ description: "", date: today(), amount: "" });
+  const [form, setForm] = useState({
+    description: "",
+    date: today(),
+    amount: "",
+    categoryId: "",
+  });
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const categoryNames = new Map(categories.map((category) => [category.id, category.name]));
+  const totalInTripCurrency = items.reduce((sum, item) => {
+    const convertedCurrency = String(item.converted_currency ?? "").trim();
+    const originalCurrency = String(item.original_currency ?? "").trim();
+    if (convertedCurrency === currency) return sum + Number(item.converted_amount_minor ?? 0);
+    if (originalCurrency === currency) return sum + Number(item.original_amount_minor ?? 0);
+    return sum + Number(item.converted_amount_minor ?? item.original_amount_minor ?? 0);
+  }, 0);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -289,6 +464,7 @@ function ExpenseEditor({
               convertedAmountMinor: amount,
               convertedCurrency: currency,
               exchangeRateStatus: "manual",
+              categoryId: form.categoryId || undefined,
             },
           }),
         refresh: onSaved,
@@ -296,7 +472,7 @@ function ExpenseEditor({
         failureMessage: "Pengeluaran belum tersimpan. Periksa data lalu coba lagi.",
       });
       if (saved) {
-        setForm({ description: "", date: today(), amount: "" });
+        setForm({ description: "", date: today(), amount: "", categoryId: "" });
         setShowForm(false);
       }
     } finally {
@@ -307,12 +483,7 @@ function ExpenseEditor({
     <section>
       <div className="mb-4 rounded-[22px] bg-surface p-4 ring-1 ring-border/50">
         <p className="text-xs font-medium text-muted-foreground">Pengeluaran tercatat</p>
-        <p className="mt-1 text-2xl font-bold">
-          {money(
-            items.reduce((sum, item) => sum + Number(item.original_amount_minor ?? 0), 0),
-            currency,
-          )}
-        </p>
+        <p className="mt-1 text-2xl font-bold">{money(totalInTripCurrency, currency)}</p>
         <p className="mt-1 text-xs text-muted-foreground">{items.length} transaksi</p>
       </div>
       <button
@@ -361,6 +532,21 @@ function ExpenseEditor({
                 className="min-h-12 w-32 rounded-2xl bg-secondary px-4 text-[15px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
             </div>
+            <label className="block space-y-1.5 text-[13px] font-semibold">
+              Kategori anggaran
+              <select
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                className="min-h-12 w-full rounded-2xl bg-secondary px-4 text-[15px] font-normal outline-none focus-visible:ring-2 focus-visible:ring-brand-red/25"
+              >
+                <option value="">Tanpa kategori</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {displayBudgetCategory(category.name)}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button disabled={saving} className={`${btnRed} min-h-12 rounded-2xl`}>
               {saving ? "Menyimpan…" : "Tambah pengeluaran"}
             </button>
@@ -370,9 +556,16 @@ function ExpenseEditor({
       <EditableList
         items={items}
         empty="Belum ada pengeluaran."
-        render={(x) =>
-          `${String(x.description ?? "")} · ${money(x.original_amount_minor, String(x.original_currency ?? currency))}`
-        }
+        render={(x) => {
+          const categoryId = String(x.category_id ?? "");
+          const categoryName =
+            String(x.category_name ?? "") ||
+            (categoryId ? (categoryNames.get(categoryId) ?? "") : "");
+          return `${String(x.description ?? "")} · ${money(
+            x.original_amount_minor,
+            String(x.original_currency ?? currency),
+          )}${categoryName ? ` · ${displayBudgetCategory(categoryName)}` : ""}`;
+        }}
         onDelete={async (id) => {
           await runTripMutation({
             action: () => deleteExpense({ data: { id } }),

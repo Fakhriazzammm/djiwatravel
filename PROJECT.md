@@ -85,7 +85,8 @@ Route groups are discoverable from these prefixes and files:
 
 - Customer pages: `index`, `explore`, `catalog`, `destination.*`, `plan.*`,
   `finder`, `esim.*`, `checkout.*`, `order.*`, `receipt.*`, `profile`,
-  `support`, `notifications`, `wallet*`, and `my-trips*`.
+  `support`, `notifications`, `wallet*`, and `my-trips*`. Shared itineraries
+  are public read-only pages at `share.$token`.
 - Admin pages: `admin.*` and `admin.orders.*`.
 - API/action routes: `api.*`, including auth, customer profile/support,
   wallet, Calendar, tasks, recovery, waitlist, and provider webhooks.
@@ -105,7 +106,7 @@ generated artifacts. Do not hand-edit them to fix a route.
 PostgreSQL access is server-only. The current schema shape is represented by
 [`drizzle/schema.ts`](drizzle/schema.ts) and the deployment migration history
 is in [`migrations/`](migrations/). Migrations are numbered SQL files; the
-inventory currently reaches `020_allow_overnight_itinerary.sql`, with some
+inventory currently reaches `022_travel_trip_shares.sql`, with some
 parallel historical numbers. Inspect the migration tracking table and
 `scripts/apply-migrations.sh` before deciding what is pending.
 

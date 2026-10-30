@@ -58,6 +58,7 @@ import { Route as PanduanSlugRouteImport } from './routes/panduan.$slug'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
 import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
 import { Route as RefundOrderRouteImport } from './routes/refund.$order'
+import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as WalletPayRouteImport } from './routes/wallet.pay'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
@@ -72,6 +73,7 @@ import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sy
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
 import { Route as MyTripsTripIdSectionRouteImport } from './routes/my-trips.$tripId.$section'
+import { Route as MyTripsTripIdTravelRouteImport } from './routes/my-trips.$tripId.travel'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -320,6 +322,11 @@ const RefundOrderRoute = RefundOrderRouteImport.update({
   path: '/refund/$order',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WalletPayRoute = WalletPayRouteImport.update({
   id: '/pay',
   path: '/pay',
@@ -394,6 +401,11 @@ const MyTripsTripIdSectionRoute = MyTripsTripIdSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => MyTripsTripIdRoute,
 } as any)
+const MyTripsTripIdTravelRoute = MyTripsTripIdTravelRouteImport.update({
+  id: '/travel',
+  path: '/travel',
+  getParentRoute: () => MyTripsTripIdRoute,
+} as any)
 const ApiWebhooksEsimAccessTokenRoute =
   ApiWebhooksEsimAccessTokenRouteImport.update({
     id: '/api/webhooks/esim-access/$token',
@@ -447,6 +459,7 @@ export interface FileRoutesByFullPath {
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
+  '/share/$token': typeof ShareTokenRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
@@ -465,6 +478,7 @@ export interface FileRoutesByFullPath {
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
+  '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
 export interface FileRoutesByTo {
@@ -513,6 +527,7 @@ export interface FileRoutesByTo {
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
+  '/share/$token': typeof ShareTokenRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin': typeof AdminIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
@@ -531,6 +546,7 @@ export interface FileRoutesByTo {
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
+  '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
 export interface FileRoutesById {
@@ -580,6 +596,7 @@ export interface FileRoutesById {
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
+  '/share/$token': typeof ShareTokenRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
@@ -598,6 +615,7 @@ export interface FileRoutesById {
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
+  '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
 export interface FileRouteTypes {
@@ -648,6 +666,7 @@ export interface FileRouteTypes {
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
+    | '/share/$token'
     | '/wallet/pay'
     | '/admin/'
     | '/my-esim/'
@@ -666,6 +685,7 @@ export interface FileRouteTypes {
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
     | '/my-trips/$tripId/$section'
+    | '/my-trips/$tripId/travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -714,6 +734,7 @@ export interface FileRouteTypes {
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
+    | '/share/$token'
     | '/wallet/pay'
     | '/admin'
     | '/my-esim'
@@ -732,6 +753,7 @@ export interface FileRouteTypes {
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
     | '/my-trips/$tripId/$section'
+    | '/my-trips/$tripId/travel'
     | '/api/webhooks/esim-access/$token'
   id:
     | '__root__'
@@ -780,6 +802,7 @@ export interface FileRouteTypes {
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
+    | '/share/$token'
     | '/wallet/pay'
     | '/admin/'
     | '/my-esim/'
@@ -798,6 +821,7 @@ export interface FileRouteTypes {
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
     | '/my-trips/$tripId/$section'
+    | '/my-trips/$tripId/travel'
     | '/api/webhooks/esim-access/$token'
   fileRoutesById: FileRoutesById
 }
@@ -847,6 +871,7 @@ export interface RootRouteChildren {
   PlanIdRoute: typeof PlanIdRoute
   ReceiptIdRoute: typeof ReceiptIdRoute
   RefundOrderRoute: typeof RefundOrderRoute
+  ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   MyTripsIndexRoute: typeof MyTripsIndexRoute
@@ -1210,6 +1235,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RefundOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wallet/pay': {
       id: '/wallet/pay'
       path: '/pay'
@@ -1308,6 +1340,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyTripsTripIdSectionRouteImport
       parentRoute: typeof MyTripsTripIdRoute
     }
+    '/my-trips/$tripId/travel': {
+      id: '/my-trips/$tripId/travel'
+      path: '/travel'
+      fullPath: '/my-trips/$tripId/travel'
+      preLoaderRoute: typeof MyTripsTripIdTravelRouteImport
+      parentRoute: typeof MyTripsTripIdRoute
+    }
     '/api/webhooks/esim-access/$token': {
       id: '/api/webhooks/esim-access/$token'
       path: '/api/webhooks/esim-access/$token'
@@ -1343,10 +1382,12 @@ const AdminOrdersRouteWithChildren = AdminOrdersRoute._addFileChildren(
 
 interface MyTripsTripIdRouteChildren {
   MyTripsTripIdSectionRoute: typeof MyTripsTripIdSectionRoute
+  MyTripsTripIdTravelRoute: typeof MyTripsTripIdTravelRoute
 }
 
 const MyTripsTripIdRouteChildren: MyTripsTripIdRouteChildren = {
   MyTripsTripIdSectionRoute: MyTripsTripIdSectionRoute,
+  MyTripsTripIdTravelRoute: MyTripsTripIdTravelRoute,
 }
 
 const MyTripsTripIdRouteWithChildren = MyTripsTripIdRoute._addFileChildren(
@@ -1399,6 +1440,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlanIdRoute: PlanIdRoute,
   ReceiptIdRoute: ReceiptIdRoute,
   RefundOrderRoute: RefundOrderRoute,
+  ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
   MyTripsIndexRoute: MyTripsIndexRoute,
