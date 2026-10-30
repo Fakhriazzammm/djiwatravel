@@ -16,6 +16,8 @@ describe("admin support actions", () => {
 
   it("grants only the server app the support action writes", () => {
     const migration = read("migrations/023_admin_support_actions.sql");
+    expect(migration).toContain("create table if not exists public.support_cases");
+    expect(migration).toContain("create table if not exists public.refund_requests");
     expect(migration).toContain("GRANT SELECT, INSERT, UPDATE ON TABLE");
     expect(migration).toContain("public.support_cases");
     expect(migration).toContain("public.support_case_messages");
