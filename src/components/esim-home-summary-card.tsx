@@ -186,7 +186,7 @@ function ChipArt() {
   };
 
   return (
-    <span ref={host} className="absolute right-3 top-2 size-[72px]">
+    <span ref={host} className="absolute right-4 top-3 size-14">
       {pulse > 0 &&
         [0, 1].map((ring) => (
           <motion.span
@@ -564,25 +564,25 @@ export function EsimHomeSummaryCard({
             >
               <span className="sr-only">Buka</span>
             </SummaryLink>
-            {artSrc && (
-              <img
-                src={artSrc}
-                alt=""
-                width={96}
-                height={96}
-                loading="lazy"
-                decoding="async"
-                draggable={false}
-                className="pointer-events-none absolute -right-2 top-6 size-24 object-contain opacity-90"
-              />
-            )}
             <div className="flex items-center justify-between gap-2">
               <p className="text-[12px] font-semibold text-muted-foreground">eSIM kamu</p>
               <EsimStatusBadge status={status} low={summary.kind === "low"} />
             </div>
 
-            <div className="mt-3 flex items-end justify-between gap-3">
-              <div className="min-w-0">
+            <div className="mt-3 flex items-center gap-3">
+              {artSrc && (
+                <img
+                  src={artSrc}
+                  alt=""
+                  width={44}
+                  height={44}
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                  className="pointer-events-none size-11 shrink-0 object-contain"
+                />
+              )}
+              <div className="min-w-0 flex-1">
                 <p className="text-[19px] font-bold leading-tight tracking-[-0.025em] text-foreground">
                   {summary.kind === "active" ||
                   summary.kind === "low" ||
