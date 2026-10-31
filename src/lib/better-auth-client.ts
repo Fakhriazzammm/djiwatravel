@@ -53,5 +53,5 @@ export async function signInGoogle(callbackURL = `${window.location.origin}/prof
   window.location.assign(payload.url);
 }
 export function signOutBetterAuth() {
-  return request("/sign-out", { method: "POST" });
+  return request("/sign-out", { method: "POST", body: JSON.stringify({}) });
 }

@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getBetterAuthSession, signInEmail, signUpEmail } from "@/lib/better-auth-client";
+import {
+  getBetterAuthSession,
+  signInEmail,
+  signOutBetterAuth,
+  signUpEmail,
+} from "@/lib/better-auth-client";
 afterEach(() => vi.unstubAllGlobals());
 describe("Better Auth email requests", () => {
   it("uses the configured auth base, POST bodies, and cookie credentials", async () => {
@@ -45,5 +50,22 @@ describe("Better Auth email requests", () => {
       user: { id: "local-demo-user", email: "local@djiwatravel.test" },
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("sends an empty JSON object when signing out", async () => {
+    vi.stubGlobal("window", { location: { hostname: "djiwatravel.com" } });
+    const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetch);
+
+    await signOutBetterAuth();
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/auth/sign-out",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({}),
+      }),
+    );
   });
 });
