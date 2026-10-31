@@ -1,3 +1,4 @@
+import { OrderLoading } from "@/components/order-loading";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ReceiptText } from "lucide-react";
 import { Page, Wordmark, btnPrimary } from "@/components/shell";
@@ -158,7 +159,7 @@ function MyEsim() {
     <Page>
       <h1 className="large-title pt-4">My eSIM</h1>
       {orders === null ? (
-        <div className="mt-6 h-32 animate-pulse rounded-2xl bg-secondary" />
+        <OrderLoading list label="Memuat eSIM…" />
       ) : orders.length === 0 ? (
         <div className="mt-24 text-center">
           <Wordmark className="mx-auto h-20" />

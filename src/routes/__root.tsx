@@ -17,7 +17,6 @@ import { reportRuntimeError } from "../lib/error-reporting";
 import { PageTransition } from "../components/motion-primitives";
 import { NavProgress } from "../components/nav-progress";
 import { AppSplash } from "../components/app-splash";
-import { TransitionLoader } from "../components/transition-loader";
 import { CustomerOnboardingGate } from "../components/customer-onboarding-gate";
 import { easeIos } from "../lib/motion";
 import { warmResellerCatalog } from "../lib/explore-warm";
@@ -125,8 +124,6 @@ function RootComponent() {
         <NavProgress />
         {/* Server-rendered, so the first paint is never a blank white page. */}
         <AppSplash />
-        {/* Later page changes get one centred loader. */}
-        <TransitionLoader />
         <CatalogWarmup />
         <AnalyticsPageView />
         <AnimatedOutlet />
