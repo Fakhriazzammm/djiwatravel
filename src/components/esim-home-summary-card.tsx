@@ -264,6 +264,9 @@ function metaLine(summary: EsimHomeSummary, order: Order | undefined): string {
       .filter(Boolean)
       .join(" · ");
   }
+  if (summary.kind === "history") {
+    return [summary.subtitle, summary.expiresLabel].filter(Boolean).join(" · ");
+  }
   return summary.subtitle;
 }
 
@@ -553,7 +556,9 @@ export function EsimHomeSummaryCard({
             }}
             onDragEnd={onDragEnd}
             style={{ touchAction: "pan-y", zIndex: 1 }}
-            className={`relative overflow-hidden rounded-[26px] border border-border/60 p-4 shadow-[0_14px_28px_-22px_rgba(0,0,0,0.4)] ${art.tint}`}
+            className={`relative overflow-hidden rounded-[26px] border border-border/60 p-4 shadow-[0_14px_28px_-22px_rgba(0,0,0,0.4)] ${
+              summary.kind === "history" ? destinationArt(null).tint : art.tint
+            }`}
           >
             <SummaryLink
               target={summary.target}
@@ -662,7 +667,7 @@ export function EsimHomeSummaryCard({
 
             {summary.kind === "history" && (
               <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
-                Masa aktif paket ini sudah berakhir. Beli paket lagi untuk terhubung kembali.
+                Paket ini sudah tidak aktif. Beli ulang untuk terhubung lagi.
               </p>
             )}
           </motion.div>

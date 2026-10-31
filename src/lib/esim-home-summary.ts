@@ -120,6 +120,16 @@ function activeUntilLabel(expiresAt: number | undefined, now: number): string | 
   return `Aktif hingga ${date}`;
 }
 
+/** "Berakhir 31 Okt" for a plan whose validity has already ended. */
+function endedOnLabel(expiresAt: number | undefined, now: number): string | undefined {
+  if (!expiresAt || expiresAt > now) return undefined;
+  const date = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(expiresAt));
+  return `Berakhir ${date}`;
+}
+
 function amountLabel(amount: number): string {
   return `Rp${amount.toLocaleString("id-ID")}`;
 }
@@ -283,12 +293,15 @@ function buildHistorySummary(
   order: Order,
   status: OrderStatus,
   hasMultiple: boolean,
+  now: number,
 ): EsimHomeSummary {
+  const endedLabel = endedOnLabel(order.expiresAt, now);
   return {
     kind: "history",
     eyebrow: "Riwayat eSIM",
     title: "Siap terhubung lagi?",
     subtitle: `${order.packageName ?? order.packageId} · ${packageSubtitle(order)}`,
+    ...(endedLabel ? { expiresLabel: endedLabel } : {}),
     quotaLabel: null,
     remainingPercent: null,
     target: { kind: "list" },
@@ -327,6 +340,6 @@ export function buildEsimHomeSummary(
     case "PROVISIONING_FAILED":
       return buildPendingSummary(top.order, top.status, hasMultiple);
     default:
-      return buildHistorySummary(top.order, top.status, hasMultiple);
+      return buildHistorySummary(top.order, top.status, hasMultiple, now);
   }
 }

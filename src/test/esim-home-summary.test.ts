@@ -73,7 +73,7 @@ describe("buildEsimHomeSummary", () => {
     expect(buildEsimHomeSummary([order()], NOW).expiresLabel).toBeUndefined();
     expect(
       buildEsimHomeSummary([order({ expiresAt: NOW - 1_000 })], NOW).expiresLabel,
-    ).toBeUndefined();
+    ).toMatch(/^Berakhir /);
   });
 
   it("surfaces an unfinished payment before a healthy active eSIM", () => {
