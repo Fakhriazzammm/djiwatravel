@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { QrCode, Landmark, Check } from "lucide-react";
+import { QrCode, WalletCards, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, BackBar, StickyCta, btnRed, group, label } from "@/components/shell";
 import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
@@ -23,6 +23,11 @@ import { toViewPackage } from "@/lib/package-view";
 import { DeviceCompatibility } from "@/components/device-compatibility";
 import { nextFrame, paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
 import { trackAnalytics } from "@/lib/analytics";
+import {
+  mayarRedirectUrl,
+  walletPaymentAvailability,
+  type NewCheckoutPaymentMethod,
+} from "@/lib/travel-payment-method";
 
 const loadCheckout = createServerFn({ method: "GET" })
   .validator(z.string().trim().min(1).max(160))
@@ -35,7 +40,11 @@ const loadCheckout = createServerFn({ method: "GET" })
     if (!pkg) throw notFound();
     const sellability = await getSellabilityState([pkg]);
     // Display fields only: the full record carries our cost basis (lib/package-view.ts).
-    return { pkg: toViewPackage(pkg, !sellability.hidden.has(pkg.packageCode)) };
+    return {
+      pkg: toViewPackage(pkg, !sellability.hidden.has(pkg.packageCode)),
+      djiwaPayEnabled:
+        Buffer.byteLength(process.env["DJIWA_TRAVEL_WALLET_PAYMENT_SECRET"]?.trim() ?? "", "utf8") >= 32,
+    };
   });
 
 export const Route = createFileRoute("/checkout/$id")({
@@ -43,9 +52,9 @@ export const Route = createFileRoute("/checkout/$id")({
   head: () => ({
     meta: [
       { title: "Checkout — Djiwa Travel" },
-      { name: "description", content: "Bayar eSIM dengan QRIS atau Virtual Account." },
+      { name: "description", content: "Bayar eSIM lewat QRIS atau saldo Djiwa Pay." },
       { property: "og:title", content: "Checkout — Djiwa Travel" },
-      { property: "og:description", content: "Bayar eSIM dengan QRIS atau Virtual Account." },
+      { property: "og:description", content: "Bayar eSIM lewat QRIS atau saldo Djiwa Pay." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -53,17 +62,17 @@ export const Route = createFileRoute("/checkout/$id")({
 });
 
 const methods = [
-  { id: "qris", label: "QRIS", desc: "GoPay, OVO, DANA, ShopeePay, m-banking", icon: QrCode },
-  { id: "va", label: "Virtual Account", desc: "BCA, Mandiri, BNI, BRI", icon: Landmark },
+  { id: "qris", label: "QRIS", desc: "Pilihan kanal pembayaran tersedia di halaman Mayar.", icon: QrCode },
+  { id: "djiwa_pay", label: "Bayar langsung pakai saldo Djiwa Pay", desc: "Recommended · Potong saldo Djiwa Pay kamu langsung.", icon: WalletCards },
 ] as const;
 
 function Checkout() {
-  const { pkg } = Route.useLoaderData();
+  const { pkg, djiwaPayEnabled } = Route.useLoaderData();
   const price = pkg.priceIdr;
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [wa, setWa] = useState("");
-  const [method, setMethod] = useState<"qris" | "va">("qris");
+  const [method, setMethod] = useState<NewCheckoutPaymentMethod>("qris");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [paymentProgress, setPaymentProgress] = useState<PaymentProgressStage>("idle");
@@ -100,7 +109,15 @@ function Checkout() {
     return () => window.removeEventListener(CUSTOMER_PROFILE_UPDATED_EVENT, onProfileUpdated);
   }, []);
   const valid = isCustomerProfileComplete({ email, whatsapp: wa });
-  const canPay = valid && (!user || memberProfileReady);
+  const walletAvailability = walletPaymentAvailability({
+    enabled: djiwaPayEnabled,
+    authenticated: Boolean(user),
+    profileComplete: memberProfileReady,
+  });
+  const canPay =
+    valid &&
+    (!user || memberProfileReady) &&
+    (method !== "djiwa_pay" || walletAvailability === "available");
 
   const pay = async () => {
     if (submitting) return;
@@ -118,10 +135,11 @@ function Checkout() {
       });
       // Go straight to the payment page: leaving the customer on the order screen when a
       // payment link already exists is a dead end they asked us to remove.
-      if (o.paymentUrl) {
+      const redirectUrl = mayarRedirectUrl(method, o.paymentUrl);
+      if (redirectUrl) {
         setPaymentProgress("redirecting");
         await nextFrame();
-        window.location.assign(o.paymentUrl);
+        window.location.assign(redirectUrl);
         return;
       }
       nav({ to: "/order/$id", params: { id: o.id } });
@@ -176,7 +194,7 @@ function Checkout() {
           <p className="mt-1 text-muted-foreground">Guest checkout tetap tersedia tanpa akun.</p>
           <Link
             to="/profile"
-            search={{ admin: undefined }}
+            search={{ admin: undefined, returnTo: undefined, calendar: undefined, calendarSync: undefined }}
             className="mt-2 inline-flex font-semibold text-brand-red"
           >
             Lengkapi data di Profil →
@@ -222,6 +240,7 @@ function Checkout() {
           <button
             key={id}
             onClick={() => setMethod(id)}
+            aria-pressed={method === id}
             className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             <I className="size-6 shrink-0 text-primary" strokeWidth={1.6} />
@@ -239,6 +258,35 @@ function Checkout() {
           </button>
         ))}
       </div>
+      {method === "djiwa_pay" && walletAvailability !== "available" && (
+        <div className="mt-3 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-3 text-sm">
+          {walletAvailability === "sign_in" ? (
+            <>
+              <p>Masuk sebagai member untuk membayar langsung dari saldo Djiwa Pay.</p>
+              <Link
+                to="/profile"
+                search={{ admin: undefined, returnTo: undefined, calendar: undefined, calendarSync: undefined }}
+                className="mt-2 inline-flex font-semibold text-brand-red"
+              >
+                Masuk atau buka Profil →
+              </Link>
+            </>
+          ) : walletAvailability === "complete_profile" ? (
+            <>
+              <p>Lengkapi profil member untuk menggunakan saldo Djiwa Pay.</p>
+              <Link
+                to="/profile"
+                search={{ admin: undefined, returnTo: undefined, calendar: undefined, calendarSync: undefined }}
+                className="mt-2 inline-flex font-semibold text-brand-red"
+              >
+                Lengkapi Profil →
+              </Link>
+            </>
+          ) : (
+            <p>Pembayaran saldo Djiwa Pay belum dikonfigurasi di server.</p>
+          )}
+        </div>
+      )}
 
       <StickyCta aboveTabBar>
         {!pkg.sellable && (
@@ -248,9 +296,15 @@ function Checkout() {
         )}
         {!canPay && !submitting && pkg.sellable && (
           <p className="pb-2 text-center text-xs text-muted-foreground">
-            {valid
-              ? "Lengkapi data pengiriman di Profil untuk checkout sebagai member."
-              : "Isi email dan nomor WhatsApp yang valid untuk melanjutkan."}
+            {!valid
+              ? "Isi email dan nomor WhatsApp yang valid untuk melanjutkan."
+              : method === "djiwa_pay"
+                ? walletAvailability === "sign_in"
+                  ? "Masuk ke akun member untuk membayar dengan saldo Djiwa Pay."
+                  : walletAvailability === "complete_profile"
+                    ? "Lengkapi profil untuk membayar dengan saldo Djiwa Pay."
+                    : "Pembayaran saldo Djiwa Pay belum aktif."
+                : "Lengkapi data pengiriman di Profil untuk checkout sebagai member."}
           </p>
         )}
         <button
@@ -261,7 +315,9 @@ function Checkout() {
           {submitting
             ? paymentProgressLabel(paymentProgress)
             : pkg.sellable
-              ? `Buat pesanan · ${rupiah(price)}`
+              ? method === "djiwa_pay"
+                ? `Bayar dengan Djiwa Pay · ${rupiah(price)}`
+                : `Buat pesanan · ${rupiah(price)}`
               : "Habis"}
         </button>
       </StickyCta>

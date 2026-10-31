@@ -13,6 +13,7 @@ export type GuestOrderStatus =
 import type { EsimProfile } from "./providers";
 import type { EsimStoredUsage } from "./esim-stored-usage";
 import { effectivePaymentStatus } from "./payment-expiry";
+import { storedPaymentMethod, type StoredPaymentMethod } from "./travel-payment-method";
 
 export type GuestOrderRecord = {
   id: string;
@@ -52,7 +53,7 @@ export type GuestOrderView = {
   unlimited?: boolean;
   supportsTopUp: boolean;
   amount: number;
-  method: "qris" | "va";
+  method: StoredPaymentMethod;
   paymentReference?: string;
   status: GuestOrderStatus;
   createdAt: number;
@@ -103,7 +104,7 @@ export function mapGuestOrderRecord(record: GuestOrderRecord): GuestOrderView {
     ...(record.packageSnapshot.unlimited === true ? { unlimited: true } : {}),
     supportsTopUp: record.packageSnapshot.supportsTopUp,
     amount: record.amount,
-    method: record.paymentMethod === "va" ? "va" : "qris",
+    method: storedPaymentMethod(record.paymentMethod),
     ...(record.paymentReference == null ? {} : { paymentReference: record.paymentReference }),
     ...(record.paymentUrl == null ? {} : { paymentUrl: record.paymentUrl }),
     ...(record.providerOrderNo == null ? {} : { providerOrderNo: record.providerOrderNo }),

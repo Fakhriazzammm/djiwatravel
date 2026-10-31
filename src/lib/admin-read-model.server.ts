@@ -26,8 +26,18 @@ export type ProviderBalanceView = {
 };
 
 // Browser display values must come from this allowlist, never provider input.
-function paymentProviderLabel(row: Row): "Mayar" | null {
-  return text(row, "payment_provider") === "mayar" ? "Mayar" : null;
+export function adminPaymentProviderLabel(
+  provider: unknown,
+  paymentMethod?: unknown,
+): "Mayar" | "Djiwa Pay" | null {
+  if (provider == null && paymentMethod === "djiwa_pay") return "Djiwa Pay";
+  if (provider === "mayar") return "Mayar";
+  if (provider === "djiwa_pay") return "Djiwa Pay";
+  return null;
+}
+
+function paymentProviderLabel(row: Row): "Mayar" | "Djiwa Pay" | null {
+  return adminPaymentProviderLabel(text(row, "payment_provider"), text(row, "payment_method"));
 }
 
 function safeEventType(row: Row, key: string, allowed: readonly string[]): string | null {
@@ -89,7 +99,7 @@ export const getAdminOrdersHandler = async () => {
   await requireAdmin();
   const result = await db.execute(sql`
     select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
-           o.payment_provider, o.payment_reference, o.created_at, o.updated_at,
+           o.payment_provider, a.payment_method, o.payment_reference, o.created_at, o.updated_at,
            p.status as provisioning_status,
            coalesce(cp.email, a.email) as customer_email,
            coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp,
@@ -133,7 +143,7 @@ export const getAdminOrderDetailHandler = async ({
   if (!UUID_RE.test(data.id)) return null;
   const orderResult = await db.execute(sql`
       select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
-             o.payment_provider, o.payment_reference, o.paid_at, o.created_at, o.updated_at,
+             o.payment_provider, a.payment_method, o.payment_reference, o.paid_at, o.created_at, o.updated_at,
              o.payment_expires_at, o.esim_activation_expires_at,
              p.status as provisioning_status,
              p.attempt_count, p.provisioning_attempts,

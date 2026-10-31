@@ -7,6 +7,8 @@ import { rebuildMayarInvoice } from "./mayar-gateway";
 import { createMayarInvoice } from "./mayar-gateway";
 import { mapGuestOrderRecord } from "./guest-order-view";
 import { effectivePaymentStatus } from "./payment-expiry";
+import { chargeTravelOrderWithDjiwaPay } from "./djiwa-pay-payment.fn";
+import type { NewCheckoutPaymentMethod, StoredPaymentMethod } from "./travel-payment-method";
 
 export type OrderStatus =
   | "ORDER_CREATED"
@@ -34,7 +36,7 @@ export type Order = {
   amount: number;
   email?: string;
   whatsapp?: string;
-  method: "qris" | "va";
+  method: StoredPaymentMethod;
   status: OrderStatus;
   createdAt: number;
   expiresAt?: number;
@@ -233,7 +235,7 @@ type PendingOrder = {
   packageId: string;
   email: string;
   whatsapp: string;
-  method: "qris" | "va";
+  method: NewCheckoutPaymentMethod;
   accessToken: string;
   idempotencyKey: string;
   createdAt: number;
@@ -264,9 +266,10 @@ export function hasGuestOrderAccess(orderId: string): boolean {
 }
 
 export async function createOrder(
-  o: Omit<Order, "id" | "status" | "createdAt" | "email" | "whatsapp"> & {
+  o: Omit<Order, "id" | "status" | "createdAt" | "email" | "whatsapp" | "method"> & {
     email: string;
     whatsapp: string;
+    method: NewCheckoutPaymentMethod;
   },
 ): Promise<Order> {
   let pending: PendingOrder | undefined;
@@ -318,24 +321,40 @@ export async function createOrder(
   sessionStorage.removeItem("djiwa.pending-order");
   let paymentUrl: string | undefined;
   let paymentReference: string | undefined;
-  try {
-    const invoice = await createInvoiceWithRetry({
-      orderId: saved.id,
-      accessToken,
-      amountIdr: saved.amount,
-      customerName: o.email.split("@")[0] || "Customer",
-      customerEmail: o.email,
-      customerMobile: o.whatsapp,
-      description: `Djiwa Travel ${saved.publicOrderCode}`,
-      redirectUrl: `${window.location.origin}/receipt/${saved.id}`,
-    });
-    paymentUrl = invoice.paymentUrl;
-    paymentReference = invoice.invoiceId;
-  } catch {
-    // The order and its guest access token already exist. Keep the customer on its order page,
-    // where ensurePaymentLink() can safely reconcile/rebuild the Mayar invoice without creating a
-    // second order. Do not turn an invoice outage into a false "order was not saved" message.
-    console.warn("[checkout] order saved; payment link needs recovery");
+  let status: OrderStatus = "WAITING_PAYMENT";
+  if (o.method === "djiwa_pay") {
+    try {
+      const result = await chargeTravelOrderWithDjiwaPay({ data: { orderId: saved.id } });
+      if (result.status === "paid") {
+        status = "PAID";
+        paymentReference = result.transactionId;
+      } else if (result.status === "insufficient_balance" || result.status === "wallet_blocked") {
+        status = "ORDER_CREATED";
+      }
+    } catch {
+      // The draft already exists. Keep it retryable; never fall through to Mayar for a wallet order.
+      status = "ORDER_CREATED";
+    }
+  } else {
+    try {
+      const invoice = await createInvoiceWithRetry({
+        orderId: saved.id,
+        accessToken,
+        amountIdr: saved.amount,
+        customerName: o.email.split("@")[0] || "Customer",
+        customerEmail: o.email,
+        customerMobile: o.whatsapp,
+        description: `Djiwa Travel ${saved.publicOrderCode}`,
+        redirectUrl: `${window.location.origin}/receipt/${saved.id}`,
+      });
+      paymentUrl = invoice.paymentUrl;
+      paymentReference = invoice.invoiceId;
+    } catch {
+      // The order and its guest access token already exist. Keep the customer on its order page,
+      // where ensurePaymentLink() can safely reconcile/rebuild the Mayar invoice without creating a
+      // second order. Do not turn an invoice outage into a false "order was not saved" message.
+      console.warn("[checkout] order saved; payment link needs recovery");
+    }
   }
   const order: Order = {
     id: saved.id,
@@ -346,7 +365,7 @@ export async function createOrder(
     email: o.email,
     whatsapp: o.whatsapp,
     method: o.method,
-    status: "WAITING_PAYMENT",
+    status,
     paymentExpiresAt: saved.paymentExpiresAtMs,
     ...(paymentUrl ? { paymentUrl } : {}),
     ...(paymentReference ? { paymentReference } : {}),

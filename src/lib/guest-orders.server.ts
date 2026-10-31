@@ -25,6 +25,25 @@ import { readMayarSnapshot } from "./payment-snapshot";
 import { effectivePaymentStatus } from "./payment-expiry";
 import { refreshTravelOrderProvisioning } from "./esim-provisioning-refresh.server";
 import { readStoredUsageForOrders } from "./esim-stored-usage.server";
+import {
+  isCustomerProfileComplete,
+} from "./customer-profile";
+import { readCustomerProfile, requireBetterAuthUser } from "./customer-profile.server";
+import { newCheckoutPaymentMethodSchema, storedPaymentMethod } from "./travel-payment-method";
+
+async function requireCompleteWalletCustomer() {
+  const { getRequestHeader } = await import("@tanstack/react-start/server");
+  const user = await requireBetterAuthUser(getRequestHeader("cookie") ?? "");
+  const profile = await readCustomerProfile(user);
+  if (
+    !profile ||
+    profile.email.toLowerCase() !== user.email.toLowerCase() ||
+    !isCustomerProfileComplete({ email: profile.email, whatsapp: profile.whatsapp })
+  ) {
+    throw new Error("Lengkapi profil member sebelum membayar dengan saldo Djiwa Pay");
+  }
+  return user;
+}
 
 const createGuestOrderSchema = z.object({
   packageCode: z.string().trim().min(1).max(160),
@@ -38,7 +57,7 @@ const createGuestOrderSchema = z.object({
     .refine((value) => WHATSAPP_PATTERN.test(value), {
       message: "Nomor WhatsApp belum valid. Contoh: 08123456789.",
     }),
-  paymentMethod: z.enum(["qris", "va"]),
+  paymentMethod: newCheckoutPaymentMethodSchema,
   idempotencyKey: z.string().uuid(),
   accessToken: z.string().min(32).max(256),
 });
@@ -50,6 +69,9 @@ export const createGuestOrderDraftHandler = async ({
 }: {
   data: ReturnType<typeof createGuestOrderDraftInput>;
 }) => {
+  const walletCustomer = data.paymentMethod === "djiwa_pay"
+    ? await requireCompleteWalletCustomer()
+    : null;
   const phone = normalizeGuestWhatsapp(data.whatsapp);
   const accessTokenHash = hashGuestAccessToken(data.accessToken);
   const previous = await db
@@ -62,12 +84,17 @@ export const createGuestOrderDraftHandler = async ({
       .select({
         accessTokenHash: guestOrderAccess.accessTokenHash,
         expiresAt: guestOrderAccess.expiresAt,
+        paymentMethod: guestOrderAccess.paymentMethod,
       })
       .from(guestOrderAccess)
       .where(eq(guestOrderAccess.orderId, previous[0].id))
       .limit(1);
     if (guest[0]?.accessTokenHash !== accessTokenHash)
       throw new Error("Idempotency key already used");
+    if (guest[0]?.paymentMethod !== data.paymentMethod)
+      throw new Error("Idempotency key already used for another payment method");
+    if (data.paymentMethod === "djiwa_pay" && previous[0].customerAuthSubject !== walletCustomer?.id)
+      throw new Error("Pesanan wallet tidak dimiliki oleh member ini");
     if (!guest[0]?.expiresAt || new Date(guest[0].expiresAt).getTime() <= Date.now())
       throw new Error("Guest access token expired");
     return {
@@ -122,6 +149,12 @@ export const createGuestOrderDraftHandler = async ({
       markupAmount: String(price.markupIdr),
       totalAmount: String(price.sellingPriceIdr),
       idempotencyKey: data.idempotencyKey,
+      ...(walletCustomer
+        ? {
+            customerAuthSubject: walletCustomer.id,
+            customerAuthLinkedAt: now.toISOString(),
+          }
+        : {}),
       priceSnapshot: {
         ...price.configSnapshot,
         capturedAt: now.toISOString(),
@@ -268,7 +301,7 @@ export const getGuestOrdersHandler = async ({
             : null,
         paymentExpiresAtMs: row.paymentExpiresAt ? new Date(row.paymentExpiresAt).getTime() : null,
         packageCode: row.packageCode,
-        paymentMethod: row.paymentMethod === "va" ? "va" : "qris",
+        paymentMethod: storedPaymentMethod(row.paymentMethod),
         paymentProvider: row.paymentProvider,
         paymentReference: row.paymentReference,
         ...(paymentUrl ? { paymentUrl } : {}),

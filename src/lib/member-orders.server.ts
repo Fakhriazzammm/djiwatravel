@@ -142,7 +142,7 @@ export const getMemberOrdersHandler = async () => {
 
   await Promise.all(
     rows
-      .filter((row) => row.status === "PAID" || row.status === "PROVISIONING")
+      .filter((row) => ["PAID", "PAYMENT_CONFIRMED", "PROVISIONING"].includes(row.status))
       .map((row) => refreshTravelOrderProvisioning(row.id).catch(() => undefined)),
   );
 
