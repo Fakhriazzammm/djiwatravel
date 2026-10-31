@@ -278,6 +278,27 @@ function Home() {
           }}
           config={homeConfig}
         />
+        {!loading && !user && orders !== null && orders.length > 0 && (
+          <Link
+            to="/profile"
+            search={{
+              admin: undefined,
+              returnTo: undefined,
+              calendar: undefined,
+              calendarSync: undefined,
+            }}
+            data-testid="home-sync-prompt"
+            className="tap mt-2.5 flex min-h-11 w-full items-center gap-2 rounded-2xl border border-border/60 bg-surface px-4 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">Masuk agar eSIM tersimpan di akunmu</span>
+              <span className="block text-[12px] text-muted-foreground">
+                eSIM ini baru ada di browser ini. Masuk untuk melihatnya di perangkat lain.
+              </span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </Link>
+        )}
         {promo && (
           <button
             type="button"

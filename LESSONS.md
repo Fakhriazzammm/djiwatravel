@@ -181,3 +181,21 @@ Use this structure for each new lesson:
   `customer_trip_plans` / `customer_preferences` (migration 028) with `localStorage` as cache.
 - Prevention: any customer-visible state must have a server source of truth keyed by the verified
   session subject; `localStorage` is only a cache.
+
+## Guest access window locked guests out and froze caches
+
+- Symptom (2026-11-01): laptop, T3 browser and phone showed three different order lists for one
+  customer; the phone showed an expired unpaid order as "Menunggu bayar" and ghost orders sat on
+  the laptop.
+- Evidence: production `customer_orders` held 6 rows, all guest (no `customer_auth_subject`), and
+  every `guest_order_access.expires_at` was already in the past (TTL was one hour), including the
+  paid `READY` order; `order_claim_events` was empty. The two laptop orders did not exist in the DB.
+- Root cause: `GUEST_ACCESS_TTL_MS` was one hour, so after checkout the server refused the token
+  and each browser kept a frozen `localStorage` copy; nothing was claimed because only the
+  signed-out phone held the tokens; `refreshExpiredOrders` was never called; the merge kept cached
+  orders the server no longer returned.
+- Safe fix: 30-day guest window (`guest-access-policy.ts`, migration 029 extends existing rows),
+  call `refreshExpiredOrders` on load, prune ghosts only when the server read succeeded
+  (`order-cache.ts`), and prompt signed-out holders of guest orders to sign in so they can be claimed.
+- Prevention: a bearer token's lifetime must cover the lifetime of what it protects; a cache must
+  never outlive the server's ability to confirm it.

@@ -1,4 +1,5 @@
 // Demo order store (browser). Replace with Cloud tables + webhooks when going live.
+import { isGhostGuestOrder } from "./order-cache";
 import { useEffect, useState } from "react";
 import type { EsimProfile } from "./providers";
 import { createGuestOrderDraft, getGuestOrders } from "./guest-orders.fn";
@@ -124,6 +125,7 @@ export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => vo
   }
 
   const current = read();
+  const guestAskedIds = new Set(credentials.map((credential) => credential.orderId));
   const guestById = new Map(guestRemote.map((order) => [order.id, order]));
   const memberById = new Map(memberRemote.map((order) => [order.id, order]));
 
@@ -133,6 +135,13 @@ export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => vo
   for (const order of current) {
     if (seen.has(order.id)) continue;
     if (!hasGuestOrderAccess(order.id) && !memberById.has(order.id)) continue;
+    // Only trust a miss when the guest read itself succeeded and asked about this order.
+    const knownToServer =
+      memberById.has(order.id) ||
+      guestById.has(order.id) ||
+      guestResult.status !== "fulfilled" ||
+      !guestAskedIds.has(order.id);
+    if (isGhostGuestOrder(order, knownToServer)) continue;
     seen.add(order.id);
     merged.push(memberById.get(order.id) ?? guestById.get(order.id) ?? order);
   }
@@ -180,6 +189,8 @@ export function useOrders() {
   const [orders, set] = useState<Order[] | null>(null);
   useEffect(() => {
     let active = true;
+    // Unpaid orders past their payment window must read as expired even before the server answers.
+    refreshExpiredOrders();
     const f = () =>
       set(
         read().filter((order) => order.fromMemberAccount === true || hasGuestOrderAccess(order.id)),

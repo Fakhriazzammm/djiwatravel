@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { normalizeWhatsapp, WHATSAPP_PATTERN } from "./phone";
 
 export { SUPPORT_WHATSAPP_URL } from "./support-contact";
-export const GUEST_ACCESS_TTL_MS = 60 * 60 * 1000;
+import { GUEST_ACCESS_TTL_MS } from "./guest-access-policy";
+
+export { GUEST_ACCESS_TTL_MS };
 
 export function isGuestAccessExpired(expiresAt: string | Date, now = Date.now()): boolean {
   return new Date(expiresAt).getTime() <= now;
