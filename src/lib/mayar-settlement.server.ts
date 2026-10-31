@@ -9,6 +9,7 @@ import { provisionSettledTravelOrder } from "./mayar-provisioning.server";
 import { readMayarSnapshot, toIsoTimestamp } from "./payment-snapshot";
 import { assertPaymentNotExpired } from "./payment-expiry";
 import { enqueueFinancePosting } from "./finance-outbox.server";
+import { mayarOrderPaymentAllowed } from "./travel-payment-method";
 
 const verifySchema = z.object({
   orderId: z.string().uuid(),
@@ -154,12 +155,22 @@ async function settleLocalPayment(input: {
 }) {
   return db.transaction(async (tx) => {
     const rows = await tx.execute(
-      sql`select status, total_amount, payment_reference from public.customer_orders where id = ${input.orderId}::uuid for update`,
+      sql`select o.status, o.total_amount, o.payment_reference, access.payment_method
+            from public.customer_orders o
+            join public.guest_order_access access on access.order_id = o.id
+           where o.id = ${input.orderId}::uuid
+           for update of o`,
     );
     const order = rows.rows[0] as
-      | { status: string; total_amount: string | number; payment_reference: string | null }
+      | {
+          status: string;
+          total_amount: string | number;
+          payment_reference: string | null;
+          payment_method: string;
+        }
       | undefined;
     if (!order) throw new Error("order_not_found");
+    if (!mayarOrderPaymentAllowed(order.payment_method)) throw new Error("payment_method_mismatch");
     if (order.payment_reference && input.invoiceId && order.payment_reference !== input.invoiceId)
       throw new Error("invoice_mismatch");
     if (Number(order.total_amount) !== input.amount) throw new Error("amount_mismatch");
@@ -202,6 +213,14 @@ export async function settleVerifiedTravelPayment(input: {
   referenceId?: string;
   customerName?: string | null;
 }) {
+  const access = await db.execute(sql`
+    select payment_method from public.guest_order_access
+     where order_id = ${input.orderId}::uuid
+     limit 1
+  `);
+  if (!mayarOrderPaymentAllowed(access.rows[0]?.["payment_method"]))
+    throw new Error("payment_method_mismatch");
+
   const gatewayPayload = buildTravelFinanceGatewayPayload(input);
   // Mayar is the source of truth that the money arrived, so the customer's order must settle even
   // when the finance hand-off is unavailable. The failure is recorded on the settlement event and
@@ -267,7 +286,7 @@ export const verifyMayarPaymentHandler = async ({
 }) => {
   const accessHash = hashGuestAccessToken(data.accessToken);
   const rows = await db
-    .select({ order: customerOrders })
+    .select({ order: customerOrders, paymentMethod: guestOrderAccess.paymentMethod })
     .from(customerOrders)
     .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
     .where(
@@ -278,8 +297,11 @@ export const verifyMayarPaymentHandler = async ({
       ),
     )
     .limit(1);
-  const order = rows[0]?.order;
-  if (!order) throw new Error("Pesanan tidak ditemukan");
+  const row = rows[0];
+  const order = row?.order;
+  if (!row || !order) throw new Error("Pesanan tidak ditemukan");
+  if (!mayarOrderPaymentAllowed(row.paymentMethod))
+    throw new Error("Pesanan Djiwa Pay tidak dapat diverifikasi melalui Mayar");
 
   const mayar = readMayarSnapshot(order.priceSnapshot);
   if (!mayar.transactionId) {

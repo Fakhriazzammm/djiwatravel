@@ -14,6 +14,7 @@ import {
   type Order,
 } from "@/lib/orders";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.fn";
+import { chargeTravelOrderWithDjiwaPay } from "@/lib/djiwa-pay-payment.fn";
 import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import {
@@ -66,7 +67,10 @@ function buildReceiptDocument(order: Order): ReceiptDocument {
     { label: "Cakupan", value: order.locationCodes?.join(", ") || "Regional" },
     { label: "Kuota", value: quota },
     { label: "Masa aktif", value: order.durationDays ? `${order.durationDays} hari` : "-" },
-    { label: "Metode", value: order.method === "qris" ? "QRIS" : "Virtual Account" },
+    {
+      label: "Metode",
+      value: order.method === "qris" ? "QRIS" : order.method === "djiwa_pay" ? "Djiwa Pay" : "Virtual Account",
+    },
     { label: "Tujuan email", value: order.email ?? "-" },
     { label: "WhatsApp", value: order.whatsapp ?? "-" },
     { label: "Status", value: ORDER_STATUS_LABEL[status] },
@@ -106,12 +110,13 @@ function ReceiptPage() {
     void refreshOrdersFromServer().catch(() => undefined);
   }, []);
 
-  const order = hasGuestOrderAccess(id) ? orders?.find((x) => x.id === id) : undefined;
+  const found = orders?.find((x) => x.id === id);
+  const order = found && (hasGuestOrderAccess(id) || found.fromMemberAccount === true) ? found : undefined;
 
   // The receipt and the QR are exactly what a customer needs with no connection, so keep a
   // device-local copy in step with the last authorized read.
   useEffect(() => {
-    if (!order) return;
+    if (!order || order.method === "djiwa_pay") return;
     const next = buildTravelSnapshot(order);
     if (writeTravelSnapshot(next)) setSnapshot(next);
   }, [order?.id, order?.status, order?.expiresAt, order?.esim?.lpa]);
@@ -120,6 +125,7 @@ function ReceiptPage() {
   // terminal state, and keep a manual retry available instead of looping forever.
   useEffect(() => {
     if (!order) return;
+    if (order.method === "djiwa_pay") return;
     if (!["ORDER_CREATED", "WAITING_PAYMENT"].includes(order.status)) return;
     const token = guestAccessTokenFor(id);
     if (!token) return;
@@ -142,21 +148,35 @@ function ReceiptPage() {
       cancelled = true;
       if (timer) window.clearTimeout(timer);
     };
-  }, [id, order?.id, order?.status]);
+  }, [id, order?.id, order?.status, order?.method]);
 
   const retryPaymentCheck = async () => {
-    const token = guestAccessTokenFor(id);
-    if (!token || checkingPayment) return;
+    const token = order?.method === "djiwa_pay" ? undefined : guestAccessTokenFor(id);
+    if ((order?.method !== "djiwa_pay" && !token) || checkingPayment) return;
     setCheckingPayment(true);
     setNote("");
     try {
-      const result = await verifyMayarPayment({ data: { orderId: id, accessToken: token } });
-      await refreshOrdersFromServer();
-      setNote(
-        result.settled
-          ? "Pembayaran terverifikasi. Status diperbarui."
-          : "Pembayaran masih menunggu verifikasi.",
-      );
+      if (order?.method === "djiwa_pay") {
+        const result = await chargeTravelOrderWithDjiwaPay({ data: { orderId: id } });
+        await refreshOrdersFromServer();
+        setNote(
+          result.status === "paid"
+            ? "Pembayaran Djiwa Pay terkonfirmasi. Status diperbarui."
+            : result.status === "insufficient_balance"
+              ? "Saldo Djiwa Pay belum mencukupi. Isi saldo lalu coba lagi."
+              : result.status === "wallet_blocked"
+                ? "Saldo Djiwa Pay belum dapat digunakan. Hubungi support."
+                : "Status pembayaran masih diperiksa. Coba lagi sebentar lagi.",
+        );
+      } else {
+        const result = await verifyMayarPayment({ data: { orderId: id, accessToken: token! } });
+        await refreshOrdersFromServer();
+        setNote(
+          result.settled
+            ? "Pembayaran terverifikasi. Status diperbarui."
+            : "Pembayaran masih menunggu verifikasi.",
+        );
+      }
     } catch {
       setNote("Belum bisa memeriksa pembayaran. Coba lagi nanti.");
     } finally {
@@ -262,7 +282,7 @@ function ReceiptPage() {
                 onClick={() => void retryPaymentCheck()}
                 className={`${btnSoft} disabled:opacity-50`}
               >
-                {checkingPayment ? checkingLabel : "Cek ulang pembayaran"}
+                {checkingPayment ? checkingLabel : order.method === "djiwa_pay" ? "Cek Djiwa Pay" : "Cek ulang pembayaran"}
               </button>
             )}
           </div>
@@ -288,7 +308,10 @@ function ReceiptPage() {
           value={order.durationDays ? `${order.durationDays} hari` : "-"}
         />
         <ReceiptRule />
-        <ReceiptLine label="Metode" value={order.method === "qris" ? "QRIS" : "Virtual Account"} />
+        <ReceiptLine
+          label="Metode"
+          value={order.method === "qris" ? "QRIS" : order.method === "djiwa_pay" ? "Djiwa Pay" : "Virtual Account"}
+        />
         {order.email && <ReceiptLine label="Email" value={order.email} />}
         {order.whatsapp && <ReceiptLine label="WhatsApp" value={order.whatsapp} />}
         <ReceiptRule />

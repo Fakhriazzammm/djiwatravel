@@ -83,6 +83,10 @@ second wallet system:
   validate the server-side bridge and scoped wallet reads.
 - Djiwa Pay owns balance, ledger, settlement, and Mayar authority. Travel must
   not duplicate those records or accept payment credentials in the browser.
+- Direct eSIM wallet checkout uses the signed
+  `POST /api/customer/travel-wallet-payment` contract. Configure the same
+  server-only `DJIWA_TRAVEL_WALLET_PAYMENT_SECRET` in Travel and the Djiwa Pay
+  auth-server before enabling it; never expose or commit its value.
 
 Djiwa Travel and Djiwa Tentram/Djiwa Pay remain separate repositories, apps,
 databases, VPS hosts, domains, and release runbooks unless verified for the

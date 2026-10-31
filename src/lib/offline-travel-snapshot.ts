@@ -1,6 +1,7 @@
 import type { Order, OrderStatus } from "./orders";
 import { effectiveOrderStatus } from "./esim-status";
 import { maskSensitive } from "./sensitive-data";
+import type { StoredPaymentMethod } from "./travel-payment-method";
 
 /**
  * Offline snapshot for the eSIM QR and the receipt.
@@ -31,7 +32,7 @@ export type TravelSnapshot = {
   quotaLabel: string;
   durationDays: number | null;
   amount: number;
-  method: "qris" | "va";
+  method: StoredPaymentMethod;
   /** Present only when the order had reached READY/INSTALLED at snapshot time. */
   qr: { lpa: string; smdp: string; activationCode: string; iccidMasked: string } | null;
 };

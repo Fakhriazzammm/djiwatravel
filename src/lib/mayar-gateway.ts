@@ -5,6 +5,7 @@ import { db } from "../db/client.server";
 import { customerOrders, guestOrderAccess } from "../../drizzle/schema";
 import { hashGuestAccessToken } from "./guest-order-access.server";
 import { assertPaymentNotExpired } from "./payment-expiry";
+import { mayarOrderPaymentAllowed } from "./travel-payment-method";
 
 const invoicePayloadSchema = z.object({
   orderId: z.string().uuid(),
@@ -332,6 +333,8 @@ export const createMayarInvoice = createServerFn({ method: "POST" })
       .limit(1);
     const row = rows[0];
     if (!row) throw new Error("Pesanan tidak ditemukan");
+    if (!mayarOrderPaymentAllowed(row.access.paymentMethod))
+      throw new Error("Pesanan Djiwa Pay tidak menggunakan invoice Mayar");
     const expectedAmount = Number(row.order.totalAmount);
     if (!Number.isSafeInteger(expectedAmount) || expectedAmount !== data.amountIdr)
       throw new Error("Nominal pesanan berubah");
@@ -384,6 +387,8 @@ export const rebuildMayarInvoice = createServerFn({ method: "POST" })
       .limit(1);
     const row = rows[0];
     if (!row) throw new Error("Pesanan tidak ditemukan");
+    if (!mayarOrderPaymentAllowed(row.access.paymentMethod))
+      throw new Error("Pesanan Djiwa Pay tidak menggunakan invoice Mayar");
     assertPaymentNotExpired(row.order.status, row.order.paymentExpiresAt);
     const orderSnapshot =
       row.order.priceSnapshot && typeof row.order.priceSnapshot === "object"

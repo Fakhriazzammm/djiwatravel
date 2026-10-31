@@ -374,7 +374,7 @@ export const guestOrderAccess = pgTable(
     unique("guest_order_access_token_hash_key").on(table.accessTokenHash),
     check(
       "guest_order_access_payment_method_check",
-      sql`payment_method = ANY (ARRAY['qris'::text, 'va'::text])`,
+      sql`payment_method = ANY (ARRAY['qris'::text, 'va'::text, 'djiwa_pay'::text])`,
     ),
   ],
 );

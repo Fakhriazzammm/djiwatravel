@@ -34,6 +34,7 @@ import {
   writeNotifyPreference,
 } from "@/lib/esim-notify";
 import { verifyMayarPayment } from "@/lib/mayar-settlement.fn";
+import { chargeTravelOrderWithDjiwaPay } from "@/lib/djiwa-pay-payment.fn";
 import { paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
@@ -98,7 +99,7 @@ function OrderPage() {
 
   /** Rebuilds the payment link for an order that was created while checkout failed. */
   const buildLink = async () => {
-    if (!current) return;
+    if (!current || current.method === "djiwa_pay") return;
     setLinkBusy(true);
     setLinkStage("preparing");
     setLinkNote("");
@@ -115,7 +116,7 @@ function OrderPage() {
 
   // An order created during a provider hiccup used to be a dead end: try once on its own.
   useEffect(() => {
-    if (!current || current.paymentUrl) return;
+    if (!current || current.paymentUrl || current.method === "djiwa_pay") return;
     if (current.status !== "ORDER_CREATED" || linkAttempted.current) return;
     linkAttempted.current = true;
     void buildLink();
@@ -141,6 +142,33 @@ function OrderPage() {
     current?.status === "ORDER_CREATED" || current?.status === "WAITING_PAYMENT";
 
   const checkPayment = async (auto: boolean) => {
+    if (current?.method === "djiwa_pay") {
+      if (!auto) {
+        setChecking(true);
+        setCheckNote("");
+      }
+      try {
+        const result = await chargeTravelOrderWithDjiwaPay({ data: { orderId: id } });
+        await refreshOrdersFromServer();
+        if (!auto) {
+          setCheckNote(
+            result.status === "paid"
+              ? "Pembayaran Djiwa Pay terkonfirmasi. eSIM sedang disiapkan…"
+              : result.status === "insufficient_balance"
+                ? "Saldo Djiwa Pay belum mencukupi. Isi saldo lalu coba lagi."
+                : result.status === "wallet_blocked"
+                  ? "Saldo Djiwa Pay belum dapat digunakan. Hubungi support untuk bantuan."
+                  : "Status pembayaran masih diperiksa. Coba cek lagi sebentar lagi.",
+          );
+        }
+        return result.status === "paid";
+      } catch {
+        if (!auto) setCheckNote("Belum bisa memeriksa saldo Djiwa Pay. Coba lagi nanti.");
+        return false;
+      } finally {
+        if (!auto) setChecking(false);
+      }
+    }
     const token = guestAccessTokenFor(id);
     if (!token) return false;
     if (!auto) {
@@ -168,7 +196,7 @@ function OrderPage() {
   // Coming back from Mayar: verify server-side and refresh, then keep watching
   // for a short while so a paid order turns into an eSIM without a manual reload.
   useEffect(() => {
-    if (!awaitingPayment) return;
+    if (!awaitingPayment || current?.method === "djiwa_pay") return;
     let cancelled = false;
     let attempts = 0;
     let timer: number | undefined;
@@ -184,7 +212,7 @@ function OrderPage() {
       if (timer) window.clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [awaitingPayment, id]);
+  }, [awaitingPayment, current?.method, id]);
 
   // PAID/PROVISIONING used to be a dead end until the customer reloaded by hand.
   useEffect(() => {
@@ -221,7 +249,8 @@ function OrderPage() {
         <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
       </Page>
     );
-  const o = hasGuestOrderAccess(id) ? orders.find((x) => x.id === id) : undefined;
+  const found = orders.find((x) => x.id === id);
+  const o = found && (hasGuestOrderAccess(id) || found.fromMemberAccount === true) ? found : undefined;
   if (!o)
     return (
       <Page>
@@ -252,46 +281,74 @@ function OrderPage() {
         </div>
         <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
         <div className="mt-4 rounded-2xl bg-surface p-4 text-center">
-          <p className="font-semibold">
-            {o.paymentUrl ? "Menunggu pembayaran" : "Menyiapkan tagihan pembayaran"}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {o.paymentUrl
-              ? "Setelah membayar, kamu otomatis kembali ke halaman ini dan eSIM langsung muncul."
-              : "Tagihan pembayaran belum terbentuk. Tekan tombol di bawah untuk membuatnya."}
-          </p>
-          {o.paymentUrl ? (
-            <a
-              href={o.paymentUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={`${btnRed} mt-4 block`}
-            >
-              Lanjutkan pembayaran
-            </a>
+          {o.method === "djiwa_pay" ? (
+            <>
+              <p className="font-semibold">
+                {o.status === "ORDER_CREATED" ? "Bayar dengan saldo Djiwa Pay" : "Memastikan pembayaran Djiwa Pay"}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {o.status === "ORDER_CREATED"
+                  ? "Belum ada debit yang terkonfirmasi. Pastikan saldo mencukupi, lalu coba lagi."
+                  : "Jika respons sebelumnya terputus, pemeriksaan ini mengulang permintaan dengan aman."}
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Link to="/wallet" className={`${btnSoft} flex-1`}>
+                  Isi saldo Djiwa Pay
+                </Link>
+                <button
+                  type="button"
+                  disabled={checking}
+                  onClick={() => void checkPayment(false)}
+                  className={`${btnRed} flex-1 disabled:opacity-50`}
+                >
+                  {checking ? "Memeriksa…" : o.status === "ORDER_CREATED" ? "Bayar lagi" : "Cek pembayaran"}
+                </button>
+              </div>
+            </>
           ) : (
-            <button
-              type="button"
-              disabled={linkBusy}
-              onClick={() => void buildLink()}
-              className={`${btnRed} mt-4 block w-full disabled:opacity-50`}
-            >
-              {linkBusy ? paymentProgressLabel(linkStage) : "Buat link pembayaran"}
-            </button>
+            <>
+              <p className="font-semibold">
+                {o.paymentUrl ? "Menunggu pembayaran" : "Menyiapkan tagihan pembayaran"}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {o.paymentUrl
+                  ? "Setelah membayar, kamu otomatis kembali ke halaman ini dan eSIM langsung muncul."
+                  : "Tagihan pembayaran belum terbentuk. Tekan tombol di bawah untuk membuatnya."}
+              </p>
+              {o.paymentUrl ? (
+                <a
+                  href={o.paymentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${btnRed} mt-4 block`}
+                >
+                  Lanjutkan pembayaran
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled={linkBusy}
+                  onClick={() => void buildLink()}
+                  className={`${btnRed} mt-4 block w-full disabled:opacity-50`}
+                >
+                  {linkBusy ? paymentProgressLabel(linkStage) : "Buat link pembayaran"}
+                </button>
+              )}
+              {linkNote && <p className="mt-2 text-xs text-destructive">{linkNote}</p>}
+              <button
+                type="button"
+                disabled={checking}
+                onClick={() => void checkPayment(false)}
+                className={`${btnSoft} mt-3 inline-flex items-center justify-center gap-2 disabled:opacity-50`}
+              >
+                <RefreshCw className={checking ? "size-4 animate-spin" : "size-4"} />
+                {checking ? "Memeriksa…" : "Saya sudah bayar, cek status"}
+              </button>
+            </>
           )}
-          {linkNote && <p className="mt-2 text-xs text-destructive">{linkNote}</p>}
-          <button
-            type="button"
-            disabled={checking}
-            onClick={() => void checkPayment(false)}
-            className={`${btnSoft} mt-3 inline-flex items-center justify-center gap-2 disabled:opacity-50`}
-          >
-            <RefreshCw className={checking ? "size-4 animate-spin" : "size-4"} />
-            {checking ? "Memeriksa…" : "Saya sudah bayar, cek status"}
-          </button>
           {checkNote && <p className="mt-2 text-xs text-muted-foreground">{checkNote}</p>}
         </div>
-        <InvoiceCard order={o} />
+        {o.method !== "djiwa_pay" && <InvoiceCard order={o} />}
         <Link
           to="/receipt/$id"
           params={{ id: o.id }}
