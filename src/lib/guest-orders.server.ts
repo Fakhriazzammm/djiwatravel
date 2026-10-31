@@ -25,10 +25,9 @@ import { readMayarSnapshot } from "./payment-snapshot";
 import { effectivePaymentStatus } from "./payment-expiry";
 import { refreshTravelOrderProvisioning } from "./esim-provisioning-refresh.server";
 import { readStoredUsageForOrders } from "./esim-stored-usage.server";
-import {
-  isCustomerProfileComplete,
-} from "./customer-profile";
+import { isCustomerProfileComplete } from "./customer-profile";
 import { readCustomerProfile, requireBetterAuthUser } from "./customer-profile.server";
+import { resolveOptionalCustomerSession } from "./guest-session";
 import { newCheckoutPaymentMethodSchema, storedPaymentMethod } from "./travel-payment-method";
 
 async function requireCompleteWalletCustomer() {
@@ -45,16 +44,11 @@ async function requireCompleteWalletCustomer() {
   return user;
 }
 
-/** The signed-in customer, or null for a true guest. A bad/absent session never blocks checkout. */
+/** A true guest may check out; a present session must verify before its order is created. */
 async function optionalSessionCustomer() {
-  try {
-    const { getRequestHeader } = await import("@tanstack/react-start/server");
-    const cookie = getRequestHeader("cookie") ?? "";
-    if (!cookie) return null;
-    return await requireBetterAuthUser(cookie);
-  } catch {
-    return null;
-  }
+  const { getRequestHeader } = await import("@tanstack/react-start/server");
+  const cookie = getRequestHeader("cookie") ?? "";
+  return resolveOptionalCustomerSession(cookie, requireBetterAuthUser);
 }
 
 const createGuestOrderSchema = z.object({
@@ -81,9 +75,8 @@ export const createGuestOrderDraftHandler = async ({
 }: {
   data: ReturnType<typeof createGuestOrderDraftInput>;
 }) => {
-  const walletCustomer = data.paymentMethod === "djiwa_pay"
-    ? await requireCompleteWalletCustomer()
-    : null;
+  const walletCustomer =
+    data.paymentMethod === "djiwa_pay" ? await requireCompleteWalletCustomer() : null;
   // A signed-in customer's order belongs to the account whatever the payment method, so it shows
   // on every device. The owner comes from the verified session, never from the request body.
   const sessionCustomer = walletCustomer ?? (await optionalSessionCustomer());
@@ -108,7 +101,10 @@ export const createGuestOrderDraftHandler = async ({
       throw new Error("Idempotency key already used");
     if (guest[0]?.paymentMethod !== data.paymentMethod)
       throw new Error("Idempotency key already used for another payment method");
-    if (data.paymentMethod === "djiwa_pay" && previous[0].customerAuthSubject !== walletCustomer?.id)
+    if (
+      data.paymentMethod === "djiwa_pay" &&
+      previous[0].customerAuthSubject !== walletCustomer?.id
+    )
       throw new Error("Pesanan wallet tidak dimiliki oleh member ini");
     if (!guest[0]?.expiresAt || new Date(guest[0].expiresAt).getTime() <= Date.now())
       throw new Error("Guest access token expired");
