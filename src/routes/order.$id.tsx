@@ -79,7 +79,8 @@ function OrderPage() {
     setNotifyReady(readNotifyPreference() && notificationPermission() === "granted");
     let live = true;
     void syncNotifyPreferenceFromServer().then((enabled) => {
-      if (live && enabled !== null) setNotifyReady(enabled && notificationPermission() === "granted");
+      if (live && enabled !== null)
+        setNotifyReady(enabled && notificationPermission() === "granted");
     });
     return () => {
       live = false;
@@ -177,8 +178,8 @@ function OrderPage() {
         if (!auto) setChecking(false);
       }
     }
+    // Account orders verify through the signed-in session; legacy guest orders send their token.
     const token = guestAccessTokenFor(id);
-    if (!token) return false;
     if (!auto) {
       setChecking(true);
       setCheckNote("");

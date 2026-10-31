@@ -38,7 +38,32 @@ const orderSummaryColumns = {
   status: customerOrders.status,
   totalAmount: customerOrders.totalAmount,
   customerAuthSubject: customerOrders.customerAuthSubject,
+  createdAt: customerOrders.createdAt,
+  paymentExpiresAt: customerOrders.paymentExpiresAt,
 };
+
+/** Shape the checkout page consumes; no owner id or contact is returned to the browser. */
+function toClientOrder(
+  row: {
+    id: string;
+    publicOrderCode: string;
+    status: string;
+    totalAmount: string;
+    createdAt: string;
+    paymentExpiresAt: string | null;
+  },
+  packageCode: string,
+) {
+  return {
+    id: row.id,
+    publicOrderCode: row.publicOrderCode,
+    status: row.status,
+    packageCode,
+    amount: Number(row.totalAmount),
+    createdAtMs: Date.parse(row.createdAt),
+    paymentExpiresAtMs: row.paymentExpiresAt ? Date.parse(row.paymentExpiresAt) : null,
+  };
+}
 
 /**
  * Create a new order from a verified Better Auth session.
@@ -73,7 +98,7 @@ export async function createAuthenticatedOrderDraftHandler({
     if (existing.customerAuthSubject !== user.id) {
       throw new Error("Idempotency key ini sudah digunakan akun lain.");
     }
-    return existing;
+    return toClientOrder(existing, data.packageCode);
   }
 
   // Always price against the live provider catalogue; the cached catalogue is only a fallback.
@@ -136,5 +161,5 @@ export async function createAuthenticatedOrderDraftHandler({
     .where(eq(customerOrders.id, id))
     .limit(1);
   if (!row) throw new Error("Pesanan gagal disimpan. Coba lagi.");
-  return row;
+  return toClientOrder(row, data.packageCode);
 }

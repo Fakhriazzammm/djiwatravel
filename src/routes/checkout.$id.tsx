@@ -43,7 +43,10 @@ const loadCheckout = createServerFn({ method: "GET" })
     return {
       pkg: toViewPackage(pkg, !sellability.hidden.has(pkg.packageCode)),
       djiwaPayEnabled:
-        Buffer.byteLength(process.env["DJIWA_TRAVEL_WALLET_PAYMENT_SECRET"]?.trim() ?? "", "utf8") >= 32,
+        Buffer.byteLength(
+          process.env["DJIWA_TRAVEL_WALLET_PAYMENT_SECRET"]?.trim() ?? "",
+          "utf8",
+        ) >= 32,
     };
   });
 
@@ -62,8 +65,18 @@ export const Route = createFileRoute("/checkout/$id")({
 });
 
 const methods = [
-  { id: "qris", label: "QRIS", desc: "Pilihan kanal pembayaran tersedia di halaman Mayar.", icon: QrCode },
-  { id: "djiwa_pay", label: "Bayar langsung pakai saldo Djiwa Pay", desc: "Recommended · Potong saldo Djiwa Pay kamu langsung.", icon: WalletCards },
+  {
+    id: "qris",
+    label: "QRIS",
+    desc: "Pilihan kanal pembayaran tersedia di halaman Mayar.",
+    icon: QrCode,
+  },
+  {
+    id: "djiwa_pay",
+    label: "Bayar langsung pakai saldo Djiwa Pay",
+    desc: "Recommended · Potong saldo Djiwa Pay kamu langsung.",
+    icon: WalletCards,
+  },
 ] as const;
 
 function Checkout() {
@@ -114,9 +127,12 @@ function Checkout() {
     authenticated: Boolean(user),
     profileComplete: memberProfileReady,
   });
+  // Every order belongs to a verified account, so checkout needs a signed-in member with a
+  // complete profile. Guest checkout is retired.
   const canPay =
+    Boolean(user) &&
     valid &&
-    (!user || memberProfileReady) &&
+    memberProfileReady &&
     (method !== "djiwa_pay" || walletAvailability === "available");
 
   const pay = async () => {
@@ -188,13 +204,38 @@ function Checkout() {
       </div>
 
       <h2 className={`${label} mt-6`}>Dikirim ke</h2>
-      {user && !memberProfileReady && (
+      {!user && (
         <div className="mb-3 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-3 text-sm">
-          <p className="font-semibold">Lengkapi profil untuk checkout sebagai member</p>
-          <p className="mt-1 text-muted-foreground">Guest checkout tetap tersedia tanpa akun.</p>
+          <p className="font-semibold">Masuk untuk checkout</p>
+          <p className="mt-1 text-muted-foreground">
+            Pesanan disimpan ke akunmu agar bisa dibuka di perangkat mana pun.
+          </p>
           <Link
             to="/profile"
-            search={{ admin: undefined, returnTo: undefined, calendar: undefined, calendarSync: undefined }}
+            search={{
+              admin: undefined,
+              returnTo: `/checkout/${pkg.packageCode}`,
+              calendar: undefined,
+              calendarSync: undefined,
+            }}
+            className="mt-2 inline-flex font-semibold text-brand-red"
+          >
+            Masuk di Profil →
+          </Link>
+        </div>
+      )}
+      {user && !memberProfileReady && (
+        <div className="mb-3 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-3 text-sm">
+          <p className="font-semibold">Lengkapi profil untuk checkout</p>
+          <p className="mt-1 text-muted-foreground">Email dan nomor WhatsApp wajib diisi.</p>
+          <Link
+            to="/profile"
+            search={{
+              admin: undefined,
+              returnTo: undefined,
+              calendar: undefined,
+              calendarSync: undefined,
+            }}
             className="mt-2 inline-flex font-semibold text-brand-red"
           >
             Lengkapi data di Profil →
@@ -265,7 +306,12 @@ function Checkout() {
               <p>Masuk sebagai member untuk membayar langsung dari saldo Djiwa Pay.</p>
               <Link
                 to="/profile"
-                search={{ admin: undefined, returnTo: undefined, calendar: undefined, calendarSync: undefined }}
+                search={{
+                  admin: undefined,
+                  returnTo: undefined,
+                  calendar: undefined,
+                  calendarSync: undefined,
+                }}
                 className="mt-2 inline-flex font-semibold text-brand-red"
               >
                 Masuk atau buka Profil →
@@ -276,7 +322,12 @@ function Checkout() {
               <p>Lengkapi profil member untuk menggunakan saldo Djiwa Pay.</p>
               <Link
                 to="/profile"
-                search={{ admin: undefined, returnTo: undefined, calendar: undefined, calendarSync: undefined }}
+                search={{
+                  admin: undefined,
+                  returnTo: undefined,
+                  calendar: undefined,
+                  calendarSync: undefined,
+                }}
                 className="mt-2 inline-flex font-semibold text-brand-red"
               >
                 Lengkapi Profil →
@@ -296,15 +347,17 @@ function Checkout() {
         )}
         {!canPay && !submitting && pkg.sellable && (
           <p className="pb-2 text-center text-xs text-muted-foreground">
-            {!valid
-              ? "Isi email dan nomor WhatsApp yang valid untuk melanjutkan."
-              : method === "djiwa_pay"
-                ? walletAvailability === "sign_in"
-                  ? "Masuk ke akun member untuk membayar dengan saldo Djiwa Pay."
-                  : walletAvailability === "complete_profile"
-                    ? "Lengkapi profil untuk membayar dengan saldo Djiwa Pay."
-                    : "Pembayaran saldo Djiwa Pay belum aktif."
-                : "Lengkapi data pengiriman di Profil untuk checkout sebagai member."}
+            {!user
+              ? "Masuk ke akun untuk melanjutkan checkout."
+              : !valid
+                ? "Isi email dan nomor WhatsApp yang valid untuk melanjutkan."
+                : method === "djiwa_pay"
+                  ? walletAvailability === "sign_in"
+                    ? "Masuk ke akun member untuk membayar dengan saldo Djiwa Pay."
+                    : walletAvailability === "complete_profile"
+                      ? "Lengkapi profil untuk membayar dengan saldo Djiwa Pay."
+                      : "Pembayaran saldo Djiwa Pay belum aktif."
+                  : "Lengkapi data pengiriman di Profil untuk melanjutkan checkout."}
           </p>
         )}
         <button

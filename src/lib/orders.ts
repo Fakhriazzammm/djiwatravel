@@ -2,7 +2,8 @@
 import { isGhostGuestOrder } from "./order-cache";
 import { useEffect, useState } from "react";
 import type { EsimProfile } from "./providers";
-import { createGuestOrderDraft, getGuestOrders } from "./guest-orders.fn";
+import { getGuestOrders } from "./guest-orders.fn";
+import { createAuthenticatedOrder } from "./customer-orders.fn";
 import { syncTripPlansFromServer } from "./travel-checklist-store";
 import { claimGuestOrderForMember, getMemberOrders } from "./member-orders.fn";
 import { rebuildMayarInvoice } from "./mayar-gateway";
@@ -208,7 +209,7 @@ export function useOrders() {
   return orders;
 }
 
-type InvoiceInput = Parameters<typeof createMayarInvoice>[0]["data"];
+type InvoiceInput = Omit<Parameters<typeof createMayarInvoice>[0]["data"], "accessToken">;
 
 function isMayarDuplicateError(error: unknown) {
   return error instanceof Error && /duplicate request|tunggu.*menit/i.test(error.message);
@@ -246,8 +247,9 @@ export async function createInvoiceWithRetry(
  * open (the access token already lives in this browser).
  */
 export async function ensurePaymentLink(order: Order): Promise<string | null> {
+  // Account orders pass no token: the server checks the signed-in owner. Legacy guest orders
+  // still send the token saved in this browser.
   const accessToken = guestAccessTokenFor(order.id);
-  if (!accessToken) return null;
   const invoice = await rebuildMayarInvoice({ data: { orderId: order.id, accessToken } });
   patch(order.id, {
     paymentUrl: invoice.paymentUrl,
@@ -263,7 +265,6 @@ type PendingOrder = {
   email: string;
   whatsapp: string;
   method: NewCheckoutPaymentMethod;
-  accessToken: string;
   idempotencyKey: string;
   createdAt: number;
 };
@@ -305,6 +306,8 @@ export async function createOrder(
   } catch {
     pending = undefined;
   }
+  // A retry of the same checkout within 30 minutes reuses its idempotency key, so the server
+  // returns the same order instead of creating a second one.
   const matchingPending =
     pending &&
     Date.now() - pending.createdAt < 30 * 60 * 1000 &&
@@ -314,37 +317,25 @@ export async function createOrder(
     pending.method === o.method
       ? pending
       : undefined;
-  const accessToken =
-    matchingPending?.accessToken ??
-    Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
-      byte.toString(16).padStart(2, "0"),
-    ).join("");
   const idempotencyKey = matchingPending?.idempotencyKey ?? crypto.randomUUID();
   const nextPending: PendingOrder = {
     packageId: o.packageId,
     email: o.email,
     whatsapp: o.whatsapp,
     method: o.method,
-    accessToken,
     idempotencyKey,
     createdAt: Date.now(),
   };
   sessionStorage.setItem("djiwa.pending-order", JSON.stringify(nextPending));
-  const saved = await createGuestOrderDraft({
+  // The server derives the owner from the verified session and the contacts from the profile;
+  // the browser sends only the package, payment method, and idempotency key.
+  const saved = await createAuthenticatedOrder({
     data: {
       packageCode: o.packageId,
-      email: o.email,
-      whatsapp: o.whatsapp,
       paymentMethod: o.method,
       idempotencyKey,
-      accessToken,
     },
   });
-  const access = readGuestAccess();
-  access[saved.id] = accessToken;
-  localStorage.setItem(ACCESS_KEY, JSON.stringify(access));
-  // Once the draft is persisted, the guest access token is the recovery credential. Clear the
-  // draft key now so a later purchase cannot reuse this order's idempotency key.
   sessionStorage.removeItem("djiwa.pending-order");
   let paymentUrl: string | undefined;
   let paymentReference: string | undefined;
@@ -359,14 +350,13 @@ export async function createOrder(
         status = "ORDER_CREATED";
       }
     } catch {
-      // The draft already exists. Keep it retryable; never fall through to Mayar for a wallet order.
+      // The order already exists. Keep it retryable; never fall through to Mayar for a wallet order.
       status = "ORDER_CREATED";
     }
   } else {
     try {
       const invoice = await createInvoiceWithRetry({
         orderId: saved.id,
-        accessToken,
         amountIdr: saved.amount,
         customerName: o.email.split("@")[0] || "Customer",
         customerEmail: o.email,
@@ -377,9 +367,8 @@ export async function createOrder(
       paymentUrl = invoice.paymentUrl;
       paymentReference = invoice.invoiceId;
     } catch {
-      // The order and its guest access token already exist. Keep the customer on its order page,
-      // where ensurePaymentLink() can safely reconcile/rebuild the Mayar invoice without creating a
-      // second order. Do not turn an invoice outage into a false "order was not saved" message.
+      // The order exists. Keep the customer on its order page, where ensurePaymentLink() can
+      // rebuild the Mayar invoice without creating a second order.
       console.warn("[checkout] order saved; payment link needs recovery");
     }
   }
@@ -388,7 +377,6 @@ export async function createOrder(
     publicOrderCode: saved.publicOrderCode,
     packageId: saved.packageCode,
     amount: saved.amount,
-    // Kept locally so the payment link can be rebuilt later without asking the customer again.
     email: o.email,
     whatsapp: o.whatsapp,
     method: o.method,

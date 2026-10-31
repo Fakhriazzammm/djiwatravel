@@ -69,7 +69,12 @@ function buildReceiptDocument(order: Order): ReceiptDocument {
     { label: "Masa aktif", value: order.durationDays ? `${order.durationDays} hari` : "-" },
     {
       label: "Metode",
-      value: order.method === "qris" ? "QRIS" : order.method === "djiwa_pay" ? "Djiwa Pay" : "Virtual Account",
+      value:
+        order.method === "qris"
+          ? "QRIS"
+          : order.method === "djiwa_pay"
+            ? "Djiwa Pay"
+            : "Virtual Account",
     },
     { label: "Tujuan email", value: order.email ?? "-" },
     { label: "WhatsApp", value: order.whatsapp ?? "-" },
@@ -111,7 +116,8 @@ function ReceiptPage() {
   }, []);
 
   const found = orders?.find((x) => x.id === id);
-  const order = found && (hasGuestOrderAccess(id) || found.fromMemberAccount === true) ? found : undefined;
+  const order =
+    found && (hasGuestOrderAccess(id) || found.fromMemberAccount === true) ? found : undefined;
 
   // The receipt and the QR are exactly what a customer needs with no connection, so keep a
   // device-local copy in step with the last authorized read.
@@ -128,7 +134,7 @@ function ReceiptPage() {
     if (order.method === "djiwa_pay") return;
     if (!["ORDER_CREATED", "WAITING_PAYMENT"].includes(order.status)) return;
     const token = guestAccessTokenFor(id);
-    if (!token) return;
+    if (!token && order.fromMemberAccount !== true) return;
     let cancelled = false;
     let attempts = 0;
     let timer: number | undefined;
@@ -152,7 +158,8 @@ function ReceiptPage() {
 
   const retryPaymentCheck = async () => {
     const token = order?.method === "djiwa_pay" ? undefined : guestAccessTokenFor(id);
-    if ((order?.method !== "djiwa_pay" && !token) || checkingPayment) return;
+    const ownedByAccount = order?.fromMemberAccount === true;
+    if ((order?.method !== "djiwa_pay" && !token && !ownedByAccount) || checkingPayment) return;
     setCheckingPayment(true);
     setNote("");
     try {
@@ -169,7 +176,7 @@ function ReceiptPage() {
                 : "Status pembayaran masih diperiksa. Coba lagi sebentar lagi.",
         );
       } else {
-        const result = await verifyMayarPayment({ data: { orderId: id, accessToken: token! } });
+        const result = await verifyMayarPayment({ data: { orderId: id, accessToken: token } });
         await refreshOrdersFromServer();
         setNote(
           result.settled
@@ -282,7 +289,11 @@ function ReceiptPage() {
                 onClick={() => void retryPaymentCheck()}
                 className={`${btnSoft} disabled:opacity-50`}
               >
-                {checkingPayment ? checkingLabel : order.method === "djiwa_pay" ? "Cek Djiwa Pay" : "Cek ulang pembayaran"}
+                {checkingPayment
+                  ? checkingLabel
+                  : order.method === "djiwa_pay"
+                    ? "Cek Djiwa Pay"
+                    : "Cek ulang pembayaran"}
               </button>
             )}
           </div>
@@ -310,7 +321,13 @@ function ReceiptPage() {
         <ReceiptRule />
         <ReceiptLine
           label="Metode"
-          value={order.method === "qris" ? "QRIS" : order.method === "djiwa_pay" ? "Djiwa Pay" : "Virtual Account"}
+          value={
+            order.method === "qris"
+              ? "QRIS"
+              : order.method === "djiwa_pay"
+                ? "Djiwa Pay"
+                : "Virtual Account"
+          }
         />
         {order.email && <ReceiptLine label="Email" value={order.email} />}
         {order.whatsapp && <ReceiptLine label="WhatsApp" value={order.whatsapp} />}

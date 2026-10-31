@@ -3,7 +3,7 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client.server";
 import { customerOrders, guestOrderAccess } from "../../drizzle/schema";
-import { hashGuestAccessToken } from "./guest-order-access.server";
+import { resolveOrderAccess } from "./order-access.server";
 import { fetchMayarTransaction, type MayarTransaction } from "./mayar-gateway";
 import { provisionSettledTravelOrder } from "./mayar-provisioning.server";
 import { readMayarSnapshot, toIsoTimestamp } from "./payment-snapshot";
@@ -13,7 +13,7 @@ import { mayarOrderPaymentAllowed } from "./travel-payment-method";
 
 const verifySchema = z.object({
   orderId: z.string().uuid(),
-  accessToken: z.string().min(32).max(256),
+  accessToken: z.string().min(32).max(256).optional(),
 });
 
 const SETTLED_STATUSES = new Set([
@@ -284,22 +284,8 @@ export const verifyMayarPaymentHandler = async ({
 }: {
   data: ReturnType<typeof verifyMayarPaymentInput>;
 }) => {
-  const accessHash = hashGuestAccessToken(data.accessToken);
-  const rows = await db
-    .select({ order: customerOrders, paymentMethod: guestOrderAccess.paymentMethod })
-    .from(customerOrders)
-    .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
-    .where(
-      and(
-        eq(customerOrders.id, data.orderId),
-        eq(guestOrderAccess.accessTokenHash, accessHash),
-        gt(guestOrderAccess.expiresAt, new Date().toISOString()),
-      ),
-    )
-    .limit(1);
-  const row = rows[0];
-  const order = row?.order;
-  if (!row || !order) throw new Error("Pesanan tidak ditemukan");
+  const row = await resolveOrderAccess({ orderId: data.orderId, accessToken: data.accessToken });
+  const order = row.order;
   if (!mayarOrderPaymentAllowed(row.paymentMethod))
     throw new Error("Pesanan Djiwa Pay tidak dapat diverifikasi melalui Mayar");
 

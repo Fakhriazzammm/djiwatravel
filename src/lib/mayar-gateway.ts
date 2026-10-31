@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { db } from "../db/client.server";
 import { customerOrders, guestOrderAccess } from "../../drizzle/schema";
-import { hashGuestAccessToken } from "./guest-order-access.server";
+import { resolveOrderAccess } from "./order-access.server";
 import { assertPaymentNotExpired } from "./payment-expiry";
 import { mayarOrderPaymentAllowed } from "./travel-payment-method";
 
@@ -17,7 +17,7 @@ const invoicePayloadSchema = z.object({
   redirectUrl: z.string().url(),
 });
 const invoiceSchema = invoicePayloadSchema.extend({
-  accessToken: z.string().min(32).max(256),
+  accessToken: z.string().min(32).max(256).optional(),
   amountIdr: z.number().int().positive(),
   customerName: z.string().trim().min(1).max(120),
   customerEmail: z.string().email(),
@@ -318,22 +318,8 @@ async function createMayarInvoiceForOrder(
 export const createMayarInvoice = createServerFn({ method: "POST" })
   .validator(invoiceSchema)
   .handler(async ({ data }) => {
-    const accessHash = hashGuestAccessToken(data.accessToken);
-    const rows = await db
-      .select({ order: customerOrders, access: guestOrderAccess })
-      .from(customerOrders)
-      .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
-      .where(
-        and(
-          eq(customerOrders.id, data.orderId),
-          eq(guestOrderAccess.accessTokenHash, accessHash),
-          gt(guestOrderAccess.expiresAt, new Date().toISOString()),
-        ),
-      )
-      .limit(1);
-    const row = rows[0];
-    if (!row) throw new Error("Pesanan tidak ditemukan");
-    if (!mayarOrderPaymentAllowed(row.access.paymentMethod))
+    const row = await resolveOrderAccess({ orderId: data.orderId, accessToken: data.accessToken });
+    if (!mayarOrderPaymentAllowed(row.paymentMethod))
       throw new Error("Pesanan Djiwa Pay tidak menggunakan invoice Mayar");
     const expectedAmount = Number(row.order.totalAmount);
     if (!Number.isSafeInteger(expectedAmount) || expectedAmount !== data.amountIdr)
@@ -360,7 +346,13 @@ export const createMayarInvoice = createServerFn({ method: "POST" })
       row.order.priceSnapshot && typeof row.order.priceSnapshot === "object"
         ? (row.order.priceSnapshot as Record<string, unknown>)
         : {};
-    return createMayarInvoiceForOrder(data.orderId, expectedAmount, data, currentSnapshot);
+    // Contacts come from the server-side record, not the request body.
+    return createMayarInvoiceForOrder(
+      data.orderId,
+      expectedAmount,
+      { ...data, customerEmail: row.email, customerMobile: row.whatsapp },
+      currentSnapshot,
+    );
   });
 
 /**
@@ -370,24 +362,12 @@ export const createMayarInvoice = createServerFn({ method: "POST" })
  * orders that were stranded while Mayar was rejecting our payload.
  */
 export const rebuildMayarInvoice = createServerFn({ method: "POST" })
-  .validator(z.object({ orderId: z.string().uuid(), accessToken: z.string().min(32).max(256) }))
+  .validator(
+    z.object({ orderId: z.string().uuid(), accessToken: z.string().min(32).max(256).optional() }),
+  )
   .handler(async ({ data }) => {
-    const accessHash = hashGuestAccessToken(data.accessToken);
-    const rows = await db
-      .select({ order: customerOrders, access: guestOrderAccess })
-      .from(customerOrders)
-      .innerJoin(guestOrderAccess, eq(guestOrderAccess.orderId, customerOrders.id))
-      .where(
-        and(
-          eq(customerOrders.id, data.orderId),
-          eq(guestOrderAccess.accessTokenHash, accessHash),
-          gt(guestOrderAccess.expiresAt, new Date().toISOString()),
-        ),
-      )
-      .limit(1);
-    const row = rows[0];
-    if (!row) throw new Error("Pesanan tidak ditemukan");
-    if (!mayarOrderPaymentAllowed(row.access.paymentMethod))
+    const row = await resolveOrderAccess({ orderId: data.orderId, accessToken: data.accessToken });
+    if (!mayarOrderPaymentAllowed(row.paymentMethod))
       throw new Error("Pesanan Djiwa Pay tidak menggunakan invoice Mayar");
     assertPaymentNotExpired(row.order.status, row.order.paymentExpiresAt);
     const orderSnapshot =
@@ -405,8 +385,8 @@ export const rebuildMayarInvoice = createServerFn({ method: "POST" })
         paymentUrl: stored["paymentUrl"],
       };
     }
-    const email = (row.access.email ?? "").trim();
-    const whatsapp = (row.access.whatsapp ?? "").trim();
+    const email = (row.email ?? "").trim();
+    const whatsapp = (row.whatsapp ?? "").trim();
     if (!email || !whatsapp) throw new Error("Kontak pesanan tidak lengkap");
     assertPaymentNotExpired(row.order.status, row.order.paymentExpiresAt);
     const amountIdr = Number(row.order.totalAmount);

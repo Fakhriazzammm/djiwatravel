@@ -50,7 +50,7 @@ async function claimWalletOrder(orderId: string, authSubject: string) {
              o.customer_auth_subject AS "customerAuthSubject",
              access.payment_method AS "paymentMethod"
         FROM public.customer_orders AS o
-        JOIN public.guest_order_access AS access ON access.order_id = o.id
+        JOIN public.customer_order_payment_details AS access ON access.order_id = o.id
        WHERE o.id = ${orderId}::uuid
        FOR UPDATE OF o
     `);
@@ -58,7 +58,11 @@ async function claimWalletOrder(orderId: string, authSubject: string) {
     if (!order || !djiwaPayOrderOwnedBy(order, authSubject)) {
       throw new Error("Pesanan Djiwa Pay tidak ditemukan atau bukan milik akun ini");
     }
-    if (order.status === "PAYMENT_CONFIRMED" && order.payment_provider === "djiwa_pay" && order.payment_reference) {
+    if (
+      order.status === "PAYMENT_CONFIRMED" &&
+      order.payment_provider === "djiwa_pay" &&
+      order.payment_reference
+    ) {
       return { status: "paid" as const, transactionId: order.payment_reference };
     }
     if (order.payment_provider && order.payment_provider !== "djiwa_pay") {
@@ -70,7 +74,8 @@ async function claimWalletOrder(orderId: string, authSubject: string) {
     assertPaymentNotExpired(order.status, order.payment_expires_at);
 
     const amount = Number(order.total_amount);
-    if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error("Nominal pesanan tidak valid");
+    if (!Number.isSafeInteger(amount) || amount <= 0)
+      throw new Error("Nominal pesanan tidak valid");
     const idempotencyKey = djiwaTravelWalletIdempotencyKey(orderId);
 
     await tx.execute(sql`
@@ -118,14 +123,18 @@ async function claimWalletOrder(orderId: string, authSubject: string) {
   });
 }
 
-async function recordConfirmedWalletPayment(orderId: string, authSubject: string, transactionId: string) {
+async function recordConfirmedWalletPayment(
+  orderId: string,
+  authSubject: string,
+  transactionId: string,
+) {
   await db.transaction(async (tx) => {
     const orderResult = await tx.execute(sql`
       SELECT o.status, o.total_amount, o.payment_provider, o.payment_reference,
              o.customer_auth_subject AS "customerAuthSubject",
              access.payment_method AS "paymentMethod"
         FROM public.customer_orders AS o
-        JOIN public.guest_order_access AS access ON access.order_id = o.id
+        JOIN public.customer_order_payment_details AS access ON access.order_id = o.id
        WHERE o.id = ${orderId}::uuid
        FOR UPDATE OF o
     `);
@@ -134,7 +143,8 @@ async function recordConfirmedWalletPayment(orderId: string, authSubject: string
       throw new Error("Djiwa Pay order ownership changed");
     }
     if (order.status === "PAYMENT_CONFIRMED" && order.payment_provider === "djiwa_pay") {
-      if (order.payment_reference !== transactionId) throw new Error("Djiwa Pay transaction reference mismatch");
+      if (order.payment_reference !== transactionId)
+        throw new Error("Djiwa Pay transaction reference mismatch");
       return;
     }
     if (!["ORDER_CREATED", "PAYMENT_PENDING"].includes(order.status) || order.payment_provider) {
@@ -148,7 +158,11 @@ async function recordConfirmedWalletPayment(orderId: string, authSubject: string
        FOR UPDATE
     `);
     const intent = intentResult.rows[0] as WalletIntentRow | undefined;
-    if (!intent || Number(intent.amount) !== Number(order.total_amount) || intent.currency_code !== "IDR") {
+    if (
+      !intent ||
+      Number(intent.amount) !== Number(order.total_amount) ||
+      intent.currency_code !== "IDR"
+    ) {
       throw new Error("Djiwa Pay intent amount mismatch");
     }
 
@@ -170,7 +184,11 @@ async function recordConfirmedWalletPayment(orderId: string, authSubject: string
   });
 }
 
-async function recordWalletOutcome(orderId: string, authSubject: string, outcome: DjiwaPayChargeOutcome) {
+async function recordWalletOutcome(
+  orderId: string,
+  authSubject: string,
+  outcome: DjiwaPayChargeOutcome,
+) {
   if (outcome.kind === "paid") return;
   if (outcome.kind === "pending") {
     await db.transaction(async (tx) => {
@@ -251,7 +269,8 @@ export async function chargeTravelOrderWithDjiwaPayHandler({
   }
 
   const secret = process.env["DJIWA_TRAVEL_WALLET_PAYMENT_SECRET"]?.trim() ?? "";
-  if (Buffer.byteLength(secret, "utf8") < 32) throw new Error("Pembayaran saldo Djiwa Pay belum dikonfigurasi");
+  if (Buffer.byteLength(secret, "utf8") < 32)
+    throw new Error("Pembayaran saldo Djiwa Pay belum dikonfigurasi");
 
   const claim = await claimWalletOrder(orderId, user.id);
   if (claim.status === "paid") return { status: "paid", transactionId: claim.transactionId };
