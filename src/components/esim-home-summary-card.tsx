@@ -456,10 +456,13 @@ export function EsimHomeSummaryCard({
   }
 
   const activeOrderId = displayedOrder?.id ?? "";
-  const status = displayedOrder
-    ? effectiveOrderStatus(displayedOrder.status, displayedOrder.expiresAt, now)
-    : "ORDER_CREATED";
-  const art = destinationArt(orderArtCode(displayedOrder));
+  // With only finished orders (history) nothing is "current": describe the newest one by its own
+  // terminal status instead of inventing a pending payment.
+  const statusOrder = displayedOrder ?? sortEsimHomeOrders(orders, now, lowPercent)[0];
+  const status = statusOrder
+    ? effectiveOrderStatus(statusOrder.status, statusOrder.expiresAt, now)
+    : "EXPIRED";
+  const art = destinationArt(orderArtCode(statusOrder));
   const artSrc = stateArt(summary.kind) ?? art.src;
   const secondaryAction =
     summary.secondaryAction &&

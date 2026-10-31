@@ -321,4 +321,13 @@ describe("EsimHomeSummaryCard", () => {
     fireEvent.click(chip);
     expect(screen.getByTestId("esim-home-summary")).toHaveAttribute("data-state", "empty");
   });
+
+  it("labels a history-only card as expired, never as a pending payment", async () => {
+    renderCard([order({ status: "INSTALLED", expiresAt: NOW - 86_400_000 })]);
+    await waitFor(() =>
+      expect(screen.getByTestId("esim-home-summary")).toHaveAttribute("data-state", "history"),
+    );
+    expect(screen.queryByText("Menunggu bayar")).not.toBeInTheDocument();
+    expect(screen.getByTestId("esim-home-summary-badge")).toHaveTextContent("Sudah kedaluwarsa");
+  });
 });
