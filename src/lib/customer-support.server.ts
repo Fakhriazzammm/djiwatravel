@@ -65,7 +65,7 @@ const safeMessage = (r: SupportMessageRow) => ({
 });
 
 export async function listCustomerCases() {
-  const user = await getAuthenticatedUser();
+    const user = await getAuthenticatedUser();
   const cases = await pool.query(
     "select id, public_case_code, category, subject, description, status, priority, order_id, created_at, updated_at from support_cases where customer_auth_subject = $1 order by updated_at desc",
     [user.id],
@@ -74,25 +74,6 @@ export async function listCustomerCases() {
     cases: cases.rows.map(safeCase),
     limitation: "Order binding is unavailable in this runtime; order_id is rejected.",
   };
-}
-
-export async function getCustomerCaseThread(input: unknown) {
-  const caseId = z.string().uuid().parse(input);
-  const user = await getAuthenticatedUser();
-  const found = await pool.query(
-    "select id from support_cases where id = $1 and customer_auth_subject = $2",
-    [caseId, user.id],
-  );
-  if (!found.rows[0]) throw new Error("Support case tidak ditemukan");
-  const messages = await pool.query(
-    `select m.id, m.case_id, m.author_type, m.body, m.created_at
-       from support_case_messages m join support_cases c on c.id = m.case_id
-      where m.case_id = $1 and c.customer_auth_subject = $2
-        and m.author_type in ('customer', 'admin')
-      order by m.created_at asc, m.id asc`,
-    [caseId, user.id],
-  );
-  return { messages: messages.rows.map(safeMessage) };
 }
 
 export async function mutateCustomerSupport(input: unknown) {
@@ -149,10 +130,7 @@ export async function mutateCustomerSupport(input: unknown) {
       "insert into support_case_messages (case_id, author_type, author_subject, body, client_message_id, request_fingerprint) values ($1, 'customer', $2, $3, $4, $5) returning *",
       [data.case_id, user.id, data.body, data.client_message_id ?? null, fp],
     );
-    await client.query(
-      "update support_cases set status = 'open', updated_at = now() where id = $1",
-      [data.case_id],
-    );
+    await client.query("update support_cases set updated_at = now() where id = $1", [data.case_id]);
     await client.query("commit");
     return { message: safeMessage(result.rows[0]), replayed: false };
   } catch (e) {

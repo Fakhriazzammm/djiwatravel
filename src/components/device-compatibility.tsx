@@ -1,17 +1,9 @@
 import { useState } from "react";
 import { CheckCircle2, Info } from "lucide-react";
 
-const deviceHelp = {
-  iPhone:
-    "Buka Pengaturan > Seluler > Tambah eSIM. Periksa juga Pengaturan > Umum > Mengenai > Kunci Operator; iPhone yang tidak terkunci menampilkan Tidak ada batasan SIM.",
-  Samsung: "Buka Pengaturan > Koneksi > Manajer SIM > Tambah eSIM.",
-  Pixel: "Buka Setelan > Jaringan & internet > SIM > Tambahkan SIM > Siapkan eSIM.",
-} as const;
-
 export function DeviceCompatibility() {
   const [open, setOpen] = useState(false);
   const [checks, setChecks] = useState({ unlocked: false, esim: false });
-  const [device, setDevice] = useState<keyof typeof deviceHelp>("iPhone");
   return (
     <section className="mt-6 rounded-2xl bg-surface p-4" aria-labelledby="compatibility-title">
       <div className="flex items-start gap-3">
@@ -27,38 +19,13 @@ export function DeviceCompatibility() {
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          aria-expanded={open}
-          aria-controls="device-compatibility-details"
           className="tap rounded-lg px-2 py-1 text-xs font-semibold text-brand-red"
         >
           {open ? "Tutup" : "Cek"}
         </button>
       </div>
       {open && (
-        <div
-          id="device-compatibility-details"
-          className="mt-3 space-y-3 border-t border-border pt-3 text-sm"
-        >
-          <p className="font-medium">Cara memeriksa perangkat</p>
-          <div className="flex flex-wrap gap-2" aria-label="Jenis perangkat">
-            {(Object.keys(deviceHelp) as (keyof typeof deviceHelp)[]).map((name) => (
-              <button
-                key={name}
-                type="button"
-                aria-pressed={device === name}
-                onClick={() => setDevice(name)}
-                className={`min-h-11 rounded-xl px-3 text-sm font-medium ${device === name ? "bg-brand-red text-white" : "bg-secondary"}`}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-          <p>{deviceHelp[device]}</p>
-          <p className="text-xs text-muted-foreground">
-            Nama menu dapat berbeda menurut model, wilayah, dan versi sistem. Adanya menu eSIM saja
-            belum memastikan paket ini didukung. Jika ragu atau untuk perangkat lain, konfirmasi ke
-            produsen dan operator sebelum membeli.
-          </p>
+        <div className="mt-3 space-y-2 border-t border-border pt-3 text-sm">
           <label className="flex gap-2">
             <input
               type="checkbox"
@@ -75,10 +42,13 @@ export function DeviceCompatibility() {
             />{" "}
             Perangkat saya tidak terkunci operator.
           </label>
+          <p className="text-xs text-muted-foreground">
+            Cek menu Settings &gt; Cellular/Mobile Data &gt; Add eSIM. Jika ragu, konfirmasi ke
+            produsen/operator sebelum membeli.
+          </p>
           {checks.esim && checks.unlocked && (
             <p className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
-              <CheckCircle2 className="size-4 shrink-0" /> Checklist mandiri terisi; kami belum
-              memverifikasi kompatibilitas perangkatmu.
+              <CheckCircle2 className="size-4" /> Checklist terpenuhi (advisory).
             </p>
           )}
         </div>

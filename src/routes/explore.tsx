@@ -3,7 +3,6 @@ import { Search, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Page } from "@/components/shell";
-import { SkeletonCards } from "@/components/route-loading";
 import { destinations, search } from "@/lib/catalog";
 import {
   ServiceCategoryGrid,
@@ -41,11 +40,9 @@ export const Route = createFileRoute("/explore")({
   pendingComponent: () => (
     <Page>
       <h1 className="large-title pt-4">Explore</h1>
-      <div role="status" aria-busy="true" className="mt-6 space-y-5">
-        <span className="sr-only">Memuat katalog…</span>
-        <div className="h-12 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
-        <SkeletonCards />
-      </div>
+      <p className="mt-6 text-sm text-muted-foreground" role="status">
+        Memuat katalog…
+      </p>
     </Page>
   ),
   component: Explore,

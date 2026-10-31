@@ -3,7 +3,6 @@ import { useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { TabBar } from "@/components/shell";
-import { AdminPendingScreen } from "@/components/admin-loading";
 import { easeIos, springIos } from "@/lib/motion";
 
 /**
@@ -110,12 +109,20 @@ export type RoutePendingScreenProps = {
   chrome?: ReactNode;
 };
 
-/** A calm page-shaped placeholder while the route loader resolves. */
+/**
+ * Pending state: the spinner and its label sit in the middle of the screen.
+ *
+ * Deliberately just the indicator — no skeleton grid under it. Anything placed below
+ * grows the element past the viewport, which drags a "centred" indicator off centre
+ * (measured: 487px on a 757px viewport). Routes that want a shape-matching skeleton can
+ * still render `SkeletonCards` inside their own pending component.
+ */
 export function RoutePendingScreen({
   label = "Memuat data…",
   hint = "Menyiapkan paket internet untukmu.",
   chrome = null,
 }: RoutePendingScreenProps) {
+  const reduce = useReducedMotion();
   return (
     <>
       <main
@@ -123,36 +130,11 @@ export function RoutePendingScreen({
         aria-live="polite"
         aria-busy="true"
         data-testid="route-pending"
-        className="mx-auto min-h-[100dvh] w-full max-w-md px-4 pb-24 pt-6 safe-top sm:max-w-2xl"
+        className="mx-auto flex min-h-[100dvh] w-full min-w-0 max-w-md flex-col items-center justify-center gap-3 px-4 pb-4 text-center safe-top sm:max-w-2xl"
       >
-        <span className="sr-only">{label}</span>
-        <span className="sr-only">{hint}</span>
-        <div aria-hidden="true" className="space-y-5">
-          <div className="h-7 w-40 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
-          <div className="h-12 w-full animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
-          <div className="space-y-3 rounded-[28px] border border-border/60 bg-surface p-4">
-            <div className="h-3.5 w-24 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
-            <div className="h-6 w-48 max-w-full animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
-            <div className="h-3.5 w-40 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
-            <div className="flex gap-2 pt-2">
-              {[0, 1, 2].map((item) => (
-                <div
-                  key={item}
-                  className="h-11 w-24 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none"
-                />
-              ))}
-            </div>
-          </div>
-          <div className="h-5 w-36 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
-          <div className="grid grid-cols-2 gap-3">
-            {[0, 1].map((item) => (
-              <div
-                key={item}
-                className="h-36 animate-pulse rounded-[24px] bg-secondary motion-reduce:animate-none"
-              />
-            ))}
-          </div>
-        </div>
+        <PendingSpinner reduce={!!reduce} className="size-16" />
+        <p className="text-[15px] font-semibold text-foreground">{label}</p>
+        <p className="text-[13px] text-muted-foreground">{hint}</p>
       </main>
       {chrome}
     </>
@@ -168,5 +150,5 @@ export function DefaultRoutePending() {
   const isAdmin = useRouterState({
     select: (state) => state.location.pathname.startsWith("/admin"),
   });
-  return isAdmin ? <AdminPendingScreen /> : <RoutePendingScreen chrome={<TabBar />} />;
+  return <RoutePendingScreen chrome={isAdmin ? null : <TabBar />} />;
 }

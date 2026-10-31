@@ -1,4 +1,3 @@
-import { OrderLoading } from "@/components/order-loading";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, FileText, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -70,12 +69,7 @@ function buildReceiptDocument(order: Order): ReceiptDocument {
     { label: "Masa aktif", value: order.durationDays ? `${order.durationDays} hari` : "-" },
     {
       label: "Metode",
-      value:
-        order.method === "qris"
-          ? "QRIS"
-          : order.method === "djiwa_pay"
-            ? "Djiwa Pay"
-            : "Virtual Account",
+      value: order.method === "qris" ? "QRIS" : order.method === "djiwa_pay" ? "Djiwa Pay" : "Virtual Account",
     },
     { label: "Tujuan email", value: order.email ?? "-" },
     { label: "WhatsApp", value: order.whatsapp ?? "-" },
@@ -117,8 +111,7 @@ function ReceiptPage() {
   }, []);
 
   const found = orders?.find((x) => x.id === id);
-  const order =
-    found && (hasGuestOrderAccess(id) || found.fromMemberAccount === true) ? found : undefined;
+  const order = found && (hasGuestOrderAccess(id) || found.fromMemberAccount === true) ? found : undefined;
 
   // The receipt and the QR are exactly what a customer needs with no connection, so keep a
   // device-local copy in step with the last authorized read.
@@ -194,7 +187,7 @@ function ReceiptPage() {
   if (!orders)
     return (
       <Page>
-        <OrderLoading label="Memuat struk…" />
+        <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
       </Page>
     );
 
@@ -289,11 +282,7 @@ function ReceiptPage() {
                 onClick={() => void retryPaymentCheck()}
                 className={`${btnSoft} disabled:opacity-50`}
               >
-                {checkingPayment
-                  ? checkingLabel
-                  : order.method === "djiwa_pay"
-                    ? "Cek Djiwa Pay"
-                    : "Cek ulang pembayaran"}
+                {checkingPayment ? checkingLabel : order.method === "djiwa_pay" ? "Cek Djiwa Pay" : "Cek ulang pembayaran"}
               </button>
             )}
           </div>
@@ -321,13 +310,7 @@ function ReceiptPage() {
         <ReceiptRule />
         <ReceiptLine
           label="Metode"
-          value={
-            order.method === "qris"
-              ? "QRIS"
-              : order.method === "djiwa_pay"
-                ? "Djiwa Pay"
-                : "Virtual Account"
-          }
+          value={order.method === "qris" ? "QRIS" : order.method === "djiwa_pay" ? "Djiwa Pay" : "Virtual Account"}
         />
         {order.email && <ReceiptLine label="Email" value={order.email} />}
         {order.whatsapp && <ReceiptLine label="WhatsApp" value={order.whatsapp} />}

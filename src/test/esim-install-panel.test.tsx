@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EsimInstallPanel } from "@/components/esim-install";
 
@@ -33,14 +33,5 @@ describe("EsimInstallPanel", () => {
     render(<EsimInstallPanel esim={esim} />);
     expect(screen.queryByRole("link", { name: /Pasang langsung/ })).not.toBeInTheDocument();
     expect(screen.getByText(/Scan QR ini/)).toBeInTheDocument();
-  });
-
-  it("offers device-specific guidance and safe troubleshooting", () => {
-    render(<EsimInstallPanel esim={esim} withGuide />);
-    fireEvent.click(screen.getByRole("button", { name: "Pixel" }));
-    expect(screen.getByText(/Jaringan & internet/i)).toBeInTheDocument();
-    expect(screen.getByText(/masa aktif.*tergantung paket/i)).toBeInTheDocument();
-    expect(screen.getByText(/jangan hapus eSIM/i)).toBeInTheDocument();
-    expect(screen.getByText(/tidak ada internet/i)).toBeInTheDocument();
   });
 });

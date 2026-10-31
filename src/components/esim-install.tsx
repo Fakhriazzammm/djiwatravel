@@ -102,16 +102,20 @@ export function ManualDetails({ esim, iccid }: { esim: EsimProfile; iccid?: bool
 
 const guides = {
   iPhone: [
-    "Buka Pengaturan > Seluler > Tambah eSIM.",
-    "Pilih Gunakan Kode QR dan pindai QR, atau pilih masukkan detail secara manual jika tersedia.",
+    "Buka Settings",
+    "Pilih Cellular / Mobile Data",
+    "Ketuk Add eSIM",
+    "Pilih Use QR Code, lalu scan",
+    "Aktifkan eSIM & beri label “Djiwa”",
+    "Sampai di tujuan: nyalakan Data Roaming untuk eSIM ini",
   ],
-  Samsung: [
-    "Buka Pengaturan > Koneksi > Manajer SIM > Tambah eSIM.",
-    "Pilih pindai kode QR, atau masukkan detail secara manual jika tersedia.",
-  ],
-  Pixel: [
-    "Buka Setelan > Jaringan & internet > SIM > Tambahkan SIM > Siapkan eSIM.",
-    "Ikuti petunjuk untuk memindai QR atau masukkan detail secara manual jika tersedia.",
+  Android: [
+    "Buka Settings",
+    "Pilih Connections / Network & Internet",
+    "Ketuk SIM Manager → Add eSIM",
+    "Scan QR code",
+    "Aktifkan eSIM",
+    "Sampai di tujuan: nyalakan Data Roaming untuk eSIM ini",
   ],
 };
 
@@ -119,17 +123,12 @@ export function InstallGuide() {
   const [os, setOs] = useState<keyof typeof guides>("iPhone");
   return (
     <div>
-      <div
-        className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1"
-        aria-label="Panduan perangkat"
-      >
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
         {(Object.keys(guides) as (keyof typeof guides)[]).map((k) => (
           <button
             key={k}
-            type="button"
             onClick={() => setOs(k)}
-            aria-pressed={os === k}
-            className={`min-h-11 rounded-lg py-2 text-sm font-medium ${os === k ? "bg-surface shadow-sm" : "text-muted-foreground"}`}
+            className={`rounded-lg py-2 text-sm font-medium ${os === k ? "bg-surface shadow-sm" : "text-muted-foreground"}`}
           >
             {k}
           </button>
@@ -146,28 +145,9 @@ export function InstallGuide() {
         ))}
       </ol>
       <p className="mt-4 text-sm text-muted-foreground">
-        Hubungkan perangkat ke Wi-Fi saat memasang. Nama menu dapat berbeda menurut model dan versi
-        sistem. Pemasangan dan awal masa aktif adalah hal berbeda; kapan masa aktif dimulai
-        tergantung paket. Periksa ketentuan paket atau tanyakan support sebelum memasang.
+        Pasang eSIM sebelum berangkat (butuh Wi-Fi). Data Roaming cukup dinyalakan saat sudah
+        sampai.
       </p>
-      <section className="mt-5 space-y-2 text-sm" aria-labelledby="esim-troubleshooting-title">
-        <h3 id="esim-troubleshooting-title" className="font-semibold">
-          Butuh bantuan?
-        </h3>
-        <p>
-          <strong>QR tidak terbaca:</strong> coba tampilkan QR di perangkat lain atau masukkan
-          detail manual jika ponsel mendukungnya.
-        </p>
-        <p>
-          <strong>Sudah terpasang tetapi tidak ada internet:</strong> pastikan berada di wilayah
-          cakupan, pilih eSIM untuk data seluler, dan aktifkan roaming data pada eSIM tersebut
-          sesuai petunjuk paket.
-        </p>
-        <p>
-          Jangan hapus eSIM atau mencoba memasang ulang sebelum menghubungi support; kode mungkin
-          tidak dapat digunakan kembali.
-        </p>
-      </section>
     </div>
   );
 }

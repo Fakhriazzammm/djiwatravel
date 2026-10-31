@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, MessageCircle, RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Page } from "@/components/shell";
-import { Skeleton } from "@/components/ui/skeleton";
 
 type SupportCase = {
   id: string;
@@ -16,12 +15,6 @@ type SupportCase = {
   updated_at: string;
 };
 type SupportData = { cases: SupportCase[] };
-type SupportMessage = {
-  id: string;
-  author_type: "customer" | "admin";
-  body: string;
-  created_at: string;
-};
 const categories = ["Pesanan", "eSIM", "Pembayaran", "Akun", "Lainnya"];
 
 async function readJson(response: Response): Promise<unknown> {
@@ -71,20 +64,12 @@ function Support() {
   const [form, setForm] = useState({ category: categories[0], subject: "", description: "" });
   const [reply, setReply] = useState("");
   const [saving, setSaving] = useState(false);
-  const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [threadLoading, setThreadLoading] = useState(false);
-  const [threadError, setThreadError] = useState<string | null>(null);
-  const selectedId = selected?.id;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const cases = await getCases();
-      setData(cases);
-      setSelected((current) =>
-        current ? (cases.cases.find((item) => item.id === current.id) ?? null) : null,
-      );
+      setData(await getCases());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Kasus bantuan belum dapat dimuat.");
     } finally {
@@ -94,39 +79,6 @@ function Support() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const loadThread = useCallback(async (caseId: string, signal?: AbortSignal) => {
-    setThreadLoading(true);
-    setThreadError(null);
-    try {
-      const response = await fetch(`/api/customer-support?case_id=${encodeURIComponent(caseId)}`, {
-        headers: { Accept: "application/json" },
-        ...(signal ? { signal } : {}),
-      });
-      const payload = await readJson(response);
-      if (
-        !response.ok ||
-        !payload ||
-        typeof payload !== "object" ||
-        !Array.isArray((payload as { messages?: unknown }).messages)
-      )
-        throw new Error("Percakapan belum dapat dimuat. Coba lagi.");
-      if (!signal?.aborted) setMessages((payload as { messages: SupportMessage[] }).messages);
-    } catch (cause) {
-      if (!signal?.aborted)
-        setThreadError(cause instanceof Error ? cause.message : "Percakapan belum dapat dimuat.");
-    } finally {
-      if (!signal?.aborted) setThreadLoading(false);
-    }
-  }, []);
-  useEffect(() => {
-    setMessages([]);
-    setThreadError(null);
-    if (!selectedId) return;
-    const controller = new AbortController();
-    void loadThread(selectedId, controller.signal);
-    return () => controller.abort();
-  }, [selectedId, loadThread]);
 
   async function createCase(event: FormEvent) {
     event.preventDefault();
@@ -168,7 +120,7 @@ function Support() {
       const payload = await readJson(response);
       if (!response.ok) throw new Error(messageFrom(payload, "Balasan belum terkirim. Coba lagi."));
       setReply("");
-      await Promise.all([load(), loadThread(selected.id)]);
+      await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Balasan belum terkirim. Coba lagi.");
     } finally {
@@ -226,42 +178,6 @@ function Support() {
               {selected.description}
             </p>
           </div>
-          <section className="mt-4" aria-label="Percakapan bantuan">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Percakapan</h3>
-              <button
-                type="button"
-                disabled={threadLoading}
-                onClick={() => void loadThread(selected.id)}
-                className="min-h-11 text-sm font-semibold text-brand-red"
-              >
-                Muat ulang
-              </button>
-            </div>
-            {threadLoading && (
-              <p role="status" className="text-sm text-muted-foreground">
-                Memuat percakapan…
-              </p>
-            )}
-            {threadError && (
-              <p role="alert" className="text-sm text-destructive">
-                {threadError}
-              </p>
-            )}
-            {!threadLoading && !threadError && messages.length === 0 && (
-              <p className="text-sm text-muted-foreground">Belum ada pesan.</p>
-            )}
-            <ol className="space-y-2">
-              {messages.map((message) => (
-                <li key={message.id} className="rounded-2xl bg-secondary p-4 text-sm">
-                  <p className="font-semibold">
-                    {message.author_type === "admin" ? "Tim Djiwa Travel" : "Kamu"}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap">{message.body}</p>
-                </li>
-              ))}
-            </ol>
-          </section>
           <form onSubmit={sendReply} className="mt-4 space-y-3">
             <label className="block text-sm font-semibold" htmlFor="reply">
               Balas kasus
@@ -289,23 +205,9 @@ function Support() {
           <section className="mt-3">
             <h2 className="text-lg font-bold">Kasusmu</h2>
             {loading ? (
-              <div role="status" aria-live="polite" aria-busy="true" className="mt-3">
-                <span className="sr-only">Memuat kasus…</span>
-                <div
-                  aria-hidden="true"
-                  className="divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4"
-                >
-                  {Array.from({ length: 3 }, (_, index) => (
-                    <div key={index} className="space-y-3 py-4">
-                      <div className="flex justify-between gap-3">
-                        <Skeleton className="h-4 w-2/3 motion-reduce:animate-none" />
-                        <Skeleton className="h-3 w-12 motion-reduce:animate-none" />
-                      </div>
-                      <Skeleton className="h-3 w-4/5 motion-reduce:animate-none" />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <p role="status" className="py-8 text-center text-sm text-muted-foreground">
+                Memuat kasus…
+              </p>
             ) : data?.cases.length ? (
               <div className="mt-3 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4">
                 {data.cases.map((item) => (
@@ -325,7 +227,7 @@ function Support() {
                   </button>
                 ))}
               </div>
-            ) : data ? (
+            ) : (
               <div className="mt-3 rounded-2xl border border-dashed p-6 text-center">
                 <MessageCircle
                   className="mx-auto size-8 text-muted-foreground"
@@ -336,7 +238,7 @@ function Support() {
                   Buat kasus baru jika kamu butuh bantuan.
                 </p>
               </div>
-            ) : null}
+            )}
           </section>
           <form onSubmit={createCase} className="mt-7 space-y-3">
             <h2 className="text-lg font-bold">Buat kasus baru</h2>

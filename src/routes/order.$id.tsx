@@ -1,4 +1,3 @@
-import { OrderLoading } from "@/components/order-loading";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Bell,
@@ -80,8 +79,7 @@ function OrderPage() {
     setNotifyReady(readNotifyPreference() && notificationPermission() === "granted");
     let live = true;
     void syncNotifyPreferenceFromServer().then((enabled) => {
-      if (live && enabled !== null)
-        setNotifyReady(enabled && notificationPermission() === "granted");
+      if (live && enabled !== null) setNotifyReady(enabled && notificationPermission() === "granted");
     });
     return () => {
       live = false;
@@ -256,7 +254,7 @@ function OrderPage() {
   if (!orders)
     return (
       <Page>
-        <OrderLoading label="Memuat pesanan…" />
+        <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
       </Page>
     );
   const found = orders.find((x) => x.id === id);

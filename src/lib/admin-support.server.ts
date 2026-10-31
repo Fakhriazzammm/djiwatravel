@@ -17,27 +17,6 @@ const inputSchema = z.discriminatedUnion("action", [
 ]);
 
 export const adminSupportInput = (data: unknown) => inputSchema.parse(data);
-export const adminSupportThreadInput = (data: unknown) =>
-  z.object({ caseId: z.string().uuid() }).parse(data);
-
-export async function getAdminSupportThreadHandler({ data }: { data: unknown }) {
-  const { caseId } = adminSupportThreadInput(data);
-  await requireAdmin();
-  const result = await pool.query(
-    `select id, author_type, body, created_at from support_case_messages
-      where case_id = $1 and author_type in ('customer', 'admin')
-      order by created_at asc, id asc`,
-    [caseId],
-  );
-  return {
-    messages: result.rows.map((row) => ({
-      id: String(row.id),
-      authorType: String(row.author_type),
-      body: String(row.body),
-      createdAt: String(row.created_at),
-    })),
-  };
-}
 
 export async function mutateAdminSupportHandler({ data }: { data: unknown }) {
   const input = adminSupportInput(data);
@@ -55,10 +34,7 @@ export async function mutateAdminSupportHandler({ data }: { data: unknown }) {
         "insert into support_case_messages (case_id, author_type, author_subject, body, request_fingerprint) values ($1, 'admin', $2, $3, encode(digest($3, 'sha256'), 'hex'))",
         [input.caseId, actor, input.body],
       );
-      await client.query(
-        "update support_cases set status = 'pending', updated_at = now() where id = $1",
-        [input.caseId],
-      );
+      await client.query("update support_cases set status = 'pending', updated_at = now() where id = $1", [input.caseId]);
     } else {
       await client.query("update support_cases set status = $2, updated_at = now() where id = $1", [
         input.caseId,
@@ -66,12 +42,7 @@ export async function mutateAdminSupportHandler({ data }: { data: unknown }) {
       ]);
     }
     await client.query("commit");
-    return {
-      ok: true,
-      caseId: input.caseId,
-      action: input.action,
-      status: input.action === "reply" ? "pending" : input.status,
-    };
+    return { ok: true, caseId: input.caseId, action: input.action, status: input.action === "reply" ? "pending" : input.status };
   } catch (error) {
     await client.query("rollback");
     throw error;

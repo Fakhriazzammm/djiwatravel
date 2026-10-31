@@ -145,13 +145,7 @@ function Home() {
     <Page>
       <header className="flex h-14 items-center justify-between gap-3">
         <Wordmark className="h-11" />
-        {loading ? (
-          <div
-            role="status"
-            aria-label="Memuat akun"
-            className="h-10 w-24 animate-pulse rounded-full bg-secondary motion-reduce:animate-none"
-          />
-        ) : user ? (
+        {loading ? null : user ? (
           <Link
             to="/profile"
             search={{ admin: undefined }}

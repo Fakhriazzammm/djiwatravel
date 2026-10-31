@@ -1,8 +1,8 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminSupportCases } from "@/lib/admin-read-model.fn";
-import { getAdminSupportThread, mutateAdminSupport } from "@/lib/admin-support.fn";
+import { mutateAdminSupport } from "@/lib/admin-support.fn";
 import { AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { formatAdminDateTime, humanizeAdminStatus } from "@/lib/admin-display";
 
@@ -15,37 +15,10 @@ export const Route = createFileRoute("/admin/support")({
 
 function AdminSupport() {
   const cases = Route.useLoaderData();
-  const router = useRouter();
   const [selected, setSelected] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [thread, setThread] = useState<
-    Array<{ id: string; authorType: string; body: string; createdAt: string }>
-  >([]);
-  const [threadLoading, setThreadLoading] = useState(false);
-  const [threadError, setThreadError] = useState<string | null>(null);
-  const [threadRevision, setThreadRevision] = useState(0);
-  useEffect(() => {
-    let active = true;
-    setThread([]);
-    setThreadError(null);
-    if (!selected) return;
-    setThreadLoading(true);
-    void getAdminSupportThread({ data: { caseId: selected } })
-      .then((result) => {
-        if (active) setThread(result.messages);
-      })
-      .catch(() => {
-        if (active) setThreadError("Percakapan belum dapat dimuat. Coba lagi.");
-      })
-      .finally(() => {
-        if (active) setThreadLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [selected, threadRevision]);
   const act = async (data: Parameters<typeof mutateAdminSupport>[0]["data"]) => {
     setBusy(true);
     setNotice(null);
@@ -53,8 +26,6 @@ function AdminSupport() {
       await mutateAdminSupport({ data } as never);
       setReply("");
       setNotice("Perubahan support tersimpan.");
-      setThreadRevision((value) => value + 1);
-      await router.invalidate();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Perubahan support gagal.");
     } finally {
@@ -74,11 +45,7 @@ function AdminSupport() {
           />
           <StatusPill>{cases.length} terbaru</StatusPill>
         </div>
-        {notice && (
-          <p role="status" className="mt-3 rounded-xl bg-secondary p-3 text-sm">
-            {notice}
-          </p>
-        )}
+        {notice && <p role="status" className="mt-3 rounded-xl bg-secondary p-3 text-sm">{notice}</p>}
         {cases.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
             Belum ada support case.
@@ -111,89 +78,20 @@ function AdminSupport() {
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <select
                     value={item.status}
-                    onChange={(event) =>
-                      void act({
-                        action: "status",
-                        caseId: item.id,
-                        status: event.target.value as "open" | "pending" | "resolved" | "closed",
-                      })
-                    }
+                    onChange={(event) => void act({ action: "status", caseId: item.id, status: event.target.value as "open" | "pending" | "resolved" | "closed" })}
                     disabled={busy}
                     className="min-h-10 rounded-xl border border-border bg-surface px-3 text-sm"
                     aria-label={`Status ${item.caseCode}`}
                   >
-                    {(["open", "pending", "resolved", "closed"] as const).map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
+                    {(["open", "pending", "resolved", "closed"] as const).map((status) => <option key={status} value={status}>{status}</option>)}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(selected === item.id ? null : item.id)}
-                    className="min-h-10 rounded-xl border border-border px-3 text-sm font-semibold"
-                  >
-                    Balas
-                  </button>
+                  <button type="button" onClick={() => setSelected(selected === item.id ? null : item.id)} className="min-h-10 rounded-xl border border-border px-3 text-sm font-semibold">Balas</button>
                 </div>
                 {selected === item.id && (
-                  <div className="mt-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">Percakapan</h3>
-                      <button
-                        type="button"
-                        onClick={() => setThreadRevision((value) => value + 1)}
-                        className="min-h-10 text-sm font-semibold text-brand-red"
-                      >
-                        Muat ulang
-                      </button>
-                    </div>
-                    {threadLoading && (
-                      <p role="status" className="text-sm">
-                        Memuat percakapan…
-                      </p>
-                    )}
-                    {threadError && (
-                      <p role="alert" className="text-sm text-destructive">
-                        {threadError}
-                      </p>
-                    )}
-                    {!threadLoading && !threadError && thread.length === 0 && (
-                      <p className="text-sm text-muted-foreground">Belum ada pesan.</p>
-                    )}
-                    <ol className="space-y-2">
-                      {thread.map((message) => (
-                        <li key={message.id} className="rounded-xl bg-secondary p-3 text-sm">
-                          <p className="font-semibold">
-                            {message.authorType === "admin" ? "Tim Djiwa Travel" : "Customer"}
-                          </p>
-                          <p className="mt-1 whitespace-pre-wrap">{message.body}</p>
-                        </li>
-                      ))}
-                    </ol>
-                    <form
-                      className="flex gap-2"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        if (reply.trim())
-                          void act({ action: "reply", caseId: item.id, body: reply.trim() });
-                      }}
-                    >
-                      <input
-                        value={reply}
-                        onChange={(event) => setReply(event.target.value)}
-                        className="min-h-10 min-w-0 flex-1 rounded-xl border border-border bg-surface px-3 text-sm"
-                        placeholder="Tulis balasan untuk customer"
-                      />
-                      <button
-                        type="submit"
-                        disabled={busy || !reply.trim()}
-                        className="min-h-10 rounded-xl bg-brand-red px-3 text-sm font-semibold text-white disabled:opacity-50"
-                      >
-                        Kirim
-                      </button>
-                    </form>
-                  </div>
+                  <form className="mt-2 flex gap-2" onSubmit={(event) => { event.preventDefault(); if (reply.trim()) void act({ action: "reply", caseId: item.id, body: reply.trim() }); }}>
+                    <input value={reply} onChange={(event) => setReply(event.target.value)} className="min-h-10 min-w-0 flex-1 rounded-xl border border-border bg-surface px-3 text-sm" placeholder="Tulis balasan untuk customer" />
+                    <button type="submit" disabled={busy || !reply.trim()} className="min-h-10 rounded-xl bg-brand-red px-3 text-sm font-semibold text-white disabled:opacity-50">Kirim</button>
+                  </form>
                 )}
               </article>
             ))}

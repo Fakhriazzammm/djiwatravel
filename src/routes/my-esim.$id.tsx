@@ -1,4 +1,3 @@
-import { OrderLoading } from "@/components/order-loading";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
@@ -121,7 +120,7 @@ function Detail() {
   if (!orders)
     return (
       <Page>
-        <OrderLoading label="Memuat detail eSIM…" />
+        <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
       </Page>
     );
   if (!o)
@@ -243,7 +242,7 @@ function Detail() {
             <div className="min-w-0">
               <h2 className="text-[16px] font-bold">Pasang eSIM sekarang</h2>
               <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
-                Gunakan Wi-Fi untuk memasang eSIM. Periksa ketentuan paket untuk waktu mulai masa aktif.
+                Scan QR sebelum berangkat saat perangkat terhubung ke Wi-Fi.
               </p>
             </div>
           </div>

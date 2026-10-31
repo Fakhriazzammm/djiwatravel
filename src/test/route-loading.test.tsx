@@ -11,12 +11,13 @@ import {
 afterEach(cleanup);
 
 describe("route pending screen", () => {
-  it("renders a labelled, busy page-shaped skeleton", () => {
+  it("renders a labelled, busy pending screen centred on the spinner", () => {
     render(<RoutePendingScreen />);
     const pending = screen.getByTestId("route-pending");
     expect(pending).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Memuat data…")).toBeInTheDocument();
-    expect(pending.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    // Just the indicator: a skeleton grid below it would push the spinner off centre.
+    expect(screen.queryAllByTestId("pending-card")).toHaveLength(0);
   });
 
   it("takes a custom label and hint", () => {

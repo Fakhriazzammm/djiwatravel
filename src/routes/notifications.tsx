@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, Check, ExternalLink, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Page } from "@/components/shell";
-import { Skeleton } from "@/components/ui/skeleton";
 
 type Notification = {
   id: string;
@@ -53,45 +52,12 @@ export const Route = createFileRoute("/notifications")({
   component: Notifications,
 });
 
-function NotificationListSkeleton() {
-  return (
-    <div role="status" aria-live="polite" aria-busy="true" className="mt-5">
-      <span className="sr-only">Memuat notifikasi…</span>
-      <div
-        aria-hidden="true"
-        className="divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface"
-      >
-        {Array.from({ length: 3 }, (_, index) => (
-          <div key={index} className="flex gap-3 p-4">
-            <Skeleton className="mt-1 size-2 shrink-0 rounded-full motion-reduce:animate-none" />
-            <div className="flex-1 space-y-3">
-              <div className="flex justify-between gap-3">
-                <Skeleton className="h-4 w-2/3 motion-reduce:animate-none" />
-                <Skeleton className="h-3 w-10 motion-reduce:animate-none" />
-              </div>
-              <Skeleton className="h-3 w-full motion-reduce:animate-none" />
-              <Skeleton className="h-3 w-3/4 motion-reduce:animate-none" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function NotificationsLoading() {
   return (
     <Page>
-      <div className="flex items-start justify-between gap-3 pt-4">
-        <div>
-          <p className="text-sm font-semibold text-brand-red">Pusat notifikasi</p>
-          <h1 className="large-title mt-1">Notifikasi</h1>
-        </div>
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary">
-          <Bell className="size-5" aria-hidden="true" />
-        </div>
+      <div className="py-12 text-center text-sm text-muted-foreground" role="status">
+        Memuat notifikasi…
       </div>
-      <NotificationListSkeleton />
     </Page>
   );
 }
@@ -100,21 +66,17 @@ function Notifications() {
   const initial = Route.useLoaderData();
   const [data, setData] = useState(initial.data);
   const [error, setError] = useState(initial.error);
-  const [retrying, setRetrying] = useState(false);
   const [readingId, setReadingId] = useState<string | null>(null);
   const unreadCount = data?.unread_count ?? 0;
   const notifications = useMemo(() => data?.notifications ?? [], [data]);
 
   async function retry() {
     setError(null);
-    setRetrying(true);
     try {
       const next = await fetchNotifications();
       setData(next);
     } catch {
       setError("Notifikasi belum dapat dimuat. Coba lagi sebentar.");
-    } finally {
-      setRetrying(false);
     }
   }
 
@@ -163,16 +125,14 @@ function Notifications() {
         </div>
         <div
           className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary"
-          aria-label={data ? `${unreadCount} notifikasi belum dibaca` : "Notifikasi"}
+          aria-label={`${unreadCount} notifikasi belum dibaca`}
         >
           <Bell className="size-5" aria-hidden="true" />
         </div>
       </div>
-      {data && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}
-        </p>
-      )}
+      <p className="mt-2 text-sm text-muted-foreground">
+        {unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}
+      </p>
 
       {error && (
         <div
@@ -190,8 +150,7 @@ function Notifications() {
           </button>
         </div>
       )}
-      {retrying && <NotificationListSkeleton />}
-      {!retrying && !error && notifications.length === 0 && (
+      {!error && notifications.length === 0 && (
         <div className="mt-8 rounded-2xl border border-dashed border-border bg-surface p-8 text-center">
           <Bell className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
           <p className="mt-3 font-semibold">Belum ada notifikasi</p>
@@ -200,62 +159,60 @@ function Notifications() {
           </p>
         </div>
       )}
-      {!retrying && (
-        <div className="mt-5 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface">
-          {notifications.map((item) => (
-            <article
-              key={item.id}
-              className={`border-b p-4 last:border-b-0 ${item.read_at ? "bg-surface" : "bg-brand-red/[0.04]"}`}
-            >
-              <div className="flex gap-3">
-                <div
-                  className={`mt-1 size-2 shrink-0 rounded-full ${item.read_at ? "bg-muted" : "bg-brand-red"}`}
-                  aria-hidden="true"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <h2 className="font-semibold leading-snug">{item.title}</h2>
-                    <time
-                      className="shrink-0 text-xs text-muted-foreground"
-                      dateTime={item.created_at}
+      <div className="mt-5 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface">
+        {notifications.map((item) => (
+          <article
+            key={item.id}
+            className={`border-b p-4 last:border-b-0 ${item.read_at ? "bg-surface" : "bg-brand-red/[0.04]"}`}
+          >
+            <div className="flex gap-3">
+              <div
+                className={`mt-1 size-2 shrink-0 rounded-full ${item.read_at ? "bg-muted" : "bg-brand-red"}`}
+                aria-hidden="true"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="font-semibold leading-snug">{item.title}</h2>
+                  <time
+                    className="shrink-0 text-xs text-muted-foreground"
+                    dateTime={item.created_at}
+                  >
+                    {new Date(item.created_at).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </time>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {item.body}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-4 text-sm font-semibold">
+                  {!item.read_at && (
+                    <button
+                      type="button"
+                      onClick={() => void markRead(item)}
+                      disabled={readingId === item.id}
+                      className="inline-flex min-h-10 items-center gap-2 underline underline-offset-2 disabled:opacity-60"
                     >
-                      {new Date(item.created_at).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </time>
-                  </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
-                    {item.body}
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm font-semibold">
-                    {!item.read_at && (
-                      <button
-                        type="button"
-                        onClick={() => void markRead(item)}
-                        disabled={readingId === item.id}
-                        className="inline-flex min-h-10 items-center gap-2 underline underline-offset-2 disabled:opacity-60"
-                      >
-                        <Check className="size-4" aria-hidden="true" />
-                        {readingId === item.id ? "Menyimpan…" : "Tandai sudah dibaca"}
-                      </button>
-                    )}
-                    {item.action_href && (
-                      <a
-                        href={item.action_href}
-                        className="inline-flex min-h-10 items-center gap-2 text-brand-red underline underline-offset-2"
-                      >
-                        Buka detail
-                        <ExternalLink className="size-4" aria-hidden="true" />
-                      </a>
-                    )}
-                  </div>
+                      <Check className="size-4" aria-hidden="true" />
+                      {readingId === item.id ? "Menyimpan…" : "Tandai sudah dibaca"}
+                    </button>
+                  )}
+                  {item.action_href && (
+                    <a
+                      href={item.action_href}
+                      className="inline-flex min-h-10 items-center gap-2 text-brand-red underline underline-offset-2"
+                    >
+                      Buka detail
+                      <ExternalLink className="size-4" aria-hidden="true" />
+                    </a>
+                  )}
                 </div>
               </div>
-            </article>
-          ))}
-        </div>
-      )}
+            </div>
+          </article>
+        ))}
+      </div>
       <Link
         to="/"
         className="mt-8 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2"

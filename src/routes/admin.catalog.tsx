@@ -18,7 +18,6 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 
 import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
-import { AdminPendingScreen } from "@/components/admin-loading";
 import { FixedLayer } from "@/components/motion-primitives";
 import { useTypingPlaceholder } from "@/hooks/use-typing-placeholder";
 import { formatAdminDateTime } from "@/lib/admin-display";
@@ -61,7 +60,15 @@ export const Route = createFileRoute("/admin/catalog")({
       },
     }),
   component: AdminCatalogPage,
-  pendingComponent: () => <AdminPendingScreen title="Katalog & Pricing" label="Memuat katalog…" />,
+  pendingComponent: () => (
+    <AdminShell title="Katalog & Pricing" subtitle="Memuat katalog provider">
+      <div className="space-y-2" role="status" aria-live="polite">
+        <p className="text-sm text-muted-foreground">Memuat katalog…</p>
+        <div className="h-16 animate-pulse rounded-2xl bg-surface motion-reduce:animate-none" />
+        <div className="h-64 animate-pulse rounded-2xl bg-surface motion-reduce:animate-none" />
+      </div>
+    </AdminShell>
+  ),
   errorComponent: () => (
     <AdminShell title="Katalog & Pricing" subtitle="Katalog belum dapat dimuat">
       <div role="alert" className="rounded-2xl border border-[#f1d9a8] bg-[#fffaf0] p-4">
