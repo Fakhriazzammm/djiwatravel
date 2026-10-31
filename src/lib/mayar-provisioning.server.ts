@@ -77,24 +77,27 @@ export async function provisionSettledTravelOrder(orderId: string) {
       and (status <> 'PROVISIONING' or lease_expires_at is null or lease_expires_at < now())
     returning id`);
   if (claim.rows.length === 0) return { started: false, status: "PROVISIONING" };
-  // Reprice against the live catalogue first: the provider rejects a stale price outright.
-  const livePrices = await fetchEsimAccessPackagePrices(
-    items.map((item) => item.provider_package_code),
-  );
-  const packageInfoList = items.map((item) => {
-    const snapshot = item.package_snapshot ?? {};
-    const storedPrice = Number(snapshot["providerPriceUnits"] ?? item.provider_unit_cost);
-    const providerPrice = Number(livePrices[item.provider_package_code] ?? storedPrice);
-    return {
-      packageCode: item.provider_package_code,
-      count: Number(item.quantity),
-      ...(Number.isFinite(providerPrice) && providerPrice >= 0 ? { price: providerPrice } : {}),
-    };
-  });
-  await db.execute(
-    sql`update public.customer_orders set status = 'PROVISIONING', updated_at = now() where id = ${orderId}::uuid and status in ('PAYMENT_CONFIRMED','PROVISIONING_FAILED')`,
-  );
   try {
+    await db.execute(
+      sql`update public.customer_orders set status = 'PROVISIONING', updated_at = now() where id = ${orderId}::uuid and status in ('PAYMENT_CONFIRMED','PROVISIONING_FAILED')`,
+    );
+    // A failed catalogue request must release the lease and expose a retryable failure too.
+    const livePrices = await fetchEsimAccessPackagePrices(
+      items.map((item) => item.provider_package_code),
+    ).catch(() => {
+      // Provider errors may contain sensitive response details; expose a safe category only.
+      throw new Error("esim_catalog_unavailable");
+    });
+    const packageInfoList = items.map((item) => {
+      const snapshot = item.package_snapshot ?? {};
+      const storedPrice = Number(snapshot["providerPriceUnits"] ?? item.provider_unit_cost);
+      const providerPrice = Number(livePrices[item.provider_package_code] ?? storedPrice);
+      return {
+        packageCode: item.provider_package_code,
+        count: Number(item.quantity),
+        ...(Number.isFinite(providerPrice) && providerPrice >= 0 ? { price: providerPrice } : {}),
+      };
+    });
     const response = (await orderEsimAccessProfilesServer({
       transactionId,
       packageInfoList,
@@ -121,14 +124,21 @@ export async function provisionSettledTravelOrder(orderId: string) {
     );
     return { started: true, status: "PROVISIONING", providerOrderNo: mapped.providerOrderNo };
   } catch (error) {
-    const message = error instanceof Error ? error.message.slice(0, 500) : "provider_order_failed";
+    const message =
+      error instanceof Error && error.message === "esim_catalog_unavailable"
+        ? "esim_catalog_unavailable"
+        : error instanceof Error && error.message.startsWith("esim_access_order_failed:")
+          ? "esim_access_order_failed"
+          : "provisioning_failed";
     console.error("[esim] provisioning failed", { orderId, message });
-    await db.execute(
-      sql`update public.esim_provisioning_orders set status = 'FAILED', last_provisioning_error = ${message}, lease_owner = null, lease_expires_at = null, updated_at = now() where order_id = ${orderId}::uuid and lease_owner = ${leaseOwner}`,
+    const failed = await db.execute(
+      sql`update public.esim_provisioning_orders set status = 'FAILED', last_provisioning_error = ${message}, lease_owner = null, lease_expires_at = null, updated_at = now() where order_id = ${orderId}::uuid and lease_owner = ${leaseOwner} returning id`,
     );
-    await db.execute(
-      sql`update public.customer_orders set status = 'PROVISIONING_FAILED', updated_at = now() where id = ${orderId}::uuid and status = 'PROVISIONING'`,
-    );
-    throw error;
+    if (failed.rows.length > 0) {
+      await db.execute(
+        sql`update public.customer_orders set status = 'PROVISIONING_FAILED', updated_at = now() where id = ${orderId}::uuid and status in ('PAYMENT_CONFIRMED','PROVISIONING') and exists (select 1 from public.esim_provisioning_orders where order_id = ${orderId}::uuid and status = 'FAILED')`,
+      );
+    }
+    throw new Error(message);
   }
 }

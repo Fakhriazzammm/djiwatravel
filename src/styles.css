@@ -163,12 +163,6 @@ html {
   }
 }
 
-/* One loading UI at a time. The page-change overlay is opaque, and while it owns the screen the
-   route pending indicator behind it stays hidden — an earlier build showed both at once. */
-html[data-route-transition="1"] [data-testid="route-pending"] {
-  visibility: hidden;
-}
-
 /* Printing the receipt: only the paper survives, everything interactive is dropped. */
 @media print {
   .print-hide {

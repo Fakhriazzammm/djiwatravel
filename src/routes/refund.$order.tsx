@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { ArrowLeft, CheckCircle2, RefreshCw, ShieldAlert } from "lucide-react";
+import { ArrowLeft, RefreshCw, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Page } from "@/components/shell";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Eligibility = {
   public_order_code: string;
@@ -46,18 +47,6 @@ async function readRefund(order: string): Promise<Eligibility> {
   return eligibility;
 }
 
-async function requestRefund(order: string): Promise<RefundResponse> {
-  const response = await fetch("/api/customer-refund", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ order }),
-  });
-  const payload: unknown = await response.json().catch(() => null);
-  if (!response.ok || !payload || typeof payload !== "object")
-    throw new Error("Permintaan refund belum dapat diproses. Coba lagi.");
-  return payload as RefundResponse;
-}
-
 export const Route = createFileRoute("/refund/$order")({
   head: () => ({
     meta: [
@@ -73,13 +62,10 @@ function RefundPage() {
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [requesting, setRequesting] = useState(false);
-  const [unavailable, setUnavailable] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setUnavailable(false);
     try {
       setEligibility(await readRefund(order));
     } catch (cause) {
@@ -93,25 +79,6 @@ function RefundPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  async function submitRequest() {
-    if (!eligibility?.eligible || requesting) return;
-    setRequesting(true);
-    setError(null);
-    try {
-      const result = await requestRefund(order);
-      if (result.error === "provider_refund_workflow_unavailable") setUnavailable(true);
-      else setError("Permintaan refund belum dapat diproses. Coba lagi.");
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Permintaan refund belum dapat diproses. Coba lagi.",
-      );
-    } finally {
-      setRequesting(false);
-    }
-  }
 
   return (
     <Page tabs={false}>
@@ -130,11 +97,19 @@ function RefundPage() {
         Periksa status pengembalian dana dengan aman.
       </p>
       {loading && (
-        <div
-          role="status"
-          className="mt-8 rounded-2xl border bg-surface p-6 text-center text-sm text-muted-foreground"
-        >
-          Memuat kelayakan refund…
+        <div role="status" aria-live="polite" aria-busy="true" className="mt-6">
+          <span className="sr-only">Memuat kelayakan refund…</span>
+          <div aria-hidden="true" className="rounded-2xl bg-surface p-4">
+            <Skeleton className="h-5 w-40 motion-reduce:animate-none" />
+            <div className="mt-3 divide-y divide-border/70">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div key={index} className="flex min-h-12 items-center justify-between gap-4 py-2">
+                  <Skeleton className="h-3 w-24 motion-reduce:animate-none" />
+                  <Skeleton className="h-4 w-20 motion-reduce:animate-none" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
       {error && !loading && (
@@ -155,10 +130,7 @@ function RefundPage() {
       )}
       {!loading && !error && eligibility && (
         <>
-          <section
-            className="mt-6 rounded-2xl bg-surface p-4"
-            aria-labelledby="eligibility-title"
-          >
+          <section className="mt-6 rounded-2xl bg-surface p-4" aria-labelledby="eligibility-title">
             <h2 id="eligibility-title" className="text-lg font-bold">
               Ringkasan pesanan
             </h2>
@@ -179,54 +151,24 @@ function RefundPage() {
               </div>
             </dl>
           </section>
-          {eligibility.eligible ? (
-            <section className="mt-4 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950">
-              <div className="flex gap-3">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-                <div>
-                  <h2 className="font-bold">Pesanan tampak memenuhi syarat</h2>
-                  <p className="mt-1 text-sm">
-                    Kamu dapat mengajukan permintaan refund. Hasil akhir tetap mengikuti proses
-                    penyedia pembayaran.
-                  </p>
-                </div>
+          <section className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+            <div className="flex gap-3">
+              <ShieldAlert className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+              <div>
+                <h2 className="font-bold">Fitur refund belum tersedia</h2>
+                <p className="mt-1 text-sm">
+                  Pengajuan refund online belum tersedia. Status di atas bukan persetujuan atau
+                  bukti pengembalian dana. Hubungi tim bantuan untuk menanyakan pesananmu.
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => void submitRequest()}
-                disabled={requesting || unavailable}
-                className="mt-4 h-12 w-full rounded-xl bg-brand-red font-semibold text-white disabled:opacity-50"
-              >
-                {requesting ? "Mengirim…" : "Ajukan refund"}
-              </button>
-            </section>
-          ) : (
-            <section className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
-              <div className="flex gap-3">
-                <ShieldAlert className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-                <div>
-                  <h2 className="font-bold">Refund belum dapat diajukan</h2>
-                  <p className="mt-1 text-sm">
-                    {eligibility.reason === "provisioning_already_started"
-                      ? "Proses aktivasi sudah dimulai sehingga refund tidak dapat diajukan dari halaman ini."
-                      : "Status pesanan ini belum memenuhi syarat refund."}
-                  </p>
-                </div>
-              </div>
-            </section>
-          )}
-          {unavailable && (
-            <div
-              role="status"
-              className="mt-4 rounded-2xl border border-sky-300 bg-sky-50 p-4 text-sm text-sky-950"
-            >
-              <p className="font-bold">Fitur refund belum tersedia</p>
-              <p className="mt-1">
-                Penyedia pembayaran belum menyediakan alur refund. Belum ada refund yang berhasil
-                dibuat.
-              </p>
             </div>
-          )}
+            <Link
+              to="/support"
+              className="mt-4 inline-flex min-h-11 items-center font-semibold underline underline-offset-2"
+            >
+              Hubungi bantuan
+            </Link>
+          </section>
         </>
       )}
       <Link

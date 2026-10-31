@@ -1,11 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { listCustomerCases, mutateCustomerSupport } from "@/lib/customer-support.server";
+import {
+  getCustomerCaseThread,
+  listCustomerCases,
+  mutateCustomerSupport,
+} from "@/lib/customer-support.server";
 function json(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 async function receive(request: Request) {
   try {
-    if (request.method === "GET") return json(await listCustomerCases());
+    if (request.method === "GET") {
+      const caseId = new URL(request.url).searchParams.get("case_id");
+      return json(caseId ? await getCustomerCaseThread(caseId) : await listCustomerCases());
+    }
     return json(await mutateCustomerSupport(await request.json()));
   } catch (error) {
     const status = (error as { status?: number }).status ?? 400;
