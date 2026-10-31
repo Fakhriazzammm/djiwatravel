@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { claimGuestOrder, dedupeOrdersById, orderOwnership } from "@/lib/travel-order-identity";
+import {
+  claimGuestOrder,
+  dedupeOrdersById,
+  guestOrderClaimCandidates,
+  orderOwnership,
+} from "@/lib/travel-order-identity";
 
 describe("order ownership", () => {
   it("grants member access only to the verified session subject", () => {
@@ -27,6 +32,16 @@ describe("order ownership", () => {
 });
 
 describe("guest order claim", () => {
+  it("attempts retained guest credentials even when the guest read returned no order", () => {
+    expect(
+      guestOrderClaimCandidates(
+        [{ orderId: "expired-guest-order" }],
+        new Set(),
+        new Set(),
+      ),
+    ).toEqual([{ orderId: "expired-guest-order" }]);
+  });
+
   it("claims an unowned order with a verified guest token", () => {
     expect(claimGuestOrder({ authSubject: "subject-a", guestTokenVerified: true })).toEqual({
       claim: true,

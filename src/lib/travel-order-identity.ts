@@ -63,6 +63,20 @@ export function claimGuestOrder(input: ClaimInput): ClaimDecision {
   return { claim: true, reason: "claimed" };
 }
 
+/**
+ * Stored guest credentials can outlive the one-hour guest read window. They remain valid proof for
+ * the authenticated claim endpoint, which verifies the token hash independently of guest reads.
+ */
+export function guestOrderClaimCandidates<T extends { orderId: string }>(
+  credentials: readonly T[],
+  ownedOrderIds: ReadonlySet<string>,
+  attemptedOrderIds: ReadonlySet<string>,
+): T[] {
+  return credentials.filter(
+    ({ orderId }) => !ownedOrderIds.has(orderId) && !attemptedOrderIds.has(orderId),
+  );
+}
+
 /** Merge member and guest reads without ever showing the same order twice. */
 export function dedupeOrdersById<T extends { id: string }>(
   ...lists: Array<readonly T[] | undefined>

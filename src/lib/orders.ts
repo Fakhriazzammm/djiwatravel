@@ -8,6 +8,7 @@ import { rebuildMayarInvoice } from "./mayar-gateway";
 import { createMayarInvoice } from "./mayar-gateway";
 import { mapGuestOrderRecord } from "./guest-order-view";
 import { effectivePaymentStatus } from "./payment-expiry";
+import { guestOrderClaimCandidates } from "./travel-order-identity";
 import { chargeTravelOrderWithDjiwaPay } from "./djiwa-pay-payment.fn";
 import type { NewCheckoutPaymentMethod, StoredPaymentMethod } from "./travel-payment-method";
 
@@ -111,13 +112,9 @@ export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => vo
     // Signed in: attach this device's guest purchases to the account (once per order per page
     // load), so they show on every other device, then reconcile the account's trip plans.
     const owned = new Set(memberRemote.map((order) => order.id));
-    const known = new Set(guestRemote.map((order) => order.id));
-    const unclaimed = credentials.filter(
-      (credential) =>
-        !owned.has(credential.orderId) &&
-        known.has(credential.orderId) &&
-        !claimAttempted.has(credential.orderId),
-    );
+    // Claim from retained credentials even when the guest read endpoint has expired their one-hour
+    // access window. The claim server independently validates each token hash and session subject.
+    const unclaimed = guestOrderClaimCandidates(credentials, owned, claimAttempted);
     for (const credential of unclaimed) claimAttempted.add(credential.orderId);
     if (unclaimed.length) {
       const { claimed } = await claimCredentials(unclaimed);
