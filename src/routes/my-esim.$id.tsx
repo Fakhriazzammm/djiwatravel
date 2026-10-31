@@ -31,7 +31,12 @@ import { TravelChecklist } from "@/components/travel-checklist";
 import { TravelUsageCard } from "@/components/travel-usage-card";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
 import { OfflineSnapshotBanner } from "@/components/offline-snapshot-banner";
-import { readTripPlan, setChecklistItem, writeDepartureDate } from "@/lib/travel-checklist-store";
+import {
+  readTripPlan,
+  setChecklistItem,
+  TRIP_PLANS_EVENT,
+  writeDepartureDate,
+} from "@/lib/travel-checklist-store";
 import {
   buildTravelSnapshot,
   clearTravelSnapshot,
@@ -86,6 +91,10 @@ function Detail() {
   useEffect(() => {
     setTrip(readTripPlan(id));
     setSnapshot(readTravelSnapshot(id));
+    // The account copy can arrive after first paint (another device edited it).
+    const onPlans = () => setTrip(readTripPlan(id));
+    window.addEventListener(TRIP_PLANS_EVENT, onPlans);
+    return () => window.removeEventListener(TRIP_PLANS_EVENT, onPlans);
   }, [id]);
 
   /**

@@ -45,6 +45,18 @@ async function requireCompleteWalletCustomer() {
   return user;
 }
 
+/** The signed-in customer, or null for a true guest. A bad/absent session never blocks checkout. */
+async function optionalSessionCustomer() {
+  try {
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
+    const cookie = getRequestHeader("cookie") ?? "";
+    if (!cookie) return null;
+    return await requireBetterAuthUser(cookie);
+  } catch {
+    return null;
+  }
+}
+
 const createGuestOrderSchema = z.object({
   packageCode: z.string().trim().min(1).max(160),
   email: z.string().trim().email().max(254),
@@ -72,6 +84,9 @@ export const createGuestOrderDraftHandler = async ({
   const walletCustomer = data.paymentMethod === "djiwa_pay"
     ? await requireCompleteWalletCustomer()
     : null;
+  // A signed-in customer's order belongs to the account whatever the payment method, so it shows
+  // on every device. The owner comes from the verified session, never from the request body.
+  const sessionCustomer = walletCustomer ?? (await optionalSessionCustomer());
   const phone = normalizeGuestWhatsapp(data.whatsapp);
   const accessTokenHash = hashGuestAccessToken(data.accessToken);
   const previous = await db
@@ -149,9 +164,9 @@ export const createGuestOrderDraftHandler = async ({
       markupAmount: String(price.markupIdr),
       totalAmount: String(price.sellingPriceIdr),
       idempotencyKey: data.idempotencyKey,
-      ...(walletCustomer
+      ...(sessionCustomer
         ? {
-            customerAuthSubject: walletCustomer.id,
+            customerAuthSubject: sessionCustomer.id,
             customerAuthLinkedAt: now.toISOString(),
           }
         : {}),

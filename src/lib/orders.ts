@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import type { EsimProfile } from "./providers";
 import { createGuestOrderDraft, getGuestOrders } from "./guest-orders.fn";
+import { syncTripPlansFromServer } from "./travel-checklist-store";
 import { claimGuestOrderForMember, getMemberOrders } from "./member-orders.fn";
 import { rebuildMayarInvoice } from "./mayar-gateway";
 import { createMayarInvoice } from "./mayar-gateway";
@@ -65,9 +66,11 @@ const write = (o: Order[]) => {
   window.dispatchEvent(new Event("djiwa-orders"));
 };
 
-/** Pulls the authoritative server state for every stored guest credential. */
-export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => void): Promise<void> {
-  const credentials = Object.entries(readGuestAccess())
+type GuestCredential = { orderId: string; accessToken: string };
+const claimAttempted = new Set<string>();
+
+function guestCredentials(): GuestCredential[] {
+  return Object.entries(readGuestAccess())
     .filter(
       ([orderId, token]) =>
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -79,6 +82,11 @@ export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => vo
     )
     .slice(0, 20)
     .map(([orderId, accessToken]) => ({ orderId, accessToken }));
+}
+
+/** Pulls the authoritative server state for every stored guest credential. */
+export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => void): Promise<void> {
+  const credentials = guestCredentials();
 
   // Member reads are independent of the guest list: a signed-in customer must see their orders even
   // on a device that never held a guest token. An unauthenticated caller simply gets [].
@@ -98,6 +106,25 @@ export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => vo
       : [];
 
   if (guestResult.status === "rejected" && memberResult.status === "rejected") return;
+
+  if (memberResult.status === "fulfilled") {
+    // Signed in: attach this device's guest purchases to the account (once per order per page
+    // load), so they show on every other device, then reconcile the account's trip plans.
+    const owned = new Set(memberRemote.map((order) => order.id));
+    const known = new Set(guestRemote.map((order) => order.id));
+    const unclaimed = credentials.filter(
+      (credential) =>
+        !owned.has(credential.orderId) &&
+        known.has(credential.orderId) &&
+        !claimAttempted.has(credential.orderId),
+    );
+    for (const credential of unclaimed) claimAttempted.add(credential.orderId);
+    if (unclaimed.length) {
+      const { claimed } = await claimCredentials(unclaimed);
+      if (claimed > 0) return refreshOrdersFromServer(onMerged);
+    }
+    void syncTripPlansFromServer();
+  }
 
   const current = read();
   const guestById = new Map(guestRemote.map((order) => [order.id, order]));
@@ -130,20 +157,14 @@ export async function refreshOrdersFromServer(onMerged?: (orders: Order[]) => vo
  * profile visit.
  */
 export async function claimGuestOrders(): Promise<{ claimed: number; already: number }> {
-  const credentials = Object.entries(readGuestAccess())
-    .filter(
-      ([orderId, token]) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-          orderId,
-        ) &&
-        typeof token === "string" &&
-        token.length >= 32 &&
-        token.length <= 256,
-    )
-    .slice(0, 20)
-    .map(([orderId, accessToken]) => ({ orderId, accessToken }));
-  if (!credentials.length) return { claimed: 0, already: 0 };
+  const result = await claimCredentials(guestCredentials());
+  if (result.claimed > 0) await refreshOrdersFromServer();
+  return result;
+}
 
+async function claimCredentials(
+  credentials: GuestCredential[],
+): Promise<{ claimed: number; already: number }> {
   let claimed = 0;
   let already = 0;
   for (const credential of credentials) {
@@ -152,11 +173,9 @@ export async function claimGuestOrders(): Promise<{ claimed: number; already: nu
       if (result.claimed) claimed += 1;
       else if (result.reason === "already_member") already += 1;
     } catch {
-      // Already-owned, unverified, or a transient failure: none of these should stop the loop, and
-      // the next profile visit retries.
+      // Already-owned, unverified, or a transient failure: none of these should stop the loop.
     }
   }
-  if (claimed > 0) await refreshOrdersFromServer();
   return { claimed, already };
 }
 

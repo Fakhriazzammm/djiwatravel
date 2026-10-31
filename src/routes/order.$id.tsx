@@ -30,6 +30,7 @@ import {
   notificationsSupported,
   notifyEsimReady,
   readNotifyPreference,
+  syncNotifyPreferenceFromServer,
   shouldNotifyReady,
   writeNotifyPreference,
 } from "@/lib/esim-notify";
@@ -76,6 +77,13 @@ function OrderPage() {
   useEffect(() => {
     if (!notificationsSupported()) return;
     setNotifyReady(readNotifyPreference() && notificationPermission() === "granted");
+    let live = true;
+    void syncNotifyPreferenceFromServer().then((enabled) => {
+      if (live && enabled !== null) setNotifyReady(enabled && notificationPermission() === "granted");
+    });
+    return () => {
+      live = false;
+    };
   }, []);
 
   // One settle-on-arrival read, so the activation timeline can state when the status was last

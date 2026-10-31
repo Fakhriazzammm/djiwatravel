@@ -168,3 +168,16 @@ Use this structure for each new lesson:
   and splash animation alone cannot prove an interactive application.
 - Verification boundary: local built-artifact browser checks establish the fix;
   production remains unchanged until a separately authorized release.
+
+## Per-device data for a signed-in customer
+
+- Symptom: the same login shows different orders, trip plan, or notification choice on laptop
+  and phone.
+- Root cause: QRIS/Mayar orders were bound only to a `localStorage` guest token (only `djiwa_pay`
+  orders got `customer_auth_subject`), `claimGuestOrders` was never called, and the trip plan and
+  notification choice lived only in `localStorage`.
+- Safe fix: bind every order made by a signed-in session to the account, auto-claim the device's
+  guest orders in `refreshOrdersFromServer`, and keep trip plan / notification choice in
+  `customer_trip_plans` / `customer_preferences` (migration 028) with `localStorage` as cache.
+- Prevention: any customer-visible state must have a server source of truth keyed by the verified
+  session subject; `localStorage` is only a cache.

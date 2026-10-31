@@ -24,7 +24,7 @@ import {
 } from "@/lib/esim-home-summary";
 import { DEFAULT_HOME_ESIM_CONFIG, type HomeEsimConfig } from "@/lib/home-esim-config";
 import { springIos, springSnappy } from "@/lib/motion";
-import { readTripPlan } from "@/lib/travel-checklist-store";
+import { readTripPlan, TRIP_PLANS_EVENT } from "@/lib/travel-checklist-store";
 import {
   calendarDaysUntil,
   departureLabel,
@@ -278,13 +278,18 @@ function useDepartureLine(orderId: string | undefined, enabled: boolean): string
       setLine(null);
       return;
     }
-    const at = parseDepartureDate(readTripPlan(orderId).departureDate);
-    if (at === null) {
-      setLine(null);
-      return;
-    }
-    const days = calendarDaysUntil(at);
-    setLine(days >= 0 ? `Berangkat · ${departureLabel(days)}` : null);
+    const read = () => {
+      const at = parseDepartureDate(readTripPlan(orderId).departureDate);
+      if (at === null) {
+        setLine(null);
+        return;
+      }
+      const days = calendarDaysUntil(at);
+      setLine(days >= 0 ? `Berangkat · ${departureLabel(days)}` : null);
+    };
+    read();
+    window.addEventListener(TRIP_PLANS_EVENT, read);
+    return () => window.removeEventListener(TRIP_PLANS_EVENT, read);
   }, [orderId, enabled]);
   return line;
 }

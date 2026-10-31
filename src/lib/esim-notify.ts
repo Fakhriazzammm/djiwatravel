@@ -1,8 +1,10 @@
 import type { OrderStatus } from "@/lib/orders";
+import { getTravelState, saveNotifyPreference } from "@/lib/customer-travel-state.fn";
 
 /**
- * Notification preference, kept in localStorage so a customer who asked to be told is not asked
- * again on the next visit. Only the preference (never order data) is stored locally.
+ * Notification preference. The account copy is the source of truth so the choice follows the
+ * customer across devices; localStorage only caches it for the instant first paint. Browser
+ * permission itself is per device and is still checked separately.
  */
 export const ESIM_NOTIFY_KEY = "djiwa.notify-esim";
 export const ESIM_NOTIFY_SW_URL = "/sw.js";
@@ -42,6 +44,24 @@ export function writeNotifyPreference(enabled: boolean): void {
     else window.localStorage.removeItem(ESIM_NOTIFY_KEY);
   } catch {
     // Private mode with storage disabled: the preference simply does not persist.
+  }
+  void saveNotifyPreference({ data: { enabled } }).catch(() => undefined);
+}
+
+/** Pulls the account preference into the local cache. Returns null when signed out/offline. */
+export async function syncNotifyPreferenceFromServer(): Promise<boolean | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const { esimNotify } = await getTravelState();
+    try {
+      if (esimNotify) window.localStorage.setItem(ESIM_NOTIFY_KEY, "1");
+      else window.localStorage.removeItem(ESIM_NOTIFY_KEY);
+    } catch {
+      // ignore
+    }
+    return esimNotify;
+  } catch {
+    return null;
   }
 }
 
