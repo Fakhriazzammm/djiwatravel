@@ -182,6 +182,8 @@ export type UsageView = {
   remainingBytes: number | null;
   remainingPercent: number | null;
   low: boolean;
+  /** Threshold (percent) that produced `low`; the UI compares against this, not a constant. */
+  lowThreshold: number;
   measuredAt: number | null;
 };
 
@@ -220,7 +222,10 @@ export function usageView(input: {
   measuredAt?: number | null;
   unlimited?: boolean;
   active: boolean;
+  /** Admin-controlled threshold (Home eSIM settings); defaults to LOW_QUOTA_PERCENT. */
+  lowPercent?: number | undefined;
 }): UsageView {
+  const lowThreshold = input.lowPercent ?? LOW_QUOTA_PERCENT;
   const total = finiteNumber(input.volumeBytes);
   const usedGb = finiteNumber(input.usedGb);
   const measuredAt = finiteNumber(input.measuredAt);
@@ -231,6 +236,7 @@ export function usageView(input: {
     remainingBytes: null,
     remainingPercent: null,
     low: false,
+    lowThreshold,
     measuredAt,
   };
 
@@ -283,7 +289,7 @@ export function usageView(input: {
     usedBytes,
     remainingBytes,
     remainingPercent,
-    low: remainingPercent <= LOW_QUOTA_PERCENT,
+    low: remainingPercent <= lowThreshold,
     measuredAt,
   };
 }

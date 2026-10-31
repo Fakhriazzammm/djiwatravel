@@ -1,11 +1,6 @@
 import { AlertTriangle, Gauge } from "lucide-react";
-import {
-  formatData,
-  formatGb,
-  formatRemainingPercent,
-  LOW_QUOTA_PERCENT,
-  type UsageView,
-} from "@/lib/travel-journey";
+import { formatData, formatGb, formatRemainingPercent, type UsageView } from "@/lib/travel-journey";
+import { QuotaRing } from "@/components/esim-quota-ring";
 import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 
 export function TravelUsageCard({ view, compact = false }: { view: UsageView; compact?: boolean }) {
@@ -26,17 +21,21 @@ export function TravelUsageCard({ view, compact = false }: { view: UsageView; co
       view.remainingBytes !== null &&
       view.remainingPercent !== null ? (
         <>
-          <p className={`${compact ? "text-2xl" : "text-3xl"} mt-3 font-bold`}>
-            {formatData(view.remainingBytes)}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            tersisa dari {formatGb(view.totalBytes ?? 0)}
-          </p>
-
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-            <div
-              className={`h-full rounded-full ${view.low ? "bg-brand-red" : "bg-primary"}`}
-              style={{ width: `${view.remainingPercent}%` }}
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div>
+              <p className={`${compact ? "text-2xl" : "text-3xl"} font-bold`}>
+                {formatData(view.remainingBytes)}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                tersisa dari {formatGb(view.totalBytes ?? 0)}
+              </p>
+            </div>
+            <QuotaRing
+              percent={view.remainingPercent}
+              label={formatRemainingPercent(view)}
+              valueText={`Sisa ${formatData(view.remainingBytes)} (${formatRemainingPercent(view)})`}
+              low={view.low}
+              size={64}
             />
           </div>
           <p className="mt-1 text-[12px] text-muted-foreground">
@@ -69,7 +68,7 @@ export function TravelUsageCard({ view, compact = false }: { view: UsageView; co
       )}
       {view.kind === "measured" &&
         view.remainingPercent !== null &&
-        view.remainingPercent > LOW_QUOTA_PERCENT && (
+        view.remainingPercent > view.lowThreshold && (
           <p className="mt-3 text-[12px] text-muted-foreground">
             Angka ini dari penyedia eSIM, bukan perkiraan aplikasi.
           </p>

@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototype — Beranda eSIM (Wallet Pass)</title>
+<style>
+:root{--bg:#f2f2f7;--surface:#fff;--sec:#f2f2f7;--fg:#1c1c1e;--mut:#6c6c70;--sep:rgba(60,60,67,.14);--red:#b63d4b;--red-soft:#f8e6e8;--green:#34c759;--orange:#ff9f0a;--blue:#0a84ff;
+--spring:cubic-bezier(.32,.72,0,1);--pop:cubic-bezier(.34,1.56,.64,1)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;font-family:-apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--fg)}
+.stage{display:flex;flex-direction:column;gap:24px;align-items:center;padding:14px 0}
+.panel{order:2;width:390px;max-width:100%;font-size:13px;line-height:1.5}
+.panel h1{font-size:17px;margin:0 0 4px}.panel p{margin:0 0 12px;color:var(--mut)}
+.seg{display:grid;gap:6px;margin-bottom:14px}
+.seg button{font:inherit;text-align:left;border:0;border-radius:12px;padding:10px 12px;background:#fff;cursor:pointer;transition:transform .25s var(--spring),box-shadow .25s}
+.seg button b{display:block;font-size:13px}.seg button span{color:var(--mut);font-size:11.5px}
+.seg button:active{transform:scale(.97)}
+.seg button.on{box-shadow:0 0 0 2px var(--red)}
+.tog{display:flex;align-items:center;gap:8px;margin:10px 0}
+.legend{background:#fff;border-radius:12px;padding:10px 12px;font-size:11.5px;color:var(--mut)}
+.legend b{color:var(--fg)}
+/* phone */
+.phone{order:1;position:relative;width:390px;height:800px;border-radius:46px;background:var(--bg);overflow:hidden;box-shadow:0 0 0 10px #111,0 30px 60px -20px rgba(0,0,0,.45)}
+.sbar{height:44px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font-weight:600;font-size:14px}
+.scroll{position:absolute;inset:44px 0 82px;overflow:auto;padding:6px 16px 20px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.hello{display:flex;justify-content:space-between;align-items:center;margin:4px 2px 12px}
+.hello h2{margin:0;font-size:24px;letter-spacing:-.03em}
+.av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#e9a5ad,#b63d4b);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px}
+.search{display:flex;align-items:center;gap:8px;height:44px;border-radius:14px;background:#e3e3e8;padding:0 12px;color:var(--mut);font-size:15px;margin-bottom:14px}
+.ghost{margin-top:22px}.ghost h3{margin:0 0 10px;font-size:17px}
+.ghostrow{display:flex;gap:10px}.ghostrow i{flex:1;height:120px;border-radius:20px;background:linear-gradient(160deg,#d8dbe3,#eceef3)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:82px;background:rgba(249,249,251,.86);backdrop-filter:blur(20px);border-top:1px solid var(--sep);display:flex;justify-content:space-around;padding-top:8px;font-size:10px;color:#8e8e93}
+.tabbar div{display:grid;gap:2px;justify-items:center}.tabbar .a{color:var(--red);font-weight:600}
+.tabbar i{width:22px;height:22px;border-radius:7px;background:currentColor;opacity:.85}
+/* card */
+.slot{position:relative}
+.swap{animation:swapIn .55s var(--spring)}
+@keyframes swapIn{from{opacity:0;transform:translateY(10px) scale(.985);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+.card{background:var(--surface);border-radius:28px;padding:16px;box-shadow:0 1px 0 rgba(0,0,0,.03),0 14px 32px -22px rgba(0,0,0,.35);position:relative;overflow:hidden}
+.eyebrow{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;color:var(--mut)}
+.card h3{margin:6px 0 2px;font-size:21px;letter-spacing:-.03em;line-height:1.15}
+.card p.sub{margin:0;color:var(--mut);font-size:13px}
+.chip3d{position:absolute;right:14px;top:10px;width:64px;height:auto;transition:transform .35s var(--spring);transform-style:preserve-3d;filter:drop-shadow(0 6px 8px rgba(0,0,0,.18));pointer-events:none}
+.rail{display:flex;gap:8px;overflow:auto;margin:14px -16px 0;padding:0 16px 2px;scrollbar-width:none}
+.rail::-webkit-scrollbar{display:none}
+.dchip{flex:none;border:0;font:inherit;background:var(--sec);border-radius:16px;padding:8px 12px 8px 8px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;cursor:pointer;transition:transform .3s var(--spring),background .2s;min-height:44px}
+.dchip em{font-style:normal;font-size:22px}.dchip small{display:block;font-weight:500;color:var(--mut);font-size:11px}
+.dchip:active{transform:scale(.94)}
+.row2{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:13px}
+.link{color:var(--red);font-weight:600;border:0;background:none;font:inherit;font-weight:600;cursor:pointer;min-height:44px}
+.compat{display:flex;gap:6px;align-items:center;color:var(--mut)}
+.compat .ok{width:16px;height:16px;border-radius:50%;background:var(--green);display:grid;place-items:center;color:#fff;font-size:10px;animation:pop .6s var(--pop) .5s both}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+/* wallet stack */
+.stack{position:relative;height:222px;touch-action:pan-y}
+.pass{position:absolute;left:0;right:0;top:0;height:188px;border-radius:26px;padding:16px 18px;color:var(--fg);border:1px solid var(--sep);overflow:hidden;cursor:pointer;transition:transform .55s var(--spring),opacity .4s,filter .4s;box-shadow:0 16px 28px -20px rgba(0,0,0,.35);user-select:none}
+  .pass.jp{background:radial-gradient(110% 90% at 100% 0,#f9d9de 0,transparent 60%),linear-gradient(160deg,#fff,#fbf3f4)}
+.pass.kr{background:radial-gradient(110% 90% at 100% 0,#d6ecf7 0,transparent 60%),linear-gradient(160deg,#fff,#f1f7fb)}
+.pass .top{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;color:var(--mut)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;background:rgba(60,60,67,.08);font-size:11px;font-weight:600}
+.pill i{width:6px;height:6px;border-radius:50%;background:var(--green)}.pill.warn i{background:var(--orange)}.pill.blue i{background:#64d2ff}
+.pass h4{margin:14px 0 0;font-size:24px;letter-spacing:-.03em}
+.pass .meta{font-size:12px;color:var(--mut);margin-top:2px}
+.pass .big{position:absolute;left:18px;bottom:16px}
+.pass .big b{font-size:34px;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.pass .big span{font-size:13px;color:var(--mut);margin-left:4px}
+.pass .ringw{position:absolute;right:16px;bottom:14px;width:78px;height:78px}
+.ring{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:7;stroke-linecap:round}
+.ring .bg{stroke:rgba(60,60,67,.1)}
+.ring .fg{stroke:var(--red);stroke-dasharray:100 100;transition:stroke-dashoffset 1.2s var(--spring)}
+.ringw .pc{position:absolute;inset:0;display:grid;place-items:center;font-size:15px;font-weight:700}
+.dots{display:flex;justify-content:center;gap:6px;margin-top:2px}.dots i{width:6px;height:6px;border-radius:50%;background:#c7c7cc;transition:all .3s var(--spring)}.dots i.on{background:var(--red);width:18px;border-radius:4px}
+.cta{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;min-height:48px;border:0;border-radius:16px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;transition:transform .25s var(--spring),filter .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.96)}
+.btn.red{background:var(--red);color:#fff}.btn.soft{background:#fff;color:var(--fg);box-shadow:0 0 0 1px var(--sep) inset}
+.btn.pulse{animation:ring 1.8s ease-out 2}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(182,61,75,.5)}100%{box-shadow:0 0 0 14px rgba(182,61,75,0)}}
+/* stepper */
+.steps{display:flex;align-items:flex-start;margin:16px 0 4px}
+.st{flex:1;text-align:center;font-size:11px;color:var(--mut);position:relative}
+.st .d{width:26px;height:26px;border-radius:50%;margin:0 auto 6px;background:var(--sec);display:grid;place-items:center;font-size:12px;font-weight:700;position:relative;z-index:1;transition:all .4s var(--pop)}
+.st.done .d{background:var(--green);color:#fff}.st.now .d{background:var(--red);color:#fff;transform:scale(1.12)}
+.st.now{color:var(--fg);font-weight:600}
+.st:not(:last-child)::after{content:"";position:absolute;left:50%;top:12px;width:100%;height:2px;background:var(--sec)}
+.st.done:not(:last-child)::after{background:var(--green)}
+.bar{height:6px;border-radius:4px;background:var(--sec);overflow:hidden;margin-top:12px}.bar i{display:block;height:100%;width:0;background:var(--red);border-radius:4px;transition:width 1s var(--spring)}
+/* skeleton */
+.sk{border-radius:12px;background:linear-gradient(90deg,#ececf0 25%,#f7f7fa 50%,#ececf0 75%);background-size:200% 100%;animation:sh 1.3s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+/* promo + page + admin */
+.promo{display:flex;gap:8px;align-items:center;width:100%;margin-top:10px;border:0;background:#fff;border-radius:16px;padding:0 14px;min-height:44px;font:inherit;font-size:13px;font-weight:600;box-shadow:0 0 0 1px var(--sep) inset;cursor:pointer;transition:transform .25s var(--spring)}.promo:active{transform:scale(.97)}
+.page{position:absolute;inset:0;background:var(--bg);z-index:40;transform:translateX(100%);transition:transform .55s var(--spring);overflow:auto;padding:50px 16px 24px}.page.on{transform:none}
+.page .nav{display:flex;align-items:center;gap:6px;font-weight:700;font-size:17px;margin-bottom:14px}.page .nav button{border:0;background:none;color:var(--red);font:inherit;font-size:22px;min-width:44px;min-height:44px;cursor:pointer}
+.page .blk{background:#fff;border-radius:22px;padding:16px;margin-bottom:12px}
+.admin{margin-top:14px;background:#fff;border-radius:14px;padding:12px;font-size:12px}.admin h2{font-size:13px;margin:0 0 8px}.admin label{display:flex;gap:6px;align-items:center;margin:6px 0}.admin input[type=text]{flex:1;font:inherit;border:1px solid var(--sep);border-radius:8px;padding:6px}.admin .ord{display:flex;align-items:center;gap:6px;padding:3px 0}.admin .ord button{border:0;background:var(--sec);border-radius:6px;cursor:pointer;width:24px;height:24px}
+/* sheet */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.34);opacity:0;pointer-events:none;transition:opacity .35s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;padding:8px 18px 30px;z-index:30;transform:translateY(105%);transition:transform .55s var(--spring);box-shadow:0 -10px 40px rgba(0,0,0,.18);max-height:86%;overflow:auto;touch-action:none}
+.sheet.on{transform:none}.sheet.drag{transition:none}
+.grab{width:38px;height:5px;border-radius:3px;background:#d1d1d6;margin:0 auto 12px}
+.sheet h3{margin:0;font-size:22px;letter-spacing:-.03em}
+.segc{display:flex;background:var(--sec);border-radius:12px;padding:3px;margin:14px 0;position:relative}
+.segc button{flex:1;border:0;background:none;font:inherit;font-weight:600;font-size:13px;padding:8px 0;border-radius:10px;position:relative;z-index:1;cursor:pointer;min-height:36px}
+.segc .thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/3);background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.12);transition:transform .45s var(--spring)}
+.pkg{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:18px;background:var(--sec);margin-bottom:8px;cursor:pointer;border:2px solid transparent;transition:transform .3s var(--spring),border-color .2s,background .2s;animation:swapIn .5s var(--spring) both}
+.pkg:active{transform:scale(.98)}.pkg.on{border-color:var(--red);background:#fff}
+.pkg b{font-size:17px}.pkg small{display:block;color:var(--mut);font-size:12px}.pkg .pr{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+.pkg .tag{font-size:10px;font-weight:700;color:var(--red);background:var(--red-soft);border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:2px}
+.qr{width:168px;height:168px;margin:12px auto;border-radius:18px;background:#fff;border:1px solid var(--sep);display:grid;place-items:center;position:relative;overflow:hidden}
+.qr canvas{width:140px;height:140px}
+.qr::after{content:"";position:absolute;left:0;right:0;height:40px;background:linear-gradient(transparent,rgba(182,61,75,.25),transparent);animation:scan 2.2s var(--spring) infinite}
+@keyframes scan{0%{top:-40px}100%{top:170px}}
+.toast{position:absolute;left:50%;top:54px;transform:translate(-50%,-80px);background:#1c1c1e;color:#fff;font-size:13px;font-weight:600;border-radius:99px;padding:10px 16px;z-index:50;transition:transform .55s var(--pop);white-space:nowrap}
+.toast.on{transform:translate(-50%,0)}
+.shot .panel{display:none}.shot .page{transition:none}.shot .stage{padding:0;display:block}.shot .phone{margin:0 auto}
+.rm *,.rm *::before,.rm *::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
+</style>
+</head>
+<body>
+<div class="stage" id="root">
+<div class="panel">
+  <h1>Beranda eSIM · Wallet Pass</h1>
+  <p>Prototype interaktif. Pilih state, lalu ketuk/seret langsung di ponsel. Semua gerak memakai kurva pegas ala iOS; di produksi diganti <code>motion/react</code> (<code>springIos</code>, <code>layoutId</code>).</p>
+  <div class="seg" id="states"></div>
+  <label class="tog"><input type="checkbox" id="rm"> Simulasikan “Reduce Motion”</label>
+  <div class="admin" id="admin"></div>
+  <div class="legend" style="margin-top:12px"><b>Coba:</b> ketuk bendera tujuan → sheet paket (seret handle ke bawah untuk menutup) · ketuk pass di belakang untuk membawa ke depan · ketuk pass depan untuk detail · tombol Pasang → QR · gerakkan kursor di atas chip 3D (tilt sesuai pointer, tanpa animasi loop).</div>
+</div>
+<div class="phone" id="phone">
+  <div class="sbar"><span>9:41</span><span>●●● 5G ▮</span></div>
+  <div class="scroll">
+    <div class="hello"><h2>Halo, Fakhri 👋</h2><div class="av">F</div></div>
+    <div class="search">🔍 Cari destinasi atau paket eSIM</div>
+    <div class="slot" id="slot"></div>
+    <div class="ghost"><h3>Destinasi Populer</h3><div class="ghostrow"><i></i><i></i></div></div>
+  </div>
+  <div class="tabbar"><div class="a"><i></i>Beranda</div><div><i></i>Jelajah</div><div><i></i>Perjalanan</div><div><i></i>Dompet</div><div><i></i>Profil</div></div>
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet"></div>
+  <div class="page" id="page"></div>
+  <div class="toast" id="toast"></div>
+</div>
+</div>
+<script>
+const CHIP="data:image/png;base64,__CHIP__";
+const $=s=>document.querySelector(s);
+const slot=$("#slot"),sheet=$("#sheet"),scrim=$("#scrim"),toast=$("#toast");
+const STATES=[
+ ["empty","Kosong → Beli cepat","Bendera tujuan + sheet paket (2 ketukan ke checkout)"],
+ ["loading","Memuat","Skeleton yang sama bentuknya, tanpa lompatan layout"],
+ ["active","Aktif · tumpukan pass","Gaya Apple Wallet, 2 eSIM, cincin kuota beranimasi"],
+ ["low","Kuota menipis","Cincin oranye + CTA Beli paket lagi berdenyut 2×"],
+ ["ready","Siap dipasang (H-12)","CTA Pasang → sheet QR, terhubung ke tanggal berangkat"],
+ ["pending","Diproses · live stepper","Bayar → Diproses → Siap, pembaruan otomatis"]
+];
+let cur="empty",timers=[];
+const CFG={quick:true,thr:20,promo:true,promoText:"Promo Jepang · diskon 10% s/d 7 Nov",order:["Jepang","Korea","Thailand","Singapura","Arab Saudi","Asia"]};
+const clear=()=>{timers.forEach(clearTimeout);timers=[]};
+const after=(f,ms)=>timers.push(setTimeout(f,ms));
+const rupiah=n=>"Rp"+n.toLocaleString("id-ID");
+
+function buildStates(){
+ $("#states").innerHTML=STATES.map(([k,t,d])=>`<button data-k="${k}" class="${k===cur?'on':''}"><b>${t}</b><span>${d}</span></button>`).join("");
+ $("#states").onclick=e=>{const b=e.target.closest("button");if(b)go(b.dataset.k)};
+}
+function go(k){cur=k;clear();closeSheet();$("#page").classList.remove("on");buildStates();render()}
+function render(){
+ const f={empty,loading,active:()=>active(false),low:()=>active(true),ready,pending}[cur];
+ slot.innerHTML="";const w=document.createElement("div");w.className="swap";slot.appendChild(w);f(w);
+ if(CFG.promo&&cur!=="loading"){const b=document.createElement("button");b.className="promo";b.innerHTML=`<span>🎌</span><span>${CFG.promoText}</span><span style="margin-left:auto;color:var(--mut)">›</span>`;b.onclick=()=>packSheet("🇯🇵","Jepang");slot.appendChild(b)}
+}
+
+/* ---------- empty ---------- */
+const DEST=[["🇯🇵","Jepang","dari Rp49rb"],["🇰🇷","Korea","dari Rp45rb"],["🇹🇭","Thailand","dari Rp39rb"],["🇸🇬","Singapura","dari Rp35rb"],["🇸🇦","Arab Saudi","dari Rp55rb"],["🌏","Asia","dari Rp69rb"]];
+function empty(w){
+ w.innerHTML=`<div class="card" id="emptyCard">
+  <div class="eyebrow">eSIM perjalanan</div>
+  <img class="chip3d" id="chip" src="${CHIP}" alt="" width="256" height="228">
+  <h3>Mau ke mana<br>berikutnya?</h3>
+  <p class="sub">Pilih tujuan, internet langsung siap.</p>
+  <div class="rail" id="rail">${CFG.order.map(n=>DEST.find(d=>d[1]===n)).map(d=>`<button class="dchip" data-n="${d[1]}" data-f="${d[0]}"><em>${d[0]}</em><span>${d[1]}<small>${d[2]}</small></span></button>`).join("")}</div>
+  <div class="row2"><span class="compat"><span class="ok">✓</span> iPhone kamu mendukung eSIM</span><button class="link" data-all>Semua paket ›</button></div>
+ </div>`;
+ const card=$("#emptyCard"),chip=$("#chip");
+ card.onpointermove=e=>{const r=card.getBoundingClientRect();const x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;chip.style.transform=`perspective(300px) rotateY(${x*28}deg) rotateX(${-y*28}deg) translateZ(8px)`};
+ card.onpointerleave=()=>chip.style.transform="";
+ if(!CFG.quick){$("#rail").remove();$("#emptyCard .sub").textContent="Cari destinasi untuk melihat paket eSIM."}
+ $("#rail")&&($("#rail").onclick=e=>{const b=e.target.closest(".dchip");if(b)packSheet(b.dataset.f,b.dataset.n)});
+ w.querySelector("[data-all]").onclick=()=>say("Membuka daftar semua destinasi…");
+}
+function loading(w){
+ w.innerHTML=`<div class="card"><div class="sk" style="height:14px;width:110px"></div><div class="sk" style="height:26px;width:200px;margin-top:12px"></div><div class="sk" style="height:14px;width:160px;margin-top:8px"></div><div style="display:flex;gap:8px;margin-top:16px"><div class="sk" style="height:48px;width:110px;border-radius:16px"></div><div class="sk" style="height:48px;width:110px;border-radius:16px"></div><div class="sk" style="height:48px;width:110px;border-radius:16px"></div></div></div>`;
+ after(()=>go("empty"),2200);
+}
+
+/* ---------- package sheet ---------- */
+const PKGS={"1–7 hari":[["1 GB","3 hari",49000],["3 GB","7 hari",89000,"Populer"],["5 GB","7 hari",119000]],"8–15 hari":[["5 GB","15 hari",149000],["10 GB","15 hari",219000,"Hemat"],["20 GB","15 hari",329000]],"30 hari":[["10 GB","30 hari",249000],["20 GB","30 hari",389000,"Populer"],["Unlimited","30 hari",699000]]};
+function packSheet(flag,name){
+ const tabs=Object.keys(PKGS);let t=1,sel=1;
+ const draw=()=>{
+  sheet.innerHTML=`<div class="grab"></div><h3>${flag} Paket eSIM ${name}</h3><div style="color:var(--mut);font-size:13px;margin-top:2px">Aktif otomatis saat tiba · tanpa ganti SIM</div>
+  <div class="segc"><div class="thumb" style="transform:translateX(${t*100}%)"></div>${tabs.map((x,i)=>`<button data-t="${i}">${x}</button>`).join("")}</div>
+  <div id="pk">${PKGS[tabs[t]].map((p,i)=>`<div class="pkg ${i===sel?'on':''}" data-i="${i}" style="animation-delay:${i*50}ms"><div><b>${p[0]}</b>${p[3]?`<span class="tag">${p[3]}</span>`:""}<small>${p[1]} · 4G/5G</small></div><div class="pr">${rupiah(p[2])}</div></div>`).join("")}</div>
+  <button class="btn red" id="buy" style="width:100%;margin-top:6px">Lanjut bayar · <span id="tot">${rupiah(PKGS[tabs[t]][sel][2])}</span></button>
+  <div style="text-align:center;color:var(--mut);font-size:11.5px;margin-top:10px">Bayar QRIS atau saldo Djiwa Pay · harga final tampil di checkout</div>`;
+  sheet.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{t=+b.dataset.t;sel=1;draw()});
+  sheet.querySelectorAll(".pkg").forEach(p=>p.onclick=()=>{sel=+p.dataset.i;sheet.querySelectorAll(".pkg").forEach(x=>x.classList.toggle("on",x===p));$("#tot").textContent=rupiah(PKGS[tabs[t]][sel][2])});
+  $("#buy").onclick=()=>{closeSheet();say("→ /checkout/"+name.toLowerCase()+"-"+PKGS[tabs[t]][sel][0].replace(" ","").toLowerCase())};
+ };
+ draw();openSheet();
+}
+
+/* ---------- active / low : wallet stack ---------- */
+function active(low){
+ const items=[
+  {c:"jp",flag:"🇯🇵",n:"Jepang",st:low?"Kuota menipis":"Aktif",left:low?0.9:3.2,total:5,until:"Aktif hingga 12 Nov"},
+  {c:"kr",flag:"🇰🇷",n:"Korea Selatan",st:"Siap dipasang",blue:true,left:10,total:10,until:"10 GB · 15 hari",ready:true}
+ ];
+ let front=0;
+ const w=slot.firstChild;items.forEach(it=>{it.warn=!it.ready&&it.left/it.total*100<=CFG.thr;if(it.warn)it.st="Kuota menipis"});
+ const draw=()=>{
+  w.innerHTML=`<div class="stack" id="stack">${items.map((it,i)=>pass(it,i)).join("")}</div>
+  <div class="dots">${items.map((_,i)=>`<i class="${i===front?'on':''}"></i>`).join("")}</div>
+  <div class="cta">${ctaFor(items[front])}</div>`;
+  layout(false);
+  items.forEach((it,i)=>{const fg=w.querySelector(`#r${i}`);if(fg){const pc=it.left/it.total*100;requestAnimationFrame(()=>requestAnimationFrame(()=>fg.style.strokeDashoffset=100-pc))}
+   const num=w.querySelector(`#n${i}`);if(num)count(num,it.left,1)});
+  w.querySelectorAll(".pass").forEach((p,i)=>{
+   let sx=0,moved=false;
+   p.onpointerdown=e=>{sx=e.clientX;moved=false};
+   p.onpointerup=e=>{const dx=e.clientX-sx;if(Math.abs(dx)>40){front=(front+(dx<0?1:items.length-1))%items.length;draw();return}
+     if(i===front)pagePush(items[i],it_mode(items[i]));else{front=i;draw()}};
+  });
+  const b=w.querySelector("[data-act]");if(b)b.onclick=()=>{const it=items[front];it.ready?pagePush(it,"install"):it.warn?say("→ /checkout/"+it.n.toLowerCase()):pagePush(it,"usage")};
+  const m=w.querySelector("[data-more]");if(m)m.onclick=()=>say("→ /my-esim");
+ };
+ const layout=()=>{w.querySelectorAll(".pass").forEach((p,i)=>{const d=(i-front+items.length)%items.length;
+   p.style.transform=d===0?"none":`translateY(${d*24}px) scale(${1-d*.06})`;p.style.zIndex=10-d;p.style.filter=d?"brightness(.97)":"none"})};
+ draw();
+}
+function pass(it,i){
+ const pc=Math.round(it.left/it.total*100);
+ return `<div class="pass ${it.c}"><div class="top"><span>eSIM · ${it.n}</span><span class="pill ${it.warn?'warn':it.blue?'blue':''}"><i></i>${it.st}</span></div>
+ <h4>${it.flag} ${it.n}</h4><div class="meta">${it.until}</div>
+ ${it.ready?`<div class="big"><b>${it.total}</b><span>GB siap</span></div>`:`<div class="big"><b id="n${i}">0</b><span>GB tersisa</span></div>`}
+ ${it.ready?"":`<div class="ringw"><svg class="ring" viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle id="r${i}" class="fg" style="stroke:${it.warn?'#ff9f0a':'#b63d4b'};stroke-dashoffset:100" cx="22" cy="22" r="18" pathLength="100"/></svg><div class="pc">${pc<1?'<1':pc}%</div></div>`}</div>`;
+}
+function ctaFor(it){
+ if(it.ready)return `<button class="btn red" data-act>▣ Pasang eSIM</button><button class="btn soft" data-more>Semua eSIM</button>`;
+ if(it.warn)return `<button class="btn red pulse" data-act>＋ Beli paket lagi</button><button class="btn soft" data-more>Semua eSIM</button>`;
+ return `<button class="btn soft" data-act>Detail eSIM</button><button class="btn soft" data-more>Semua eSIM</button>`;
+}
+function count(el,to,dec){const t0=performance.now(),dur=cur&&document.getElementById("rm").checked?1:900;
+ const f=t=>{const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=(to*e).toFixed(dec).replace(".",",");if(p<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
+
+const it_mode=it=>it.ready?"install":"usage";
+function detailOld(it){
+ sheet.innerHTML=`<div class="grab"></div><h3>${it.flag} ${it.n}</h3><div style="color:var(--mut);font-size:13px">${it.until}</div>
+ <div style="display:flex;align-items:center;gap:18px;margin:18px 0"><div style="position:relative;width:110px;height:110px"><svg class="ring" viewBox="0 0 44 44" style="filter:none"><circle cx="22" cy="22" r="18" style="stroke:#ececf0"/><circle id="dr" cx="22" cy="22" r="18" pathLength="100" style="stroke:${it.warn?'#ff9f0a':'#b63d4b'};stroke-dasharray:100 100;stroke-dashoffset:100;transition:stroke-dashoffset 1.2s var(--spring)"/></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:20px">${Math.round(it.left/it.total*100)}%</div></div>
+ <div><div style="font-size:30px;font-weight:700;letter-spacing:-.04em">${String(it.left).replace(".",",")} GB</div><div style="color:var(--mut);font-size:13px">dari ${it.total} GB · data penyedia, diperbarui 4 mnt lalu</div></div></div>
+ <div class="cta"><button class="btn red" id="d1">＋ Beli paket lagi</button><button class="btn soft" id="d2">Bantuan</button></div>`;
+ openSheet();requestAnimationFrame(()=>requestAnimationFrame(()=>{const r=$("#dr");if(r)r.style.strokeDashoffset=100-it.left/it.total*100}));
+ $("#d1").onclick=()=>{closeSheet();say("→ /checkout/"+it.n.toLowerCase())};$("#d2").onclick=()=>{closeSheet();say("Membuka chat support")};
+}
+
+/* ---------- ready ---------- */
+function ready(w){
+ w.innerHTML=`<div class="card"><div class="eyebrow">eSIM kamu <span class="pill" style="background:#e9f2ff;color:#0057b8"><i style="background:#0a84ff"></i>Siap dipasang</span></div>
+ <h3 style="margin-top:10px">🇯🇵 Jepang · 5 GB</h3><p class="sub">Berangkat <b style="color:var(--fg)">12 hari lagi</b> — pasang sekarang selagi ada Wi-Fi.</p>
+ <div class="bar"><i id="pb"></i></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:6px"><span>Beli</span><span>Pasang</span><span>Berangkat</span></div>
+ <div class="cta"><button class="btn red" id="inst">▣ Pasang eSIM</button><button class="btn soft" data-more>Panduan</button></div></div>`;
+ requestAnimationFrame(()=>requestAnimationFrame(()=>$("#pb").style.width="34%"));
+ $("#inst").onclick=()=>pagePush({n:"Jepang",flag:"🇯🇵",total:5,left:5,ready:true,until:"5 GB · 7 hari"},"install");
+ w.querySelector("[data-more]").onclick=()=>say("→ /panduan/esim");
+}
+function installOld(it){
+ sheet.innerHTML=`<div class="grab"></div><h3>Pasang eSIM ${it.n}</h3><div style="color:var(--mut);font-size:13px">Pastikan terhubung ke Wi-Fi.</div>
+ <div class="qr"><canvas id="qc" width="140" height="140"></canvas></div>
+ <div class="cta"><button class="btn red" id="ios">Pasang langsung (iPhone)</button></div>
+ <div class="cta" style="margin-top:6px"><button class="btn soft" id="cp">Salin kode manual</button><button class="btn soft" id="gd">Panduan</button></div>
+ <div style="text-align:center;color:var(--mut);font-size:11.5px;margin-top:12px">🔒 QR hanya untuk perangkatmu. Jangan dibagikan.</div>`;
+ const c=$("#qc").getContext("2d");let s=7;c.fillStyle="#1c1c1e";
+ for(let y=0;y<20;y++)for(let x=0;x<20;x++){const f=(x<6&&y<6)||(x>13&&y<6)||(x<6&&y>13);if(f?(x%5===0||y%5===0||x%5===4||y%5===4||(x%5===2&&y%5===2)):((x*7+y*13+x*y)%5<2))c.fillRect(x*s,y*s,s-.5,s-.5)}
+ $("#cp").onclick=()=>say("✓ Kode disalin");$("#ios").onclick=()=>say("Membuka pemasangan eSIM iOS…");$("#gd").onclick=()=>{closeSheet();say("→ /panduan/esim")};
+ openSheet();
+}
+
+/* ---------- shared detail page (= /my-esim/$id) ---------- */
+function pagePush(it,mode){const pg=$("#page");
+ const pc=Math.round(it.left/it.total*100);
+ pg.innerHTML=`<div class="nav"><button id="bk">‹</button>Detail eSIM</div>
+ <div class="blk"><div style="font-size:22px;font-weight:700;letter-spacing:-.03em">${it.flag} ${it.n}</div><div style="color:var(--mut);font-size:13px">${it.until}</div></div>
+ ${mode==="install"?`<div class="blk"><b>Pasang eSIM sekarang</b><div style="color:var(--mut);font-size:13px">Pastikan terhubung ke Wi-Fi.</div><div class="qr"><canvas id="qc" width="140" height="140"></canvas></div>
+  <button class="btn red" style="width:100%" id="ios">Pasang langsung (iPhone)</button><button class="btn soft" style="width:100%;margin-top:8px" id="cp">Salin kode manual</button>
+  <div style="text-align:center;color:var(--mut);font-size:11.5px;margin-top:10px">🔒 QR hanya untuk perangkatmu.</div></div>`
+ :`<div class="blk" style="display:flex;gap:16px;align-items:center"><div style="position:relative;width:96px;height:96px"><svg class="ring" viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle id="dr" class="fg" cx="22" cy="22" r="18" pathLength="100" style="stroke-dashoffset:100"/></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:18px">${pc}%</div></div><div><div style="font-size:28px;font-weight:700;letter-spacing:-.04em">${String(it.left).replace(".",",")} GB</div><div style="color:var(--mut);font-size:12px">dari ${it.total} GB · data penyedia</div></div></div>
+  <button class="btn red" style="width:100%" id="re">＋ Beli paket lagi</button>`}
+ <div class="blk" style="color:var(--mut);font-size:12.5px">Komponen yang sama dengan halaman asli: <b>QuotaRing, EsimQr, InstallGuide, TravelTimeline</b>. Beranda hanya membuka halaman ini, tidak menduplikasinya.</div>`;
+ requestAnimationFrame(()=>{pg.classList.add("on");requestAnimationFrame(()=>{const r=$("#dr");if(r)r.style.strokeDashoffset=100-pc})});
+ $("#bk").onclick=()=>pg.classList.remove("on");
+ const re=$("#re");if(re)re.onclick=()=>{pg.classList.remove("on");say("→ /checkout/"+it.n.toLowerCase())};
+ const c=$("#qc");if(c){const x=c.getContext("2d");let q=7;x.fillStyle="#1c1c1e";for(let y=0;y<20;y++)for(let a=0;a<20;a++){const f=(a<6&&y<6)||(a>13&&y<6)||(a<6&&y>13);if(f?(a%5===0||y%5===0||a%5===4||y%5===4||(a%5===2&&y%5===2)):((a*7+y*13+a*y)%5<2))x.fillRect(a*q,y*q,q-.5,q-.5)}
+  $("#cp").onclick=()=>say("✓ Kode disalin");$("#ios").onclick=()=>say("Membuka pemasangan eSIM iOS…")}
+}
+/* ---------- pending ---------- */
+function pending(w){
+ let s=1;
+ const draw=()=>{
+  const L=["Bayar","Diproses","Siap","Pasang"];
+  w.innerHTML=`<div class="card"><div class="eyebrow">Pesanan #DJ-4821 <span class="pill warn" style="background:#fff4e5;color:#9a5b00"><i></i>${s<2?'Diproses':'Siap'}</span></div>
+  <h3 style="margin-top:8px">${s<2?'Menyiapkan eSIM-mu…':'eSIM siap dipasang 🎉'}</h3><p class="sub">${s<2?'Biasanya selesai dalam 1–2 menit. Kamu boleh tutup aplikasi, kami kabari lewat notifikasi.':'Ketuk Pasang untuk lanjut.'}</p>
+  <div class="steps">${L.map((l,i)=>`<div class="st ${i<s?'done':i===s?'now':''}"><div class="d">${i<s?'✓':i+1}</div>${l}</div>`).join("")}</div>
+  ${s<2?`<div class="bar"><i id="pb"></i></div>`:`<div class="cta"><button class="btn red" id="inst">▣ Pasang eSIM</button></div>`}</div>`;
+  if(s<2)requestAnimationFrame(()=>requestAnimationFrame(()=>{$("#pb").style.width="80%"}));
+  else $("#inst").onclick=()=>pagePush({n:"Jepang",flag:"🇯🇵",total:5,left:5,ready:true,until:"5 GB · 7 hari"},"install");
+ };
+ draw();after(()=>{s=2;draw();say("✓ eSIM Jepang siap dipasang")},3600);
+}
+
+/* ---------- admin (same CFG the Home reads) ---------- */
+function adminUI(){const a=$("#admin");if(!a)return;
+ a.innerHTML=`<h2>Admin · eSIM Beranda <span style="font-weight:400;color:var(--mut)">(admin_settings.homeEsim)</span></h2>
+ <label><input type="checkbox" id="aq" ${CFG.quick?'checked':''}> Beli cepat (rel + sheet)</label>
+ <label>Ambang menipis <input type="range" id="at" min="5" max="40" value="${CFG.thr}"> <b>${CFG.thr}%</b></label>
+ <label><input type="checkbox" id="ap" ${CFG.promo?'checked':''}> Banner promo</label>
+ <label><input type="text" id="apt" value="${CFG.promoText}"></label>
+ <div style="color:var(--mut);margin:6px 0 2px">Urutan rel destinasi</div>
+ ${CFG.order.map((n,i)=>`<div class="ord"><button data-u="${i}">↑</button><button data-d="${i}">↓</button>${n}</div>`).join("")}`;
+ $("#aq").onchange=e=>{CFG.quick=e.target.checked;render()};
+ $("#at").oninput=e=>{CFG.thr=+e.target.value;adminUI();render()};
+ $("#ap").onchange=e=>{CFG.promo=e.target.checked;render()};
+ $("#apt").oninput=e=>{CFG.promoText=e.target.value;render()};
+ a.querySelectorAll("[data-u],[data-d]").forEach(b=>b.onclick=()=>{const i=+(b.dataset.u??b.dataset.d),j=b.dataset.u!==undefined?i-1:i+1;if(j<0||j>=CFG.order.length)return;[CFG.order[i],CFG.order[j]]=[CFG.order[j],CFG.order[i]];adminUI();render()});
+}
+/* ---------- sheet infra ---------- */
+function openSheet(){sheet.style.transform="";scrim.classList.add("on");requestAnimationFrame(()=>sheet.classList.add("on"))}
+function closeSheet(){sheet.classList.remove("on","drag");sheet.style.transform="";scrim.classList.remove("on")}
+scrim.onclick=closeSheet;
+let dy0=null,dy=0;
+sheet.addEventListener("pointerdown",e=>{if(e.target.closest("button,.pkg"))return;dy0=e.clientY;dy=0;sheet.classList.add("drag");sheet.setPointerCapture(e.pointerId)});
+sheet.addEventListener("pointermove",e=>{if(dy0===null)return;dy=Math.max(0,e.clientY-dy0);sheet.style.transform=`translateY(${dy}px)`});
+sheet.addEventListener("pointerup",()=>{if(dy0===null)return;dy0=null;sheet.classList.remove("drag");if(dy>110)closeSheet();else sheet.style.transform=""});
+function say(t){toast.textContent=t;toast.classList.add("on");clearTimeout(say.t);say.t=setTimeout(()=>toast.classList.remove("on"),2000)}
+$("#rm").onchange=e=>$("#root").classList.toggle("rm",e.target.checked);
+buildStates();adminUI();
+const H=location.hash.slice(1);
+if(H){document.body.classList.add("shot");
+ if(H==="sheet"){go("empty");packSheet("🇯🇵","Jepang")}
+ else if(H==="install"){go("ready");pagePush({n:"Jepang",flag:"🇯🇵",total:5,left:5,ready:true,until:"5 GB · 7 hari"},"install")}
+ else if(H==="usage"){go("active");pagePush({n:"Jepang",flag:"🇯🇵",total:5,left:3.2,until:"Aktif hingga 12 Nov"},"usage")}
+ else go(H)}
+else render();
+</script>
+</body>
+</html>

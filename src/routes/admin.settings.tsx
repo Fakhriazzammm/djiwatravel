@@ -9,17 +9,25 @@ import {
   StatusPill,
 } from "@/components/admin-shell";
 import { getAdminReadiness } from "@/lib/admin-readiness.fn";
+import { AdminHomeEsimPanel } from "@/components/admin-home-esim-panel";
+import { getAdminHomeEsimConfig } from "@/lib/home-esim-config.fn";
+import { getHomeDestinationFeed } from "@/lib/destination-availability.fn";
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
-  loader: async () => ({ readiness: await getAdminReadiness() }),
+  loader: async () => ({
+    readiness: await getAdminReadiness(),
+    homeEsim: await getAdminHomeEsimConfig(),
+    rail: (await getHomeDestinationFeed().catch(() => ({ popular: [] }))).popular,
+  }),
   component: AdminSettings,
 });
 function AdminSettings() {
-  const { readiness } = Route.useLoaderData();
+  const { readiness, homeEsim, rail } = Route.useLoaderData();
   const ready = readiness.filter((x) => x.ready).length;
   return (
     <AdminShell title="Settings" subtitle="Server readiness">
+      <AdminHomeEsimPanel initial={homeEsim.config} version={homeEsim.version} railPool={rail} />
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <SectionHeading

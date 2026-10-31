@@ -1,3 +1,5 @@
+import { parseHomeEsimConfig } from "./home-esim-config";
+
 export type AdminSettingKey =
   | "retryPolicy"
   | "expiryPolicy"
@@ -9,7 +11,8 @@ export type AdminSettingKey =
   | "paymentExpiry"
   | "providerThreshold"
   | "notifications"
-  | "security";
+  | "security"
+  | "homeEsim";
 export type AdminSettings = Record<AdminSettingKey, unknown>;
 export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "retryPolicy",
@@ -23,6 +26,7 @@ export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "providerThreshold",
   "notifications",
   "security",
+  "homeEsim",
 ];
 export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (
@@ -52,6 +56,7 @@ export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
       Number((value as { percent?: unknown }).percent) > 100)
   )
     throw new Error("markup.percent harus 0-100");
+  if (key === "homeEsim") parseHomeEsimConfig(value);
   return true;
 }
 export function buildSettingAudit(

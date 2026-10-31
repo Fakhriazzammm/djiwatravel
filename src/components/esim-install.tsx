@@ -1,5 +1,11 @@
 import { QRCodeSVG } from "qrcode.react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ShieldCheck, Smartphone } from "lucide-react";
+import {
+  esimInstallLink,
+  installPlatformFromUserAgent,
+  type InstallPlatform,
+} from "@/lib/esim-install-link";
 import { Copy, Eye, EyeOff } from "lucide-react";
 import type { EsimProfile } from "@/lib/providers";
 import { group } from "./shell";
@@ -13,6 +19,43 @@ export function EsimQr({ esim, compact = false }: { esim: EsimProfile; compact?:
       </div>
       <p className="mt-3 text-center text-[13px] text-muted-foreground">
         Scan QR ini untuk memasang eSIM
+      </p>
+    </div>
+  );
+}
+
+/**
+ * One install surface: QR, one-tap install on a phone, and the privacy note. Used by the order
+ * confirmation and the eSIM detail so the two cannot drift apart.
+ */
+export function EsimInstallPanel({
+  esim,
+  compact = false,
+  withGuide = false,
+}: {
+  esim: EsimProfile;
+  compact?: boolean;
+  withGuide?: boolean;
+}) {
+  const [platform, setPlatform] = useState<InstallPlatform | null>(null);
+  useEffect(() => setPlatform(installPlatformFromUserAgent(navigator.userAgent)), []);
+  const link = platform ? esimInstallLink(esim.lpa, platform) : null;
+  return (
+    <div className="space-y-4">
+      {link && (
+        <a
+          href={link}
+          rel="noopener noreferrer"
+          className="tap flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-red px-4 text-[15px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <Smartphone className="size-5" aria-hidden="true" /> Pasang langsung di perangkat ini
+        </a>
+      )}
+      <EsimQr esim={esim} compact={compact} />
+      {withGuide && <InstallGuide />}
+      <p className="flex items-start gap-2 text-[12px] text-muted-foreground">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+        QR dan kode aktivasi hanya untuk perangkatmu. Jangan bagikan ke orang lain.
       </p>
     </div>
   );

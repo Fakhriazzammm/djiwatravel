@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
 import {
   CheckCircle2,
   ChevronDown,
@@ -21,7 +22,7 @@ import {
   group,
   row,
 } from "@/components/shell";
-import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
+import { EsimInstallPanel, ManualDetails } from "@/components/esim-install";
 import { hasGuestOrderAccess, refreshOrdersFromServer, useOrders } from "@/lib/orders";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
@@ -66,6 +67,7 @@ export const Route = createFileRoute("/my-esim/$id")({
 });
 
 function Detail() {
+  const homeConfig = useHomeEsimConfig();
   const { id } = Route.useParams();
   const orders = useOrders();
   const [tab, setTab] = useState<"none" | "install" | "topup">("none");
@@ -138,6 +140,7 @@ function Detail() {
     measuredAt: o.usageMeasuredAt ?? null,
     unlimited: o.unlimited === true,
     active: canInstall,
+    lowPercent: homeConfig.lowQuotaPercent,
   });
   const checklist = buildTravelChecklist({
     departureDate: trip.departureDate,
@@ -239,13 +242,8 @@ function Detail() {
               <QrCode className="size-5" aria-hidden="true" /> Tampilkan QR Code
             </button>
           ) : (
-            <div className="mt-4 space-y-5">
-              <EsimQr esim={o.esim} compact />
-              <InstallGuide />
-              <p className="flex items-start gap-2 text-[12px] text-muted-foreground">
-                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
-                QR dan kode aktivasi hanya untuk perangkatmu. Jangan bagikan ke orang lain.
-              </p>
+            <div className="mt-4">
+              <EsimInstallPanel esim={o.esim} compact withGuide />
             </div>
           )}
         </section>

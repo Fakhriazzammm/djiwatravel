@@ -9,16 +9,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { getSellableDestinationCodes } from "@/lib/destination-availability.fn";
-import {
-  regionalCoverage as extendRegionalCoverage,
-  resolveCatalogDestination,
-} from "@/lib/destination-availability";
+import { getDestinationPackages } from "@/lib/destination-packages.fn";
 import { destinationOgImage } from "@/lib/destination-artwork";
-import { toViewPackages, type ViewPackage } from "@/lib/package-view";
-import { filterPackagesByDestination } from "@/lib/reseller-catalog-view";
-import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
-import { readSellability } from "@/lib/sellability-api";
+import type { ViewPackage } from "@/lib/package-view";
+import { pricePerGb } from "@/lib/package-picker";
 import { z } from "zod";
 import {
   packageCoverageLabel,
@@ -73,12 +67,6 @@ export function toggleComparisonSelection(
   return [...selectedCodes, packageCode];
 }
 
-function pricePerGb(pkg: ViewPackage): number {
-  const gb = packageDisplayedGb(pkg.volumeBytes);
-  if (!Number.isFinite(gb) || gb <= 0) return Number.POSITIVE_INFINITY;
-  return pkg.priceIdr / gb;
-}
-
 /**
  * Sorts a copy of the package list. Kept pure and exported so the ordering rules are covered by
  * tests instead of being verified by eye on production.
@@ -102,21 +90,6 @@ export function sortPackages(packages: ViewPackage[], key: SortKey): ViewPackage
 /** Destination pages that ship a social share image; see lib/destination-artwork.ts. */
 const BASE_URL = "https://djiwatravel.com";
 
-const REGIONAL_COVERAGE: Record<string, readonly string[]> = {
-  ASIA: ["CN", "HK", "JP", "KR", "MY", "SG", "TH", "TW"],
-  EU: ["EU"],
-};
-
-async function coverageFor(destination: { code: string; region: string }) {
-  const seed = REGIONAL_COVERAGE[destination.code.toUpperCase()] ?? [];
-  if (destination.region !== "Regional") return seed;
-  const availability = await getSellableDestinationCodes(1_500);
-  return extendRegionalCoverage(
-    { code: destination.code, region: destination.region },
-    availability,
-  );
-}
-
 export const Route = createFileRoute("/destination/$code")({
   validateSearch: z.object({
     availability: z.enum(["all", "available", "sold-out"]).default("all"),
@@ -125,47 +98,9 @@ export const Route = createFileRoute("/destination/$code")({
   // destination list or the home cards does not pay for it twice.
   staleTime: 0,
   loader: async ({ params }) => {
-    const requestedCode = params.code.trim().toUpperCase();
-    // Regional provider packages are represented by their member country codes. Querying the
-    // provider with the display code (for example ASIA) is rejected by some catalogue accounts,
-    // so read the already-authoritative full list and apply the regional coverage locally.
-    const seededDestination = resolveCatalogDestination(requestedCode, []);
-    const catalog = await getResellerCatalog(
-      seededDestination?.region === "Regional" ? undefined : requestedCode,
-    );
-    const destination = resolveCatalogDestination(requestedCode, catalog.packages);
-    if (!destination) throw notFound();
-    const visible = filterPackagesByDestination(
-      catalog.packages,
-      destination.code,
-      await coverageFor(destination),
-    );
-    // Balance-aware sellability, read through a server function so a client-side navigation and
-    // the server-rendered page agree on what is actually available.
-    const sellability = await readSellability({
-      data: {
-        packages: visible.map((pkg) => ({
-          packageCode: pkg.packageCode,
-          providerPriceUnits: pkg.providerPriceUnits,
-        })),
-      },
-    });
-    const balanceUnknown = sellability.mode === "on" && !sellability.balanceKnown;
-    // When the balance cannot be read we must not advertise availability we cannot honour, but we
-    // say so neutrally: the customer never learns why.
-    const unavailable = balanceUnknown
-      ? new Set(visible.map((pkg) => pkg.packageCode))
-      : new Set<string>(sellability.hidden);
-    // Only display fields are sent to the client: the full record carries our cost basis and
-    // made this page ~680 KB (see lib/package-view.ts).
-    return {
-      destination,
-      packages: toViewPackages(visible, unavailable),
-      stale: catalog.stale,
-      soldOut: unavailable.size,
-      balanceUnknown,
-      stockPending: balanceUnknown,
-    };
+    const result = await getDestinationPackages({ data: params.code });
+    if (!result) throw notFound();
+    return result;
   },
   head: ({ loaderData }) => {
     const title = loaderData

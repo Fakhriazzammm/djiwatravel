@@ -1,5 +1,11 @@
 export type AnalyticsEventName =
-  "page_view" | "destination_view" | "finder_submit" | "checkout_start";
+  | "page_view"
+  | "destination_view"
+  | "finder_submit"
+  | "checkout_start"
+  | "home_esim_chip_tap"
+  | "home_esim_sheet_open"
+  | "home_esim_promo_tap";
 
 export type AnalyticsEvent = {
   name: AnalyticsEventName;
@@ -105,11 +111,42 @@ export function buildAnalyticsEvent(
   };
 }
 
+const HOME_EVENT_ENDPOINT = "/api/home-esim-events";
+
+/**
+ * Home eSIM funnel events go to the first-party, anonymous sink that Admin reads
+ * (`home_esim_events`), not to the optional external analytics endpoint.
+ */
+function trackHomeEsimEvent(name: AnalyticsEventName, properties?: AnalyticsEvent["properties"]) {
+  if (!isBrowser()) return;
+  const destination = properties?.["destination"];
+  const source = properties?.["source"];
+  void fetch(HOME_EVENT_ENDPOINT, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name,
+      ...(typeof destination === "string" && /^[A-Za-z0-9]{2,8}$/.test(destination)
+        ? { destination }
+        : {}),
+      ...(typeof source === "string" ? { source } : {}),
+    }),
+    keepalive: true,
+    credentials: "omit",
+  }).catch(() => {
+    // Measurement must never affect storefront behavior.
+  });
+}
+
 export function trackAnalytics(
   name: AnalyticsEventName,
   path: string,
   properties?: AnalyticsEvent["properties"],
 ) {
+  if (name.startsWith("home_esim_")) {
+    trackHomeEsimEvent(name, properties);
+    return;
+  }
   const endpoint = configuredEndpoint();
   const event = endpoint ? buildAnalyticsEvent(name, path, properties) : null;
   if (!endpoint || !event || !isBrowser()) return;

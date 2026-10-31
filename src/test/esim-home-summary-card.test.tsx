@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-router";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { DEFAULT_HOME_ESIM_CONFIG } from "@/lib/home-esim-config";
 import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";
 import type { Order } from "@/lib/orders";
 
@@ -29,12 +31,18 @@ function order(overrides: Partial<Order> = {}): Order {
   };
 }
 
-function renderCard(orders: Order[] | null, onSearchPackages: () => void = vi.fn()) {
+function renderCard(
+  orders: Order[] | null,
+  onSearchPackages: () => void = vi.fn(),
+  extra: Partial<React.ComponentProps<typeof EsimHomeSummaryCard>> = {},
+) {
   const rootRoute = createRootRoute({ component: () => <Outlet /> });
   const homeRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: () => <EsimHomeSummaryCard orders={orders} onSearchPackages={onSearchPackages} />,
+    component: () => (
+      <EsimHomeSummaryCard orders={orders} onSearchPackages={onSearchPackages} {...extra} />
+    ),
   });
   const finderRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -247,5 +255,62 @@ describe("EsimHomeSummaryCard", () => {
       "/my-esim",
     );
     expect(screen.queryByRole("radiogroup", { name: "Pilih eSIM" })).not.toBeInTheDocument();
+  });
+
+  it("offers a destination rail that opens the shared package sheet (quick buy)", async () => {
+    const onSelect = vi.fn();
+    const rail = [
+      { code: "JP", flag: "🇯🇵", nameId: "Jepang" },
+      { code: "KR", flag: "🇰🇷", nameId: "Korea Selatan" },
+    ];
+    renderCard([], vi.fn(), { destinations: rail, onSelectDestination: onSelect });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Lihat paket eSIM Korea Selatan" }));
+    expect(onSelect).toHaveBeenCalledWith(rail[1]);
+    expect(screen.queryByRole("button", { name: /cari paket eSIM/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /semua paket/i })).toHaveLength(1);
+  });
+
+  it("falls back to the search button when the admin turns quick buy off", async () => {
+    renderCard([], vi.fn(), {
+      destinations: [{ code: "JP", flag: "🇯🇵", nameId: "Jepang" }],
+      onSelectDestination: vi.fn(),
+      config: { ...DEFAULT_HOME_ESIM_CONFIG, quickBuyEnabled: false },
+    });
+    expect(await screen.findByRole("button", { name: /cari paket eSIM/i })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Pilih tujuan" })).not.toBeInTheDocument();
+  });
+
+  it("applies the admin low-quota threshold to the card", async () => {
+    renderCard([order({ usedGb: 3.5 })], vi.fn(), {
+      config: { ...DEFAULT_HOME_ESIM_CONFIG, lowQuotaPercent: 40 },
+    });
+    expect(await screen.findByText("Kuota menipis")).toBeInTheDocument();
+  });
+
+  it("shows the activation stepper for a pending order", async () => {
+    renderCard([order({ status: "PROVISIONING" })]);
+    expect(await screen.findByRole("list", { name: "Tahap pesanan eSIM" })).toBeInTheDocument();
+  });
+
+  it("keeps every pass light: no dark surface classes on the card", async () => {
+    const source = readFileSync("src/components/esim-home-summary-card.tsx", "utf8");
+    expect(source).not.toMatch(
+      /bg-(primary|foreground|black|slate-[6-9]|zinc-[6-9]|neutral-[6-9])/,
+    );
+    expect(source).not.toMatch(/bg-\[#(0|1)[0-9a-f]{5}\]/i);
+    expect(source).not.toMatch(/text-primary-foreground/);
+  });
+
+  it("shows the saved departure countdown on a ready eSIM", async () => {
+    const target = new Date();
+    target.setDate(target.getDate() + 12);
+    const value = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
+    window.localStorage.clear();
+    const { writeDepartureDate } = await import("@/lib/travel-checklist-store");
+    writeDepartureDate("order-1", value);
+    renderCard([order({ status: "READY" })]);
+    expect(await screen.findByTestId("esim-home-departure")).toHaveTextContent("H-12");
+    window.localStorage.clear();
   });
 });

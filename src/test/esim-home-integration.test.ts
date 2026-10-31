@@ -28,3 +28,39 @@ describe("Home eSIM dashboard integration", () => {
     }
   });
 });
+
+describe("shared eSIM modules (no duplicated flows)", () => {
+  const read = (path: string) => readFileSync(path, "utf8");
+
+  it("reads a destination's packages through one server function everywhere", () => {
+    expect(read("src/routes/destination.$code.tsx")).toContain("getDestinationPackages");
+    expect(read("src/components/esim-destination-sheet.tsx")).toContain("getDestinationPackages");
+    expect(read("src/routes/destination.$code.tsx")).not.toContain("readSellability");
+  });
+
+  it("opens one package sheet from the rail, search results and the promo banner", () => {
+    expect(homeSource).toContain("<EsimDestinationSheet");
+    expect(homeSource.match(/<EsimDestinationSheet/g)).toHaveLength(1);
+    expect(homeSource).toContain('openSheet(destination, "search")');
+    expect(homeSource).toContain("home_esim_chip_tap");
+    expect(homeSource).toContain("home_esim_promo_tap");
+    expect(homeSource).toContain("openPromo");
+  });
+
+  it("renders the status chip, quota ring and stepper from shared components", () => {
+    const card = read("src/components/esim-home-summary-card.tsx");
+    expect(card).toContain("EsimStatusBadge");
+    expect(card).toContain("QuotaRing");
+    expect(card).toContain("EsimActivationStepper");
+    expect(card).not.toContain("function statusBadge");
+    expect(read("src/components/travel-usage-card.tsx")).toContain("QuotaRing");
+  });
+
+  it("previews the admin setting with the real customer card and one config record", () => {
+    const panel = read("src/components/admin-home-esim-panel.tsx");
+    expect(panel).toContain("<EsimHomeSummaryCard");
+    expect(read("src/routes/admin.settings.tsx")).toContain("AdminHomeEsimPanel");
+    expect(read("src/hooks/use-home-esim-config.ts")).toContain("getHomeEsimConfig");
+    expect(read("src/lib/home-esim-config.server.ts")).toContain("admin_settings");
+  });
+});

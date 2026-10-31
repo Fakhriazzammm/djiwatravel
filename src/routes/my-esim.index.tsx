@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ReceiptText } from "lucide-react";
 import { Page, Wordmark, btnPrimary } from "@/components/shell";
 import { useOrders, type Order } from "@/lib/orders";
+import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
 import {
   activationTimeline,
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/my-esim/")({
 });
 
 export function EsimCard({ o }: { o: Order }) {
+  const lowPercent = useHomeEsimConfig().lowQuotaPercent;
   const packageName = o.packageName ?? o.packageId;
   const locationLabel = o.locationCodes?.join(", ") || "Regional";
   const durationDays = o.durationDays ?? 0;
@@ -54,6 +56,7 @@ export function EsimCard({ o }: { o: Order }) {
     usedGb: o.usedGb ?? null,
     unlimited: o.unlimited === true,
     active: status === "INSTALLED",
+    lowPercent,
   });
   const timeline = activationTimeline(status);
   const doneStages = timeline.stages.filter((stage) => stage.state === "done").length;

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Page, btnPrimary, btnRed, btnSoft } from "@/components/shell";
-import { EsimQr, InstallGuide, ManualDetails } from "@/components/esim-install";
+import { EsimInstallPanel, InstallGuide, ManualDetails } from "@/components/esim-install";
 import { rupiah } from "@/lib/pricing";
 import {
   ensurePaymentLink,
@@ -250,7 +250,8 @@ function OrderPage() {
       </Page>
     );
   const found = orders.find((x) => x.id === id);
-  const o = found && (hasGuestOrderAccess(id) || found.fromMemberAccount === true) ? found : undefined;
+  const o =
+    found && (hasGuestOrderAccess(id) || found.fromMemberAccount === true) ? found : undefined;
   if (!o)
     return (
       <Page>
@@ -284,7 +285,9 @@ function OrderPage() {
           {o.method === "djiwa_pay" ? (
             <>
               <p className="font-semibold">
-                {o.status === "ORDER_CREATED" ? "Bayar dengan saldo Djiwa Pay" : "Memastikan pembayaran Djiwa Pay"}
+                {o.status === "ORDER_CREATED"
+                  ? "Bayar dengan saldo Djiwa Pay"
+                  : "Memastikan pembayaran Djiwa Pay"}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {o.status === "ORDER_CREATED"
@@ -301,7 +304,11 @@ function OrderPage() {
                   onClick={() => void checkPayment(false)}
                   className={`${btnRed} flex-1 disabled:opacity-50`}
                 >
-                  {checking ? "Memeriksa…" : o.status === "ORDER_CREATED" ? "Bayar lagi" : "Cek pembayaran"}
+                  {checking
+                    ? "Memeriksa…"
+                    : o.status === "ORDER_CREATED"
+                      ? "Bayar lagi"
+                      : "Cek pembayaran"}
                 </button>
               </div>
             </>
@@ -478,7 +485,7 @@ function OrderPage() {
           ‹ Kembali
         </button>
         <h1 className="large-title mb-4">QR Code</h1>
-        <EsimQr esim={esim} />
+        <EsimInstallPanel esim={esim} />
         <h2 className="mt-8 mb-2 px-1 text-sm font-medium text-muted-foreground">Pasang manual</h2>
         <ManualDetails esim={esim} />
       </Page>

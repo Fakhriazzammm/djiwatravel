@@ -52,7 +52,7 @@ export type EsimHomeSummary = {
  * A paid order that is still provisioning has no customer action, so it sits
  * below an eSIM the traveler can actually use right now.
  */
-export function esimHomeOrderRank(status: OrderStatus, order: Order): number {
+export function esimHomeOrderRank(status: OrderStatus, order: Order, lowPercent?: number): number {
   if (status === "ORDER_CREATED" || status === "WAITING_PAYMENT") return 0;
   if (status === "PROVISIONING_FAILED") return 1;
   if (status === "READY") return 2;
@@ -62,6 +62,7 @@ export function esimHomeOrderRank(status: OrderStatus, order: Order): number {
       usedGb: order.usedGb ?? null,
       unlimited: order.unlimited === true,
       active: true,
+      lowPercent,
     });
     return usage.kind === "measured" && usage.low ? 3 : 4;
   }
@@ -70,11 +71,15 @@ export function esimHomeOrderRank(status: OrderStatus, order: Order): number {
 }
 
 /** Orders in the order the Home card pages through them. */
-export function sortEsimHomeOrders(orders: Order[], now = Date.now()): Order[] {
+export function sortEsimHomeOrders(
+  orders: Order[],
+  now = Date.now(),
+  lowPercent?: number,
+): Order[] {
   return orders
     .map((order) => {
       const status = effectiveOrderStatus(order.status, order.expiresAt, now);
-      return { order, status, rank: esimHomeOrderRank(status, order) };
+      return { order, status, rank: esimHomeOrderRank(status, order, lowPercent) };
     })
     .sort((a, b) => a.rank - b.rank || b.order.createdAt - a.order.createdAt)
     .map(({ order }) => order);
@@ -155,8 +160,8 @@ function emptySummary(): EsimHomeSummary {
   return {
     kind: "empty",
     eyebrow: "eSIM internasional",
-    title: "Belum punya eSIM?",
-    subtitle: "Pilih paket internet untuk negara tujuanmu.",
+    title: "Mau ke mana berikutnya?",
+    subtitle: "Pilih tujuan, internet langsung siap.",
     quotaLabel: null,
     remainingPercent: null,
     target: { kind: "finder" },
@@ -170,6 +175,7 @@ function buildActiveSummary(
   status: "INSTALLED",
   hasMultiple: boolean,
   now: number,
+  lowPercent?: number,
 ): EsimHomeSummary {
   const usage = usageView({
     volumeBytes: order.usageVolumeBytes ?? order.volumeBytes ?? null,
@@ -177,6 +183,7 @@ function buildActiveSummary(
     measuredAt: order.usageMeasuredAt ?? null,
     unlimited: order.unlimited === true,
     active: true,
+    lowPercent,
   });
   const low = usage.kind === "measured" && usage.low;
   const detailAction: EsimHomeAction = {
@@ -293,10 +300,14 @@ function buildHistorySummary(
   };
 }
 
-export function buildEsimHomeSummary(orders: Order[], now = Date.now()): EsimHomeSummary {
+export function buildEsimHomeSummary(
+  orders: Order[],
+  now = Date.now(),
+  lowPercent?: number,
+): EsimHomeSummary {
   if (orders.length === 0) return emptySummary();
 
-  const resolved = sortEsimHomeOrders(orders, now).map((order) => ({
+  const resolved = sortEsimHomeOrders(orders, now, lowPercent).map((order) => ({
     order,
     status: effectiveOrderStatus(order.status, order.expiresAt, now),
   }));
@@ -306,7 +317,7 @@ export function buildEsimHomeSummary(orders: Order[], now = Date.now()): EsimHom
 
   switch (top.status) {
     case "INSTALLED":
-      return buildActiveSummary(top.order, "INSTALLED", hasMultiple, now);
+      return buildActiveSummary(top.order, "INSTALLED", hasMultiple, now, lowPercent);
     case "READY":
       return buildReadySummary(top.order, hasMultiple);
     case "ORDER_CREATED":

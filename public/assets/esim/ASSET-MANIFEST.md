@@ -1,15 +1,37 @@
-# eSIM Home Illustration
+# eSIM Home illustrations
 
-- File: `travel-pass-v1.png` (320 × 266, transparent PNG, approximately 81 KB).
-- Surface: decorative Home eSIM Travel Pass card; adjacent text and button carry meaning.
-- Source: generated with OpenAI built-in image generation on 2026-10-31 for Djiwa Travel.
-- Review: 2026-10-31; compressed and resized from the generated transparent PNG.
-- Prompt: “Use case: stylized-concept. Asset type: small decorative illustration for a premium mobile travel eSIM dashboard card. Create one compact, elegant 3D object: an ivory-white eSIM chip card with a subtle metallic gold circuit, partly overlapping a small deep-navy globe with simple warm-white land shapes, and a tiny red airplane with a graceful curved flight trail. Djiwa Travel palette: deep navy, bright warm red, soft ivory. Soft tactile matte materials, refined studio lighting and gentle contact shadows; sophisticated, friendly, modern iOS travel app aesthetic. Three-quarter view, centered composition, substantial transparent padding, clean silhouette recognizable at 100 px. Genuine transparent background; no ground plane, no text, no letters, no numbers, no logos, no watermark, no UI.”
+The earlier `travel-pass-v1.png` and `esim-chip-color-v1.png` were retired on 2026-11-01 when the
+light pass set below replaced them (no surface references them any more).
 
-## eSIM Chip Icon
+## Light pass set (v1)
 
-- File: `esim-chip-color-v1.png` (256 × 228, transparent PNG, approximately 40 KB).
-- Surface: decorative floating icon in the Home eSIM summary card; adjacent copy and actions carry meaning.
-- Source: generated and color-edited with OpenAI built-in image generation (Codex) on 2026-10-31; no external image inputs.
-- Review: 2026-10-31; resized from the selected transparent generation for a 56 px display slot.
-- Prompt: “Use case: precise-object-edit. Preserve the same single 3D eSIM card object, shape, crop, angle, bevels, proportions, and transparent background. Add tasteful, clearly visible color while retaining premium iOS app illustration quality: warm ivory body, soft silver edge, champagne and muted coral SIM contacts, signal bars in restrained teal, soft sky blue, coral, and warm amber. Keep the gentle studio lighting and close contact shadow. No extra objects, lettering, logo, watermark, neon, oversaturation, or background.”
+- Files: `esim-pass-{jp,kr,th,sg,sa,asia,global}-v1.webp` and
+  `esim-state-{ready,processing,low}-v1.webp` (192 × 192, transparent WebP, 6–11 KB each).
+- Surfaces: decorative art on the Home eSIM pass (`src/lib/destination-art.ts`: destination art by
+  country code; state art for ready / in-progress / low quota) and the empty-state card
+  (`esim-pass-global-v1.webp`). Adjacent text and actions carry the meaning; `alt=""`; flag emoji
+  and a light tint are the fallback.
+- Source: generated with OpenAI built-in image generation through Codex CLI (`codex exec`, imagegen
+  skill) on 2026-11-01 in one session so the set shares one card design; no external image inputs.
+  Trimmed and resized to 192 × 192 with sharp (WebP, quality ≤ 82).
+- Review: 2026-11-01 (visual check of the generated PNGs; light palette, transparent background,
+  no text/logos).
+- Base prompt: "Use case: stylized-concept. One compact 3D eSIM card object, matte warm-ivory body,
+  soft silver bevelled edge, champagne SIM contacts, small signal bars, gentle soft studio key light,
+  close soft contact shadow, light and airy palette (no dark or black materials), three-quarter view,
+  centered, genuine transparent background, generous padding, clean silhouette readable at 96 px,
+  square 1:1. No text, letters, numbers, logos, flags, watermark or UI." Per file only the pastel
+  accent and a tiny landmark/badge changed:
+
+| File | Variation |
+| --- | --- |
+| `esim-pass-jp` | coral/blush accent, tiny torii gate |
+| `esim-pass-kr` | sky-blue accent, tiny hanok roof |
+| `esim-pass-th` | lavender accent, tiny temple spire |
+| `esim-pass-sg` | peach accent, tiny three-tower skyline |
+| `esim-pass-sa` | mint-green accent, tiny crescent and dune |
+| `esim-pass-asia` | amber accent, tiny globe showing Asia |
+| `esim-pass-global` | blue accent, tiny globe with orbit ring |
+| `esim-state-ready` | small soft-blue checkmark badge |
+| `esim-state-processing` | small soft-amber hourglass/progress ring badge |
+| `esim-state-low` | small soft-orange signal-bars badge |

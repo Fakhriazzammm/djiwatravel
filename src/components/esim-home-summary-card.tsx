@@ -1,7 +1,18 @@
-import { ChevronRight, Clock3, QrCode, Search, Smartphone } from "lucide-react";
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import { ChevronRight, Search } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { motion, useReducedMotion } from "motion/react";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  type PanInfo,
+} from "motion/react";
+import { EsimActivationStepper } from "@/components/esim-activation-stepper";
+import { QuotaRing } from "@/components/esim-quota-ring";
+import { EsimStatusBadge } from "@/components/esim-status-badge";
+import { destinationArt, stateArt } from "@/lib/destination-art";
 import {
   buildEsimHomeSummary,
   esimHomeOrderLocation,
@@ -9,10 +20,20 @@ import {
   type EsimHomeSummary,
   type EsimHomeTarget,
 } from "@/lib/esim-home-summary";
-import { formatGb } from "@/lib/travel-journey";
+import { DEFAULT_HOME_ESIM_CONFIG, type HomeEsimConfig } from "@/lib/home-esim-config";
+import { springIos, springSnappy } from "@/lib/motion";
+import { readTripPlan } from "@/lib/travel-checklist-store";
+import {
+  calendarDaysUntil,
+  departureLabel,
+  formatGb,
+  parseDepartureDate,
+} from "@/lib/travel-journey";
 import { effectiveOrderStatus } from "@/lib/esim-status";
 import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 import type { Order } from "@/lib/orders";
+
+export type HomeRailDestination = { code: string; flag: string; nameId: string };
 
 function SummaryLink({
   target,
@@ -62,160 +83,79 @@ function SummaryLink({
   }
 }
 
-const ROW_CLASS =
-  "tap flex min-h-11 w-full items-center gap-3 px-4 text-left text-[13.5px] leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
-const SUMMARY_CARD_CLASS =
-  "overflow-hidden rounded-[24px] border border-border/60 bg-secondary shadow-[0_8px_24px_-22px_rgba(0,0,0,0.3)]";
+const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const CARD_CLASS =
+  "overflow-hidden rounded-[28px] border border-border/60 bg-surface shadow-[0_14px_32px_-24px_rgba(0,0,0,0.35)]";
+const BTN =
+  "tap flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl px-3 text-[14px] font-bold";
 
-function RowShell({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <span className="min-w-0 flex-1">{children}</span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
-    </>
-  );
-}
-
-function ActionRow({
+function ActionLink({
   action,
-  emphasis,
+  tone,
+  pulse,
 }: {
   action: { label: string; target: EsimHomeTarget };
-  emphasis?: boolean;
+  tone: "primary" | "soft";
+  pulse?: boolean;
 }) {
+  const reduce = useReducedMotion();
   return (
-    <SummaryLink
-      target={action.target}
-      ariaLabel={action.label}
-      className={`${ROW_CLASS} ${emphasis ? "font-bold text-brand-red" : "font-semibold text-[#172b4d]"}`}
+    <motion.span
+      className="flex min-w-0 flex-1"
+      {...(pulse && !reduce
+        ? {
+            animate: {
+              boxShadow: ["0 0 0 0 rgba(182,61,75,.45)", "0 0 0 12px rgba(182,61,75,0)"],
+            },
+          }
+        : {})}
+      transition={{ duration: 1.6, repeat: 1, ease: "easeOut" }}
+      style={{ borderRadius: 16 }}
     >
-      <RowShell>{action.label}</RowShell>
-    </SummaryLink>
+      <SummaryLink
+        target={action.target}
+        ariaLabel={action.label}
+        className={`${BTN} ${FOCUS} w-full ${
+          tone === "primary"
+            ? "bg-brand-red text-white"
+            : "bg-surface text-foreground shadow-[inset_0_0_0_1px_rgba(60,60,67,0.16)]"
+        }`}
+      >
+        {action.label}
+      </SummaryLink>
+    </motion.span>
   );
 }
 
-function Badge({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "green" | "orange" | "blue" | "red" | "gray";
-}) {
-  const tones = {
-    green: "bg-[#E8F6EE] text-[#1E7A4D]",
-    orange: "bg-[#FFF4E5] text-[#9A5B00]",
-    blue: "bg-[#E9F2FF] text-[#0057B8]",
-    red: "bg-brand-red-soft text-brand-red",
-    gray: "bg-secondary text-muted-foreground",
-  } as const;
-  const dots = {
-    green: "bg-[#34C759]",
-    orange: "bg-[#FF9F0A]",
-    blue: "bg-[#0A84FF]",
-    red: "bg-brand-red",
-    gray: "bg-[#8E8E93]",
-  } as const;
-
+function ChipArt() {
+  const reduce = useReducedMotion();
+  const rx = useSpring(useMotionValue(0), springSnappy);
+  const ry = useSpring(useMotionValue(0), springSnappy);
   return (
     <span
-      data-testid="esim-home-summary-badge"
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold ${tones[tone]}`}
+      className="absolute right-4 top-3 size-14"
+      aria-hidden="true"
+      onPointerMove={(event) => {
+        if (reduce) return;
+        const box = event.currentTarget.getBoundingClientRect();
+        ry.set(((event.clientX - box.left) / box.width - 0.5) * 28);
+        rx.set(-((event.clientY - box.top) / box.height - 0.5) * 28);
+      }}
+      onPointerLeave={() => {
+        rx.set(0);
+        ry.set(0);
+      }}
     >
-      <span className={`size-1.5 rounded-full ${dots[tone]}`} aria-hidden="true" />
-      {label}
-    </span>
-  );
-}
-
-function statusBadge(
-  summary: EsimHomeSummary,
-  order: Order | undefined,
-): { label: string; tone: "green" | "orange" | "blue" | "red" | "gray" } {
-  if (summary.kind === "active") return { label: "Aktif", tone: "green" };
-  if (summary.kind === "low") return { label: "Kuota menipis", tone: "orange" };
-  if (summary.kind === "ready") return { label: "Siap dipasang", tone: "blue" };
-  if (summary.kind === "history") return { label: "Riwayat", tone: "gray" };
-
-  const status = order?.status;
-  if (status === "ORDER_CREATED" || status === "WAITING_PAYMENT") {
-    return { label: "Menunggu bayar", tone: "orange" };
-  }
-  if (status === "PROVISIONING_FAILED") return { label: "Butuh bantuan", tone: "red" };
-  return { label: "Sedang disiapkan", tone: "blue" };
-}
-
-function QuotaRing({ summary }: { summary: EsimHomeSummary }) {
-  const progress =
-    summary.remainingPercent === null ? null : Math.max(0, Math.min(100, summary.remainingPercent));
-  if (progress === null) return null;
-  const percentLabel = summary.quotaCaption?.includes("<1%") ? "<1%" : `${progress}%`;
-  const low = summary.kind === "low";
-
-  return (
-    <div
-      className="relative grid size-14 shrink-0 place-items-center"
-      role="progressbar"
-      aria-label="Sisa kuota eSIM"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={progress}
-      aria-valuetext={summary.quotaLabel ?? `${progress}%`}
-      data-testid="esim-home-summary-progress"
-    >
-      <svg className="absolute inset-0 size-full -rotate-90" viewBox="0 0 44 44" aria-hidden="true">
-        <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(60,60,67,.14)" strokeWidth="4" />
-        <circle
-          cx="22"
-          cy="22"
-          r="18"
-          fill="none"
-          stroke={low ? "#FF9F0A" : "#C62E3A"}
-          strokeWidth="4"
-          strokeLinecap="round"
-          pathLength="100"
-          strokeDasharray={`${progress} 100`}
-        />
-      </svg>
-      <span className="text-[10.5px] font-bold text-[#172b4d]">{percentLabel}</span>
-    </div>
-  );
-}
-
-function Tile({ tone, children }: { tone: "blue" | "orange" | "red"; children: ReactNode }) {
-  const tones = {
-    blue: "bg-[#E9F2FF] text-[#0A84FF]",
-    orange: "bg-[#FFF4E5] text-[#FF9F0A]",
-    red: "bg-brand-red-soft text-brand-red",
-  } as const;
-  return (
-    <span className={`grid size-14 shrink-0 place-items-center rounded-2xl ${tones[tone]}`}>
-      {children}
-    </span>
-  );
-}
-
-function FloatingEsimArtwork() {
-  const reduceMotion = useReducedMotion();
-
-  return (
-    <span className="relative grid size-12 shrink-0 place-items-center" aria-hidden="true">
-      <span className="absolute inset-1 rounded-full border border-border/60 bg-surface/70" />
       <motion.img
-        src="/assets/esim/esim-chip-color-v1.png"
+        src="/assets/esim/esim-pass-global-v1.webp"
         alt=""
-        width={256}
-        height={228}
+        width={192}
+        height={192}
         loading="eager"
         decoding="async"
         draggable={false}
-        initial={false}
-        animate={
-          reduceMotion ? { y: 0, rotate: 0 } : { y: [0, -4, 0], rotate: [0, 1.2, 0, -1.2, 0] }
-        }
-        transition={
-          reduceMotion ? { duration: 0 } : { duration: 4.6, ease: "easeInOut", repeat: Infinity }
-        }
-        className="relative z-10 size-11 object-contain drop-shadow-[0_3px_5px_rgba(0,0,0,0.14)]"
+        style={{ rotateX: rx, rotateY: ry, transformPerspective: 300 }}
+        className="size-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.16)]"
       />
     </span>
   );
@@ -251,14 +191,63 @@ function metaLine(summary: EsimHomeSummary, order: Order | undefined): string {
   }
   return summary.subtitle;
 }
+
+/**
+ * "Berangkat H-12" from the departure date the customer saved on the eSIM detail (the same
+ * `readTripPlan` store the detail checklist writes). Read after mount: it lives in localStorage.
+ */
+function useDepartureLine(orderId: string | undefined, enabled: boolean): string | null {
+  const [line, setLine] = useState<string | null>(null);
+  useEffect(() => {
+    if (!orderId || !enabled) {
+      setLine(null);
+      return;
+    }
+    const at = parseDepartureDate(readTripPlan(orderId).departureDate);
+    if (at === null) {
+      setLine(null);
+      return;
+    }
+    const days = calendarDaysUntil(at);
+    setLine(days >= 0 ? `Berangkat · ${departureLabel(days)}` : null);
+  }, [orderId, enabled]);
+  return line;
+}
+
+function orderArtCode(order: Order | undefined): string {
+  const codes = order?.locationCodes ?? [];
+  return codes.length === 1 ? (codes[0] ?? "") : codes.length > 1 ? "GLOBAL" : "";
+}
+
 export function EsimHomeSummaryCard({
   orders,
   onSearchPackages,
+  destinations = [],
+  onSelectDestination,
+  config = DEFAULT_HOME_ESIM_CONFIG,
 }: {
   orders: Order[] | null;
   onSearchPackages: () => void;
+  /** Rail entries, already ordered by the Admin config. */
+  destinations?: HomeRailDestination[];
+  onSelectDestination?: (destination: HomeRailDestination) => void;
+  config?: HomeEsimConfig;
 }) {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [direction, setDirection] = useState(1);
+  const dragged = useRef(false);
+  const reduce = useReducedMotion();
+  const departureOrderId =
+    orders && orders.length > 0
+      ? (selectedOrderId ?? buildEsimHomeSummary(orders, Date.now(), config.lowQuotaPercent).target)
+      : undefined;
+  const departureId =
+    typeof departureOrderId === "string"
+      ? departureOrderId
+      : departureOrderId && "id" in departureOrderId
+        ? departureOrderId.id
+        : undefined;
+  const departureLine = useDepartureLine(departureId, true);
 
   if (orders === null) {
     return (
@@ -266,19 +255,24 @@ export function EsimHomeSummaryCard({
         data-testid="esim-home-summary-loading"
         aria-busy="true"
         aria-label="Menyiapkan eSIM kamu"
-        className="overflow-hidden rounded-[24px] border border-border/60 bg-surface p-4"
+        className={`${CARD_CLASS} p-4`}
       >
-        <div className="flex items-center gap-3">
-          <span className="flex size-7 shrink-0 animate-pulse items-center justify-center rounded-[9px] bg-secondary motion-reduce:animate-none">
-            <Smartphone className="size-4 text-muted-foreground" aria-hidden="true" />
-          </span>
-          <div className="h-4 w-28 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
+        <div className="h-3.5 w-24 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
+        <div className="mt-4 h-6 w-48 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
+        <div className="mt-2 h-3.5 w-40 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
+        <div className="mt-4 flex gap-2">
+          {[0, 1, 2].map((item) => (
+            <div
+              key={item}
+              className="h-11 w-24 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none"
+            />
+          ))}
         </div>
-        <div className="mt-3 h-20 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
       </section>
     );
   }
 
+  const lowPercent = config.lowQuotaPercent;
   const now = Date.now();
   const ordered = sortEsimHomeOrders(
     orders.filter((order) => {
@@ -286,13 +280,16 @@ export function EsimHomeSummaryCard({
       return status !== "EXPIRED" && status !== "CANCELLED" && status !== "REFUNDED";
     }),
     now,
+    lowPercent,
   );
-  const prioritySummary = buildEsimHomeSummary(orders, now);
+  const prioritySummary = buildEsimHomeSummary(orders, now, lowPercent);
   const selectedOrder =
     selectedOrderId && ordered.some((order) => order.id === selectedOrderId)
       ? orders.find((order) => order.id === selectedOrderId)
       : undefined;
-  const summary = selectedOrder ? buildEsimHomeSummary([selectedOrder], now) : prioritySummary;
+  const summary = selectedOrder
+    ? buildEsimHomeSummary([selectedOrder], now, lowPercent)
+    : prioritySummary;
   const priorityTarget = prioritySummary.target;
   const displayedOrder =
     selectedOrder ??
@@ -301,58 +298,110 @@ export function EsimHomeSummaryCard({
       : ordered[0]);
 
   if (summary.kind === "empty") {
+    const quick = config.quickBuyEnabled && destinations.length > 0 && onSelectDestination;
     return (
-      <article data-testid="esim-home-summary" data-state="empty" className={SUMMARY_CARD_CLASS}>
-        <div className="flex h-12 items-center justify-between gap-2 px-4">
-          <h2 className="min-w-0 text-[13px] font-bold tracking-[-0.01em] text-foreground">
-            eSIM perjalanan
-          </h2>
-          <FloatingEsimArtwork />
-        </div>
-        <div className="px-4 pt-1.5">
-          <p className="text-[15px] font-bold tracking-[-0.015em] text-foreground">
-            {summary.title}
-          </p>
-          <p className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground">
-            {summary.subtitle}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 px-4 pb-3 pt-2.5">
-          <button
-            type="button"
-            onClick={onSearchPackages}
-            aria-haspopup="dialog"
-            className="tap flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-red px-3 text-[12.5px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          >
-            <Search className="size-4 shrink-0" aria-hidden="true" />
-            {summary.primaryAction.label}
-          </button>
-          <SummaryLink
-            target={{ kind: "finder" }}
-            ariaLabel="Semua paket eSIM"
-            className="tap flex min-h-11 shrink-0 items-center gap-0.5 rounded-xl px-2 text-[12px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          >
-            Semua paket
-            <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
-          </SummaryLink>
-        </div>
+      <article
+        data-testid="esim-home-summary"
+        data-state="empty"
+        className={`${CARD_CLASS} relative p-4`}
+      >
+        <p className="text-[12px] font-semibold text-muted-foreground">eSIM perjalanan</p>
+        <ChipArt />
+        <h2 className="mt-1.5 max-w-[11rem] text-[21px] font-bold leading-[1.15] tracking-[-0.03em] text-foreground">
+          {summary.title}
+        </h2>
+        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{summary.subtitle}</p>
+
+        {quick ? (
+          <>
+            <div
+              role="group"
+              aria-label="Pilih tujuan"
+              className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {destinations.map((destination, index) => (
+                <motion.button
+                  key={destination.code}
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-label={`Lihat paket eSIM ${destination.nameId}`}
+                  onClick={() => onSelectDestination(destination)}
+                  initial={reduce ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...springIos, delay: reduce ? 0 : index * 0.04 }}
+                  {...(reduce ? {} : { whileTap: { scale: 0.94 } })}
+                  className={`tap flex min-h-11 shrink-0 items-center gap-2 rounded-2xl bg-secondary py-1.5 pl-2.5 pr-3.5 text-[14px] font-semibold ${FOCUS}`}
+                >
+                  <span className="text-[22px] leading-none" aria-hidden="true">
+                    {destination.flag}
+                  </span>
+                  {destination.nameId}
+                </motion.button>
+              ))}
+            </div>
+            <div className="mt-2 flex items-center justify-end">
+              <SummaryLink
+                target={{ kind: "finder" }}
+                ariaLabel="Semua paket eSIM"
+                className={`tap flex min-h-11 items-center gap-0.5 rounded-xl px-1 text-[13px] font-semibold text-brand-red ${FOCUS}`}
+              >
+                Semua paket
+                <ChevronRight className="size-4" aria-hidden="true" />
+              </SummaryLink>
+            </div>
+          </>
+        ) : (
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSearchPackages}
+              aria-haspopup="dialog"
+              className={`${BTN} ${FOCUS} bg-brand-red text-white`}
+            >
+              <Search className="size-4 shrink-0" aria-hidden="true" />
+              {summary.primaryAction.label}
+            </button>
+            <SummaryLink
+              target={{ kind: "finder" }}
+              ariaLabel="Semua paket eSIM"
+              className={`tap flex min-h-11 shrink-0 items-center gap-0.5 rounded-xl px-2 text-[13px] font-semibold ${FOCUS}`}
+            >
+              Semua paket
+              <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+            </SummaryLink>
+          </div>
+        )}
       </article>
     );
   }
 
-  const badge = statusBadge(summary, displayedOrder);
   const activeOrderId = displayedOrder?.id ?? "";
+  const status = displayedOrder
+    ? effectiveOrderStatus(displayedOrder.status, displayedOrder.expiresAt, now)
+    : "ORDER_CREATED";
+  const art = destinationArt(orderArtCode(displayedOrder));
+  const artSrc = stateArt(summary.kind) ?? art.src;
   const secondaryAction =
     summary.secondaryAction &&
     !(orders.length > 1 && summary.secondaryAction.target.kind === "list")
       ? summary.secondaryAction
       : undefined;
+  const primaryTone = summary.kind === "active" ? "soft" : "primary";
+  const peeks = Math.min(2, ordered.length - 1);
 
   const pageLabel = (order: Order) => {
     const parts = [esimHomeOrderLocation(order)];
     if (order.unlimited) parts.push("Unlimited");
     else if (order.volumeBytes && order.volumeBytes > 0) parts.push(formatGb(order.volumeBytes));
     return parts.join(" ");
+  };
+
+  const select = (order: Order | undefined) => {
+    if (!order) return;
+    const from = ordered.findIndex((item) => item.id === activeOrderId);
+    const to = ordered.findIndex((item) => item.id === order.id);
+    setDirection(to >= from ? 1 : -1);
+    setSelectedOrderId(order.id);
   };
 
   const handlePagerKeys = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -365,121 +414,176 @@ export function EsimHomeSummaryCard({
     if (event.key === "ArrowLeft") next = (index - 1 + ordered.length) % ordered.length;
     if (event.key === "Home") next = 0;
     if (event.key === "End") next = ordered.length - 1;
-    const target = ordered[next];
-    if (!target) return;
-    setSelectedOrderId(target.id);
+    select(ordered[next]);
     const buttons = event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]');
     buttons[next]?.focus();
   };
 
+  const onDragEnd = (_: unknown, info: PanInfo) => {
+    window.setTimeout(() => {
+      dragged.current = false;
+    }, 0);
+    if (ordered.length < 2 || Math.abs(info.offset.x) < 40) return;
+    const index = ordered.findIndex((order) => order.id === activeOrderId);
+    const step = info.offset.x < 0 ? 1 : -1;
+    select(ordered[(index + step + ordered.length) % ordered.length]);
+  };
+
+  const measured = summary.kind === "active" || summary.kind === "low";
+  const progress = summary.remainingPercent;
+
   return (
-    <article
-      data-testid="esim-home-summary"
-      data-state={summary.kind}
-      className={SUMMARY_CARD_CLASS}
-    >
-      <div className="flex min-h-[50px] items-center justify-between gap-2 px-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <h2 className="text-[13px] font-bold tracking-[-0.01em] text-foreground">eSIM kamu</h2>
-          <Badge label={badge.label} tone={badge.tone} />
-        </div>
-        <FloatingEsimArtwork />
-      </div>
-
-      <div className="px-4 pb-3 pt-1.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[16.5px] font-bold leading-[1.25] tracking-[-0.022em] text-foreground">
-              {summary.kind === "active" || summary.kind === "low" || summary.kind === "ready" ? (
-                <>
-                  <span aria-hidden="true">{summary.flag}</span> {summary.location ?? summary.title}
-                </>
-              ) : (
-                summary.title
-              )}
-            </p>
-            <p className="mt-1 text-[11.5px] leading-4 text-muted-foreground">
-              {metaLine(summary, displayedOrder)}
-            </p>
-          </div>
-
-          {summary.kind === "ready" && (
-            <Tile tone="blue">
-              <QrCode className="size-6" aria-hidden="true" />
-            </Tile>
-          )}
-          {summary.kind === "pending" && (
-            <Tile tone={displayedOrder?.status === "PROVISIONING_FAILED" ? "red" : "orange"}>
-              <Clock3 className="size-6" aria-hidden="true" />
-            </Tile>
-          )}
-          {(summary.kind === "active" || summary.kind === "low") && <QuotaRing summary={summary} />}
-        </div>
-
-        {(summary.kind === "active" || summary.kind === "low") && (
-          <>
-            {summary.quotaValue ? (
-              <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
-                <span className="text-[15px] font-bold tracking-[-0.01em] text-foreground">
-                  {summary.quotaValue}
-                </span>{" "}
-                {summary.quotaCaption}
-              </p>
-            ) : (
-              <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
-                {summary.quotaLabel}
-              </p>
+    <article data-testid="esim-home-summary" data-state={summary.kind} className="rounded-[28px]">
+      <div className="relative" style={{ paddingBottom: peeks * 10 }}>
+        {Array.from({ length: peeks }, (_, index) => (
+          <div
+            key={index}
+            aria-hidden="true"
+            onClick={() =>
+              select(
+                ordered[
+                  (ordered.findIndex((o) => o.id === activeOrderId) + index + 1) % ordered.length
+                ],
+              )
+            }
+            className="absolute inset-x-0 top-0 bottom-0 rounded-[26px] border border-border/60 bg-surface shadow-[0_10px_20px_-18px_rgba(0,0,0,0.35)]"
+            style={{
+              transform: `translateY(${(index + 1) * 10}px) scale(${1 - (index + 1) * 0.05})`,
+              zIndex: 0,
+              opacity: 1 - index * 0.25,
+            }}
+          />
+        ))}
+        <AnimatePresence initial={false} custom={direction} mode="popLayout">
+          <motion.div
+            key={activeOrderId || summary.kind}
+            custom={direction}
+            initial={reduce ? false : { opacity: 0, x: direction * 48, scale: 0.97 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, x: direction * -48, scale: 0.97 }}
+            transition={reduce ? { duration: 0.12 } : springIos}
+            drag={ordered.length > 1 && !reduce ? "x" : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.25}
+            onDragStart={() => {
+              dragged.current = true;
+            }}
+            onDragEnd={onDragEnd}
+            style={{ touchAction: "pan-y", zIndex: 1 }}
+            className={`relative overflow-hidden rounded-[26px] border border-border/60 p-4 shadow-[0_14px_28px_-22px_rgba(0,0,0,0.4)] ${art.tint}`}
+          >
+            <SummaryLink
+              target={summary.target}
+              ariaLabel={
+                summary.target.kind === "order"
+                  ? "Buka status pesanan eSIM"
+                  : `Buka detail eSIM ${summary.location ?? ""}`.trim()
+              }
+              onClick={() => undefined}
+              className={`absolute inset-0 z-10 rounded-[26px] ${FOCUS}`}
+            >
+              <span className="sr-only">Buka</span>
+            </SummaryLink>
+            {artSrc && (
+              <img
+                src={artSrc}
+                alt=""
+                width={96}
+                height={96}
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+                className="pointer-events-none absolute -right-2 top-6 size-24 object-contain opacity-90"
+              />
             )}
-            {summary.measuredAt !== undefined && (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[12px] font-semibold text-muted-foreground">eSIM kamu</p>
+              <EsimStatusBadge status={status} low={summary.kind === "low"} />
+            </div>
+
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[19px] font-bold leading-tight tracking-[-0.025em] text-foreground">
+                  {summary.kind === "active" ||
+                  summary.kind === "low" ||
+                  summary.kind === "ready" ? (
+                    <>
+                      <span aria-hidden="true">{summary.flag}</span>{" "}
+                      {summary.location ?? summary.title}
+                    </>
+                  ) : (
+                    summary.title
+                  )}
+                </p>
+                <p className="mt-1 text-[12px] leading-4 text-muted-foreground">
+                  {metaLine(summary, displayedOrder)}
+                </p>
+              </div>
+              {measured && progress !== null && (
+                <QuotaRing
+                  percent={progress}
+                  label={summary.quotaCaption?.includes("<1%") ? "<1%" : `${progress}%`}
+                  valueText={summary.quotaLabel ?? `${progress}%`}
+                  low={summary.kind === "low"}
+                  size={64}
+                  testId="esim-home-summary-progress"
+                />
+              )}
+            </div>
+
+            {measured &&
+              (summary.quotaValue ? (
+                <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+                  <span className="text-[26px] font-bold tracking-[-0.035em] text-foreground">
+                    {summary.quotaValue}
+                  </span>{" "}
+                  {summary.quotaCaption}
+                </p>
+              ) : (
+                <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+                  {summary.quotaLabel}
+                </p>
+              ))}
+            {measured && summary.measuredAt !== undefined && (
               <p className="mt-1 text-[10.5px] text-muted-foreground/80">
                 Data penyedia · diperbarui {snapshotAgeLabel(summary.measuredAt)}
               </p>
             )}
-          </>
-        )}
 
-        {summary.kind === "ready" && (
-          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
-            Pindai QR atau salin detail eSIM sebelum berangkat.
-          </p>
-        )}
+            {summary.kind === "ready" && (
+              <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+                Pindai QR atau salin detail eSIM sebelum berangkat.
+              </p>
+            )}
+            {(summary.kind === "ready" || measured) && departureLine && (
+              <p
+                data-testid="esim-home-departure"
+                className="mt-1.5 text-[12px] font-semibold text-foreground"
+              >
+                {departureLine}
+              </p>
+            )}
 
-        {summary.kind === "pending" && (
-          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
-            {displayedOrder?.status === "ORDER_CREATED" ||
-            displayedOrder?.status === "WAITING_PAYMENT"
-              ? "Selesaikan pembayaran sebelum pesanan dibatalkan."
-              : summary.eyebrow === "Butuh bantuan"
-                ? "Hubungi dukungan agar eSIM bisa disiapkan ulang."
-                : "Kami sedang menyiapkan eSIM-mu. Cek status secara berkala."}
-          </p>
-        )}
+            {summary.kind === "pending" && (
+              <div className="mt-3">
+                <EsimActivationStepper status={status} />
+                <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+                  {status === "ORDER_CREATED" || status === "WAITING_PAYMENT"
+                    ? "Selesaikan pembayaran sebelum pesanan dibatalkan."
+                    : summary.eyebrow === "Butuh bantuan"
+                      ? "Hubungi dukungan agar eSIM bisa disiapkan ulang."
+                      : "Kami sedang menyiapkan eSIM-mu. Cek status secara berkala."}
+                </p>
+              </div>
+            )}
 
-        {summary.kind === "history" && (
-          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
-            Masa aktif paket ini sudah berakhir. Beli paket lagi untuk terhubung kembali.
-          </p>
-        )}
-      </div>
-
-      <div className="border-t border-[rgba(60,60,67,0.12)]">
-        <ActionRow action={summary.primaryAction} emphasis />
-        {secondaryAction && (
-          <div className="border-t border-[rgba(60,60,67,0.12)]">
-            <ActionRow action={secondaryAction} />
-          </div>
-        )}
-        {orders.length > 1 && (
-          <div className="border-t border-[rgba(60,60,67,0.12)]">
-            <SummaryLink
-              target={{ kind: "list" }}
-              ariaLabel="Lihat semua eSIM"
-              className={`${ROW_CLASS} font-semibold text-foreground`}
-            >
-              <RowShell>Lihat semua eSIM</RowShell>
-            </SummaryLink>
-          </div>
-        )}
+            {summary.kind === "history" && (
+              <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+                Masa aktif paket ini sudah berakhir. Beli paket lagi untuk terhubung kembali.
+              </p>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {ordered.length > 1 && (
@@ -487,7 +591,7 @@ export function EsimHomeSummaryCard({
           role="radiogroup"
           aria-label="Pilih eSIM"
           onKeyDown={handlePagerKeys}
-          className="flex items-center justify-center gap-1 border-t border-[rgba(60,60,67,0.12)] py-1.5"
+          className="flex items-center justify-center"
         >
           {ordered.map((order) => {
             const checked = order.id === activeOrderId;
@@ -499,17 +603,38 @@ export function EsimHomeSummaryCard({
                 aria-checked={checked}
                 tabIndex={checked ? 0 : -1}
                 aria-label={`eSIM ${pageLabel(order)}`}
-                onClick={() => setSelectedOrderId(order.id)}
-                className="tap grid size-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => select(order)}
+                className={`tap grid h-11 min-w-8 place-items-center rounded-full ${FOCUS}`}
               >
-                <span
+                <motion.span
                   aria-hidden="true"
-                  className={`size-1.5 rounded-full transition-colors ${checked ? "bg-brand-red" : "bg-[#C7C7CC]"}`}
+                  animate={{ width: checked ? 18 : 6 }}
+                  transition={reduce ? { duration: 0 } : springSnappy}
+                  className={`h-1.5 rounded-full ${checked ? "bg-brand-red" : "bg-[#C7C7CC]"}`}
                 />
               </button>
             );
           })}
         </div>
+      )}
+
+      <div className="mt-1 flex gap-2">
+        <ActionLink
+          action={summary.primaryAction}
+          tone={primaryTone}
+          pulse={summary.kind === "low"}
+        />
+        {secondaryAction && <ActionLink action={secondaryAction} tone="soft" />}
+      </div>
+      {orders.length > 1 && (
+        <SummaryLink
+          target={{ kind: "list" }}
+          ariaLabel="Lihat semua eSIM"
+          className={`tap mt-1 flex min-h-11 items-center justify-center gap-0.5 rounded-xl text-[13px] font-semibold text-muted-foreground ${FOCUS}`}
+        >
+          Lihat semua eSIM
+          <ChevronRight className="size-4" aria-hidden="true" />
+        </SummaryLink>
       )}
     </article>
   );

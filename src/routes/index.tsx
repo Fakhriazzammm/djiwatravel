@@ -15,6 +15,10 @@ import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";
 import { EsimPackageResults } from "@/components/esim-package-results";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 import { useReducedMotion } from "motion/react";
+import { EsimDestinationSheet, type SheetDestination } from "@/components/esim-destination-sheet";
+import { trackAnalytics } from "@/lib/analytics";
+import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
+import { activeHomePromo, orderHomeDestinations } from "@/lib/home-esim-config";
 
 const featuredGuides = getNewestTravelGuides(3);
 
@@ -63,6 +67,8 @@ function Home() {
   const reduceMotion = useReducedMotion();
   const nav = useNavigate();
   const orders = useOrders();
+  const homeConfig = useHomeEsimConfig();
+  const [sheetDestination, setSheetDestination] = useState<SheetDestination | null>(null);
   const { user, loading } = useBetterAuthUser();
   useEffect(() => setHello(greeting()), []);
   useEffect(() => {
@@ -113,6 +119,20 @@ function Home() {
       cancelled = true;
     };
   }, []);
+  const railDestinations = orderHomeDestinations(popular, homeConfig.destinationOrder);
+  const openSheet = (destination: SheetDestination, source: "rail" | "search" | "promo") => {
+    trackAnalytics("home_esim_sheet_open", "/", { destination: destination.code, source });
+    setSheetDestination(destination);
+  };
+  const promo = activeHomePromo(homeConfig, Date.now());
+  const openPromo = () => {
+    trackAnalytics("home_esim_promo_tap", "/", { destination: promo?.destinationCode ?? "search" });
+    const target = promo?.destinationCode
+      ? destinations.find((item) => item.code.toUpperCase() === promo.destinationCode)
+      : undefined;
+    if (target) openSheet(target, "promo");
+    else setSearchOpen(true);
+  };
   const accountLabel = user?.name?.trim().split(/\s+/)[0] || "Akun";
 
   const services = [
@@ -210,12 +230,14 @@ function Home() {
               ) : (
                 <div className="divide-y divide-border rounded-2xl bg-surface">
                   {search(query).map((destination) => (
-                    <Link
+                    <button
                       key={destination.code}
-                      to="/destination/$code"
-                      params={{ code: destination.code.toLowerCase() }}
-                      onClick={() => setSearchOpen(false)}
-                      className="tap flex items-center gap-3 px-4 py-3"
+                      type="button"
+                      onClick={() => {
+                        setSearchOpen(false);
+                        openSheet(destination, "search");
+                      }}
+                      className="tap flex w-full items-center gap-3 px-4 py-3 text-left"
                     >
                       <span className="text-2xl">{destination.flag}</span>
                       <span className="min-w-0 flex-1">
@@ -225,7 +247,7 @@ function Home() {
                         </span>
                       </span>
                       <ChevronRight className="size-5 text-muted-foreground" />
-                    </Link>
+                    </button>
                   ))}
                 </div>
               )}
@@ -246,8 +268,32 @@ function Home() {
       )}
 
       <Reveal as="section" className="mt-6">
-        <EsimHomeSummaryCard orders={orders} onSearchPackages={() => setSearchOpen(true)} />
+        <EsimHomeSummaryCard
+          orders={orders}
+          onSearchPackages={() => setSearchOpen(true)}
+          destinations={railDestinations}
+          onSelectDestination={(destination) => {
+            trackAnalytics("home_esim_chip_tap", "/", { destination: destination.code });
+            openSheet(destination, "rail");
+          }}
+          config={homeConfig}
+        />
+        {promo && (
+          <button
+            type="button"
+            onClick={openPromo}
+            data-testid="home-promo-banner"
+            className="tap mt-2.5 flex min-h-11 w-full items-center gap-2 rounded-2xl border border-border/60 bg-surface px-4 text-left text-[13px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="min-w-0 flex-1 truncate">{promo.text}</span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </button>
+        )}
       </Reveal>
+      <EsimDestinationSheet
+        destination={sheetDestination}
+        onClose={() => setSheetDestination(null)}
+      />
 
       <Stagger className="block">
         <Reveal as="section" className="mt-7">

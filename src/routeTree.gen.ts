@@ -42,6 +42,7 @@ import { Route as ApiCustomerNotificationsRouteImport } from './routes/api.custo
 import { Route as ApiCustomerProfileRouteImport } from './routes/api.customer-profile'
 import { Route as ApiCustomerRefundRouteImport } from './routes/api.customer-refund'
 import { Route as ApiCustomerSupportRouteImport } from './routes/api.customer-support'
+import { Route as ApiHomeEsimEventsRouteImport } from './routes/api.home-esim-events'
 import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recovery'
 import { Route as ApiTravelWaitlistRouteImport } from './routes/api.travel-waitlist'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
@@ -240,6 +241,11 @@ const ApiCustomerRefundRoute = ApiCustomerRefundRouteImport.update({
 const ApiCustomerSupportRoute = ApiCustomerSupportRouteImport.update({
   id: '/api/customer-support',
   path: '/api/customer-support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHomeEsimEventsRoute = ApiHomeEsimEventsRouteImport.update({
+  id: '/api/home-esim-events',
+  path: '/api/home-esim-events',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOrderRecoveryRoute = ApiOrderRecoveryRouteImport.update({
@@ -446,6 +452,7 @@ export interface FileRoutesByFullPath {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
@@ -514,6 +521,7 @@ export interface FileRoutesByTo {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
@@ -583,6 +591,7 @@ export interface FileRoutesById {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
@@ -653,6 +662,7 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/home-esim-events'
     | '/api/order-recovery'
     | '/api/travel-waitlist'
     | '/checkout/$id'
@@ -721,6 +731,7 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/home-esim-events'
     | '/api/order-recovery'
     | '/api/travel-waitlist'
     | '/checkout/$id'
@@ -789,6 +800,7 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/home-esim-events'
     | '/api/order-recovery'
     | '/api/travel-waitlist'
     | '/checkout/$id'
@@ -858,6 +870,7 @@ export interface RootRouteChildren {
   ApiCustomerProfileRoute: typeof ApiCustomerProfileRoute
   ApiCustomerRefundRoute: typeof ApiCustomerRefundRoute
   ApiCustomerSupportRoute: typeof ApiCustomerSupportRoute
+  ApiHomeEsimEventsRoute: typeof ApiHomeEsimEventsRoute
   ApiOrderRecoveryRoute: typeof ApiOrderRecoveryRoute
   ApiTravelWaitlistRoute: typeof ApiTravelWaitlistRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
@@ -1121,6 +1134,13 @@ declare module '@tanstack/react-router' {
       path: '/api/customer-support'
       fullPath: '/api/customer-support'
       preLoaderRoute: typeof ApiCustomerSupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/home-esim-events': {
+      id: '/api/home-esim-events'
+      path: '/api/home-esim-events'
+      fullPath: '/api/home-esim-events'
+      preLoaderRoute: typeof ApiHomeEsimEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/order-recovery': {
@@ -1427,6 +1447,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCustomerProfileRoute: ApiCustomerProfileRoute,
   ApiCustomerRefundRoute: ApiCustomerRefundRoute,
   ApiCustomerSupportRoute: ApiCustomerSupportRoute,
+  ApiHomeEsimEventsRoute: ApiHomeEsimEventsRoute,
   ApiOrderRecoveryRoute: ApiOrderRecoveryRoute,
   ApiTravelWaitlistRoute: ApiTravelWaitlistRoute,
   CheckoutIdRoute: CheckoutIdRoute,

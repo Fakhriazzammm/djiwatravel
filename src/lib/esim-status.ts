@@ -42,3 +42,32 @@ export function effectiveOrderStatus(
 export function isSensitiveStatus(status: OrderStatus) {
   return status === "READY" || status === "INSTALLED";
 }
+
+export type EsimBadgeTone = "success" | "warning" | "info" | "danger" | "muted";
+
+/**
+ * The compact status chip shown on Home passes and lists. Labels and tones derive from the same
+ * order-status tables above (one vocabulary); only the shortened wording lives here, once.
+ */
+export function esimStatusBadge(
+  status: OrderStatus,
+  options: { low?: boolean } = {},
+): { label: string; tone: EsimBadgeTone } {
+  if (status === "INSTALLED" && options.low) return { label: "Kuota menipis", tone: "warning" };
+  switch (status) {
+    case "INSTALLED":
+      return { label: "Aktif", tone: "success" };
+    case "READY":
+      return { label: "Siap dipasang", tone: "info" };
+    case "ORDER_CREATED":
+    case "WAITING_PAYMENT":
+      return { label: "Menunggu bayar", tone: "warning" };
+    case "PAID":
+    case "PROVISIONING":
+      return { label: "Sedang disiapkan", tone: "info" };
+    case "PROVISIONING_FAILED":
+      return { label: "Butuh bantuan", tone: "danger" };
+    default:
+      return { label: ORDER_STATUS_LABEL[status], tone: ORDER_STATUS_TONE[status] };
+  }
+}
