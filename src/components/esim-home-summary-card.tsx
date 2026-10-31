@@ -4,9 +4,11 @@ import { Link } from "@tanstack/react-router";
 import {
   AnimatePresence,
   motion,
+  animate,
   useMotionValue,
   useReducedMotion,
   useSpring,
+  useTransform,
   type PanInfo,
 } from "motion/react";
 import { EsimActivationStepper } from "@/components/esim-activation-stepper";
@@ -127,36 +129,109 @@ function ActionLink({
   );
 }
 
+/**
+ * The empty-state eSIM illustration. Motion explains that it is a physical object you can handle:
+ * it springs in once, tilts toward the pointer (hover anywhere on the card, or press and drag on a
+ * touch screen), and a tap flips it with a one-shot signal pulse. Nothing loops, and reduced
+ * motion gets a static image.
+ */
 function ChipArt() {
   const reduce = useReducedMotion();
+  const host = useRef<HTMLSpanElement>(null);
   const rx = useSpring(useMotionValue(0), springSnappy);
   const ry = useSpring(useMotionValue(0), springSnappy);
+  const spin = useMotionValue(0);
+  const rotateY = useTransform([ry, spin], ([tilt, turn]: number[]) => (tilt ?? 0) + (turn ?? 0));
+  const shadow = useTransform(
+    [rx, ry],
+    ([x, y]: number[]) =>
+      `drop-shadow(${-(y ?? 0) * 0.35}px ${4 + (x ?? 0) * -0.3}px 6px rgba(0,0,0,0.18))`,
+  );
+  const [pulse, setPulse] = useState(0);
+  const pressed = useRef(false);
+
+  // Hover anywhere on the card steers the chip, not just the 56 px image.
+  useEffect(() => {
+    const card = host.current?.parentElement;
+    if (!card || reduce) return;
+    const steer = (clientX: number, clientY: number) => {
+      const box = host.current?.getBoundingClientRect();
+      if (!box) return;
+      const dx = (clientX - (box.left + box.width / 2)) / Math.max(box.width * 3, 1);
+      const dy = (clientY - (box.top + box.height / 2)) / Math.max(box.height * 3, 1);
+      ry.set(Math.max(-1, Math.min(1, dx)) * 32);
+      rx.set(-Math.max(-1, Math.min(1, dy)) * 32);
+    };
+    const relax = () => {
+      rx.set(0);
+      ry.set(0);
+    };
+    const move = (event: PointerEvent) => {
+      if (event.pointerType === "mouse" || pressed.current) steer(event.clientX, event.clientY);
+    };
+    card.addEventListener("pointermove", move);
+    card.addEventListener("pointerleave", relax);
+    return () => {
+      card.removeEventListener("pointermove", move);
+      card.removeEventListener("pointerleave", relax);
+    };
+  }, [reduce, rx, ry]);
+
+  const flip = () => {
+    if (reduce) return;
+    spin.set(0);
+    void animate(spin, 360, { ...springIos, duration: 0.9 }).then(() => spin.set(0));
+    setPulse((value) => value + 1);
+    navigator.vibrate?.(8);
+  };
+
   return (
-    <span
-      className="absolute right-4 top-3 size-14"
-      aria-hidden="true"
-      onPointerMove={(event) => {
-        if (reduce) return;
-        const box = event.currentTarget.getBoundingClientRect();
-        ry.set(((event.clientX - box.left) / box.width - 0.5) * 28);
-        rx.set(-((event.clientY - box.top) / box.height - 0.5) * 28);
-      }}
-      onPointerLeave={() => {
-        rx.set(0);
-        ry.set(0);
-      }}
-    >
-      <motion.img
-        src="/assets/esim/esim-pass-global-v1.webp"
-        alt=""
-        width={192}
-        height={192}
-        loading="eager"
-        decoding="async"
-        draggable={false}
-        style={{ rotateX: rx, rotateY: ry, transformPerspective: 300 }}
-        className="size-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.16)]"
-      />
+    <span ref={host} className="absolute right-3 top-2 size-[72px]">
+      {pulse > 0 &&
+        [0, 1].map((ring) => (
+          <motion.span
+            key={`${pulse}-${ring}`}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-2 rounded-full border-2 border-brand-red/40"
+            initial={{ opacity: 0.7, scale: 0.7 }}
+            animate={{ opacity: 0, scale: 1.7 }}
+            transition={{ duration: 1, delay: ring * 0.18, ease: "easeOut" }}
+          />
+        ))}
+      <motion.button
+        type="button"
+        aria-label="Putar ilustrasi eSIM"
+        onClick={flip}
+        onPointerDown={() => {
+          pressed.current = true;
+        }}
+        onPointerUp={() => {
+          pressed.current = false;
+          rx.set(0);
+          ry.set(0);
+        }}
+        onPointerCancel={() => {
+          pressed.current = false;
+        }}
+        initial={reduce ? false : { opacity: 0, scale: 0.55, rotate: -14, y: 10 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
+        transition={reduce ? { duration: 0 } : { ...springIos, stiffness: 220, damping: 15 }}
+        {...(reduce ? {} : { whileTap: { scale: 0.9 } })}
+        className={`tap relative size-full rounded-2xl ${FOCUS}`}
+        style={{ touchAction: "pan-y" }}
+      >
+        <motion.img
+          src="/assets/esim/esim-pass-global-v1.webp"
+          alt=""
+          width={192}
+          height={192}
+          loading="eager"
+          decoding="async"
+          draggable={false}
+          style={{ rotateX: rx, rotateY, transformPerspective: 320, filter: shadow }}
+          className="size-full select-none object-contain"
+        />
+      </motion.button>
     </span>
   );
 }

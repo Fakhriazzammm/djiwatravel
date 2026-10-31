@@ -313,4 +313,12 @@ describe("EsimHomeSummaryCard", () => {
     expect(await screen.findByTestId("esim-home-departure")).toHaveTextContent("H-12");
     window.localStorage.clear();
   });
+
+  it("lets the customer flip the empty-state eSIM illustration without leaving the card", async () => {
+    renderCard([]);
+    const chip = await screen.findByRole("button", { name: "Putar ilustrasi eSIM" });
+    expect(chip.querySelector("img")).toHaveAttribute("alt", "");
+    fireEvent.click(chip);
+    expect(screen.getByTestId("esim-home-summary")).toHaveAttribute("data-state", "empty");
+  });
 });
