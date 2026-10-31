@@ -350,6 +350,31 @@ export const esimReconciliationRuns = pgTable(
   ],
 );
 
+
+export const customerOrderPaymentDetails = pgTable(
+  "customer_order_payment_details",
+  {
+    orderId: uuid("order_id").primaryKey().notNull(),
+    email: text().notNull(),
+    whatsapp: text().notNull(),
+    paymentMethod: text("payment_method").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.orderId],
+      foreignColumns: [customerOrders.id],
+      name: "customer_order_payment_details_order_id_fkey",
+    }).onDelete("cascade"),
+    check(
+      "customer_order_payment_details_payment_method_check",
+      sql`payment_method = ANY (ARRAY['qris'::text, 'va'::text, 'djiwa_pay'::text])`,
+    ),
+  ],
+);
+
 export const guestOrderAccess = pgTable(
   "guest_order_access",
   {
