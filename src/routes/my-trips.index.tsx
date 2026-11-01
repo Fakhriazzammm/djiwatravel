@@ -389,34 +389,34 @@ function FocusTripCard({ trip }: { trip: Trip }) {
       <Link
         to="/my-trips/$tripId"
         params={{ tripId: trip.id }}
-        className="tap relative block min-h-56 overflow-hidden rounded-[28px] bg-[#123b68] shadow-[0_12px_32px_rgba(15,43,74,0.16)]"
+        className="tap relative block overflow-hidden rounded-[24px] bg-[#123b68] shadow-[0_12px_32px_rgba(15,43,74,0.16)]"
       >
         {photo && (
           <img src={photo} alt="" className="absolute inset-0 size-full object-cover opacity-80" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#061d36] via-[#123b68]/45 to-transparent" />
-        <div className="relative flex min-h-56 flex-col justify-between p-5 text-white">
+        <div className="relative flex min-h-40 flex-col justify-between p-4 text-white">
           <div className="flex items-start justify-between gap-3">
-            <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold backdrop-blur-md">
+            <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10.5px] font-semibold backdrop-blur-md">
               {trip.status === "ongoing" ? "Sedang berlangsung" : "Berikutnya"}
             </span>
-            <Plane className="size-5" />
+            <Plane className="size-4" />
           </div>
           <div>
-            <p className="text-[13px] font-medium text-white/75">
+            <p className="text-[12px] font-medium text-white/75">
               {trip.departure_date && trip.return_date
                 ? `${formatDate(trip.departure_date)} — ${formatDate(trip.return_date)}`
                 : "Atur tanggal perjalanan"}
             </p>
-            <h2 className="mt-1 line-clamp-2 break-words text-[25px] font-bold tracking-[-0.03em]">
+            <h2 className="mt-0.5 line-clamp-2 break-words text-[20px] font-bold leading-tight tracking-[-0.03em]">
               {tripTitle(trip)}
             </h2>
-            <p className="mt-1 flex items-center gap-1.5 text-[14px] text-white/80">
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-white/80">
               <MapPin className="size-3.5" />
               {trip.destination_name}
             </p>
             {trip.total_budget_minor > 0 && (
-              <div className="mt-4 flex items-center gap-2 text-[11px] text-white/75">
+              <div className="mt-3 flex items-center gap-2 text-[10.5px] text-white/75">
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/25">
                   <div className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
                 </div>
