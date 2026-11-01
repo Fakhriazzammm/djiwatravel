@@ -1,3 +1,4 @@
+import { MoneyInput } from "@/components/money-input";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { BackBar, Page, btnRed, group, label, row } from "@/components/shell";
@@ -101,17 +102,13 @@ function NewTrip() {
           <div className={group}>
             <label className={row}>
               <span className="text-sm font-medium">Anggaran ({form.primaryCurrency})</span>
-              <input
+              <MoneyInput
                 required
-                type="number"
-                min="0"
-                inputMode="numeric"
-                value={form.totalBudgetMinor / 100 || ""}
-                onChange={(e) =>
-                  update("totalBudgetMinor", Math.round(Number(e.target.value || 0) * 100))
-                }
+                value={form.totalBudgetMinor ? String(Math.round(form.totalBudgetMinor / 100)) : ""}
+                onValueChange={(digits) => update("totalBudgetMinor", Number(digits || 0) * 100)}
+                aria-label="Anggaran"
                 className="w-36 bg-transparent text-right text-sm outline-none"
-                placeholder="0"
+                placeholder="Rp 1.000.000"
               />
             </label>
             <label className={row}>

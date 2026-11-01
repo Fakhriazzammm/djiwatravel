@@ -1,3 +1,4 @@
+import { MoneyInput } from "@/components/money-input";
 import { Eye, EyeOff, LoaderCircle, Plus, RefreshCw } from "lucide-react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -351,17 +352,11 @@ function AdminFinance() {
           <form className="mt-4 grid gap-3 lg:grid-cols-2" onSubmit={onSubmit}>
             <label className="text-xs font-semibold text-muted-foreground">
               Jumlah (Rp)
-              <input
-                inputMode="numeric"
+              <MoneyInput
                 value={form.amount}
-                onChange={(event) =>
-                  setForm((value) => ({
-                    ...value,
-                    amount: event.target.value.replace(/[^\d]/g, ""),
-                  }))
-                }
+                onValueChange={(digits) => setForm((value) => ({ ...value, amount: digits }))}
+                placeholder="Rp 150.000"
                 className="mt-1 min-h-11 w-full rounded-lg border border-border px-3 text-sm font-normal text-foreground"
-                placeholder="150000"
                 required
               />
             </label>

@@ -1,3 +1,4 @@
+import { MoneyInput } from "@/components/money-input";
 import {
   AlertTriangle,
   Check,
@@ -703,10 +704,10 @@ function AdminCatalogPage() {
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums">
                       {inline?.packageCode === row.packageCode && inline.mode === "percent" ? (
-                        <input
+                        <MoneyInput
                           autoFocus
                           value={inline.value}
-                          onChange={(event) => setInline({ ...inline, value: event.target.value })}
+                          onValueChange={(digits) => setInline({ ...inline, value: digits })}
                           onKeyDown={(event) => {
                             if (event.key === "Enter") void saveInline();
                             if (event.key === "Escape") setInline(null);
@@ -1182,11 +1183,10 @@ function AdminCatalogPage() {
                 </label>
                 <label className="flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-border px-2">
                   <span className="text-muted-foreground">Rp</span>
-                  <input
+                  <MoneyInput
                     value={markupFixed}
-                    onChange={(event) => setMarkupFixed(event.target.value)}
-                    inputMode="numeric"
-                    placeholder="nominal"
+                    onValueChange={setMarkupFixed}
+                    placeholder="1.000"
                     aria-label="Profit nominal"
                     className="w-20 bg-transparent text-[12px] outline-none"
                   />

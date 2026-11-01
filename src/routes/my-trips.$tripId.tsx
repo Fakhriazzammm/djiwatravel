@@ -1,3 +1,4 @@
+import { MoneyInput } from "@/components/money-input";
 import {
   createFileRoute,
   Link,
@@ -696,17 +697,12 @@ function TripHeaderEditor({ trip, onSaved }: { trip: Trip; onSaved: () => void }
               aria-label="Jumlah traveler"
               className="min-h-11 rounded-xl bg-secondary px-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-red/25"
             />
-            <input
-              type="number"
-              min="0"
-              value={form.totalBudgetMinor / 100}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  totalBudgetMinor: Math.round(Number(event.target.value || 0) * 100),
-                })
+            <MoneyInput
+              value={form.totalBudgetMinor ? String(Math.round(form.totalBudgetMinor / 100)) : ""}
+              onValueChange={(digits) =>
+                setForm({ ...form, totalBudgetMinor: Number(digits || 0) * 100 })
               }
-              placeholder="Total anggaran"
+              placeholder="Rp 1.000.000"
               aria-label="Total anggaran"
               className="min-h-11 rounded-xl bg-secondary px-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-red/25"
             />

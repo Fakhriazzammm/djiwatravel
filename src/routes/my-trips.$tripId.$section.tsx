@@ -1,3 +1,4 @@
+import { MoneyInput } from "@/components/money-input";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -382,13 +383,11 @@ function BudgetEditor({
                   <div className="mt-3 flex items-end gap-2">
                     <label className="min-w-0 flex-1 text-[11px] font-medium text-muted-foreground">
                       Batas kategori
-                      <input
+                      <MoneyInput
                         aria-label={`Anggaran ${displayBudgetCategory(String(item.name ?? "Kategori"))}`}
-                        type="number"
-                        min="0"
-                        inputMode="numeric"
-                        value={values[item.id]}
-                        onChange={(e) => setValues({ ...values, [item.id]: e.target.value })}
+                        value={values[item.id] ?? ""}
+                        onValueChange={(digits) => setValues({ ...values, [item.id]: digits })}
+                        placeholder="Rp 0"
                         className="mt-1 min-h-11 w-full rounded-xl bg-secondary px-3 text-right text-sm font-semibold text-foreground outline-none focus:ring-2 focus:ring-brand-red/25"
                       />
                     </label>
@@ -522,13 +521,12 @@ function ExpenseEditor({
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
                 className="min-h-12 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-[15px] outline-none focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
-              <input
+              <MoneyInput
                 required
-                min="1"
-                type="number"
                 value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                placeholder="Nominal"
+                onValueChange={(digits) => setForm({ ...form, amount: digits })}
+                aria-label="Nominal"
+                placeholder="Rp 1.000.000"
                 className="min-h-12 w-32 rounded-2xl bg-secondary px-4 text-[15px] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
             </div>
