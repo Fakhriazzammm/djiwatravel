@@ -1,3 +1,4 @@
+import { parseGeoConfig } from "./geo-config";
 import { parseHomeEsimConfig } from "./home-esim-config";
 
 export type AdminSettingKey =
@@ -12,7 +13,8 @@ export type AdminSettingKey =
   | "providerThreshold"
   | "notifications"
   | "security"
-  | "homeEsim";
+  | "homeEsim"
+  | "aiSearch";
 export type AdminSettings = Record<AdminSettingKey, unknown>;
 export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "retryPolicy",
@@ -27,6 +29,7 @@ export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "notifications",
   "security",
   "homeEsim",
+  "aiSearch",
 ];
 export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (
@@ -57,6 +60,7 @@ export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   )
     throw new Error("markup.percent harus 0-100");
   if (key === "homeEsim") parseHomeEsimConfig(value);
+  if (key === "aiSearch") parseGeoConfig(value);
   return true;
 }
 export function buildSettingAudit(

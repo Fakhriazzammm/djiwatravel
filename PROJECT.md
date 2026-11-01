@@ -216,3 +216,13 @@ Use these distinct states in handoff notes:
 An HTTP 200 alone does not prove the expected source revision, authenticated
 data, database migration, or deployed artifact. Verify the relevant marker,
 route, service, and environment at each boundary.
+
+## GEO / AI discoverability
+
+- `/robots.txt` and `/llms.txt` are dynamic routes (`src/routes/robots[.]txt.ts`, `llms[.]txt.ts`);
+  `public/robots.txt` no longer exists. Both read `admin_settings.aiSearch` (Admin → Settings →
+  "Visibilitas AI (GEO)", audited, versioned). Missing row or DB failure falls back to open defaults.
+- `src/lib/geo.ts` builds the answer-first summary, FAQ, robots and llms text from live catalogue data;
+  `GeoAnswer` renders it as visible SSR text and the same FAQ feeds `FAQPage` JSON-LD
+  (Home + `/destination/$code`). Destination pages deliberately carry no `Product` (see
+  `seo-product-ranking.test.ts`); `Product`/`Offer` stays on `/plan/$id`.

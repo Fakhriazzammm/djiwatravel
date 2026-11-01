@@ -50,6 +50,11 @@ export const Route = createFileRoute("/plan/$id")({
             sku: plan.packageCode,
             url,
             priceIdr: plan.priceIdr,
+            available: plan.sellable,
+            image: `${SEO_BASE_URL}/icon-512.png`,
+            durationDays: plan.durationDays,
+            dataLabel: packageDataLabel(plan),
+            coverage: packageCoverageLabel(plan),
           }),
         ),
         jsonLdScript(

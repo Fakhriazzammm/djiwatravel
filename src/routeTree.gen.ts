@@ -14,10 +14,12 @@ import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OrderStatusRouteImport } from './routes/order-status'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -102,6 +104,11 @@ const LiveCatalogRoute = LiveCatalogRouteImport.update({
   path: '/live-catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -120,6 +127,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -425,10 +437,12 @@ export interface FileRoutesByFullPath {
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
@@ -494,10 +508,12 @@ export interface FileRoutesByTo {
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
@@ -564,10 +580,12 @@ export interface FileRoutesById {
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
+  '/llms.txt': typeof LlmsDottxtRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
@@ -635,10 +653,12 @@ export interface FileRouteTypes {
     | '/explore'
     | '/finder'
     | '/live-catalog'
+    | '/llms.txt'
     | '/notifications'
     | '/order-status'
     | '/privacy'
     | '/profile'
+    | '/robots.txt'
     | '/sitemap.xml'
     | '/support'
     | '/terms'
@@ -704,10 +724,12 @@ export interface FileRouteTypes {
     | '/explore'
     | '/finder'
     | '/live-catalog'
+    | '/llms.txt'
     | '/notifications'
     | '/order-status'
     | '/privacy'
     | '/profile'
+    | '/robots.txt'
     | '/sitemap.xml'
     | '/support'
     | '/terms'
@@ -773,10 +795,12 @@ export interface FileRouteTypes {
     | '/explore'
     | '/finder'
     | '/live-catalog'
+    | '/llms.txt'
     | '/notifications'
     | '/order-status'
     | '/privacy'
     | '/profile'
+    | '/robots.txt'
     | '/sitemap.xml'
     | '/support'
     | '/terms'
@@ -843,10 +867,12 @@ export interface RootRouteChildren {
   ExploreRoute: typeof ExploreRoute
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
+  LlmsDottxtRoute: typeof LlmsDottxtRoute
   NotificationsRoute: typeof NotificationsRoute
   OrderStatusRoute: typeof OrderStatusRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
@@ -940,6 +966,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LiveCatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/notifications': {
       id: '/notifications'
       path: '/notifications'
@@ -966,6 +999,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -1420,10 +1460,12 @@ const rootRouteChildren: RootRouteChildren = {
   ExploreRoute: ExploreRoute,
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,
+  LlmsDottxtRoute: LlmsDottxtRoute,
   NotificationsRoute: NotificationsRoute,
   OrderStatusRoute: OrderStatusRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,

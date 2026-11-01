@@ -10,6 +10,9 @@ function read(path: string) {
   return readFileSync(resolve(sourceRoot, path), "utf8");
 }
 
+import { buildRobotsTxt } from "@/lib/geo";
+import { DEFAULT_GEO_CONFIG } from "@/lib/geo-config";
+
 describe("public product SEO contract", () => {
   it("projects only public package fields into the SSR view", () => {
     const view = toViewPackage({
@@ -60,7 +63,7 @@ describe("public product SEO contract", () => {
 
   it("keeps sitemap and robots on an explicit public allowlist", () => {
     const sitemap = read("routes/sitemap[.]xml.ts");
-    const robots = readFileSync(resolve(process.cwd(), "public/robots.txt"), "utf8");
+    const robots = buildRobotsTxt(DEFAULT_GEO_CONFIG);
     expect(sitemap).toContain("getIndexablePlans");
     expect(sitemap).toContain("/plan/");
     expect(sitemap).not.toMatch(
@@ -79,7 +82,7 @@ describe("public product SEO contract", () => {
   });
 
   it("applies private path exclusions to named crawler groups", () => {
-    const robots = readFileSync(resolve(process.cwd(), "public/robots.txt"), "utf8");
+    const robots = buildRobotsTxt(DEFAULT_GEO_CONFIG);
     for (const agent of ["Googlebot", "Bingbot"]) {
       const group = robots.split(`User-agent: ${agent}`)[1]?.split("User-agent:")[0] ?? "";
       expect(group).toContain("Disallow: /admin");

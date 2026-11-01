@@ -11,6 +11,8 @@ import {
 import { getAdminReadiness } from "@/lib/admin-readiness.fn";
 import { AdminHomeEsimPanel } from "@/components/admin-home-esim-panel";
 import { getAdminHomeEsimConfig } from "@/lib/home-esim-config.fn";
+import { AdminGeoPanel } from "@/components/admin-geo-panel";
+import { getAdminGeoConfig } from "@/lib/geo-config.fn";
 import { getHomeDestinationFeed } from "@/lib/destination-availability.fn";
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
@@ -18,16 +20,18 @@ export const Route = createFileRoute("/admin/settings")({
   loader: async () => ({
     readiness: await getAdminReadiness(),
     homeEsim: await getAdminHomeEsimConfig(),
+    geo: await getAdminGeoConfig(),
     rail: (await getHomeDestinationFeed().catch(() => ({ popular: [] }))).popular,
   }),
   component: AdminSettings,
 });
 function AdminSettings() {
-  const { readiness, homeEsim, rail } = Route.useLoaderData();
+  const { readiness, homeEsim, geo, rail } = Route.useLoaderData();
   const ready = readiness.filter((x) => x.ready).length;
   return (
     <AdminShell title="Settings" subtitle="Server readiness">
       <AdminHomeEsimPanel initial={homeEsim.config} version={homeEsim.version} railPool={rail} />
+      <AdminGeoPanel initial={geo.config} version={geo.version} />
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <SectionHeading

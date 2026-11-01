@@ -22,6 +22,9 @@ import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
 import { activeHomePromo, orderHomeDestinations } from "@/lib/home-esim-config";
 
+import { GeoAnswer } from "@/components/geo-answer";
+import { HOME_FAQS, faqPageJsonLd } from "@/lib/geo";
+
 const featuredGuides = getNewestTravelGuides(3);
 
 export const Route = createFileRoute("/")({
@@ -45,7 +48,11 @@ export const Route = createFileRoute("/")({
       { property: "og:url", content: "https://djiwatravel.com/" },
     ],
     links: [{ rel: "canonical", href: "https://djiwatravel.com/" }],
-    scripts: [jsonLdScript(organizationJsonLd()), jsonLdScript(websiteJsonLd())],
+    scripts: [
+      jsonLdScript(organizationJsonLd()),
+      jsonLdScript(websiteJsonLd()),
+      jsonLdScript({ "@context": "https://schema.org", ...faqPageJsonLd(HOME_FAQS) }),
+    ],
   }),
   component: Home,
 });
@@ -486,6 +493,7 @@ function Home() {
           </div>
         </Reveal>
       </Stagger>
+      <GeoAnswer heading="Pertanyaan umum eSIM" faqs={HOME_FAQS} />
     </Page>
   );
 }

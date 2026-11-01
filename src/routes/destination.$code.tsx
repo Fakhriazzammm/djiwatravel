@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-rout
 import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Page, StickyCta } from "@/components/shell";
+import { GeoAnswer } from "@/components/geo-answer";
 import {
   Sheet,
   SheetContent,
@@ -14,6 +15,7 @@ import { destinationOgImage } from "@/lib/destination-artwork";
 import type { ViewPackage } from "@/lib/package-view";
 import { pricePerDay } from "@/lib/package-picker";
 import { z } from "zod";
+import { buildDestinationFacts, faqPageJsonLd } from "@/lib/geo";
 import {
   packageCoverageLabel,
   packageDataLabel,
@@ -107,7 +109,9 @@ export const Route = createFileRoute("/destination/$code")({
       ? `eSIM ${loaderData.destination.nameId} — Djiwa Travel`
       : "Paket eSIM — Djiwa Travel";
     const description = loaderData
-      ? `Paket eSIM ${loaderData.destination.nameId} untuk traveler Indonesia. Aktif otomatis, bayar QRIS atau VA.`
+      ? buildDestinationFacts(loaderData.destination.nameId, loaderData.packages).answer.split(
+          /(?<=\.) /,
+        )[0]!
       : "Paket eSIM untuk traveler Indonesia. Aktif otomatis, bayar QRIS atau VA.";
     const code = loaderData?.destination.code.toLowerCase() ?? "";
     const image = destinationOgImage(code, BASE_URL);
@@ -122,6 +126,22 @@ export const Route = createFileRoute("/destination/$code")({
         url: `${BASE_URL}/plan/${encodeURIComponent(pkg.packageCode)}`,
       })),
     };
+    const facts = loaderData
+      ? buildDestinationFacts(loaderData.destination.nameId, loaderData.packages)
+      : null;
+    const webPageSchema =
+      loaderData && facts
+        ? {
+            "@type": "WebPage",
+            "@id": `${BASE_URL}/destination/${code}`,
+            url: `${BASE_URL}/destination/${code}`,
+            name: title,
+            description: facts.answer,
+            inLanguage: "id-ID",
+            dateModified: new Date().toISOString().slice(0, 10),
+            isPartOf: { "@type": "WebSite", name: "Djiwa Travel", url: BASE_URL },
+          }
+        : null;
     const breadcrumbSchema = {
       "@type": "BreadcrumbList",
       itemListElement: [
@@ -156,7 +176,12 @@ export const Route = createFileRoute("/destination/$code")({
               type: "application/ld+json",
               children: JSON.stringify({
                 "@context": "https://schema.org",
-                "@graph": [breadcrumbSchema, packageListSchema],
+                "@graph": [
+                  breadcrumbSchema,
+                  packageListSchema,
+                  ...(webPageSchema ? [webPageSchema] : []),
+                  ...(facts && facts.count > 0 ? [faqPageJsonLd(facts.faqs)] : []),
+                ],
               }),
             },
           ]
@@ -341,6 +366,10 @@ function Destination() {
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const isRegionalDestination = destination.region === "Regional";
+  const geoFacts = useMemo(
+    () => buildDestinationFacts(destination.nameId, packages),
+    [destination.nameId, packages],
+  );
 
   useEffect(() => {
     setSelectedCodes([]);
@@ -917,6 +946,14 @@ function Destination() {
           </button>
         </SheetContent>
       </Sheet>
+      {geoFacts.count > 0 ? (
+        <GeoAnswer
+          heading={`Tentang eSIM ${destination.nameId}`}
+          answer={geoFacts.answer}
+          faqs={geoFacts.faqs}
+          updatedLabel={`Harga dan ketersediaan live dari katalog Djiwa Travel, diperbarui ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}.`}
+        />
+      ) : null}
     </Page>
   );
 }
