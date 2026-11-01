@@ -65,14 +65,14 @@ export function EsimQuickBuyPanel({
       data-testid="esim-quick-buy-panel"
       role="region"
       aria-label={`Paket eSIM ${destination.nameId}`}
-      className="mt-3 border-t border-border/60 pt-3"
+      className="mt-2 border-t border-border/60 pt-2"
     >
       {state.kind === "loading" && (
-        <div aria-busy="true" aria-label="Memuat paket" className="flex gap-2.5">
+        <div aria-busy="true" aria-label="Memuat paket" className="flex gap-2">
           {[0, 1].map((item) => (
             <div
               key={item}
-              className="h-[118px] flex-1 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none"
+              className="h-[92px] flex-1 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none"
             />
           ))}
         </div>
@@ -114,7 +114,7 @@ export function EsimQuickBuyPanel({
 
       {state.kind === "ready" && state.picks.length > 0 && (
         <>
-          <div role="radiogroup" aria-label="Pilih paket" className="flex gap-2.5">
+          <div role="radiogroup" aria-label="Pilih paket" className="flex gap-2">
             {state.picks.map((pick) => {
               const checked = pick.pkg.packageCode === selected;
               const tag = TAG[pick.tag];
@@ -125,7 +125,7 @@ export function EsimQuickBuyPanel({
                   role="radio"
                   aria-checked={checked}
                   onClick={() => setSelected(pick.pkg.packageCode)}
-                  className={`tap min-w-0 flex-1 rounded-2xl border-2 p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  className={`tap min-w-0 flex-1 rounded-2xl border-2 px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     checked
                       ? "border-brand-red bg-brand-red-soft/40"
                       : "border-border/60 bg-secondary/60"
@@ -136,16 +136,16 @@ export function EsimQuickBuyPanel({
                   >
                     {tag.label}
                   </span>
-                  <span className="mt-2 block text-[20px] font-extrabold leading-tight tracking-[-0.02em]">
+                  <span className="mt-1 block text-[17px] font-extrabold leading-tight tracking-[-0.02em]">
                     {packageDataLabel(pick.pkg).replace(/ data$/, "")}
                   </span>
                   <span className="block text-[12px] text-muted-foreground">
                     {pick.pkg.durationDays} hari
                   </span>
-                  <span className="mt-1.5 block text-[12px] text-muted-foreground">
+                  <span className="block text-[11px] text-muted-foreground">
                     {rupiah(Math.round(pricePerDay(pick.pkg)))}/hari
                   </span>
-                  <span className="block text-[15px] font-extrabold tabular-nums">
+                  <span className="block text-[14px] font-extrabold tabular-nums">
                     {rupiah(pick.pkg.priceIdr)}
                   </span>
                 </button>
@@ -157,7 +157,7 @@ export function EsimQuickBuyPanel({
             disabled={!chosen}
             aria-haspopup="dialog"
             onClick={() => chosen && onBuy(chosen.pkg.packageCode)}
-            className="tap mt-3 flex min-h-12 w-full items-center justify-between rounded-2xl bg-brand-red px-5 text-[15px] font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="tap mt-2 flex min-h-10 w-full items-center justify-between rounded-full bg-brand-red px-4 text-[14px] font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <span>Beli sekarang</span>
             <span className="tabular-nums">{chosen ? rupiah(chosen.pkg.priceIdr) : ""}</span>

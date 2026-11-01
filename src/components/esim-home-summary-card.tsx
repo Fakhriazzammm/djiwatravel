@@ -75,7 +75,7 @@ function SummaryLink({
 const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const CARD_CLASS = "ios-card overflow-hidden rounded-[28px]";
 const BTN =
-  "tap flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl px-3 text-[14px] font-bold";
+  "tap flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-bold";
 
 /**
  * The empty-state eSIM illustration. Motion explains that it is a physical object you can handle:
@@ -134,7 +134,7 @@ function ChipArt() {
   };
 
   return (
-    <span ref={host} className="absolute right-4 top-3 size-14">
+    <span ref={host} className="absolute right-3 top-2.5 size-11">
       {pulse > 0 &&
         [0, 1].map((ring) => (
           <motion.span
@@ -208,7 +208,7 @@ function DepartureLine({ orderId }: { orderId: string }) {
   return (
     <p
       data-testid="esim-home-departure"
-      className="mt-1.5 text-[12px] font-semibold text-foreground"
+      className="mt-0.5 text-[11px] font-semibold text-foreground"
     >
       {line}
     </p>
@@ -220,7 +220,7 @@ function Flag({ flag, muted }: { flag: string; muted?: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className={`shrink-0 text-[30px] leading-none ${muted ? "grayscale" : ""}`}
+      className={`shrink-0 text-[22px] leading-none ${muted ? "grayscale" : ""}`}
     >
       {flag}
     </span>
@@ -238,7 +238,7 @@ function QuotaBar({ card }: { card: EsimWalletCard }) {
       aria-valuemax={100}
       aria-valuenow={card.percent}
       data-testid="esim-home-summary-progress"
-      className="mt-2 h-[7px] overflow-hidden rounded-full bg-[#E5E5EA]"
+      className="mt-1.5 h-[5px] overflow-hidden rounded-full bg-[#E5E5EA]"
     >
       <div className={`h-full rounded-full ${fill}`} style={{ width: `${card.percent}%` }} />
     </div>
@@ -261,7 +261,7 @@ function WalletCard({
       : expired
         ? "bg-secondary/70"
         : "bg-secondary/50 shadow-[inset_0_0_0_1px_rgba(60,60,67,0.08)]";
-  const actionClass = `${BTN} ${FOCUS} relative z-20 mt-3 w-full ${
+  const actionClass = `tap ${FOCUS} relative z-20 mt-2 flex min-h-9 w-full items-center justify-center rounded-full px-3 text-[13px] font-bold ${
     card.action.primary
       ? "bg-brand-red text-white"
       : "bg-surface text-brand-red shadow-[inset_0_0_0_1px_rgba(60,60,67,0.16)]"
@@ -271,7 +271,7 @@ function WalletCard({
       data-testid="esim-wallet-card"
       data-kind={card.kind}
       aria-label={`eSIM ${card.location}`}
-      className={`relative w-[78%] shrink-0 snap-start rounded-[22px] p-3.5 ${surface} ${
+      className={`relative w-[84%] shrink-0 snap-start rounded-2xl p-2.5 ${surface} ${
         expired ? "text-muted-foreground" : ""
       }`}
     >
@@ -282,34 +282,34 @@ function WalletCard({
             ? `Buka status pesanan eSIM ${card.location}`
             : `Buka detail eSIM ${card.location}`
         }
-        className={`absolute inset-0 z-10 rounded-[22px] ${FOCUS}`}
+        className={`absolute inset-0 z-10 rounded-2xl ${FOCUS}`}
       >
         <span className="sr-only">Buka</span>
       </SummaryLink>
 
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <Flag flag={card.flag} muted={expired} />
-        <p className="min-w-0 flex-1 truncate text-[16px] font-bold tracking-[-0.02em] text-foreground">
+        <p className="min-w-0 flex-1 truncate text-[15px] font-bold tracking-[-0.02em] text-foreground">
           {card.location}
         </p>
         <EsimStatusBadge status={card.status} low={card.kind === "low"} />
       </div>
 
       {card.kind === "pending" ? (
-        <div className="mt-3">
-          <p className="text-[15px] font-bold text-foreground">{card.pendingTitle}</p>
+        <div className="mt-1.5">
+          <p className="text-[14px] font-bold text-foreground">{card.pendingTitle}</p>
           <p className="text-[12px] text-muted-foreground">
             {[card.headline, card.caption].filter(Boolean).join(" ")}
           </p>
-          <div className="mt-2">
+          <div className="mt-1.5">
             <EsimActivationStepper status={card.status} />
           </div>
         </div>
       ) : (
         <>
-          <p className="mt-3 text-[12px] leading-5 text-muted-foreground">
+          <p className="mt-1.5 text-[12px] leading-5 text-muted-foreground">
             <span
-              className={`text-[24px] font-extrabold tracking-[-0.03em] ${
+              className={`text-[19px] font-extrabold tracking-[-0.03em] ${
                 expired ? "text-muted-foreground" : "text-foreground"
               }`}
             >
@@ -319,13 +319,13 @@ function WalletCard({
           </p>
           <QuotaBar card={card} />
           {(card.usedLabel || card.timeLabel) && (
-            <p className="mt-1.5 flex justify-between gap-2 text-[11px] font-semibold text-muted-foreground">
+            <p className="mt-1 flex justify-between gap-2 text-[10.5px] font-semibold text-muted-foreground">
               <span>{card.usedLabel}</span>
               <span>{card.timeLabel}</span>
             </p>
           )}
           {card.measuredAt !== null && (
-            <p className="mt-1 text-[10.5px] text-muted-foreground/80">
+            <p className="text-[10px] text-muted-foreground/80">
               Data penyedia · diperbarui {snapshotAgeLabel(card.measuredAt)}
             </p>
           )}
@@ -395,10 +395,10 @@ function WalletRail({
     <section
       data-testid="esim-wallet-rail"
       aria-label="eSIM kamu"
-      className="mt-4 border-t border-border/60 pt-3"
+      className="mt-2.5 border-t border-border/60 pt-2"
     >
       <div className="flex items-baseline justify-between">
-        <h3 className="text-[14px] font-bold">eSIM kamu</h3>
+        <h3 className="text-[13px] font-bold">eSIM kamu</h3>
         {cards.length > 1 && (
           <span aria-hidden="true" className="text-[12px] font-semibold text-muted-foreground">
             Geser →
@@ -408,7 +408,7 @@ function WalletRail({
       <div
         ref={scroller}
         onScroll={onScroll}
-        className="-mx-4 mt-2.5 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-3 mt-1.5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {cards.map((card) => (
           <WalletCard key={card.id} card={card} onBuy={onBuy} readOnly={readOnly} />
@@ -426,7 +426,7 @@ function WalletRail({
                 aria-checked={checked}
                 aria-label={`eSIM ${card.location}`}
                 onClick={() => goTo(position)}
-                className={`tap grid h-11 min-w-8 place-items-center rounded-full ${FOCUS}`}
+                className={`tap grid h-6 min-w-7 place-items-center rounded-full ${FOCUS}`}
               >
                 <motion.span
                   aria-hidden="true"
@@ -471,7 +471,7 @@ export function EsimHomeSummaryCard({
         data-testid="esim-home-summary-loading"
         aria-busy="true"
         aria-label="Menyiapkan eSIM kamu"
-        className={`${CARD_CLASS} p-4`}
+        className={`${CARD_CLASS} p-3`}
       >
         <div className="h-3.5 w-24 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
         <div className="mt-4 h-6 w-48 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
@@ -506,14 +506,14 @@ export function EsimHomeSummaryCard({
     <article
       data-testid="esim-home-summary"
       data-state={cards.length === 0 ? "empty" : "has-esim"}
-      className={`${CARD_CLASS} relative p-4`}
+      className={`${CARD_CLASS} relative p-3`}
     >
       <p className="text-[12px] font-semibold text-muted-foreground">eSIM perjalanan</p>
       <ChipArt />
-      <h2 className="mt-1.5 max-w-[11rem] text-[21px] font-bold leading-[1.15] tracking-[-0.03em] text-foreground">
+      <h2 className="mt-0.5 pr-12 text-[17px] font-bold leading-tight tracking-[-0.025em] text-foreground">
         Mau ke mana berikutnya?
       </h2>
-      <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+      <p className="text-[12px] leading-4 text-muted-foreground">
         Pilih tujuan, internet langsung siap.
       </p>
 
@@ -522,7 +522,7 @@ export function EsimHomeSummaryCard({
           <div
             role="group"
             aria-label="Pilih tujuan"
-            className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="-mx-3 mt-2 flex items-center gap-1.5 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {destinations.map((destination, index) => {
               const selected = destination.code === openCode;
@@ -537,41 +537,38 @@ export function EsimHomeSummaryCard({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ ...springIos, delay: reduce ? 0 : index * 0.04 }}
                   {...(reduce ? {} : { whileTap: { scale: 0.94 } })}
-                  className={`tap flex min-h-11 shrink-0 items-center gap-2 rounded-2xl py-1.5 pl-2.5 pr-3.5 text-[14px] font-semibold ${FOCUS} ${
+                  className={`tap flex min-h-9 shrink-0 items-center gap-1.5 rounded-full py-1 pl-2 pr-3 text-[13px] font-semibold ${FOCUS} ${
                     selected
                       ? "bg-brand-red-soft text-brand-red shadow-[inset_0_0_0_2px_var(--color-brand-red)]"
                       : "bg-secondary"
                   }`}
                 >
-                  <span className="text-[22px] leading-none" aria-hidden="true">
+                  <span className="text-[17px] leading-none" aria-hidden="true">
                     {destination.flag}
                   </span>
                   {destination.nameId}
                 </motion.button>
               );
             })}
+            <SummaryLink
+              target={{ kind: "finder" }}
+              ariaLabel="Semua paket eSIM"
+              className={`tap flex min-h-9 shrink-0 items-center gap-0.5 rounded-full px-2 text-[13px] font-semibold text-brand-red ${FOCUS}`}
+            >
+              Semua paket
+              <ChevronRight className="size-4" aria-hidden="true" />
+            </SummaryLink>
           </div>
-          {openDestination && !readOnly ? (
+          {openDestination && !readOnly && (
             <EsimQuickBuyPanel
               key={openDestination.code}
               destination={openDestination}
               onBuy={setCheckoutCode}
             />
-          ) : (
-            <div className="mt-2 flex items-center justify-end">
-              <SummaryLink
-                target={{ kind: "finder" }}
-                ariaLabel="Semua paket eSIM"
-                className={`tap flex min-h-11 items-center gap-0.5 rounded-xl px-1 text-[13px] font-semibold text-brand-red ${FOCUS}`}
-              >
-                Semua paket
-                <ChevronRight className="size-4" aria-hidden="true" />
-              </SummaryLink>
-            </div>
           )}
         </>
       ) : (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-2 flex items-center gap-2">
           <button
             type="button"
             onClick={onSearchPackages}
@@ -597,7 +594,7 @@ export function EsimHomeSummaryCard({
         <SummaryLink
           target={{ kind: "list" }}
           ariaLabel="Lihat semua eSIM"
-          className={`tap mt-1 flex min-h-11 items-center justify-center gap-0.5 rounded-xl text-[13px] font-semibold text-muted-foreground ${FOCUS}`}
+          className={`tap flex min-h-8 items-center justify-center gap-0.5 rounded-xl text-[12px] font-semibold text-muted-foreground ${FOCUS}`}
         >
           Lihat semua eSIM
           <ChevronRight className="size-4" aria-hidden="true" />
