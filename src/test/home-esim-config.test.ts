@@ -15,6 +15,7 @@ const valid: HomeEsimConfig = {
   quickBuyEnabled: true,
   multiCountryEnabled: true,
   myTripsWidgetEnabled: true,
+  heroSky: "auto",
   destinationOrder: ["KR", "JP"],
   lowQuotaPercent: 30,
   promo: { enabled: true, text: "Promo Jepang", destinationCode: "jp" },
@@ -153,5 +154,15 @@ describe("home eSIM config", () => {
     };
     expect(buildEsimHomeSummary([order]).kind).toBe("active");
     expect(buildEsimHomeSummary([order], Date.now(), 30).kind).toBe("low");
+  });
+});
+
+describe("home hero sky", () => {
+  it("defaults to auto, accepts a pinned phase, and rejects unknown values", () => {
+    const { heroSky: _omit, ...legacy } = valid as typeof valid & { heroSky?: unknown };
+    expect(parseHomeEsimConfig(legacy).heroSky).toBe("auto");
+    expect(parseHomeEsimConfig({ ...valid, heroSky: "malam" }).heroSky).toBe("malam");
+    expect(() => parseHomeEsimConfig({ ...valid, heroSky: "senja" })).toThrow();
+    expect(DEFAULT_HOME_ESIM_CONFIG.heroSky).toBe("auto");
   });
 });

@@ -81,8 +81,8 @@ export function DjiwaPayBrowser({
           <motion.div
             className={
               pageLayout
-                ? "fixed inset-x-0 top-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-80 bg-background"
-                : "fixed inset-x-0 top-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 bg-black/35 p-3 sm:bottom-4 sm:bg-black/20"
+                ? "fixed inset-x-0 top-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-80 bg-background"
+                : "fixed inset-x-0 top-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 bg-black/35 p-3 sm:bottom-4 sm:bg-black/20"
             }
             initial={reduce ? { opacity: 1 } : { opacity: 0 }}
             animate={{ opacity: 1 }}

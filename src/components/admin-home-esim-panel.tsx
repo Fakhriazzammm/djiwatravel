@@ -5,6 +5,7 @@ import { AdminHomePackageHighlights } from "@/components/admin-home-package-high
 import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";
 import { destinations as catalog } from "@/lib/catalog";
 import { saveHomeEsimConfig } from "@/lib/home-esim-config.fn";
+import { HERO_PHASES, HERO_PHASE_LABEL, type HeroSkyMode } from "@/lib/home-hero";
 import {
   LOW_QUOTA_MAX,
   LOW_QUOTA_MIN,
@@ -130,6 +131,31 @@ export function AdminHomeEsimPanel({
           stoknya tersedia. Mematikan ini hanya menyembunyikan tampilannya; paket tetap bisa dibeli
           lewat tautan langsung.
         </p>
+
+        <div>
+          <label htmlFor="home-hero-sky" className="text-sm font-semibold">
+            Hero Beranda (langit)
+          </label>
+          <select
+            id="home-hero-sky"
+            value={draft.heroSky}
+            onChange={(event) =>
+              setDraft({ ...draft, heroSky: event.target.value as HeroSkyMode })
+            }
+            className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"
+          >
+            <option value="auto">Otomatis mengikuti jam perangkat pelanggan</option>
+            {HERO_PHASES.map((phase) => (
+              <option key={phase} value={phase}>
+                Kunci: {HERO_PHASE_LABEL[phase]}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Otomatis menampilkan 6 suasana langit (subuh sampai tengah malam) beserta sapaan dan
+            jam. Pilih satu fase untuk mengunci tampilan, misalnya saat kampanye musiman.
+          </p>
+        </div>
 
         <div>
           <p className="text-sm font-semibold">Urutan rel destinasi</p>

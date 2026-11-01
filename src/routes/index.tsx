@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, ChevronRight, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Page, Wordmark, SectionTitle } from "@/components/shell";
+import { Page, SectionTitle } from "@/components/shell";
+import { HomeHero } from "@/components/home-hero";
 import { FixedLayer, Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations, search } from "@/lib/catalog";
 import { getBundleGroups, getHomeDestinationFeed } from "@/lib/destination-availability.fn";
@@ -57,19 +58,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-function greeting() {
-  const h = new Date().getHours();
-  return h < 11
-    ? "Selamat pagi"
-    : h < 15
-      ? "Selamat siang"
-      : h < 18
-        ? "Selamat sore"
-        : "Selamat malam";
-}
-
 function Home() {
-  const [hello, setHello] = useState("Halo");
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [searchHint, setSearchHint] = useState("Cari destinasi atau paket eSIM");
@@ -80,7 +69,6 @@ function Home() {
   const [sheetDestination, setSheetDestination] = useState<SheetDestination | null>(null);
   const { user, loading } = useBetterAuthUser();
   const unread = useUnreadNotifications(Boolean(user));
-  useEffect(() => setHello(greeting()), []);
   useEffect(() => {
     if (reduceMotion || query) {
       setSearchHint("Cari destinasi atau paket eSIM");
@@ -168,70 +156,62 @@ function Home() {
 
   return (
     <Page>
-      <header className="flex h-14 items-center justify-between gap-3">
-        <Wordmark className="h-11" />
+      <HomeHero
+        mode={homeConfig.heroSky}
+        firstName={user ? accountLabel : null}
+        searchHint={searchHint}
+        searchOpen={searchOpen}
+        onOpenSearch={() => setSearchOpen(true)}
+        headerAction={
+          <>
         {loading ? (
-          <div
-            role="status"
-            aria-label="Memuat akun"
-            className="h-10 w-24 animate-pulse rounded-full bg-secondary motion-reduce:animate-none"
-          />
-        ) : user ? (
-          <div className="flex items-center gap-2.5">
-            <Link
-              to="/notifications"
-              data-testid="header-notifications"
-              aria-label={unread > 0 ? `Notifikasi, ${unread} belum dibaca` : "Notifikasi"}
-              className="tap relative flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Bell className="size-5" strokeWidth={1.9} aria-hidden="true" />
-              {unread > 0 && (
-                <span
-                  aria-hidden="true"
-                  className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[11px] font-bold leading-none text-white ring-2 ring-background"
-                >
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              )}
-            </Link>
-            <Link
-              to="/profile"
-              search={{
-                admin: undefined,
-                returnTo: undefined,
-                calendar: undefined,
-                calendarSync: undefined,
-              }}
-              aria-label="Buka profil akun"
-              data-testid="header-account"
-              className="tap flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-[16px] font-semibold text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)]"
-            >
-              <span aria-hidden="true">
-                {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
+        <div
+          role="status"
+          aria-label="Memuat akun"
+          className="h-10 w-24 animate-pulse rounded-full bg-secondary motion-reduce:animate-none"
+        />
+      ) : user ? (
+        <div className="flex items-center gap-2.5">
+          <Link
+            to="/notifications"
+            data-testid="header-notifications"
+            aria-label={unread > 0 ? `Notifikasi, ${unread} belum dibaca` : "Notifikasi"}
+            className="tap relative flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Bell className="size-5" strokeWidth={1.9} aria-hidden="true" />
+            {unread > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[11px] font-bold leading-none text-white ring-2 ring-background"
+              >
+                {unread > 9 ? "9+" : unread}
               </span>
-              <span className="sr-only">{accountLabel}</span>
-            </Link>
-          </div>
-        ) : (
-          <CustomerAuth size="compact" />
-        )}
-      </header>
-
-      <p className="mt-5 text-[15px] font-medium text-muted-foreground">
-        {hello}
-        {user ? `, ${accountLabel}` : ""}
-      </p>
-      <h1 className="large-title-xl mt-1 text-balance">Mau pergi ke mana?</h1>
-
-      <button
-        onClick={() => setSearchOpen(true)}
-        aria-haspopup="dialog"
-        aria-expanded={searchOpen}
-        className="tap ios-card mt-4 flex h-[3.25rem] w-full items-center gap-3 rounded-full px-5 text-left text-[17px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <Search className="size-5 shrink-0" strokeWidth={2} />
-        <span className="min-w-0 flex-1 truncate">{searchHint}</span>
-      </button>
+            )}
+          </Link>
+          <Link
+            to="/profile"
+            search={{
+              admin: undefined,
+              returnTo: undefined,
+              calendar: undefined,
+              calendarSync: undefined,
+            }}
+            aria-label="Buka profil akun"
+            data-testid="header-account"
+            className="tap flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-[16px] font-semibold text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)]"
+          >
+            <span aria-hidden="true">
+              {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
+            </span>
+            <span className="sr-only">{accountLabel}</span>
+          </Link>
+        </div>
+      ) : (
+        <CustomerAuth size="compact" />
+      )}
+          </>
+        }
+      />
 
       {searchOpen && (
         // FixedLayer portals to <body>: the route wrapper is a motion div with will-change-transform,
@@ -328,7 +308,7 @@ function Home() {
         </FixedLayer>
       )}
 
-      <Reveal as="section" className="mt-5">
+      <Reveal as="section" className="relative z-[4] -mt-16">
         <EsimHomeSummaryCard
           orders={orders}
           onSearchPackages={() => setSearchOpen(true)}

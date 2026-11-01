@@ -6,6 +6,7 @@
  * shape, defaults and validation here means the two surfaces cannot drift apart.
  */
 
+import { isHeroSkyMode, type HeroSkyMode } from "./home-hero";
 import { LOW_QUOTA_PERCENT } from "./travel-journey";
 
 export type HomePromo = {
@@ -29,6 +30,8 @@ export type HomeEsimConfig = {
   myTripsWidgetEnabled: boolean;
   /** Shows provider multi-country bundles (Asia, Eropa, Global…) on Home, Finder and destination pages. */
   multiCountryEnabled: boolean;
+  /** Home hero sky: `auto` follows the device clock; a phase name pins that sky for everyone. */
+  heroSky: HeroSkyMode;
   /** Destination codes pinned first in the Home rail; unknown codes are ignored. */
   destinationOrder: string[];
   lowQuotaPercent: number;
@@ -47,6 +50,7 @@ export const DEFAULT_HOME_ESIM_CONFIG: HomeEsimConfig = {
   quickBuyEnabled: true,
   myTripsWidgetEnabled: true,
   multiCountryEnabled: true,
+  heroSky: "auto",
   destinationOrder: [],
   lowQuotaPercent: DEFAULT_LOW_QUOTA_PERCENT,
   promo: { enabled: false, text: "" },
@@ -110,6 +114,7 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
     quickBuyEnabled?: unknown;
     myTripsWidgetEnabled?: unknown;
     multiCountryEnabled?: unknown;
+    heroSky?: unknown;
     destinationOrder?: unknown;
     lowQuotaPercent?: unknown;
     promo?: unknown;
@@ -124,6 +129,10 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
   }
   if (input.multiCountryEnabled !== undefined && typeof input.multiCountryEnabled !== "boolean") {
     throw new Error("multiCountryEnabled harus boolean");
+  }
+  // Records saved before the hero existed omit the field; treat that as `auto`.
+  if (input.heroSky !== undefined && !isHeroSkyMode(input.heroSky)) {
+    throw new Error("heroSky tidak valid");
   }
   const order = Array.isArray(input.destinationOrder) ? input.destinationOrder : null;
   if (!order || order.length > DESTINATION_ORDER_MAX) {
@@ -176,6 +185,7 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
     quickBuyEnabled: input.quickBuyEnabled,
     myTripsWidgetEnabled: input.myTripsWidgetEnabled ?? true,
     multiCountryEnabled: input.multiCountryEnabled ?? true,
+    heroSky: input.heroSky ?? "auto",
     destinationOrder,
     lowQuotaPercent,
     promo: { enabled, text, destinationCode, startsAt, endsAt },

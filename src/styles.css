@@ -170,6 +170,24 @@ html {
   .animate-card-shuffle:nth-child(3) { translate: 24px 0; rotate: 9deg; }
 }
 
+/* Home hero mascot floats gently beside the search pill. */
+@keyframes mascot-bob {
+  50% { translate: 0 -6px; rotate: -3deg; }
+}
+.animate-mascot-bob {
+  animation: mascot-bob 3.4s ease-in-out infinite;
+}
+@keyframes hero-sky-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-hero-sky-in {
+  animation: hero-sky-in 1.2s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-mascot-bob, .animate-hero-sky-in { animation: none !important; }
+}
+
 /* Respect the user's reduced-motion preference across the whole app. */
 @media (prefers-reduced-motion: reduce) {
   *,

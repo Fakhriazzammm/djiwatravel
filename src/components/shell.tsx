@@ -1,7 +1,7 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { Home, Compass, BriefcaseBusiness, User, ChevronLeft, WalletCards } from "lucide-react";
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import logo from "@/assets/logo.png";
 import { springSnappy } from "@/lib/motion";
 import { FixedLayer } from "@/components/motion-primitives";
@@ -21,11 +21,31 @@ const isActiveTab = (to: string, pathname: string) =>
       pathname.startsWith(`${to}/`) ||
       (to === "/explore" && pathname === "/esim/finder");
 
+/** Remembers the previous tab so the pill can slide from it even though each route mounts its own bar. */
+let previousTabIndex: number | null = null;
+
 export function TabBar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const activeIndex = tabs.findIndex(({ to }) => isActiveTab(to, pathname));
+  const fromIndex = previousTabIndex ?? activeIndex;
+  useEffect(() => {
+    if (activeIndex >= 0) previousTabIndex = activeIndex;
+  }, [activeIndex]);
   return (
-    <nav className="glass fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.08] safe-bottom">
-      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pt-1.5">
+    <nav
+      aria-label="Navigasi utama"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+    >
+      <div className="glass pointer-events-auto relative mx-auto grid max-w-[406px] grid-cols-5 rounded-[34px] border border-white/65 p-1.5 shadow-[0_14px_38px_rgb(40_30_90/0.22),inset_0_1px_0_rgb(255_255_255/0.8)]">
+        {activeIndex >= 0 && (
+          <motion.span
+            aria-hidden="true"
+            initial={{ x: `${Math.max(fromIndex, 0) * 100}%` }}
+            animate={{ x: `${activeIndex * 100}%` }}
+            transition={{ type: "spring", stiffness: 380, damping: 26, mass: 0.8 }}
+            className="absolute inset-y-1.5 left-1.5 w-[calc((100%-0.75rem)/5)] rounded-[26px] bg-brand-red-soft shadow-[inset_0_0_0_1px_rgb(200_52_58/0.12),0_4px_12px_rgb(200_52_58/0.15)]"
+          />
+        )}
         {tabs.map(({ to, label, icon: Icon }) => {
           const active = isActiveTab(to, pathname);
           return (
@@ -34,12 +54,12 @@ export function TabBar() {
               to={to}
               activeOptions={{ exact: to === "/" }}
               aria-current={active ? "page" : undefined}
-              className={`tap flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 text-[10px] font-medium tracking-[-0.01em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`tap relative z-10 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-[26px] text-[10px] font-medium tracking-[-0.01em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 active ? "text-brand-red" : "text-muted-foreground"
               }`}
             >
               <motion.span
-                animate={{ scale: active ? 1.06 : 1 }}
+                animate={{ scale: active ? 1.14 : 1, y: active ? -2 : 0 }}
                 transition={springSnappy}
                 className="flex size-7 items-center justify-center"
               >
@@ -120,7 +140,7 @@ export function StickyCta({
     <FixedLayer>
       <div
         className={`fixed inset-x-0 ${
-          aboveTabBar ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]" : "bottom-0 safe-bottom"
+          aboveTabBar ? "bottom-[calc(5.5rem+env(safe-area-inset-bottom))]" : "bottom-0 safe-bottom"
         } glass z-40 border-t border-black/[0.08] px-4 ${compact ? "pt-1.5" : "pt-2.5"}`}
       >
         <div className="mx-auto max-w-md">{children}</div>
