@@ -231,3 +231,18 @@ Use this structure for each new lesson:
   exists; a baseline must never mark a file applied unless its schema is confirmed.
 - Verification boundary: table existence and the unread-count query were confirmed on production;
   a signed-in browser check of the list is still needed. Other baselined migrations were not audited.
+
+### 2026-11-01 — `--baseline` records migrations without running them
+
+- Symptom: several production tables were missing although `deploy_schema_migrations` listed their
+  migrations as applied; `esim_price_rule_events` was used by price-rule writes.
+- Evidence: `scripts/apply-migrations.sh --baseline` inserts every file's checksum with no SQL run.
+  A table audit across `migrations/*.sql` found five missing tables from `004_admin_operations.sql`
+  and `010_catalog_pricing_rules.sql`. A column audit of `add column` statements found none missing.
+- Root cause: the baseline marks files as applied on a schema that was never verified.
+- Safe fix: take `pg_dump -Fc` first, then run the affected additive, idempotent files once each in a
+  transaction (`-1 ON_ERROR_STOP=1`) and verify with `to_regclass`.
+- Prevention rule: only run `--baseline` after verifying every recorded migration's objects; audit
+  tables and columns after any baseline before trusting `--status`.
+- Verification boundary: tables and columns were checked; indexes, views, and data-level effects of
+  other baselined migrations were not audited.
