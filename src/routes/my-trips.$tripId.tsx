@@ -1,3 +1,4 @@
+import { formatTripMoney } from "@/lib/trip-money";
 import { MoneyInput } from "@/components/money-input";
 import {
   createFileRoute,
@@ -61,12 +62,7 @@ const dateLabel = (value?: string | null) => {
     : new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
 };
 
-const money = (minor: number, currency: string) =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(minor / 100);
+const money = (minor: unknown, currency: unknown) => formatTripMoney(minor, currency);
 
 type Trip = {
   id: string;

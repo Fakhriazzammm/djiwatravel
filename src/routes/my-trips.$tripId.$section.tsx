@@ -1,3 +1,4 @@
+import { formatTripMoney } from "@/lib/trip-money";
 import { MoneyInput } from "@/components/money-input";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -139,12 +140,7 @@ const today = () => {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
-const money = (value: unknown, currency: string) =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: currency.trim(),
-    maximumFractionDigits: 0,
-  }).format(Number(value ?? 0) / 100);
+const money = (minor: unknown, currency: unknown) => formatTripMoney(minor, currency);
 
 function TripSection() {
   const { section, tripId } = Route.useParams();

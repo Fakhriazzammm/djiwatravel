@@ -1,3 +1,4 @@
+import { formatTripMoney } from "@/lib/trip-money";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
@@ -94,12 +95,7 @@ const shortDate = (value?: string | Date | null) => {
   );
 };
 
-const money = (minor: number, currency: string) =>
-  new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: currency.trim(),
-    maximumFractionDigits: 0,
-  }).format(minor / 100);
+const money = (minor: unknown, currency: unknown) => formatTripMoney(minor, currency);
 
 const minutes = (value?: string | null) => {
   const match = String(value ?? "").match(/^(\d{2}):(\d{2})/);
