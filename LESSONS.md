@@ -215,3 +215,19 @@ Use this structure for each new lesson:
   the loader on a direct page load, not only on client navigation.
 - Verification boundary: the Node-level failure and the contract test prove the cause and the
   source change; a direct page load against a database with notification rows is still needed.
+
+### 2026-11-01 — A recorded migration can still have no tables
+
+- Symptom: after the loader fix, `/notifications` still showed "belum dapat dimuat".
+- Evidence: production `deploy_schema_migrations` listed `012_customer_notifications_refunds_wave4.sql`
+  with a matching checksum, but `customer_notifications` and `customer_notification_states` did not
+  exist; `scripts/apply-migrations.sh` skips recorded versions. The app query failed, and the loader
+  turned that failure into the generic message.
+- Root cause: the version was recorded without its SQL taking effect (baseline or manual record).
+  The apply script trusts the record, so it never re-ran the file.
+- Safe fix: run the already-tracked, additive, rerunnable (`create ... if not exists`) file once inside
+  a transaction on the target database, then verify each table with `to_regclass`.
+- Prevention rule: verify tables from a migration exist after a deploy, not only that its record
+  exists; a baseline must never mark a file applied unless its schema is confirmed.
+- Verification boundary: table existence and the unread-count query were confirmed on production;
+  a signed-in browser check of the list is still needed. Other baselined migrations were not audited.
