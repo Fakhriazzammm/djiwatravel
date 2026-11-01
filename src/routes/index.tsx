@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, ChevronRight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
-import { Reveal, Stagger } from "@/components/motion-primitives";
+import { FixedLayer, Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations, search } from "@/lib/catalog";
 import { getHomeDestinationFeed } from "@/lib/destination-availability.fn";
 import { useOrders } from "@/lib/orders";
@@ -206,6 +206,9 @@ function Home() {
       </button>
 
       {searchOpen && (
+        // FixedLayer portals to <body>: the route wrapper is a motion div with will-change-transform,
+        // which would otherwise trap this fixed overlay inside the (page-tall) route box.
+        <FixedLayer>
         <div
           className="fixed inset-0 z-50 flex items-end bg-foreground/35 backdrop-blur-[2px] duration-200 animate-in fade-in sm:items-center sm:justify-center sm:p-3"
           role="presentation"
@@ -291,6 +294,7 @@ function Home() {
             </button>
           </section>
         </div>
+        </FixedLayer>
       )}
 
       <Reveal as="section" className="mt-5">
