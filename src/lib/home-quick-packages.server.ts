@@ -1,7 +1,11 @@
 import { pool } from "../db/client.server";
 import { getDestinationPackagesHandler } from "./destination-packages.server";
 import { readHomeEsimConfig } from "./home-esim-config.server";
-import { pickQuickPackages, type PackageSales } from "./home-quick-packages";
+import {
+  countryScopedPackages,
+  pickQuickPackages,
+  type PackageSales,
+} from "./home-quick-packages";
 
 const SALES_WINDOW_DAYS = 90;
 
@@ -37,9 +41,18 @@ export async function getHomeQuickPackagesHandler(code: string) {
     readHomeEsimConfig(),
   ]);
   const pin = record.config.packageHighlights[data.destination.code.toUpperCase()] ?? {};
+  const destCode = data.destination.code.toUpperCase();
+  // Country picks use single-country packages (see countryScopedPackages).
+  const scoped = countryScopedPackages(data.packages, destCode, data.destination.region);
+  const sellableCount = scoped.filter((pkg) => pkg.sellable).length;
+  const fromPriceIdr = scoped
+    .filter((pkg) => pkg.sellable)
+    .reduce<number | null>((min, pkg) => (min === null || pkg.priceIdr < min ? pkg.priceIdr : min), null);
   return {
     destination: data.destination,
-    picks: pickQuickPackages(data.packages, sales, pin),
+    picks: pickQuickPackages(scoped, sales, pin),
+    total: sellableCount,
+    fromPriceIdr,
     stale: data.stale,
     stockPending: data.stockPending,
   };

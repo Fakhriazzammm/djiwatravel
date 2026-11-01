@@ -16,7 +16,14 @@ const TAG: Record<QuickPackageTag, { label: string; className: string }> = {
 type State =
   | { kind: "loading" }
   | { kind: "error" }
-  | { kind: "ready"; code: string; picks: QuickPackagePick[]; stockPending: boolean };
+  | {
+      kind: "ready";
+      code: string;
+      picks: QuickPackagePick[];
+      stockPending: boolean;
+      total: number;
+      fromPriceIdr: number | null;
+    };
 
 /**
  * The two packages offered right under the destination chips: Terlaris and Best Deal, chosen by
@@ -46,7 +53,14 @@ export function EsimQuickBuyPanel({
           setState({ kind: "error" });
           return;
         }
-        setState({ kind: "ready", code, picks: data.picks, stockPending: data.stockPending });
+        setState({
+          kind: "ready",
+          code,
+          picks: data.picks,
+          stockPending: data.stockPending,
+          total: data.total,
+          fromPriceIdr: data.fromPriceIdr,
+        });
         setSelected(data.picks[0]?.pkg.packageCode ?? null);
       },
       () => {
@@ -172,7 +186,17 @@ export function EsimQuickBuyPanel({
             aria-label={`Lihat semua paket eSIM ${destination.nameId}: harga dan kuota`}
             className="tap mt-1.5 flex min-h-10 w-full items-center justify-between rounded-2xl bg-secondary px-3.5 text-[13px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span>Lihat paket lainnya · harga &amp; kuota</span>
+            <span>
+              {(state.total ?? 0) > 0
+                ? `Lihat ${state.total} paket eSIM ${destination.nameId}`
+                : `Lihat paket eSIM ${destination.nameId}`}
+              {state.fromPriceIdr != null && (
+                <span className="font-normal text-muted-foreground">
+                  {" "}
+                  · mulai {rupiah(state.fromPriceIdr)}
+                </span>
+              )}
+            </span>
             <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
           </Link>
         </>

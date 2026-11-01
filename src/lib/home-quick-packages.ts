@@ -102,3 +102,21 @@ export function pickFastPackages(
   if (cheapest) picks.push({ tag: "cheapest", pkg: cheapest, pinned: false });
   return picks.sort((a, b) => a.pkg.priceIdr - b.pkg.priceIdr);
 }
+
+/**
+ * Packages a country's quick-buy may offer. Only packages that cover that one country count; a
+ * multi-country bundle (Global, Asia…) is used only when the country has none, so one bundle never
+ * becomes the "Best Deal" for every destination. Regional destinations keep their bundles.
+ */
+export function countryScopedPackages<T extends { locationCodes: readonly string[] }>(
+  packages: readonly T[],
+  destinationCode: string,
+  region: string,
+): T[] {
+  if (region === "Regional") return [...packages];
+  const code = destinationCode.trim().toUpperCase();
+  const only = packages.filter(
+    (pkg) => pkg.locationCodes.length === 1 && pkg.locationCodes[0]?.trim().toUpperCase() === code,
+  );
+  return only.length > 0 ? only : [...packages];
+}
