@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
+import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
 import { assetForService } from "@/lib/explore-assets";
 import { serviceHref, serviceStatusLabel, visibleTravelServices } from "@/lib/travel-services";
 
@@ -29,7 +30,13 @@ const gridVariants = {
   },
 };
 
-export function ServiceCategoryGrid() {
+const WAITLIST_FEATURE: Record<string, "bagasi" | "shopper"> = {
+  baggage: "bagasi",
+  "personal-shopper": "shopper",
+};
+
+/** `waitlist` turns the Bagasi / Titip Belanja tiles into waitlist sign-ups (Home); Explore omits it. */
+export function ServiceCategoryGrid({ waitlist = false }: { waitlist?: boolean } = {}) {
   const reduceMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);
   const services = useMemo(() => visibleTravelServices(), []);
@@ -112,6 +119,23 @@ export function ServiceCategoryGrid() {
                   aria-hidden="true"
                 />
               </Link>
+            ) : waitlist && WAITLIST_FEATURE[service.id] ? (
+              <TravelWaitlistCard
+                feature={WAITLIST_FEATURE[service.id]!}
+                label={service.label}
+                sub={serviceStatusLabel[service.status]}
+                icon={asset.fallback}
+                trigger={(open) => (
+                  <button
+                    type="button"
+                    onClick={open}
+                    aria-label={`${service.label}: ${serviceStatusLabel[service.status]}, daftar waitlist`}
+                    className={`${tileClass} tap w-full`}
+                  >
+                    {content}
+                  </button>
+                )}
+              />
             ) : (
               <div
                 aria-label={`${service.label}: ${serviceStatusLabel[service.status]}`}

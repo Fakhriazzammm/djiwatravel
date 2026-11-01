@@ -19,6 +19,8 @@ export type HomePromo = {
 
 export type HomeEsimConfig = {
   quickBuyEnabled: boolean;
+  /** Shows the My Trips widget on Home. Admin-controlled; defaults on. */
+  myTripsWidgetEnabled: boolean;
   /** Destination codes pinned first in the Home rail; unknown codes are ignored. */
   destinationOrder: string[];
   lowQuotaPercent: number;
@@ -33,6 +35,7 @@ export const DESTINATION_ORDER_MAX = 12;
 
 export const DEFAULT_HOME_ESIM_CONFIG: HomeEsimConfig = {
   quickBuyEnabled: true,
+  myTripsWidgetEnabled: true,
   destinationOrder: [],
   lowQuotaPercent: DEFAULT_LOW_QUOTA_PERCENT,
   promo: { enabled: false, text: "" },
@@ -55,12 +58,17 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
   }
   const input = value as {
     quickBuyEnabled?: unknown;
+    myTripsWidgetEnabled?: unknown;
     destinationOrder?: unknown;
     lowQuotaPercent?: unknown;
     promo?: unknown;
   };
   if (typeof input.quickBuyEnabled !== "boolean") {
     throw new Error("quickBuyEnabled harus boolean");
+  }
+  // Records saved before the widget existed omit the flag; treat that as enabled.
+  if (input.myTripsWidgetEnabled !== undefined && typeof input.myTripsWidgetEnabled !== "boolean") {
+    throw new Error("myTripsWidgetEnabled harus boolean");
   }
   const order = Array.isArray(input.destinationOrder) ? input.destinationOrder : null;
   if (!order || order.length > DESTINATION_ORDER_MAX) {
@@ -111,6 +119,7 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
   }
   return {
     quickBuyEnabled: input.quickBuyEnabled,
+    myTripsWidgetEnabled: input.myTripsWidgetEnabled ?? true,
     destinationOrder,
     lowQuotaPercent,
     promo: { enabled, text, destinationCode, startsAt, endsAt },

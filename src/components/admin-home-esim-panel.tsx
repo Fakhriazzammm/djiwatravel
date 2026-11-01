@@ -106,6 +106,15 @@ export function AdminHomeEsimPanel({
           />
           Beli cepat (rel destinasi + sheet paket)
         </label>
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={draft.myTripsWidgetEnabled}
+            onChange={(event) => setDraft({ ...draft, myTripsWidgetEnabled: event.target.checked })}
+            className="size-5 accent-primary"
+          />
+          Widget Perjalananmu (My Trips) di Beranda
+        </label>
 
         <div>
           <p className="text-sm font-semibold">Urutan rel destinasi</p>

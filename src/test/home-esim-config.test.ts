@@ -13,6 +13,7 @@ import { buildEsimHomeSummary } from "../lib/esim-home-summary";
 
 const valid: HomeEsimConfig = {
   quickBuyEnabled: true,
+  myTripsWidgetEnabled: true,
   destinationOrder: ["KR", "JP"],
   lowQuotaPercent: 30,
   promo: { enabled: true, text: "Promo Jepang", destinationCode: "jp" },
@@ -23,6 +24,16 @@ describe("home eSIM config", () => {
     const parsed = parseHomeEsimConfig(valid);
     expect(parsed.promo.destinationCode).toBe("JP");
     expect(parsed.destinationOrder).toEqual(["KR", "JP"]);
+  });
+
+  it("defaults the My Trips widget on for records saved before it existed, and rejects non-booleans", () => {
+    const { myTripsWidgetEnabled: _omit, ...legacy } = valid;
+    expect(parseHomeEsimConfig(legacy).myTripsWidgetEnabled).toBe(true);
+    expect(
+      parseHomeEsimConfig({ ...valid, myTripsWidgetEnabled: false }).myTripsWidgetEnabled,
+    ).toBe(false);
+    expect(() => parseHomeEsimConfig({ ...valid, myTripsWidgetEnabled: "no" })).toThrow();
+    expect(DEFAULT_HOME_ESIM_CONFIG.myTripsWidgetEnabled).toBe(true);
   });
 
   it.each([

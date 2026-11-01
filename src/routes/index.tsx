@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Search, Wifi, Luggage, ShoppingBag, ChevronRight, X } from "lucide-react";
+import { Search, ChevronRight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { Reveal, Stagger } from "@/components/motion-primitives";
@@ -10,7 +10,8 @@ import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { destinationPhoto } from "@/lib/destination-artwork";
 import { formatTravelGuideDate, getNewestTravelGuides } from "@/lib/travel-guides";
-import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
+import { HomeMyTripsWidget } from "@/components/home-my-trips-widget";
+import { ServiceCategoryGrid } from "@/components/explore/service-category-grid";
 import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";
 import { EsimPackageResults } from "@/components/esim-package-results";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
@@ -84,7 +85,7 @@ function Home() {
     let timeout: ReturnType<typeof setTimeout>;
 
     const tick = () => {
-      const word = examples[wordIndex];
+      const word = examples[wordIndex] ?? "";
       characterCount += deleting ? -1 : 1;
       setSearchHint(`Cari ${word.slice(0, characterCount)}`);
       if (!deleting && characterCount === word.length) {
@@ -135,12 +136,6 @@ function Home() {
   };
   const accountLabel = user?.name?.trim().split(/\s+/)[0] || "Akun";
 
-  const services = [
-    { icon: Wifi, label: "eSIM", sub: "Internasional", to: "/explore" as const },
-    { icon: Luggage, label: "Bagasi", sub: "Segera hadir" },
-    { icon: ShoppingBag, label: "Shopper", sub: "Segera hadir" },
-  ];
-
   return (
     <Page>
       <header className="flex h-14 items-center justify-between gap-3">
@@ -154,7 +149,12 @@ function Home() {
         ) : user ? (
           <Link
             to="/profile"
-            search={{ admin: undefined }}
+            search={{
+              admin: undefined,
+              returnTo: undefined,
+              calendar: undefined,
+              calendarSync: undefined,
+            }}
             aria-label="Buka profil akun"
             data-testid="header-account"
             className="tap flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-[16px] font-semibold text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)]"
@@ -317,6 +317,14 @@ function Home() {
           </button>
         )}
       </Reveal>
+      {homeConfig.myTripsWidgetEnabled && (
+        <Reveal as="section" className="mt-8" aria-labelledby="home-trips-title">
+          <SectionTitle action={<Link to="/my-trips">Buka ›</Link>}>
+            <span id="home-trips-title">Perjalananmu</span>
+          </SectionTitle>
+          <HomeMyTripsWidget signedIn={Boolean(user)} />
+        </Reveal>
+      )}
       <EsimDestinationSheet
         destination={sheetDestination}
         onClose={() => setSheetDestination(null)}
@@ -327,7 +335,7 @@ function Home() {
           <SectionTitle action={<Link to="/explore">Lihat Semua ›</Link>}>
             Destinasi Populer
           </SectionTitle>
-          <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4">
+          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3.5 overflow-x-auto scroll-px-4 px-4 pb-5 pt-1">
             {popular.map((d) => {
               const photo = destinationPhoto(d.code);
               return (
@@ -335,12 +343,13 @@ function Home() {
                   key={d.code}
                   to="/destination/$code"
                   params={{ code: d.code.toLowerCase() }}
-                  className="tap relative aspect-[4/5] w-[38%] min-w-32 shrink-0 snap-start overflow-hidden rounded-[22px] bg-secondary shadow-[0_8px_20px_-10px_rgb(0_0_0/0.35)]"
+                  aria-label={`eSIM ${d.nameId}: lihat paket`}
+                  className="tap relative h-[22rem] w-[78%] max-w-[18.5rem] shrink-0 snap-center overflow-hidden rounded-[28px] bg-secondary shadow-[0_18px_30px_-16px_rgb(0_0_0/0.5)]"
                 >
                   {photo ? (
                     <img
                       src={photo}
-                      alt={d.nameId}
+                      alt=""
                       loading="lazy"
                       width={736}
                       height={912}
@@ -349,18 +358,29 @@ function Home() {
                   ) : (
                     <span
                       aria-hidden="true"
-                      className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/12 to-secondary pb-10 text-5xl"
+                      className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/12 to-secondary pb-16 text-7xl"
                     >
                       {d.flag}
                     </span>
                   )}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 pb-3 pt-12">
-                    <p className="truncate text-[16px] font-semibold tracking-[-0.01em] text-primary-foreground">
-                      {d.nameId}
-                    </p>
-                    <p className="truncate text-[12px] text-primary-foreground/85">
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/25"
+                  />
+                  <span className="absolute left-5 top-[1.125rem] text-[12px] font-bold tracking-[0.08em] text-white [text-shadow:0_1px_8px_rgb(0_0_0/0.5)]">
+                    POPULER
+                  </span>
+                  <h3 className="absolute inset-x-5 top-9 text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] text-white [text-shadow:0_2px_14px_rgb(0_0_0/0.45)]">
+                    {d.nameId}
+                  </h3>
+                  <div className="glass !bg-[rgb(40_40_44/0.38)] absolute inset-x-2.5 bottom-2.5 flex items-center gap-3 rounded-[20px] py-2.5 pl-3.5 pr-3 text-white">
+                    <span className="min-w-0 flex-1 text-[13px] leading-tight">
+                      <b className="block truncate text-[15px]">eSIM {d.nameId}</b>
                       Lihat paket eSIM live
-                    </p>
+                    </span>
+                    <span className="rounded-full bg-white/95 px-4 py-1.5 text-[14px] font-bold text-brand-red">
+                      Lihat
+                    </span>
                   </div>
                 </Link>
               );
@@ -368,36 +388,12 @@ function Home() {
           </div>
         </Reveal>
 
-        <Reveal as="section" className="mt-8">
-          <SectionTitle>Kebutuhan Perjalananmu</SectionTitle>
-          <div className="grid grid-cols-3 gap-3">
-            {services.map(({ icon: I, label, sub, to }) => {
-              const body = (
-                <>
-                  <span
-                    className={`flex size-12 items-center justify-center rounded-[14px] ${to ? "bg-gradient-to-b from-[oklch(0.68_0.2_25)] to-brand-red text-white shadow-[0_6px_14px_-6px_oklch(0.6_0.21_25/0.7)]" : "bg-secondary text-muted-foreground"}`}
-                  >
-                    <I className="size-6" strokeWidth={1.8} />
-                  </span>
-                  <span className="mt-2.5 text-[15px] font-semibold text-foreground">{label}</span>
-                  <span className="text-[12px] text-muted-foreground">{sub}</span>
-                </>
-              );
-              const cls = "ios-card flex h-32 flex-col items-center justify-center text-center";
-              return to ? (
-                <Link key={label} to={to} className={`tap ${cls}`}>
-                  {body}
-                </Link>
-              ) : (
-                <TravelWaitlistCard
-                  key={label}
-                  feature={label === "Bagasi" ? "bagasi" : "shopper"}
-                  label={label}
-                  sub={sub}
-                  icon={I}
-                />
-              );
-            })}
+        <Reveal as="section" className="mt-6" aria-labelledby="home-services-title">
+          <SectionTitle action={<Link to="/explore">Layanan ›</Link>}>
+            <span id="home-services-title">Kebutuhan perjalanan</span>
+          </SectionTitle>
+          <div className="ios-card px-1.5 pb-1.5 pt-3.5">
+            <ServiceCategoryGrid waitlist />
           </div>
         </Reveal>
 

@@ -1,11 +1,18 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
 import { FixedLayer } from "./motion-primitives";
 
-type Props = { feature: "bagasi" | "shopper"; label: string; sub: string; icon: LucideIcon };
+type Props = {
+  feature: "bagasi" | "shopper";
+  label: string;
+  sub: string;
+  icon: LucideIcon;
+  /** Custom trigger (e.g. an Explore-style service tile); defaults to the Home tile button. */
+  trigger?: (open: () => void) => ReactNode;
+};
 
-export function TravelWaitlistCard({ feature, label, sub, icon: Icon }: Props) {
+export function TravelWaitlistCard({ feature, label, sub, icon: Icon, trigger }: Props) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
@@ -38,17 +45,21 @@ export function TravelWaitlistCard({ feature, label, sub, icon: Icon }: Props) {
   };
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="tap ios-card flex h-32 flex-col items-center justify-center text-center"
-      >
-        <span className="flex size-12 items-center justify-center rounded-[14px] bg-secondary text-muted-foreground">
-          <Icon className="size-6" strokeWidth={1.8} />
-        </span>
-        <span className="mt-2.5 text-[15px] font-semibold text-foreground">{label}</span>
-        <span className="text-[12px] text-muted-foreground">{sub}</span>
-      </button>
+      {trigger ? (
+        trigger(() => setOpen(true))
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="tap ios-card flex h-32 flex-col items-center justify-center text-center"
+        >
+          <span className="flex size-12 items-center justify-center rounded-[14px] bg-secondary text-muted-foreground">
+            <Icon className="size-6" strokeWidth={1.8} />
+          </span>
+          <span className="mt-2.5 text-[15px] font-semibold text-foreground">{label}</span>
+          <span className="text-[12px] text-muted-foreground">{sub}</span>
+        </button>
+      )}
       {open && (
         <FixedLayer>
           <div
