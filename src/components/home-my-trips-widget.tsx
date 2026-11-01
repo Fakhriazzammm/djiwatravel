@@ -55,31 +55,49 @@ export function HomeMyTripsWidget({ signedIn }: { signedIn: boolean }) {
       <div
         role="status"
         aria-label="Memuat perjalanan"
-        className={`${CARD} h-56 animate-pulse motion-reduce:animate-none`}
+        className={`${CARD} h-28 animate-pulse motion-reduce:animate-none`}
       />
     );
   }
 
   if (view.kind === "empty") {
     return (
-      <div className={CARD} data-testid="home-trips-widget" data-state="empty">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-[10px] bg-gradient-to-b from-[#ff7a7a] to-brand-red text-white">
-            <BriefcaseBusiness className="size-5" aria-hidden="true" />
+      <div data-testid="home-trips-widget" data-state="empty">
+        <div className="ios-card mt-3 flex items-center gap-3.5 bg-gradient-to-br from-white from-40% to-brand-red-soft py-3.5 pl-4 pr-3.5">
+          <span className="relative h-[76px] w-[76px] shrink-0" aria-hidden="true">
+            <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] -rotate-[10deg] place-items-center rounded-[14px] bg-gradient-to-b from-[#7fb8ff] to-[#0a84ff] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
+              <CalendarRange className="size-[22px]" strokeWidth={2} />
+            </span>
+            <span className="absolute left-3 top-1 grid h-[60px] w-[52px] -rotate-1 place-items-center rounded-[14px] bg-gradient-to-b from-[#ffd27a] to-[#ff9f0a] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
+              <Check className="size-[22px]" strokeWidth={2.6} />
+            </span>
+            <span className="absolute left-6 top-2.5 grid h-[60px] w-[52px] rotate-[9deg] place-items-center rounded-[14px] bg-gradient-to-b from-[#ff8a8a] to-brand-red text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
+              <Landmark className="size-[22px]" strokeWidth={2} />
+            </span>
           </span>
-          <span className="text-[12px] font-semibold text-muted-foreground">My Trips</span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[17px] font-bold leading-tight tracking-[-0.02em]">
+              Susun trip pertamamu
+            </h3>
+            <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+              Itinerary, budget &amp; checklist dalam satu tempat
+            </p>
+          </div>
+          <Link
+            to={signedIn ? "/my-trips/new" : "/my-trips"}
+            aria-label={signedIn ? "Mulai buat perjalanan" : "Masuk dan mulai merencanakan"}
+            className="tap flex h-10 shrink-0 items-center rounded-full bg-brand-red px-4 text-[15px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Mulai
+          </Link>
         </div>
-        <h3 className="mt-2 text-[20px] font-bold tracking-[-0.025em]">Rencanakan perjalananmu</h3>
-        <p className="mt-1 text-[14px] text-muted-foreground">
-          Itinerary, budget, checklist, dan booking dalam satu tempat.
+        <p className="mt-3 flex items-center justify-center gap-2 text-[12px] text-muted-foreground">
+          <span>Pilih destinasi</span>
+          <span className="size-[3px] rounded-full bg-[#C4C4C7]" aria-hidden="true" />
+          <span>Atur tanggal</span>
+          <span className="size-[3px] rounded-full bg-[#C4C4C7]" aria-hidden="true" />
+          <span>Siap berangkat</span>
         </p>
-        <SectionShortcuts />
-        <Link
-          to={signedIn ? "/my-trips/new" : "/my-trips"}
-          className="tap mt-4 flex h-12 items-center justify-center rounded-full bg-brand-red text-[15px] font-bold text-white shadow-[0_8px_16px_-8px_oklch(0.6_0.21_25/0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {signedIn ? "Buat perjalanan" : "Masuk & mulai merencanakan"}
-        </Link>
       </div>
     );
   }
@@ -156,7 +174,7 @@ export function HomeMyTripsWidget({ signedIn }: { signedIn: boolean }) {
   );
 }
 
-function SectionShortcuts({ tripId }: { tripId?: string }) {
+function SectionShortcuts({ tripId }: { tripId: string }) {
   return (
     <div className="mt-4 grid grid-cols-4 gap-1.5">
       {SECTIONS.map(({ id, label, icon: Icon, tone }) => {
@@ -170,7 +188,7 @@ function SectionShortcuts({ tripId }: { tripId?: string }) {
         );
         const cls =
           "tap flex flex-col items-center gap-1.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-        return tripId ? (
+        return (
           <Link
             key={id}
             to="/my-trips/$tripId/$section"
@@ -179,10 +197,6 @@ function SectionShortcuts({ tripId }: { tripId?: string }) {
           >
             {inner}
           </Link>
-        ) : (
-          <span key={id} className={cls}>
-            {inner}
-          </span>
         );
       })}
     </div>

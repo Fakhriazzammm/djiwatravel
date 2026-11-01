@@ -72,6 +72,13 @@ describe("Home integration contract", () => {
     expect(home).toContain("<ServiceCategoryGrid waitlist />");
     expect(readFileSync("src/routes/explore.tsx", "utf8")).toContain("<ServiceCategoryGrid />");
   });
+  it("renders the compact empty strip with a single Mulai call to action", () => {
+    const widget = readFileSync("src/components/home-my-trips-widget.tsx", "utf8");
+    expect(widget).toContain("Susun trip pertamamu");
+    expect(widget).toContain("Pilih destinasi");
+    expect(widget).toContain('signedIn ? "/my-trips/new" : "/my-trips"');
+    expect(widget).not.toContain("Rencanakan perjalananmu");
+  });
   it("exposes the admin toggle", () => {
     expect(readFileSync("src/components/admin-home-esim-panel.tsx", "utf8")).toContain(
       "myTripsWidgetEnabled",
