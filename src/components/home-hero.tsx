@@ -175,14 +175,14 @@ export function HomeHero({
         <div className="mt-0.5 flex items-end justify-between gap-2">
           <h1 className="large-title-xl min-w-0 text-balance">Mau pergi ke mana?</h1>
           {/* Mascot sits above the search pill, on the right, clear of the eSIM card below. */}
-          <span className="animate-mascot-bob pointer-events-none z-20 mb-1 block w-[92px] shrink-0">
+          <span className="animate-mascot-bob pointer-events-none z-20 mb-1 block w-[88px] shrink-0">
             <motion.img
               ref={mascotRef}
               initial={false}
               src={HERO_MASCOT}
               alt=""
-              width={92}
-              height={78}
+              width={88}
+              height={76}
               animate={{ opacity: fly === "idle" ? 1 : 0, scale: fly === "idle" ? 1 : 0.4 }}
               transition={
                 fly === "idle"

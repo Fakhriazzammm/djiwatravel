@@ -68,7 +68,7 @@ export function heroSkyImage(phase: HeroPhase): string {
   return `/assets/home-hero/sky-${phase}-v2.jpg`;
 }
 
-export const HERO_MASCOT = "/assets/home-hero/mascot-v4.png";
+export const HERO_MASCOT = "/assets/home-hero/mascot-v6.png";
 
 const DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const MONTHS = [
