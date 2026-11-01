@@ -1,17 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
-import {
-  CheckCircle2,
-  ChevronDown,
-  Headphones,
-  Info,
-  Plus,
-  QrCode,
-  ShieldCheck,
-  Smartphone,
-  Wifi,
-} from "lucide-react";
+import { ChevronDown, Globe2, Headphones, Info, Plus, QrCode } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
+import { QuotaRing } from "@/components/esim-quota-ring";
+import { EsimStatusBadge } from "@/components/esim-status-badge";
+import { OrderLoading } from "@/components/order-loading";
+import { destinationArt } from "@/lib/destination-art";
+import { springIos } from "@/lib/motion";
 import {
   BackBar,
   Page,
@@ -50,6 +46,9 @@ import {
   buildTravelChecklist,
   calendarDaysUntil,
   checklistProgress,
+  formatData,
+  formatGb,
+  formatRemainingPercent,
   parseDepartureDate,
   reorderIntent,
   usageView,
@@ -73,6 +72,8 @@ export const Route = createFileRoute("/my-esim/$id")({
 
 function Detail() {
   const homeConfig = useHomeEsimConfig();
+  const reduce = useReducedMotion();
+  const [artFailed, setArtFailed] = useState(false);
   const { id } = Route.useParams();
   const orders = useOrders();
   const [tab, setTab] = useState<"none" | "install" | "topup">("none");
@@ -120,7 +121,8 @@ function Detail() {
   if (!orders)
     return (
       <Page>
-        <div className="mt-20 h-40 animate-pulse rounded-2xl bg-secondary" />
+        <BackBar title="Detail eSIM" />
+        <OrderLoading label="Memuat eSIM…" />
       </Page>
     );
   if (!o)
@@ -132,6 +134,8 @@ function Detail() {
     );
   const status = effectiveOrderStatus(o.status, o.expiresAt);
   const isReady = status === "READY";
+  const isHistory = ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
+  const art = destinationArt(o.locationCodes?.[0]);
   const canInstall = Boolean(o.esim) && (status === "READY" || status === "INSTALLED");
   const packageName = o.packageName ?? o.packageId;
   const locationLabel = o.locationCodes?.join(", ") || "Regional";
@@ -184,41 +188,78 @@ function Detail() {
     <Page>
       <BackBar title="Detail eSIM" />
 
-      <section className="overflow-hidden rounded-2xl bg-primary p-4 text-primary-foreground">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/65">
+      <motion.section
+        initial={reduce ? false : { opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={reduce ? { duration: 0 } : springIos}
+        className={`overflow-hidden rounded-[28px] border border-border/60 p-5 shadow-[0_14px_32px_-24px_rgba(0,0,0,0.35)] ${
+          isHistory ? "bg-surface" : art.tint
+        }`}
+      >
+        <div className="flex items-start gap-4">
+          <span
+            className={`grid size-20 shrink-0 place-items-center rounded-3xl bg-white/70 ${isHistory ? "opacity-60 grayscale" : ""}`}
+          >
+            {art.src && !artFailed ? (
+              <motion.img
+                src={art.src}
+                alt=""
+                width={64}
+                height={64}
+                decoding="async"
+                onError={() => setArtFailed(true)}
+                className="size-16 object-contain"
+                initial={reduce ? false : { scale: 0.8, rotate: -6, opacity: 0 }}
+                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                transition={reduce ? { duration: 0 } : { ...springIos, delay: 0.1 }}
+              />
+            ) : (
+              <Globe2 className="size-9 text-muted-foreground" aria-hidden="true" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               eSIM kamu
             </p>
-            <h1 className="mt-1 text-[23px] font-bold leading-tight">{packageName}</h1>
-            <p className="mt-1 text-sm text-primary-foreground/75">
+            <h1 className="mt-1 text-[22px] font-bold leading-tight">{packageName}</h1>
+            <p className="mt-1 text-[13px] text-muted-foreground">
               {locationLabel} · {quotaLabel} · {durationDays} hari
             </p>
-          </div>
-          <div
-            className={`flex size-11 shrink-0 items-center justify-center rounded-2xl ${
-              isReady ? "bg-success/20 text-success" : "bg-white/10 text-white"
-            }`}
-          >
-            {isReady ? (
-              <CheckCircle2 className="size-6" strokeWidth={2.2} />
-            ) : (
-              <Smartphone className="size-6" strokeWidth={1.8} />
-            )}
+            <div className="mt-2">
+              <EsimStatusBadge status={status} low={usage.kind === "measured" && usage.low} />
+            </div>
           </div>
         </div>
-        <div className="mt-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[18px] font-bold">{ORDER_STATUS_LABEL[status]}</p>
-            <p className="mt-1 text-[13px] text-primary-foreground/70">
-              {isReady
-                ? "Sudah siap dipasang di perangkatmu."
+        {usage.kind === "measured" &&
+        usage.remainingPercent !== null &&
+        usage.remainingBytes !== null ? (
+          <div className="mt-4 flex items-center gap-4 rounded-2xl bg-white/70 p-3">
+            <QuotaRing
+              percent={usage.remainingPercent}
+              label={formatRemainingPercent(usage)}
+              valueText={`Sisa ${formatData(usage.remainingBytes)} (${formatRemainingPercent(usage)})`}
+              low={usage.low}
+              size={60}
+            />
+            <div className="min-w-0">
+              <p className="text-[17px] font-bold">{formatData(usage.remainingBytes)} tersisa</p>
+              {usage.totalBytes !== null && (
+                <p className="text-[12px] text-muted-foreground">
+                  dari {formatGb(usage.totalBytes)}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 rounded-2xl bg-white/70 p-3 text-[13px] text-muted-foreground">
+            {isReady
+              ? "Sudah siap dipasang di perangkatmu."
+              : isHistory
+                ? timeline.hint
                 : "Kami akan memperbarui status secara otomatis."}
-            </p>
-          </div>
-          {canInstall && <Wifi className="size-7 text-primary-foreground/80" aria-hidden="true" />}
-        </div>
-      </section>
+          </p>
+        )}
+      </motion.section>
 
       {status === "PROVISIONING_FAILED" && (
         <div className="mt-4 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-4">
@@ -346,7 +387,8 @@ function Detail() {
 
       <button
         onClick={() => setTech(!tech)}
-        className="mt-4 flex h-11 w-full items-center justify-between rounded-2xl bg-surface px-4 text-[14px] text-muted-foreground"
+        aria-expanded={tech}
+        className="tap mt-4 flex min-h-11 w-full items-center justify-between rounded-2xl bg-surface px-4 text-[14px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="flex items-center gap-2">
           <Info className="size-4" /> Detail teknis
