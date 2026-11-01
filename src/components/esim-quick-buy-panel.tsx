@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getHomeQuickPackages } from "@/lib/home-quick-packages.fn";
@@ -162,6 +163,16 @@ export function EsimQuickBuyPanel({
             <span>Beli sekarang</span>
             <span className="tabular-nums">{chosen ? rupiah(chosen.pkg.priceIdr) : ""}</span>
           </button>
+          <Link
+            to="/destination/$code"
+            params={{ code: destination.code.toLowerCase() }}
+            search={{ availability: "all" }}
+            aria-label={`Lihat semua paket eSIM ${destination.nameId}: harga dan kuota`}
+            className="tap mt-1.5 flex min-h-10 w-full items-center justify-between rounded-2xl bg-secondary px-3.5 text-[13px] font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span>Lihat paket lainnya · harga &amp; kuota</span>
+            <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+          </Link>
         </>
       )}
     </div>

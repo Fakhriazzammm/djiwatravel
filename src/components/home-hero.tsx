@@ -143,7 +143,7 @@ export function HomeHero({
         className="absolute inset-x-0 bottom-0 z-[1] h-24 bg-gradient-to-b from-transparent to-background"
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-md px-5 pb-28 pt-[calc(max(env(safe-area-inset-top),0.75rem)+0.25rem)]">
+      <div className="relative z-10 mx-auto w-full max-w-md px-5 pb-24 pt-[calc(max(env(safe-area-inset-top),0.75rem)+0.25rem)]">
         <div className="flex h-14 items-center justify-between gap-3">
           <img
             src={logo}
@@ -172,7 +172,27 @@ export function HomeHero({
         <p className="mt-2.5 text-[16px] font-medium opacity-90">
           {heroGreeting(phase, firstName)}
         </p>
-        <h1 className="large-title-xl mt-0.5 text-balance">Mau pergi ke mana?</h1>
+        <div className="mt-0.5 flex items-end justify-between gap-2">
+          <h1 className="large-title-xl min-w-0 text-balance">Mau pergi ke mana?</h1>
+          {/* Mascot sits above the search pill, on the right, clear of the eSIM card below. */}
+          <span className="animate-mascot-bob pointer-events-none z-20 mb-1 block w-[84px] shrink-0">
+            <motion.img
+              ref={mascotRef}
+              initial={false}
+              src={HERO_MASCOT}
+              alt=""
+              width={96}
+              height={68}
+              animate={{ opacity: fly === "idle" ? 1 : 0, scale: fly === "idle" ? 1 : 0.4 }}
+              transition={
+                fly === "idle"
+                  ? { type: "spring", stiffness: 320, damping: 16 }
+                  : { duration: 0 }
+              }
+              className="block w-full"
+            />
+          </span>
+        </div>
 
         <button
           type="button"
@@ -189,23 +209,6 @@ export function HomeHero({
           <span className="min-w-0 flex-1 truncate">{searchHint}</span>
         </button>
 
-        <span className="animate-mascot-bob pointer-events-none absolute bottom-[3.6rem] right-3 z-20 block w-[96px]">
-          <motion.img
-            ref={mascotRef}
-            initial={false}
-            src={HERO_MASCOT}
-            alt=""
-            width={96}
-            height={68}
-            animate={{ opacity: fly === "idle" ? 1 : 0, scale: fly === "idle" ? 1 : 0.4 }}
-            transition={
-              fly === "idle"
-                ? { type: "spring", stiffness: 320, damping: 16 }
-                : { duration: 0 }
-            }
-            className="block w-full"
-          />
-        </span>
       </div>
 
       {flight &&
