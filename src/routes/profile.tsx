@@ -15,6 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { EsimStatusBadge } from "@/components/esim-status-badge";
+import { destinationArt } from "@/lib/destination-art";
 import { CalendarSheet } from "@/components/profile/calendar-sheet";
 import { ProfileAvatar } from "@/components/profile/profile-avatar";
 import {
@@ -25,7 +27,7 @@ import {
 import { CustomerAuth } from "@/components/customer-auth";
 import { CustomerProfileForm } from "@/components/customer-profile-form";
 import { useOrders } from "@/lib/orders";
-import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
+import { effectiveOrderStatus } from "@/lib/esim-status";
 import { rupiah } from "@/lib/pricing";
 import {
   validateCustomerProfile,
@@ -511,26 +513,54 @@ function Profile() {
         {recentOrders.length === 0 ? (
           <p className="px-4 py-4 text-[15px] text-muted-foreground">Belum ada pesanan.</p>
         ) : (
-          recentOrders.map((o, index) => (
-            <Link
-              key={o.id}
-              to="/order/$id"
-              params={{ id: o.id }}
-              className={`${rowClass} min-h-[64px] ${index > 0 ? "border-t border-border/60" : ""}`}
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[16px] font-medium">
-                  {o.packageName ?? o.packageId}
+          recentOrders.map((o, index) => {
+            const status = effectiveOrderStatus(o.status, o.expiresAt);
+            const finished = ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(
+              status,
+            );
+            const art = destinationArt(o.locationCodes?.[0]);
+            const code = (o.publicOrderCode ?? o.id).slice(0, 6).toUpperCase();
+            const date = new Date(o.createdAt).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+            });
+            return (
+              <Link
+                key={o.id}
+                to="/order/$id"
+                params={{ id: o.id }}
+                className={`${rowClass} min-h-[76px] py-3 ${index > 0 ? "border-t border-border/60" : ""}`}
+              >
+                <span
+                  className={`grid size-12 shrink-0 place-items-center rounded-2xl ${art.tint} ${finished ? "opacity-60 grayscale" : ""}`}
+                >
+                  {art.src ? (
+                    <img
+                      src={art.src}
+                      alt=""
+                      width={36}
+                      height={36}
+                      loading="lazy"
+                      decoding="async"
+                      className="size-9 object-contain"
+                    />
+                  ) : null}
                 </span>
-                <span className="block text-[13px] text-muted-foreground">
-                  {rupiah(o.amount)} · #{o.publicOrderCode ?? o.id.slice(0, 8)}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[16px] font-semibold leading-tight">
+                    {o.packageName ?? o.packageId}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">
+                    {rupiah(o.amount)} · {date} · #{code}
+                  </span>
+                  <span className="mt-1.5 block">
+                    <EsimStatusBadge status={status} />
+                  </span>
                 </span>
-              </span>
-              <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[12px] font-semibold text-muted-foreground">
-                {ORDER_STATUS_LABEL[effectiveOrderStatus(o.status, o.expiresAt)]}
-              </span>
-            </Link>
-          ))
+                <RowChevron />
+              </Link>
+            );
+          })
         )}
         {orders.length > 0 && (
           <Link
