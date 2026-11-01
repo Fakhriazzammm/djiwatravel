@@ -10,6 +10,15 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   const router = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...router,
+    Link: ({
+      to,
+      children,
+      ...rest
+    }: { to: string; children?: ReactNode } & Record<string, unknown>) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
     Outlet: () => null,
     useRouterState: ({
       select,

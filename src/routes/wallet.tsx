@@ -1,4 +1,4 @@
-import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, createFileRoute, useRouterState } from "@tanstack/react-router";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -8,7 +8,10 @@ import {
   RefreshCw,
   WalletCards,
 } from "lucide-react";
-import { useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
+import { springIos } from "@/lib/motion";
+import { PayServicesCard } from "@/components/wallet/pay-services-card";
+import { NATIVE_WALLET_ACTIONS } from "@/lib/djiwa-pay-services";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Page, SectionTitle, Wordmark } from "@/components/shell";
 import { DjiwaPayTopup, TOPUP_PENDING_KEY } from "@/components/djiwa-pay-topup";
@@ -29,7 +32,12 @@ import {
   ledgerStatusLabel,
   walletStatusLabel,
 } from "@/lib/customer-wallet-view";
-import { WALLET_SCOPES, WALLET_SCOPE_LABELS, type WalletScope } from "@/lib/wallet-scope";
+import {
+  isDjiwaTravelSourceApp,
+  WALLET_SCOPES,
+  WALLET_SCOPE_LABELS,
+  type WalletScope,
+} from "@/lib/wallet-scope";
 import { rupiah } from "@/lib/pricing";
 import {
   QUICK_ACTION_SUPPORT_COPY,
@@ -55,6 +63,7 @@ function maskedId(value: string, visible: boolean) {
 }
 
 export function Wallet() {
+  const reduce = useReducedMotion();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isPayRoute = pathname === "/wallet/pay";
   const { user, loading: authLoading } = useBetterAuthUser();
@@ -214,18 +223,26 @@ export function Wallet() {
     );
   }
 
+  const nativeActions = walletActions.filter((action) =>
+    NATIVE_WALLET_ACTIONS.includes(action.label),
+  );
+  const capClass =
+    "mb-2 mt-6 px-4 text-[13px] font-medium uppercase tracking-wide text-muted-foreground";
+  const tileBase =
+    "tap relative flex min-h-[96px] w-full flex-col items-center rounded-2xl px-0.5 pb-2.5 pt-1.5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
   return (
     <Page>
-      <header className="flex items-center justify-between pt-2">
+      <header className="flex items-end justify-between gap-3 pt-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-red">
             Djiwa Travel
           </p>
-          <h1 className="mt-1 text-[28px] font-bold tracking-tight">Wallet</h1>
+          <h1 className="large-title mt-1">Dompet</h1>
         </div>
         <button
           type="button"
-          className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border/70 bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="tap flex size-11 items-center justify-center rounded-full bg-surface shadow-[inset_0_0_0_1px_rgba(60,60,67,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Segarkan Wallet"
           onClick={() => void loadWallet()}
           disabled={loading || authLoading || !user}
@@ -242,38 +259,31 @@ export function Wallet() {
         <EmptyState />
       ) : (
         <>
-          <section
-            className="relative mt-5 overflow-hidden rounded-2xl bg-primary p-5 text-primary-foreground"
+          <motion.section
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={reduce ? { duration: 0 } : springIos}
+            className="relative mt-4 overflow-hidden rounded-[28px] bg-[linear-gradient(150deg,#e5303f,#a81f33)] p-5 text-white shadow-[0_20px_36px_-22px_rgba(229,48,63,0.8)]"
             aria-labelledby="wallet-card-title"
           >
             <div
-              className="absolute -right-10 -top-12 size-40 rounded-full bg-white/10"
+              className="absolute -right-10 -top-12 size-44 rounded-full bg-white/10"
               aria-hidden="true"
             />
             <div className="relative">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p
-                    id="wallet-card-title"
-                    className="text-sm font-semibold text-primary-foreground/75"
-                  >
+                  <p id="wallet-card-title" className="text-sm font-semibold text-white/85">
                     Wallet Djiwa Pay
                   </p>
-                  <p className="mt-1 text-xs text-primary-foreground/65">
+                  <p className="mt-0.5 text-xs text-white/70">
                     IDR · {walletStatusLabel(wallet.status)}
                   </p>
                 </div>
-                <WalletCards className="size-7" aria-hidden="true" />
-              </div>
-              <p className="mt-7 text-xs text-primary-foreground/70">Saldo tersedia</p>
-              <div className="mt-1 flex items-center gap-2">
-                <p className="text-[30px] font-bold tracking-tight">
-                  {formatted(wallet.available_balance)}
-                </p>
                 <button
                   type="button"
                   onClick={() => setVisible((current) => !current)}
-                  className="tap flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="tap flex size-11 items-center justify-center rounded-full bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"}
                 >
                   {visible ? (
@@ -283,13 +293,33 @@ export function Wallet() {
                   )}
                 </button>
               </div>
-              <p className="mt-4 text-xs text-primary-foreground/70">
+              <p className="mt-5 text-xs text-white/75">Saldo tersedia</p>
+              <p className="mt-0.5 text-[38px] font-bold leading-tight tracking-tight tabular-nums">
+                {formatted(wallet.available_balance)}
+              </p>
+              <p className="mt-1 text-xs text-white/70">
                 ID Wallet · {maskedId(wallet.customer_id, visible)}
               </p>
+              <div className="mt-5 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setTopupOpen(true)}
+                  className="tap min-h-12 flex-1 rounded-2xl bg-white text-[16px] font-semibold text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  Isi Saldo
+                </button>
+                <Link
+                  to="/wallet/pay"
+                  className="tap inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-white/20 text-[16px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  Buka Djiwa Pay
+                  <ExternalLink className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
             </div>
-          </section>
+          </motion.section>
 
-          <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-border">
+          <div className="mt-3 grid grid-cols-2 gap-2.5">
             <Summary
               label="Total masuk"
               value={formatted(wallet.total_credited)}
@@ -303,46 +333,6 @@ export function Wallet() {
               tone="text-brand-red"
             />
           </div>
-
-          <section className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-surface p-4">
-            <div className="min-w-0">
-              <p className="text-sm font-bold">Kelola lebih lengkap di Djiwa Pay</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Buka layanan pembayaran tanpa meninggalkan navbar Djiwa Travel.
-              </p>
-            </div>
-            <a
-              href="/wallet/pay"
-              className="tap inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-brand-red px-3 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
-            >
-              Buka Djiwa Pay
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-            </a>
-          </section>
-
-          <section className="mt-5 rounded-2xl bg-surface p-4 sm:p-5" aria-label="Aksi cepat">
-            <div className="grid grid-cols-4 gap-2" aria-label="Aksi cepat">
-              {walletActions.map((action) => (
-                <button
-                  key={action.label}
-                  type="button"
-                  className="tap relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-center transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={action.supported ? action.label : `${action.label}, segera hadir`}
-                  onClick={() => handleQuickAction(action.label)}
-                >
-                  <img src={action.asset} alt="" className="size-9 object-contain" />
-                  <span className="text-[11px] font-semibold leading-tight">{action.label}</span>
-                  {!action.supported && (
-                    <span
-                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white ${action.badgeClass ?? "bg-secondary"}`}
-                    >
-                      Soon
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </section>
 
           {topupPending && (
             <section
@@ -387,6 +377,56 @@ export function Wallet() {
               </button>
             </section>
           )}
+
+          <h2 className={capClass}>Aksi cepat</h2>
+          <section className="overflow-hidden rounded-[20px] bg-surface" aria-label="Aksi cepat">
+            <div className="grid grid-cols-4 gap-0.5 px-1.5 py-3" role="list">
+              {nativeActions.map((action) => (
+                <div key={action.label} role="listitem">
+                  <button
+                    type="button"
+                    className={tileBase}
+                    aria-label={action.supported ? action.label : `${action.label}, segera hadir`}
+                    onClick={() => handleQuickAction(action.label)}
+                  >
+                    <img
+                      src={action.asset}
+                      alt=""
+                      width={48}
+                      height={48}
+                      className="size-12 object-contain"
+                    />
+                    <span className="mt-1.5 text-[11px] font-semibold leading-tight">
+                      {action.label}
+                    </span>
+                    {!action.supported && (
+                      <span
+                        className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white ${action.badgeClass ?? "bg-secondary"}`}
+                      >
+                        Soon
+                      </span>
+                    )}
+                  </button>
+                </div>
+              ))}
+              <div role="listitem">
+                <Link to="/esim/finder" aria-label="Beli eSIM dengan saldo" className={tileBase}>
+                  <img
+                    src="/assets/explore/services/esim.svg"
+                    alt=""
+                    width={48}
+                    height={48}
+                    className="size-12 object-contain"
+                  />
+                  <span className="mt-1.5 text-[11px] font-semibold leading-tight">Beli eSIM</span>
+                  <span className="text-[10px] text-muted-foreground">Bayar dari saldo</span>
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          <PayServicesCard />
+
           <DjiwaPayTopup
             userId={user.id}
             open={topupOpen}
@@ -414,7 +454,7 @@ export function Wallet() {
               </span>
             </SectionTitle>
             <div
-              className="mt-3 flex flex-wrap gap-2"
+              className="mt-3 grid grid-cols-2 gap-0.5 rounded-xl bg-secondary p-0.5"
               role="group"
               aria-label="Filter riwayat Wallet"
             >
@@ -425,7 +465,7 @@ export function Wallet() {
                   aria-pressed={scope === option}
                   onClick={() => setScope(option)}
                   disabled={loading}
-                  className={`tap min-h-11 rounded-full border px-3.5 text-xs font-semibold disabled:opacity-60 ${scope === option ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground"}`}
+                  className={`tap min-h-11 rounded-[10px] text-[13px] font-semibold transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${scope === option ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground"}`}
                 >
                   {WALLET_SCOPE_LABELS[option]}
                 </button>
@@ -438,7 +478,7 @@ export function Wallet() {
               </p>
             )}
             {groups.length === 0 ? (
-              <p className="mt-3 rounded-2xl bg-surface px-4 py-5 text-sm text-muted-foreground">
+              <p className="mt-3 rounded-[20px] bg-surface px-4 py-5 text-sm text-muted-foreground">
                 {scope === "djiwa-travel"
                   ? "Belum ada transaksi Djiwa Travel yang tercatat."
                   : "Belum ada transaksi Wallet."}
@@ -447,10 +487,10 @@ export function Wallet() {
               <div className="mt-3 space-y-5">
                 {groups.map((group) => (
                   <div key={group.key}>
-                    <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <h3 className="mb-2 px-4 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
                       {group.label}
                     </h3>
-                    <div className="divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4">
+                    <div className="overflow-hidden rounded-[20px] bg-surface">
                       {group.entries.map((entry) => (
                         <LedgerRow key={String(entry.id)} entry={entry} visible={visible} />
                       ))}
@@ -526,10 +566,12 @@ function Summary({
   tone: string;
 }) {
   return (
-    <div className="rounded-2xl bg-surface p-3.5">
-      <Icon className={`size-5 ${tone}`} aria-hidden="true" />
-      <p className="mt-3 text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate text-sm font-bold">{value}</p>
+    <div className="rounded-[18px] bg-surface p-3.5">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon className={`size-4 ${tone}`} aria-hidden="true" />
+        {label}
+      </p>
+      <p className="mt-1 truncate text-[18px] font-bold tabular-nums">{value}</p>
     </div>
   );
 }
@@ -540,21 +582,31 @@ function LedgerRow({ entry, visible }: { entry: CustomerWalletLedgerEntry; visib
   const title = entry.note || entry.transaction_type;
   const reference = [entry.reference_type, entry.reference_id].filter(Boolean).join(" · ");
   const StatusIcon = credit ? ArrowDownLeft : ArrowUpRight;
+  const fromTravel = isDjiwaTravelSourceApp(entry.source_app);
   return (
-    <div className="flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0">
+    <div className="relative flex min-h-16 items-center gap-3 px-4 py-2.5 [&+&]:before:absolute [&+&]:before:left-[68px] [&+&]:before:right-0 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border/60 [&+&]:before:content-['']">
       <span
-        className={`flex size-9 shrink-0 items-center justify-center rounded-full ${credit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-brand-red"}`}
+        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${credit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-brand-red"}`}
       >
-        <StatusIcon className="size-4" aria-hidden="true" />
+        <StatusIcon className="size-5" aria-hidden="true" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{title}</p>
+        <p className="truncate text-[15px] font-semibold">
+          {title}
+          {fromTravel && (
+            <span className="ml-1.5 rounded-full bg-brand-red-soft px-1.5 py-0.5 align-middle text-[10px] font-bold text-brand-red">
+              Djiwa Travel
+            </span>
+          )}
+        </p>
         <p className="truncate text-xs text-muted-foreground">
           {date.toLocaleDateString("id-ID")} · {ledgerStatusLabel(entry.status)}
           {reference ? ` · ${reference}` : ""}
         </p>
       </div>
-      <p className={`shrink-0 text-sm font-bold ${credit ? "text-emerald-700" : "text-brand-red"}`}>
+      <p
+        className={`shrink-0 text-[15px] font-semibold tabular-nums ${credit ? "text-emerald-700" : "text-foreground"}`}
+      >
         {visible ? `${credit ? "+" : "−"}${rupiah(entry.amount)}` : "••••••"}
       </p>
     </div>
@@ -618,13 +670,13 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
       >
         Coba lagi
       </button>
-      <a
-        href="/wallet/pay"
+      <Link
+        to="/wallet/pay"
         className="tap mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-brand-red px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
       >
         Buka Djiwa Pay
         <ExternalLink className="size-3.5" aria-hidden="true" />
-      </a>
+      </Link>
     </div>
   );
 }

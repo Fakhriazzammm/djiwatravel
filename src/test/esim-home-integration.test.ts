@@ -23,7 +23,7 @@ describe("Home eSIM dashboard integration", () => {
   });
 
   it("keeps the five customer bottom-navigation destinations unchanged", () => {
-    for (const route of ["/", "/explore", "/my-trips", "/wallet/pay", "/profile"]) {
+    for (const route of ["/", "/explore", "/my-trips", "/wallet", "/profile"]) {
       expect(shellSource).toContain(`to: "${route}"`);
     }
   });

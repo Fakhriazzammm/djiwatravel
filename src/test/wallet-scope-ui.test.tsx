@@ -13,6 +13,15 @@ vi.mock("@tanstack/react-router", async () => {
     await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");
   return {
     ...actual,
+    Link: ({
+      to,
+      children,
+      ...rest
+    }: { to: string; children?: ReactNode } & Record<string, unknown>) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
     Outlet: () => null,
     useRouterState: () => ({ location: { pathname: "/wallet" } }),
   };
