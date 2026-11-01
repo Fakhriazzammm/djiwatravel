@@ -199,3 +199,19 @@ Use this structure for each new lesson:
   (`order-cache.ts`), and prompt signed-out holders of guest orders to sign in so they can be claimed.
 - Prevention: a bearer token's lifetime must cover the lifetime of what it protects; a cache must
   never outlive the server's ability to confirm it.
+
+### 2026-11-01 — Route loaders must not fetch relative /api URLs
+
+- Symptom: `/notifications` opened directly shows "Notifikasi belum dapat dimuat. Coba lagi
+  sebentar." even though the customer has notifications and the API is healthy.
+- Evidence: `src/routes/notifications.tsx` loader used `fetch("/api/customer-notifications?...")`;
+  `node -e 'fetch("/api/x")'` fails with `ERR_INVALID_URL`, and the loader's catch turned that into
+  the friendly error. Fixed by `src/lib/customer-notifications.fn.ts` (server functions).
+- Root cause: during SSR there is no origin, so a relative `fetch` throws before any request is sent.
+  The error was masked by a generic catch, which made it look like an API outage.
+- Safe fix: loaders call `*.fn.ts` server functions directly (the pattern used by `my-trips.fn.ts`);
+  relative `fetch` stays only in client event handlers.
+- Prevention rule: in a route loader, never use a relative `fetch`; use a server function. Test
+  the loader on a direct page load, not only on client navigation.
+- Verification boundary: the Node-level failure and the contract test prove the cause and the
+  source change; a direct page load against a database with notification rows is still needed.

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, Check, ExternalLink, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Page } from "@/components/shell";
+import { getCustomerNotificationsFeed } from "@/lib/customer-notifications.fn";
 
 type Notification = {
   id: string;
@@ -18,13 +19,13 @@ type NotificationData = {
   unread_count: number;
   next_cursor: string | null;
 };
-const notificationsUrl = "/api/customer-notifications?limit=50&unreadOnly=false";
-
+// Uses the server function directly: a relative fetch("/api/...") fails during SSR, which made
+// the loader always report "belum dapat dimuat" on first render.
 async function fetchNotifications(): Promise<NotificationData> {
-  const response = await fetch(notificationsUrl);
-  const payload: unknown = await response.json().catch(() => null);
+  const payload: unknown = await getCustomerNotificationsFeed({
+    data: { limit: 50, unreadOnly: false },
+  });
   if (
-    !response.ok ||
     !payload ||
     typeof payload !== "object" ||
     !Array.isArray((payload as { notifications?: unknown }).notifications)

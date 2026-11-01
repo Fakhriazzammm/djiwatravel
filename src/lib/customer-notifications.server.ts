@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pool } from "../db/client.server";
 import { getAuthenticatedUser } from "./customer-session.fn";
@@ -9,7 +8,11 @@ const requireBetterAuthUser = getAuthenticatedUser;
 const listSchema = z.object({
   cursor: z.string().datetime().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(50),
-  unreadOnly: z.coerce.boolean().default(false),
+  // z.coerce.boolean() turns the string "false" into true, so parse the literal explicitly.
+  unreadOnly: z
+    .union([z.boolean(), z.enum(["true", "false"])])
+    .default(false)
+    .transform((value) => value === true || value === "true"),
 });
 const pushSchema = z.object({
   action: z.enum(["register", "deactivate"]),
@@ -89,6 +92,3 @@ export async function mutateCustomerPush(input: unknown) {
     );
   return { ok: true };
 }
-export const getCustomerNotifications = createServerFn({ method: "GET" })
-  .validator(listSchema)
-  .handler(({ data }) => listCustomerNotifications(data));

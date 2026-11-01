@@ -7,7 +7,8 @@ describe("notifications route contract", () => {
 
   it("keeps the customer notification route HTTP-backed and scoped", () => {
     expect(source).toContain('createFileRoute("/notifications")');
-    expect(source).toContain("/api/customer-notifications?limit=50&unreadOnly=false");
+    expect(source).toContain("getCustomerNotificationsFeed");
+    expect(source).not.toMatch(/fetch\(\s*["'`]\/api\/customer-notifications\?/);
     expect(source).toContain('method: "PATCH"');
     expect(source).toContain("unread_count");
     expect(source).toContain("Belum ada notifikasi");
