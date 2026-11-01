@@ -153,6 +153,23 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Home "Susun trip" cards: deck shuffle, each card cycles back -> front. */
+@keyframes card-shuffle {
+  0%, 26% { translate: 0 0; rotate: -10deg; z-index: 1; }
+  33%, 59% { translate: 12px -6px; rotate: -1deg; z-index: 2; }
+  66%, 91% { translate: 24px 0; rotate: 9deg; z-index: 3; }
+  95% { translate: 38px -4px; rotate: 20deg; z-index: 3; }
+  100% { translate: 0 0; rotate: -10deg; z-index: 1; }
+}
+.animate-card-shuffle {
+  animation: card-shuffle 9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-card-shuffle { animation: none !important; translate: 0 0; rotate: -10deg; }
+  .animate-card-shuffle:nth-child(2) { translate: 12px -6px; rotate: -1deg; }
+  .animate-card-shuffle:nth-child(3) { translate: 24px 0; rotate: 9deg; }
+}
+
 /* Respect the user's reduced-motion preference across the whole app. */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -65,13 +65,13 @@ export function HomeMyTripsWidget({ signedIn }: { signedIn: boolean }) {
       <div data-testid="home-trips-widget" data-state="empty">
         <div className="ios-card mt-2 flex items-center gap-3.5 bg-gradient-to-br from-white from-40% to-brand-red-soft py-3.5 pl-4 pr-3.5">
           <span className="relative h-[76px] w-[76px] shrink-0" aria-hidden="true">
-            <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] -rotate-[10deg] place-items-center rounded-[14px] bg-gradient-to-b from-[#7fb8ff] to-[#0a84ff] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
+            <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] animate-card-shuffle place-items-center rounded-[14px] bg-gradient-to-b from-[#7fb8ff] to-[#0a84ff] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
               <CalendarRange className="size-[22px]" strokeWidth={2} />
             </span>
-            <span className="absolute left-3 top-1 grid h-[60px] w-[52px] -rotate-1 place-items-center rounded-[14px] bg-gradient-to-b from-[#ffd27a] to-[#ff9f0a] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
+            <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] animate-card-shuffle [animation-delay:-3s] place-items-center rounded-[14px] bg-gradient-to-b from-[#ffd27a] to-[#ff9f0a] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
               <Check className="size-[22px]" strokeWidth={2.6} />
             </span>
-            <span className="absolute left-6 top-2.5 grid h-[60px] w-[52px] rotate-[9deg] place-items-center rounded-[14px] bg-gradient-to-b from-[#ff8a8a] to-brand-red text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
+            <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] animate-card-shuffle [animation-delay:-6s] place-items-center rounded-[14px] bg-gradient-to-b from-[#ff8a8a] to-brand-red text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
               <Landmark className="size-[22px]" strokeWidth={2} />
             </span>
           </span>
