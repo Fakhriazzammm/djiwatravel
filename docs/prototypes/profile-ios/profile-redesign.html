@@ -1,0 +1,119 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Profil — iOS prototype</title>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--fg:#000;--l2:rgba(60,60,67,.6);--l3:rgba(60,60,67,.3);--sep:rgba(60,60,67,.14);--red:#e5303f;--green:#34c759;--blue:#0a84ff}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,system-ui,sans-serif;color:var(--fg);-webkit-font-smoothing:antialiased;display:flex;justify-content:center;padding:8px 0}
+.phone{position:relative;width:390px;height:844px;background:var(--bg);border-radius:52px;overflow:hidden;box-shadow:0 0 0 9px #0d0d0f,0 40px 80px -30px rgba(0,0,0,.55)}
+.status{position:absolute;top:0;left:0;right:0;height:50px;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:6px 34px 0;font-weight:600;font-size:15px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#000;z-index:6}
+.navbar{position:absolute;top:0;left:0;right:0;height:96px;z-index:4;background:rgba(242,242,247,.78);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:.5px solid var(--sep);opacity:0;transition:opacity .2s;display:flex;align-items:flex-end;justify-content:center;padding-bottom:10px;font-weight:600;font-size:17px}
+.navbar.on{opacity:1}
+.scroll{height:100%;overflow-y:auto;padding:58px 16px 130px;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}
+h1{font-size:34px;font-weight:700;letter-spacing:.37px;margin:14px 4px 10px}
+.cap{font-size:13px;color:var(--l2);text-transform:uppercase;letter-spacing:-.08px;margin:24px 16px 7px}
+.grp{background:var(--card);border-radius:20px;overflow:hidden}
+.row{position:relative;display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;font-size:17px;letter-spacing:-.41px;cursor:pointer;transition:background .15s}
+.row:active{background:rgba(60,60,67,.1)}
+.row+.row::before{content:"";position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--sep)}
+.row.ic+.row.ic::before{left:58px}
+.row .v{margin-left:auto;color:var(--l2);font-size:17px;display:flex;align-items:center;gap:6px}
+.chev{width:8px;height:14px;flex:none}
+.sq{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none}
+.acct{display:flex;align-items:center;gap:14px;padding:14px 16px;min-height:88px}
+.avatar{width:62px;height:62px;border-radius:50%;background:linear-gradient(160deg,#ff8b94,#e5303f);color:#fff;font-size:26px;font-weight:600;display:grid;place-items:center;flex:none}
+.acct b{font-size:20px;font-weight:600;display:block;letter-spacing:-.4px}.acct small{font-size:14px;color:var(--l2)}
+.ok{display:inline-flex;align-items:center;gap:4px;color:#248a3d;font-size:13px;font-weight:500;margin-top:3px}
+.detail{max-height:0;overflow:hidden;transition:max-height .4s cubic-bezier(.32,.72,0,1)}.detail.open{max-height:330px}
+.detail .row{min-height:44px;font-size:15px}.detail .row .v{font-size:15px;color:var(--fg)}.detail .row span:first-child{color:var(--l2)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:14px 6px 8px}
+.tile{position:relative;border:0;background:none;font-family:inherit;color:inherit;display:flex;flex-direction:column;align-items:center;padding:6px 0 10px;border-radius:16px;cursor:pointer;transition:transform .15s cubic-bezier(.32,.72,0,1),background .15s;animation:pop .55s cubic-bezier(.32,.72,0,1) both}
+.tile:active{transform:scale(.92);background:rgba(60,60,67,.08)}
+.tile img{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 5px 5px rgba(0,0,0,.14))}
+.tile b{font-size:11px;font-weight:600;margin-top:6px;letter-spacing:-.1px}.tile small{font-size:10px;color:var(--l2);margin-top:1px}
+.badge{position:absolute;top:0;right:10px;min-width:19px;height:19px;border-radius:10px;padding:0 5px;background:#ff3b30;color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center;box-shadow:0 0 0 2px #fff}
+.pill{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;background:rgba(120,120,128,.14);color:var(--l2)}
+.thumb{width:40px;height:40px;border-radius:10px;background:rgba(120,120,128,.12);display:grid;place-items:center;font-size:19px;filter:grayscale(1);opacity:.7;flex:none}
+.sub{font-size:13px;color:var(--l2)}
+.foot{margin-top:26px;text-align:center;color:var(--l2);font-size:13px}.foot b{display:block;font-size:22px;font-style:italic;color:#1d3d8f;letter-spacing:-.5px;margin-bottom:2px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:84px;background:rgba(249,249,249,.82);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-top:.5px solid var(--sep);display:flex;justify-content:space-around;padding-top:7px;z-index:4}
+.tabbar a{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:500;color:#8e8e93;width:64px}.tabbar a.on{color:var(--red)}.tabbar svg{width:26px;height:26px}
+.home{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#000;z-index:6}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.34);opacity:0;pointer-events:none;transition:opacity .3s;z-index:8}.dim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:8px;right:8px;bottom:8px;z-index:9;transform:translateY(115%);transition:transform .45s cubic-bezier(.32,.72,0,1)}.sheet.on{transform:none}
+.sheet .card{background:rgba(250,250,252,.96);border-radius:30px;padding:10px 20px 20px;backdrop-filter:blur(30px)}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--l3);margin:0 auto 16px}
+.btn{width:100%;min-height:50px;border:0;border-radius:14px;font:600 17px inherit;font-family:inherit;cursor:pointer;transition:transform .12s}.btn:active{transform:scale(.97)}
+.btn.p{background:var(--red);color:#fff}.btn.g{background:rgba(120,120,128,.12);color:var(--blue)}
+.sw{width:51px;height:31px;border-radius:16px;background:var(--green);position:relative;flex:none}.sw::after{content:"";position:absolute;top:2px;right:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.3)}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.94)}}
+.tile:nth-child(2){animation-delay:.03s}.tile:nth-child(3){animation-delay:.06s}.tile:nth-child(4){animation-delay:.09s}.tile:nth-child(5){animation-delay:.12s}.tile:nth-child(6){animation-delay:.15s}.tile:nth-child(7){animation-delay:.18s}.tile:nth-child(8){animation-delay:.21s}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body><div class="phone">
+<div class="island"></div><div class="status"><span>9:41</span><span style="font-size:13px">􀙇 ●●●● 100%</span></div>
+<div class="navbar" id="nb">Profil</div>
+<div class="scroll" id="sc">
+<h1>Profil</h1>
+
+<div class="grp">
+ <div class="acct row" style="padding:14px 16px" id="acct"><div class="avatar">A</div>
+  <div style="flex:1;min-width:0"><b>Azzam</b><small>fakhriazzamm@gmail.com</small><br><span class="ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m5 12 5 5 9-10"/></svg>Profil lengkap</span></div>
+  <svg class="chev" viewBox="0 0 8 14" fill="none" stroke="#c4c4c7" stroke-width="2" stroke-linecap="round"><path d="m1 1 6 6-6 6"/></svg></div>
+ <div class="row" id="tg" style="min-height:48px"><span>Data diri</span><span class="v">5 data <svg id="tgc" style="transition:transform .3s" width="14" height="9" viewBox="0 0 14 9" fill="none" stroke="#c4c4c7" stroke-width="2" stroke-linecap="round"><path d="m1 1 6 6 6-6"/></svg></span></div>
+ <div class="detail" id="dt">
+  <div class="row"><span>WhatsApp</span><span class="v">6285156399831</span></div>
+  <div class="row"><span>Nama lengkap</span><span class="v">Fakhri Azzam</span></div>
+  <div class="row"><span>Kewarganegaraan</span><span class="v">Indonesia</span></div>
+  <div class="row"><span>Tanggal lahir</span><span class="v">1998-10-31</span></div>
+  <div class="row"><span>Jenis kelamin</span><span class="v">Laki-laki</span></div>
+  <div class="row" style="color:var(--blue);font-weight:500;justify-content:center">Ubah data diri</div>
+ </div>
+</div>
+
+<div class="cap">Data saya</div>
+<div class="grp"><div class="tiles" role="list">
+ <button class="tile"><img src="../../../public/assets/explore/services/esim.svg" alt=""><b>My eSIM</b><small>0 aktif</small></button>
+ <button class="tile"><img src="../../../public/assets/profile/profile-trips-v2.jpg" alt=""><b>Perjalanan</b><small>1 trip</small></button>
+ <button class="tile"><img src="../../../public/assets/profile/profile-wallet-v2.jpg" alt=""><b>Dompet</b><small>Djiwa Pay</small></button>
+ <button class="tile"><img src="../../../public/assets/profile/profile-orders-v2.jpg" alt=""><b>Pesanan</b><small>2 pesanan</small></button>
+ <button class="tile"><span class="badge">3</span><img src="../../../public/assets/profile/profile-bell-v2.jpg" alt=""><b>Notifikasi</b><small>3 baru</small></button>
+ <button class="tile"><img src="../../../public/assets/profile/profile-support-v2.jpg" alt=""><b>Bantuan</b><small>Chat support</small></button>
+ <button class="tile"><img src="../../../public/assets/profile/profile-guides-v2.jpg" alt=""><b>Panduan</b><small>6 artikel</small></button>
+ <button class="tile" id="calTile"><img src="../../../public/assets/profile/profile-calendar-v2.jpg" alt=""><b>Kalender</b><small style="color:#248a3d">Terhubung</small></button>
+</div></div>
+
+<div class="cap">Pesanan terakhir</div>
+<div class="grp">
+ <div class="row ic" style="min-height:64px"><div class="thumb">🌐</div><div style="min-width:0;flex:1"><div style="font-size:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Saudi Arabia 500MB/Day</div><div class="sub">Rp21.000 · #B73B43</div></div><span class="pill">Kedaluwarsa</span></div>
+ <div class="row ic" style="min-height:64px"><div class="thumb">🌐</div><div style="min-width:0;flex:1"><div style="font-size:16px;font-weight:500">Japan 1GB 7Days</div><div class="sub">Rp48.000 · #A12C90</div></div><span class="pill">Kedaluwarsa</span></div>
+ <div class="row" style="justify-content:center;color:var(--blue);min-height:46px;font-size:16px;font-weight:500">Lihat semua pesanan</div>
+</div>
+
+<div class="cap">Tentang</div>
+<div class="grp">
+ <div class="row ic"><div class="sq" style="background:#8e8e93"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/></svg></div>Syarat &amp; Ketentuan<svg class="chev" style="margin-left:auto" viewBox="0 0 8 14" fill="none" stroke="#c4c4c7" stroke-width="2" stroke-linecap="round"><path d="m1 1 6 6-6 6"/></svg></div>
+ <div class="row ic"><div class="sq" style="background:#0a84ff"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v6c0 5 3 8 7 9 4-1 7-4 7-9V6z"/></svg></div>Kebijakan Privasi<svg class="chev" style="margin-left:auto" viewBox="0 0 8 14" fill="none" stroke="#c4c4c7" stroke-width="2" stroke-linecap="round"><path d="m1 1 6 6-6 6"/></svg></div>
+</div>
+
+<div class="grp" style="margin-top:24px"><div class="row" style="justify-content:center;color:#ff3b30;font-weight:500">Keluar</div></div>
+
+<div class="foot"><b>Djiwa Travel</b>Bawa Djiwamu Lebih Jauh.</div>
+</div>
+
+<div class="tabbar"><a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Beranda</a><a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>Jelajah</a><a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/></svg>Perjalanan</a><a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="15" rx="2.5"/><path d="M3 10h18"/></svg>Dompet</a><a class="on"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>Profil</a></div>
+<div class="home"></div>
+
+<div class="dim" id="dim"></div>
+<div class="sheet" id="sh"><div class="card"><div class="grab"></div>
+ <div style="display:flex;gap:14px;align-items:center"><img src="../../../public/assets/profile/profile-calendar-v2.jpg" width="60" height="60" alt=""><div><b style="font-size:20px;letter-spacing:-.4px">Google Calendar</b><div style="font-size:14px;color:#248a3d;margin-top:2px">Terhubung · fakhriazzamm@gmail.com</div></div></div>
+ <div class="grp" style="margin-top:16px;background:#fff"><div class="row" style="min-height:48px"><span>Sinkron otomatis</span><div class="sw" style="margin-left:auto"></div></div></div>
+ <p style="font-size:13px;color:var(--l2);margin:10px 4px 16px;line-height:1.4">Agenda perjalanan disinkronkan otomatis. Event yang sudah tersinkron tetap ada jika koneksi diputus.</p>
+ <button class="btn g" style="color:#ff3b30;margin-bottom:8px">Putuskan Koneksi</button><button class="btn p" id="cl">Selesai</button>
+</div></div>
+</div>
+<script>
+const $=i=>document.getElementById(i);
+$('sc').addEventListener('scroll',e=>$('nb').classList.toggle('on',e.target.scrollTop>38));
+$('tg').onclick=()=>{const o=$('dt').classList.toggle('open');$('tgc').style.transform=o?'rotate(180deg)':''};
+const sh=o=>{$('sh').classList.toggle('on',o);$('dim').classList.toggle('on',o)};
+$('calTile').onclick=()=>sh(true);$('cl').onclick=()=>sh(false);$('dim').onclick=()=>sh(false);
+</script></body></html>

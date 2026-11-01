@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  deleteCustomerProfile,
   readCustomerProfile,
   writeCustomerProfile,
 } from "@/lib/customer-profile.server";
@@ -13,6 +14,7 @@ async function receive(request: Request) {
   try {
     const user = await authenticateCustomerRequest(request);
     if (request.method === "GET") return json(await readCustomerProfile(user));
+    if (request.method === "DELETE") return json(await deleteCustomerProfile(user));
     const body = await request.json();
     return json(await writeCustomerProfile(user, body));
   } catch (error) {
@@ -22,6 +24,10 @@ async function receive(request: Request) {
 
 export const Route = createFileRoute("/api/customer-profile")({
   server: {
-    handlers: { GET: ({ request }) => receive(request), POST: ({ request }) => receive(request) },
+    handlers: {
+      GET: ({ request }) => receive(request),
+      POST: ({ request }) => receive(request),
+      DELETE: ({ request }) => receive(request),
+    },
   },
 });

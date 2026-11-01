@@ -5,7 +5,13 @@ const AUTH_BASE =
   typeof window === "undefined"
     ? (import.meta.env["VITE_BETTER_AUTH_URL"] || CANONICAL_AUTH_BASE).replace(/\/$/, "")
     : "/api/auth";
-export type BetterAuthUser = { id: string; name?: string | null; email?: string | null };
+export type BetterAuthUser = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  /** Google profile photo URL when the account signed in with Google. */
+  image?: string | null;
+};
 export type BetterAuthSession = {
   user: BetterAuthUser;
   session: { id: string; expiresAt: string };

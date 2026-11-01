@@ -137,6 +137,15 @@ export async function writeCustomerProfile(
   return profile;
 }
 
+/** Removes only the signed-in customer's own saved profile; orders and the auth account stay. */
+export async function deleteCustomerProfile(user: AuthenticatedUser) {
+  const removed = await db
+    .delete(customerProfiles)
+    .where(eq(customerProfiles.authUserId, user.id))
+    .returning({ id: customerProfiles.authUserId });
+  return { deleted: removed.length > 0 };
+}
+
 export const getCustomerProfile = createServerFn({ method: "GET" }).handler(async () => {
   return readCustomerProfile(await getAuthenticatedUser());
 });
@@ -151,6 +160,8 @@ export const customerProfileContract = {
   read: "GET server function; derives Better Auth user from the HttpOnly session cookie",
   upsert:
     "POST { email, whatsapp, displayName?, nationality?, dateOfBirth?, gender? }; email must equal the authenticated Better Auth email",
+  remove:
+    "DELETE; removes the saved profile of the authenticated Better Auth user only (orders and the account are kept)",
   response:
     "{ email, whatsapp, displayName, nationality, dateOfBirth, gender } | null; guest checkout and Mayar settlement remain unchanged",
 } as const;

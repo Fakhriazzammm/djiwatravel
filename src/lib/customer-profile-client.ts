@@ -33,3 +33,10 @@ export async function saveCustomerProfile(
   }
   return saved;
 }
+
+export async function deleteCustomerProfile(): Promise<void> {
+  await request("/api/customer-profile", { method: "DELETE" });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(CUSTOMER_PROFILE_UPDATED_EVENT, { detail: null }));
+  }
+}

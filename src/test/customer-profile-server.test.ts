@@ -32,3 +32,10 @@ describe("customer profile server contract", () => {
     ).toThrow();
   });
 });
+
+describe("customer profile delete contract", () => {
+  it("documents an owner-scoped delete that keeps orders and the account", async () => {
+    const { customerProfileContract } = await import("@/lib/customer-profile.server");
+    expect(customerProfileContract.remove).toContain("authenticated Better Auth user only");
+  });
+});
