@@ -408,7 +408,7 @@ function WalletRail({
       <div
         ref={scroller}
         onScroll={onScroll}
-        className="-mx-3 mt-1.5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-3 mt-1.5 flex snap-x snap-mandatory scroll-px-3 gap-2 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {cards.map((card) => (
           <WalletCard key={card.id} card={card} onBuy={onBuy} readOnly={readOnly} />
