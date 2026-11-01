@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { BackBar, Page, btnRed, group, label, row } from "@/components/shell";
 import { postTrip } from "@/lib/my-trips.fn";
+import { TripCountryPicker } from "@/components/trip-country-picker";
+import { tripCurrencyFor } from "@/lib/trip-countries";
 
 export const Route = createFileRoute("/my-trips/new")({ component: NewTrip });
 function NewTrip() {
@@ -13,7 +15,7 @@ function NewTrip() {
     departureDate: "",
     returnDate: "",
     travelersCount: 1,
-    primaryCurrency: "IDR" as const,
+    primaryCurrency: "IDR" as "IDR" | "JPY" | "USD" | "SGD" | "KRW",
     totalBudgetMinor: 0,
     timezone: "",
   });
@@ -63,39 +65,20 @@ function NewTrip() {
                 onChange={(v) => update("destinationName", v)}
               />
             }
-            <label className={row}>
+            <div className={row}>
               <span className="text-sm font-medium">Negara</span>
-              <select
+              <TripCountryPicker
                 value={form.destinationCode}
-                onChange={(event) => {
-                  const destinationCode = event.target.value;
-                  const countryByCode: Record<
-                    string,
-                    { name: string; currency: "IDR" | "JPY" | "USD" | "SGD" | "KRW" }
-                  > = {
-                    JP: { name: "Jepang", currency: "JPY" },
-                    US: { name: "Amerika Serikat", currency: "USD" },
-                    SG: { name: "Singapura", currency: "SGD" },
-                    KR: { name: "Korea Selatan", currency: "KRW" },
-                    ID: { name: "Indonesia", currency: "IDR" },
-                  };
-                  const country = countryByCode[destinationCode];
+                onChange={(country) =>
                   setForm((current) => ({
                     ...current,
-                    destinationCode,
+                    destinationCode: country.code,
                     destinationName: country.name,
-                    primaryCurrency: country.currency,
-                  }));
-                }}
-                className="max-w-44 bg-transparent text-right text-sm outline-none"
-              >
-                <option value="JP">Jepang</option>
-                <option value="SG">Singapura</option>
-                <option value="KR">Korea Selatan</option>
-                <option value="US">Amerika Serikat</option>
-                <option value="ID">Indonesia</option>
-              </select>
-            </label>
+                    primaryCurrency: tripCurrencyFor(country.code),
+                  }))
+                }
+              />
+            </div>
           </div>
         </div>
         <div>
