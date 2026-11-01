@@ -24,8 +24,8 @@ const isActiveTab = (to: string, pathname: string) =>
 export function TabBar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-surface/95 backdrop-blur-xl safe-bottom">
-      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pt-1">
+    <nav className="glass fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.08] safe-bottom">
+      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pt-1.5">
         {tabs.map(({ to, label, icon: Icon }) => {
           const active = isActiveTab(to, pathname);
           return (
@@ -34,20 +34,17 @@ export function TabBar() {
               to={to}
               activeOptions={{ exact: to === "/" }}
               aria-current={active ? "page" : undefined}
-              className={`tap flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium tracking-[-0.01em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                active ? "text-foreground" : "text-muted-foreground"
+              className={`tap flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 text-[10px] font-medium tracking-[-0.01em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                active ? "text-brand-red" : "text-muted-foreground"
               }`}
             >
-              <span className="relative flex size-8 items-center justify-center rounded-full">
-                {active && (
-                  <motion.span
-                    layoutId="tab-indicator"
-                    className="absolute inset-0 rounded-full bg-secondary"
-                    transition={springSnappy}
-                  />
-                )}
-                <Icon className="relative size-[20px]" strokeWidth={active ? 2.1 : 1.8} />
-              </span>
+              <motion.span
+                animate={{ scale: active ? 1.06 : 1 }}
+                transition={springSnappy}
+                className="flex size-7 items-center justify-center"
+              >
+                <Icon className="size-[24px]" strokeWidth={active ? 2.2 : 1.7} />
+              </motion.span>
               {label}
             </Link>
           );
@@ -124,7 +121,7 @@ export function StickyCta({
       <div
         className={`fixed inset-x-0 ${
           aboveTabBar ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]" : "bottom-0 safe-bottom"
-        } z-40 border-t bg-surface/95 px-4 ${compact ? "pt-1.5" : "pt-2.5"} backdrop-blur-xl`}
+        } glass z-40 border-t border-black/[0.08] px-4 ${compact ? "pt-1.5" : "pt-2.5"}`}
       >
         <div className="mx-auto max-w-md">{children}</div>
       </div>
@@ -134,10 +131,10 @@ export function StickyCta({
 
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3">
-      <h2 className="min-w-0 truncate text-[18px] font-bold">{children}</h2>
+    <div className="mb-3 flex items-baseline justify-between gap-3">
+      <h2 className="min-w-0 truncate text-[22px] font-bold tracking-[-0.02em]">{children}</h2>
       {action && (
-        <div className="shrink-0 text-[13px] font-medium text-muted-foreground">{action}</div>
+        <div className="shrink-0 text-[15px] font-medium text-brand-red">{action}</div>
       )}
     </div>
   );

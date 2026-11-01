@@ -40,7 +40,7 @@
 
 :root {
   --radius: 0.875rem;
-  --background: oklch(0.975 0.004 260);
+  --background: oklch(0.967 0.003 260);
   --surface: oklch(1 0 0);
   --foreground: oklch(0.19 0.006 260);
   --card: oklch(1 0 0);
@@ -97,6 +97,27 @@
   line-height: 1.15;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+@utility large-title-xl {
+  font-size: 2.125rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+/* iOS "continuous" card: white surface, hairline edge, soft layered shadow. */
+@utility ios-card {
+  background: var(--surface);
+  border-radius: 1.375rem;
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.05),
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 8px 24px -12px rgb(0 0 0 / 0.1);
+}
+/* Translucent "material" used by the tab bar and sheets. */
+@utility glass {
+  background: color-mix(in oklab, var(--surface) 78%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
 }
 @utility tap {
   transition: transform 120ms ease;

@@ -87,7 +87,7 @@ function SummaryLink({
 
 const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 const CARD_CLASS =
-  "overflow-hidden rounded-[28px] border border-border/60 bg-surface shadow-[0_14px_32px_-24px_rgba(0,0,0,0.35)]";
+  "ios-card overflow-hidden rounded-[28px]";
 const BTN =
   "tap flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl px-3 text-[14px] font-bold";
 
@@ -532,7 +532,7 @@ export function EsimHomeSummaryCard({
                 ],
               )
             }
-            className="absolute inset-x-0 top-0 bottom-0 rounded-[26px] border border-border/60 bg-surface shadow-[0_10px_20px_-18px_rgba(0,0,0,0.35)]"
+            className="absolute inset-x-0 top-0 bottom-0 rounded-[26px] bg-surface shadow-[0_0_0_0.5px_rgb(0_0_0/0.06),0_8px_16px_-12px_rgb(0_0_0/0.25)]"
             style={{
               transform: `translateY(${(index + 1) * 10}px) scale(${1 - (index + 1) * 0.05})`,
               zIndex: 0,
@@ -556,7 +556,7 @@ export function EsimHomeSummaryCard({
             }}
             onDragEnd={onDragEnd}
             style={{ touchAction: "pan-y", zIndex: 1 }}
-            className={`relative overflow-hidden rounded-[26px] border border-border/60 p-4 shadow-[0_14px_28px_-22px_rgba(0,0,0,0.4)] ${
+            className={`ios-card relative overflow-hidden rounded-[26px] p-4 ${
               summary.kind === "history" ? destinationArt(null).tint : art.tint
             }`}
           >

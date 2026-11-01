@@ -157,38 +157,37 @@ function Home() {
             search={{ admin: undefined }}
             aria-label="Buka profil akun"
             data-testid="header-account"
-            className="tap flex min-w-0 shrink-0 items-center gap-2 rounded-full bg-surface px-3 py-1.5 shadow-sm"
+            className="tap flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-[16px] font-semibold text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)]"
           >
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold">
+            <span aria-hidden="true">
               {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
             </span>
-            <span className="max-w-[6.5rem] truncate text-[14px] font-semibold text-foreground">
-              {accountLabel}
-            </span>
+            <span className="sr-only">{accountLabel}</span>
           </Link>
         ) : (
           <CustomerAuth size="compact" />
         )}
       </header>
 
-      <p className="mt-4 text-[14px] text-muted-foreground">
+      <p className="mt-5 text-[15px] font-medium text-muted-foreground">
         {hello}
-        {user ? `, ${accountLabel}` : ""},
+        {user ? `, ${accountLabel}` : ""}
       </p>
-      <h1 className="large-title mt-3 text-balance">Mau pergi ke mana?</h1>
+      <h1 className="large-title-xl mt-1 text-balance">Mau pergi ke mana?</h1>
 
       <button
         onClick={() => setSearchOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={searchOpen}
-        className="tap mt-4 flex h-12 w-full items-center gap-3 rounded-2xl border border-border/70 bg-surface px-4 text-left text-[15px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="tap ios-card mt-4 flex h-[3.25rem] w-full items-center gap-3 rounded-full px-5 text-left text-[17px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <Search className="size-5 shrink-0" /> {searchHint}
+        <Search className="size-5 shrink-0" strokeWidth={2} />
+        <span className="min-w-0 flex-1 truncate">{searchHint}</span>
       </button>
 
       {searchOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end bg-foreground/30 p-3 sm:items-center sm:justify-center"
+          className="fixed inset-0 z-50 flex items-end bg-foreground/35 backdrop-blur-[2px] duration-200 animate-in fade-in sm:items-center sm:justify-center sm:p-3"
           role="presentation"
           onClick={() => setSearchOpen(false)}
         >
@@ -196,23 +195,24 @@ function Home() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="home-search-title"
-            className="w-full max-w-lg rounded-3xl bg-background p-5 shadow-xl"
+            className="w-full max-w-lg rounded-t-[28px] bg-background px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2 shadow-2xl duration-300 animate-in slide-in-from-bottom sm:rounded-[28px]"
             onClick={(event) => event.stopPropagation()}
           >
+            <div aria-hidden="true" className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-black/15" />
             <div className="flex items-center justify-between gap-3">
-              <h2 id="home-search-title" className="text-lg font-bold">
+              <h2 id="home-search-title" className="text-[20px] font-bold tracking-[-0.02em]">
                 Cari destinasi & paket eSIM
               </h2>
               <button
                 type="button"
                 aria-label="Tutup pencarian"
                 onClick={() => setSearchOpen(false)}
-                className="tap rounded-full p-2"
+                className="tap flex size-8 items-center justify-center rounded-full bg-black/[0.06] text-muted-foreground"
               >
-                <X className="size-5" />
+                <X className="size-4" strokeWidth={2.4} />
               </button>
             </div>
-            <label className="mt-4 flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-surface px-3">
+            <label className="mt-4 flex h-11 items-center gap-2 rounded-xl bg-black/[0.06] px-3">
               <Search className="size-5 text-muted-foreground" />
               <input
                 autoFocus
@@ -234,7 +234,7 @@ function Home() {
                   Tidak ada destinasi yang cocok.
                 </p>
               ) : (
-                <div className="divide-y divide-border rounded-2xl bg-surface">
+                <div className="ios-card divide-y divide-border/70 overflow-hidden">
                   {search(query).map((destination) => (
                     <button
                       key={destination.code}
@@ -265,7 +265,7 @@ function Home() {
                 setSearchOpen(false);
                 void nav({ to: "/explore" });
               }}
-              className="mt-4 w-full rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
+              className="tap mt-4 h-12 w-full rounded-2xl bg-brand-red text-[16px] font-semibold text-primary-foreground"
             >
               Lihat semua destinasi
             </button>
@@ -323,7 +323,7 @@ function Home() {
       />
 
       <Stagger className="block">
-        <Reveal as="section" className="mt-7">
+        <Reveal as="section" className="mt-8">
           <SectionTitle action={<Link to="/explore">Lihat Semua ›</Link>}>
             Destinasi Populer
           </SectionTitle>
@@ -335,7 +335,7 @@ function Home() {
                   key={d.code}
                   to="/destination/$code"
                   params={{ code: d.code.toLowerCase() }}
-                  className="tap relative aspect-[4/5] w-[31%] min-w-28 shrink-0 snap-start overflow-hidden rounded-2xl bg-secondary"
+                  className="tap relative aspect-[4/5] w-[38%] min-w-32 shrink-0 snap-start overflow-hidden rounded-[22px] bg-secondary shadow-[0_8px_20px_-10px_rgb(0_0_0/0.35)]"
                 >
                   {photo ? (
                     <img
@@ -354,11 +354,11 @@ function Home() {
                       {d.flag}
                     </span>
                   )}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/85 to-transparent px-2.5 pb-2.5 pt-8">
-                    <p className="truncate text-[14px] font-semibold text-primary-foreground">
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 pb-3 pt-12">
+                    <p className="truncate text-[16px] font-semibold tracking-[-0.01em] text-primary-foreground">
                       {d.nameId}
                     </p>
-                    <p className="truncate text-[11px] text-primary-foreground/85">
+                    <p className="truncate text-[12px] text-primary-foreground/85">
                       Lihat paket eSIM live
                     </p>
                   </div>
@@ -368,28 +368,24 @@ function Home() {
           </div>
         </Reveal>
 
-        <Reveal as="section" className="mt-7">
+        <Reveal as="section" className="mt-8">
           <SectionTitle>Kebutuhan Perjalananmu</SectionTitle>
           <div className="grid grid-cols-3 gap-3">
             {services.map(({ icon: I, label, sub, to }) => {
               const body = (
                 <>
                   <span
-                    className={`flex size-10 items-center justify-center rounded-full ${to ? "bg-surface text-brand-red" : "bg-secondary"}`}
+                    className={`flex size-12 items-center justify-center rounded-[14px] ${to ? "bg-gradient-to-b from-[oklch(0.68_0.2_25)] to-brand-red text-white shadow-[0_6px_14px_-6px_oklch(0.6_0.21_25/0.7)]" : "bg-secondary text-muted-foreground"}`}
                   >
-                    <I className="size-5" strokeWidth={1.8} />
+                    <I className="size-6" strokeWidth={1.8} />
                   </span>
-                  <span className="mt-2 text-[14px] font-semibold text-foreground">{label}</span>
-                  <span className="text-[11px]">{sub}</span>
+                  <span className="mt-2.5 text-[15px] font-semibold text-foreground">{label}</span>
+                  <span className="text-[12px] text-muted-foreground">{sub}</span>
                 </>
               );
-              const cls = "flex h-28 flex-col items-center justify-center rounded-2xl text-center";
+              const cls = "ios-card flex h-32 flex-col items-center justify-center text-center";
               return to ? (
-                <Link
-                  key={label}
-                  to={to}
-                  className={`tap ${cls} border-2 border-brand-red bg-brand-red-soft text-brand-red`}
-                >
+                <Link key={label} to={to} className={`tap ${cls}`}>
                   {body}
                 </Link>
               ) : (
@@ -405,24 +401,24 @@ function Home() {
           </div>
         </Reveal>
 
-        <Reveal as="section" className="mt-7" aria-labelledby="home-guides-title">
+        <Reveal as="section" className="mt-8" aria-labelledby="home-guides-title">
           <SectionTitle action={<Link to="/panduan">Lihat semua ›</Link>}>
             <span id="home-guides-title">Panduan Travel</span>
           </SectionTitle>
-          <div className="grid gap-2">
+          <div className="ios-card divide-y divide-border/70 overflow-hidden">
             {featuredGuides.map((guide) => (
               <Link
                 key={guide.slug}
                 to="/panduan/$slug"
                 params={{ slug: guide.slug }}
                 aria-label={`Baca panduan: ${guide.title}`}
-                className="tap flex min-h-11 items-center gap-3 rounded-2xl bg-surface px-4 py-3"
+                className="tap flex min-h-11 items-center gap-3 px-4 py-3.5 active:bg-black/[0.04]"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-[11px] font-bold uppercase tracking-wide text-brand-red">
                     {guide.eyebrow}
                   </span>
-                  <span className="mt-0.5 block text-[14px] font-semibold leading-snug">
+                  <span className="mt-0.5 block text-[16px] font-semibold leading-snug tracking-[-0.01em]">
                     {guide.title}
                   </span>
                   <time
@@ -433,7 +429,7 @@ function Home() {
                   </time>
                 </span>
                 <ChevronRight
-                  className="size-5 shrink-0 text-muted-foreground"
+                  className="size-5 shrink-0 text-muted-foreground/60"
                   aria-hidden="true"
                 />
               </Link>

@@ -41,13 +41,13 @@ export function TravelWaitlistCard({ feature, label, sub, icon: Icon }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="tap flex h-28 flex-col items-center justify-center rounded-2xl border-2 border-transparent bg-surface text-center text-muted-foreground"
+        className="tap ios-card flex h-32 flex-col items-center justify-center text-center"
       >
-        <span className="flex size-10 items-center justify-center rounded-full bg-secondary">
-          <Icon className="size-5" strokeWidth={1.8} />
+        <span className="flex size-12 items-center justify-center rounded-[14px] bg-secondary text-muted-foreground">
+          <Icon className="size-6" strokeWidth={1.8} />
         </span>
-        <span className="mt-2 text-[14px] font-semibold text-foreground">{label}</span>
-        <span className="text-[11px]">{sub}</span>
+        <span className="mt-2.5 text-[15px] font-semibold text-foreground">{label}</span>
+        <span className="text-[12px] text-muted-foreground">{sub}</span>
       </button>
       {open && (
         <FixedLayer>
