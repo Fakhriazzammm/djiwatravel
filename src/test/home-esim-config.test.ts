@@ -13,6 +13,7 @@ import { buildEsimHomeSummary } from "../lib/esim-home-summary";
 
 const valid: HomeEsimConfig = {
   quickBuyEnabled: true,
+  multiCountryEnabled: true,
   myTripsWidgetEnabled: true,
   destinationOrder: ["KR", "JP"],
   lowQuotaPercent: 30,

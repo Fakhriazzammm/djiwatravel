@@ -139,6 +139,46 @@ export const destinations: Destination[] = [
     aliases: ["asia", "regional asia"],
     region: "Regional",
   },
+  {
+    code: "GLOBAL",
+    flag: "🌐",
+    name: "Global",
+    nameId: "Global",
+    aliases: ["global", "dunia", "worldwide", "multi negara"],
+    region: "Regional",
+  },
+  {
+    code: "AMERIKA",
+    flag: "🌎",
+    name: "Americas Regional",
+    nameId: "Amerika (regional)",
+    aliases: ["amerika regional", "americas"],
+    region: "Regional",
+  },
+  {
+    code: "AFRIKA",
+    flag: "🌍",
+    name: "Africa Regional",
+    nameId: "Afrika (regional)",
+    aliases: ["afrika regional", "africa"],
+    region: "Regional",
+  },
+  {
+    code: "OSEANIA",
+    flag: "🏝️",
+    name: "Oceania Regional",
+    nameId: "Oseania (regional)",
+    aliases: ["oseania regional", "oceania"],
+    region: "Regional",
+  },
+  {
+    code: "TIMURTENGAH",
+    flag: "🕌",
+    name: "Middle East Regional",
+    nameId: "Timur Tengah (regional)",
+    aliases: ["timur tengah regional", "middle east"],
+    region: "Regional",
+  },
 ];
 
 const tiers: [number | "unlimited", number, number][] = [

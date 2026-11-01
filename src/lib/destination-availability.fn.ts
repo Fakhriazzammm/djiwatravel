@@ -28,3 +28,14 @@ const getSellableDestinationCodesRpc = createServerFn({ method: "GET" })
 export function getSellableDestinationCodes(deadlineMs = 2000) {
   return getSellableDestinationCodesRpc({ data: deadlineMs });
 }
+
+const getBundleGroupsRpc = createServerFn({ method: "GET" })
+  .validator(z.number().int().min(0).max(8500))
+  .handler(async ({ data }) => {
+    const { getBundleGroupsHandler } = await import("./destination-availability.server");
+    return getBundleGroupsHandler(data);
+  });
+
+export function getBundleGroups(deadlineMs = 2000) {
+  return getBundleGroupsRpc({ data: deadlineMs });
+}

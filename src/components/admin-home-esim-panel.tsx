@@ -116,6 +116,20 @@ export function AdminHomeEsimPanel({
           />
           Widget Perjalananmu (My Trips) di Beranda
         </label>
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={draft.multiCountryEnabled}
+            onChange={(event) => setDraft({ ...draft, multiCountryEnabled: event.target.checked })}
+            className="size-5 accent-primary"
+          />
+          Paket multi-negara (Asia, Eropa, Global) di Beranda, Finder, dan halaman destinasi
+        </label>
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Data langsung dari katalog eSIM Access: paket yang mencakup lebih dari satu negara dan
+          stoknya tersedia. Mematikan ini hanya menyembunyikan tampilannya; paket tetap bisa dibeli
+          lewat tautan langsung.
+        </p>
 
         <div>
           <p className="text-sm font-semibold">Urutan rel destinasi</p>

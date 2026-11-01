@@ -8,6 +8,8 @@ import {
   type DestinationAvailability,
 } from "./destination-availability";
 import { isRecommendablePackage } from "./esim-access-catalog";
+import { summarizeBundleGroups, type BundleGroupSummary } from "./multi-country";
+import { readHomeEsimConfig } from "./home-esim-config.server";
 import { configureResellerCatalogCache, getResellerCatalog } from "./reseller-catalog-cache";
 import { createResellerCatalogFileStore } from "./reseller-catalog-file-store.server";
 import { getSellabilityState } from "./sellability.server";
@@ -139,3 +141,34 @@ export const getHomeDestinationFeedHandler = async () => getHomeDestinations();
 export const getHomeDestinationFeed = createServerFn({ method: "GET" }).handler(
   getHomeDestinationFeedHandler,
 );
+
+/**
+ * Multi-country bundle groups for the Finder, Home and destination pages, read from the live
+ * eSIM Access catalogue with the same sellability rules as every other list. A provider failure
+ * returns no groups: the surfaces simply hide the section rather than invent bundles.
+ */
+export async function getBundleGroupsHandler(deadlineMs = 2_000) {
+  try {
+    // Admin switch (Settings → eSIM Beranda); a missing record means enabled.
+    const { config } = await readHomeEsimConfig();
+    if (!config.multiCountryEnabled) {
+      return { groups: [] as BundleGroupSummary[], source: "fallback" as const };
+    }
+    const catalog = await withDeadline(getResellerCatalog(), deadlineMs);
+    if (!catalog) return { groups: [] as BundleGroupSummary[], source: "fallback" as const };
+    const packages = catalog.packages.filter(isRecommendablePackage);
+    const sellability = await getSellabilityState(packages);
+    const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
+    return {
+      groups: summarizeBundleGroups(
+        sellable.map((pkg) => ({
+          locationCodes: pkg.locationCodes,
+          priceIdr: pkg.sellingPrice.sellingPriceIdr,
+        })),
+      ),
+      source: catalog.stale ? ("cached" as const) : ("live" as const),
+    };
+  } catch {
+    return { groups: [] as BundleGroupSummary[], source: "fallback" as const };
+  }
+}

@@ -287,7 +287,7 @@ function metadataCountryCode(code: string): string {
   return LEGACY_COUNTRY_CODES[code] ?? code;
 }
 
-function regionForCountry(code: string): string {
+export function regionForCountry(code: string): string {
   const canonical = metadataCountryCode(code);
   return REGION_GROUPS.find((group) => group.codes.includes(canonical))?.label ?? "Lainnya";
 }

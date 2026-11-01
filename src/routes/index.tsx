@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { FixedLayer, Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations, search } from "@/lib/catalog";
-import { getHomeDestinationFeed } from "@/lib/destination-availability.fn";
+import { getBundleGroups, getHomeDestinationFeed } from "@/lib/destination-availability.fn";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
@@ -122,6 +122,27 @@ function Home() {
       cancelled = true;
     };
   }, []);
+  const [bundleChip, setBundleChip] = useState<{
+    regionCount: number;
+    fromPriceIdr: number;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void getBundleGroups()
+      .then((result) => {
+        if (cancelled || result.groups.length === 0) return;
+        setBundleChip({
+          regionCount: result.groups.length,
+          fromPriceIdr: Math.min(...result.groups.map((group) => group.fromPriceIdr)),
+        });
+      })
+      .catch(() => {
+        // Provider or Admin gate unavailable: no chip, Home keeps working.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const railDestinations = orderHomeDestinations(popular, homeConfig.destinationOrder);
   const openSheet = (destination: SheetDestination, source: "rail" | "search" | "promo") => {
     trackAnalytics("home_esim_sheet_open", "/", { destination: destination.code, source });
@@ -209,91 +230,94 @@ function Home() {
         // FixedLayer portals to <body>: the route wrapper is a motion div with will-change-transform,
         // which would otherwise trap this fixed overlay inside the (page-tall) route box.
         <FixedLayer>
-        <div
-          className="fixed inset-0 z-50 flex items-end bg-foreground/35 backdrop-blur-[2px] duration-200 animate-in fade-in sm:items-center sm:justify-center sm:p-3"
-          role="presentation"
-          onClick={() => setSearchOpen(false)}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="home-search-title"
-            className="w-full max-w-lg rounded-t-[28px] bg-background px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2 shadow-2xl duration-300 animate-in slide-in-from-bottom sm:rounded-[28px]"
-            onClick={(event) => event.stopPropagation()}
+          <div
+            className="fixed inset-0 z-50 flex items-end bg-foreground/35 backdrop-blur-[2px] duration-200 animate-in fade-in sm:items-center sm:justify-center sm:p-3"
+            role="presentation"
+            onClick={() => setSearchOpen(false)}
           >
-            <div aria-hidden="true" className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-black/15" />
-            <div className="flex items-center justify-between gap-3">
-              <h2 id="home-search-title" className="text-[20px] font-bold tracking-[-0.02em]">
-                Cari destinasi & paket eSIM
-              </h2>
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="home-search-title"
+              className="w-full max-w-lg rounded-t-[28px] bg-background px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2 shadow-2xl duration-300 animate-in slide-in-from-bottom sm:rounded-[28px]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div
+                aria-hidden="true"
+                className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-black/15"
+              />
+              <div className="flex items-center justify-between gap-3">
+                <h2 id="home-search-title" className="text-[20px] font-bold tracking-[-0.02em]">
+                  Cari destinasi & paket eSIM
+                </h2>
+                <button
+                  type="button"
+                  aria-label="Tutup pencarian"
+                  onClick={() => setSearchOpen(false)}
+                  className="tap flex size-8 items-center justify-center rounded-full bg-black/[0.06] text-muted-foreground"
+                >
+                  <X className="size-4" strokeWidth={2.4} />
+                </button>
+              </div>
+              <label className="mt-4 flex h-11 items-center gap-2 rounded-xl bg-black/[0.06] px-3">
+                <Search className="size-5 text-muted-foreground" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  aria-label="Cari destinasi atau paket eSIM"
+                  placeholder={reduceMotion ? "Jepang, Korea, 5 GB…" : searchHint}
+                  className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
+                />
+              </label>
+              <div className="mt-4 max-h-[min(55vh,24rem)] overflow-y-auto">
+                {query.trim().length > 0 && (
+                  <p className="px-1 pb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                    Destinasi
+                  </p>
+                )}
+                {search(query).length === 0 ? (
+                  <p className="py-3 text-center text-sm text-muted-foreground">
+                    Tidak ada destinasi yang cocok.
+                  </p>
+                ) : (
+                  <div className="ios-card divide-y divide-border/70 overflow-hidden">
+                    {search(query).map((destination) => (
+                      <button
+                        key={destination.code}
+                        type="button"
+                        onClick={() => {
+                          setSearchOpen(false);
+                          openSheet(destination, "search");
+                        }}
+                        className="tap flex w-full items-center gap-3 px-4 py-3 text-left"
+                      >
+                        <span className="text-2xl">{destination.flag}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-medium">{destination.nameId}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {destination.region === "Regional" ? "Paket regional" : "Paket negara"}
+                          </span>
+                        </span>
+                        <ChevronRight className="size-5 text-muted-foreground" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <EsimPackageResults query={query} onNavigate={() => setSearchOpen(false)} />
+              </div>
               <button
                 type="button"
-                aria-label="Tutup pencarian"
-                onClick={() => setSearchOpen(false)}
-                className="tap flex size-8 items-center justify-center rounded-full bg-black/[0.06] text-muted-foreground"
+                onClick={() => {
+                  setSearchOpen(false);
+                  void nav({ to: "/explore" });
+                }}
+                className="tap mt-4 h-12 w-full rounded-2xl bg-brand-red text-[16px] font-semibold text-primary-foreground"
               >
-                <X className="size-4" strokeWidth={2.4} />
+                Lihat semua destinasi
               </button>
-            </div>
-            <label className="mt-4 flex h-11 items-center gap-2 rounded-xl bg-black/[0.06] px-3">
-              <Search className="size-5 text-muted-foreground" />
-              <input
-                autoFocus
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                aria-label="Cari destinasi atau paket eSIM"
-                placeholder={reduceMotion ? "Jepang, Korea, 5 GB…" : searchHint}
-                className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
-              />
-            </label>
-            <div className="mt-4 max-h-[min(55vh,24rem)] overflow-y-auto">
-              {query.trim().length > 0 && (
-                <p className="px-1 pb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                  Destinasi
-                </p>
-              )}
-              {search(query).length === 0 ? (
-                <p className="py-3 text-center text-sm text-muted-foreground">
-                  Tidak ada destinasi yang cocok.
-                </p>
-              ) : (
-                <div className="ios-card divide-y divide-border/70 overflow-hidden">
-                  {search(query).map((destination) => (
-                    <button
-                      key={destination.code}
-                      type="button"
-                      onClick={() => {
-                        setSearchOpen(false);
-                        openSheet(destination, "search");
-                      }}
-                      className="tap flex w-full items-center gap-3 px-4 py-3 text-left"
-                    >
-                      <span className="text-2xl">{destination.flag}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{destination.nameId}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {destination.region === "Regional" ? "Paket regional" : "Paket negara"}
-                        </span>
-                      </span>
-                      <ChevronRight className="size-5 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
-              )}
-              <EsimPackageResults query={query} onNavigate={() => setSearchOpen(false)} />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchOpen(false);
-                void nav({ to: "/explore" });
-              }}
-              className="tap mt-4 h-12 w-full rounded-2xl bg-brand-red text-[16px] font-semibold text-primary-foreground"
-            >
-              Lihat semua destinasi
-            </button>
-          </section>
-        </div>
+            </section>
+          </div>
         </FixedLayer>
       )}
 
@@ -311,6 +335,7 @@ function Home() {
             });
           }}
           config={homeConfig}
+          bundleChip={bundleChip}
         />
         {!loading && !user && orders !== null && orders.length > 0 && (
           <Link

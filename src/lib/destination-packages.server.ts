@@ -6,6 +6,7 @@ import {
 import { toViewPackages } from "./package-view";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 import { filterPackagesByDestination } from "./reseller-catalog-view";
+import { isBundleGroupCode, packagesForBundleGroup } from "./multi-country";
 import { getSellabilityState } from "./sellability.server";
 
 const REGIONAL_COVERAGE: Record<string, readonly string[]> = {
@@ -42,11 +43,16 @@ export async function getDestinationPackagesHandler(code: string) {
   );
   const destination = resolveCatalogDestination(requestedCode, catalog.packages);
   if (!destination) return null;
-  const visible = filterPackagesByDestination(
-    catalog.packages,
-    destination.code,
-    await coverageFor(destination),
-  );
+  // Regional destinations show the provider's own multi-country bundles (grouped from the country
+  // codes eSIM Access returns); country destinations match their literal location code.
+  const visible =
+    destination.region === "Regional" && isBundleGroupCode(destination.code)
+      ? packagesForBundleGroup(catalog.packages, destination.code)
+      : filterPackagesByDestination(
+          catalog.packages,
+          destination.code,
+          await coverageFor(destination),
+        );
   const sellability = await getSellabilityState(visible);
   const balanceUnknown =
     sellability.mode === "on" &&

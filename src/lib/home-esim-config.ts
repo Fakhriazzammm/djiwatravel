@@ -27,6 +27,8 @@ export type HomeEsimConfig = {
   quickBuyEnabled: boolean;
   /** Shows the My Trips widget on Home. Admin-controlled; defaults on. */
   myTripsWidgetEnabled: boolean;
+  /** Shows provider multi-country bundles (Asia, Eropa, Global…) on Home, Finder and destination pages. */
+  multiCountryEnabled: boolean;
   /** Destination codes pinned first in the Home rail; unknown codes are ignored. */
   destinationOrder: string[];
   lowQuotaPercent: number;
@@ -44,6 +46,7 @@ export const DESTINATION_ORDER_MAX = 12;
 export const DEFAULT_HOME_ESIM_CONFIG: HomeEsimConfig = {
   quickBuyEnabled: true,
   myTripsWidgetEnabled: true,
+  multiCountryEnabled: true,
   destinationOrder: [],
   lowQuotaPercent: DEFAULT_LOW_QUOTA_PERCENT,
   promo: { enabled: false, text: "" },
@@ -106,6 +109,7 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
   const input = value as {
     quickBuyEnabled?: unknown;
     myTripsWidgetEnabled?: unknown;
+    multiCountryEnabled?: unknown;
     destinationOrder?: unknown;
     lowQuotaPercent?: unknown;
     promo?: unknown;
@@ -117,6 +121,9 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
   // Records saved before the widget existed omit the flag; treat that as enabled.
   if (input.myTripsWidgetEnabled !== undefined && typeof input.myTripsWidgetEnabled !== "boolean") {
     throw new Error("myTripsWidgetEnabled harus boolean");
+  }
+  if (input.multiCountryEnabled !== undefined && typeof input.multiCountryEnabled !== "boolean") {
+    throw new Error("multiCountryEnabled harus boolean");
   }
   const order = Array.isArray(input.destinationOrder) ? input.destinationOrder : null;
   if (!order || order.length > DESTINATION_ORDER_MAX) {
@@ -168,6 +175,7 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
   return {
     quickBuyEnabled: input.quickBuyEnabled,
     myTripsWidgetEnabled: input.myTripsWidgetEnabled ?? true,
+    multiCountryEnabled: input.multiCountryEnabled ?? true,
     destinationOrder,
     lowQuotaPercent,
     promo: { enabled, text, destinationCode, startsAt, endsAt },

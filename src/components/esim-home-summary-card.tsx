@@ -450,6 +450,7 @@ export function EsimHomeSummaryCard({
   onSelectDestination,
   config = DEFAULT_HOME_ESIM_CONFIG,
   readOnly = false,
+  bundleChip = null,
 }: {
   orders: Order[] | null;
   onSearchPackages: () => void;
@@ -460,6 +461,8 @@ export function EsimHomeSummaryCard({
   config?: HomeEsimConfig;
   /** Admin preview: draws the card but never loads packages or opens checkout. */
   readOnly?: boolean;
+  /** Provider multi-country summary (Admin-gated); renders the "Multi-negara" chip when set. */
+  bundleChip?: { regionCount: number; fromPriceIdr: number } | null;
 }) {
   const reduce = useReducedMotion();
   const [openCode, setOpenCode] = useState<string | null>(null);
@@ -550,6 +553,19 @@ export function EsimHomeSummaryCard({
                 </motion.button>
               );
             })}
+            {bundleChip && !readOnly && (
+              <Link
+                to="/esim/finder"
+                hash="multi-negara"
+                aria-label={`Paket eSIM multi-negara, mulai Rp${bundleChip.fromPriceIdr.toLocaleString("id-ID")}`}
+                className={`tap flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-secondary py-1 pl-2 pr-3 text-[13px] font-semibold ${FOCUS}`}
+              >
+                <span className="text-[17px] leading-none" aria-hidden="true">
+                  🌏
+                </span>
+                Multi-negara
+              </Link>
+            )}
             <SummaryLink
               target={{ kind: "finder" }}
               ariaLabel="Semua paket eSIM"

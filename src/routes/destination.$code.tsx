@@ -653,6 +653,30 @@ function Destination() {
               </Link>
             </section>
           )}
+          {regionalList.length > 0 && (
+            <section className="mt-5" aria-labelledby="regional">
+              <h2 id="regional" className="text-[15px] font-bold">
+                Jalan-jalan ke lebih dari satu negara?
+              </h2>
+              <p className="mb-2 mt-0.5 text-xs text-muted-foreground">
+                Satu eSIM yang juga mencakup {destination.nameId}, langsung dari katalog provider.
+              </p>
+              <ul className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/70 bg-surface">
+                {regionalList.slice(0, 3).map((pkg) => (
+                  <PackageRow key={pkg.packageCode} {...rowProps(pkg, true)} />
+                ))}
+              </ul>
+              {regionalList.length > 3 && (
+                <Link
+                  to="/esim/finder"
+                  hash="multi-negara"
+                  className="mt-2 inline-block px-1 text-sm font-semibold text-brand-red"
+                >
+                  Lihat {regionalList.length - 3} paket multi-negara lainnya
+                </Link>
+              )}
+            </section>
+          )}
           <div className="mt-6 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-[15px] font-bold">
@@ -774,29 +798,6 @@ function Destination() {
                 ))}
               </div>
             </details>
-          )}
-          {regionalList.length > 0 && (
-            <section className="mt-6" aria-labelledby="regional">
-              <h2 id="regional" className="text-[15px] font-bold">
-                Jalan-jalan ke lebih dari satu negara?
-              </h2>
-              <p className="mb-2 mt-0.5 text-xs text-muted-foreground">
-                Paket regional yang juga mencakup {destination.nameId}.
-              </p>
-              <ul className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/70 bg-surface">
-                {regionalList.slice(0, 8).map((pkg) => (
-                  <PackageRow key={pkg.packageCode} {...rowProps(pkg, true)} />
-                ))}
-              </ul>
-              {regionalList.length > 8 && (
-                <Link
-                  to="/esim/finder"
-                  className="mt-2 inline-block px-1 text-sm font-semibold text-brand-red"
-                >
-                  Lihat {regionalList.length - 8} paket regional lainnya
-                </Link>
-              )}
-            </section>
           )}
         </>
       )}

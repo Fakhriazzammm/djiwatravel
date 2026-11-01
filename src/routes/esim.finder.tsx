@@ -3,14 +3,22 @@ import { ChevronRight, Search } from "lucide-react";
 import { BackBar, Page } from "@/components/shell";
 import { useState } from "react";
 import { useTypingPlaceholder } from "@/hooks/use-typing-placeholder";
-import { getListableDestinations } from "@/lib/destination-availability.fn";
+import { getBundleGroups, getListableDestinations } from "@/lib/destination-availability.fn";
 import { exploreAvailability, exploreErrorState } from "@/lib/explore-availability";
 export const Route = createFileRoute("/esim/finder")({
   loader: async () => {
     try {
-      return exploreAvailability(await getListableDestinations(), "live");
+      const [destinations, bundles] = await Promise.all([
+        getListableDestinations(),
+        // Provider-derived bundles; a failure hides the section instead of blocking the list.
+        getBundleGroups().catch(() => ({ groups: [] })),
+      ]);
+      return { ...exploreAvailability(destinations, "live"), bundles: bundles.groups };
     } catch {
-      return exploreErrorState("Daftar destinasi belum dapat dimuat. Coba lagi sebentar.");
+      return {
+        ...exploreErrorState("Daftar destinasi belum dapat dimuat. Coba lagi sebentar."),
+        bundles: [],
+      };
     }
   },
   head: () => ({
@@ -42,6 +50,7 @@ function Finder() {
     examples: ["Jepang", "Singapura", "Thailand", "Eropa"],
     paused: searchFocused || Boolean(destinationQuery),
   });
+  const showBundles = !destinationQuery.trim() && available.bundles.length > 0;
   const visibleDestinations = available.destinations.filter((item) =>
     `${item.nameId} ${item.region} ${item.code}`
       .toLocaleLowerCase("id-ID")
@@ -57,7 +66,46 @@ function Finder() {
             Pilih tujuan perjalanan untuk melihat semua paket eSIM dan memilih yang sesuai.
           </p>
         </header>
-        <section className="mt-5" aria-labelledby="finder-destinations-title">
+        {showBundles && (
+          <section id="multi-negara" className="mt-5 scroll-mt-4" aria-labelledby="bundles-title">
+            <h2 id="bundles-title" className="text-base font-semibold">
+              Satu eSIM, banyak negara
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Cocok untuk perjalanan lintas negara. Cukup satu paket untuk semuanya.
+            </p>
+            <div className="no-scrollbar -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 pb-1">
+              {available.bundles.map((group) => (
+                <Link
+                  key={group.code}
+                  to="/destination/$code"
+                  params={{ code: group.code.toLowerCase() }}
+                  search={{ availability: "all" }}
+                  aria-label={`Paket eSIM multi-negara ${group.label}`}
+                  className="tap relative w-[62%] max-w-[15rem] shrink-0 snap-start overflow-hidden rounded-[24px] bg-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,.05)] ring-1 ring-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-brand-red/10 blur-2xl"
+                  />
+                  <span className="block text-[40px] leading-none" aria-hidden="true">
+                    {group.flag}
+                  </span>
+                  <span className="mt-3 block text-[17px] font-bold tracking-tight">
+                    {group.label}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {group.countryCount} negara · {group.packageCount} paket
+                  </span>
+                  <span className="mt-3 block text-[13px] font-semibold text-brand-red">
+                    Mulai Rp{group.fromPriceIdr.toLocaleString("id-ID")}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+        <section className="mt-6" aria-labelledby="finder-destinations-title">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 id="finder-destinations-title" className="text-base font-semibold">
               Pilih destinasi
