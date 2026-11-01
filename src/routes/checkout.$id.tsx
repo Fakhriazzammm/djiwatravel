@@ -9,6 +9,7 @@ import { loadLiveResellerPackage } from "@/lib/esim-access-catalog";
 import { resolveCheckoutPackage } from "@/lib/checkout-package";
 import { getSellabilityState } from "@/lib/sellability.server";
 import { rupiah } from "@/lib/pricing";
+import { getCustomerWallet } from "@/lib/customer-wallet.fn";
 import { createOrder } from "@/lib/orders";
 import {
   packageCoverageLabel,
@@ -91,6 +92,23 @@ function Checkout() {
   const [paymentProgress, setPaymentProgress] = useState<PaymentProgressStage>("idle");
   const [user, setUser] = useState<BetterAuthUser | null>(null);
   const [memberProfileReady, setMemberProfileReady] = useState(false);
+  // undefined = loading, null = unavailable, number = available Djiwa Pay balance (IDR).
+  const [walletBalance, setWalletBalance] = useState<number | null | undefined>(undefined);
+  useEffect(() => {
+    if (!djiwaPayEnabled || !user || !memberProfileReady) return;
+    let cancelled = false;
+    setWalletBalance(undefined);
+    getCustomerWallet({ data: { scope: "all" } })
+      .then((res) => {
+        if (!cancelled) setWalletBalance(res.wallet ? res.wallet.available_balance : null);
+      })
+      .catch(() => {
+        if (!cancelled) setWalletBalance(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [djiwaPayEnabled, user, memberProfileReady]);
   useEffect(() => {
     void getBetterAuthSession()
       .then((session) => {
@@ -133,7 +151,11 @@ function Checkout() {
     Boolean(user) &&
     valid &&
     memberProfileReady &&
-    (method !== "djiwa_pay" || walletAvailability === "available");
+    (method !== "djiwa_pay" ||
+      (walletAvailability === "available" &&
+        !(typeof walletBalance === "number" && walletBalance < price)));
+  const insufficientBalance =
+    method === "djiwa_pay" && typeof walletBalance === "number" && walletBalance < price;
 
   const pay = async () => {
     if (submitting) return;
@@ -288,6 +310,17 @@ function Checkout() {
             <div className="min-w-0 flex-1">
               <p className="font-medium">{name}</p>
               <p className="text-xs text-muted-foreground">{desc}</p>
+              {id === "djiwa_pay" && walletAvailability === "available" && (
+                <p
+                  className={`mt-0.5 text-xs font-semibold ${walletBalance !== undefined && walletBalance !== null && walletBalance < price ? "text-destructive" : "text-foreground"}`}
+                >
+                  {walletBalance === undefined
+                    ? "Memuat saldo…"
+                    : walletBalance === null
+                      ? "Saldo belum dapat dimuat"
+                      : `Saldo kamu: ${rupiah(walletBalance)}`}
+                </p>
+              )}
             </div>
             <span
               className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${method === id ? "border-brand-red bg-brand-red" : ""}`}
@@ -356,6 +389,8 @@ function Checkout() {
                     ? "Masuk ke akun member untuk membayar dengan saldo Djiwa Pay."
                     : walletAvailability === "complete_profile"
                       ? "Lengkapi profil untuk membayar dengan saldo Djiwa Pay."
+                      : insufficientBalance
+                      ? "Saldo Djiwa Pay tidak cukup. Top up di menu Dompet atau pilih QRIS."
                       : "Pembayaran saldo Djiwa Pay belum aktif."
                   : "Lengkapi data pengiriman di Profil untuk melanjutkan checkout."}
           </p>
