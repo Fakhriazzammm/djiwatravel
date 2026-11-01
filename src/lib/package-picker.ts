@@ -1,11 +1,9 @@
-import { packageDisplayedGb } from "./package-copy";
 import type { ViewPackage } from "./package-view";
 
-/** Rupiah per displayed GB; infinite when the size is unknown or unlimited. */
-export function pricePerGb(pkg: ViewPackage): number {
-  const gb = packageDisplayedGb(pkg.volumeBytes);
-  if (!Number.isFinite(gb) || gb <= 0) return Number.POSITIVE_INFINITY;
-  return pkg.priceIdr / gb;
+/** Rupiah per active day; infinite when the duration is unknown. */
+export function pricePerDay(pkg: ViewPackage): number {
+  if (!Number.isFinite(pkg.durationDays) || pkg.durationDays <= 0) return Number.POSITIVE_INFINITY;
+  return pkg.priceIdr / pkg.durationDays;
 }
 
 export type DurationBucket = { id: string; label: string; packages: ViewPackage[] };
@@ -27,10 +25,10 @@ export function durationBuckets(packages: readonly ViewPackage[]): DurationBucke
   });
 }
 
-/** The best-value sellable package of a bucket (lowest Rp/GB, then cheapest), if any. */
+/** The best-value sellable package of a bucket (lowest Rp/hari, then cheapest), if any. */
 export function bestValuePackage(packages: readonly ViewPackage[]): ViewPackage | undefined {
   const sellable = packages.filter((pkg) => pkg.sellable);
-  return [...sellable].sort((a, b) => pricePerGb(a) - pricePerGb(b) || a.priceIdr - b.priceIdr)[0];
+  return [...sellable].sort((a, b) => pricePerDay(a) - pricePerDay(b) || a.priceIdr - b.priceIdr)[0];
 }
 
 /** Preselect the best-value package; fall back to the first sellable one. */

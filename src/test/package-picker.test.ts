@@ -34,8 +34,9 @@ describe("package picker", () => {
     expect(durationBuckets([pkg("x", 1, 3, 1)]).map((bucket) => bucket.id)).toEqual(["short"]);
   });
 
-  it("preselects the best-value sellable package and never a sold-out one", () => {
+  it("preselects the lowest Rp/hari sellable package and never a sold-out one", () => {
     expect(bestValuePackage(list.slice(0, 2))?.packageCode).toBe("b");
+    expect(bestValuePackage([pkg("x", 1, 1, 10_000), pkg("y", 1, 5, 40_000)])?.packageCode).toBe("y");
     const soldOut = [pkg("a", 1, 3, 50_000, false), pkg("b", 3, 7, 90_000)];
     expect(defaultPackage(soldOut)?.packageCode).toBe("b");
     expect(defaultPackage([pkg("a", 1, 3, 50_000, false)])).toBeUndefined();

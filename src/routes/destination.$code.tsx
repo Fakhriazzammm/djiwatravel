@@ -12,7 +12,7 @@ import {
 import { getDestinationPackages } from "@/lib/destination-packages.fn";
 import { destinationOgImage } from "@/lib/destination-artwork";
 import type { ViewPackage } from "@/lib/package-view";
-import { pricePerGb } from "@/lib/package-picker";
+import { pricePerDay } from "@/lib/package-picker";
 import { z } from "zod";
 import {
   packageCoverageLabel,
@@ -31,7 +31,7 @@ export const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
   { key: "price", label: "Termurah" },
   { key: "data", label: "Kuota terbesar" },
   { key: "duration", label: "Masa aktif terlama" },
-  { key: "value", label: "Paling hemat (Rp/GB)" },
+  { key: "value", label: "Paling hemat (Rp/hari)" },
 ];
 
 export type AvailabilityFilter = "all" | "available" | "sold-out";
@@ -81,7 +81,7 @@ export function sortPackages(packages: ViewPackage[], key: SortKey): ViewPackage
     case "duration":
       return list.sort((a, b) => b.durationDays - a.durationDays || a.priceIdr - b.priceIdr);
     case "value":
-      return list.sort((a, b) => pricePerGb(a) - pricePerGb(b) || a.priceIdr - b.priceIdr);
+      return list.sort((a, b) => pricePerDay(a) - pricePerDay(b) || a.priceIdr - b.priceIdr);
     default:
       return list;
   }
@@ -380,8 +380,8 @@ function Destination() {
                         {rupiah(pkg.priceIdr)}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {Number.isFinite(pricePerGb(pkg))
-                          ? `${rupiah(Math.round(pricePerGb(pkg)))}/GB`
+                        {Number.isFinite(pricePerDay(pkg))
+                          ? `${rupiah(Math.round(pricePerDay(pkg)))}/hari`
                           : ""}
                       </p>
                     </div>

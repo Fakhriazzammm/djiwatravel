@@ -53,8 +53,9 @@ describe("destination package sorting", () => {
     expect(codes("duration")).toEqual(["BIG", "MID", "CHEAP"]);
   });
 
-  it("sorts by price per GB ascending", () => {
-    expect(codes("value")).toEqual(["BIG", "MID", "CHEAP"]);
+  it("sorts by price per day ascending", () => {
+    // Rp/hari: BIG 4.000, CHEAP 5.000, MID 7.143
+    expect(codes("value")).toEqual(["BIG", "CHEAP", "MID"]);
   });
 
   it("does not mutate the loader array", () => {
