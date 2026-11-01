@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BackBar, Page, StickyCta } from "@/components/shell";
+import { Page, StickyCta } from "@/components/shell";
 import {
   Sheet,
   SheetContent,
@@ -330,9 +330,16 @@ function Destination() {
   const deckRef = useRef<HTMLDivElement | null>(null);
   const [quota, setQuota] = useState<QuotaFilter>("all");
   const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.history.back();
+      return;
+    }
+    void router.navigate({ to: "/esim/finder" });
+  };
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  const activeChip = useRef<HTMLAnchorElement | null>(null);
   const isRegionalDestination = destination.region === "Regional";
 
   useEffect(() => {
@@ -343,7 +350,7 @@ function Destination() {
     setShowAllDurations(false);
     setCardCode(null);
     setQuota("all");
-    activeChip.current?.scrollIntoView({ inline: "center", block: "nearest" });
+    setPickerOpen(false);
   }, [destination.code]);
 
   const byAvailability = useMemo(
@@ -464,61 +471,82 @@ function Destination() {
 
   return (
     <Page>
-      <BackBar title={`${destination.flag} ${destination.nameId}`} fallbackTo="/esim/finder" />
-      <nav
-        aria-label="Ganti negara tujuan"
-        className="-mx-4 mt-1 flex gap-2 overflow-x-auto px-4 pb-1"
-      >
-        {switcher.map((item) => {
-          const active = item.code === destination.code;
-          return (
-            <Link
-              key={item.code}
-              ref={active ? activeChip : undefined}
-              to="/destination/$code"
-              params={{ code: item.code }}
-              search={{ availability: "all" }}
-              aria-current={active ? "page" : undefined}
-              className={`tap inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border/70 bg-surface"
-              }`}
-            >
-              <span aria-hidden="true">{item.flag}</span>
-              {item.nameId}
-            </Link>
-          );
-        })}
-      </nav>
-      <section className="relative mt-3 overflow-hidden rounded-[28px] bg-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_-12px_rgba(0,0,0,.12)] ring-1 ring-border/60">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-brand-red/10 blur-2xl"
-        />
-        <div className="flex items-center gap-3">
-          <span className="text-[44px] leading-none" aria-hidden="true">
-            {destination.flag}
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-brand-red">
-              eSIM · {isRegionalDestination ? "Cakupan regional" : "Cakupan negara"}
-            </p>
-            <h1 className="text-[22px] font-bold leading-tight tracking-tight">
-              Paket eSIM untuk {destination.nameId}
-            </h1>
-          </div>
-        </div>
-        {fromPrice && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            Mulai <span className="font-semibold text-foreground">{fromPrice}</span>
-          </p>
-        )}
-        <ul className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-semibold text-muted-foreground">
-          {network && <li className="rounded-full bg-secondary px-2.5 py-1">📶 {network}</li>}
-          <li className="rounded-full bg-secondary px-2.5 py-1">⚡ Aktif otomatis</li>
-          <li className="rounded-full bg-secondary px-2.5 py-1">🔁 Tanpa ganti SIM</li>
-        </ul>
+      <header className="grid h-11 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center">
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="Kembali"
+          className="tap -ml-2 flex size-11 items-center justify-center rounded-full text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ChevronLeft className="size-7" strokeWidth={2.2} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          aria-haspopup="dialog"
+          aria-label={`Negara tujuan: ${destination.nameId}. Ganti negara`}
+          className="tap mx-auto inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border/70 bg-surface px-4 text-[15px] font-semibold shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span aria-hidden="true">{destination.flag}</span>
+          {destination.nameId}
+          <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+        </button>
+        <span />
+      </header>
+      <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
+        <SheetContent
+          side="bottom"
+          className="mx-auto max-h-[78dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] border-border/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-6"
+        >
+          <SheetHeader className="mb-3 pr-10 text-left">
+            <SheetTitle>Pilih negara tujuan</SheetTitle>
+            <SheetDescription>Paket eSIM menyesuaikan negara yang kamu pilih.</SheetDescription>
+          </SheetHeader>
+          <nav aria-label="Ganti negara tujuan" className="grid grid-cols-2 gap-2">
+            {switcher.map((item) => {
+              const active = item.code === destination.code;
+              return (
+                <Link
+                  key={item.code}
+                  to="/destination/$code"
+                  params={{ code: item.code }}
+                  search={{ availability: "all" }}
+                  onClick={() => setPickerOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={`tap flex min-h-12 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    active
+                      ? "border-brand-red bg-brand-red/10 text-brand-red"
+                      : "border-border/70 bg-surface"
+                  }`}
+                >
+                  <span className="text-xl" aria-hidden="true">
+                    {item.flag}
+                  </span>
+                  <span className="truncate">{item.nameId}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </SheetContent>
+      </Sheet>
+      <section className="mt-3 px-0.5">
+        <span className="block text-[64px] leading-none" aria-hidden="true">
+          {destination.flag}
+        </span>
+        <h1 className="mt-4 text-[34px] font-extrabold leading-tight tracking-tight">
+          eSIM {destination.nameId}
+        </h1>
+        <p className="mt-1 text-[15px] text-muted-foreground">
+          {[network, "Aktif otomatis", isRegionalDestination ? "Regional" : null]
+            .filter(Boolean)
+            .join(" · ")}
+          {fromPrice && (
+            <>
+              {" "}
+              · Mulai <span className="font-semibold text-foreground">{fromPrice}</span>
+            </>
+          )}
+        </p>
       </section>
       {stockPending && (
         <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground" role="status">
