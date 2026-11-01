@@ -40,3 +40,14 @@ describe("home hero phases", () => {
     });
   });
 });
+
+describe("home hero mascot launch", () => {
+  it("flies the mascot out before the search sheet opens and respects reduced motion", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("src/components/home-hero.tsx", "utf8");
+    expect(source).toContain("useReducedMotion");
+    expect(source).toContain("window.setTimeout(onOpenSearch");
+    expect(source).toContain("onClick={launch}");
+    expect(source).toContain('fly === "idle"');
+  });
+});

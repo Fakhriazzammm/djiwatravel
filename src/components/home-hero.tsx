@@ -1,5 +1,7 @@
 import { Search } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { FixedLayer } from "@/components/motion-primitives";
 import logo from "@/assets/logo.png";
 import {
   HERO_MASCOT,
@@ -40,6 +42,43 @@ export function HomeHero({
     const timer = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(timer);
   }, []);
+
+  // Mascot launch: tapping search sends the mascot flying out of the screen toward the customer,
+  // the search sheet rises from below as it leaves, and the mascot pops back when the sheet closes.
+  const reduceMotion = useReducedMotion();
+  const mascotRef = useRef<HTMLImageElement>(null);
+  const [fly, setFly] = useState<"idle" | "launch" | "away">("idle");
+  const [flight, setFlight] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    dx: number;
+    dy: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!searchOpen && fly === "away") setFly("idle");
+  }, [searchOpen, fly]);
+  const launch = () => {
+    const el = mascotRef.current;
+    if (reduceMotion || !el || fly !== "idle") {
+      onOpenSearch();
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    setFlight({
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      dx: window.innerWidth / 2 - (rect.left + rect.width / 2),
+      dy: window.innerHeight * 0.42 - (rect.top + rect.height / 2),
+    });
+    setFly("launch");
+    window.setTimeout(onOpenSearch, 380);
+    window.setTimeout(() => {
+      setFlight(null);
+      setFly("away");
+    }, 760);
+  };
 
   const phase: HeroPhase = now
     ? resolveHeroPhase(mode, now)
@@ -113,7 +152,7 @@ export function HomeHero({
 
       <button
         type="button"
-        onClick={onOpenSearch}
+        onClick={launch}
         aria-haspopup="dialog"
         aria-expanded={searchOpen}
         className={`tap relative z-10 mt-4 flex h-[3.25rem] w-full items-center gap-3 rounded-full border px-5 text-left text-[17px] shadow-[0_8px_24px_rgb(40_30_90/0.16)] backdrop-blur-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
@@ -126,13 +165,48 @@ export function HomeHero({
         <span className="min-w-0 flex-1 truncate">{searchHint}</span>
       </button>
 
-      <img
-        src={HERO_MASCOT}
-        alt=""
-        width={84}
-        height={84}
-        className="animate-mascot-bob pointer-events-none absolute bottom-[3.75rem] right-3 z-20 w-[84px] drop-shadow-[0_8px_10px_rgb(0_0_0/0.25)]"
-      />
+      <span className="animate-mascot-bob pointer-events-none absolute bottom-[3.6rem] right-3 z-20 block w-[96px]">
+        <motion.img
+          ref={mascotRef}
+          src={HERO_MASCOT}
+          alt=""
+          width={96}
+          height={68}
+          animate={{ opacity: fly === "idle" ? 1 : 0, scale: fly === "idle" ? 1 : 0.4 }}
+          transition={
+            fly === "idle"
+              ? { type: "spring", stiffness: 320, damping: 16 }
+              : { duration: 0 }
+          }
+          className="block w-full drop-shadow-[0_6px_8px_rgb(0_0_0/0.18)]"
+        />
+      </span>
+      {flight && (
+        <FixedLayer>
+          <motion.img
+            src={HERO_MASCOT}
+            alt=""
+            aria-hidden="true"
+            initial={{ x: 0, y: 0, scale: 1, rotate: 0, opacity: 1, filter: "blur(0px)" }}
+            animate={{
+              x: [0, 0, flight.dx],
+              y: [0, 6, flight.dy],
+              scale: [1, 0.86, 9],
+              rotate: [0, 4, -10],
+              opacity: [1, 1, 1, 0],
+              filter: ["blur(0px)", "blur(0px)", "blur(5px)"],
+            }}
+            transition={{
+              duration: 0.76,
+              times: [0, 0.2, 1],
+              ease: ["easeOut", "easeIn"],
+              opacity: { duration: 0.76, times: [0, 0.2, 0.72, 1] },
+            }}
+            style={{ left: flight.left, top: flight.top, width: flight.width }}
+            className="pointer-events-none fixed z-[60] drop-shadow-[0_10px_14px_rgb(0_0_0/0.2)]"
+          />
+        </FixedLayer>
+      )}
     </header>
   );
 }
