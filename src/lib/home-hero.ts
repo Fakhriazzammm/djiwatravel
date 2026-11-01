@@ -27,8 +27,11 @@ const GREETING: Record<HeroPhase, string> = {
   "tengah-malam": "Masih terjaga",
 };
 
-/** Phases whose sky is dark enough to need light text. */
-const DARK: ReadonlySet<HeroPhase> = new Set(["subuh", "malam", "tengah-malam"]);
+/**
+ * Phases whose upper-left sky (where the clock, greeting and title sit) is deep enough for white
+ * text. Only the pale morning sky uses dark ink. Each illustration keeps that corner calm.
+ */
+const DARK: ReadonlySet<HeroPhase> = new Set(["subuh", "siang", "sore", "malam", "tengah-malam"]);
 
 /** [first minute of the day, phase], ascending. */
 const STARTS: ReadonlyArray<readonly [number, HeroPhase]> = [
@@ -62,7 +65,7 @@ export function heroGreeting(phase: HeroPhase, firstName?: string | null): strin
 }
 
 export function heroSkyImage(phase: HeroPhase): string {
-  return `/assets/home-hero/sky-${phase}-v1.jpg`;
+  return `/assets/home-hero/sky-${phase}-v2.jpg`;
 }
 
 export const HERO_MASCOT = "/assets/home-hero/mascot-v1.png";

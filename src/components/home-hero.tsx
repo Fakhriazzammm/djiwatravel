@@ -54,7 +54,7 @@ export function HomeHero({
       data-testid="home-hero"
       data-phase={phase}
       className={`relative -mx-4 -mt-[env(safe-area-inset-top)] overflow-hidden px-5 pb-28 pt-[calc(1rem+env(safe-area-inset-top))] transition-colors duration-700 ${
-        dark ? "text-white" : "text-foreground"
+        dark ? "text-white [text-shadow:0_1px_10px_rgb(8_12_40/0.45)]" : "text-foreground"
       }`}
     >
       <div aria-hidden="true" className="absolute inset-0 bg-[#c9b6f0]">
@@ -66,9 +66,16 @@ export function HomeHero({
           height={800}
           fetchPriority="high"
           decoding="async"
-          className="animate-hero-sky-in absolute inset-0 size-full object-cover object-[50%_70%]"
+          className="animate-hero-sky-in absolute inset-0 size-full object-cover object-[50%_55%]"
         />
       </div>
+      {/* Soft left-to-right scrim keeps the text corner readable on any sky. */}
+      <span
+        aria-hidden="true"
+        className={`absolute inset-0 z-[1] bg-gradient-to-r ${
+          dark ? "from-[#0b1030]/35 via-[#0b1030]/10" : "from-white/30 via-white/5"
+        } to-transparent`}
+      />
       <span
         aria-hidden="true"
         className="absolute inset-x-0 bottom-0 z-[1] h-20 bg-gradient-to-b from-transparent to-background"
