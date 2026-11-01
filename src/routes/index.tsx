@@ -384,7 +384,7 @@ function Home() {
                   to="/destination/$code"
                   params={{ code: d.code.toLowerCase() }}
                   aria-label={`eSIM ${d.nameId}: lihat paket`}
-                  className="tap relative h-[20rem] w-[76%] max-w-[17rem] shrink-0 snap-center overflow-hidden rounded-[28px] bg-secondary shadow-[0_18px_30px_-16px_rgb(0_0_0/0.5)]"
+                  className="tap relative h-[20rem] w-[76%] max-w-[17rem] shrink-0 snap-center overflow-hidden rounded-[28px] bg-secondary"
                 >
                   {photo ? (
                     <img
@@ -405,7 +405,7 @@ function Home() {
                   )}
                   <span
                     aria-hidden="true"
-                    className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/25"
+                    className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent via-45% to-transparent"
                   />
                   <span className="absolute left-5 top-[1.125rem] text-[12px] font-bold tracking-[0.08em] text-white [text-shadow:0_1px_8px_rgb(0_0_0/0.5)]">
                     POPULER

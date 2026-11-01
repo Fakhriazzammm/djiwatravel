@@ -152,6 +152,11 @@
 html {
   scroll-behavior: smooth;
 }
+/* The Home hero sky is full-bleed (100vw); never let it add a horizontal scrollbar. */
+html,
+body {
+  overflow-x: clip;
+}
 
 /* Home "Susun trip" cards: deck shuffle, each card cycles back -> front. */
 @keyframes card-shuffle {
