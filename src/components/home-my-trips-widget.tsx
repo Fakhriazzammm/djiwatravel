@@ -22,7 +22,7 @@ const SECTIONS: { id: Section; label: string; icon: typeof Check; tone: string }
 
 type State = { status: "loading" } | { status: "ready"; home: ReturnType<typeof buildMyTripsHome> };
 
-const CARD = "ios-card mt-3 p-4";
+const CARD = "ios-card mt-2 p-4";
 
 /**
  * Home entry point for /my-trips. Signed-out users, users without a trip and load failures all
@@ -63,7 +63,7 @@ export function HomeMyTripsWidget({ signedIn }: { signedIn: boolean }) {
   if (view.kind === "empty") {
     return (
       <div data-testid="home-trips-widget" data-state="empty">
-        <div className="ios-card mt-3 flex items-center gap-3.5 bg-gradient-to-br from-white from-40% to-brand-red-soft py-3.5 pl-4 pr-3.5">
+        <div className="ios-card mt-2 flex items-center gap-3.5 bg-gradient-to-br from-white from-40% to-brand-red-soft py-3.5 pl-4 pr-3.5">
           <span className="relative h-[76px] w-[76px] shrink-0" aria-hidden="true">
             <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] -rotate-[10deg] place-items-center rounded-[14px] bg-gradient-to-b from-[#7fb8ff] to-[#0a84ff] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
               <CalendarRange className="size-[22px]" strokeWidth={2} />
@@ -91,7 +91,7 @@ export function HomeMyTripsWidget({ signedIn }: { signedIn: boolean }) {
             Mulai
           </Link>
         </div>
-        <p className="mt-3 flex items-center justify-center gap-2 text-[12px] text-muted-foreground">
+        <p className="mt-2 flex items-center justify-center gap-2 text-[12px] text-muted-foreground">
           <span>Pilih destinasi</span>
           <span className="size-[3px] rounded-full bg-[#C4C4C7]" aria-hidden="true" />
           <span>Atur tanggal</span>

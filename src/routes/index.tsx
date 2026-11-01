@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Search, ChevronRight, X } from "lucide-react";
+import { Bell, Search, ChevronRight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, Wordmark, SectionTitle } from "@/components/shell";
 import { Reveal, Stagger } from "@/components/motion-primitives";
@@ -18,6 +18,7 @@ import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 import { useReducedMotion } from "motion/react";
 import { EsimDestinationSheet, type SheetDestination } from "@/components/esim-destination-sheet";
 import { trackAnalytics } from "@/lib/analytics";
+import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
 import { activeHomePromo, orderHomeDestinations } from "@/lib/home-esim-config";
 
@@ -71,6 +72,7 @@ function Home() {
   const homeConfig = useHomeEsimConfig();
   const [sheetDestination, setSheetDestination] = useState<SheetDestination | null>(null);
   const { user, loading } = useBetterAuthUser();
+  const unread = useUnreadNotifications(Boolean(user));
   useEffect(() => setHello(greeting()), []);
   useEffect(() => {
     if (reduceMotion || query) {
@@ -147,23 +149,41 @@ function Home() {
             className="h-10 w-24 animate-pulse rounded-full bg-secondary motion-reduce:animate-none"
           />
         ) : user ? (
-          <Link
-            to="/profile"
-            search={{
-              admin: undefined,
-              returnTo: undefined,
-              calendar: undefined,
-              calendarSync: undefined,
-            }}
-            aria-label="Buka profil akun"
-            data-testid="header-account"
-            className="tap flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-[16px] font-semibold text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)]"
-          >
-            <span aria-hidden="true">
-              {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
-            </span>
-            <span className="sr-only">{accountLabel}</span>
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <Link
+              to="/notifications"
+              data-testid="header-notifications"
+              aria-label={unread > 0 ? `Notifikasi, ${unread} belum dibaca` : "Notifikasi"}
+              className="tap relative flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Bell className="size-5" strokeWidth={1.9} aria-hidden="true" />
+              {unread > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[11px] font-bold leading-none text-white ring-2 ring-background"
+                >
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </Link>
+            <Link
+              to="/profile"
+              search={{
+                admin: undefined,
+                returnTo: undefined,
+                calendar: undefined,
+                calendarSync: undefined,
+              }}
+              aria-label="Buka profil akun"
+              data-testid="header-account"
+              className="tap flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-[16px] font-semibold text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)]"
+            >
+              <span aria-hidden="true">
+                {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
+              </span>
+              <span className="sr-only">{accountLabel}</span>
+            </Link>
+          </div>
         ) : (
           <CustomerAuth size="compact" />
         )}
@@ -273,7 +293,7 @@ function Home() {
         </div>
       )}
 
-      <Reveal as="section" className="mt-6">
+      <Reveal as="section" className="mt-5">
         <EsimHomeSummaryCard
           orders={orders}
           onSearchPackages={() => setSearchOpen(true)}
@@ -318,7 +338,7 @@ function Home() {
         )}
       </Reveal>
       {homeConfig.myTripsWidgetEnabled && (
-        <Reveal as="section" className="mt-8" aria-labelledby="home-trips-title">
+        <Reveal as="section" className="mt-6" aria-labelledby="home-trips-title">
           <SectionTitle action={<Link to="/my-trips">Buka ›</Link>}>
             <span id="home-trips-title">Perjalananmu</span>
           </SectionTitle>
@@ -331,11 +351,11 @@ function Home() {
       />
 
       <Stagger className="block">
-        <Reveal as="section" className="mt-8">
+        <Reveal as="section" className="mt-6">
           <SectionTitle action={<Link to="/explore">Lihat Semua ›</Link>}>
             Destinasi Populer
           </SectionTitle>
-          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3.5 overflow-x-auto scroll-px-4 px-4 pb-5 pt-1">
+          <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-4 pt-0.5">
             {popular.map((d) => {
               const photo = destinationPhoto(d.code);
               return (
@@ -344,7 +364,7 @@ function Home() {
                   to="/destination/$code"
                   params={{ code: d.code.toLowerCase() }}
                   aria-label={`eSIM ${d.nameId}: lihat paket`}
-                  className="tap relative h-[22rem] w-[78%] max-w-[18.5rem] shrink-0 snap-center overflow-hidden rounded-[28px] bg-secondary shadow-[0_18px_30px_-16px_rgb(0_0_0/0.5)]"
+                  className="tap relative h-[20rem] w-[76%] max-w-[17rem] shrink-0 snap-center overflow-hidden rounded-[28px] bg-secondary shadow-[0_18px_30px_-16px_rgb(0_0_0/0.5)]"
                 >
                   {photo ? (
                     <img
@@ -388,7 +408,7 @@ function Home() {
           </div>
         </Reveal>
 
-        <Reveal as="section" className="mt-6" aria-labelledby="home-services-title">
+        <Reveal as="section" className="mt-1" aria-labelledby="home-services-title">
           <SectionTitle action={<Link to="/explore">Layanan ›</Link>}>
             <span id="home-services-title">Kebutuhan perjalanan</span>
           </SectionTitle>
@@ -397,7 +417,7 @@ function Home() {
           </div>
         </Reveal>
 
-        <Reveal as="section" className="mt-8" aria-labelledby="home-guides-title">
+        <Reveal as="section" className="mt-6" aria-labelledby="home-guides-title">
           <SectionTitle action={<Link to="/panduan">Lihat semua ›</Link>}>
             <span id="home-guides-title">Panduan Travel</span>
           </SectionTitle>
