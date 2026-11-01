@@ -69,13 +69,13 @@ const methods = [
   {
     id: "qris",
     label: "QRIS",
-    desc: "Pilihan kanal pembayaran tersedia di halaman Mayar.",
+    desc: "Bayar pakai GoPay, OVO, DANA, ShopeePay, LinkAja, atau m-banking.",
     icon: QrCode,
   },
   {
     id: "djiwa_pay",
     label: "Bayar langsung pakai saldo Djiwa Pay",
-    desc: "Recommended · Potong saldo Djiwa Pay kamu langsung.",
+    desc: "Recommended · Saldo Djiwa Pay langsung dipotong, tanpa pindah halaman.",
     icon: WalletCards,
   },
 ] as const;
@@ -332,6 +332,9 @@ function Checkout() {
           </button>
         ))}
       </div>
+      <p className="mt-2 px-1 text-xs text-muted-foreground">
+        Pembayaran kamu aman dan dilindungi ketentuan perlindungan konsumen di Indonesia.
+      </p>
       {method === "djiwa_pay" && walletAvailability !== "available" && (
         <div className="mt-3 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-3 text-sm">
           {walletAvailability === "sign_in" ? (
