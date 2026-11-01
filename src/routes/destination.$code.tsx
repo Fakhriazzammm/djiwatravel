@@ -166,6 +166,10 @@ export const Route = createFileRoute("/destination/$code")({
   component: Destination,
 });
 
+function shortData(pkg: ViewPackage) {
+  return packageDataLabel(pkg).replace(/ data$/, "");
+}
+
 function rupiah(value: number) {
   return `Rp${value.toLocaleString("id-ID")}`;
 }
@@ -198,6 +202,19 @@ export function isMultiCountry(pkg: Pick<ViewPackage, "locationCodes">): boolean
 
 /** Cards shown in the swipe deck for one trip length; evenly sampled so the range stays visible. */
 export const DECK_MAX = 6;
+
+/** One card per data+validity combination (the cheapest), so the deck shows real choices. */
+export function dedupeByOffer<
+  T extends Pick<ViewPackage, "volumeBytes" | "unlimited" | "durationDays">,
+>(sortedByPrice: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return sortedByPrice.filter((pkg) => {
+    const key = `${pkg.unlimited ? "u" : pkg.volumeBytes}:${pkg.durationDays}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 export function sampleDeck<T>(sortedByPrice: readonly T[], max = DECK_MAX): T[] {
   if (sortedByPrice.length <= max) return [...sortedByPrice];
@@ -404,15 +421,17 @@ function Destination() {
 
   const pickTag = new Map(picks.map((pick) => [pick.pkg.packageCode, pick.tag] as const));
   const deck = sampleDeck(
-    byAvailability
-      .filter(
-        (pkg) =>
-          pkg.sellable &&
-          quotaOk(pkg) &&
-          durationFilterOf(pkg.durationDays) === activeBucket &&
-          (isRegionalDestination || !isMultiCountry(pkg)),
-      )
-      .sort((a, b) => a.priceIdr - b.priceIdr || b.volumeBytes - a.volumeBytes),
+    dedupeByOffer(
+      byAvailability
+        .filter(
+          (pkg) =>
+            pkg.sellable &&
+            quotaOk(pkg) &&
+            durationFilterOf(pkg.durationDays) === activeBucket &&
+            (isRegionalDestination || !isMultiCountry(pkg)),
+        )
+        .sort((a, b) => a.priceIdr - b.priceIdr || b.volumeBytes - a.volumeBytes),
+    ),
   );
   const deckLabel = (pkg: ViewPackage, index: number) => {
     const tag = pickTag.get(pkg.packageCode);
@@ -426,6 +445,16 @@ function Destination() {
     deck.find((pkg) => pkg.packageCode === cardCode) ??
     deck.find((pkg) => pickTag.get(pkg.packageCode) === "best_seller") ??
     deck[Math.floor((deck.length - 1) / 2)];
+  const chosenCode = chosen?.packageCode;
+  const deckKey = deck.map((pkg) => pkg.packageCode).join("|");
+  useEffect(() => {
+    const el = chosenCode
+      ? deckRef.current?.querySelector<HTMLElement>(`[data-code="${CSS.escape(chosenCode)}"]`)
+      : null;
+    const box = deckRef.current;
+    if (el && box) box.scrollLeft = el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deckKey]);
   const chooseCard = (pkg: ViewPackage) => {
     setCardCode(pkg.packageCode);
     deckRef.current
@@ -462,20 +491,24 @@ function Destination() {
           );
         })}
       </nav>
-      <section className="relative mt-3 overflow-hidden rounded-[28px] bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_-12px_rgba(0,0,0,.12)] ring-1 ring-border/60">
+      <section className="relative mt-3 overflow-hidden rounded-[28px] bg-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_-12px_rgba(0,0,0,.12)] ring-1 ring-border/60">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-brand-red/10 blur-2xl"
         />
-        <span className="text-[56px] leading-none" aria-hidden="true">
-          {destination.flag}
-        </span>
-        <p className="mt-3 text-xs font-semibold text-brand-red">
-          eSIM · {isRegionalDestination ? "Cakupan regional" : "Cakupan negara"}
-        </p>
-        <h1 className="mt-0.5 text-[28px] font-bold leading-tight tracking-tight">
-          Paket eSIM untuk {destination.nameId}
-        </h1>
+        <div className="flex items-center gap-3">
+          <span className="text-[44px] leading-none" aria-hidden="true">
+            {destination.flag}
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-brand-red">
+              eSIM · {isRegionalDestination ? "Cakupan regional" : "Cakupan negara"}
+            </p>
+            <h1 className="text-[22px] font-bold leading-tight tracking-tight">
+              Paket eSIM untuk {destination.nameId}
+            </h1>
+          </div>
+        </div>
         {fromPrice && (
           <p className="mt-1 text-sm text-muted-foreground">
             Mulai <span className="font-semibold text-foreground">{fromPrice}</span>
@@ -528,25 +561,12 @@ function Destination() {
                 </button>
               ))}
             </div>
-            <div className="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
-              {(
-                [
-                  ["all", "Semua kuota"],
-                  ["total", "Kuota total"],
-                  ["daily", "Kuota harian"],
-                ] as const
-              ).map(([key, label]) => (
-                <Chip key={key} active={quota === key} onClick={() => setQuota(key)}>
-                  {label}
-                </Chip>
-              ))}
-            </div>
           </section>
           {deck.length > 0 && chosen && (
             <section className="mt-4" aria-label="Pilih paket">
               <div
                 ref={deckRef}
-                className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none]"
+                className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none]"
               >
                 {deck.map((pkg, index) => {
                   const on = pkg.packageCode === chosen.packageCode;
@@ -569,7 +589,7 @@ function Destination() {
                         {deckLabel(pkg, index)}
                       </span>
                       <span className="mt-1 block text-[30px] font-extrabold leading-none tracking-tight">
-                        {packageDataLabel(pkg)}
+                        {shortData(pkg)}
                       </span>
                       <span className={`text-xs ${on ? "text-white/80" : "text-muted-foreground"}`}>
                         {pkg.durationDays} hari · {isDailyQuota(pkg) ? "harian" : "total"}
@@ -601,11 +621,11 @@ function Destination() {
                 params={{ id: chosen.packageCode }}
                 className="tap mt-3 flex min-h-12 w-full items-center justify-center rounded-2xl bg-brand-red text-[15px] font-bold text-white transition hover:brightness-95 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
               >
-                Beli {packageDataLabel(chosen)} · {rupiah(chosen.priceIdr)}
+                Beli {shortData(chosen)} · {rupiah(chosen.priceIdr)}
               </Link>
             </section>
           )}
-          <div className="mt-5 flex items-center justify-between gap-3">
+          <div className="mt-6 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-[15px] font-bold">
                 {showAllDurations
@@ -640,6 +660,19 @@ function Destination() {
                 )}
               </select>
             </label>
+          </div>
+          <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4">
+            {(
+              [
+                ["all", "Semua kuota"],
+                ["total", "Kuota total"],
+                ["daily", "Kuota harian"],
+              ] as const
+            ).map(([key, label]) => (
+              <Chip key={key} active={quota === key} onClick={() => setQuota(key)}>
+                {label}
+              </Chip>
+            ))}
           </div>
           {live.length === 0 && soldOut.length === 0 ? (
             <div className="mt-3 rounded-xl bg-surface p-4 text-sm text-muted-foreground">
