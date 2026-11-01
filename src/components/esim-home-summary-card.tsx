@@ -261,7 +261,7 @@ function WalletCard({
       : expired
         ? "bg-secondary/70"
         : "bg-secondary/50 shadow-[inset_0_0_0_1px_rgba(60,60,67,0.08)]";
-  const actionClass = `tap ${FOCUS} relative z-20 mt-2 flex min-h-9 w-full items-center justify-center rounded-full px-3 text-[13px] font-bold ${
+  const actionClass = `tap ${FOCUS} relative z-20 mt-1.5 flex min-h-8 w-full items-center justify-center rounded-full px-3 text-[12px] font-bold ${
     card.action.primary
       ? "bg-brand-red text-white"
       : "bg-surface text-brand-red shadow-[inset_0_0_0_1px_rgba(60,60,67,0.16)]"
@@ -271,7 +271,7 @@ function WalletCard({
       data-testid="esim-wallet-card"
       data-kind={card.kind}
       aria-label={`eSIM ${card.location}`}
-      className={`relative w-[84%] shrink-0 snap-start rounded-2xl p-2.5 ${surface} ${
+      className={`relative w-[68%] max-w-[15rem] shrink-0 snap-start rounded-2xl p-2 ${surface} ${
         expired ? "text-muted-foreground" : ""
       }`}
     >
@@ -289,7 +289,7 @@ function WalletCard({
 
       <div className="flex items-center gap-2">
         <Flag flag={card.flag} muted={expired} />
-        <p className="min-w-0 flex-1 truncate text-[15px] font-bold tracking-[-0.02em] text-foreground">
+        <p className="min-w-0 flex-1 truncate text-[13.5px] font-bold tracking-[-0.02em] text-foreground">
           {card.location}
         </p>
         <EsimStatusBadge status={card.status} low={card.kind === "low"} />
@@ -307,9 +307,9 @@ function WalletCard({
         </div>
       ) : (
         <>
-          <p className="mt-1.5 text-[12px] leading-5 text-muted-foreground">
+          <p className="mt-1 text-[11.5px] leading-4 text-muted-foreground">
             <span
-              className={`text-[19px] font-extrabold tracking-[-0.03em] ${
+              className={`text-[16px] font-extrabold tracking-[-0.03em] ${
                 expired ? "text-muted-foreground" : "text-foreground"
               }`}
             >
