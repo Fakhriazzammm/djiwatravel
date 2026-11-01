@@ -68,10 +68,10 @@ export function HomeMyTripsWidget({ signedIn }: { signedIn: boolean }) {
             <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] animate-card-shuffle place-items-center rounded-[14px] bg-gradient-to-b from-[#7fb8ff] to-[#0a84ff] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
               <CalendarRange className="size-[22px]" strokeWidth={2} />
             </span>
-            <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] animate-card-shuffle [animation-delay:-3s] place-items-center rounded-[14px] bg-gradient-to-b from-[#ffd27a] to-[#ff9f0a] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
+            <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] animate-card-shuffle place-items-center rounded-[14px] bg-gradient-to-b from-[#ffd27a] to-[#ff9f0a] text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]" style={{ animationDelay: "-3s" }}>
               <Check className="size-[22px]" strokeWidth={2.6} />
             </span>
-            <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] animate-card-shuffle [animation-delay:-6s] place-items-center rounded-[14px] bg-gradient-to-b from-[#ff8a8a] to-brand-red text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]">
+            <span className="absolute left-0 top-2.5 grid h-[60px] w-[52px] animate-card-shuffle place-items-center rounded-[14px] bg-gradient-to-b from-[#ff8a8a] to-brand-red text-white shadow-[0_6px_12px_-6px_rgb(0_0_0/0.35)]" style={{ animationDelay: "-6s" }}>
               <Landmark className="size-[22px]" strokeWidth={2} />
             </span>
           </span>
