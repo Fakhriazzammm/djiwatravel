@@ -17,6 +17,7 @@ import { reportRuntimeError } from "../lib/error-reporting";
 import { PageTransition } from "../components/motion-primitives";
 import { NavProgress } from "../components/nav-progress";
 import { AppSplash } from "../components/app-splash";
+import { CookieConsent } from "@/components/cookie-consent";
 import { CustomerOnboardingGate } from "../components/customer-onboarding-gate";
 import { easeIos } from "../lib/motion";
 import { warmResellerCatalog } from "../lib/explore-warm";
@@ -128,6 +129,7 @@ function RootComponent() {
         <AnalyticsPageView />
         <AnimatedOutlet />
         <CustomerOnboardingGate />
+        <CookieConsent />
         <Toaster />
       </MotionConfig>
     </QueryClientProvider>

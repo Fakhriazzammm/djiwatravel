@@ -132,6 +132,23 @@ export function AdminHomeEsimPanel({
           lewat tautan langsung.
         </p>
 
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={draft.recentPurchasesEnabled}
+            onChange={(event) =>
+              setDraft({ ...draft, recentPurchasesEnabled: event.target.checked })
+            }
+            className="size-5 accent-primary"
+          />
+          Toast pembelian terbaru di Beranda
+        </label>
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Menampilkan pembelian nyata 72 jam terakhir dengan nama disamarkan (huruf pertama saja).
+          Jika belum ada pembelian, yang tampil adalah paket populer dari katalog, tanpa nama dan
+          waktu. Tidak ada data pembelian palsu.
+        </p>
+
         <div>
           <label htmlFor="home-hero-sky" className="text-sm font-semibold">
             Hero Beranda (langit)

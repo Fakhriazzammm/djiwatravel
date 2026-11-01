@@ -66,7 +66,7 @@ export function EsimQuickBuyPanel({
       data-testid="esim-quick-buy-panel"
       role="region"
       aria-label={`Paket eSIM ${destination.nameId}`}
-      className="mt-2 border-t border-border/60 pt-2"
+      className="mt-3 border-t border-border/60 pt-3"
     >
       {state.kind === "loading" && (
         <div aria-busy="true" aria-label="Memuat paket" className="flex gap-2">
@@ -126,7 +126,7 @@ export function EsimQuickBuyPanel({
                   role="radio"
                   aria-checked={checked}
                   onClick={() => setSelected(pick.pkg.packageCode)}
-                  className={`tap min-w-0 flex-1 rounded-2xl border-2 px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  className={`tap min-w-0 flex-1 rounded-2xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     checked
                       ? "border-brand-red bg-brand-red-soft/40"
                       : "border-border/60 bg-secondary/60"
@@ -137,17 +137,19 @@ export function EsimQuickBuyPanel({
                   >
                     {tag.label}
                   </span>
-                  <span className="mt-1 block text-[17px] font-extrabold leading-tight tracking-[-0.02em]">
+                  <span className="mt-1 block truncate text-[15px] font-extrabold leading-tight tracking-[-0.02em]">
                     {packageDataLabel(pick.pkg).replace(/ data$/, "")}
+                    <span className="text-[12px] font-medium text-muted-foreground">
+                      {" "}
+                      · {pick.pkg.durationDays} hari
+                    </span>
                   </span>
-                  <span className="block text-[12px] text-muted-foreground">
-                    {pick.pkg.durationDays} hari
-                  </span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {rupiah(Math.round(pricePerDay(pick.pkg)))}/hari
-                  </span>
-                  <span className="block text-[14px] font-extrabold tabular-nums">
+                  <span className="block text-[14px] font-extrabold tabular-nums leading-tight">
                     {rupiah(pick.pkg.priceIdr)}
+                    <span className="text-[10.5px] font-medium text-muted-foreground">
+                      {" "}
+                      {rupiah(Math.round(pricePerDay(pick.pkg)))}/hr
+                    </span>
                   </span>
                 </button>
               );

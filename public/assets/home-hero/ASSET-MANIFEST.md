@@ -5,7 +5,7 @@ Reviewed 2026-11-02. Surface: customer Home hero (`src/components/home-hero.tsx`
 | File | Source / generation | Surface |
 | --- | --- | --- |
 | `sky-{subuh,pagi,siang,sore,malam,tengah-malam}-v2.jpg` | Generated 2026-11-02 with Helipod AI Gateway, model `seedream-image-v5.0-flash`; prompt "anime sky painting only, painterly Makoto Shinkai style, calm empty gradient in the upper left, cloud masses right and bottom, no land/sea/trees/airplane/people/text"; resized to 800px JPEG q62. | Hero sky per time-of-day phase |
-| `mascot-v2.png` | Generated 2026-11-02, same model: "cute 3D clay red paper-airplane mascot with traveler hat, floating, no shadow/ground"; white background removed by edge flood-fill and cropped to the figure, 300px. v1 (with a ground shadow) was retired. | Mascot beside the search pill |
+| `mascot-v3.png` | Generated 2026-11-02, same model: classic coral-red origami paper-airplane mascot with a small face and navy traveler cap, no shadow/ground; white background removed by edge flood-fill and cropped, 320px. v1 (ground shadow) and v2 (blob shape) retired. | Mascot above the search pill |
 
 Text colour: only `pagi` uses dark ink; the other five skies are deep enough in the upper-left for white text (plus a left scrim and soft text shadow in `home-hero.tsx`).
 Licence: generated content under the Helipod AI Gateway terms for Djiwa Travel. Phases and Admin pin: `src/lib/home-hero.ts`.

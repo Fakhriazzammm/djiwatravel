@@ -32,6 +32,8 @@ export type HomeEsimConfig = {
   multiCountryEnabled: boolean;
   /** Home hero sky: `auto` follows the device clock; a phase name pins that sky for everyone. */
   heroSky: HeroSkyMode;
+  /** Shows the small "pembelian terbaru" toast above the tab bar on Home. Admin-controlled; defaults on. */
+  recentPurchasesEnabled: boolean;
   /** Destination codes pinned first in the Home rail; unknown codes are ignored. */
   destinationOrder: string[];
   lowQuotaPercent: number;
@@ -51,6 +53,7 @@ export const DEFAULT_HOME_ESIM_CONFIG: HomeEsimConfig = {
   myTripsWidgetEnabled: true,
   multiCountryEnabled: true,
   heroSky: "auto",
+  recentPurchasesEnabled: true,
   destinationOrder: [],
   lowQuotaPercent: DEFAULT_LOW_QUOTA_PERCENT,
   promo: { enabled: false, text: "" },
@@ -115,6 +118,7 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
     myTripsWidgetEnabled?: unknown;
     multiCountryEnabled?: unknown;
     heroSky?: unknown;
+    recentPurchasesEnabled?: unknown;
     destinationOrder?: unknown;
     lowQuotaPercent?: unknown;
     promo?: unknown;
@@ -129,6 +133,12 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
   }
   if (input.multiCountryEnabled !== undefined && typeof input.multiCountryEnabled !== "boolean") {
     throw new Error("multiCountryEnabled harus boolean");
+  }
+  if (
+    input.recentPurchasesEnabled !== undefined &&
+    typeof input.recentPurchasesEnabled !== "boolean"
+  ) {
+    throw new Error("recentPurchasesEnabled harus boolean");
   }
   // Records saved before the hero existed omit the field; treat that as `auto`.
   if (input.heroSky !== undefined && !isHeroSkyMode(input.heroSky)) {
@@ -186,6 +196,7 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
     myTripsWidgetEnabled: input.myTripsWidgetEnabled ?? true,
     multiCountryEnabled: input.multiCountryEnabled ?? true,
     heroSky: input.heroSky ?? "auto",
+    recentPurchasesEnabled: input.recentPurchasesEnabled ?? true,
     destinationOrder,
     lowQuotaPercent,
     promo: { enabled, text, destinationCode, startsAt, endsAt },

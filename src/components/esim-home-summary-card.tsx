@@ -134,7 +134,7 @@ function ChipArt() {
   };
 
   return (
-    <span ref={host} className="absolute right-3 top-2.5 size-11">
+    <span ref={host} className="absolute right-4 top-3.5 size-11">
       {pulse > 0 &&
         [0, 1].map((ring) => (
           <motion.span
@@ -509,11 +509,11 @@ export function EsimHomeSummaryCard({
     <article
       data-testid="esim-home-summary"
       data-state={cards.length === 0 ? "empty" : "has-esim"}
-      className={`${CARD_CLASS} relative p-3`}
+      className={`${CARD_CLASS} relative p-4`}
     >
       <p className="text-[12px] font-semibold text-muted-foreground">eSIM perjalanan</p>
       <ChipArt />
-      <h2 className="mt-0.5 pr-12 text-[17px] font-bold leading-tight tracking-[-0.025em] text-foreground">
+      <h2 className="mt-1 pr-14 text-[17px] font-bold leading-tight tracking-[-0.025em] text-foreground">
         Mau ke mana berikutnya?
       </h2>
       <p className="text-[12px] leading-4 text-muted-foreground">
@@ -525,7 +525,7 @@ export function EsimHomeSummaryCard({
           <div
             role="group"
             aria-label="Pilih tujuan"
-            className="-mx-3 mt-2 flex items-center gap-1.5 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="-mx-4 mt-3 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {destinations.map((destination, index) => {
               const selected = destination.code === openCode;
@@ -584,7 +584,7 @@ export function EsimHomeSummaryCard({
           )}
         </>
       ) : (
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-3 flex items-center gap-2">
           <button
             type="button"
             onClick={onSearchPackages}

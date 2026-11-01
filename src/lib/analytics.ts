@@ -1,3 +1,5 @@
+import { analyticsConsentGranted } from "./cookie-consent";
+
 export type AnalyticsEventName =
   | "page_view"
   | "destination_view"
@@ -147,6 +149,8 @@ export function trackAnalytics(
     trackHomeEsimEvent(name, properties);
     return;
   }
+  // Optional external analytics only after an explicit "Setuju" on the cookie notice.
+  if (!analyticsConsentGranted()) return;
   const endpoint = configuredEndpoint();
   const event = endpoint ? buildAnalyticsEvent(name, path, properties) : null;
   if (!endpoint || !event || !isBrowser()) return;

@@ -3,6 +3,7 @@ import { Bell, Search, ChevronRight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Page, SectionTitle } from "@/components/shell";
 import { HomeHero } from "@/components/home-hero";
+import { RecentPurchaseToast } from "@/components/recent-purchase-toast";
 import { FixedLayer, Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations, search } from "@/lib/catalog";
 import { getBundleGroups, getHomeDestinationFeed } from "@/lib/destination-availability.fn";
@@ -365,6 +366,7 @@ function Home() {
           <HomeMyTripsWidget signedIn={Boolean(user)} />
         </Reveal>
       )}
+      <RecentPurchaseToast paused={searchOpen || sheetDestination !== null} />
       <EsimDestinationSheet
         destination={sheetDestination}
         onClose={() => setSheetDestination(null)}

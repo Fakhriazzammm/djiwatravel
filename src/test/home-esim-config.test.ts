@@ -16,6 +16,7 @@ const valid: HomeEsimConfig = {
   multiCountryEnabled: true,
   myTripsWidgetEnabled: true,
   heroSky: "auto",
+  recentPurchasesEnabled: true,
   destinationOrder: ["KR", "JP"],
   lowQuotaPercent: 30,
   promo: { enabled: true, text: "Promo Jepang", destinationCode: "jp" },
@@ -164,5 +165,14 @@ describe("home hero sky", () => {
     expect(parseHomeEsimConfig({ ...valid, heroSky: "malam" }).heroSky).toBe("malam");
     expect(() => parseHomeEsimConfig({ ...valid, heroSky: "senja" })).toThrow();
     expect(DEFAULT_HOME_ESIM_CONFIG.heroSky).toBe("auto");
+  });
+});
+
+describe("recent purchases toggle", () => {
+  it("defaults on, accepts false, and rejects non-booleans", () => {
+    const { recentPurchasesEnabled: _omit, ...legacy } = valid;
+    expect(parseHomeEsimConfig(legacy).recentPurchasesEnabled).toBe(true);
+    expect(parseHomeEsimConfig({ ...valid, recentPurchasesEnabled: false }).recentPurchasesEnabled).toBe(false);
+    expect(() => parseHomeEsimConfig({ ...valid, recentPurchasesEnabled: "no" })).toThrow();
   });
 });
