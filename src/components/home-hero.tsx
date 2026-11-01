@@ -172,10 +172,10 @@ export function HomeHero({
         <p className="mt-2.5 text-[16px] font-medium opacity-90">
           {heroGreeting(phase, firstName)}
         </p>
-        <div className="mt-0.5 flex items-end justify-between gap-2">
-          <h1 className="large-title-xl min-w-0 text-balance">Mau pergi ke mana?</h1>
+        <div className="relative mt-0.5">
+          <h1 className="large-title-xl pr-24 text-balance">Mau pergi ke mana?</h1>
           {/* Mascot sits above the search pill, on the right, clear of the eSIM card below. */}
-          <span className="animate-mascot-bob pointer-events-none z-20 mb-1 block w-[88px] shrink-0">
+          <span className="animate-mascot-bob pointer-events-none absolute bottom-0 right-0 z-20 block w-[88px]">
             <motion.img
               ref={mascotRef}
               initial={false}
