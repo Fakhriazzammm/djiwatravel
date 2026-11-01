@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Bell, Check, ExternalLink, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Page } from "@/components/shell";
@@ -214,12 +214,6 @@ function Notifications() {
           </article>
         ))}
       </div>
-      <Link
-        to="/"
-        className="mt-8 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2"
-      >
-        Kembali ke beranda
-      </Link>
     </Page>
   );
 }
