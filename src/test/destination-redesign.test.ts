@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { durationFilterOf, isDailyQuota, isMultiCountry } from "@/routes/destination.$code";
+import {
+  durationFilterOf,
+  isDailyQuota,
+  isMultiCountry,
+  sampleDeck,
+} from "@/routes/destination.$code";
 import { pickFastPackages } from "@/lib/home-quick-packages";
 import type { ViewPackage } from "@/lib/package-view";
 
@@ -27,11 +32,26 @@ describe("destination redesign helpers", () => {
     expect(isMultiCountry({ locationCodes: ["JP", "KR"] })).toBe(true);
   });
   it("adds a cheapest pick distinct from Terlaris/Best Deal, sorted by price", () => {
-    const picks = pickFastPackages([p("a", 3, 50), p("b", 12, 200), p("c", 30, 300), p("d", 7, 10, false)]);
+    const picks = pickFastPackages([
+      p("a", 3, 50),
+      p("b", 12, 200),
+      p("c", 30, 300),
+      p("d", 7, 10, false),
+    ]);
     const codes = picks.map((x) => x.pkg.packageCode);
     expect(new Set(codes).size).toBe(codes.length);
     expect(picks.some((x) => x.tag === "cheapest")).toBe(true);
     expect(codes).not.toContain("d");
-    expect(picks.map((x) => x.pkg.priceIdr)).toEqual([...picks.map((x) => x.pkg.priceIdr)].sort((a, b) => a - b));
+    expect(picks.map((x) => x.pkg.priceIdr)).toEqual(
+      [...picks.map((x) => x.pkg.priceIdr)].sort((a, b) => a - b),
+    );
+  });
+  it("samples a long deck evenly, keeping cheapest and priciest", () => {
+    const list = Array.from({ length: 20 }, (_, i) => i);
+    const deck = sampleDeck(list, 6);
+    expect(deck).toHaveLength(6);
+    expect(deck[0]).toBe(0);
+    expect(deck[5]).toBe(19);
+    expect(sampleDeck([1, 2], 6)).toEqual([1, 2]);
   });
 });

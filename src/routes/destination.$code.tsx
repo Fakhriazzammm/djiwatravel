@@ -10,7 +10,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { getDestinationPage } from "@/lib/destination-packages.fn";
-import type { FastPickTag } from "@/lib/home-quick-packages";
 import { destinationOgImage } from "@/lib/destination-artwork";
 import type { ViewPackage } from "@/lib/package-view";
 import { pricePerDay } from "@/lib/package-picker";
@@ -173,11 +172,11 @@ function rupiah(value: number) {
 
 /** Trip-length chips on the page; a package falls in the first bucket whose `max` covers it. */
 export const DURATION_FILTERS = [
-  { id: "short", label: "≤ 3 hari", max: 3 },
-  { id: "week", label: "4–7 hari", max: 7 },
-  { id: "twoweeks", label: "8–15 hari", max: 15 },
-  { id: "month", label: "16–30 hari", max: 30 },
-  { id: "long", label: "30+ hari", max: Number.POSITIVE_INFINITY },
+  { id: "short", label: "≤ 3 hari", short: "≤3 hr", max: 3 },
+  { id: "week", label: "4–7 hari", short: "4–7 hr", max: 7 },
+  { id: "twoweeks", label: "8–15 hari", short: "8–15 hr", max: 15 },
+  { id: "month", label: "16–30 hari", short: "16–30 hr", max: 30 },
+  { id: "long", label: "30+ hari", short: "30+ hr", max: Number.POSITIVE_INFINITY },
 ] as const;
 export type DurationFilterId = (typeof DURATION_FILTERS)[number]["id"];
 
@@ -197,11 +196,19 @@ export function isMultiCountry(pkg: Pick<ViewPackage, "locationCodes">): boolean
   return pkg.locationCodes.length > 1;
 }
 
-const PICK_LABEL: Record<FastPickTag, string> = {
-  cheapest: "Hemat",
-  best_seller: "🔥 Terlaris",
-  best_deal: "Best Deal",
-};
+/** Cards shown in the swipe deck for one trip length; evenly sampled so the range stays visible. */
+export const DECK_MAX = 6;
+
+export function sampleDeck<T>(sortedByPrice: readonly T[], max = DECK_MAX): T[] {
+  if (sortedByPrice.length <= max) return [...sortedByPrice];
+  const last = sortedByPrice.length - 1;
+  const out: T[] = [];
+  for (let i = 0; i < max; i += 1) {
+    const item = sortedByPrice[Math.round((i * last) / (max - 1))]!;
+    if (!out.includes(item)) out.push(item);
+  }
+  return out;
+}
 
 function PackageRow({
   pkg,
@@ -235,7 +242,11 @@ function PackageRow({
           <span className="font-medium text-muted-foreground"> · {pkg.durationDays} hari</span>
         </p>
         <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
-          {showCoverage ? packageCoverageLabel(pkg) : isDailyQuota(pkg) ? "Kuota harian" : "Kuota total"}
+          {showCoverage
+            ? packageCoverageLabel(pkg)
+            : isDailyQuota(pkg)
+              ? "Kuota harian"
+              : "Kuota total"}
         </p>
       </div>
       <div className="shrink-0 text-right">
@@ -296,7 +307,10 @@ function Destination() {
     Route.useLoaderData();
   const { availability } = Route.useSearch();
   const [sort, setSort] = useState<SortKey>("price");
-  const [duration, setDuration] = useState<DurationFilterId | "all">("all");
+  const [duration, setDuration] = useState<DurationFilterId | null>(null);
+  const [showAllDurations, setShowAllDurations] = useState(false);
+  const [cardCode, setCardCode] = useState<string | null>(null);
+  const deckRef = useRef<HTMLDivElement | null>(null);
   const [quota, setQuota] = useState<QuotaFilter>("all");
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [visible, setVisible] = useState(PAGE_SIZE);
@@ -308,7 +322,9 @@ function Destination() {
     setSelectedCodes([]);
     setComparisonOpen(false);
     setVisible(PAGE_SIZE);
-    setDuration("all");
+    setDuration(null);
+    setShowAllDurations(false);
+    setCardCode(null);
     setQuota("all");
     activeChip.current?.scrollIntoView({ inline: "center", block: "nearest" });
   }, [destination.code]);
@@ -317,9 +333,8 @@ function Destination() {
     () => filterPackagesByAvailability(packages, availability, stockPending),
     [packages, availability, stockPending],
   );
-  const matchesFilters = (pkg: ViewPackage) =>
-    (duration === "all" || durationFilterOf(pkg.durationDays) === duration) &&
-    (quota === "all" || (quota === "daily") === isDailyQuota(pkg));
+  const quotaOk = (pkg: ViewPackage) =>
+    quota === "all" || (quota === "daily") === isDailyQuota(pkg);
   const durationCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const pkg of byAvailability) {
@@ -328,13 +343,24 @@ function Destination() {
     }
     return counts;
   }, [byAvailability]);
+  const availableBuckets = DURATION_FILTERS.filter((f) => durationCounts.has(f.id));
+  const seller = picks.find((pick) => pick.tag === "best_seller") ?? picks[0];
+  const preferred = seller ? durationFilterOf(seller.pkg.durationDays) : availableBuckets[0]?.id;
+  const activeBucket: DurationFilterId | undefined =
+    duration && durationCounts.has(duration)
+      ? duration
+      : preferred && durationCounts.has(preferred)
+        ? preferred
+        : availableBuckets[0]?.id;
+  const matchesFilters = (pkg: ViewPackage) =>
+    quotaOk(pkg) && (showAllDurations || durationFilterOf(pkg.durationDays) === activeBucket);
 
   const filtered = byAvailability.filter(matchesFilters);
   const ordered = useMemo(() => {
     const list = sortPackages(filtered, sort);
     return list.sort((a, b) => a.durationDays - b.durationDays);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [byAvailability, duration, quota, sort]);
+  }, [byAvailability, activeBucket, showAllDurations, quota, sort]);
   const countryList = ordered.filter((pkg) => isRegionalDestination || !isMultiCountry(pkg));
   const regionalList = isRegionalDestination ? [] : ordered.filter(isMultiCountry);
   const live = countryList.filter((pkg) => pkg.sellable || stockPending);
@@ -370,14 +396,50 @@ function Destination() {
     selectDisabled: selectedCodes.length >= 3 && !selectedCodes.includes(pkg.packageCode),
     onToggle: () => toggleComparison(pkg),
   });
-  const cheapest = packages.filter((pkg) => pkg.sellable).sort((a, b) => a.priceIdr - b.priceIdr)[0];
+  const cheapest = packages
+    .filter((pkg) => pkg.sellable)
+    .sort((a, b) => a.priceIdr - b.priceIdr)[0];
   const fromPrice = cheapest ? rupiah(cheapest.priceIdr) : null;
-  const filtersActive = duration !== "all" || quota !== "all";
+  const filtersActive = quota !== "all" || showAllDurations;
+
+  const pickTag = new Map(picks.map((pick) => [pick.pkg.packageCode, pick.tag] as const));
+  const deck = sampleDeck(
+    byAvailability
+      .filter(
+        (pkg) =>
+          pkg.sellable &&
+          quotaOk(pkg) &&
+          durationFilterOf(pkg.durationDays) === activeBucket &&
+          (isRegionalDestination || !isMultiCountry(pkg)),
+      )
+      .sort((a, b) => a.priceIdr - b.priceIdr || b.volumeBytes - a.volumeBytes),
+  );
+  const deckLabel = (pkg: ViewPackage, index: number) => {
+    const tag = pickTag.get(pkg.packageCode);
+    if (tag === "best_seller") return "🔥 Terlaris";
+    if (tag === "best_deal") return "Best Deal";
+    if (index === 0) return "Hemat";
+    if (index === deck.length - 1 && deck.length > 2) return "Puas";
+    return "Pilihan";
+  };
+  const chosen =
+    deck.find((pkg) => pkg.packageCode === cardCode) ??
+    deck.find((pkg) => pickTag.get(pkg.packageCode) === "best_seller") ??
+    deck[Math.floor((deck.length - 1) / 2)];
+  const chooseCard = (pkg: ViewPackage) => {
+    setCardCode(pkg.packageCode);
+    deckRef.current
+      ?.querySelector<HTMLElement>(`[data-code="${CSS.escape(pkg.packageCode)}"]`)
+      ?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  };
 
   return (
     <Page>
       <BackBar title={`${destination.flag} ${destination.nameId}`} fallbackTo="/esim/finder" />
-      <nav aria-label="Ganti negara tujuan" className="-mx-4 mt-1 flex gap-2 overflow-x-auto px-4 pb-1">
+      <nav
+        aria-label="Ganti negara tujuan"
+        className="-mx-4 mt-1 flex gap-2 overflow-x-auto px-4 pb-1"
+      >
         {switcher.map((item) => {
           const active = item.code === destination.code;
           return (
@@ -400,18 +462,29 @@ function Destination() {
           );
         })}
       </nav>
-      <section className="mt-3 rounded-[22px] bg-gradient-to-br from-[#c8102e] to-[#8f0a20] p-4 text-white">
-        <p className="text-xs font-medium opacity-85">
+      <section className="relative mt-3 overflow-hidden rounded-[28px] bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_-12px_rgba(0,0,0,.12)] ring-1 ring-border/60">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-brand-red/10 blur-2xl"
+        />
+        <span className="text-[56px] leading-none" aria-hidden="true">
+          {destination.flag}
+        </span>
+        <p className="mt-3 text-xs font-semibold text-brand-red">
           eSIM · {isRegionalDestination ? "Cakupan regional" : "Cakupan negara"}
         </p>
-        <h1 className="mt-1 text-[24px] font-bold leading-tight tracking-tight">
+        <h1 className="mt-0.5 text-[28px] font-bold leading-tight tracking-tight">
           Paket eSIM untuk {destination.nameId}
         </h1>
-        {fromPrice && <p className="mt-1 text-sm opacity-90">Mulai {fromPrice}</p>}
-        <ul className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-semibold">
-          {network && <li className="rounded-full bg-white/20 px-2.5 py-1">📶 {network}</li>}
-          <li className="rounded-full bg-white/20 px-2.5 py-1">⚡ Aktif otomatis</li>
-          <li className="rounded-full bg-white/20 px-2.5 py-1">🔁 Tanpa ganti SIM</li>
+        {fromPrice && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Mulai <span className="font-semibold text-foreground">{fromPrice}</span>
+          </p>
+        )}
+        <ul className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-semibold text-muted-foreground">
+          {network && <li className="rounded-full bg-secondary px-2.5 py-1">📶 {network}</li>}
+          <li className="rounded-full bg-secondary px-2.5 py-1">⚡ Aktif otomatis</li>
+          <li className="rounded-full bg-secondary px-2.5 py-1">🔁 Tanpa ganti SIM</li>
         </ul>
       </section>
       {stockPending && (
@@ -430,46 +503,29 @@ function Destination() {
         </p>
       ) : (
         <>
-          {picks.length > 0 && (
-            <section className="mt-5" aria-labelledby="fast-picks">
-              <h2 id="fast-picks" className="mb-2 text-[15px] font-bold">
-                Pilihan tercepat
-              </h2>
-              <div className="grid grid-cols-3 gap-2">
-                {picks.map((pick) => (
-                  <Link
-                    key={pick.pkg.packageCode}
-                    to="/checkout/$id"
-                    params={{ id: pick.pkg.packageCode }}
-                    className={`tap rounded-2xl border bg-surface p-2.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                      pick.tag === "best_seller" ? "border-brand-red" : "border-border/70"
-                    }`}
-                  >
-                    <span className="block text-[10px] font-bold uppercase tracking-wide text-brand-red">
-                      {PICK_LABEL[pick.tag]}
-                    </span>
-                    <span className="mt-1 block text-base font-extrabold">
-                      {packageDataLabel(pick.pkg)}
-                    </span>
-                    <span className="text-muted-foreground">{pick.pkg.durationDays} hari</span>
-                    <span className="mt-1.5 block font-bold">{rupiah(pick.pkg.priceIdr)}</span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
           <section className="mt-5" aria-labelledby="trip-length">
             <h2 id="trip-length" className="mb-2 text-[15px] font-bold">
               Berapa lama perjalananmu?
             </h2>
-            <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4">
-              <Chip active={duration === "all"} onClick={() => setDuration("all")}>
-                Semua
-              </Chip>
-              {DURATION_FILTERS.filter((f) => durationCounts.has(f.id)).map((f) => (
-                <Chip key={f.id} active={duration === f.id} onClick={() => setDuration(f.id)}>
-                  {f.label}
-                </Chip>
+            <div role="group" aria-label="Masa aktif" className="flex rounded-xl bg-secondary p-1">
+              {availableBuckets.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={activeBucket === f.id}
+                  onClick={() => {
+                    setDuration(f.id);
+                    setCardCode(null);
+                    setShowAllDurations(false);
+                  }}
+                  className={`tap min-h-9 flex-1 rounded-lg text-[13px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    activeBucket === f.id
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {f.short}
+                </button>
               ))}
             </div>
             <div className="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
@@ -486,8 +542,85 @@ function Destination() {
               ))}
             </div>
           </section>
+          {deck.length > 0 && chosen && (
+            <section className="mt-4" aria-label="Pilih paket">
+              <div
+                ref={deckRef}
+                className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none]"
+              >
+                {deck.map((pkg, index) => {
+                  const on = pkg.packageCode === chosen.packageCode;
+                  return (
+                    <button
+                      key={pkg.packageCode}
+                      type="button"
+                      data-code={pkg.packageCode}
+                      aria-pressed={on}
+                      onClick={() => chooseCard(pkg)}
+                      className={`tap w-[58%] max-w-[220px] shrink-0 snap-center rounded-[24px] p-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        on
+                          ? "scale-100 bg-gradient-to-br from-[#c8102e] to-[#8f0a20] text-white shadow-[0_12px_28px_-12px_rgba(200,16,46,.55)]"
+                          : "scale-[0.97] bg-surface shadow-[0_1px_2px_rgba(0,0,0,.05)] ring-1 ring-border/60"
+                      }`}
+                    >
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wide ${on ? "text-white/85" : "text-brand-red"}`}
+                      >
+                        {deckLabel(pkg, index)}
+                      </span>
+                      <span className="mt-1 block text-[30px] font-extrabold leading-none tracking-tight">
+                        {packageDataLabel(pkg)}
+                      </span>
+                      <span className={`text-xs ${on ? "text-white/80" : "text-muted-foreground"}`}>
+                        {pkg.durationDays} hari · {isDailyQuota(pkg) ? "harian" : "total"}
+                      </span>
+                      <span className="mt-4 block text-base font-bold">{rupiah(pkg.priceIdr)}</span>
+                      <span
+                        className={`text-[11px] ${on ? "text-white/80" : "text-muted-foreground"}`}
+                      >
+                        ≈ {rupiah(Math.round(pricePerDay(pkg)))}/hari
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex justify-center gap-1.5" aria-hidden="true">
+                {deck.map((pkg) => (
+                  <i
+                    key={pkg.packageCode}
+                    className={`h-1.5 rounded-full transition-all ${
+                      pkg.packageCode === chosen.packageCode
+                        ? "w-4 bg-brand-red"
+                        : "w-1.5 bg-border"
+                    }`}
+                  />
+                ))}
+              </div>
+              <Link
+                to="/checkout/$id"
+                params={{ id: chosen.packageCode }}
+                className="tap mt-3 flex min-h-12 w-full items-center justify-center rounded-2xl bg-brand-red text-[15px] font-bold text-white transition hover:brightness-95 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+              >
+                Beli {packageDataLabel(chosen)} · {rupiah(chosen.priceIdr)}
+              </Link>
+            </section>
+          )}
           <div className="mt-5 flex items-center justify-between gap-3">
-            <h2 className="text-[15px] font-bold">Semua paket · {live.length}</h2>
+            <div className="min-w-0">
+              <h2 className="text-[15px] font-bold">
+                {showAllDurations
+                  ? "Semua paket"
+                  : `Paket ${DURATION_FILTERS.find((f) => f.id === activeBucket)?.label ?? ""}`}{" "}
+                · {live.length}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowAllDurations((current) => !current)}
+                className="mt-0.5 text-xs font-semibold text-brand-red"
+              >
+                {showAllDurations ? "Hanya masa aktif terpilih" : "Tampilkan semua masa aktif"}
+              </button>
+            </div>
             <label className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <span className="sr-only">Urutkan</span>
               <select
@@ -521,7 +654,7 @@ function Destination() {
                 <button
                   type="button"
                   onClick={() => {
-                    setDuration("all");
+                    setShowAllDurations(false);
                     setQuota("all");
                     if (availability !== "all") setAvailability("all");
                   }}
