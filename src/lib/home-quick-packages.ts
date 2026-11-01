@@ -80,3 +80,25 @@ export function pickQuickPackages(
   }
   return picks;
 }
+
+/**
+ * Destination-page "Pilihan tercepat": the Home picks (Terlaris, Best Deal, honouring Admin pins)
+ * plus an automatic "Hemat" (cheapest sellable package that is not already a pick). Shown in
+ * ascending price order so the row reads left to right as "less to more".
+ */
+export type FastPickTag = QuickPackageTag | "cheapest";
+export type FastPick = { tag: FastPickTag; pkg: ViewPackage; pinned: boolean };
+
+export function pickFastPackages(
+  packages: readonly ViewPackage[],
+  sales: PackageSales = {},
+  pin: PackageHighlight = {},
+): FastPick[] {
+  const picks: FastPick[] = pickQuickPackages(packages, sales, pin);
+  const taken = new Set(picks.map((pick) => pick.pkg.packageCode));
+  const cheapest = sellable(packages)
+    .filter((pkg) => !taken.has(pkg.packageCode))
+    .sort((a, b) => a.priceIdr - b.priceIdr || b.volumeBytes - a.volumeBytes)[0];
+  if (cheapest) picks.push({ tag: "cheapest", pkg: cheapest, pinned: false });
+  return picks.sort((a, b) => a.pkg.priceIdr - b.pkg.priceIdr);
+}

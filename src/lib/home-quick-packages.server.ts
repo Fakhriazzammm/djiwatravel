@@ -6,7 +6,7 @@ import { pickQuickPackages, type PackageSales } from "./home-quick-packages";
 const SALES_WINDOW_DAYS = 90;
 
 /** Paid-order counts per package code. Failure degrades to "no sales" rather than blocking Home. */
-async function readPackageSales(codes: readonly string[]): Promise<PackageSales> {
+export async function readPackageSales(codes: readonly string[]): Promise<PackageSales> {
   if (codes.length === 0) return {};
   try {
     const result = await pool.query(

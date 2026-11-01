@@ -33,7 +33,8 @@ describe("shared eSIM modules (no duplicated flows)", () => {
   const read = (path: string) => readFileSync(path, "utf8");
 
   it("reads a destination's packages through one server function everywhere", () => {
-    expect(read("src/routes/destination.$code.tsx")).toContain("getDestinationPackages");
+    expect(read("src/routes/destination.$code.tsx")).toContain("getDestinationPage");
+    expect(read("src/lib/destination-page.server.ts")).toContain("getDestinationPackagesHandler");
     expect(read("src/components/esim-destination-sheet.tsx")).toContain("getDestinationPackages");
     expect(read("src/routes/destination.$code.tsx")).not.toContain("readSellability");
   });
