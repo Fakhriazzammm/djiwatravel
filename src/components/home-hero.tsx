@@ -168,6 +168,7 @@ export function HomeHero({
       <span className="animate-mascot-bob pointer-events-none absolute bottom-[3.6rem] right-3 z-20 block w-[96px]">
         <motion.img
           ref={mascotRef}
+          initial={false}
           src={HERO_MASCOT}
           alt=""
           width={96}
