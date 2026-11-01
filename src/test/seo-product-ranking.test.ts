@@ -95,7 +95,7 @@ describe("public product SEO contract", () => {
 
   it("includes public package pages in analytics allowlist", () => {
     const analytics = read("lib/analytics.ts");
-    expect(analytics).toContain('^\\/plan\\/[a-z0-9-]+\\/?$');
+    expect(analytics).toContain("^\\/plan\\/[a-z0-9-]+\\/?$");
   });
 
   it("keeps private trip pages out of search results", () => {
@@ -118,7 +118,8 @@ describe("public product SEO contract", () => {
   });
 
   it("records checkout starts against a public package URL without customer data", () => {
-    const checkout = read("routes/checkout.$id.tsx");
+    // The checkout form is shared by the page and the Home bottom sheet.
+    const checkout = read("components/checkout-form.tsx");
     expect(checkout).toContain('trackAnalytics("checkout_start", `/plan/${pkg.packageCode}`)');
     expect(checkout).not.toMatch(/trackAnalytics\([^\n]*(?:email|wa|whatsapp|order)/i);
   });

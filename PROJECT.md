@@ -131,6 +131,15 @@ import callable exports directly from `.server.ts`. Production import-protection
 violations fail the build instead of shipping mocks. Shared presentational logic belongs in
 `src/components/`, `src/hooks/`, and non-server `src/lib/` modules.
 
+Home quick-buy contract: `esim-home-summary-card.tsx` renders the card;
+`esim-home-wallet.ts` builds the eSIM rail; `home-quick-packages.ts` (pure rule),
+`.server.ts` (paid-order counts over 90 days + Admin pins from
+`admin_settings.homeEsim.packageHighlights`) and `.fn.ts` choose the Terlaris and
+Best Deal picks. Checkout is one `checkout-form.tsx` used by `/checkout/$id` and
+the Home bottom sheet (`esim-checkout-sheet.tsx`), both loading through
+`checkout-load.fn.ts`; pricing, sellability, member/profile and wallet rules are
+therefore identical. No migration: the pins live in the existing JSON setting.
+
 Tests are under [`src/test/`](src/test/), with server, route-auth, wallet,
 Calendar, profile, and UI coverage. `routeTree.gen.ts` and build output are
 generated artifacts. Do not hand-edit them to fix a route.

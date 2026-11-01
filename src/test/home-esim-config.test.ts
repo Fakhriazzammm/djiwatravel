@@ -17,6 +17,7 @@ const valid: HomeEsimConfig = {
   destinationOrder: ["KR", "JP"],
   lowQuotaPercent: 30,
   promo: { enabled: true, text: "Promo Jepang", destinationCode: "jp" },
+  packageHighlights: {},
 };
 
 describe("home eSIM config", () => {
@@ -34,6 +35,40 @@ describe("home eSIM config", () => {
     ).toBe(false);
     expect(() => parseHomeEsimConfig({ ...valid, myTripsWidgetEnabled: "no" })).toThrow();
     expect(DEFAULT_HOME_ESIM_CONFIG.myTripsWidgetEnabled).toBe(true);
+  });
+
+  it("accepts records saved before package highlights existed", () => {
+    const { packageHighlights: _omit, ...legacy } = valid;
+    expect(parseHomeEsimConfig(legacy).packageHighlights).toEqual({});
+    expect(DEFAULT_HOME_ESIM_CONFIG.packageHighlights).toEqual({});
+  });
+
+  it("normalizes package highlight pins and drops empty ones", () => {
+    const parsed = parseHomeEsimConfig({
+      ...valid,
+      packageHighlights: {
+        jp: { bestSellerPackageCode: " JP-3GB-15D ", bestDealPackageCode: "" },
+        KR: {},
+      },
+    });
+    expect(parsed.packageHighlights).toEqual({
+      JP: { bestSellerPackageCode: "JP-3GB-15D", bestDealPackageCode: undefined },
+    });
+  });
+
+  it.each([
+    [{ ...valid, packageHighlights: [] }],
+    [{ ...valid, packageHighlights: { "bad code!": { bestDealPackageCode: "A" } } }],
+    [{ ...valid, packageHighlights: { JP: { bestDealPackageCode: "<script>" } } }],
+    [
+      {
+        ...valid,
+        packageHighlights: { JP: { bestSellerPackageCode: "A", bestDealPackageCode: "A" } },
+      },
+    ],
+  ])("rejects an invalid package highlight record %#", (input) => {
+    expect(() => parseHomeEsimConfig(input)).toThrow();
+    expect(() => validateAdminSetting("homeEsim", input)).toThrow();
   });
 
   it.each([

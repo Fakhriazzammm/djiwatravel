@@ -299,8 +299,12 @@ function Home() {
           onSearchPackages={() => setSearchOpen(true)}
           destinations={railDestinations}
           onSelectDestination={(destination) => {
+            // Packages open inside the card; only the funnel events are recorded here.
             trackAnalytics("home_esim_chip_tap", "/", { destination: destination.code });
-            openSheet(destination, "rail");
+            trackAnalytics("home_esim_sheet_open", "/", {
+              destination: destination.code,
+              source: "rail",
+            });
           }}
           config={homeConfig}
         />

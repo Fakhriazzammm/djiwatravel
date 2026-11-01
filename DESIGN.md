@@ -88,6 +88,18 @@ integration; never present a Travel balance as the source of truth. QR/code or
 activation data is revealed only in an authorized order context and never in
 admin list summaries.
 
+### Home eSIM card
+
+One card, top to bottom: "Mau ke mana berikutnya?" with destination chips (always
+shown), then, only when the customer owns eSIMs, the swipeable "eSIM kamu" rail.
+Rail cards show a stand-alone flag (no tile behind it), remaining data, a linear
+progress bar, used data, and days left, ordered low quota → active → ready to
+install → in progress → expired. Tapping a chip opens two server-chosen
+packages (Terlaris, Best Deal) inside the card; "Beli sekarang" opens checkout
+as a bottom sheet. Never show more than these two picks there; the full catalogue
+stays on the destination page. Admin pins override each slot per destination
+(Admin → Settings → eSIM Beranda).
+
 ### Status, empty, loading, and error states
 
 Every async surface needs explicit loading, ready, empty, and error states.

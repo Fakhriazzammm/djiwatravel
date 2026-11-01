@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useState } from "react";
 import { AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
+import { AdminHomePackageHighlights } from "@/components/admin-home-package-highlights";
 import { EsimHomeSummaryCard } from "@/components/esim-home-summary-card";
 import { destinations as catalog } from "@/lib/catalog";
 import { saveHomeEsimConfig } from "@/lib/home-esim-config.fn";
@@ -104,7 +105,7 @@ export function AdminHomeEsimPanel({
             onChange={(event) => setDraft({ ...draft, quickBuyEnabled: event.target.checked })}
             className="size-5 accent-primary"
           />
-          Beli cepat (rel destinasi + sheet paket)
+          Beli cepat (rel destinasi + paket Terlaris/Best Deal di kartu)
         </label>
         <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
           <input
@@ -170,6 +171,12 @@ export function AdminHomeEsimPanel({
             Berlaku di Beranda, daftar eSIM, dan detail eSIM.
           </span>
         </label>
+
+        <AdminHomePackageHighlights
+          destinations={ordered}
+          draft={draft}
+          onChange={(packageHighlights) => setDraft({ ...draft, packageHighlights })}
+        />
 
         <fieldset className="space-y-2 rounded-xl border border-border p-3">
           <legend className="px-1 text-sm font-semibold">Banner promo</legend>
@@ -250,14 +257,16 @@ export function AdminHomeEsimPanel({
         </fieldset>
 
         <div>
-          <p className="mb-2 text-sm font-semibold">Pratinjau kartu pelanggan (belum punya eSIM)</p>
+          <p className="mb-2 text-sm font-semibold">
+            Pratinjau kartu pelanggan (belum punya eSIM; paket & checkout tidak dibuka di pratinjau)
+          </p>
           <div className="rounded-2xl bg-background p-3">
             <EsimHomeSummaryCard
               orders={[]}
               onSearchPackages={() => undefined}
               destinations={ordered}
-              onSelectDestination={() => undefined}
               config={draft}
+              readOnly
             />
             {activeHomePromo(draft, Date.now()) && (
               <p className="mt-2.5 rounded-2xl border border-border/60 bg-surface px-4 py-3 text-[13px] font-semibold">

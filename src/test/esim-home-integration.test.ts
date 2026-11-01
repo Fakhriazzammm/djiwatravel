@@ -50,7 +50,8 @@ describe("shared eSIM modules (no duplicated flows)", () => {
   it("renders the status chip, quota ring and stepper from shared components", () => {
     const card = read("src/components/esim-home-summary-card.tsx");
     expect(card).toContain("EsimStatusBadge");
-    expect(card).toContain("QuotaRing");
+    // The Home rail shows a linear progress bar (not the ring used on the eSIM list).
+    expect(card).toContain('role="progressbar"');
     expect(card).toContain("EsimActivationStepper");
     expect(card).not.toContain("function statusBadge");
     expect(read("src/components/travel-usage-card.tsx")).toContain("QuotaRing");
