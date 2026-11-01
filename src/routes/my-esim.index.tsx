@@ -2,7 +2,7 @@ import { OrderLoading } from "@/components/order-loading";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Globe2, Plus, ReceiptText, RefreshCw } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { QuotaRing } from "@/components/esim-quota-ring";
 import { EsimStatusBadge } from "@/components/esim-status-badge";
 import { Page, Wordmark, btnPrimary } from "@/components/shell";
@@ -10,7 +10,7 @@ import { destinationArt } from "@/lib/destination-art";
 import { useOrders, type Order } from "@/lib/orders";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
 import { effectiveOrderStatus } from "@/lib/esim-status";
-import { easeIos, springIos } from "@/lib/motion";
+import { easeIos, springIos, springSnappy } from "@/lib/motion";
 import {
   activationTimeline,
   formatData,
@@ -224,24 +224,27 @@ export function EsimCard({ o, index = 0 }: { o: Order; index?: number }) {
   );
 }
 
-type Filter = "all" | "active" | "pending" | "history";
+type Tab = "active" | "pending" | "history";
 
-const FILTER_LABEL: Record<Filter, string> = {
-  all: "Semua",
+const TAB_LABEL: Record<Tab, string> = {
   active: "Aktif",
   pending: "Menunggu",
   history: "Riwayat",
 };
+const TABS = Object.keys(TAB_LABEL) as Tab[];
+const HISTORY_PAGE = 5;
 
 function MyEsim() {
   const orders = useOrders();
-  const [filter, setFilter] = useState<Filter>("all");
+  const reduce = useReducedMotion();
+  const [picked, setPicked] = useState<Tab | null>(null);
+  const [historyLimit, setHistoryLimit] = useState(HISTORY_PAGE);
   const groups = useMemo(() => {
     const list = orders ?? [];
     const by = (pick: (s: ReturnType<typeof effectiveOrderStatus>) => boolean) =>
       list.filter((o) => pick(effectiveOrderStatus(o.status, o.expiresAt)));
     return {
-      ready: by((s) => s === "READY" || s === "INSTALLED"),
+      active: by((s) => s === "READY" || s === "INSTALLED"),
       pending: by(
         (s) =>
           s !== "READY" &&
@@ -252,29 +255,35 @@ function MyEsim() {
       closed: by((s) => s === "REFUNDED" || s === "CANCELLED" || s === "PROVISIONING_FAILED"),
     };
   }, [orders]);
-  const { ready, pending, expired, closed } = groups;
-  const historyCount = expired.length + closed.length;
-  const counts: Record<Filter, number> = {
-    all: orders?.length ?? 0,
-    active: ready.length,
+  const { active, pending, expired, closed } = groups;
+  const history = [...expired, ...closed];
+  const counts: Record<Tab, number> = {
+    active: active.length,
     pending: pending.length,
-    history: historyCount,
+    history: history.length,
   };
-  const filters = (Object.keys(FILTER_LABEL) as Filter[]).filter(
-    (key) => key === "all" || counts[key] > 0,
-  );
-  const activeFilter = filters.includes(filter) ? filter : "all";
-  const show = (key: Exclude<Filter, "all">) => activeFilter === "all" || activeFilter === key;
+  // Finished eSIMs are archived into Riwayat automatically; open on the first tab with content.
+  const fallback: Tab = active.length > 0 ? "active" : pending.length > 0 ? "pending" : "history";
+  const tab = picked ?? fallback;
   const summary =
     orders && orders.length > 0
       ? [
-          ready.length > 0 && `${ready.length} siap dipakai`,
+          active.length > 0 && `${active.length} siap dipakai`,
           pending.length > 0 && `${pending.length} menunggu`,
-          historyCount > 0 && `${historyCount} riwayat`,
+          history.length > 0 && `${history.length} riwayat`,
         ]
           .filter(Boolean)
           .join(" · ")
       : null;
+
+  const onTabKey = (event: KeyboardEvent<HTMLButtonElement>, current: Tab) => {
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const next = TABS[(TABS.indexOf(current) + step + TABS.length) % TABS.length]!;
+    setPicked(next);
+    document.getElementById(`esim-tab-${next}`)?.focus();
+  };
 
   return (
     <Page>
@@ -311,38 +320,96 @@ function MyEsim() {
         </div>
       ) : (
         <>
-          {filters.length > 2 && (
-            <div
-              role="group"
-              aria-label="Filter eSIM"
-              className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4"
-            >
-              {filters.map((key) => {
-                const selected = key === activeFilter;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setFilter(key)}
-                    className={`tap inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold transition-colors ${FOCUS} ${selected ? "bg-foreground text-background" : "bg-surface text-muted-foreground shadow-[inset_0_0_0_1px_rgba(60,60,67,0.14)]"}`}
-                  >
-                    {FILTER_LABEL[key]}
-                    <span className={selected ? "opacity-70" : "opacity-60"}>{counts[key]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <div key={activeFilter}>
-            {show("active") && ready.length > 0 && <Section title="Siap dipakai" items={ready} />}
-            {show("pending") && pending.length > 0 && <Section title="Menunggu" items={pending} />}
-            {show("history") && expired.length > 0 && (
-              <Section title="Kedaluwarsa" items={expired} />
-            )}
-            {show("history") && closed.length > 0 && (
-              <Section title="Refund, dibatalkan, atau gagal" items={closed} />
-            )}
+          <div
+            role="tablist"
+            aria-label="Status eSIM"
+            className="mt-4 grid grid-cols-3 gap-1 rounded-2xl bg-secondary p-1"
+          >
+            {TABS.map((key) => {
+              const selected = key === tab;
+              return (
+                <button
+                  key={key}
+                  id={`esim-tab-${key}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  aria-controls="esim-tabpanel"
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setPicked(key)}
+                  onKeyDown={(event) => onTabKey(event, key)}
+                  className={`relative min-h-11 rounded-xl text-[13px] font-semibold transition-colors ${FOCUS} ${selected ? "text-foreground" : "text-muted-foreground"}`}
+                >
+                  {selected && (
+                    <motion.span
+                      layoutId="esim-tab-indicator"
+                      className="absolute inset-0 rounded-xl bg-surface shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
+                      transition={reduce ? { duration: 0 } : springSnappy}
+                    />
+                  )}
+                  <span className="relative inline-flex items-center gap-1.5">
+                    {TAB_LABEL[key]}
+                    <span className="opacity-60">{counts[key]}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div key={tab} id="esim-tabpanel" role="tabpanel" aria-labelledby={`esim-tab-${tab}`}>
+            {tab === "active" &&
+              (active.length > 0 ? (
+                <Section title="Siap dipakai" items={active} />
+              ) : (
+                <EmptyTab
+                  title="Belum ada eSIM aktif"
+                  hint={
+                    history.length > 0
+                      ? "eSIM yang sudah selesai tersimpan di Riwayat."
+                      : "Pilih paket untuk perjalananmu berikutnya."
+                  }
+                  onHistory={history.length > 0 ? () => setPicked("history") : undefined}
+                />
+              ))}
+            {tab === "pending" &&
+              (pending.length > 0 ? (
+                <Section title="Menunggu" items={pending} />
+              ) : (
+                <EmptyTab
+                  title="Tidak ada pesanan yang menunggu"
+                  hint="Semua pesananmu sudah selesai diproses."
+                />
+              ))}
+            {tab === "history" &&
+              (history.length > 0 ? (
+                <>
+                  <Section
+                    title="Kedaluwarsa"
+                    items={expired.slice(0, historyLimit)}
+                    total={expired.length}
+                  />
+                  {historyLimit > expired.length && closed.length > 0 && (
+                    <Section
+                      title="Refund, dibatalkan, atau gagal"
+                      items={closed.slice(0, historyLimit - expired.length)}
+                      total={closed.length}
+                    />
+                  )}
+                  {history.length > historyLimit && (
+                    <button
+                      type="button"
+                      onClick={() => setHistoryLimit((n) => n + HISTORY_PAGE)}
+                      className={`tap mt-4 min-h-11 w-full rounded-2xl bg-surface text-[14px] font-semibold text-muted-foreground shadow-[inset_0_0_0_1px_rgba(60,60,67,0.14)] ${FOCUS}`}
+                    >
+                      Lihat lebih banyak ({history.length - historyLimit})
+                    </button>
+                  )}
+                </>
+              ) : (
+                <EmptyTab
+                  title="Riwayat masih kosong"
+                  hint="eSIM yang kedaluwarsa atau dibatalkan akan muncul di sini."
+                />
+              ))}
           </div>
         </>
       )}
@@ -350,13 +417,51 @@ function MyEsim() {
   );
 }
 
-function Section({ title, items }: { title: string; items: Order[] }) {
+function EmptyTab({
+  title,
+  hint,
+  onHistory,
+}: {
+  title: string;
+  hint: string;
+  onHistory?: (() => void) | undefined;
+}) {
+  return (
+    <div className="mt-12 text-center">
+      <img
+        src="/assets/esim/esim-pass-global-v1.webp"
+        alt=""
+        width={96}
+        height={96}
+        className="mx-auto size-24 object-contain opacity-90"
+      />
+      <p className="mt-3 font-semibold">{title}</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">{hint}</p>
+      <div className="mt-5 flex flex-col items-center gap-2">
+        <Link to="/esim/finder" className={btnPrimary}>
+          Beli eSIM
+        </Link>
+        {onHistory && (
+          <button
+            type="button"
+            onClick={onHistory}
+            className={`tap min-h-11 rounded-xl px-4 text-[14px] font-semibold text-brand-red ${FOCUS}`}
+          >
+            Lihat Riwayat
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, items, total }: { title: string; items: Order[]; total?: number }) {
   return (
     <section className="mt-6">
       <h2 className="mb-3 flex items-center gap-2 px-1 text-sm font-medium text-muted-foreground">
         {title}
         <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold">
-          {items.length}
+          {total ?? items.length}
         </span>
       </h2>
       <div className="space-y-3">
