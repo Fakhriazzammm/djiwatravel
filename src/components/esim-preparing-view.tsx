@@ -18,6 +18,26 @@ const BAR_TONE = {
   failed: "bg-brand-red",
 } as const;
 
+/** Four-segment progress strip shared by the waiting and ready order screens. */
+export function StageStrip({ timeline }: { timeline: ReturnType<typeof activationTimeline> }) {
+  return (
+    <section className="rounded-[20px] bg-surface px-[18px] py-4">
+      <ol className="flex gap-1.5 text-center text-[11.5px] text-muted-foreground">
+        {timeline.stages.map((stage) => (
+          <li
+            key={stage.id}
+            className={`flex-1 ${stage.state === "current" ? "font-semibold text-foreground" : ""}`}
+            aria-current={stage.state === "current" ? "step" : undefined}
+          >
+            <span className={`mb-1.5 block h-[5px] rounded-full ${BAR_TONE[stage.state]}`} />
+            {stage.label}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 /**
  * Waiting screen shown between payment and a ready eSIM: a locked preview of the card the
  * customer is about to receive, one four-stage progress strip, and a prep checklist.
@@ -97,20 +117,7 @@ export function EsimPreparingView({
         </span>
       </section>
 
-      <section className="rounded-[20px] bg-surface px-[18px] py-4">
-        <ol className="flex gap-1.5 text-center text-[11.5px] text-muted-foreground">
-          {timeline.stages.map((stage) => (
-            <li
-              key={stage.id}
-              className={`flex-1 ${stage.state === "current" ? "font-semibold text-foreground" : ""}`}
-              aria-current={stage.state === "current" ? "step" : undefined}
-            >
-              <span className={`mb-1.5 block h-[5px] rounded-full ${BAR_TONE[stage.state]}`} />
-              {stage.label}
-            </li>
-          ))}
-        </ol>
-      </section>
+      <StageStrip timeline={timeline} />
 
       <section className="rounded-[20px] bg-surface px-[18px] py-4">
         <p className="mb-2.5 text-[11.5px] font-semibold uppercase tracking-wider text-muted-foreground">

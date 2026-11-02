@@ -31,8 +31,9 @@ import { paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-p
 import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
 import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
-import { EsimPreparingView } from "@/components/esim-preparing-view";
-import { TravelTimeline } from "@/components/travel-timeline";
+import { EsimPreparingView, StageStrip } from "@/components/esim-preparing-view";
+import { EsimDetailCard } from "@/components/esim-detail-card";
+import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 import { activationTimeline } from "@/lib/travel-journey";
 
 /**
@@ -488,36 +489,35 @@ function OrderPage() {
 
   return (
     <Page tabs={false}>
-      <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
-      <div className="flex flex-col items-center pt-12 text-center">
-        <div className="animate-pop flex size-20 items-center justify-center rounded-full bg-success">
-          <Check className="size-10 text-primary-foreground" strokeWidth={3} />
-        </div>
-        <h1 className="mt-6 text-3xl font-bold">eSIM kamu siap! ✨</h1>
-        <p className="mt-3 text-lg">🌐 {packageName}</p>
-        <p className="text-muted-foreground">
-          {quotaLabel} · {durationLabel}
+      <div className="space-y-3">
+        <EsimDetailCard
+          summary={`${locationLabel} · ${quotaLabel} · ${durationLabel}`}
+          headline="eSIM kamu siap!"
+          hint={packageName}
+          statusLabel={ORDER_STATUS_LABEL[effectiveOrderStatus(o.status, o.expiresAt)]}
+          esim={esim}
+          muted={false}
+          onManual={() => setView("guide")}
+        />
+        <StageStrip timeline={activationTimeline(o.status)} />
+        <p className="text-center text-xs text-muted-foreground">
+          Terakhir diperbarui{" "}
+          {typeof syncedAt === "number" ? snapshotAgeLabel(syncedAt) : "saat halaman dibuka"} ·{" "}
+          <button
+            type="button"
+            className="font-semibold text-foreground underline"
+            onClick={async () => {
+              await refreshOrdersFromServer();
+              setSyncedAt(Date.now());
+            }}
+          >
+            Perbarui status
+          </button>
         </p>
       </div>
-      <div className="mt-8">
-        <TravelTimeline
-          timeline={activationTimeline(o.status)}
-          lastSyncedAt={syncedAt}
-          onRefresh={async () => {
-            await refreshOrdersFromServer();
-            setSyncedAt(Date.now());
-          }}
-        />
-      </div>
-      <div className="mt-8 space-y-3">
-        <a
-          href={`https://esimsetup.apple.com/esim_qrcode_provisioning?carddata=${encodeURIComponent(esim.lpa)}`}
-          className={btnRed}
-        >
-          Pasang eSIM
-        </a>
+      <div className="mt-4">
         <button onClick={() => setView("qr")} className={btnSoft}>
-          Lihat QR Code
+          Lihat QR Code layar penuh
         </button>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-center text-[12px] font-medium text-brand-red">
