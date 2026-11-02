@@ -353,7 +353,10 @@ export type AffiliateDashboard =
   | { state: "signed_out" }
   | {
       state: "ready";
-      config: Pick<AffiliateConfig, "enabled" | "commissionPercent" | "holdDays" | "minPayoutIdr">;
+      config: Pick<
+        AffiliateConfig,
+        "enabled" | "commissionPercent" | "holdDays" | "minPayoutIdr" | "cookieDays"
+      >;
       account: null | {
         code: string;
         status: "active" | "suspended";
@@ -406,6 +409,7 @@ export async function getAffiliateDashboardHandler(): Promise<AffiliateDashboard
     commissionPercent: config.commissionPercent,
     holdDays: config.holdDays,
     minPayoutIdr: config.minPayoutIdr,
+    cookieDays: config.cookieDays,
   };
   const found = await pool.query(
     `select id, code, status, code_changed_at, commission_percent_override from affiliate_accounts

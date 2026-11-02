@@ -42,6 +42,62 @@ const tone: Record<string, string> = {
   rejected: "text-destructive",
 };
 
+function CommissionRules({
+  config,
+  percent,
+}: {
+  config: { holdDays: number; minPayoutIdr: number };
+  percent: number;
+}) {
+  const rows: Array<[string, string]> = [
+    [
+      "Yang dihitung",
+      `${percent}% dari margin, yaitu selisih harga jual dengan modal, dari order pertama temanmu. Bukan dari total yang dibayar.`,
+    ],
+    [
+      "Kapan cair",
+      `Komisi berstatus "Menunggu" selama ${config.holdDays} hari. Jika tidak ada refund dan eSIM aktif normal, statusnya menjadi "Disetujui".`,
+    ],
+    [
+      "Kapan dibatalkan",
+      "Order direfund atau dibatalkan membuat komisi dibatalkan. Jika eSIM gagal aktif, komisi menunggu sampai masalahnya selesai dan belum masuk penarikan.",
+    ],
+    [
+      "Siapa yang dihitung",
+      "Hanya teman yang baru pertama kali membeli. Akun yang sudah pernah membayar order tidak dihitung.",
+    ],
+    [
+      "Yang tidak diperbolehkan",
+      "Referral diri sendiri, dan banyak akun dari satu perangkat. Pola seperti ini ditahan untuk ditinjau tim kami.",
+    ],
+    [
+      "Penarikan",
+      `Minimal ${rupiah(config.minPayoutIdr)}, ke saldo Djiwa Pay atau rekening bank. Permintaan ditinjau maksimal 1×24 jam kerja. Jika ada komisi yang dibatalkan saat penarikan diproses, jumlahnya menyesuaikan otomatis.`,
+    ],
+  ];
+  return (
+    <details className="group rounded-xl border border-border/60 bg-background">
+      <summary className="flex min-h-11 cursor-pointer items-center justify-between px-3 text-[13px] font-medium list-none">
+        Aturan lengkap
+        <span
+          aria-hidden="true"
+          className="text-muted-foreground transition-transform group-open:rotate-180"
+        >
+          ▾
+        </span>
+      </summary>
+      <dl className="space-y-2 px-3 pb-3 text-[13px]">
+        {rows.map(([term, detail]) => (
+          <div key={term}>
+            <dt className="font-semibold">{term}</dt>
+            <dd className="text-muted-foreground">{detail}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
 function dateLabel(iso: string) {
   return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 }
@@ -120,16 +176,37 @@ function AffiliatePage() {
         </div>
       ) : !account ? (
         <section className={`${card} space-y-3`}>
-          <h1 className="text-[22px] font-bold">Affiliate Djiwa</h1>
+          <h1 className="text-[22px] font-bold">Ajak teman, dapat komisi</h1>
           <p className="text-[14px] text-muted-foreground">
-            Ajak teman beli eSIM dan dapat {config.commissionPercent}% dari margin order pertama
-            mereka.
+            Bagikan satu link Djiwa Travel. Setiap teman yang pertama kali membeli eSIM lewat link
+            kamu, komisinya masuk otomatis ke akunmu.
           </p>
-          <ul className="space-y-1 rounded-xl border border-border/60 p-3 text-[13px]">
-            <li>✓ Tanpa form verifikasi, langsung dapat kode</li>
-            <li>✓ Komisi disetujui setelah {config.holdDays} hari tanpa refund</li>
-            <li>✓ Tarik saat saldo ≥ {rupiah(config.minPayoutIdr)}</li>
+          <ul className="space-y-2 rounded-xl border border-border/60 p-3 text-[13px]">
+            <li>✓ Aktif satu klik. Kode langsung terbit tanpa form verifikasi.</li>
+            <li>✓ Satu link untuk semua produk: beranda, katalog, atau produk tertentu.</li>
+            <li>
+              ✓ Komisi {config.commissionPercent}% dari margin order pertama temanmu, bukan dari
+              harga yang dibayar.
+            </li>
+            <li>
+              ✓ Cair ke saldo Djiwa Pay atau rekening bank, minimal {rupiah(config.minPayoutIdr)}.
+            </li>
           </ul>
+          <div>
+            <h2 className="text-[14px] font-semibold">Cara kerjanya</h2>
+            <ol className="mt-2 list-decimal space-y-2 pl-5 text-[13px]">
+              <li>Salin link kamu dan bagikan ke teman, grup chat, atau media sosial.</li>
+              <li>
+                Teman membuka link, lalu masuk atau mendaftar dalam {config.cookieDays} hari.
+                Referral otomatis terkunci ke akunmu.
+              </li>
+              <li>
+                Setelah teman menyelesaikan order pertamanya, komisi masuk sebagai
+                &quot;Menunggu&quot;. Setelah {config.holdDays} hari tanpa refund, statusnya menjadi
+                &quot;Disetujui&quot; dan bisa ditarik.
+              </li>
+            </ol>
+          </div>
           <label className="flex items-start gap-2 text-[13px]">
             <input
               type="checkbox"
@@ -138,8 +215,8 @@ function AffiliatePage() {
               className="mt-0.5 size-4"
             />
             <span>
-              Saya setuju komisi dibatalkan bila order direfund atau terindikasi penyalahgunaan
-              (referral diri sendiri).
+              Saya paham komisi tidak dilanjutkan bila order direfund, dibatalkan, atau eSIM gagal
+              aktif, dan referral diri sendiri tidak dihitung.
             </span>
           </label>
           <button
@@ -185,6 +262,21 @@ function AffiliatePage() {
               >
                 <Share2 className="size-4" aria-hidden="true" /> Bagikan
               </button>
+            </div>
+            <div className="rounded-xl bg-secondary/60 p-3 text-[13px]">
+              <h2 className="text-[14px] font-semibold">Cara dapat komisi dari link ini</h2>
+              <ol className="mt-2 list-decimal space-y-1 pl-5">
+                <li>Bagikan link kamu ke teman.</li>
+                <li>Teman membuka link dan masuk atau mendaftar dalam {config.cookieDays} hari.</li>
+                <li>Setelah order pertama teman selesai, komisimu masuk.</li>
+              </ol>
+              <p className="mt-2 text-[12px] text-muted-foreground">
+                Berlaku {config.cookieDays} hari setelah link dibuka · hanya order pertama ·{" "}
+                {account.percent}% dari margin
+              </p>
+              <div className="mt-2">
+                <CommissionRules config={config} percent={account.percent} />
+              </div>
             </div>
             {account.canChangeCode && account.status === "active" && (
               <div>
@@ -381,6 +473,12 @@ function AffiliatePage() {
 
           <section className={`${card} mt-3`}>
             <h2 className="text-[16px] font-bold">Riwayat komisi</h2>
+            <div className="mt-2">
+              <CommissionRules
+                config={config}
+                percent={account?.percent ?? config.commissionPercent}
+              />
+            </div>
             {data.commissions.length === 0 ? (
               <p className="mt-2 text-[13px] text-muted-foreground">
                 Komisi muncul setelah teman kamu membayar order pertama.

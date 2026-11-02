@@ -103,4 +103,15 @@ describe("affiliate end-to-end contract", () => {
     expect(read("src/routes/api.tasks.affiliate-sweep.ts")).toContain("AFFILIATE_TASK_SECRET");
     expect(read("src/routes/__root.tsx")).toContain("AffiliateReferralCapture");
   });
+
+  it("explains how to earn from the link, with numbers taken from config, not hardcoded", () => {
+    const page = read("src/routes/affiliate.tsx");
+    expect(page).toContain("Cara dapat komisi dari link ini");
+    expect(page).toContain("Aturan lengkap");
+    expect(page).toContain("config.cookieDays");
+    expect(page).toContain("config.holdDays");
+    expect(page).toContain("config.minPayoutIdr");
+    expect(page).not.toMatch(/\b30 hari\b|\b14 hari\b|Rp50\.000/);
+    expect(read("src/lib/affiliate.server.ts")).toContain("cookieDays: config.cookieDays");
+  });
 });
