@@ -246,3 +246,20 @@ Use this structure for each new lesson:
   tables and columns after any baseline before trusting `--status`.
 - Verification boundary: tables and columns were checked; indexes, views, and data-level effects of
   other baselined migrations were not audited.
+
+### 2026-11-02 — Paid Mayar orders stayed `PAYMENT_PENDING`
+
+- Symptom: a customer paid in Mayar; the member order never settled and no eSIM was provisioned.
+- Evidence: the Mayar invoice was `paid` while `customer_orders.status` was `PAYMENT_PENDING`; the
+  sweep logged `payment_method_mismatch`; `/api/tasks/esim-sync` answered 503; no timer called it.
+- Root cause: (1) settlement inner-joined `guest_order_access`, which member orders do not have;
+  (2) `ESIM_SYNC_TASK_SECRET` was unset and nothing scheduled the sweep; (3) finance settlement URL
+  and secret were unset, so ledger posting queued; (4) `/var/lib/djiwatravel` was not writable by the
+  service user, breaking the eSIM Access webhook receiver.
+- Safe fix: left join with a `payment_provider = 'mayar'` fallback; set the secrets in
+  `/etc/djiwatravel.env`; run `djiwatravel-esim-sync.timer` every 5 minutes on the Travel VPS.
+- Related: the Mayar dashboard webhook pointed at a retired host, and Mayar "retry" resends to the
+  URL stored on each history entry, so replay the stored payload to the current endpoint instead. The
+  Tentram `pos.mayar_payment_events` queue needs `djiwa-mayar-processor.timer` to drain.
+- Verification boundary: Travel finance posting was confirmed by the sweep report, not by reading
+  the Pay ledger.
