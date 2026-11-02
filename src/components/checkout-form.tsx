@@ -33,7 +33,7 @@ const methods = [
   },
   {
     id: "djiwa_pay",
-    label: "Bayar langsung pakai saldo Djiwa Pay",
+    label: "Djiwa Pay",
     desc: "Recommended · Saldo Djiwa Pay langsung dipotong, tanpa pindah halaman.",
     icon: WalletCards,
   },
@@ -240,37 +240,43 @@ export function CheckoutForm({
           </Link>
         </div>
       )}
-      <div className={group}>
-        <input
-          className={input}
-          type="email"
-          inputMode="email"
-          placeholder="Email"
-          aria-label="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={() => setEmail((value) => value.trim())}
-        />
-        <input
-          className={input}
-          type="tel"
-          inputMode="tel"
-          placeholder="Nomor WhatsApp (0812… atau 62812…)"
-          aria-label="Nomor WhatsApp"
-          value={wa}
-          onChange={(e) => setWa(e.target.value)}
-          onBlur={() => setWa((value) => (isValidWhatsapp(value) ? formatWhatsapp(value) : value))}
-        />
-      </div>
-      {wa.trim() !== "" && !isValidWhatsapp(wa) && (
-        <p role="alert" className="mt-2 px-1 text-xs text-destructive">
-          Nomor WhatsApp belum valid. Contoh: 08123456789.
-        </p>
+      {user && (
+        <>
+          <div className={group}>
+            <input
+              className={input}
+              type="email"
+              inputMode="email"
+              placeholder="Email"
+              aria-label="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setEmail((value) => value.trim())}
+            />
+            <input
+              className={input}
+              type="tel"
+              inputMode="tel"
+              placeholder="Nomor WhatsApp (0812… atau 62812…)"
+              aria-label="Nomor WhatsApp"
+              value={wa}
+              onChange={(e) => setWa(e.target.value)}
+              onBlur={() =>
+                setWa((value) => (isValidWhatsapp(value) ? formatWhatsapp(value) : value))
+              }
+            />
+          </div>
+          {wa.trim() !== "" && !isValidWhatsapp(wa) && (
+            <p role="alert" className="mt-2 px-1 text-xs text-destructive">
+              Nomor WhatsApp belum valid. Contoh: 08123456789.
+            </p>
+          )}
+          <p className="mt-2 px-1 text-xs text-muted-foreground">
+            {user ? "Masuk sebagai member." : "Tanpa perlu daftar akun."} Boleh ketik 0812… — kami
+            ubah otomatis ke format 62….
+          </p>
+        </>
       )}
-      <p className="mt-2 px-1 text-xs text-muted-foreground">
-        {user ? "Masuk sebagai member." : "Tanpa perlu daftar akun."} Boleh ketik 0812… — kami ubah
-        otomatis ke format 62….
-      </p>
       <DeviceCompatibility />
 
       <h2 className={`${label} mt-6`}>Pembayaran</h2>
