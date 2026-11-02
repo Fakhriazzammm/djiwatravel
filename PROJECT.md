@@ -104,6 +104,16 @@ cross-project contract.
 | AI gateway | `src/lib/ai/` and `.env.example` | API keys are server-only; redact customer/order data before provider calls. |
 | Webhooks | `src/routes/api.webhooks.*.ts`, `src/lib/webhook-inbox.server.ts` | Authenticate, persist an idempotency key/inbox record, then process safely on retry. |
 
+### Mayar webhook ownership
+
+Mayar allows one webhook URL per account, and that account also serves Djiwa Tentram. Tentram owns
+the slot (`supabase/functions/mayar-webhook` on `vps-djiwa-tentram`); after enqueuing an event it
+sends an HMAC-signed, identifiers-only hint to `POST /api/webhooks/mayar-forward` here. Travel never
+trusts the hint: it re-reads the transaction from Mayar and settles only when Mayar reports it
+`paid` for the exact order amount, and the one-minute task sweep (`/api/tasks/esim-sync`) covers a
+lost hint. `DJIWA_TRAVEL_CALLBACK_SECRET` must equal the Tentram edge-runtime value, and
+`DJIWA_TRAVEL_CALLBACK_URL` on Tentram points at `/api/webhooks/mayar-forward`.
+
 ## Routes and module conventions
 
 TanStack Start uses file-based routing. The authoritative conventions and

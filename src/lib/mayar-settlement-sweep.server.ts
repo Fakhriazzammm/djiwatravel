@@ -99,7 +99,12 @@ export function providerPaidAtMs(transaction: {
 export async function listProviderConfirmedUnpaidOrders(
   limit = DEFAULT_SWEEP_LIMIT,
   graceMinutes = DEFAULT_GRACE_MINUTES,
+  match?: { transactionId?: string; invoiceId?: string },
 ): Promise<ProviderConfirmedOrder[]> {
+  // A forwarded provider event narrows the sweep to the one order it names.
+  const matchClause = match
+    ? sql`and (i.provider_transaction_id = ${match.transactionId ?? ""} or i.provider_invoice_id = ${match.invoiceId ?? ""})`
+    : sql``;
   const rows = await db.execute(sql`select o.id, o.public_order_code, o.total_amount,
       i.provider_transaction_id, i.provider_invoice_id
     from public.customer_orders o
@@ -109,6 +114,7 @@ export async function listProviderConfirmedUnpaidOrders(
       and i.status = 'PROVIDER_CONFIRMED'
       and i.provider_transaction_id is not null
       and o.created_at < now() - (${graceMinutes} * interval '1 minute')
+      ${matchClause}
     order by o.created_at
     limit ${limit}`);
   return (rows.rows as Array<Record<string, unknown>>)
@@ -125,10 +131,12 @@ export async function listProviderConfirmedUnpaidOrders(
 export async function sweepPendingProviderPayments(options?: {
   limit?: number;
   graceMinutes?: number;
+  match?: { transactionId?: string; invoiceId?: string };
 }): Promise<SweepReport> {
   const orders = await listProviderConfirmedUnpaidOrders(
     options?.limit ?? DEFAULT_SWEEP_LIMIT,
     options?.graceMinutes ?? DEFAULT_GRACE_MINUTES,
+    options?.match,
   );
   const report: SweepReport = { checked: orders.length, settled: 0, skipped: 0, failed: 0 };
   for (const order of orders) {
