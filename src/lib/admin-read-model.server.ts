@@ -278,10 +278,11 @@ export const getAdminPaymentsHandler = async ({
                w.status, w.event_type, w.amount, w.currency_code, w.processing_error as last_error,
                o.payment_provider, o.payment_reference, o.created_at as order_created_at,
                o.updated_at as order_updated_at, w.created_at, coalesce(w.processed_at, w.created_at) as updated_at,
-               a.email as customer_email, a.whatsapp as customer_whatsapp, items.item_summary
+               coalesce(cp.email, a.email) as customer_email, coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp, items.item_summary
           from public.payment_webhook_events w
           join public.customer_orders o on o.id = w.order_id
           left join public.guest_order_access a on a.order_id = o.id
+          left join public.customer_profiles cp on cp.auth_user_id = o.customer_auth_subject
           left join lateral (select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
          where w.processing_error is not null or w.processed_at is null or w.status in ('FAILED', 'EXPIRED')
         union all
@@ -289,9 +290,10 @@ export const getAdminPaymentsHandler = async ({
                o.status, 'payment_pending'::text as event_type, o.total_amount as amount, o.currency_code,
                null::text as last_error, o.payment_provider, o.payment_reference, o.created_at,
                o.updated_at, o.updated_at as created_at, o.updated_at,
-               a.email as customer_email, a.whatsapp as customer_whatsapp, items.item_summary
+               coalesce(cp.email, a.email) as customer_email, coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp, items.item_summary
           from public.customer_orders o
           left join public.guest_order_access a on a.order_id = o.id
+          left join public.customer_profiles cp on cp.auth_user_id = o.customer_auth_subject
           left join lateral (select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
          where o.status = 'PAYMENT_PENDING' and not exists (select 1 from public.payment_webhook_events w where w.order_id = o.id and w.status = 'PAID')
       )
@@ -342,9 +344,10 @@ export const getAdminProvisioningHandler = async () => {
     select p.id, p.order_id, o.public_order_code, o.status as order_status,
            p.status, p.attempt_count, p.provisioning_attempts,
            p.last_provisioning_error, p.next_retry_at, p.created_at, p.updated_at,
-           a.email as customer_email, a.whatsapp as customer_whatsapp
+           coalesce(cp.email, a.email) as customer_email, coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp
       from public.esim_provisioning_orders p join public.customer_orders o on o.id = p.order_id
       left join public.guest_order_access a on a.order_id = p.order_id
+      left join public.customer_profiles cp on cp.auth_user_id = o.customer_auth_subject
      where p.status in ('PENDING','PROVISIONING','FAILED') or (o.status in ('PAYMENT_CONFIRMED','PROVISIONING_FAILED') and p.id is not null)
      order by p.updated_at desc limit ${LIMIT}
   `);
@@ -492,7 +495,7 @@ export const getAdminDashboardHandler = async ({
       sql`select status, count(*)::int as count from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd} group by status order by count desc`,
     ),
     db.execute(
-      sql`with exceptions as (select o.id, o.public_order_code, o.status, o.total_amount as amount, o.currency_code, o.updated_at as exception_at, 'order' as kind, a.email as customer_email, a.whatsapp as customer_whatsapp from public.customer_orders o left join public.guest_order_access a on a.order_id=o.id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and o.status in ('ORDER_CREATED','PAYMENT_PENDING','PAYMENT_CONFIRMED','PROVISIONING_FAILED') union all select w.order_id, o.public_order_code, w.status, w.amount, w.currency_code, w.created_at, 'payment', a.email, a.whatsapp from public.payment_webhook_events w join public.customer_orders o on o.id=w.order_id left join public.guest_order_access a on a.order_id=o.id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED'))) select * from exceptions order by exception_at desc limit ${LIMIT}`,
+      sql`with exceptions as (select o.id, o.public_order_code, o.status, o.total_amount as amount, o.currency_code, o.updated_at as exception_at, 'order' as kind, coalesce(cp.email, a.email) as customer_email, coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp from public.customer_orders o left join public.guest_order_access a on a.order_id=o.id left join public.customer_profiles cp on cp.auth_user_id=o.customer_auth_subject where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and o.status in ('ORDER_CREATED','PAYMENT_PENDING','PAYMENT_CONFIRMED','PROVISIONING_FAILED') union all select w.order_id, o.public_order_code, w.status, w.amount, w.currency_code, w.created_at, 'payment', coalesce(cp.email, a.email), coalesce(cp.whatsapp, a.whatsapp) from public.payment_webhook_events w join public.customer_orders o on o.id=w.order_id left join public.guest_order_access a on a.order_id=o.id left join public.customer_profiles cp on cp.auth_user_id=o.customer_auth_subject where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED'))) select * from exceptions order by exception_at desc limit ${LIMIT}`,
     ),
     db.execute(
       sql`select count(*)::int as total from public.payment_webhook_events w join public.customer_orders o on o.id=w.order_id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (w.processing_error is not null or w.processed_at is null or w.status in ('FAILED','EXPIRED'))`,
