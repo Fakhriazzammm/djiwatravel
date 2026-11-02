@@ -38,10 +38,13 @@ describe("admin UI contracts", () => {
       "data.counts.grossIdr",
       "data.providerBalance",
       "provider.sellableCeilingUsd",
+      "formatAdminDateTime(data.generatedAt)",
       "formatAdminDateTime(data.updatedAt)",
     ])
       expect(source).toContain(marker);
-    expect(source).toContain("AdminDetailSheet");
+    // The duplicate "Detail operasional" sheet was folded into an inline "Tren order" card.
+    expect(source).not.toContain("AdminDetailSheet");
+    expect(source).toContain("Tren order");
   });
   it("keeps live route loaders, privacy, and auth guards", () => {
     for (const [file, loader] of [

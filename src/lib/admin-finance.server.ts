@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/admin-guard";
+import { getAdminEmailHandler } from "@/lib/admin-guard.server";
+import { recordAdminAction } from "@/lib/admin-audit.server";
 import { classifyAdminError } from "@/lib/admin-display";
 import {
   fetchTravelFinanceReport,
@@ -60,6 +62,16 @@ export const submitTravelExpenseHandler = async ({
   await requireAdmin();
   try {
     const result = await recordTravelExpense(data);
+    if (!result.duplicate) {
+      await recordAdminAction({
+        actor: (await getAdminEmailHandler()) ?? "admin",
+        action: "finance.expense",
+        entityType: "travel_expense",
+        entityId: data.externalId,
+        reason: `${data.category}: ${data.description}`,
+        after: { amount: data.amount, category: data.category },
+      }).catch(() => undefined);
+    }
     return { ok: true as const, duplicate: result.duplicate, error: null };
   } catch (error) {
     return {

@@ -1,8 +1,10 @@
-import { ClipboardList, Eye, EyeOff } from "lucide-react";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ClipboardList, Eye, EyeOff, Search } from "lucide-react";
+import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminOrders } from "@/lib/admin-read-model.fn";
+import { ADMIN_ORDER_STATUSES, ADMIN_ORDERS_PAGE_SIZE } from "@/lib/admin-orders-query";
 import {
   formatAdminDateTime,
   humanizeAdminStatus,
@@ -14,17 +16,28 @@ import { AdminShell, AdminSurface, StatusPill } from "@/components/admin-shell";
 export const Route = createFileRoute("/admin/orders")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
-  loader: () => getAdminOrders(),
+  validateSearch: z.object({
+    q: z.string().default(""),
+    status: z.enum(ADMIN_ORDER_STATUSES).default("ALL").catch("ALL"),
+    page: z.coerce.number().int().min(0).max(200).default(0).catch(0),
+  }),
+  loaderDeps: ({ search }) => ({ ...search }),
+  loader: ({ deps }) => getAdminOrders({ data: deps }),
   component: AdminOrders,
 });
 function AdminOrders() {
   const orders = Route.useLoaderData();
+  const search = Route.useSearch();
+  const router = useRouter();
+  const [draft, setDraft] = useState(search.q);
   const [privateMode, setPrivateMode] = useState(false);
+  const go = (patch: Partial<typeof search>) =>
+    void router.navigate({ to: "/admin/orders", search: { ...search, ...patch } } as never);
+  const hasMore = orders.length === ADMIN_ORDERS_PAGE_SIZE;
   const navigate = useNavigate();
   const openOrder = (detailHref: string) => {
     void navigate({ to: detailHref as never });
   };
-  const newest = orders[0];
   const card = (order: (typeof orders)[number]) => (
     <Link
       to={order.detailHref as never}
@@ -58,56 +71,65 @@ function AdminOrders() {
     <AdminShell title="Orders" subtitle="Daftar order Travel">
       <div className="space-y-2">
         <AdminSurface className="p-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Monitoring order
-              </p>
-              <p className="mt-0.5 text-base font-bold tabular-nums">
-                {privateMode ? "••••" : orders.length}{" "}
-                <span className="text-xs font-medium text-muted-foreground">total</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              <StatusPill>{newest ? humanizeAdminStatus(newest.status) : "Kosong"}</StatusPill>
-              <button
-                type="button"
-                onClick={() => setPrivateMode((v) => !v)}
-                aria-label="Mode privasi"
-                aria-pressed={privateMode}
-                className="min-h-11 min-w-11 rounded-xl border bg-surface p-2"
-              >
-                {privateMode ? (
-                  <EyeOff className="mx-auto size-4" />
-                ) : (
-                  <Eye className="mx-auto size-4" />
-                )}
+          <div className="flex flex-wrap items-center gap-2">
+            <form
+              className="flex min-w-0 flex-1 gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                go({ q: draft.trim(), page: 0 });
+              }}
+            >
+              <label className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" />
+                <input
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  placeholder="Cari kode order, email, atau referensi"
+                  aria-label="Cari order"
+                  className="min-h-11 w-full rounded-xl border border-border bg-secondary pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </label>
+              <button type="submit" className="min-h-11 rounded-xl bg-brand-red px-4 text-sm font-semibold text-white">
+                Cari
               </button>
-            </div>
+            </form>
+            <select
+              aria-label="Filter status order"
+              value={search.status}
+              onChange={(event) => go({ status: event.target.value as typeof search.status, page: 0 })}
+              className="min-h-11 rounded-xl border border-border bg-surface px-2 text-xs"
+            >
+              {ADMIN_ORDER_STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {value === "ALL" ? "Semua status" : humanizeAdminStatus(value)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setPrivateMode((v) => !v)}
+              aria-label="Mode privasi"
+              aria-pressed={privateMode}
+              className="min-h-11 min-w-11 rounded-xl border bg-surface p-2"
+            >
+              {privateMode ? <EyeOff className="mx-auto size-4" /> : <Eye className="mx-auto size-4" />}
+            </button>
           </div>
-          {newest ? (
-            <>
-              <div className="hidden lg:block">
-                <p className="mt-3 text-[11px] font-medium text-muted-foreground">Order terbaru</p>
-                <div className="mt-1">{card(newest)}</div>
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Semua order tampil di bawah untuk monitoring langsung.
-                </p>
-              </div>
-              <details className="mt-2 lg:hidden">
-                <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground">
-                  Order terbaru · {humanizeAdminStatus(newest.status)}
-                </summary>
-                <div className="mt-1">{card(newest)}</div>
-              </details>
-            </>
-          ) : (
-            <div className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
-              <ClipboardList className="size-5" />
-              Belum ada order dari database Travel.
-            </div>
-          )}
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Halaman {search.page + 1} · {privateMode ? "••" : orders.length} order ditampilkan
+            {search.q ? ` untuk “${search.q}”` : ""}
+          </p>
         </AdminSurface>
+        {orders.length === 0 && (
+          <AdminSurface className="p-4">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <ClipboardList className="size-5" />
+              {search.q || search.status !== "ALL"
+                ? "Tidak ada order yang cocok dengan pencarian atau filter."
+                : "Belum ada order dari database Travel."}
+            </div>
+          </AdminSurface>
+        )}
         <AdminSurface className="hidden p-3 lg:block">
           <div className="overflow-auto">
             <table className="w-full min-w-[760px] text-xs">
@@ -180,9 +202,12 @@ function AdminOrders() {
         </AdminSurface>
         <div className="lg:hidden">
           <AdminSurface className="p-3">
-            <p className="mb-2 text-[11px] font-medium text-muted-foreground">Semua order</p>
-            <div className="space-y-1.5">{orders.map(card)}</div>
+                        <div className="space-y-1.5">{orders.map(card)}</div>
           </AdminSurface>
+        </div>
+        <div className="flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground">
+          <button type="button" disabled={search.page === 0} aria-label="Halaman sebelumnya" onClick={() => go({ page: search.page - 1 })} className="min-h-9 rounded-lg border px-2.5 disabled:opacity-40">‹</button>
+          <button type="button" disabled={!hasMore} aria-label="Halaman berikutnya" onClick={() => go({ page: search.page + 1 })} className="min-h-9 rounded-lg border px-2.5 disabled:opacity-40">›</button>
         </div>
       </div>
     </AdminShell>

@@ -15,7 +15,6 @@ import {
   projectAdminTitle,
 } from "@/lib/admin-display";
 import {
-  AdminDetailSheet,
   AdminShell,
   AdminStatStrip,
   AdminSurface,
@@ -38,7 +37,6 @@ function AdminDashboard() {
   const router = useRouter();
   const period = data.period;
   const [privateMode, setPrivateMode] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const series = useMemo(() => data.daily, [data.daily]);
   const max = privateMode ? 1 : Math.max(...series.map((p) => p.count), 1);
@@ -86,8 +84,8 @@ function AdminDashboard() {
             ))}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="hidden text-[11px] text-muted-foreground sm:inline">
-              Data {formatAdminDateTime(data.updatedAt)}
+            <span className="text-[11px] text-muted-foreground">
+              Diperbarui {formatAdminDateTime(data.generatedAt)}
             </span>
             <button
               type="button"
@@ -119,18 +117,20 @@ function AdminDashboard() {
           <AdminStatStrip
             columns={6}
             items={[
-              { label: "Orders", value: count(data.counts.total) },
-              { label: "Dibayar", value: count(data.counts.paid) },
+              { label: "Orders", value: count(data.counts.total), href: "/admin/orders" },
+              { label: "Dibayar", value: count(data.counts.paid), href: "/admin/orders" },
               {
                 label: "Pengecualian",
                 value: count(data.counts.paymentExceptions),
                 tone: data.counts.paymentExceptions > 0 ? "warn" : "neutral",
+                href: "/admin/payments",
               },
-              { label: "eSIM siap", value: count(data.counts.provisioningReady) },
+              { label: "eSIM siap", value: count(data.counts.provisioningReady), href: "/admin/provisioning" },
               {
                 label: "Belum siap",
                 value: count(data.counts.paidNotReady),
                 tone: data.counts.paidNotReady > 0 ? "warn" : "neutral",
+                href: "/admin/provisioning",
               },
               { label: "Gross IDR", value: amount(data.counts.grossIdr) },
             ]}
@@ -181,18 +181,18 @@ function AdminDashboard() {
                     : "Tidak ada exception aktif"
                 }
               />
-              <span className="text-[11px] text-muted-foreground">Detail di bawah</span>
             </div>
-            {actions.slice(0, 1).map((item) => (
+            {actions.map((item) => (
               <Link
                 key={item.detailHref}
                 to={item.kind === "payment" ? "/admin/payments" : (item.detailHref as never)}
-                className="mt-2 flex min-h-11 items-center gap-2 rounded-xl bg-[#fffaf0] px-2.5 text-xs"
+                className="mt-1.5 flex min-h-11 items-center gap-2 rounded-xl bg-[#fffaf0] px-2.5 text-xs"
               >
                 <AlertTriangle className="size-4 shrink-0 text-[#b87400]" />
                 <span className="min-w-0 flex-1 truncate">
-                  <b>{id(item.displayIdentifier)}</b> · {humanizeAdminStatus(item.status)} ·{" "}
-                  {ageFrom(item.exceptionAt)}
+                  <b>{id(item.displayIdentifier)}</b> ·{" "}
+                  {projectAdminCustomer(item.customer, privateMode).label} ·{" "}
+                  {humanizeAdminStatus(item.status)} · {ageFrom(item.exceptionAt)}
                 </span>
                 <ArrowRight className="size-3" />
               </Link>
@@ -207,8 +207,12 @@ function AdminDashboard() {
                 <StatusPill tone="good">Terhubung</StatusPill>
               </div>
               <div className="flex justify-between gap-2">
-                <span>Last successful data</span>
-                <b>{formatAdminDateTime(data.updatedAt)}</b>
+                <span>Order terakhir</span>
+                <b>
+                  {data.updatedAt
+                    ? formatAdminDateTime(data.updatedAt)
+                    : "Belum ada order periode ini"}
+                </b>
               </div>
               <div className="flex justify-between gap-2">
                 <span>Provisioning gagal</span>
@@ -218,21 +222,9 @@ function AdminDashboard() {
           </AdminSurface>
         </div>
       </div>
-      {!detailOpen && (
-        <button
-          type="button"
-          onClick={() => setDetailOpen(true)}
-          className="min-h-11 rounded-xl bg-surface px-3 text-sm font-semibold shadow-sm"
-        >
-          Lihat detail operasional
-        </button>
-      )}
-      <AdminDetailSheet
-        open={detailOpen}
-        title="Detail operasional"
-        onClose={() => setDetailOpen(false)}
-      >
-        <div className="space-y-2">
+      <AdminSurface className="p-3">
+        <SectionHeading title="Tren order" detail="Order per hari dan sebaran status pada periode ini." />
+        <div className="mt-2 space-y-2">
           {series.length ? (
             <div className="flex h-40 items-end gap-1 border-b border-border">
               {series.map((point) => (
@@ -263,21 +255,8 @@ function AdminDashboard() {
               </div>
             ))}
           </div>
-          {actions.map((item) => (
-            <Link
-              key={item.detailHref}
-              to={item.kind === "payment" ? "/admin/payments" : (item.detailHref as never)}
-              className="flex min-h-11 items-center gap-2 py-2 text-xs"
-            >
-              <AlertTriangle className="size-4 text-[#b87400]" />
-              <span className="flex-1">
-                {id(item.displayIdentifier)} ·{" "}
-                {projectAdminCustomer(item.customer, privateMode).label}
-              </span>
-            </Link>
-          ))}
         </div>
-      </AdminDetailSheet>
+      </AdminSurface>
     </AdminShell>
   );
 }

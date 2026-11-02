@@ -2,6 +2,7 @@ import { z } from "zod";
 import { pool } from "../db/client.server";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { requireAdmin } from "./admin-guard";
+import { recordAdminAction } from "./admin-audit.server";
 
 const inputSchema = z.object({
   requestId: z.string().uuid(),
@@ -29,6 +30,18 @@ export async function decideAdminRefundHandler({ data }: { data: unknown }) {
     await client.query(
       "insert into refund_events (order_id, status, actor_subject, reason, note_safe, idempotency_key) values ($1, $2, $3, $4, $5, $6) on conflict (idempotency_key) do nothing",
       [request.rows[0].order_id, status, actor, input.reason, "Provider refund belum dijalankan; keputusan tercatat untuk tindak lanjut aman.", eventKey],
+    );
+    await recordAdminAction(
+      {
+        actor,
+        action: `refund.${input.decision}`,
+        entityType: "refund_request",
+        entityId: input.requestId,
+        reason: input.reason,
+        before: { status: "REQUESTED" },
+        after: { status },
+      },
+      client,
     );
     await client.query("commit");
     return { requestId: input.requestId, status, replayed: false };

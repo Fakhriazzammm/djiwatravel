@@ -2,6 +2,7 @@ import { z } from "zod";
 import { pool } from "../db/client.server";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { requireAdmin } from "./admin-guard";
+import { recordAdminAction } from "./admin-audit.server";
 
 const inputSchema = z.discriminatedUnion("action", [
   z.object({
@@ -25,7 +26,7 @@ export async function mutateAdminSupportHandler({ data }: { data: unknown }) {
   const client = await pool.connect();
   try {
     await client.query("begin");
-    const found = await client.query("select id from support_cases where id = $1 for update", [
+    const found = await client.query("select id, status from support_cases where id = $1 for update", [
       input.caseId,
     ]);
     if (!found.rows[0]) throw new Error("Support case tidak ditemukan");
@@ -41,6 +42,18 @@ export async function mutateAdminSupportHandler({ data }: { data: unknown }) {
         input.status,
       ]);
     }
+    await recordAdminAction(
+      {
+        actor,
+        action: input.action === "reply" ? "support.reply" : "support.status",
+        entityType: "support_case",
+        entityId: input.caseId,
+        reason: input.action === "reply" ? "Balasan admin terkirim" : `Status → ${input.status}`,
+        before: { status: found.rows[0].status },
+        after: { status: input.action === "reply" ? "pending" : input.status },
+      },
+      client,
+    );
     await client.query("commit");
     return { ok: true, caseId: input.caseId, action: input.action, status: input.action === "reply" ? "pending" : input.status };
   } catch (error) {

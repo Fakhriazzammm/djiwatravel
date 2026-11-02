@@ -233,6 +233,8 @@ export type AdminStatItem = {
   value: ReactNode;
   detail?: string;
   tone?: "neutral" | "good" | "warn" | "danger";
+  /** Optional admin route that explains this number. */
+  href?: string;
 };
 
 /**
@@ -258,11 +260,9 @@ export function AdminStatStrip({
     <div
       className={`-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:grid sm:gap-y-2 sm:divide-x sm:divide-y sm:divide-black/[0.06] sm:px-0 sm:pb-0 ${cols} ${className}`}
     >
-      {items.map((item) => (
-        <div
-          key={item.label}
-          className="shrink-0 snap-start px-2 py-0.5 sm:min-w-0 sm:px-2.5 sm:py-1.5"
-        >
+      {items.map((item) => {
+        const content = (
+          <>
           <p className="whitespace-nowrap text-[11px] text-muted-foreground">{item.label}</p>
           <p
             className={`text-base font-semibold tabular-nums tracking-tight ${
@@ -280,8 +280,23 @@ export function AdminStatStrip({
           {item.detail && (
             <p className="whitespace-nowrap text-[11px] text-muted-foreground">{item.detail}</p>
           )}
-        </div>
-      ))}
+          </>
+        );
+        const base = "block shrink-0 snap-start px-2 py-0.5 sm:min-w-0 sm:px-2.5 sm:py-1.5";
+        return item.href ? (
+          <Link
+            key={item.label}
+            to={item.href as never}
+            className={`${base} rounded-lg transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red`}
+          >
+            {content}
+          </Link>
+        ) : (
+          <div key={item.label} className={base}>
+            {content}
+          </div>
+        );
+      })}
     </div>
   );
 }

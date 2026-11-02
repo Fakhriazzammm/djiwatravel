@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminSupportCases } from "@/lib/admin-read-model.fn";
@@ -13,8 +13,11 @@ export const Route = createFileRoute("/admin/support")({
   component: AdminSupport,
 });
 
+const STATUS_LABEL = { open: "Terbuka", pending: "Menunggu customer", resolved: "Selesai", closed: "Ditutup" } as const;
+
 function AdminSupport() {
   const cases = Route.useLoaderData();
+  const router = useRouter();
   const [selected, setSelected] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -26,6 +29,7 @@ function AdminSupport() {
       await mutateAdminSupport({ data } as never);
       setReply("");
       setNotice("Perubahan support tersimpan.");
+      await router.invalidate();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Perubahan support gagal.");
     } finally {
@@ -83,7 +87,7 @@ function AdminSupport() {
                     className="min-h-10 rounded-xl border border-border bg-surface px-3 text-sm"
                     aria-label={`Status ${item.caseCode}`}
                   >
-                    {(["open", "pending", "resolved", "closed"] as const).map((status) => <option key={status} value={status}>{status}</option>)}
+                    {(["open", "pending", "resolved", "closed"] as const).map((status) => <option key={status} value={status}>{STATUS_LABEL[status]}</option>)}
                   </select>
                   <button type="button" onClick={() => setSelected(selected === item.id ? null : item.id)} className="min-h-10 rounded-xl border border-border px-3 text-sm font-semibold">Balas</button>
                 </div>

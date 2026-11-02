@@ -87,12 +87,6 @@ function AdminPayments() {
           {payment.lastError ?? payment.eventType ?? "Reason unknown"}
         </span>
       </td>
-      <td
-        className="max-w-28 truncate font-mono"
-        title={projectAdminTitle(payment.displayIdentifier, privateMode)}
-      >
-        {projectAdminIdentifier(payment.displayIdentifier, privateMode)}
-      </td>
       <td>{projectAdminCustomer(payment.customer, privateMode).label}</td>
       <td>
         <Link to={payment.detailHref as never} className="font-semibold text-brand-red">
@@ -254,9 +248,8 @@ function AdminPayments() {
                           Status / reason <ArrowUpDown className="size-3" />
                         </button>
                       </th>
-                      <th className="w-28">Payment ID</th>
                       <th className="w-32">Customer</th>
-                      <th className="w-28">Order</th>
+                      <th className="w-32">Order</th>
                       <th className="w-44">Paket</th>
                       <th className="w-28">
                         <button

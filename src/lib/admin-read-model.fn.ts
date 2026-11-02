@@ -1,9 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 
 // RPC declarations must be visible to the client compiler; implementations stay server-only.
-export const getAdminOrders = createServerFn({ method: "GET" }).handler(async () => {
+export const getAdminOrders = createServerFn({ method: "GET" })
+  .validator((data: unknown) => {
+    const input = (data ?? {}) as { q?: unknown; status?: unknown; page?: unknown };
+    return {
+      q: typeof input.q === "string" ? input.q : "",
+      status: typeof input.status === "string" ? input.status : "ALL",
+      page: Number(input.page ?? 0) || 0,
+    };
+  })
+  .handler(async ({ data }) => {
   const { getAdminOrdersHandler } = await import("./admin-read-model.server");
-  return getAdminOrdersHandler();
+  return getAdminOrdersHandler(data);
 });
 
 export const getAdminOrderDetail = createServerFn({ method: "GET" })

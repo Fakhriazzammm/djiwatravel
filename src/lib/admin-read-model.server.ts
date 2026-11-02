@@ -9,6 +9,8 @@ import { RESELLER_CONFIG } from "@/lib/reseller-config";
 import { fetchEsimAccessBalanceServer, type ProviderBalance } from "@/lib/esim-access";
 import { affordableCeilingUsd, sellabilityMode, type BalanceSnapshot } from "@/lib/sellability";
 
+import { ADMIN_ORDERS_PAGE_SIZE, ADMIN_ORDER_STATUSES } from "./admin-orders-query";
+
 const LIMIT = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -95,8 +97,25 @@ export function toSafeAdminProviderWebhook(event: Row) {
   };
 }
 
-export const getAdminOrdersHandler = async () => {
+export type AdminOrdersQuery = { q?: string; status?: string; page?: number };
+
+export const normalizeAdminOrdersQuery = (input: AdminOrdersQuery = {}) => ({
+  q: (input.q ?? "").trim().slice(0, 80),
+  status: (ADMIN_ORDER_STATUSES as readonly string[]).includes(input.status ?? "")
+    ? (input.status as string)
+    : "ALL",
+  page: Math.min(200, Math.max(0, Math.trunc(Number(input.page ?? 0)) || 0)),
+});
+
+export const getAdminOrdersHandler = async (input: AdminOrdersQuery = {}) => {
   await requireAdmin();
+  const query = normalizeAdminOrdersQuery(input);
+  const pattern = `%${query.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const searchFilter = query.q
+    ? sql`and (o.public_order_code ilike ${pattern} or o.payment_reference ilike ${pattern}
+               or coalesce(cp.email, a.email) ilike ${pattern})`
+    : sql``;
+  const statusFilter = query.status === "ALL" ? sql`` : sql`and o.status = ${query.status}`;
   const result = await db.execute(sql`
     select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
            o.payment_provider, a.payment_method, o.payment_reference, o.created_at, o.updated_at,
@@ -112,8 +131,9 @@ export const getAdminOrdersHandler = async () => {
         select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) as item_summary
           from public.customer_order_items where order_id = o.id
       ) items on true
+     where true ${searchFilter} ${statusFilter}
      order by o.created_at desc
-     limit ${LIMIT}
+     limit ${ADMIN_ORDERS_PAGE_SIZE} offset ${query.page * ADMIN_ORDERS_PAGE_SIZE}
   `);
   return (result.rows as Row[]).map((row) => ({
     detailHref: `/admin/orders/${text(row, "id")!}`,
@@ -131,7 +151,9 @@ export const getAdminOrdersHandler = async () => {
   }));
 };
 
-export const getAdminOrders = createServerFn({ method: "GET" }).handler(getAdminOrdersHandler);
+export const getAdminOrders = createServerFn({ method: "GET" }).handler(() =>
+  getAdminOrdersHandler(),
+);
 
 export const getAdminOrderDetailInput = (data: { id: string }) => data;
 export const getAdminOrderDetailHandler = async ({
@@ -390,7 +412,8 @@ export const getAdminRefundRequestsHandler = async () => {
      order by r.updated_at desc limit ${LIMIT}
   `);
   return (result.rows as Row[]).map((row) => ({
-    id: maskReference(text(row, "id")),
+    // Internal refund request id: the admin decision action needs the real UUID (it is not a customer secret).
+    id: text(row, "id")!,
     orderCode: maskReference(text(row, "public_order_code")),
     orderId: text(row, "order_id")!,
     orderStatus: text(row, "order_status")!,
@@ -461,6 +484,9 @@ export const getAdminDashboardHandler = async ({
   const row = (countResult.rows[0] as Row | undefined) ?? {};
   return {
     period,
+    /** When this read happened; never null, so the UI can always show freshness. */
+    generatedAt: new Date().toISOString(),
+    /** Newest order activity inside the period; null when the period has no orders. */
     updatedAt: text((freshnessResult.rows[0] as Row | undefined) ?? {}, "last_data_at"),
     counts: {
       total: number(row, "total"),

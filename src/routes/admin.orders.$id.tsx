@@ -1,9 +1,10 @@
 import { ArrowLeft, CircleCheck, CircleDashed, ShieldAlert } from "lucide-react";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminOrderDetail } from "@/lib/admin-read-model.fn";
+import { retryAdminProvisioning } from "@/lib/admin-provisioning.fn";
 import {
   formatAdminDateTime,
   humanizeAdminStatus,
@@ -24,7 +25,23 @@ export const Route = createFileRoute("/admin/orders/$id")({
 function AdminOrderDetail() {
   const { id } = Route.useParams();
   const order = Route.useLoaderData();
+  const router = useRouter();
   const [privateMode, setPrivateMode] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const retry = async () => {
+    setRetrying(true);
+    setNotice(null);
+    try {
+      await retryAdminProvisioning({ data: { orderId: id } });
+      setNotice("Retry provisioning dikirim dan dicatat di audit log.");
+      await router.invalidate();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Retry provisioning gagal.");
+    } finally {
+      setRetrying(false);
+    }
+  };
   if (!order)
     return (
       <AdminShell title="Detail order">
@@ -62,7 +79,7 @@ function AdminOrderDetail() {
       done: ["READY", "INSTALLED"].includes(order.status),
       at: order.esimActivationExpiresAt,
     },
-    { label: "Selesai", done: order.status === "INSTALLED", at: null },
+    { label: "Terpasang", done: order.status === "INSTALLED", at: null },
   ];
   return (
     <AdminShell
@@ -171,9 +188,24 @@ function AdminOrderDetail() {
             )}
             <div className="flex justify-between gap-3">
               <dt>Provisioning</dt>
-              <dd>{order.provisioning.status ?? "none"}</dd>
+              <dd>{order.provisioning.status ? humanizeAdminStatus(order.provisioning.status) : "Belum dimulai"}</dd>
             </div>
           </dl>
+          {(order.provisioning.status === "FAILED" || order.status === "PROVISIONING_FAILED") && (
+            <button
+              type="button"
+              onClick={() => void retry()}
+              disabled={retrying}
+              className="mt-4 min-h-11 w-full rounded-xl bg-brand-red px-4 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {retrying ? "Mengirim…" : "Retry provisioning"}
+            </button>
+          )}
+          {notice && (
+            <p role="status" className="mt-3 rounded-xl bg-secondary p-3 text-xs">
+              {notice}
+            </p>
+          )}
           {order.provisioning.lastError && (
             <div className="mt-5 flex gap-3 rounded-xl bg-[#fffaf0] p-4 text-xs leading-5 text-muted-foreground">
               <ShieldAlert className="size-4 shrink-0 text-[#b87400]" />

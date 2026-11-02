@@ -52,7 +52,6 @@ function AdminSettings() {
                 tone: ready === readiness.length ? "good" : "warn",
               },
               { label: "Belum tersedia", value: String(readiness.length - ready) },
-              { label: "Last check", value: "Live" },
             ]}
           />
         </AdminSurface>
