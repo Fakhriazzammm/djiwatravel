@@ -11,7 +11,7 @@ function NewTrip() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
-    destinationName: "",
+    destinationName: "Jepang",
     destinationCode: "JP",
     departureDate: "",
     returnDate: "",
@@ -56,14 +56,6 @@ function NewTrip() {
                 value={form.name}
                 placeholder="Tokyo Spring Trip"
                 onChange={(v) => update("name", v)}
-              />
-            }
-            {
-              <Field
-                label="Destinasi"
-                value={form.destinationName}
-                placeholder="Jepang"
-                onChange={(v) => update("destinationName", v)}
               />
             }
             <div className={row}>
