@@ -25,7 +25,9 @@ export function protectProviderProfile(
   const activationCode = first(profile, ["activationCode", "activation_code", "ac"]);
   const qrPayload =
     first(profile, ["qrCode", "qrPayload", "qr_payload", "lpa"]) ??
-    (smdp && activationCode ? `LPA:1$${smdp}$${activationCode}` : undefined);
+    (smdp && activationCode ? `LPA:1$${smdp}$${activationCode}` : undefined) ??
+    // eSIM Access returns the complete "LPA:1$smdp$code" string in `ac`, with no separate smdp field.
+    (activationCode?.toUpperCase().startsWith("LPA:") ? activationCode : undefined);
   if (!iccid) throw new Error("Response provider tidak berisi ICCID");
   if (!activationCode && !qrPayload)
     throw new Error("Response provider tidak berisi activation code atau QR payload");

@@ -24,6 +24,16 @@ describe("provider eSIM profile protection", () => {
     expect(decryptEsimSecret(profile.activationCodeEncrypted!)).toBe("secret-code");
     expect(decryptEsimSecret(profile.qrPayloadEncrypted!)).toBe("LPA:1$smdp.example$secret-code");
   });
+  it("uses the full LPA string in `ac` as the QR payload when smdp is not separate", () => {
+    const lpa = "LPA:1$rsp-eu.simlessly.com$ABC123";
+    const profile = protectProviderProfile("order-1", {
+      iccid: "8965012603310223238",
+      ac: lpa,
+      esimStatus: "GOT_RESOURCE",
+      qrCodeUrl: "https://p.qrsim.net/x.png",
+    });
+    expect(decryptEsimSecret(profile.qrPayloadEncrypted!)).toBe(lpa);
+  });
   it("fails closed when ICCID is absent", () => {
     expect(() =>
       protectProviderProfile("order-1", { obj: { esimProfile: { activationCode: "x" } } }),
