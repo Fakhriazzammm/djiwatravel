@@ -1,3 +1,4 @@
+import { InstallAppCard } from "@/components/install-app-card";
 import { OrderLoading } from "@/components/order-loading";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Globe2, Plus, ReceiptText, RefreshCw } from "lucide-react";
@@ -300,6 +301,7 @@ function MyEsim() {
           <Plus className="size-5" aria-hidden="true" />
         </Link>
       </header>
+      <InstallAppCard className="mt-4" />
       {orders === null ? (
         <OrderLoading list label="Memuat eSIM…" />
       ) : orders.length === 0 ? (

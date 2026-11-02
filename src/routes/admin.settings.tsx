@@ -13,6 +13,8 @@ import { AdminHomeEsimPanel } from "@/components/admin-home-esim-panel";
 import { getAdminHomeEsimConfig } from "@/lib/home-esim-config.fn";
 import { AdminGeoPanel } from "@/components/admin-geo-panel";
 import { getAdminGeoConfig } from "@/lib/geo-config.fn";
+import { AdminPwaPanel } from "@/components/admin-pwa-panel";
+import { getAdminPwa } from "@/lib/pwa.fn";
 import { getHomeDestinationFeed } from "@/lib/destination-availability.fn";
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
@@ -21,17 +23,19 @@ export const Route = createFileRoute("/admin/settings")({
     readiness: await getAdminReadiness(),
     homeEsim: await getAdminHomeEsimConfig(),
     geo: await getAdminGeoConfig(),
+    pwa: await getAdminPwa(),
     rail: (await getHomeDestinationFeed().catch(() => ({ popular: [] }))).popular,
   }),
   component: AdminSettings,
 });
 function AdminSettings() {
-  const { readiness, homeEsim, geo, rail } = Route.useLoaderData();
+  const { readiness, homeEsim, geo, pwa, rail } = Route.useLoaderData();
   const ready = readiness.filter((x) => x.ready).length;
   return (
     <AdminShell title="Settings" subtitle="Server readiness">
       <AdminHomeEsimPanel initial={homeEsim.config} version={homeEsim.version} railPool={rail} />
       <AdminGeoPanel initial={geo.config} version={geo.version} />
+      <AdminPwaPanel initial={pwa.config} version={pwa.version} stats={pwa.stats} />
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <SectionHeading

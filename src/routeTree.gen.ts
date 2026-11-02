@@ -46,6 +46,7 @@ import { Route as ApiCustomerRefundRouteImport } from './routes/api.customer-ref
 import { Route as ApiCustomerSupportRouteImport } from './routes/api.customer-support'
 import { Route as ApiHomeEsimEventsRouteImport } from './routes/api.home-esim-events'
 import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recovery'
+import { Route as ApiPwaEventsRouteImport } from './routes/api.pwa-events'
 import { Route as ApiTravelWaitlistRouteImport } from './routes/api.travel-waitlist'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
@@ -265,6 +266,11 @@ const ApiOrderRecoveryRoute = ApiOrderRecoveryRouteImport.update({
   path: '/api/order-recovery',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPwaEventsRoute = ApiPwaEventsRouteImport.update({
+  id: '/api/pwa-events',
+  path: '/api/pwa-events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTravelWaitlistRoute = ApiTravelWaitlistRouteImport.update({
   id: '/api/travel-waitlist',
   path: '/api/travel-waitlist',
@@ -468,6 +474,7 @@ export interface FileRoutesByFullPath {
   '/api/customer-support': typeof ApiCustomerSupportRoute
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
+  '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -539,6 +546,7 @@ export interface FileRoutesByTo {
   '/api/customer-support': typeof ApiCustomerSupportRoute
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
+  '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -611,6 +619,7 @@ export interface FileRoutesById {
   '/api/customer-support': typeof ApiCustomerSupportRoute
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
+  '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -684,6 +693,7 @@ export interface FileRouteTypes {
     | '/api/customer-support'
     | '/api/home-esim-events'
     | '/api/order-recovery'
+    | '/api/pwa-events'
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
@@ -755,6 +765,7 @@ export interface FileRouteTypes {
     | '/api/customer-support'
     | '/api/home-esim-events'
     | '/api/order-recovery'
+    | '/api/pwa-events'
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
@@ -826,6 +837,7 @@ export interface FileRouteTypes {
     | '/api/customer-support'
     | '/api/home-esim-events'
     | '/api/order-recovery'
+    | '/api/pwa-events'
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
@@ -898,6 +910,7 @@ export interface RootRouteChildren {
   ApiCustomerSupportRoute: typeof ApiCustomerSupportRoute
   ApiHomeEsimEventsRoute: typeof ApiHomeEsimEventsRoute
   ApiOrderRecoveryRoute: typeof ApiOrderRecoveryRoute
+  ApiPwaEventsRoute: typeof ApiPwaEventsRoute
   ApiTravelWaitlistRoute: typeof ApiTravelWaitlistRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
@@ -1188,6 +1201,13 @@ declare module '@tanstack/react-router' {
       path: '/api/order-recovery'
       fullPath: '/api/order-recovery'
       preLoaderRoute: typeof ApiOrderRecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/pwa-events': {
+      id: '/api/pwa-events'
+      path: '/api/pwa-events'
+      fullPath: '/api/pwa-events'
+      preLoaderRoute: typeof ApiPwaEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/travel-waitlist': {
@@ -1491,6 +1511,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCustomerSupportRoute: ApiCustomerSupportRoute,
   ApiHomeEsimEventsRoute: ApiHomeEsimEventsRoute,
   ApiOrderRecoveryRoute: ApiOrderRecoveryRoute,
+  ApiPwaEventsRoute: ApiPwaEventsRoute,
   ApiTravelWaitlistRoute: ApiTravelWaitlistRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,

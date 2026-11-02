@@ -3,6 +3,7 @@ import { Bell, Search, ChevronRight, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { glassIconButtonClass, Page, SectionTitle } from "@/components/shell";
 import { HomeHero } from "@/components/home-hero";
+import { InstallAppCard } from "@/components/install-app-card";
 import { RecentPurchaseToast } from "@/components/recent-purchase-toast";
 import { FixedLayer, Reveal, Stagger } from "@/components/motion-primitives";
 import { destinations, type Destination } from "@/lib/catalog";
@@ -199,51 +200,51 @@ function Home() {
         onOpenSearch={() => setSearchOpen(true)}
         headerAction={
           <>
-        {loading ? (
-        <div
-          role="status"
-          aria-label="Memuat akun"
-          className="h-10 w-24 animate-pulse rounded-full bg-secondary motion-reduce:animate-none"
-        />
-      ) : user ? (
-        <div className="flex items-center gap-2.5">
-          <Link
-            to="/notifications"
-            data-testid="header-notifications"
-            aria-label={unread > 0 ? `Notifikasi, ${unread} belum dibaca` : "Notifikasi"}
-            className={`relative ${glassIconButtonClass}`}
-          >
-            <Bell className="size-5" strokeWidth={2} aria-hidden="true" />
-            {unread > 0 && (
-              <span
-                aria-hidden="true"
-                className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[11px] font-bold leading-none text-white ring-2 ring-background"
-              >
-                {unread > 9 ? "9+" : unread}
-              </span>
+            {loading ? (
+              <div
+                role="status"
+                aria-label="Memuat akun"
+                className="h-10 w-24 animate-pulse rounded-full bg-secondary motion-reduce:animate-none"
+              />
+            ) : user ? (
+              <div className="flex items-center gap-2.5">
+                <Link
+                  to="/notifications"
+                  data-testid="header-notifications"
+                  aria-label={unread > 0 ? `Notifikasi, ${unread} belum dibaca` : "Notifikasi"}
+                  className={`relative ${glassIconButtonClass}`}
+                >
+                  <Bell className="size-5" strokeWidth={2} aria-hidden="true" />
+                  {unread > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[11px] font-bold leading-none text-white ring-2 ring-background"
+                    >
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  to="/profile"
+                  search={{
+                    admin: undefined,
+                    returnTo: undefined,
+                    calendar: undefined,
+                    calendarSync: undefined,
+                  }}
+                  aria-label="Buka profil akun"
+                  data-testid="header-account"
+                  className={`${glassIconButtonClass} text-[16px] font-semibold`}
+                >
+                  <span aria-hidden="true">
+                    {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="sr-only">{accountLabel}</span>
+                </Link>
+              </div>
+            ) : (
+              <CustomerAuth size="compact" />
             )}
-          </Link>
-          <Link
-            to="/profile"
-            search={{
-              admin: undefined,
-              returnTo: undefined,
-              calendar: undefined,
-              calendarSync: undefined,
-            }}
-            aria-label="Buka profil akun"
-            data-testid="header-account"
-            className={`${glassIconButtonClass} text-[16px] font-semibold`}
-          >
-            <span aria-hidden="true">
-              {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
-            </span>
-            <span className="sr-only">{accountLabel}</span>
-          </Link>
-        </div>
-      ) : (
-        <CustomerAuth size="compact" />
-      )}
           </>
         }
       />
@@ -305,9 +306,13 @@ function Home() {
                         aria-label={`Paket ${group.label}, ${group.countryCount} negara, mulai Rp${group.fromPriceIdr.toLocaleString("id-ID")}`}
                         className="tap flex shrink-0 items-center gap-1.5 rounded-full bg-secondary py-1.5 pl-2 pr-3 text-[12.5px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        <span aria-hidden="true" className="text-[15px] leading-none">{group.flag}</span>
+                        <span aria-hidden="true" className="text-[15px] leading-none">
+                          {group.flag}
+                        </span>
                         <span className="whitespace-nowrap">{group.label}</span>
-                        <span className="whitespace-nowrap font-normal text-muted-foreground">· {group.countryCount} negara</span>
+                        <span className="whitespace-nowrap font-normal text-muted-foreground">
+                          · {group.countryCount} negara
+                        </span>
                       </Link>
                     ))}
                   </div>
@@ -493,6 +498,8 @@ function Home() {
             <ServiceCategoryGrid waitlist />
           </div>
         </Reveal>
+
+        <InstallAppCard className="mt-6" />
 
         <Reveal as="section" className="mt-6" aria-labelledby="home-guides-title">
           <SectionTitle action={<Link to="/panduan">Lihat semua ›</Link>}>

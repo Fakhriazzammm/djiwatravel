@@ -1,3 +1,5 @@
+import { InstallAppCard } from "@/components/install-app-card";
+import { PushOptInRow } from "@/components/push-opt-in-row";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -588,6 +590,11 @@ function Profile() {
           </Link>
         ))}
       </nav>
+
+      <section aria-label="Aplikasi" className={`${groupClass} mt-6 empty:hidden`}>
+        <InstallAppCard variant="row" />
+        {user ? <PushOptInRow /> : null}
+      </section>
 
       {user && (
         <section className={`${groupClass} mt-6`}>

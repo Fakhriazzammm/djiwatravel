@@ -142,9 +142,32 @@ export async function refreshTravelOrderProvisioning(
   await db.execute(
     sql`update public.esim_provisioning_orders set status = 'READY', last_provisioning_error = null, updated_at = now() where id = ${provisioningOrderId}::uuid and status in ('PROVISIONING','PENDING')`,
   );
-  await db.execute(
-    sql`update public.customer_orders set status = 'READY', esim_activation_expires_at = coalesce(esim_activation_expires_at, ${expiresAtIso}::timestamptz, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = ${orderId}::uuid and status in ('PROVISIONING','PAYMENT_CONFIRMED','PROVISIONING_FAILED')`,
+  const becameReady = await db.execute(
+    sql`update public.customer_orders set status = 'READY', esim_activation_expires_at = coalesce(esim_activation_expires_at, ${expiresAtIso}::timestamptz, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = ${orderId}::uuid and status in ('PROVISIONING','PAYMENT_CONFIRMED','PROVISIONING_FAILED') returning id, customer_auth_subject`,
   );
+  const readyRow = becameReady.rows[0] as { customer_auth_subject?: string | null } | undefined;
+  if (readyRow?.customer_auth_subject) {
+    // Best effort and idempotent per order: a push failure must never undo or delay provisioning.
+    void import("./push.server")
+      .then(({ createCustomerNotification }) =>
+        createCustomerNotification({
+          subject: readyRow.customer_auth_subject!,
+          orderId,
+          type: "esim_ready",
+          title: "eSIM kamu siap! ✨",
+          body: "eSIM sudah bisa dipasang. Buka Djiwa Travel untuk lihat QR code dan panduan.",
+          href: `/my-esim/${orderId}`,
+          eventKey: `esim_ready:${orderId}`,
+          source: "provisioning",
+        }),
+      )
+      .catch((error) =>
+        console.warn(
+          "[travel] ready notification skipped",
+          error instanceof Error ? error.message : "",
+        ),
+      );
+  }
   // The activation window is provider truth, so keep it on every run — an order that is already
   // READY is skipped by the transition above and would otherwise never learn its expiry.
   if (expiresAtIso) {

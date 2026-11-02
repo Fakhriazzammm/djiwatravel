@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { setAppBadge } from "@/lib/pwa-client";
 
 /**
  * Unread customer-notification count for the Home bell. Only fetched for signed-in customers; any
@@ -11,6 +12,7 @@ export function useUnreadNotifications(enabled: boolean): number {
   useEffect(() => {
     if (!enabled) {
       setCount(0);
+      setAppBadge(0);
       return;
     }
     let cancelled = false;
@@ -22,7 +24,10 @@ export function useUnreadNotifications(enabled: boolean): number {
         if (!response.ok) return;
         const body = (await response.json()) as { unread_count?: unknown };
         const value = Number(body.unread_count);
-        if (!cancelled && Number.isFinite(value) && value >= 0) setCount(Math.floor(value));
+        if (!cancelled && Number.isFinite(value) && value >= 0) {
+          setCount(Math.floor(value));
+          setAppBadge(Math.floor(value));
+        }
       } catch {
         // Keep the last known count.
       }
