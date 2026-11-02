@@ -155,9 +155,10 @@ async function settleLocalPayment(input: {
 }) {
   return db.transaction(async (tx) => {
     const rows = await tx.execute(
-      sql`select o.status, o.total_amount, o.payment_reference, access.payment_method
+      sql`select o.status, o.total_amount, o.payment_reference,
+                 coalesce(access.payment_method, case when o.payment_provider = 'mayar' then 'qris' end) as payment_method
             from public.customer_orders o
-            join public.guest_order_access access on access.order_id = o.id
+            left join public.guest_order_access access on access.order_id = o.id
            where o.id = ${input.orderId}::uuid
            for update of o`,
     );
@@ -214,9 +215,12 @@ export async function settleVerifiedTravelPayment(input: {
   customerName?: string | null;
 }) {
   const access = await db.execute(sql`
-    select payment_method from public.guest_order_access
-     where order_id = ${input.orderId}::uuid
-     limit 1
+    select coalesce(
+             (select payment_method from public.guest_order_access where order_id = o.id limit 1),
+             case when o.payment_provider = 'mayar' then 'qris' end
+           ) as payment_method
+      from public.customer_orders o
+     where o.id = ${input.orderId}::uuid
   `);
   if (!mayarOrderPaymentAllowed(access.rows[0]?.["payment_method"]))
     throw new Error("payment_method_mismatch");
