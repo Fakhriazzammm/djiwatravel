@@ -305,7 +305,7 @@ async function createMayarInvoiceForOrder(
     await db.execute(
       sql`update public.payment_intents set status = 'UNKNOWN', last_error = 'provider_response_incomplete', next_reconcile_at = now(), updated_at = now() where order_id = ${orderId}::uuid and provider = 'mayar'`,
     );
-    throw new Error("Respons invoice Mayar tidak lengkap");
+    throw new Error("Respons invoice pembayaran tidak lengkap");
   }
   await persistConfirmedMayarInvoice(
     orderId,
@@ -320,7 +320,7 @@ export const createMayarInvoice = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const row = await resolveOrderAccess({ orderId: data.orderId, accessToken: data.accessToken });
     if (!mayarOrderPaymentAllowed(row.paymentMethod))
-      throw new Error("Pesanan Djiwa Pay tidak menggunakan invoice Mayar");
+      throw new Error("Pesanan Djiwa Pay tidak menggunakan invoice pembayaran online");
     const expectedAmount = Number(row.order.totalAmount);
     if (!Number.isSafeInteger(expectedAmount) || expectedAmount !== data.amountIdr)
       throw new Error("Nominal pesanan berubah");
@@ -368,7 +368,7 @@ export const rebuildMayarInvoice = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const row = await resolveOrderAccess({ orderId: data.orderId, accessToken: data.accessToken });
     if (!mayarOrderPaymentAllowed(row.paymentMethod))
-      throw new Error("Pesanan Djiwa Pay tidak menggunakan invoice Mayar");
+      throw new Error("Pesanan Djiwa Pay tidak menggunakan invoice pembayaran online");
     assertPaymentNotExpired(row.order.status, row.order.paymentExpiresAt);
     const orderSnapshot =
       row.order.priceSnapshot && typeof row.order.priceSnapshot === "object"

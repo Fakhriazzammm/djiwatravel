@@ -291,7 +291,7 @@ export const verifyMayarPaymentHandler = async ({
   const row = await resolveOrderAccess({ orderId: data.orderId, accessToken: data.accessToken });
   const order = row.order;
   if (!mayarOrderPaymentAllowed(row.paymentMethod))
-    throw new Error("Pesanan Djiwa Pay tidak dapat diverifikasi melalui Mayar");
+    throw new Error("Pesanan Djiwa Pay tidak dapat diverifikasi melalui gateway pembayaran");
 
   const mayar = readMayarSnapshot(order.priceSnapshot);
   if (!mayar.transactionId) {

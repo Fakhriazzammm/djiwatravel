@@ -32,7 +32,7 @@ export function getResellerReadiness(env: NodeJS.ProcessEnv = process.env): Read
       name: "Payment API",
       ready: Boolean(env["MAYAR_API_KEY"]),
       detail: env["MAYAR_API_KEY"]
-        ? "Mayar server-side key tersedia"
+        ? "Kunci gateway pembayaran server-side tersedia"
         : "MAYAR_API_KEY belum dikonfigurasi",
     },
     {
