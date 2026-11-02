@@ -30,7 +30,8 @@ export const Route = createFileRoute("/admin/settings")({
 });
 function AdminSettings() {
   const { readiness, homeEsim, geo, pwa, rail } = Route.useLoaderData();
-  const ready = readiness.filter((x) => x.ready).length;
+  const counted = readiness.filter((x) => !x.external);
+  const ready = counted.filter((x) => x.ready).length;
   return (
     <AdminShell title="Settings" subtitle="Server readiness">
       <AdminHomeEsimPanel initial={homeEsim.config} version={homeEsim.version} railPool={rail} />
@@ -42,8 +43,8 @@ function AdminSettings() {
             title="System readiness"
             detail="Credential, secret, pricing, dan maintenance tetap di server."
           />
-          <StatusPill tone={ready === readiness.length ? "good" : "warn"}>
-            {ready}/{readiness.length} ready
+          <StatusPill tone={ready === counted.length ? "good" : "warn"}>
+            {ready}/{counted.length} ready
           </StatusPill>
         </div>
         <AdminSurface className="p-2.5">
@@ -53,9 +54,9 @@ function AdminSettings() {
               {
                 label: "Ready",
                 value: String(ready),
-                tone: ready === readiness.length ? "good" : "warn",
+                tone: ready === counted.length ? "good" : "warn",
               },
-              { label: "Belum tersedia", value: String(readiness.length - ready) },
+              { label: "Belum tersedia", value: String(counted.length - ready) },
             ]}
           />
         </AdminSurface>
@@ -74,7 +75,11 @@ function AdminSettings() {
     </AdminShell>
   );
 }
-function ReadinessRow({ item }: { item: { name: string; ready: boolean; detail: string } }) {
+function ReadinessRow({
+  item,
+}: {
+  item: { name: string; ready: boolean; detail: string; external?: boolean };
+}) {
   return (
     <div className="flex min-h-14 items-center gap-3 py-2">
       <span className="rounded-xl bg-secondary p-2">
@@ -88,8 +93,8 @@ function ReadinessRow({ item }: { item: { name: string; ready: boolean; detail: 
         <p className="text-sm font-semibold">{item.name}</p>
         <p className="truncate text-xs text-muted-foreground">{item.detail}</p>
       </div>
-      <StatusPill tone={item.ready ? "good" : "warn"}>
-        {item.ready ? "Ready" : "Belum tersedia"}
+      <StatusPill tone={item.external ? "neutral" : item.ready ? "good" : "warn"}>
+        {item.external ? "Eksternal" : item.ready ? "Ready" : "Belum tersedia"}
       </StatusPill>
     </div>
   );

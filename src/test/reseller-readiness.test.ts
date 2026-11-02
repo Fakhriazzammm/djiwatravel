@@ -7,7 +7,7 @@ describe("reseller readiness", () => {
       ESIM_ACCESS_CODE: "x",
       ESIM_ACCESS_SECRET_KEY: "y",
       ESIM_PROFILE_ENCRYPTION_KEY: "z",
-      CUSTOMER_AUTH_SECRET: "12345678901234567890123456789012",
+      DJIWA_TRAVEL_WALLET_PAYMENT_SECRET: "w",
     });
     expect(items.some((item) => item.name === "Payment webhook" && !item.ready)).toBe(true);
     expect(items.every((item) => !item.detail.includes("secret-value"))).toBe(true);

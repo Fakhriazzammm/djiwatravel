@@ -1,6 +1,12 @@
 import { ADMIN_AUTH_ISSUER, ADMIN_INVITE_READINESS, adminEmails } from "@/lib/admin-guard.server";
 
-export type ReadinessItem = { name: string; ready: boolean; detail: string };
+export type ReadinessItem = {
+  name: string;
+  ready: boolean;
+  detail: string;
+  /** Owned by another system; shown for information, not counted as a blocker. */
+  external?: boolean;
+};
 
 /** Safe operational checklist; never returns secret values. */
 export function getResellerReadiness(env: NodeJS.ProcessEnv = process.env): ReadinessItem[] {
@@ -16,9 +22,11 @@ export function getResellerReadiness(env: NodeJS.ProcessEnv = process.env): Read
       detail: "AES-256-GCM key tersedia",
     },
     {
-      name: "Customer auth",
-      ready: Boolean(env["CUSTOMER_AUTH_SECRET"] && env["CUSTOMER_AUTH_SECRET"].length >= 32),
-      detail: "Session signing secret tersedia",
+      name: "Djiwa Pay wallet",
+      ready: Boolean(env["DJIWA_TRAVEL_WALLET_PAYMENT_SECRET"]?.trim()),
+      detail: env["DJIWA_TRAVEL_WALLET_PAYMENT_SECRET"]?.trim()
+        ? "Wallet payment secret tersedia"
+        : "DJIWA_TRAVEL_WALLET_PAYMENT_SECRET belum dikonfigurasi",
     },
     {
       name: "Payment API",
@@ -29,10 +37,10 @@ export function getResellerReadiness(env: NodeJS.ProcessEnv = process.env): Read
     },
     {
       name: "Payment webhook",
-      ready: Boolean(env["PAYMENT_WEBHOOK_SECRET"]),
-      detail: env["PAYMENT_WEBHOOK_SECRET"]
-        ? "Webhook signing secret tersedia"
-        : "Webhook payment belum dikonfigurasi",
+      ready: Boolean(env["DJIWA_TRAVEL_CALLBACK_SECRET"]?.trim()),
+      detail: env["DJIWA_TRAVEL_CALLBACK_SECRET"]?.trim()
+        ? "Callback signing secret tersedia"
+        : "DJIWA_TRAVEL_CALLBACK_SECRET belum dikonfigurasi",
     },
     {
       name: "Database",
@@ -54,28 +62,27 @@ export function getResellerReadiness(env: NodeJS.ProcessEnv = process.env): Read
     },
     {
       name: "Admin Google provider",
-      ready: Boolean(env["GOOGLE_CLIENT_ID"] && env["GOOGLE_CLIENT_SECRET"]),
+      ready: true,
+      external: true,
       detail:
-        env["GOOGLE_CLIENT_ID"] && env["GOOGLE_CLIENT_SECRET"]
-          ? "Google provider dikonfigurasi pada runtime ini"
-          : "Google provider dikelola canonical Better Auth; status runtime external belum terverifikasi",
+        "Dikelola Better Auth pusat (api.djiwatentram.web.id); tidak dikonfigurasi di runtime ini",
     },
     {
       name: "Admin invites",
-      ready: ADMIN_INVITE_READINESS.available,
+      ready: false,
+      external: true,
       detail: ADMIN_INVITE_READINESS.reason,
     },
     {
       name: "Operations worker",
-      ready: Boolean(env["ESIM_RECONCILIATION_WORKER_ENABLED"] === "true"),
-      detail:
-        env["ESIM_RECONCILIATION_WORKER_ENABLED"] === "true"
-          ? "Worker enabled"
-          : "Reconciliation worker belum diaktifkan",
+      ready: Boolean(env["ESIM_SYNC_TASK_SECRET"]?.trim()),
+      detail: env["ESIM_SYNC_TASK_SECRET"]?.trim()
+        ? "Task secret eSIM sync tersedia"
+        : "ESIM_SYNC_TASK_SECRET belum dikonfigurasi; /api/tasks/esim-sync ditolak",
     },
   ];
 }
 
 export function isResellerReady(env: NodeJS.ProcessEnv = process.env) {
-  return getResellerReadiness(env).every((item) => item.ready);
+  return getResellerReadiness(env).every((item) => item.ready || item.external);
 }
