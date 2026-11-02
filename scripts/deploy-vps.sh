@@ -39,8 +39,9 @@ SERVICE="${DJIWA_DEPLOY_SERVICE:-djiwatravel.service}"
 PUBLIC_URL="${DJIWA_DEPLOY_URL:-https://djiwatravel.com}"
 KEEP_BACKUPS="${DJIWA_DEPLOY_KEEP_BACKUPS:-3}"
 
-SSH_OPTS=(-i "${KEY}" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
-RSYNC_RSH="ssh -i ${KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+SSH_OPTS=(-i "${KEY}" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15
+  -o ServerAliveInterval=10 -o ServerAliveCountMax=6)
+RSYNC_RSH="ssh -i ${KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=6"
 
 SKIP_BUILD=0
 SKIP_SOURCE=0
