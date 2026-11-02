@@ -15,6 +15,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportRuntimeError } from "../lib/error-reporting";
+import { reloadOnceForStaleChunk } from "../lib/stale-chunk";
 import { PageTransition } from "../components/motion-primitives";
 import { NavProgress } from "../components/nav-progress";
 import { AppSplash } from "../components/app-splash";
@@ -49,6 +50,14 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
+    // An open tab from before a deploy requests chunks that no longer exist; a single reload fixes it.
+    let storage: Storage | null = null;
+    try {
+      storage = window.sessionStorage;
+    } catch {
+      storage = null;
+    }
+    if (reloadOnceForStaleChunk(error, storage, () => window.location.reload())) return;
     reportRuntimeError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
   return (
