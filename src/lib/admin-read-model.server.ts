@@ -454,22 +454,22 @@ export const getAdminDashboardHandler = async ({
   const period = data.period;
   const periodStart =
     period === "daily"
-      ? sql`date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`
+      ? sql`(date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta')`
       : period === "weekly"
-        ? sql`date_trunc('week', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`
-        : sql`date_trunc('month', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta'`;
+        ? sql`(date_trunc('week', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta')`
+        : sql`(date_trunc('month', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta')`;
   const periodEnd =
     period === "daily"
-      ? sql`${periodStart} + interval '1 day'`
+      ? sql`((${periodStart}) + interval '1 day')`
       : period === "weekly"
-        ? sql`${periodStart} + interval '7 days'`
-        : sql`${periodStart} + interval '1 month'`;
+        ? sql`((${periodStart}) + interval '7 days')`
+        : sql`((${periodStart}) + interval '1 month')`;
   // Daily view buckets by hour so a single day is still a trend; week/month bucket by day.
   // The series ends at "now" so future buckets are not drawn as empty bars.
   const bucketTrunc = sql.raw(period === "daily" ? "'hour'" : "'day'");
   const bucketInterval = sql.raw(period === "daily" ? "interval '1 hour'" : "interval '1 day'");
   const bucketFmt = sql.raw(period === "daily" ? "'YYYY-MM-DD HH24:00'" : "'YYYY-MM-DD'");
-  const bucketSeries = sql`generate_series(date_trunc(${bucketTrunc}, ${periodStart} at time zone 'Asia/Jakarta'), least((${periodEnd} at time zone 'Asia/Jakarta') - ${bucketInterval}, date_trunc(${bucketTrunc}, now() at time zone 'Asia/Jakarta')), ${bucketInterval})`;
+  const bucketSeries = sql`generate_series(date_trunc(${bucketTrunc}, (${periodStart}) at time zone 'Asia/Jakarta'), least(((${periodEnd}) at time zone 'Asia/Jakarta') - ${bucketInterval}, date_trunc(${bucketTrunc}, now() at time zone 'Asia/Jakarta')), ${bucketInterval})`;
   const [
     countResult,
     dailyResult,
