@@ -92,30 +92,45 @@ if [ "${LOCK_HASH}" != "$(cat .deps-lock 2>/dev/null || true)" ]; then
   echo "${LOCK_HASH}" > .deps-lock
 fi
 
-# Build menulis langsung ke .output, jadi simpan salinan dulu: build gagal tidak boleh merusak
-# artefak yang sedang dipakai service.
-rm -rf .output.prev
-cp -a .output .output.prev
-echo "--- build ---"
-if ! npm run build; then
-  echo "ERROR: build gagal; mengembalikan .output sebelumnya" >&2
-  rm -rf .output
-  mv .output.prev .output
+# Build di folder sementara, bukan di .output yang sedang dilayani service. Nitro membersihkan
+# .output saat build, dan proses yang berjalan memuat chunk server secara lazy dari sana, jadi build
+# di tempat membuat situs 502 selama build. Build gagal = service tidak tersentuh.
+BUILD_DIR="$(mktemp -d /tmp/djiwa-build.XXXXXX)"
+trap 'rm -rf "${BUILD_DIR}"' EXIT
+rsync -a --exclude .output --exclude .git --exclude node_modules ./ "${BUILD_DIR}/"
+ln -s "${APP_DIR}/node_modules" "${BUILD_DIR}/node_modules"
+echo "--- build (di ${BUILD_DIR}) ---"
+if ! (cd "${BUILD_DIR}" && npm run build); then
+  echo "ERROR: build gagal; service tidak diubah" >&2
+  exit 1
+fi
+if [ ! -f "${BUILD_DIR}/.output/server/index.mjs" ]; then
+  echo "ERROR: build tidak menghasilkan .output/server/index.mjs; service tidak diubah" >&2
   exit 1
 fi
 
+# Swap: hentikan service dulu, tukar folder, cek, lalu nyalakan. Tidak ada tukar folder saat
+# service berjalan, dan Restart= tidak sempat menyalakan ulang di tengah swap.
 BACKUP=".output.bak-$(date +%Y%m%d-%H%M%S)"
-mv .output.prev "${BACKUP}"
-
 rollback() {
   echo "ROLLBACK ke ${BACKUP} ..." >&2
-  rm -rf .output
-  mv "${BACKUP}" .output
-  as_root systemctl restart "${SERVICE}" || true
+  as_root systemctl stop "${SERVICE}" || true
+  rm -rf .output.failed
+  [ -d .output ] && mv .output .output.failed
+  [ -d "${BACKUP}" ] && mv "${BACKUP}" .output
+  as_root systemctl start "${SERVICE}" || true
 }
 
-echo "--- restart ${SERVICE} ---"
-as_root systemctl restart "${SERVICE}"
+echo "--- swap + restart ${SERVICE} ---"
+as_root systemctl stop "${SERVICE}"
+[ -d .output ] && mv .output "${BACKUP}"
+mv "${BUILD_DIR}/.output" .output
+if [ ! -f .output/server/index.mjs ]; then
+  echo "ERROR: index.mjs hilang setelah swap" >&2
+  rollback
+  exit 1
+fi
+as_root systemctl start "${SERVICE}"
 
 FAILED=0
 for _ in $(seq 1 20); do
