@@ -1,24 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
-import { ChevronDown, Globe2, Headphones, Info, Plus, QrCode } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
-import { QuotaRing } from "@/components/esim-quota-ring";
-import { EsimStatusBadge } from "@/components/esim-status-badge";
+import { Headphones, Plus } from "lucide-react";
 import { OrderLoading } from "@/components/order-loading";
-import { destinationArt } from "@/lib/destination-art";
-import { springIos } from "@/lib/motion";
-import {
-  BackBar,
-  Page,
-  SectionTitle,
-  StickyCta,
-  btnRed,
-  btnSoft,
-  group,
-  row,
-} from "@/components/shell";
-import { EsimInstallPanel, ManualDetails } from "@/components/esim-install";
+import { BackBar, Page, SectionTitle, btnSoft, group, row } from "@/components/shell";
+import { InstallGuide, ManualDetails } from "@/components/esim-install";
+import { DetailSegments, EsimDetailCard, type DetailTab } from "@/components/esim-detail-card";
 import { hasGuestOrderAccess, refreshOrdersFromServer, useOrders } from "@/lib/orders";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
@@ -46,9 +33,6 @@ import {
   buildTravelChecklist,
   calendarDaysUntil,
   checklistProgress,
-  formatData,
-  formatGb,
-  formatRemainingPercent,
   parseDepartureDate,
   reorderIntent,
   usageView,
@@ -72,12 +56,9 @@ export const Route = createFileRoute("/my-esim/$id")({
 
 function Detail() {
   const homeConfig = useHomeEsimConfig();
-  const reduce = useReducedMotion();
-  const [artFailed, setArtFailed] = useState(false);
   const { id } = Route.useParams();
   const orders = useOrders();
-  const [tab, setTab] = useState<"none" | "install" | "topup">("none");
-  const [tech, setTech] = useState(false);
+  const [detailTab, setDetailTab] = useState<DetailTab>("summary");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [trip, setTrip] = useState(() => readTripPlan(id));
   const [snapshot, setSnapshot] = useState<TravelSnapshot | null>(() => readTravelSnapshot(id));
@@ -133,9 +114,7 @@ function Detail() {
       </Page>
     );
   const status = effectiveOrderStatus(o.status, o.expiresAt);
-  const isReady = status === "READY";
   const isHistory = ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
-  const art = destinationArt(o.locationCodes?.[0]);
   const canInstall = Boolean(o.esim) && (status === "READY" || status === "INSTALLED");
   const packageName = o.packageName ?? o.packageId;
   const locationLabel = o.locationCodes?.join(", ") || "Regional";
@@ -188,78 +167,16 @@ function Detail() {
     <Page>
       <BackBar title="Detail eSIM" />
 
-      <motion.section
-        initial={reduce ? false : { opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={reduce ? { duration: 0 } : springIos}
-        className={`overflow-hidden rounded-[28px] border border-border/60 p-5 shadow-[0_14px_32px_-24px_rgba(0,0,0,0.35)] ${
-          isHistory ? "bg-surface" : art.tint
-        }`}
-      >
-        <div className="flex items-start gap-4">
-          <span
-            className={`grid size-20 shrink-0 place-items-center rounded-3xl bg-white/70 ${isHistory ? "opacity-60 grayscale" : ""}`}
-          >
-            {art.src && !artFailed ? (
-              <motion.img
-                src={art.src}
-                alt=""
-                width={64}
-                height={64}
-                decoding="async"
-                onError={() => setArtFailed(true)}
-                className="size-16 object-contain"
-                initial={reduce ? false : { scale: 0.8, rotate: -6, opacity: 0 }}
-                animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                transition={reduce ? { duration: 0 } : { ...springIos, delay: 0.1 }}
-              />
-            ) : (
-              <Globe2 className="size-9 text-muted-foreground" aria-hidden="true" />
-            )}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              eSIM kamu
-            </p>
-            <h1 className="mt-1 text-[22px] font-bold leading-tight">{packageName}</h1>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              {locationLabel} · {quotaLabel} · {durationDays} hari
-            </p>
-            <div className="mt-2">
-              <EsimStatusBadge status={status} low={usage.kind === "measured" && usage.low} />
-            </div>
-          </div>
-        </div>
-        {usage.kind === "measured" &&
-        usage.remainingPercent !== null &&
-        usage.remainingBytes !== null ? (
-          <div className="mt-4 flex items-center gap-4 rounded-2xl bg-white/70 p-3">
-            <QuotaRing
-              percent={usage.remainingPercent}
-              label={formatRemainingPercent(usage)}
-              valueText={`Sisa ${formatData(usage.remainingBytes)} (${formatRemainingPercent(usage)})`}
-              low={usage.low}
-              size={60}
-            />
-            <div className="min-w-0">
-              <p className="text-[17px] font-bold">{formatData(usage.remainingBytes)} tersisa</p>
-              {usage.totalBytes !== null && (
-                <p className="text-[12px] text-muted-foreground">
-                  dari {formatGb(usage.totalBytes)}
-                </p>
-              )}
-            </div>
-          </div>
-        ) : (
-          <p className="mt-4 rounded-2xl bg-white/70 p-3 text-[13px] text-muted-foreground">
-            {isReady
-              ? "Sudah siap dipasang di perangkatmu."
-              : isHistory
-                ? timeline.hint
-                : "Kami akan memperbarui status secara otomatis."}
-          </p>
-        )}
-      </motion.section>
+      <EsimDetailCard
+        summary={`${locationLabel} · ${quotaLabel} · ${durationDays} hari`}
+        headline={isHistory ? timeline.headline : packageName}
+        hint={timeline.hint}
+        statusLabel={ORDER_STATUS_LABEL[status]}
+        esim={canInstall && o.esim ? o.esim : null}
+        muted={isHistory}
+        onManual={() => setDetailTab("guide")}
+      />
+      <DetailSegments value={detailTab} onChange={setDetailTab} />
 
       {status === "PROVISIONING_FAILED" && (
         <div className="mt-4 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-4">
@@ -274,75 +191,70 @@ function Detail() {
         <p className="mt-3 text-center text-sm text-muted-foreground">{actionMessage}</p>
       )}
 
-      {canInstall && o.esim && (
-        <section className="mt-3 rounded-2xl border border-brand-red/15 bg-brand-red-soft/45 p-3">
-          <div className="flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-red text-white">
-              <QrCode className="size-4" aria-hidden="true" />
+      {detailTab === "summary" && (
+        <>
+          <section className="mt-3 rounded-2xl bg-surface p-3">
+            <div className="mb-2 [&_h2]:text-[16px]">
+              <SectionTitle>Ringkasan paket</SectionTitle>
             </div>
-            <div className="min-w-0">
-              <h2 className="text-[16px] font-bold">Pasang eSIM sekarang</h2>
-              <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
-                Scan QR sebelum berangkat saat perangkat terhubung ke Wi-Fi.
-              </p>
+            <div className={group}>
+              {[
+                ["Paket", `${quotaLabel} · ${durationDays} hari`],
+                ...(canInstall ? [["Berlaku sampai", `±${exp}`]] : []),
+                ["Destinasi", locationLabel],
+                ["Status", ORDER_STATUS_LABEL[status]],
+              ].map(([k, v]) => (
+                <div key={k} className={row}>
+                  <span className="text-[14px] text-muted-foreground">{k}</span>
+                  <span className="truncate text-right text-[14px] font-medium">{v}</span>
+                </div>
+              ))}
             </div>
+          </section>
+
+          <div className="mt-4">
+            <TravelTimeline
+              timeline={timeline}
+              lastSyncedAt={lastSyncedAt}
+              syncFailed={syncFailed}
+              onRefresh={refreshStatus}
+              compact
+            />
           </div>
-          {tab !== "install" ? (
-            <button type="button" onClick={() => setTab("install")} className={`${btnRed} mt-4`}>
-              <QrCode className="size-5" aria-hidden="true" /> Tampilkan QR Code
-            </button>
-          ) : (
+        </>
+      )}
+      {detailTab === "usage" && (
+        <>
+          <div className="mt-4">
+            <TravelUsageCard view={usage} compact />
+          </div>
+        </>
+      )}
+      {detailTab === "guide" && (
+        <>
+          <div className="mt-4">
+            <TravelChecklist
+              items={checklist}
+              departureDate={trip.departureDate}
+              daysUntil={daysUntil}
+              progress={progress}
+              onSetDepartureDate={(value) => setTrip(writeDepartureDate(id, value))}
+              onToggle={(key, done) => setTrip(setChecklistItem(id, key, done))}
+              compact
+            />
+          </div>
+
+          <div className="mt-4">
+            <InstallGuide />
+          </div>
+          {canInstall && o.esim && (
             <div className="mt-4">
-              <EsimInstallPanel esim={o.esim} compact withGuide />
+              <p className="mb-2 px-1 text-sm font-medium text-muted-foreground">Pasang manual</p>
+              <ManualDetails esim={o.esim} iccid />
             </div>
           )}
-        </section>
+        </>
       )}
-
-      <section className="mt-3 rounded-2xl bg-surface p-3">
-        <div className="mb-2 [&_h2]:text-[16px]">
-          <SectionTitle>Ringkasan paket</SectionTitle>
-        </div>
-        <div className={group}>
-          {[
-            ["Paket", `${quotaLabel} · ${durationDays} hari`],
-            ...(canInstall ? [["Berlaku sampai", `±${exp}`]] : []),
-            ["Destinasi", locationLabel],
-            ["Status", ORDER_STATUS_LABEL[status]],
-          ].map(([k, v]) => (
-            <div key={k} className={row}>
-              <span className="text-[14px] text-muted-foreground">{k}</span>
-              <span className="truncate text-right text-[14px] font-medium">{v}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="mt-4">
-        <TravelUsageCard view={usage} compact />
-      </div>
-
-      <div className="mt-4">
-        <TravelTimeline
-          timeline={timeline}
-          lastSyncedAt={lastSyncedAt}
-          syncFailed={syncFailed}
-          onRefresh={refreshStatus}
-          compact
-        />
-      </div>
-
-      <div className="mt-4">
-        <TravelChecklist
-          items={checklist}
-          departureDate={trip.departureDate}
-          daysUntil={daysUntil}
-          progress={progress}
-          onSetDepartureDate={(value) => setTrip(writeDepartureDate(id, value))}
-          onToggle={(key, done) => setTrip(setChecklistItem(id, key, done))}
-          compact
-        />
-      </div>
 
       <OfflineSnapshotBanner
         snapshot={snapshot}
@@ -385,21 +297,6 @@ function Detail() {
         </p>
       </div>
 
-      <button
-        onClick={() => setTech(!tech)}
-        aria-expanded={tech}
-        className="tap mt-4 flex min-h-11 w-full items-center justify-between rounded-2xl bg-surface px-4 text-[14px] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <span className="flex items-center gap-2">
-          <Info className="size-4" /> Detail teknis
-        </span>
-        <ChevronDown className={`size-4 transition ${tech ? "rotate-180" : ""}`} />
-      </button>
-      {tech && o.esim && (
-        <div className="mt-3">
-          <ManualDetails esim={o.esim} iccid />
-        </div>
-      )}
       <TravelSupportDialog
         open={supportOpen}
         onClose={() => setSupportOpen(false)}
@@ -407,14 +304,6 @@ function Detail() {
         contextFor={supportContextFor}
         supportBaseUrl={SUPPORT_WHATSAPP_URL}
       />
-      {canInstall && (
-        <StickyCta compact>
-          <button type="button" onClick={() => setTab("install")} className={btnRed}>
-            <QrCode className="size-5" aria-hidden="true" />
-            {tab === "install" ? "QR Code tampil di atas" : "Pasang eSIM sekarang"}
-          </button>
-        </StickyCta>
-      )}
       <Link to="/my-esim" className="sr-only">
         My eSIM
       </Link>
