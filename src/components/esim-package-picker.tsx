@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { packageDataLabel } from "@/lib/package-copy";
 import { bestValuePackage, defaultPackage, durationBuckets } from "@/lib/package-picker";
@@ -16,9 +16,12 @@ export function EsimPackagePicker({
   packages,
   stockPending = false,
   onNavigate,
+  footer,
 }: {
   packages: ViewPackage[];
   stockPending?: boolean;
+  /** Shown under the checkout button, pinned with it at the bottom of the sheet. */
+  footer?: ReactNode;
   onNavigate?: () => void;
 }) {
   const reduce = useReducedMotion();
@@ -39,7 +42,8 @@ export function EsimPackagePicker({
   const chosen = bucket.packages.find((pkg) => pkg.packageCode === selected && pkg.sellable);
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       <div role="tablist" aria-label="Lama perjalanan" className="flex rounded-xl bg-secondary p-1">
         {buckets.map((item) => {
           const active = item.id === bucket.id;
@@ -100,6 +104,9 @@ export function EsimPackagePicker({
         })}
       </div>
 
+      </div>
+
+      <div className="shrink-0 bg-background pt-3">
       {chosen ? (
         <Link
           to="/checkout/$id"
@@ -114,6 +121,8 @@ export function EsimPackagePicker({
           Belum ada paket yang bisa dibeli di rentang ini.
         </p>
       )}
+      {footer}
+      </div>
     </div>
   );
 }

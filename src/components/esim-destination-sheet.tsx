@@ -51,15 +51,16 @@ export function EsimDestinationSheet({
     <Sheet open={destination !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="bottom"
-        className="mx-auto max-h-[86dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] border-border/70 bg-background px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-6"
+        className="mx-auto flex max-h-[86dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[28px] border-border/70 bg-background px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-6"
       >
-        <SheetHeader className="mb-4 pr-10 text-left">
+        <SheetHeader className="shrink-0 mb-4 pr-10 text-left">
           <SheetTitle>
             <span aria-hidden="true">{destination?.flag}</span> Paket eSIM {destination?.nameId}
           </SheetTitle>
           <SheetDescription>Aktif otomatis saat tiba · tanpa ganti SIM.</SheetDescription>
         </SheetHeader>
 
+        <div className="flex min-h-0 flex-1 flex-col">
         {state.kind === "loading" && (
           <div aria-busy="true" aria-label="Memuat paket" className="space-y-2">
             {[0, 1, 2].map((item) => (
@@ -98,18 +99,21 @@ export function EsimDestinationSheet({
                 packages={state.data.packages}
                 stockPending={state.data.stockPending}
                 onNavigate={onClose}
+                footer={
+                  <Link
+                    to="/destination/$code"
+                    params={{ code: state.data.destination.code.toLowerCase() }}
+                    search={{ availability: "all" }}
+                    onClick={onClose}
+                    className="tap mt-1 flex min-h-11 items-center justify-center text-[13px] font-semibold text-muted-foreground"
+                  >
+                    Lihat semua paket &amp; bandingkan
+                  </Link>
+                }
               />
-              <Link
-                to="/destination/$code"
-                params={{ code: state.data.destination.code.toLowerCase() }}
-                search={{ availability: "all" }}
-                onClick={onClose}
-                className="tap mt-2 flex min-h-11 items-center justify-center text-[13px] font-semibold text-muted-foreground"
-              >
-                Lihat semua paket &amp; bandingkan
-              </Link>
             </>
           ))}
+        </div>
       </SheetContent>
     </Sheet>
   );
