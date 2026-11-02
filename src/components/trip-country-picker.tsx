@@ -1,10 +1,17 @@
 import { Check, ChevronDown, Search } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { searchCountries, TRIP_COUNTRIES, type TripCountry } from "@/lib/trip-countries";
 
 /**
- * Searchable country field for a new trip: type to filter the full country list, then pick from
- * the dropdown. Keyboard: arrows move, Enter picks, Escape closes.
+ * Country field for a new trip. Tapping it opens a bottom sheet with a search field and the full
+ * country list. A sheet (not an inline dropdown) keeps the list out of the card's overflow clip.
  */
 export function TripCountryPicker({
   value,
@@ -16,9 +23,7 @@ export function TripCountryPicker({
   const selected = TRIP_COUNTRIES.find((c) => c.code === value);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
-  const listId = useId();
-  const results = useMemo(() => searchCountries(query).slice(0, 80), [query]);
+  const results = useMemo(() => searchCountries(query).slice(0, 120), [query]);
 
   const pick = (country: TripCountry) => {
     onChange(country);
@@ -27,82 +32,76 @@ export function TripCountryPicker({
   };
 
   return (
-    <div className="relative min-w-0 flex-1">
+    <>
       <button
         type="button"
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-controls={listId}
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-end gap-1.5 text-right text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => setOpen(true)}
+        className="tap flex min-w-0 flex-1 items-center justify-end gap-1.5 text-right text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span aria-hidden="true">{selected?.flag}</span>
         <span className="truncate">{selected?.name ?? "Pilih negara"}</span>
         <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full z-30 mt-2 w-[min(18rem,80vw)] overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-[0_16px_40px_-12px_rgb(0_0_0/0.25)]">
-          <label className="flex items-center gap-2 border-b border-border/70 px-3 py-2">
-            <Search className="size-4 text-muted-foreground" aria-hidden="true" />
-            <input
-              autoFocus
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setActive(0);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "ArrowDown") {
-                  event.preventDefault();
-                  setActive((i) => Math.min(i + 1, results.length - 1));
-                } else if (event.key === "ArrowUp") {
-                  event.preventDefault();
-                  setActive((i) => Math.max(i - 1, 0));
-                } else if (event.key === "Enter" && results[active]) {
-                  event.preventDefault();
-                  pick(results[active]);
-                } else if (event.key === "Escape") {
-                  setOpen(false);
-                }
-              }}
-              placeholder="Cari negara"
-              aria-label="Cari negara"
-              role="combobox"
-              aria-expanded="true"
-              aria-controls={listId}
-              aria-autocomplete="list"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </label>
-          <ul id={listId} role="listbox" aria-label="Daftar negara" className="max-h-64 overflow-y-auto py-1">
+      <Sheet
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setQuery("");
+        }}
+      >
+        <SheetContent side="bottom" className="flex max-h-[85vh] flex-col rounded-t-[28px] p-0">
+          <SheetHeader className="px-5 pb-2 pt-5 text-left">
+            <SheetTitle className="text-[18px]">Pilih negara tujuan</SheetTitle>
+            <SheetDescription className="text-[13px]">
+              Ketik nama negara untuk mencari.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-5 pb-3">
+            <label className="flex h-11 items-center gap-2 rounded-xl bg-secondary px-3">
+              <Search className="size-4 text-muted-foreground" aria-hidden="true" />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Cari negara"
+                aria-label="Cari negara"
+                className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
+              />
+            </label>
+          </div>
+          <ul
+            role="listbox"
+            aria-label="Daftar negara"
+            className="flex-1 overflow-y-auto border-t border-border/70 pb-[max(env(safe-area-inset-bottom),1rem)]"
+          >
             {results.length === 0 && (
-              <li className="px-3 py-3 text-center text-sm text-muted-foreground">
+              <li className="px-5 py-6 text-center text-sm text-muted-foreground">
                 Negara tidak ditemukan
               </li>
             )}
-            {results.map((country, index) => (
-              <li
-                key={country.code}
-                role="option"
-                aria-selected={country.code === value}
-                onMouseEnter={() => setActive(index)}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  pick(country);
-                }}
-                className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm ${
-                  index === active ? "bg-secondary" : ""
-                }`}
-              >
-                <span aria-hidden="true" className="text-base">{country.flag}</span>
-                <span className="min-w-0 flex-1 truncate">{country.name}</span>
-                {country.code === value && <Check className="size-4 text-brand-red" aria-hidden="true" />}
+            {results.map((country) => (
+              <li key={country.code} role="option" aria-selected={country.code === value}>
+                <button
+                  type="button"
+                  onClick={() => pick(country)}
+                  className="tap flex min-h-12 w-full items-center gap-3 px-5 py-2.5 text-left text-[16px] active:bg-secondary"
+                >
+                  <span aria-hidden="true" className="text-xl">
+                    {country.flag}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{country.name}</span>
+                  {country.code === value && (
+                    <Check className="size-5 text-brand-red" aria-hidden="true" />
+                  )}
+                </button>
               </li>
             ))}
           </ul>
-        </div>
-      )}
-    </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
