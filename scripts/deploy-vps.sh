@@ -180,24 +180,31 @@ rsync -az --delete -e "${RSYNC_RSH}" .output/ "${HOST}:${REMOTE_DIR}/.output.new
 echo "terkirim: $(ssh_run "du -sh '${REMOTE_DIR}/.output.new' | cut -f1")"
 
 step "Swap + restart"
+# Stop the service BEFORE moving .output. A running node process loads server chunks lazily from
+# .output, so swapping the folder under a live process breaks it, and systemd's Restart= can start
+# it again in the middle of the swap, when index.mjs is missing. Stop -> swap -> verify -> start.
+ssh_run "sudo -n systemctl stop '${SERVICE}'"
 BACKUP="$(ssh_run "set -e
   cd '${REMOTE_DIR}'
   TS=\$(date +%Y%m%d-%H%M%S)
   rm -rf .output.failed
   if [ -d .output ]; then mv .output \".output.bak-\$TS\"; fi
   mv .output.new .output
+  test -f .output/server/index.mjs || { echo 'index.mjs missing after swap' >&2; exit 1; }
   echo \".output.bak-\$TS\"")"
 echo "backup  : ${REMOTE_DIR}/${BACKUP}"
-ssh_run "sudo -n systemctl restart '${SERVICE}'"
+ssh_run "sudo -n systemctl start '${SERVICE}'"
 
 rollback() {
   echo "ROLLBACK ke ${BACKUP} ..." >&2
   ssh_run "set -e
     cd '${REMOTE_DIR}'
+    sudo -n systemctl stop '${SERVICE}' || true
     rm -rf .output.failed
-    mv .output .output.failed
+    [ -d .output ] && mv .output .output.failed
     mv '${BACKUP}' .output
-    sudo -n systemctl restart '${SERVICE}'" || true
+    test -f .output/server/index.mjs
+    sudo -n systemctl start '${SERVICE}'" || true
   echo "ROLLBACK_SELESAI: production kembali ke build sebelumnya (migrasi SQL additive tetap terpasang)" >&2
 }
 
