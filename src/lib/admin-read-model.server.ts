@@ -28,17 +28,27 @@ export type ProviderBalanceView = {
 };
 
 // Browser display values must come from this allowlist, never provider input.
+// The admin shows the payment method the customer actually used (QRIS, VA, Djiwa Pay), not the
+// gateway name: Mayar is the processor behind QRIS and VA, and the method is what staff need.
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  qris: "QRIS",
+  va: "Virtual Account",
+  djiwa_pay: "Djiwa Pay",
+};
 export function adminPaymentProviderLabel(
   provider: unknown,
   paymentMethod?: unknown,
-): "Mayar" | "Djiwa Pay" | null {
-  if (provider == null && paymentMethod === "djiwa_pay") return "Djiwa Pay";
-  if (provider === "mayar") return "Mayar";
+): string | null {
+  if (typeof paymentMethod === "string" && Object.hasOwn(PAYMENT_METHOD_LABELS, paymentMethod)) {
+    return PAYMENT_METHOD_LABELS[paymentMethod]!;
+  }
   if (provider === "djiwa_pay") return "Djiwa Pay";
+  // Untagged Mayar orders are QRIS, the same default the settlement job applies.
+  if (provider === "mayar") return "QRIS";
   return null;
 }
 
-function paymentProviderLabel(row: Row): "Mayar" | "Djiwa Pay" | null {
+function paymentProviderLabel(row: Row): string | null {
   return adminPaymentProviderLabel(text(row, "payment_provider"), text(row, "payment_method"));
 }
 
@@ -118,7 +128,7 @@ export const getAdminOrdersHandler = async (input: AdminOrdersQuery = {}) => {
   const statusFilter = query.status === "ALL" ? sql`` : sql`and o.status = ${query.status}`;
   const result = await db.execute(sql`
     select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
-           o.payment_provider, a.payment_method, o.payment_reference, o.created_at, o.updated_at,
+           o.payment_provider, coalesce(a.payment_method, pd.payment_method) as payment_method, o.payment_reference, o.created_at, o.updated_at,
            p.status as provisioning_status,
            coalesce(cp.email, a.email) as customer_email,
            coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp,
@@ -126,6 +136,7 @@ export const getAdminOrdersHandler = async (input: AdminOrdersQuery = {}) => {
       from public.customer_orders o
       left join public.esim_provisioning_orders p on p.order_id = o.id
       left join public.guest_order_access a on a.order_id = o.id
+      left join public.customer_order_payment_details pd on pd.order_id = o.id
       left join public.customer_profiles cp on cp.auth_user_id = o.customer_auth_subject
       left join lateral (
         select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) as item_summary
@@ -165,7 +176,7 @@ export const getAdminOrderDetailHandler = async ({
   if (!UUID_RE.test(data.id)) return null;
   const orderResult = await db.execute(sql`
       select o.id, o.public_order_code, o.status, o.currency_code, o.total_amount,
-             o.payment_provider, a.payment_method, o.payment_reference, o.paid_at, o.created_at, o.updated_at,
+             o.payment_provider, coalesce(a.payment_method, pd.payment_method) as payment_method, o.payment_reference, o.paid_at, o.created_at, o.updated_at,
              o.payment_expires_at, o.esim_activation_expires_at,
              p.status as provisioning_status,
              p.attempt_count, p.provisioning_attempts,
@@ -176,6 +187,7 @@ export const getAdminOrderDetailHandler = async ({
         from public.customer_orders o
         left join public.esim_provisioning_orders p on p.order_id = o.id
         left join public.guest_order_access a on a.order_id = o.id
+      left join public.customer_order_payment_details pd on pd.order_id = o.id
         left join public.customer_profiles cp on cp.auth_user_id = o.customer_auth_subject
        where o.id = ${data.id}::uuid
        limit 1
@@ -276,23 +288,25 @@ export const getAdminPaymentsHandler = async ({
       with payment_exceptions as (
         select w.id::text as id, w.order_id, o.public_order_code,
                w.status, w.event_type, w.amount, w.currency_code, w.processing_error as last_error,
-               o.payment_provider, o.payment_reference, o.created_at as order_created_at,
+               o.payment_provider, coalesce(a.payment_method, pd.payment_method) as payment_method, o.payment_reference, o.created_at as order_created_at,
                o.updated_at as order_updated_at, w.created_at, coalesce(w.processed_at, w.created_at) as updated_at,
                coalesce(cp.email, a.email) as customer_email, coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp, items.item_summary
           from public.payment_webhook_events w
           join public.customer_orders o on o.id = w.order_id
           left join public.guest_order_access a on a.order_id = o.id
+      left join public.customer_order_payment_details pd on pd.order_id = o.id
           left join public.customer_profiles cp on cp.auth_user_id = o.customer_auth_subject
           left join lateral (select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
          where w.processing_error is not null or w.processed_at is null or w.status in ('FAILED', 'EXPIRED')
         union all
         select ('pending:' || o.id::text) as id, o.id as order_id, o.public_order_code,
                o.status, 'payment_pending'::text as event_type, o.total_amount as amount, o.currency_code,
-               null::text as last_error, o.payment_provider, o.payment_reference, o.created_at,
+               null::text as last_error, o.payment_provider, coalesce(a.payment_method, pd.payment_method) as payment_method, o.payment_reference, o.created_at,
                o.updated_at, o.updated_at as created_at, o.updated_at,
                coalesce(cp.email, a.email) as customer_email, coalesce(cp.whatsapp, a.whatsapp) as customer_whatsapp, items.item_summary
           from public.customer_orders o
           left join public.guest_order_access a on a.order_id = o.id
+      left join public.customer_order_payment_details pd on pd.order_id = o.id
           left join public.customer_profiles cp on cp.auth_user_id = o.customer_auth_subject
           left join lateral (select string_agg(coalesce(package_name_snapshot, 'Paket belum tersedia') || ' × ' || quantity::text, ', ' order by id) item_summary from public.customer_order_items where order_id = o.id) items on true
          where o.status = 'PAYMENT_PENDING' and not exists (select 1 from public.payment_webhook_events w where w.order_id = o.id and w.status = 'PAID')
@@ -439,7 +453,7 @@ export const getAdminRefundRequests = createServerFn({ method: "GET" }).handler(
 function mergePaymentMix(rows: Row[]) {
   const totals = new Map<string, number>();
   for (const r of rows) {
-    const label = adminPaymentProviderLabel(r["provider"]) ?? "Lainnya";
+    const label = adminPaymentProviderLabel(r["provider"], r["payment_method"]) ?? "Lainnya";
     totals.set(label, (totals.get(label) ?? 0) + number(r, "count"));
   }
   return [...totals].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
@@ -514,7 +528,7 @@ export const getAdminDashboardHandler = async ({
       sql`select coalesce(i.package_name_snapshot, 'Paket belum tersedia') as name, sum(i.quantity)::int as quantity, coalesce(sum(i.line_total),0)::numeric as revenue from public.customer_order_items i join public.customer_orders o on o.id = i.order_id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and o.currency_code = 'IDR' and (o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED')) group by 1 order by revenue desc limit 5`,
     ),
     db.execute(
-      sql`select o.payment_provider as provider, count(*)::int as count from public.customer_orders o where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED')) group by 1 order by count desc`,
+      sql`select coalesce(a.payment_method, pd.payment_method) as payment_method, o.payment_provider as provider, count(*)::int as count from public.customer_orders o left join public.guest_order_access a on a.order_id = o.id left join public.customer_order_payment_details pd on pd.order_id = o.id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED')) group by 1, 2 order by count desc`,
     ),
   ]);
   const row = (countResult.rows[0] as Row | undefined) ?? {};

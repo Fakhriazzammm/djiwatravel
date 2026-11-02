@@ -103,7 +103,7 @@ function AdminPayments() {
       <td className="whitespace-nowrap">{formatAdminDateTime(payment.updatedAt)}</td>
       <td className="whitespace-nowrap">{ageFrom(payment.updatedAt)}</td>
       <td className="max-w-32 truncate">
-        {projectAdminPrivacy(payment.paymentProviderLabel ?? "Provider unknown", privateMode)}
+        {projectAdminPrivacy(payment.paymentProviderLabel ?? "Metode belum tercatat", privateMode)}
         {payment.paymentReference
           ? ` · ${projectAdminPrivacy(payment.paymentReference, privateMode)}`
           : ""}
@@ -244,7 +244,7 @@ function AdminPayments() {
                         </button>
                       </th>
                       <th className="w-20">Age</th>
-                      <th>Provider / reference</th>
+                      <th>Metode / referensi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">

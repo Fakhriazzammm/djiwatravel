@@ -202,9 +202,9 @@ describe("admin browser DTO boundaries", () => {
     expect(dashboard).toMatchObject({ items: [{ status: "FAILED", amount: 125000 }] });
   });
 
-  it("preserves only allowlisted provider labels and webhook display values", async () => {
+  it("preserves only allowlisted payment labels and webhook display values", async () => {
     execute.mockResolvedValue({ rows: [{ ...row, payment_provider: "mayar" }] });
-    expect(await call(getAdminOrders)).toMatchObject([{ paymentProviderLabel: "Mayar" }]);
+    expect(await call(getAdminOrders)).toMatchObject([{ paymentProviderLabel: "QRIS" }]);
     expect(toSafeAdminPaymentWebhook({ ...row, event_type: "payment.received" })).toMatchObject({
       eventType: "payment.received",
       processingError: "provider_timeout",
