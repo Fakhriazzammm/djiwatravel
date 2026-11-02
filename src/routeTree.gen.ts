@@ -76,6 +76,7 @@ import { Route as ApiGoogleCalendarConnectRouteImport } from './routes/api.googl
 import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api.google-calendar.disconnect'
 import { Route as ApiGoogleCalendarStatusRouteImport } from './routes/api.google-calendar.status'
 import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api.google-calendar.sync'
+import { Route as ApiInternalMemberPurchasesRouteImport } from './routes/api.internal.member-purchases'
 import { Route as ApiTasksAffiliateSweepRouteImport } from './routes/api.tasks.affiliate-sweep'
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
@@ -424,6 +425,12 @@ const ApiGoogleCalendarSyncRoute = ApiGoogleCalendarSyncRouteImport.update({
   path: '/api/google-calendar/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInternalMemberPurchasesRoute =
+  ApiInternalMemberPurchasesRouteImport.update({
+    id: '/api/internal/member-purchases',
+    path: '/api/internal/member-purchases',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiTasksAffiliateSweepRoute = ApiTasksAffiliateSweepRouteImport.update({
   id: '/api/tasks/affiliate-sweep',
   path: '/api/tasks/affiliate-sweep',
@@ -535,6 +542,7 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
@@ -612,6 +620,7 @@ export interface FileRoutesByTo {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
@@ -690,6 +699,7 @@ export interface FileRoutesById {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
@@ -769,6 +779,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/status'
     | '/api/google-calendar/sync'
+    | '/api/internal/member-purchases'
     | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
@@ -846,6 +857,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/status'
     | '/api/google-calendar/sync'
+    | '/api/internal/member-purchases'
     | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
@@ -923,6 +935,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/status'
     | '/api/google-calendar/sync'
+    | '/api/internal/member-purchases'
     | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
@@ -999,6 +1012,7 @@ export interface RootRouteChildren {
   ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
   ApiGoogleCalendarStatusRoute: typeof ApiGoogleCalendarStatusRoute
   ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
+  ApiInternalMemberPurchasesRoute: typeof ApiInternalMemberPurchasesRoute
   ApiTasksAffiliateSweepRoute: typeof ApiTasksAffiliateSweepRoute
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
@@ -1478,6 +1492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoogleCalendarSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/member-purchases': {
+      id: '/api/internal/member-purchases'
+      path: '/api/internal/member-purchases'
+      fullPath: '/api/internal/member-purchases'
+      preLoaderRoute: typeof ApiInternalMemberPurchasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tasks/affiliate-sweep': {
       id: '/api/tasks/affiliate-sweep'
       path: '/api/tasks/affiliate-sweep'
@@ -1640,6 +1661,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,
   ApiGoogleCalendarStatusRoute: ApiGoogleCalendarStatusRoute,
   ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
+  ApiInternalMemberPurchasesRoute: ApiInternalMemberPurchasesRoute,
   ApiTasksAffiliateSweepRoute: ApiTasksAffiliateSweepRoute,
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
