@@ -1,3 +1,4 @@
+import { glassIconButtonClass } from "@/components/shell";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -132,17 +133,17 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
       <Link
         to="/"
         aria-label="Kembali ke beranda"
-        className="tap flex size-10 items-center justify-center rounded-full border border-border/70 bg-surface"
+        className={glassIconButtonClass}
       >
-        <ArrowLeft className="size-5" strokeWidth={2.3} />
+        <ArrowLeft className="size-5" strokeWidth={2.2} />
       </Link>
       <button
         type="button"
         aria-label="Menu perjalanan"
         onClick={onMenu}
-        className="tap flex size-10 items-center justify-center rounded-full border border-border/70 bg-surface text-foreground"
+        className={glassIconButtonClass}
       >
-        <Ellipsis className="size-5" strokeWidth={2.4} />
+        <Ellipsis className="size-5" strokeWidth={2.2} />
       </button>
     </div>
   );

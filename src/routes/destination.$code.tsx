@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Page, StickyCta } from "@/components/shell";
+import { glassIconButtonClass, Page, StickyCta } from "@/components/shell";
 import { GeoAnswer } from "@/components/geo-answer";
 import {
   Sheet,
@@ -505,9 +505,9 @@ function Destination() {
           type="button"
           onClick={goBack}
           aria-label="Kembali"
-          className="tap -ml-2 flex size-11 items-center justify-center rounded-full text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={glassIconButtonClass}
         >
-          <ChevronLeft className="size-7" strokeWidth={2.2} aria-hidden="true" />
+          <ChevronLeft className="size-5" strokeWidth={2.2} aria-hidden="true" />
         </button>
         <button
           type="button"

@@ -91,6 +91,13 @@ export function Page({ children, tabs = true }: { children: ReactNode; tabs?: bo
   );
 }
 
+/**
+ * The one round header control used across customer pages (back, menu, notifications, account):
+ * a 40px frosted-glass circle with a thin 2pt-style glyph, like iOS navigation bar buttons.
+ */
+export const glassIconButtonClass =
+  "tap flex size-10 shrink-0 items-center justify-center rounded-full bg-white/75 text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.06),0_2px_8px_-2px_rgb(0_0_0/0.14)] backdrop-blur-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
 /** iOS nav bar: back left, title centered, optional action right. */
 export function BackBar({
   title,
@@ -114,10 +121,10 @@ export function BackBar({
       <button
         type="button"
         onClick={goBack}
-        className="tap -ml-1.5 flex min-h-11 items-center rounded-lg pr-2 text-[15px] text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={glassIconButtonClass}
         aria-label="Kembali"
       >
-        <ChevronLeft className="size-6 shrink-0" strokeWidth={2.2} /> Kembali
+        <ChevronLeft className="size-5" strokeWidth={2.2} aria-hidden="true" />
       </button>
       <span className="truncate text-center text-[16px] font-semibold">{title}</span>
       <span className="flex items-center justify-end">{action}</span>

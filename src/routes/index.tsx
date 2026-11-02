@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, ChevronRight, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Page, SectionTitle } from "@/components/shell";
+import { glassIconButtonClass, Page, SectionTitle } from "@/components/shell";
 import { HomeHero } from "@/components/home-hero";
 import { RecentPurchaseToast } from "@/components/recent-purchase-toast";
 import { FixedLayer, Reveal, Stagger } from "@/components/motion-primitives";
@@ -177,9 +177,9 @@ function Home() {
             to="/notifications"
             data-testid="header-notifications"
             aria-label={unread > 0 ? `Notifikasi, ${unread} belum dibaca` : "Notifikasi"}
-            className="tap relative flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={`relative ${glassIconButtonClass}`}
           >
-            <Bell className="size-5" strokeWidth={1.9} aria-hidden="true" />
+            <Bell className="size-5" strokeWidth={2} aria-hidden="true" />
             {unread > 0 && (
               <span
                 aria-hidden="true"
@@ -199,7 +199,7 @@ function Home() {
             }}
             aria-label="Buka profil akun"
             data-testid="header-account"
-            className="tap flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-white to-secondary text-[16px] font-semibold text-foreground shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_2px_8px_-2px_rgb(0_0_0/0.12)]"
+            className={`${glassIconButtonClass} text-[16px] font-semibold`}
           >
             <span aria-hidden="true">
               {(user.name?.trim() || user.email || "T").slice(0, 1).toUpperCase()}
