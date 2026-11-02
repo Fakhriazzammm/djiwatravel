@@ -104,6 +104,16 @@ cross-project contract.
 | AI gateway | `src/lib/ai/` and `.env.example` | API keys are server-only; redact customer/order data before provider calls. |
 | Webhooks | `src/routes/api.webhooks.*.ts`, `src/lib/webhook-inbox.server.ts` | Authenticate, persist an idempotency key/inbox record, then process safely on retry. |
 
+### Mayar webhook ownership
+
+Mayar allows one webhook URL per account, and that account also serves Djiwa Tentram. Tentram owns
+the slot (`supabase/functions/mayar-webhook` on `vps-djiwa-tentram`); after enqueuing an event it
+sends an HMAC-signed, identifiers-only hint to `POST /api/webhooks/mayar-forward` here. Travel never
+trusts the hint: it re-reads the transaction from Mayar and settles only when Mayar reports it
+`paid` for the exact order amount, and the one-minute task sweep (`/api/tasks/esim-sync`) covers a
+lost hint. `DJIWA_TRAVEL_CALLBACK_SECRET` must equal the Tentram edge-runtime value, and
+`DJIWA_TRAVEL_CALLBACK_URL` on Tentram points at `/api/webhooks/mayar-forward`.
+
 ## Routes and module conventions
 
 TanStack Start uses file-based routing. The authoritative conventions and
@@ -117,7 +127,8 @@ Route groups are discoverable from these prefixes and files:
 - Customer pages: `index`, `explore`, `catalog`, `destination.*`, `plan.*`,
   `finder`, `esim.*`, `checkout.*`, `order.*`, `receipt.*`, `profile`,
   `support`, `notifications`, `wallet*`, and `my-trips*`. Shared itineraries
-  are public read-only pages at `share.$token`.
+  are public read-only pages at `share.$token`; shared eSIM gifts are
+  claim-once public pages at `e.$token`.
 - Admin pages: `admin.*` and `admin.orders.*`.
 - API/action routes: `api.*`, including auth, customer profile/support,
   wallet, Calendar, tasks, recovery, waitlist, and provider webhooks.
@@ -140,6 +151,16 @@ the Home bottom sheet (`esim-checkout-sheet.tsx`), both loading through
 `checkout-load.fn.ts`; pricing, sellability, member/profile and wallet rules are
 therefore identical. No migration: the pins live in the existing JSON setting.
 
+eSIM sharing contract: a signed-in owner creates a link from `/my-esim/$id`
+through `esim-share.fn.ts`; `esim_share_links` stores only the SHA-256 token
+hash plus an encrypted copy for re-copy. `/e/$token` shows a package preview
+until the recipient presses **Buka eSIM**, which binds the link to an HttpOnly
+claim cookie (`claim_hash`). Eligibility is READY/INSTALLED until the profile or
+package expires; refunded, cancelled, failed, exhausted and disabled profiles
+end the link. `admin_settings.esimSharing` is the admin kill switch and admin
+order detail can revoke a link. Never expose the owner, order code, price, token,
+or QR before a claim.
+
 Tests are under [`src/test/`](src/test/), with server, route-auth, wallet,
 Calendar, profile, and UI coverage. `routeTree.gen.ts` and build output are
 generated artifacts. Do not hand-edit them to fix a route.
@@ -149,7 +170,7 @@ generated artifacts. Do not hand-edit them to fix a route.
 PostgreSQL access is server-only. The current schema shape is represented by
 [`drizzle/schema.ts`](drizzle/schema.ts) and the deployment migration history
 is in [`migrations/`](migrations/). Migrations are numbered SQL files; the
-inventory currently reaches `033_affiliate.sql`, with some
+inventory currently reaches `034_esim_share_links.sql`, with some
 parallel historical numbers. Inspect the migration tracking table and
 `scripts/apply-migrations.sh` before deciding what is pending.
 

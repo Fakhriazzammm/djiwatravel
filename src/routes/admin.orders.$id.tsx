@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminOrderDetail } from "@/lib/admin-read-model.fn";
+import { getAdminEsimShareState } from "@/lib/admin-esim-share.fn";
 import { retryAdminProvisioning } from "@/lib/admin-provisioning.fn";
 import {
   formatAdminDateTime,
@@ -15,16 +16,23 @@ import {
   projectAdminPrivacy,
 } from "@/lib/admin-display";
 import { AdminPageState, AdminShell, SectionHeading, StatusPill } from "@/components/admin-shell";
+import { AdminEsimSharePanel } from "@/components/admin-esim-share-panel";
 
 export const Route = createFileRoute("/admin/orders/$id")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
-  loader: ({ params }) => getAdminOrderDetail({ data: { id: params.id } }),
+  loader: async ({ params }) => {
+    const [order, share] = await Promise.all([
+      getAdminOrderDetail({ data: { id: params.id } }),
+      getAdminEsimShareState({ data: { orderId: params.id } }).catch(() => null),
+    ]);
+    return { order, share };
+  },
   component: AdminOrderDetail,
 });
 function AdminOrderDetail() {
   const { id } = Route.useParams();
-  const order = Route.useLoaderData();
+  const { order, share } = Route.useLoaderData();
   const router = useRouter();
   const [privateMode, setPrivateMode] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -188,7 +196,11 @@ function AdminOrderDetail() {
             )}
             <div className="flex justify-between gap-3">
               <dt>Provisioning</dt>
-              <dd>{order.provisioning.status ? humanizeAdminStatus(order.provisioning.status) : "Belum dimulai"}</dd>
+              <dd>
+                {order.provisioning.status
+                  ? humanizeAdminStatus(order.provisioning.status)
+                  : "Belum dimulai"}
+              </dd>
             </div>
           </dl>
           {(order.provisioning.status === "FAILED" || order.status === "PROVISIONING_FAILED") && (
@@ -214,6 +226,7 @@ function AdminOrderDetail() {
           )}
         </article>
       </div>
+      <AdminEsimSharePanel orderId={id} initial={share} />
       <section className="mt-4 rounded-2xl border border-border bg-surface p-5">
         <SectionHeading title="Order items" detail="Snapshot harga dan paket dari order." />
         <div className="mt-4 max-h-56 divide-y overflow-y-auto overscroll-contain lg:max-h-none">

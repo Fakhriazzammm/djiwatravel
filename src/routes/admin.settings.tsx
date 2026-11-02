@@ -15,6 +15,8 @@ import { AdminGeoPanel } from "@/components/admin-geo-panel";
 import { getAdminGeoConfig } from "@/lib/geo-config.fn";
 import { AdminPwaPanel } from "@/components/admin-pwa-panel";
 import { getAdminPwa } from "@/lib/pwa.fn";
+import { AdminEsimSharingPanel } from "@/components/admin-esim-sharing-panel";
+import { getAdminEsimSharing } from "@/lib/admin-esim-share.fn";
 import { getHomeDestinationFeed } from "@/lib/destination-availability.fn";
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => requireAdmin(),
@@ -24,12 +26,13 @@ export const Route = createFileRoute("/admin/settings")({
     homeEsim: await getAdminHomeEsimConfig(),
     geo: await getAdminGeoConfig(),
     pwa: await getAdminPwa(),
+    esimSharing: await getAdminEsimSharing(),
     rail: (await getHomeDestinationFeed().catch(() => ({ popular: [] }))).popular,
   }),
   component: AdminSettings,
 });
 function AdminSettings() {
-  const { readiness, homeEsim, geo, pwa, rail } = Route.useLoaderData();
+  const { readiness, homeEsim, geo, pwa, esimSharing, rail } = Route.useLoaderData();
   const counted = readiness.filter((x) => !x.external);
   const ready = counted.filter((x) => x.ready).length;
   return (
@@ -37,6 +40,7 @@ function AdminSettings() {
       <AdminHomeEsimPanel initial={homeEsim.config} version={homeEsim.version} railPool={rail} />
       <AdminGeoPanel initial={geo.config} version={geo.version} />
       <AdminPwaPanel initial={pwa.config} version={pwa.version} stats={pwa.stats} />
+      <AdminEsimSharingPanel initial={esimSharing.config} version={esimSharing.version} />
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <SectionHeading

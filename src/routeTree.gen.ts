@@ -52,6 +52,7 @@ import { Route as ApiPwaEventsRouteImport } from './routes/api.pwa-events'
 import { Route as ApiTravelWaitlistRouteImport } from './routes/api.travel-waitlist'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
+import { Route as ETokenRouteImport } from './routes/e.$token'
 import { Route as EsimFinderRouteImport } from './routes/esim.finder'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
 import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
@@ -79,6 +80,7 @@ import { Route as ApiTasksAffiliateSweepRouteImport } from './routes/api.tasks.a
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
+import { Route as ApiWebhooksMayarForwardRouteImport } from './routes/api.webhooks.mayar-forward'
 import { Route as MyTripsTripIdSectionRouteImport } from './routes/my-trips.$tripId.$section'
 import { Route as MyTripsTripIdTravelRouteImport } from './routes/my-trips.$tripId.travel'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
@@ -299,6 +301,11 @@ const DestinationCodeRoute = DestinationCodeRouteImport.update({
   path: '/destination/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ETokenRoute = ETokenRouteImport.update({
+  id: '/e/$token',
+  path: '/e/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EsimFinderRoute = EsimFinderRouteImport.update({
   id: '/esim/finder',
   path: '/esim/finder',
@@ -438,6 +445,11 @@ const ApiWebhooksDjiwaTravelRoute = ApiWebhooksDjiwaTravelRouteImport.update({
   path: '/api/webhooks/djiwa-travel',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksMayarForwardRoute = ApiWebhooksMayarForwardRouteImport.update({
+  id: '/api/webhooks/mayar-forward',
+  path: '/api/webhooks/mayar-forward',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyTripsTripIdSectionRoute = MyTripsTripIdSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
@@ -498,6 +510,7 @@ export interface FileRoutesByFullPath {
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
+  '/e/$token': typeof ETokenRoute
   '/esim/finder': typeof EsimFinderRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
@@ -526,6 +539,7 @@ export interface FileRoutesByFullPath {
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
+  '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
@@ -573,6 +587,7 @@ export interface FileRoutesByTo {
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
+  '/e/$token': typeof ETokenRoute
   '/esim/finder': typeof EsimFinderRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
@@ -601,6 +616,7 @@ export interface FileRoutesByTo {
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
+  '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
@@ -649,6 +665,7 @@ export interface FileRoutesById {
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
+  '/e/$token': typeof ETokenRoute
   '/esim/finder': typeof EsimFinderRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
@@ -677,6 +694,7 @@ export interface FileRoutesById {
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
+  '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
@@ -726,6 +744,7 @@ export interface FileRouteTypes {
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
+    | '/e/$token'
     | '/esim/finder'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
@@ -754,6 +773,7 @@ export interface FileRouteTypes {
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
+    | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
     | '/api/webhooks/esim-access/$token'
@@ -801,6 +821,7 @@ export interface FileRouteTypes {
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
+    | '/e/$token'
     | '/esim/finder'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
@@ -829,6 +850,7 @@ export interface FileRouteTypes {
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
+    | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
     | '/api/webhooks/esim-access/$token'
@@ -876,6 +898,7 @@ export interface FileRouteTypes {
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
+    | '/e/$token'
     | '/esim/finder'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
@@ -904,6 +927,7 @@ export interface FileRouteTypes {
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
+    | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
     | '/api/webhooks/esim-access/$token'
@@ -952,6 +976,7 @@ export interface RootRouteChildren {
   ApiTravelWaitlistRoute: typeof ApiTravelWaitlistRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
+  ETokenRoute: typeof ETokenRoute
   EsimFinderRoute: typeof EsimFinderRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
   MyTripsTripIdRoute: typeof MyTripsTripIdRouteWithChildren
@@ -978,6 +1003,7 @@ export interface RootRouteChildren {
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
+  ApiWebhooksMayarForwardRoute: typeof ApiWebhooksMayarForwardRoute
   ApiWebhooksEsimAccessTokenRoute: typeof ApiWebhooksEsimAccessTokenRoute
 }
 
@@ -1284,6 +1310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DestinationCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/e/$token': {
+      id: '/e/$token'
+      path: '/e/$token'
+      fullPath: '/e/$token'
+      preLoaderRoute: typeof ETokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/esim/finder': {
       id: '/esim/finder'
       path: '/esim/finder'
@@ -1473,6 +1506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksDjiwaTravelRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/mayar-forward': {
+      id: '/api/webhooks/mayar-forward'
+      path: '/api/webhooks/mayar-forward'
+      fullPath: '/api/webhooks/mayar-forward'
+      preLoaderRoute: typeof ApiWebhooksMayarForwardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/my-trips/$tripId/$section': {
       id: '/my-trips/$tripId/$section'
       path: '/$section'
@@ -1577,6 +1617,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTravelWaitlistRoute: ApiTravelWaitlistRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
+  ETokenRoute: ETokenRoute,
   EsimFinderRoute: EsimFinderRoute,
   MyEsimIdRoute: MyEsimIdRoute,
   MyTripsTripIdRoute: MyTripsTripIdRouteWithChildren,
@@ -1603,6 +1644,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
+  ApiWebhooksMayarForwardRoute: ApiWebhooksMayarForwardRoute,
   ApiWebhooksEsimAccessTokenRoute: ApiWebhooksEsimAccessTokenRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,3 +1,4 @@
+import { parseEsimSharingConfig } from "./esim-share";
 import { parseGeoConfig } from "./geo-config";
 import { parseHomeEsimConfig } from "./home-esim-config";
 import { parsePwaConfig } from "./pwa-config";
@@ -16,7 +17,8 @@ export type AdminSettingKey =
   | "security"
   | "homeEsim"
   | "aiSearch"
-  | "pwa";
+  | "pwa"
+  | "esimSharing";
 export type AdminSettings = Record<AdminSettingKey, unknown>;
 export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "retryPolicy",
@@ -33,6 +35,7 @@ export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "homeEsim",
   "aiSearch",
   "pwa",
+  "esimSharing",
 ];
 export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (
@@ -65,6 +68,7 @@ export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (key === "homeEsim") parseHomeEsimConfig(value);
   if (key === "aiSearch") parseGeoConfig(value);
   if (key === "pwa") parsePwaConfig(value);
+  if (key === "esimSharing") parseEsimSharingConfig(value);
   return true;
 }
 export function buildSettingAudit(

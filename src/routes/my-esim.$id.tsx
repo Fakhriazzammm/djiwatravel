@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
-import { Headphones, Plus } from "lucide-react";
+import { Headphones, Plus, Share2 } from "lucide-react";
 import { OrderLoading } from "@/components/order-loading";
 import { statusPrimary, statusSecondary } from "@/components/esim-status-card";
 import { BackBar, Page, btnSoft, group, row } from "@/components/shell";
@@ -14,6 +14,7 @@ import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 import { TravelChecklist } from "@/components/travel-checklist";
 import { TravelUsageCard } from "@/components/travel-usage-card";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
+import { EsimShareSheet } from "@/components/esim-share-sheet";
 import { OfflineSnapshotBanner } from "@/components/offline-snapshot-banner";
 import {
   readTripPlan,
@@ -66,6 +67,7 @@ function Detail() {
   const [trip, setTrip] = useState(() => readTripPlan(id));
   const [snapshot, setSnapshot] = useState<TravelSnapshot | null>(() => readTravelSnapshot(id));
   const [supportOpen, setSupportOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncFailed, setSyncFailed] = useState(false);
   const o = orders?.find(
@@ -314,6 +316,12 @@ function Detail() {
         }}
       />
 
+      {canInstall && o.fromMemberAccount === true && (
+        <button type="button" onClick={() => setShareOpen(true)} className={`${btnSoft} mt-3`}>
+          <Share2 className="size-4" aria-hidden="true" /> Bagikan eSIM ke orang lain
+        </button>
+      )}
+
       <div className="mt-3 flex gap-2">
         <button type="button" onClick={() => setSupportOpen(true)} className={btnSoft}>
           <span className="flex items-center justify-center gap-2">
@@ -342,6 +350,12 @@ function Detail() {
         topics={supportTopics}
         contextFor={supportContextFor}
         supportBaseUrl={SUPPORT_WHATSAPP_URL}
+      />
+      <EsimShareSheet
+        orderId={o.id}
+        packageName={packageName}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
       />
       <Link to="/my-esim" className="sr-only">
         My eSIM
