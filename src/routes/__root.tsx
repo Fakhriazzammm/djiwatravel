@@ -23,6 +23,7 @@ import { easeIos } from "../lib/motion";
 import { warmResellerCatalog } from "../lib/explore-warm";
 import { trackAnalytics } from "../lib/analytics";
 import { Toaster } from "../components/ui/sonner";
+import { PwaRuntime } from "../components/pwa-runtime";
 
 function NotFoundComponent() {
   return (
@@ -126,6 +127,7 @@ function RootComponent() {
         {/* Server-rendered, so the first paint is never a blank white page. */}
         <AppSplash />
         <CatalogWarmup />
+        <PwaRuntime />
         <AnalyticsPageView />
         <AnimatedOutlet />
         <CustomerOnboardingGate />

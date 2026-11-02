@@ -226,3 +226,7 @@ route, service, and environment at each boundary.
   `GeoAnswer` renders it as visible SSR text and the same FAQ feeds `FAQPage` JSON-LD
   (Home + `/destination/$code`). Destination pages deliberately carry no `Product` (see
   `seo-product-ranking.test.ts`); `Product`/`Offer` stays on `/plan/$id`.
+
+## Installable app (PWA)
+
+Install prompt, offline fallback, update flow and Web Push are documented in [`docs/pwa.md`](docs/pwa.md). Policy lives in `admin_settings.pwa` (`src/lib/pwa-config.ts`, `src/lib/pwa.server.ts`), the worker in `public/sw.js`, push delivery in `src/lib/push.server.ts`, and the READY-transition hook in `src/lib/esim-provisioning-refresh.server.ts`.

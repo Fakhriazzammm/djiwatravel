@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f2d5c" />
+    <meta name="robots" content="noindex" />
+    <title>Offline — Djiwa Travel</title>
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #faf9f6; color: #1f2d5c; padding: max(20px, env(safe-area-inset-top)) 20px 32px; }
+      main { max-width: 480px; margin: 0 auto; }
+      h1 { font-size: 28px; margin: 24px 0 6px; letter-spacing: -0.02em; }
+      p { margin: 0; color: #5b6480; line-height: 1.45; }
+      button.retry { margin-top: 18px; min-height: 48px; width: 100%; border: 0; border-radius: 16px; background: #1f2d5c; color: #fff; font-size: 16px; font-weight: 600; }
+      h2 { font-size: 15px; margin: 28px 0 10px; text-transform: uppercase; letter-spacing: 0.04em; color: #5b6480; }
+      .card { background: #fff; border-radius: 20px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 0 rgba(0,0,0,.05); }
+      .card b { display: block; font-size: 16px; }
+      .meta { font-size: 13px; color: #5b6480; margin-top: 2px; }
+      code { display: block; margin-top: 10px; padding: 10px; border-radius: 12px; background: #f1efe9; font-size: 12px; word-break: break-all; user-select: all; }
+      .copy { margin-top: 8px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 12px; background: #e8ecf8; color: #1f2d5c; font-weight: 600; }
+      ol { padding-left: 20px; color: #5b6480; line-height: 1.5; font-size: 14px; }
+      [hidden] { display: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Kamu sedang offline</h1>
+      <p>Koneksi internet belum tersedia. Halaman lain butuh sinyal, tetapi eSIM yang sudah kamu beli tetap bisa dilihat di bawah.</p>
+      <button class="retry" type="button" onclick="location.href = '/'">Coba lagi</button>
+
+      <section id="esims" hidden>
+        <h2>eSIM tersimpan di perangkat ini</h2>
+        <div id="list"></div>
+        <h2>Cara memasang manual</h2>
+        <ol>
+          <li><b>iPhone:</b> Pengaturan → Seluler → Tambah eSIM → Gunakan Kode QR → Masukkan Detail Secara Manual, lalu tempel kode di atas.</li>
+          <li><b>Android:</b> Pengaturan → Jaringan &amp; internet → SIM → Tambah eSIM → Masukkan kode secara manual.</li>
+          <li>Aktifkan <b>Data Roaming</b> untuk eSIM setelah tiba di tujuan.</li>
+        </ol>
+      </section>
+    </main>
+    <script>
+      // Reads only what this device already stored for the signed-in/guest customer; nothing is fetched.
+      (function () {
+        var orders = [];
+        try { orders = JSON.parse(localStorage.getItem("djiwa.orders") || "[]"); } catch (e) {}
+        var usable = orders.filter(function (o) {
+          return o && o.esim && o.esim.lpa && (o.status === "READY" || o.status === "INSTALLED");
+        });
+        if (usable.length) {
+          document.getElementById("esims").hidden = false;
+          var list = document.getElementById("list");
+          usable.forEach(function (o) {
+            var card = document.createElement("div");
+            card.className = "card";
+            var title = document.createElement("b");
+            title.textContent = o.packageName || o.packageId || "eSIM";
+            var meta = document.createElement("div");
+            meta.className = "meta";
+            meta.textContent = o.publicOrderCode ? "#" + o.publicOrderCode : "";
+            var code = document.createElement("code");
+            code.textContent = o.esim.lpa;
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "copy";
+            btn.textContent = "Salin kode";
+            btn.onclick = function () {
+              if (navigator.clipboard) navigator.clipboard.writeText(o.esim.lpa).then(function () { btn.textContent = "Tersalin"; });
+            };
+            card.appendChild(title); card.appendChild(meta); card.appendChild(code); card.appendChild(btn);
+            list.appendChild(card);
+          });
+        }
+        window.addEventListener("online", function () { location.href = "/"; });
+        try { navigator.sendBeacon && navigator.sendBeacon("/api/pwa-events", new Blob([JSON.stringify({ name: "offline_page_shown" })], { type: "application/json" })); } catch (e) {}
+      })();
+    </script>
+  </body>
+</html>
