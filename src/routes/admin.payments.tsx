@@ -113,51 +113,6 @@ function AdminPayments() {
   return (
     <AdminShell title="Payments" subtitle="Monitor exception pembayaran dan status provisioning.">
       <div className="space-y-2">
-        <AdminSurface className="p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Payment monitor
-              </p>
-              <p className="mt-0.5 text-lg font-bold tabular-nums">
-                {result.total}{" "}
-                <span className="text-xs font-medium text-muted-foreground">exception</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-1">
-              <StatusPill tone={result.total ? "warn" : "good"}>
-                {result.total ? "Perlu ditinjau" : "Aman"}
-              </StatusPill>
-              <button
-                type="button"
-                onClick={() => setPrivateMode((value) => !value)}
-                aria-label="Mode privasi"
-                aria-pressed={privateMode}
-                className="min-h-11 min-w-11 rounded-xl border bg-surface p-2"
-              >
-                {privateMode ? (
-                  <EyeOff className="mx-auto size-4" />
-                ) : (
-                  <Eye className="mx-auto size-4" />
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="mt-2">
-            <AdminStatStrip
-              columns={4}
-              items={[
-                { label: "Ditampilkan", value: String(result.rows.length) },
-                { label: "Halaman", value: String(result.page + 1) },
-                {
-                  label: "Filter",
-                  value: search.status === "ALL" ? "Semua" : humanizeAdminStatus(search.status),
-                },
-                { label: "Sort", value: humanizeAdminStatus(search.sort) },
-              ]}
-            />
-          </div>
-        </AdminSurface>
         <AdminSurface className="p-2.5">
           <div className="flex gap-2" aria-live="polite">
             <label className="relative min-w-0 flex-1">
@@ -182,6 +137,19 @@ function AdminPayments() {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => setPrivateMode((value) => !value)}
+              aria-label="Mode privasi"
+              aria-pressed={privateMode}
+              className="min-h-11 min-w-11 rounded-xl border border-border bg-surface p-2"
+            >
+              {privateMode ? (
+                <EyeOff className="mx-auto size-4" />
+              ) : (
+                <Eye className="mx-auto size-4" />
+              )}
+            </button>
             <button
               type="button"
               onClick={refresh}
