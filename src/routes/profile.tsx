@@ -574,6 +574,19 @@ function Profile() {
         )}
       </section>
 
+      <h2 className={capClass}>Program</h2>
+      <nav aria-label="Program" className={groupClass}>
+        <Link to="/affiliate" className={rowClass}>
+          <span className="flex-1">
+            Affiliate
+            <span className="block text-[13px] font-normal text-muted-foreground">
+              Ajak teman, dapat komisi
+            </span>
+          </span>
+          <RowChevron />
+        </Link>
+      </nav>
+
       <h2 className={capClass}>Tentang</h2>
       <nav aria-label="Kebijakan" className={groupClass}>
         {[

@@ -149,7 +149,7 @@ generated artifacts. Do not hand-edit them to fix a route.
 PostgreSQL access is server-only. The current schema shape is represented by
 [`drizzle/schema.ts`](drizzle/schema.ts) and the deployment migration history
 is in [`migrations/`](migrations/). Migrations are numbered SQL files; the
-inventory currently reaches `022_travel_trip_shares.sql`, with some
+inventory currently reaches `033_affiliate.sql`, with some
 parallel historical numbers. Inspect the migration tracking table and
 `scripts/apply-migrations.sh` before deciding what is pending.
 
@@ -230,3 +230,24 @@ route, service, and environment at each boundary.
 ## Installable app (PWA)
 
 Install prompt, offline fallback, update flow and Web Push are documented in [`docs/pwa.md`](docs/pwa.md). Policy lives in `admin_settings.pwa` (`src/lib/pwa-config.ts`, `src/lib/pwa.server.ts`), the worker in `public/sw.js`, push delivery in `src/lib/push.server.ts`, and the READY-transition hook in `src/lib/esim-provisioning-refresh.server.ts`.
+
+## Affiliate (referral) program
+
+Members activate affiliate in one step (no verification form) at `/affiliate`; verification happens only
+at payout (bank details, admin review). Admin runs it at `/admin/affiliates`.
+
+- **Source of truth:** migration `033_affiliate.sql` (`affiliate_accounts/clicks/referrals/commissions/payouts`),
+  rules in [`src/lib/affiliate.ts`](src/lib/affiliate.ts), server logic in
+  [`src/lib/affiliate.server.ts`](src/lib/affiliate.server.ts), program settings in `admin_settings`
+  key `affiliate` (commission % of order **markup**, hold days, minimum payout, cookie days, on/off).
+- **Attribution:** `?ref=CODE` → first-party cookie `djiwa_ref` (only for a real active code) →
+  `claimAffiliateReferral` locks referrer→referee once, from the verified session. Self-referral, an
+  already-referred account, and an account that already paid an order are rejected; 3+ accounts from the
+  same device hash are flagged and held.
+- **Commissions** are *derived* from settled orders by an idempotent sweep (`runAffiliateSweep`, unique per
+  `order_id`), not hooked into payment code: first paid order only → `pending` → `approved` after the hold
+  and no failed provisioning → `reversed` on refund/cancel. The sweep runs on dashboard/admin loads and via
+  `POST /api/tasks/affiliate-sweep` (`x-djiwa-task-secret` = `AFFILIATE_TASK_SECRET`); no host timer is installed yet.
+- **Payouts** are admin-reviewed records (requested → approved → paid with an external reference). Travel does
+  **not** credit Djiwa Pay: wallet balance and ledger stay in Djiwa Pay, so crediting is a manual/ops step until a
+  signed Pay endpoint is agreed (needs the Tentram repo). One open payout per affiliate (partial unique index).

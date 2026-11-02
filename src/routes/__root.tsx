@@ -1,3 +1,4 @@
+import { AffiliateReferralCapture } from "@/components/affiliate-referral-capture";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -131,6 +132,7 @@ function RootComponent() {
         <AnalyticsPageView />
         <AnimatedOutlet />
         <CustomerOnboardingGate />
+        <AffiliateReferralCapture />
         <CookieConsent />
         <Toaster />
       </MotionConfig>

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AffiliateRouteImport } from './routes/affiliate'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
@@ -25,6 +26,7 @@ import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAffiliatesRouteImport } from './routes/admin.affiliates'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as AdminCatalogRouteImport } from './routes/admin.catalog'
@@ -73,6 +75,7 @@ import { Route as ApiGoogleCalendarConnectRouteImport } from './routes/api.googl
 import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api.google-calendar.disconnect'
 import { Route as ApiGoogleCalendarStatusRouteImport } from './routes/api.google-calendar.status'
 import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api.google-calendar.sync'
+import { Route as ApiTasksAffiliateSweepRouteImport } from './routes/api.tasks.affiliate-sweep'
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
@@ -83,6 +86,11 @@ import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.web
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AffiliateRoute = AffiliateRouteImport.update({
+  id: '/affiliate',
+  path: '/affiliate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogRoute = CatalogRouteImport.update({
@@ -158,6 +166,11 @@ const WalletRoute = WalletRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAffiliatesRoute = AdminAffiliatesRouteImport.update({
+  id: '/admin/affiliates',
+  path: '/admin/affiliates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
@@ -404,6 +417,11 @@ const ApiGoogleCalendarSyncRoute = ApiGoogleCalendarSyncRouteImport.update({
   path: '/api/google-calendar/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTasksAffiliateSweepRoute = ApiTasksAffiliateSweepRouteImport.update({
+  id: '/api/tasks/affiliate-sweep',
+  path: '/api/tasks/affiliate-sweep',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTasksEsimSyncRoute = ApiTasksEsimSyncRouteImport.update({
   id: '/api/tasks/esim-sync',
   path: '/api/tasks/esim-sync',
@@ -439,6 +457,7 @@ const ApiWebhooksEsimAccessTokenRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/affiliate': typeof AffiliateRoute
   '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
@@ -453,6 +472,7 @@ export interface FileRoutesByFullPath {
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/wallet': typeof WalletRouteWithChildren
+  '/admin/affiliates': typeof AdminAffiliatesRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -502,6 +522,7 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -511,6 +532,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/affiliate': typeof AffiliateRoute
   '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
@@ -525,6 +547,7 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/wallet': typeof WalletRouteWithChildren
+  '/admin/affiliates': typeof AdminAffiliatesRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -574,6 +597,7 @@ export interface FileRoutesByTo {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -584,6 +608,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/affiliate': typeof AffiliateRoute
   '/catalog': typeof CatalogRoute
   '/explore': typeof ExploreRoute
   '/finder': typeof FinderRoute
@@ -598,6 +623,7 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/wallet': typeof WalletRouteWithChildren
+  '/admin/affiliates': typeof AdminAffiliatesRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/catalog': typeof AdminCatalogRoute
@@ -647,6 +673,7 @@ export interface FileRoutesById {
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
   '/api/google-calendar/status': typeof ApiGoogleCalendarStatusRoute
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
+  '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -658,6 +685,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/affiliate'
     | '/catalog'
     | '/explore'
     | '/finder'
@@ -672,6 +700,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/terms'
     | '/wallet'
+    | '/admin/affiliates'
     | '/admin/analytics'
     | '/admin/audit-log'
     | '/admin/catalog'
@@ -721,6 +750,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/status'
     | '/api/google-calendar/sync'
+    | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -730,6 +760,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/affiliate'
     | '/catalog'
     | '/explore'
     | '/finder'
@@ -744,6 +775,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/terms'
     | '/wallet'
+    | '/admin/affiliates'
     | '/admin/analytics'
     | '/admin/audit-log'
     | '/admin/catalog'
@@ -793,6 +825,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/status'
     | '/api/google-calendar/sync'
+    | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -802,6 +835,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/affiliate'
     | '/catalog'
     | '/explore'
     | '/finder'
@@ -816,6 +850,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/terms'
     | '/wallet'
+    | '/admin/affiliates'
     | '/admin/analytics'
     | '/admin/audit-log'
     | '/admin/catalog'
@@ -865,6 +900,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/disconnect'
     | '/api/google-calendar/status'
     | '/api/google-calendar/sync'
+    | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -875,6 +911,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AffiliateRoute: typeof AffiliateRoute
   CatalogRoute: typeof CatalogRoute
   ExploreRoute: typeof ExploreRoute
   FinderRoute: typeof FinderRoute
@@ -889,6 +926,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   WalletRoute: typeof WalletRouteWithChildren
+  AdminAffiliatesRoute: typeof AdminAffiliatesRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAuditLogRoute: typeof AdminAuditLogRoute
   AdminCatalogRoute: typeof AdminCatalogRoute
@@ -936,6 +974,7 @@ export interface RootRouteChildren {
   ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
   ApiGoogleCalendarStatusRoute: typeof ApiGoogleCalendarStatusRoute
   ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
+  ApiTasksAffiliateSweepRoute: typeof ApiTasksAffiliateSweepRoute
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
@@ -949,6 +988,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/affiliate': {
+      id: '/affiliate'
+      path: '/affiliate'
+      fullPath: '/affiliate'
+      preLoaderRoute: typeof AffiliateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalog': {
@@ -1054,6 +1100,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/affiliates': {
+      id: '/admin/affiliates'
+      path: '/admin/affiliates'
+      fullPath: '/admin/affiliates'
+      preLoaderRoute: typeof AdminAffiliatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/analytics': {
@@ -1392,6 +1445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoogleCalendarSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tasks/affiliate-sweep': {
+      id: '/api/tasks/affiliate-sweep'
+      path: '/api/tasks/affiliate-sweep'
+      fullPath: '/api/tasks/affiliate-sweep'
+      preLoaderRoute: typeof ApiTasksAffiliateSweepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tasks/esim-sync': {
       id: '/api/tasks/esim-sync'
       path: '/api/tasks/esim-sync'
@@ -1476,6 +1536,7 @@ const MyTripsTripIdRouteWithChildren = MyTripsTripIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AffiliateRoute: AffiliateRoute,
   CatalogRoute: CatalogRoute,
   ExploreRoute: ExploreRoute,
   FinderRoute: FinderRoute,
@@ -1490,6 +1551,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   WalletRoute: WalletRouteWithChildren,
+  AdminAffiliatesRoute: AdminAffiliatesRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAuditLogRoute: AdminAuditLogRoute,
   AdminCatalogRoute: AdminCatalogRoute,
@@ -1537,6 +1599,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,
   ApiGoogleCalendarStatusRoute: ApiGoogleCalendarStatusRoute,
   ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
+  ApiTasksAffiliateSweepRoute: ApiTasksAffiliateSweepRoute,
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
