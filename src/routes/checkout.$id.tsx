@@ -20,7 +20,8 @@ export const Route = createFileRoute("/checkout/$id")({
 function Checkout() {
   const data = Route.useLoaderData();
   return (
-    <Page>
+    // Checkout is a focused task: no tab bar, so the pay bar can sit at the very bottom.
+    <Page tabs={false}>
       <BackBar title="Checkout" />
       <CheckoutForm {...data} />
     </Page>

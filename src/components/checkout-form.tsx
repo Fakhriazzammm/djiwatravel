@@ -45,8 +45,8 @@ function Footer({ sheet, children }: { sheet: boolean; children: ReactNode }) {
   ) : (
     <>
       {/* Reserves room for the pinned bar so the last payment options scroll above it. */}
-      <div aria-hidden="true" className="h-44" />
-      <StickyCta aboveTabBar>{children}</StickyCta>
+      <div aria-hidden="true" className="h-40" />
+      <StickyCta aboveTabBar={false}>{children}</StickyCta>
     </>
   );
 }
