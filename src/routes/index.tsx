@@ -5,8 +5,12 @@ import { glassIconButtonClass, Page, SectionTitle } from "@/components/shell";
 import { HomeHero } from "@/components/home-hero";
 import { RecentPurchaseToast } from "@/components/recent-purchase-toast";
 import { FixedLayer, Reveal, Stagger } from "@/components/motion-primitives";
-import { destinations, search } from "@/lib/catalog";
-import { getBundleGroups, getHomeDestinationFeed } from "@/lib/destination-availability.fn";
+import { destinations, type Destination } from "@/lib/catalog";
+import {
+  getBundleGroups,
+  getHomeDestinationFeed,
+  getListableDestinations,
+} from "@/lib/destination-availability.fn";
 import { useOrders } from "@/lib/orders";
 import { CustomerAuth } from "@/components/customer-auth";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
@@ -62,6 +66,36 @@ export const Route = createFileRoute("/")({
 function Home() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
+  // Same sources as /esim/finder: every live country and region, plus the multi-country bundles.
+  // Loaded when the search sheet opens; the static catalogue only fills in until they arrive.
+  const [liveList, setLiveList] = useState<Destination[] | null>(null);
+  const [bundleList, setBundleList] = useState<
+    { code: string; flag: string; label: string; countryCount: number; fromPriceIdr: number }[]
+  >([]);
+  useEffect(() => {
+    if (!searchOpen || liveList !== null) return;
+    let live = true;
+    void Promise.all([
+      getListableDestinations().catch(() => null),
+      getBundleGroups()
+        .then((result) => result.groups)
+        .catch(() => []),
+    ]).then(([list, groups]) => {
+      if (!live) return;
+      if (list) setLiveList(list);
+      setBundleList(groups);
+    });
+    return () => {
+      live = false;
+    };
+  }, [searchOpen, liveList]);
+  const searchPool = liveList ?? destinations;
+  const normalizedQuery = query.trim().toLocaleLowerCase("id-ID");
+  const searchResults = searchPool.filter((item) =>
+    `${item.nameId} ${item.name} ${item.region} ${item.code}`
+      .toLocaleLowerCase("id-ID")
+      .includes(normalizedQuery),
+  );
   const [searchHint, setSearchHint] = useState("Cari destinasi atau paket eSIM");
   const reduceMotion = useReducedMotion();
   const nav = useNavigate();
@@ -259,18 +293,39 @@ function Home() {
                 />
               </label>
               <div className="mt-4 max-h-[min(55vh,24rem)] overflow-y-auto">
-                {query.trim().length > 0 && (
+                {!normalizedQuery && bundleList.length > 0 && (
+                  <div className="no-scrollbar -mx-5 mb-3 flex gap-1.5 overflow-x-auto px-5 pb-1">
+                    {bundleList.map((group) => (
+                      <Link
+                        key={group.code}
+                        to="/destination/$code"
+                        params={{ code: group.code.toLowerCase() }}
+                        search={{ availability: "all" }}
+                        onClick={() => setSearchOpen(false)}
+                        aria-label={`Paket ${group.label}, ${group.countryCount} negara, mulai Rp${group.fromPriceIdr.toLocaleString("id-ID")}`}
+                        className="tap flex shrink-0 items-center gap-1.5 rounded-full bg-secondary py-1.5 pl-2 pr-3 text-[12.5px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <span aria-hidden="true" className="text-[15px] leading-none">{group.flag}</span>
+                        <span className="whitespace-nowrap">{group.label}</span>
+                        <span className="whitespace-nowrap font-normal text-muted-foreground">· {group.countryCount} negara</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                {normalizedQuery.length > 0 && (
                   <p className="px-1 pb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
                     Destinasi
                   </p>
                 )}
-                {search(query).length === 0 ? (
+                {searchResults.length === 0 ? (
                   <p className="py-3 text-center text-sm text-muted-foreground">
-                    Tidak ada destinasi yang cocok.
+                    {liveList === null && !normalizedQuery
+                      ? "Memuat destinasi…"
+                      : "Tidak ada destinasi yang cocok."}
                   </p>
                 ) : (
                   <div className="ios-card divide-y divide-border/70 overflow-hidden">
-                    {search(query).map((destination) => (
+                    {searchResults.map((destination) => (
                       <button
                         key={destination.code}
                         type="button"
