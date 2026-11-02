@@ -1,14 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  Bell,
-  BellRing,
-  Check,
-  Loader2,
-  AlertCircle,
-  Printer,
-  Receipt,
-  RefreshCw,
-} from "lucide-react";
+import { Check, AlertCircle, Printer, Receipt, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Page, btnPrimary, btnRed, btnSoft } from "@/components/shell";
 import { EsimInstallPanel, InstallGuide, ManualDetails } from "@/components/esim-install";
@@ -40,6 +31,7 @@ import { paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-p
 import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
 import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
+import { EsimPreparingView } from "@/components/esim-preparing-view";
 import { TravelTimeline } from "@/components/travel-timeline";
 import { activationTimeline } from "@/lib/travel-journey";
 
@@ -382,38 +374,19 @@ function OrderPage() {
   if (o.status === "PAID" || o.status === "PROVISIONING") {
     return (
       <Page tabs={false}>
-        <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
-        <div className="flex min-h-[55vh] flex-col items-center justify-center text-center">
-          <Loader2 className="size-10 animate-spin text-brand-red" />
-          <h1 className="mt-6 text-2xl font-bold tracking-tight">Pembayaran diterima</h1>
-          <p className="mt-2 text-muted-foreground">Sedang menyiapkan eSIM kamu…</p>
-        </div>
-        <TravelTimeline
-          timeline={activationTimeline(o.status)}
+        <EsimPreparingView
+          order={o}
+          packageLine={`${locationLabel} · ${quotaLabel} · ${durationLabel}`}
           lastSyncedAt={syncedAt}
           onRefresh={async () => {
             await refreshOrdersFromServer();
             setSyncedAt(Date.now());
           }}
+          notifySupported={notificationsSupported()}
+          notifyReady={notifyReady}
+          notifyBusy={notifyBusy}
+          onToggleNotify={() => void toggleNotify()}
         />
-        {notificationsSupported() && (
-          <button
-            type="button"
-            onClick={() => void toggleNotify()}
-            disabled={notifyBusy}
-            className="tap mx-auto flex min-h-11 items-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold disabled:opacity-50"
-          >
-            {notifyReady ? <BellRing className="size-4" /> : <Bell className="size-4" />}
-            {notifyBusy
-              ? "Mengaktifkan…"
-              : notifyReady
-                ? "Notifikasi aktif — kami kabari saat siap"
-                : "Beri tahu saya saat eSIM siap"}
-          </button>
-        )}
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Halaman ini memperbarui sendiri, jadi kamu tidak perlu menekan apa pun.
-        </p>
       </Page>
     );
   }
