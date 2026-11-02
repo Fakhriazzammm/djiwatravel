@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
 import { Headphones, Plus } from "lucide-react";
 import { OrderLoading } from "@/components/order-loading";
-import { BackBar, Page, SectionTitle, btnSoft, group, row } from "@/components/shell";
+import { statusPrimary, statusSecondary } from "@/components/esim-status-card";
+import { BackBar, Page, btnSoft, group, row } from "@/components/shell";
 import { InstallGuide, ManualDetails } from "@/components/esim-install";
 import { DetailSegments, EsimDetailCard, type DetailTab } from "@/components/esim-detail-card";
 import { hasGuestOrderAccess, refreshOrdersFromServer, useOrders } from "@/lib/orders";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
-import { TravelTimeline } from "@/components/travel-timeline";
+import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 import { TravelChecklist } from "@/components/travel-checklist";
 import { TravelUsageCard } from "@/components/travel-usage-card";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
@@ -31,6 +32,7 @@ import {
 import {
   activationTimeline,
   buildTravelChecklist,
+  formatData,
   calendarDaysUntil,
   checklistProgress,
   parseDepartureDate,
@@ -163,65 +165,111 @@ function Detail() {
     month: "long",
   });
 
+  const activeStat =
+    status === "INSTALLED" && usage.kind === "measured" && usage.remainingBytes !== null
+      ? { value: formatData(usage.remainingBytes), caption: "tersisa" }
+      : null;
+  const cardActions =
+    status === "PROVISIONING_FAILED" ? (
+      <>
+        <button type="button" onClick={() => setSupportOpen(true)} className={statusPrimary}>
+          Hubungi support
+        </button>
+        <Link to="/receipt/$id" params={{ id: o.id }} className={statusSecondary}>
+          Lihat struk
+        </Link>
+      </>
+    ) : isHistory ? (
+      <>
+        <Link to={reorder.href} params={{ id: reorder.packageId }} className={statusPrimary}>
+          {reorder.label}
+        </Link>
+        <Link to="/receipt/$id" params={{ id: o.id }} className={statusSecondary}>
+          Lihat struk
+        </Link>
+      </>
+    ) : status === "PAID" || status === "PROVISIONING" ? (
+      <button type="button" onClick={() => void refreshStatus()} className={statusPrimary}>
+        Perbarui status
+      </button>
+    ) : (
+      <>
+        <Link to="/order/$id" params={{ id: o.id }} className={statusPrimary}>
+          Lanjut bayar
+        </Link>
+        <Link to="/receipt/$id" params={{ id: o.id }} className={statusSecondary}>
+          Lihat struk
+        </Link>
+      </>
+    );
+
   return (
     <Page>
       <BackBar title="Detail eSIM" />
 
       <EsimDetailCard
-        summary={`${locationLabel} · ${quotaLabel} · ${durationDays} hari`}
-        headline={isHistory ? timeline.headline : packageName}
+        status={status}
+        summary={locationLabel}
+        headline={packageName}
         hint={timeline.hint}
-        statusLabel={ORDER_STATUS_LABEL[status]}
         esim={canInstall && o.esim ? o.esim : null}
-        muted={isHistory}
+        timeline={timeline}
+        stat={activeStat}
         onManual={() => setDetailTab("guide")}
-      />
+      >
+        {cardActions}
+      </EsimDetailCard>
+
+      <div className="mt-2.5 flex rounded-3xl bg-surface py-2.5" data-testid="esim-detail-stats">
+        {[
+          ["Paket", quotaLabel],
+          ["Durasi", `${durationDays} hari`],
+          ...(canInstall ? [["Berlaku", `±${exp}`]] : []),
+        ].map(([k, v]) => (
+          <div key={k} className="flex-1 border-r border-border text-center last:border-r-0">
+            <small className="block text-[11px] text-muted-foreground">{k}</small>
+            <b className="text-[14px]">{v}</b>
+          </div>
+        ))}
+      </div>
+
       <DetailSegments value={detailTab} onChange={setDetailTab} />
 
-      {status === "PROVISIONING_FAILED" && (
-        <div className="mt-4 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-4">
-          <p className="font-semibold">Pemrosesan belum berhasil</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan tanpa membuat
-            order ganda.
-          </p>
-        </div>
-      )}
       {actionMessage && (
-        <p className="mt-3 text-center text-sm text-muted-foreground">{actionMessage}</p>
+        <p className="mb-2 text-center text-sm text-muted-foreground">{actionMessage}</p>
       )}
 
       {detailTab === "summary" && (
-        <>
-          <section className="mt-3 rounded-2xl bg-surface p-3">
-            <div className="mb-2 [&_h2]:text-[16px]">
-              <SectionTitle>Ringkasan paket</SectionTitle>
-            </div>
-            <div className={group}>
-              {[
-                ["Paket", `${quotaLabel} · ${durationDays} hari`],
-                ...(canInstall ? [["Berlaku sampai", `±${exp}`]] : []),
-                ["Destinasi", locationLabel],
-                ["Status", ORDER_STATUS_LABEL[status]],
-              ].map(([k, v]) => (
-                <div key={k} className={row}>
-                  <span className="text-[14px] text-muted-foreground">{k}</span>
-                  <span className="truncate text-right text-[14px] font-medium">{v}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <div className="mt-4">
-            <TravelTimeline
-              timeline={timeline}
-              lastSyncedAt={lastSyncedAt}
-              syncFailed={syncFailed}
-              onRefresh={refreshStatus}
-              compact
-            />
+        <section className="rounded-3xl bg-surface px-4 py-1">
+          <div className={group}>
+            {[
+              ["Destinasi", locationLabel],
+              ["Status", ORDER_STATUS_LABEL[status]],
+              ...(o.publicOrderCode ? [["Kode pesanan", o.publicOrderCode]] : []),
+            ].map(([k, v]) => (
+              <div key={k} className={row}>
+                <span className="text-[14px] text-muted-foreground">{k}</span>
+                <span className="truncate text-right text-[14px] font-medium">{v}</span>
+              </div>
+            ))}
           </div>
-        </>
+          <p className="py-2 text-center text-[11.5px] text-muted-foreground">
+            {lastSyncedAt ? `Diperbarui ${snapshotAgeLabel(lastSyncedAt)}` : ""}
+            {syncFailed ? " · Gagal memperbarui, coba lagi" : ""}
+            {timeline.canRefresh && (
+              <>
+                {lastSyncedAt || syncFailed ? " · " : ""}
+                <button
+                  type="button"
+                  onClick={() => void refreshStatus()}
+                  className="font-semibold text-foreground underline"
+                >
+                  Perbarui status
+                </button>
+              </>
+            )}
+          </p>
+        </section>
       )}
       {detailTab === "usage" && (
         <>
@@ -265,37 +313,27 @@ function Detail() {
         }}
       />
 
-      <section className="mt-4 rounded-2xl bg-surface p-4">
-        <SectionTitle>Butuh bantuan?</SectionTitle>
-        <button
-          type="button"
-          onClick={() => setSupportOpen(true)}
-          className={`${btnSoft} justify-between px-4`}
-        >
-          <span className="flex items-center gap-2">
-            <Headphones className="size-4" aria-hidden="true" /> Chat dengan support
+      <div className="mt-3 flex gap-2">
+        <button type="button" onClick={() => setSupportOpen(true)} className={btnSoft}>
+          <span className="flex items-center justify-center gap-2">
+            <Headphones className="size-4" aria-hidden="true" /> Chat support
           </span>
-          <span aria-hidden="true">›</span>
         </button>
-      </section>
-
-      <div className="mt-4">
-        <Link to={reorder.href} params={{ id: reorder.packageId }} className={btnSoft}>
-          <Plus className="size-4" aria-hidden="true" /> {reorder.label}
-        </Link>
-        {reorder.fallbackDestinationCode && (
-          <Link
-            to="/destination/$code"
-            params={{ code: reorder.fallbackDestinationCode }}
-            className={`${btnSoft} mt-2 text-center`}
-          >
-            Lihat paket lain untuk {reorder.fallbackDestinationCode}
+        {!isHistory && (
+          <Link to={reorder.href} params={{ id: reorder.packageId }} className={btnSoft}>
+            <Plus className="size-4" aria-hidden="true" /> {reorder.label}
           </Link>
         )}
-        <p className="mt-2 text-center text-[12px] text-muted-foreground">
-          Harga dan ketersediaan dicek ulang saat checkout.
-        </p>
       </div>
+      {reorder.fallbackDestinationCode && isHistory && (
+        <Link
+          to="/destination/$code"
+          params={{ code: reorder.fallbackDestinationCode }}
+          className={`${btnSoft} mt-2 text-center`}
+        >
+          Lihat paket lain untuk {reorder.fallbackDestinationCode}
+        </Link>
+      )}
 
       <TravelSupportDialog
         open={supportOpen}

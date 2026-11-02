@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { destinationArt, stateArt } from "../lib/destination-art";
+import { destinationArt, orderStatusArt, stateArt } from "../lib/destination-art";
+import type { OrderStatus } from "../lib/orders";
 
 describe("destination art", () => {
   it("ships a file for every mapped destination and state", () => {
@@ -18,5 +19,23 @@ describe("destination art", () => {
   it("falls back to a neutral light tint without art for unknown destinations", () => {
     expect(destinationArt("ZZ").src).toBeUndefined();
     expect(destinationArt(undefined).tint).toContain("#fff");
+  });
+
+  it("ships a 3D illustration for every order status", () => {
+    const all: OrderStatus[] = [
+      "ORDER_CREATED",
+      "WAITING_PAYMENT",
+      "PAID",
+      "PROVISIONING",
+      "READY",
+      "INSTALLED",
+      "EXPIRED",
+      "PROVISIONING_FAILED",
+      "CANCELLED",
+      "REFUNDED",
+    ];
+    for (const status of all) {
+      expect(existsSync(`public${orderStatusArt(status)}`), status).toBe(true);
+    }
   });
 });

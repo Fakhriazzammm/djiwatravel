@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, AlertCircle, Printer, Receipt, RefreshCw } from "lucide-react";
+import { Check, Printer, Receipt, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Page, btnPrimary, btnRed, btnSoft } from "@/components/shell";
 import { EsimInstallPanel, InstallGuide, ManualDetails } from "@/components/esim-install";
@@ -13,7 +13,7 @@ import {
   type Order,
   type OrderStatus,
 } from "@/lib/orders";
-import { effectiveOrderStatus, ORDER_STATUS_LABEL } from "@/lib/esim-status";
+import { effectiveOrderStatus } from "@/lib/esim-status";
 import {
   enableEsimNotifications,
   isWaitingForEsim,
@@ -31,8 +31,10 @@ import { paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-p
 import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
 import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
-import { EsimPreparingView, StageStrip } from "@/components/esim-preparing-view";
+import { EsimPreparingView } from "@/components/esim-preparing-view";
+import { OrderOutcomeCard } from "@/components/order-outcome-card";
 import { EsimDetailCard } from "@/components/esim-detail-card";
+import { EsimStatusCard, statusPrimary, statusSecondary } from "@/components/esim-status-card";
 import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 import { activationTimeline } from "@/lib/travel-journey";
 
@@ -269,21 +271,16 @@ function OrderPage() {
   if (o.status === "ORDER_CREATED" || o.status === "WAITING_PAYMENT") {
     return (
       <Page>
-        <p className="pt-8 text-center text-sm text-muted-foreground">Pesanan tersimpan</p>
-        <h1 className="mt-1 text-center text-3xl font-bold">{rupiah(o.amount)}</h1>
-        <div className="mt-6 rounded-2xl bg-surface p-4">
-          <p className="font-semibold">{packageName}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {locationLabel} · {quotaLabel} · {durationLabel}
-          </p>
-          {o.publicOrderCode && (
-            <p className="mt-3 font-mono text-xs text-muted-foreground">
-              Kode pesanan: {o.publicOrderCode}
-            </p>
-          )}
+        <div className="pt-3">
+          <EsimStatusCard
+            status={o.status}
+            summary={`${locationLabel} · ${quotaLabel} · ${durationLabel}`}
+            headline={packageName}
+            hint={`Total ${rupiah(o.amount)}. Selesaikan pembayaran, eSIM diproses otomatis setelahnya.${o.publicOrderCode ? ` Kode: ${o.publicOrderCode}` : ""}`}
+            timeline={activationTimeline(o.status)}
+          />
         </div>
-        <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
-        <div className="mt-4 rounded-2xl bg-surface p-4 text-center">
+        <div className="mt-3 rounded-3xl bg-surface p-4 text-center">
           {o.method === "djiwa_pay" ? (
             <>
               <p className="font-semibold">
@@ -393,25 +390,27 @@ function OrderPage() {
   }
 
   if (o.status === "PROVISIONING_FAILED" || o.status === "REFUNDED") {
+    const refunded = o.status === "REFUNDED";
     return (
       <Page tabs={false}>
-        <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
-        <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-          <AlertCircle className="size-12 text-brand-red" />
-          <h1 className="mt-6 text-2xl font-bold">
-            {o.status === "REFUNDED"
-              ? "Dana dikembalikan"
-              : "Pembayaran berhasil. eSIM sedang kami proses."}
-          </h1>
-        </div>
-        {o.status !== "REFUNDED" && (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan.
-          </p>
-        )}
-        <button type="button" onClick={() => setSupportOpen(true)} className={`${btnSoft} mt-3`}>
-          Hubungi Support
-        </button>
+        <OrderOutcomeCard
+          status={o.status}
+          summary={`${locationLabel} · ${quotaLabel} · ${durationLabel}`}
+          headline={refunded ? "Dana dikembalikan" : "eSIM belum berhasil dibuat"}
+          hint={
+            refunded
+              ? "Pengembalian dana diproses sesuai kebijakan kami."
+              : "Pembayaran tetap tercatat. Hubungi support agar kami meninjau pesanan."
+          }
+          timeline={activationTimeline(o.status)}
+        >
+          <button type="button" onClick={() => setSupportOpen(true)} className={statusPrimary}>
+            Hubungi Support
+          </button>
+          <Link to="/receipt/$id" params={{ id: o.id }} className={statusSecondary}>
+            Lihat struk
+          </Link>
+        </OrderOutcomeCard>
         <TravelSupportDialog
           open={supportOpen}
           onClose={() => setSupportOpen(false)}
@@ -437,22 +436,19 @@ function OrderPage() {
   if (o.status === "CANCELLED" || o.status === "EXPIRED") {
     return (
       <Page tabs={false}>
-        <OrderTimeline status={o.status} expiresAt={o.expiresAt} />
-        <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-          <AlertCircle className="size-12 text-muted-foreground" />
-          <h1 className="mt-6 text-2xl font-bold">
-            {o.status === "EXPIRED" ? "Paket sudah kedaluwarsa" : "Pesanan dibatalkan"}
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Silakan pilih paket eSIM lain jika ingin melanjutkan perjalanan.
-          </p>
-          <Link to="/checkout/$id" params={{ id: o.packageId }} className={`${btnRed} mt-6`}>
-            Beli lagi paket ini
+        <OrderOutcomeCard
+          status={o.status}
+          summary={`${locationLabel} · ${quotaLabel} · ${durationLabel}`}
+          headline={o.status === "EXPIRED" ? "Paket sudah kedaluwarsa" : "Pesanan dibatalkan"}
+          hint="Pilih paket eSIM lain jika ingin melanjutkan perjalanan."
+        >
+          <Link to="/checkout/$id" params={{ id: o.packageId }} className={statusPrimary}>
+            Beli lagi
           </Link>
-          <Link to="/explore" className={`${btnSoft} mt-2`}>
-            Lihat paket eSIM lain
+          <Link to="/explore" className={statusSecondary}>
+            Paket lain
           </Link>
-        </div>
+        </OrderOutcomeCard>
       </Page>
     );
   }
@@ -491,15 +487,14 @@ function OrderPage() {
     <Page tabs={false}>
       <div className="space-y-3">
         <EsimDetailCard
+          status={effectiveOrderStatus(o.status, o.expiresAt)}
           summary={`${locationLabel} · ${quotaLabel} · ${durationLabel}`}
           headline="eSIM kamu siap!"
-          hint={packageName}
-          statusLabel={ORDER_STATUS_LABEL[effectiveOrderStatus(o.status, o.expiresAt)]}
+          hint={`${packageName}. Pasang sebelum berangkat, butuh Wi-Fi, cukup sekali.`}
           esim={esim}
-          muted={false}
+          timeline={activationTimeline(o.status)}
           onManual={() => setView("guide")}
         />
-        <StageStrip timeline={activationTimeline(o.status)} />
         <p className="text-center text-xs text-muted-foreground">
           Terakhir diperbarui{" "}
           {typeof syncedAt === "number" ? snapshotAgeLabel(syncedAt) : "saat halaman dibuka"} ·{" "}
@@ -515,99 +510,40 @@ function OrderPage() {
           </button>
         </p>
       </div>
-      <div className="mt-4">
-        <button onClick={() => setView("qr")} className={btnSoft}>
-          Lihat QR Code layar penuh
+      <div className="mt-3 flex gap-2">
+        <Link to="/receipt/$id" params={{ id: o.id }} className={statusPrimary}>
+          <Receipt className="mr-1.5 size-4" aria-hidden="true" />
+          Struk &amp; panduan
+        </Link>
+        <button type="button" onClick={() => setView("qr")} className={statusSecondary}>
+          QR layar penuh
         </button>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-center text-[12px] font-medium text-brand-red">
-        <button onClick={() => setView("guide")} className="h-11 rounded-xl">
+      <div className="mt-2 grid grid-cols-3 text-center text-[12px] font-medium text-brand-red">
+        <button type="button" onClick={() => setView("guide")} className="h-10 rounded-xl">
           Panduan
         </button>
-        <Link to="/my-esim" className="flex h-11 items-center justify-center rounded-xl">
+        <Link to="/my-esim" className="flex h-10 items-center justify-center rounded-xl">
           Simpan
         </Link>
+        <Link
+          to="/checkout/$id"
+          params={{ id: o.packageId }}
+          className="flex h-10 items-center justify-center rounded-xl"
+        >
+          Beli lagi
+        </Link>
       </div>
-      <Link
-        to="/receipt/$id"
-        params={{ id: o.id }}
-        className={`${btnRed} mt-3 inline-flex items-center justify-center gap-2`}
-      >
-        <Receipt className="size-4" aria-hidden="true" />
-        Struk &amp; panduan pasang
-      </Link>
-      <Link to="/checkout/$id" params={{ id: o.packageId }} className={`${btnSoft} mt-3`}>
-        Beli lagi paket ini
-      </Link>
       <a
         href={SUPPORT_WHATSAPP_URL}
         target="_blank"
         rel="noreferrer"
-        className="mt-3 block text-center text-[12px] font-medium text-brand-red"
+        className="mt-1 block text-center text-[12px] font-medium text-brand-red"
       >
         Butuh bantuan? Hubungi support
       </a>
       <InvoiceCard order={o} />
     </Page>
-  );
-}
-
-const TIMELINE_STEPS: OrderStatus[] = ["ORDER_CREATED", "PAID", "PROVISIONING", "READY"];
-
-function OrderTimeline({
-  status,
-  expiresAt,
-}: {
-  status: OrderStatus;
-  expiresAt: number | undefined;
-}) {
-  const effective = effectiveOrderStatus(status, expiresAt);
-  const terminal = ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(effective);
-  const currentIndex =
-    effective === "INSTALLED"
-      ? 3
-      : effective === "WAITING_PAYMENT"
-        ? 0
-        : TIMELINE_STEPS.indexOf(effective);
-  return (
-    <section
-      aria-label="Tahapan pesanan"
-      className="mt-5 rounded-2xl border border-border bg-surface p-4"
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Status pesanan
-      </p>
-      {terminal ? (
-        <p className="mt-2 text-sm font-semibold">{ORDER_STATUS_LABEL[effective]}</p>
-      ) : (
-        <ol className="mt-3 grid grid-cols-4 gap-1">
-          {TIMELINE_STEPS.map((step, index) => {
-            const done = index <= currentIndex;
-            return (
-              <li key={step} className="text-center text-[11px] leading-tight">
-                <span
-                  className={`mx-auto flex size-6 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-brand-red text-white" : "bg-secondary text-muted-foreground"}`}
-                >
-                  {index + 1}
-                </span>
-                <span
-                  className={`mt-1 block ${done ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-                >
-                  {step === "ORDER_CREATED"
-                    ? "Dibuat"
-                    : step === "PAID"
-                      ? "Dibayar"
-                      : step === "PROVISIONING"
-                        ? "Disiapkan"
-                        : "Siap"}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      <p className="mt-2 text-xs text-muted-foreground">{ORDER_STATUS_LABEL[effective]}</p>
-    </section>
   );
 }
 

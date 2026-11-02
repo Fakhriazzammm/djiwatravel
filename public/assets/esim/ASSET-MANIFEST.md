@@ -35,3 +35,17 @@ light pass set below replaced them (no surface references them any more).
 | `esim-state-ready` | small soft-blue checkmark badge |
 | `esim-state-processing` | small soft-amber hourglass/progress ring badge |
 | `esim-state-low` | small soft-orange signal-bars badge |
+
+## Status set (v1, 2026-11-02)
+
+- Files: `esim-state-{waiting,failed,expired,refunded}-v1.webp` (168 px + 12 px padding, transparent
+  WebP, 3–5 KB). Surface: the shared light status card (`src/components/esim-status-card.tsx`) on the
+  order page and eSIM detail, via `orderStatusArt()` in `src/lib/destination-art.ts`
+  (READY/INSTALLED reuse `esim-state-ready`, PAID/PROVISIONING reuse `esim-state-processing`,
+  CANCELLED reuses `esim-state-expired`). Decorative, `alt=""`; the chip and hint carry the meaning.
+- Source: Helipod AI Gateway, model `seedream-image-v5.0-flash`, project djiwatravel, 2026-11-02, the
+  same base prompt as above with a different corner badge (amber card, coral exclamation, grey clock,
+  lavender return arrow) on a plain white background. White background removed by edge flood-fill,
+  trimmed, resized and encoded with sharp. The expired render was cropped to the card only (badge cut).
+  A green "signal" render for INSTALLED was rejected (badge read as a sad face).
+

@@ -1,3 +1,4 @@
+import type { OrderStatus } from "./orders";
 /**
  * One map from destination code to its pass artwork, shared by every surface that draws a
  * destination (Home passes and rail, eSIM list, destination header).
@@ -60,4 +61,22 @@ const STATE_ART: Record<StateArtKind, string> = {
 /** Action states (install, in progress, low quota) draw attention with their own icon. */
 export function stateArt(kind: string): string | undefined {
   return STATE_ART[kind as StateArtKind];
+}
+
+const ORDER_STATUS_ART: Record<OrderStatus, string> = {
+  ORDER_CREATED: "/assets/esim/esim-state-waiting-v1.webp",
+  WAITING_PAYMENT: "/assets/esim/esim-state-waiting-v1.webp",
+  PAID: "/assets/esim/esim-state-processing-v1.webp",
+  PROVISIONING: "/assets/esim/esim-state-processing-v1.webp",
+  READY: "/assets/esim/esim-state-ready-v1.webp",
+  INSTALLED: "/assets/esim/esim-state-ready-v1.webp",
+  EXPIRED: "/assets/esim/esim-state-expired-v1.webp",
+  PROVISIONING_FAILED: "/assets/esim/esim-state-failed-v1.webp",
+  CANCELLED: "/assets/esim/esim-state-expired-v1.webp",
+  REFUNDED: "/assets/esim/esim-state-refunded-v1.webp",
+};
+
+/** 3D illustration for the order/eSIM status card; every order status has one. */
+export function orderStatusArt(status: OrderStatus): string {
+  return ORDER_STATUS_ART[status];
 }

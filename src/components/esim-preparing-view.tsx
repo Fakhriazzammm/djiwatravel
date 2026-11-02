@@ -1,42 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, BellRing, Lock, RefreshCw } from "lucide-react";
+import { Bell, BellRing, RefreshCw } from "lucide-react";
 import { activationTimeline } from "@/lib/travel-journey";
 import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 import { REFRESH_COOLDOWN_MS } from "@/components/travel-timeline";
 import { rupiah } from "@/lib/pricing";
+import { EsimStatusCard, statusSecondary } from "@/components/esim-status-card";
 import type { Order } from "@/lib/orders";
 
 const METHOD_LABEL: Record<string, string> = {
   djiwa_pay: "Djiwa Pay",
   qris: "QRIS",
 };
-
-const BAR_TONE = {
-  done: "bg-success",
-  current: "bg-brand-red",
-  todo: "bg-secondary",
-  failed: "bg-brand-red",
-} as const;
-
-/** Four-segment progress strip shared by the waiting and ready order screens. */
-export function StageStrip({ timeline }: { timeline: ReturnType<typeof activationTimeline> }) {
-  return (
-    <section className="rounded-[20px] bg-surface px-[18px] py-4">
-      <ol className="flex gap-1.5 text-center text-[11.5px] text-muted-foreground">
-        {timeline.stages.map((stage) => (
-          <li
-            key={stage.id}
-            className={`flex-1 ${stage.state === "current" ? "font-semibold text-foreground" : ""}`}
-            aria-current={stage.state === "current" ? "step" : undefined}
-          >
-            <span className={`mb-1.5 block h-[5px] rounded-full ${BAR_TONE[stage.state]}`} />
-            {stage.label}
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
 
 /**
  * Waiting screen shown between payment and a ready eSIM: a locked preview of the card the
@@ -91,41 +65,32 @@ export function EsimPreparingView({
   ];
 
   return (
-    <div className="space-y-3" data-testid="esim-preparing">
-      <section
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1c1c21] to-[#3a1518] p-5 text-center text-white"
-        aria-live="polite"
+    <div className="space-y-2.5" data-testid="esim-preparing">
+      <EsimStatusCard
+        status={order.status}
+        summary={packageLine}
+        headline="Menyiapkan eSIM kamu…"
+        hint="Pembayaran diterima. Biasanya hanya beberapa menit, halaman ini memperbarui sendiri."
+        timeline={timeline}
       >
-        <p className="text-[11.5px] font-medium uppercase tracking-wider opacity-65">
-          {packageLine}
-        </p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight">Menyiapkan eSIM kamu…</h1>
-        <p className="mt-0.5 text-[13px] opacity-75">
-          Pembayaran diterima. Biasanya hanya beberapa menit.
-        </p>
-        <div className="relative mx-auto mt-4 mb-2.5 grid size-[120px] place-items-center overflow-hidden rounded-2xl bg-[repeating-linear-gradient(45deg,#ffffff22_0_6px,#ffffff10_6px_12px)]">
-          <Lock className="size-6" aria-hidden="true" />
-          <span
-            className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/25 to-transparent motion-reduce:animate-none"
-            aria-hidden="true"
-          />
-          <span className="sr-only">QR code akan muncul setelah eSIM siap</span>
-        </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold">
-          <span className="size-[7px] rounded-full bg-warning" aria-hidden="true" />
-          {order.status === "PAID" ? "Pembayaran diterima" : "Diproses penyedia"}
-        </span>
-      </section>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          disabled={busy || cooling}
+          className={`${statusSecondary} gap-1.5 disabled:opacity-50`}
+        >
+          <RefreshCw className={busy ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden="true" />
+          {busy ? "Memeriksa…" : "Perbarui status"}
+        </button>
+      </EsimStatusCard>
 
-      <StageStrip timeline={timeline} />
-
-      <section className="rounded-[20px] bg-surface px-[18px] py-4">
+      <section className="rounded-3xl bg-surface px-4 py-3">
         <p className="mb-2.5 text-[11.5px] font-semibold uppercase tracking-wider text-muted-foreground">
           Siapkan selama menunggu
         </p>
         <ul>
           {checklist.map((item) => (
-            <li key={item} className="flex items-center gap-2.5 py-[7px] text-[13.5px]">
+            <li key={item} className="flex items-center gap-2.5 py-1.5 text-[13.5px]">
               <span
                 className="size-[18px] shrink-0 rounded-md border-2 border-border"
                 aria-hidden="true"
@@ -134,7 +99,7 @@ export function EsimPreparingView({
             </li>
           ))}
           {notifySupported && (
-            <li className="flex items-center gap-2.5 py-[7px] text-[13.5px]">
+            <li className="flex items-center gap-2.5 py-1.5 text-[13.5px]">
               {notifyReady ? (
                 <>
                   <span
@@ -172,7 +137,7 @@ export function EsimPreparingView({
         </ul>
       </section>
 
-      <section className="rounded-[20px] bg-surface px-[18px] py-2">
+      <section className="rounded-3xl bg-surface px-4 py-1">
         <div className="flex justify-between py-2 text-[13.5px]">
           <span className="text-muted-foreground">Total dibayar</span>
           <span>{rupiah(order.amount)}</span>
@@ -183,21 +148,9 @@ export function EsimPreparingView({
         </div>
       </section>
 
-      <div className="flex items-center justify-center gap-2 pt-1 text-center text-xs text-muted-foreground">
-        <span>
-          Halaman memperbarui sendiri
-          {typeof lastSyncedAt === "number" ? ` · ${snapshotAgeLabel(lastSyncedAt)}` : ""}
-        </span>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          disabled={busy || cooling}
-          className="tap inline-flex min-h-9 items-center gap-1 font-semibold text-foreground underline disabled:opacity-50"
-        >
-          <RefreshCw className={busy ? "size-3 animate-spin" : "size-3"} aria-hidden="true" />
-          {busy ? "Memeriksa…" : "Perbarui status"}
-        </button>
-      </div>
+      <p className="text-center text-xs text-muted-foreground">
+        {typeof lastSyncedAt === "number" ? `Diperbarui ${snapshotAgeLabel(lastSyncedAt)}` : ""}
+      </p>
     </div>
   );
 }
