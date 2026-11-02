@@ -47,3 +47,68 @@ export function groupWalletLedger(
 }
 
 type CustomerWallet = { status: "active" | "blocked" };
+
+/** Order states that mean the customer has paid, whatever happened to the eSIM afterwards. */
+const PAID_ORDER_STATUSES = new Set([
+  "PAID",
+  "PROVISIONING",
+  "READY",
+  "INSTALLED",
+  "PROVISIONING_FAILED",
+  "REFUNDED",
+]);
+
+export type TravelPurchaseRow = {
+  id: string;
+  title: string;
+  reference: string;
+  createdAtMs: number;
+  amount: number;
+  statusLabel: string;
+};
+
+const PURCHASE_STATUS_LABELS: Record<string, string> = {
+  PAID: "Dibayar",
+  PROVISIONING: "eSIM disiapkan",
+  READY: "eSIM siap",
+  INSTALLED: "eSIM terpasang",
+  PROVISIONING_FAILED: "Dibayar, eSIM dalam penanganan",
+  REFUNDED: "Dikembalikan",
+};
+
+/**
+ * Travel purchases paid straight through the payment provider (QRIS/VA).
+ *
+ * Those never move the Djiwa Pay balance, so the Pay ledger has no row for them. Purchases paid
+ * from the balance are skipped here because the ledger already lists them; showing both would count
+ * the same order twice. These rows are read-only history, not wallet movements.
+ */
+export function travelDirectPurchases(
+  orders: ReadonlyArray<{
+    id: string;
+    publicOrderCode: string;
+    status: string;
+    amount: number;
+    createdAtMs: number;
+    paymentMethod: string;
+    paymentProvider?: string | null;
+    packageSnapshot: { name: string };
+  }>,
+): TravelPurchaseRow[] {
+  return orders
+    .filter(
+      (order) =>
+        PAID_ORDER_STATUSES.has(order.status) &&
+        order.paymentProvider === "mayar" &&
+        order.paymentMethod !== "djiwa_pay",
+    )
+    .map((order) => ({
+      id: order.id,
+      title: `eSIM ${order.packageSnapshot.name}`,
+      reference: order.publicOrderCode,
+      createdAtMs: order.createdAtMs,
+      amount: order.amount,
+      statusLabel: PURCHASE_STATUS_LABELS[order.status] ?? "Dibayar",
+    }))
+    .sort((a, b) => b.createdAtMs - a.createdAtMs);
+}

@@ -23,6 +23,7 @@ import { DEFAULT_TOPUP_PRESETS, DEFAULT_MINIMUM_TOPUP } from "@/lib/customer-app
 
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { getCustomerWallet } from "@/lib/customer-wallet.fn";
+import { getMemberOrders } from "@/lib/member-orders.fn";
 import {
   type CustomerWalletResponse,
   type CustomerWalletLedgerEntry,
@@ -30,6 +31,8 @@ import {
 import {
   groupWalletLedger,
   ledgerStatusLabel,
+  travelDirectPurchases,
+  type TravelPurchaseRow,
   walletStatusLabel,
 } from "@/lib/customer-wallet-view";
 import {
@@ -73,6 +76,22 @@ export function Wallet() {
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [scope, setScope] = useState<WalletScope>("all");
+  const [purchases, setPurchases] = useState<TravelPurchaseRow[]>([]);
+  useEffect(() => {
+    if (!user || scope !== "djiwa-travel") return;
+    let cancelled = false;
+    void getMemberOrders()
+      .then((orders) => {
+        if (!cancelled) setPurchases(travelDirectPurchases(orders));
+      })
+      .catch(() => {
+        // Purchases are supplementary history; the wallet ledger must still render without them.
+        if (!cancelled) setPurchases([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, scope]);
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
   // Presets and which quick actions are live come from the server; the shipped defaults render
   // immediately so the screen never waits on the config round-trip.
@@ -445,7 +464,7 @@ export function Wallet() {
             <SectionTitle
               action={
                 <span className="text-xs font-normal normal-case">
-                  {data.ledger.length} transaksi
+                  {data.ledger.length + (scope === "djiwa-travel" ? purchases.length : 0)} transaksi
                 </span>
               }
             >
@@ -473,17 +492,29 @@ export function Wallet() {
             </div>
             {scope === "djiwa-travel" && (
               <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Menampilkan transaksi yang tercatat berasal dari Djiwa Travel. Transaksi tanpa
-                keterangan asal aplikasi tidak ditampilkan.
+                Menampilkan transaksi saldo yang tercatat berasal dari Djiwa Travel, dan pembelian
+                eSIM yang dibayar langsung (QRIS/VA) yang tidak memotong saldo.
               </p>
             )}
-            {groups.length === 0 ? (
+            {scope === "djiwa-travel" && purchases.length > 0 && (
+              <div className="mt-3">
+                <h3 className="mb-2 px-4 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Pembelian eSIM
+                </h3>
+                <div className="overflow-hidden rounded-[20px] bg-surface">
+                  {purchases.map((purchase) => (
+                    <PurchaseRow key={purchase.id} purchase={purchase} visible={visible} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {groups.length === 0 && !(scope === "djiwa-travel" && purchases.length > 0) ? (
               <p className="mt-3 rounded-[20px] bg-surface px-4 py-5 text-sm text-muted-foreground">
                 {scope === "djiwa-travel"
                   ? "Belum ada transaksi Djiwa Travel yang tercatat."
                   : "Belum ada transaksi Wallet."}
               </p>
-            ) : (
+            ) : groups.length === 0 ? null : (
               <div className="mt-3 space-y-5">
                 {groups.map((group) => (
                   <div key={group.key}>
@@ -572,6 +603,31 @@ function Summary({
         {label}
       </p>
       <p className="mt-1 truncate text-[18px] font-bold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function PurchaseRow({ purchase, visible }: { purchase: TravelPurchaseRow; visible: boolean }) {
+  return (
+    <div className="relative flex min-h-16 items-center gap-3 px-4 py-2.5 [&+&]:before:absolute [&+&]:before:left-[68px] [&+&]:before:right-0 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border/60 [&+&]:before:content-['']">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
+        <ArrowUpRight className="size-5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[15px] font-semibold">
+          {purchase.title}
+          <span className="ml-1.5 rounded-full bg-brand-red-soft px-1.5 py-0.5 align-middle text-[10px] font-bold text-brand-red">
+            Djiwa Travel
+          </span>
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          {new Date(purchase.createdAtMs).toLocaleDateString("id-ID")} · {purchase.statusLabel} ·
+          Dibayar via QRIS, saldo tidak berubah
+        </p>
+      </div>
+      <p className="shrink-0 text-[15px] font-semibold tabular-nums">
+        {visible ? rupiah(purchase.amount) : "••••••"}
+      </p>
     </div>
   );
 }

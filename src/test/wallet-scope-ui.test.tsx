@@ -7,6 +7,7 @@ import { getCustomerWallet } from "@/lib/customer-wallet.fn";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 
 vi.mock("@/lib/customer-wallet.fn", () => ({ getCustomerWallet: vi.fn() }));
+vi.mock("@/lib/member-orders.fn", () => ({ getMemberOrders: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/lib/use-better-auth-user", () => ({ useBetterAuthUser: vi.fn() }));
 vi.mock("@tanstack/react-router", async () => {
   const actual =
@@ -102,9 +103,7 @@ describe("Wallet history scope filter", () => {
       "aria-pressed",
       "true",
     );
-    expect(
-      await screen.findByText(/Transaksi tanpa keterangan asal aplikasi tidak ditampilkan/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/pembelian eSIM yang dibayar langsung/)).toBeInTheDocument();
     expect(
       await screen.findByText("Belum ada transaksi Djiwa Travel yang tercatat."),
     ).toBeInTheDocument();
