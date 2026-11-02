@@ -75,6 +75,10 @@ export const createGuestOrderDraftHandler = async ({
 }: {
   data: ReturnType<typeof createGuestOrderDraftInput>;
 }) => {
+  // Guest checkout is retired: every order belongs to a verified account. Reject first, before any
+  // write, so no unowned order can be created through this endpoint.
+  const { getRequestHeader } = await import("@tanstack/react-start/server");
+  await requireBetterAuthUser(getRequestHeader("cookie") ?? "");
   const walletCustomer =
     data.paymentMethod === "djiwa_pay" ? await requireCompleteWalletCustomer() : null;
   // A signed-in customer's order belongs to the account whatever the payment method, so it shows
