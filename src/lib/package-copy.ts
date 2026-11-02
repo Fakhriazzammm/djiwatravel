@@ -27,9 +27,26 @@ const codeNames: Record<string, string> = {
   MY: "Malaysia",
   SA: "Arab Saudi",
 };
-function localizedCountryName(code: string) {
-  const normalized = code.trim().toUpperCase();
-  return codeNames[code] ?? codeNames[normalized] ?? regionNames?.of(normalized) ?? "Negara lain";
+function localizedCountryName(code: string, fallback = "Negara lain") {
+  const trimmed = code.trim();
+  const normalized = trimmed.toUpperCase();
+  const explicitName = codeNames[trimmed] ?? codeNames[normalized];
+  if (explicitName) return explicitName;
+  if (!/^[A-Z]{2}$/.test(normalized)) return fallback;
+  try {
+    return regionNames?.of(normalized) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Full Indonesian country names for customer-facing order coverage. */
+export function locationCodesLabel(locationCodes: readonly string[] | null | undefined) {
+  const names = (locationCodes ?? [])
+    .map((code) => code.trim())
+    .filter(Boolean)
+    .map((code) => localizedCountryName(code, code));
+  return names.join(", ") || "Regional";
 }
 function trimPrefix(name: string) {
   return name.replace(/\s+\d+(?:\.\d+)?\s*(?:GB|MB|KB)\s+\d+\s*Days?\s*$/i, "").trim();

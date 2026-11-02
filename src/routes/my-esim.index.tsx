@@ -11,6 +11,7 @@ import { destinationArt } from "@/lib/destination-art";
 import { useOrders, type Order } from "@/lib/orders";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
 import { effectiveOrderStatus } from "@/lib/esim-status";
+import { locationCodesLabel } from "@/lib/package-copy";
 import { easeIos, springIos, springSnappy } from "@/lib/motion";
 import {
   activationTimeline,
@@ -54,7 +55,7 @@ export function EsimCard({ o, index = 0 }: { o: Order; index?: number }) {
   const lowPercent = useHomeEsimConfig().lowQuotaPercent;
   const [artFailed, setArtFailed] = useState(false);
   const packageName = o.packageName ?? o.packageId;
-  const locationLabel = o.locationCodes?.join(", ") || "Regional";
+  const locationLabel = locationCodesLabel(o.locationCodes);
   const durationDays = o.durationDays ?? 0;
   const status = effectiveOrderStatus(o.status, o.expiresAt);
   const ready = status === "READY" || status === "INSTALLED";

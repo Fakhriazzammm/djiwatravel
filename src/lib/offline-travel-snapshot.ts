@@ -2,6 +2,7 @@ import type { Order, OrderStatus } from "./orders";
 import { effectiveOrderStatus } from "./esim-status";
 import { maskSensitive } from "./sensitive-data";
 import type { StoredPaymentMethod } from "./travel-payment-method";
+import { locationCodesLabel } from "./package-copy";
 
 /**
  * Offline snapshot for the eSIM QR and the receipt.
@@ -67,7 +68,7 @@ export function buildTravelSnapshot(order: Order, now = Date.now()): TravelSnaps
     status,
     orderCode: order.publicOrderCode ?? null,
     packageName: order.packageName ?? order.packageId,
-    destination: order.locationCodes?.join(", ") || "Regional",
+    destination: locationCodesLabel(order.locationCodes),
     quotaLabel: quotaLabelFor(order.volumeBytes),
     durationDays: order.durationDays ?? null,
     amount: order.amount,

@@ -37,6 +37,7 @@ import { EsimDetailCard } from "@/components/esim-detail-card";
 import { EsimStatusCard, statusPrimary, statusSecondary } from "@/components/esim-status-card";
 import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 import { activationTimeline } from "@/lib/travel-journey";
+import { locationCodesLabel } from "@/lib/package-copy";
 
 /**
  * Support channel. Kept as one constant so every entry point points at the same place, and so
@@ -263,7 +264,7 @@ function OrderPage() {
       </Page>
     );
   const packageName = o.packageName ?? o.packageId;
-  const locationLabel = o.locationCodes?.join(", ") || "Regional";
+  const locationLabel = locationCodesLabel(o.locationCodes);
   const quotaLabel =
     o.volumeBytes == null ? "Unlimited" : `${(o.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
   const durationLabel = o.durationDays ? `${o.durationDays} hari` : "Durasi tersimpan di pesanan";

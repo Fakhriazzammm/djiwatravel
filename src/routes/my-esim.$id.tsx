@@ -40,6 +40,7 @@ import {
   usageView,
 } from "@/lib/travel-journey";
 import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
+import { locationCodesLabel } from "@/lib/package-copy";
 
 /** Support channel; single place to swap in a real number. */
 
@@ -119,7 +120,7 @@ function Detail() {
   const isHistory = ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"].includes(status);
   const canInstall = Boolean(o.esim) && (status === "READY" || status === "INSTALLED");
   const packageName = o.packageName ?? o.packageId;
-  const locationLabel = o.locationCodes?.join(", ") || "Regional";
+  const locationLabel = locationCodesLabel(o.locationCodes);
   const durationDays = o.durationDays ?? 0;
   const quotaLabel =
     o.unlimited === true
@@ -331,7 +332,7 @@ function Detail() {
           params={{ code: reorder.fallbackDestinationCode }}
           className={`${btnSoft} mt-2 text-center`}
         >
-          Lihat paket lain untuk {reorder.fallbackDestinationCode}
+          Lihat paket lain untuk {locationCodesLabel([reorder.fallbackDestinationCode])}
         </Link>
       )}
 

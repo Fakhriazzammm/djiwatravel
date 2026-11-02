@@ -51,6 +51,7 @@ describe("travel snapshot", () => {
     const read = readTravelSnapshot(ORDER_ID);
     expect(read?.version).toBe(SNAPSHOT_VERSION);
     expect(read?.packageName).toBe("Jepang 5GB");
+    expect(read?.destination).toBe("Jepang");
     expect(read?.quotaLabel).toBe("5.0 GB");
     expect(read?.qr?.lpa).toBe("LPA:1$smdp.example$ACTIVATION-CODE");
     expect(read?.amount).toBe(125_000);

@@ -40,6 +40,7 @@ import {
 } from "@/lib/offline-travel-snapshot";
 import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
 import { reorderIntent } from "@/lib/travel-journey";
+import { locationCodesLabel } from "@/lib/package-copy";
 
 export const Route = createFileRoute("/receipt/$id")({
   head: () => ({
@@ -64,7 +65,7 @@ function buildReceiptDocument(order: Order): ReceiptDocument {
   const fields = [
     { label: "Tanggal", value: formatReceiptDate(order.createdAt) },
     { label: "Paket", value: order.packageName ?? order.packageId },
-    { label: "Cakupan", value: order.locationCodes?.join(", ") || "Regional" },
+    { label: "Cakupan", value: locationCodesLabel(order.locationCodes) },
     { label: "Kuota", value: quota },
     { label: "Masa aktif", value: order.durationDays ? `${order.durationDays} hari` : "-" },
     {
@@ -312,7 +313,7 @@ function ReceiptPage() {
         <ReceiptLine label="Status" value={ORDER_STATUS_LABEL[status]} />
         <ReceiptRule />
         <ReceiptLine label="Paket" value={order.packageName ?? order.packageId} />
-        <ReceiptLine label="Cakupan" value={order.locationCodes?.join(", ") || "Regional"} />
+        <ReceiptLine label="Cakupan" value={locationCodesLabel(order.locationCodes)} />
         <ReceiptLine label="Kuota" value={quota} />
         <ReceiptLine
           label="Masa aktif"
@@ -390,7 +391,7 @@ function ReceiptPage() {
               orderId: order.id,
               orderCode: order.publicOrderCode ?? null,
               packageName: order.packageName ?? order.packageId,
-              destination: order.locationCodes?.join(", ") || "Regional",
+              destination: locationCodesLabel(order.locationCodes),
               iccid: order.esim?.iccid ?? null,
               lastSyncedAt: snapshot?.savedAt ?? null,
             })
