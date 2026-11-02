@@ -90,11 +90,6 @@ export function EsimDestinationSheet({
             </p>
           ) : (
             <>
-              {state.data.stale && (
-                <p className="mb-3 rounded-xl bg-secondary p-3 text-xs text-muted-foreground">
-                  Menampilkan katalog tersimpan; harga mungkin belum terbaru.
-                </p>
-              )}
               <EsimPackagePicker
                 packages={state.data.packages}
                 stockPending={state.data.stockPending}
