@@ -61,7 +61,7 @@ function AdminOrders() {
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
         <span className="truncate">
-          {projectAdminPrivacy(order.paymentProviderLabel ?? "Payment —", privateMode)}
+          {projectAdminPrivacy(order.paymentProviderLabel ?? "Belum dibayar", privateMode)}
         </span>
         <span className="shrink-0">{formatAdminDateTime(order.updatedAt)}</span>
       </div>
@@ -89,14 +89,19 @@ function AdminOrders() {
                   className="min-h-11 w-full rounded-xl border border-border bg-secondary pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </label>
-              <button type="submit" className="min-h-11 rounded-xl bg-brand-red px-4 text-sm font-semibold text-white">
+              <button
+                type="submit"
+                className="min-h-11 rounded-xl bg-brand-red px-4 text-sm font-semibold text-white"
+              >
                 Cari
               </button>
             </form>
             <select
               aria-label="Filter status order"
               value={search.status}
-              onChange={(event) => go({ status: event.target.value as typeof search.status, page: 0 })}
+              onChange={(event) =>
+                go({ status: event.target.value as typeof search.status, page: 0 })
+              }
               className="min-h-11 rounded-xl border border-border bg-surface px-2 text-xs"
             >
               {ADMIN_ORDER_STATUSES.map((value) => (
@@ -112,7 +117,11 @@ function AdminOrders() {
               aria-pressed={privateMode}
               className="min-h-11 min-w-11 rounded-xl border bg-surface p-2"
             >
-              {privateMode ? <EyeOff className="mx-auto size-4" /> : <Eye className="mx-auto size-4" />}
+              {privateMode ? (
+                <EyeOff className="mx-auto size-4" />
+              ) : (
+                <Eye className="mx-auto size-4" />
+              )}
             </button>
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
@@ -165,7 +174,7 @@ function AdminOrders() {
                       </Link>
                       <div className="text-muted-foreground">
                         {projectAdminPrivacy(
-                          order.paymentProviderLabel ?? "Payment belum tersedia",
+                          order.paymentProviderLabel ?? "Belum dibayar",
                           privateMode,
                         )}
                       </div>
@@ -202,12 +211,28 @@ function AdminOrders() {
         </AdminSurface>
         <div className="lg:hidden">
           <AdminSurface className="p-3">
-                        <div className="space-y-1.5">{orders.map(card)}</div>
+            <div className="space-y-1.5">{orders.map(card)}</div>
           </AdminSurface>
         </div>
         <div className="flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground">
-          <button type="button" disabled={search.page === 0} aria-label="Halaman sebelumnya" onClick={() => go({ page: search.page - 1 })} className="min-h-9 rounded-lg border px-2.5 disabled:opacity-40">‹</button>
-          <button type="button" disabled={!hasMore} aria-label="Halaman berikutnya" onClick={() => go({ page: search.page + 1 })} className="min-h-9 rounded-lg border px-2.5 disabled:opacity-40">›</button>
+          <button
+            type="button"
+            disabled={search.page === 0}
+            aria-label="Halaman sebelumnya"
+            onClick={() => go({ page: search.page - 1 })}
+            className="min-h-9 rounded-lg border px-2.5 disabled:opacity-40"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            disabled={!hasMore}
+            aria-label="Halaman berikutnya"
+            onClick={() => go({ page: search.page + 1 })}
+            className="min-h-9 rounded-lg border px-2.5 disabled:opacity-40"
+          >
+            ›
+          </button>
         </div>
       </div>
     </AdminShell>
