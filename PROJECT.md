@@ -268,7 +268,9 @@ at payout (bank details, admin review). Admin runs it at `/admin/affiliates`.
 - **Commissions** are *derived* from settled orders by an idempotent sweep (`runAffiliateSweep`, unique per
   `order_id`), not hooked into payment code: first paid order only → `pending` → `approved` after the hold
   and no failed provisioning → `reversed` on refund/cancel. The sweep runs on dashboard/admin loads and via
-  `POST /api/tasks/affiliate-sweep` (`x-djiwa-task-secret` = `AFFILIATE_TASK_SECRET`); no host timer is installed yet.
+  `POST /api/tasks/affiliate-sweep` (`x-djiwa-task-secret` = `AFFILIATE_TASK_SECRET`). On the VPS the
+  `djiwatravel-affiliate-sweep.timer` runs it every 5 minutes; units live in
+  [`scripts/systemd`](scripts/systemd), and the secret is in `/etc/djiwatravel-task.env` and `/etc/djiwatravel.env`.
 - **Payouts** are admin-reviewed records (requested → approved → paid with an external reference). Travel does
   **not** credit Djiwa Pay: wallet balance and ledger stay in Djiwa Pay, so crediting is a manual/ops step until a
   signed Pay endpoint is agreed (needs the Tentram repo). One open payout per affiliate (partial unique index).
