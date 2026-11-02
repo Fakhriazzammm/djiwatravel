@@ -32,14 +32,31 @@ const ledgerEntrySchema = z.object({
   source_app: z.string().nullable().optional(),
 });
 
+/**
+ * Orders paid straight through the gateway in any Djiwa app (QRIS/VA/cash). They never move the
+ * balance, so the ledger has no row for them. Older canonical deployments omit the field.
+ */
+const directPaymentSchema = z.object({
+  source_id: z.string(),
+  order_number: z.string().nullable().optional(),
+  total_amount: z.coerce.number().finite(),
+  created_at: z.coerce.number().finite(),
+  payment_method: z.string().nullable().optional(),
+  status: z.string(),
+  brand_slug: z.string().nullable().optional(),
+  source_app: z.string().nullable().optional(),
+});
+
 const walletResponseSchema = z.object({
   wallet: walletSchema.nullable(),
   ledger: z.array(ledgerEntrySchema),
+  direct_payments: z.array(directPaymentSchema).optional(),
 });
 
 export type CustomerWallet = z.infer<typeof walletSchema>;
 export type CustomerWalletLedgerEntry = z.infer<typeof ledgerEntrySchema>;
 export type CustomerWalletResponse = z.infer<typeof walletResponseSchema>;
+export type CustomerDirectPayment = z.infer<typeof directPaymentSchema>;
 
 function canonicalWalletUrl() {
   const value = process.env["DJIWA_PAY_CUSTOMER_WALLET_URL"]?.trim();
@@ -103,7 +120,10 @@ export function canonicalWalletPayload(
       } as const);
 }
 
-export async function readCanonicalWalletForRequest(request: Request, scopeInput: unknown = "all") {
+export async function readCanonicalWalletForRequest(
+  request: Request,
+  scopeInput: unknown = "all",
+): Promise<CustomerWalletResponse> {
   // Validate the requested scope before any network call; an unknown scope fails closed.
   const scope = parseWalletScope(scopeInput);
   const cookie = request.headers.get("cookie");
@@ -123,7 +143,11 @@ export async function readCanonicalWalletForRequest(request: Request, scopeInput
   const parsed = parseCanonicalWalletResponse(raw, identity.sourceId);
   // The canonical service owns provenance; project fail-closed so unattributed
   // rows never appear in the Djiwa Travel scope.
-  return { ...parsed, ledger: filterLedgerByScope(parsed.ledger, scope) };
+  return {
+    ...parsed,
+    ledger: filterLedgerByScope(parsed.ledger, scope),
+    direct_payments: filterLedgerByScope(parsed.direct_payments ?? [], scope),
+  };
 }
 
 /**

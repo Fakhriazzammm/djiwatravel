@@ -1,4 +1,4 @@
-import type { CustomerWalletLedgerEntry } from "./customer-wallet.server";
+import type { CustomerDirectPayment, CustomerWalletLedgerEntry } from "./customer-wallet.server";
 
 export type WalletLedgerGroup = {
   key: string;
@@ -65,6 +65,7 @@ export type TravelPurchaseRow = {
   createdAtMs: number;
   amount: number;
   statusLabel: string;
+  methodLabel: string;
 };
 
 const PURCHASE_STATUS_LABELS: Record<string, string> = {
@@ -75,6 +76,48 @@ const PURCHASE_STATUS_LABELS: Record<string, string> = {
   PROVISIONING_FAILED: "Dibayar, eSIM dalam penanganan",
   REFUNDED: "Dikembalikan",
 };
+
+const DIRECT_METHOD_LABELS: Record<string, string> = {
+  qris: "QRIS",
+  va: "Virtual account",
+  cash: "Tunai",
+  djiwaapp: "Djiwa App",
+};
+
+function directMethodLabel(method: string | null | undefined): string {
+  const key = (method ?? "").trim().toLowerCase();
+  return DIRECT_METHOD_LABELS[key] ?? (key ? key.toUpperCase() : "Pembayaran langsung");
+}
+
+const BRAND_LABELS: Record<string, string> = {
+  djiwatentram: "Djiwa Tentram",
+  "djiwa-tentram": "Djiwa Tentram",
+  ordermieyamin: "Order Mie Yamin",
+  b2b: "B2B",
+};
+
+/**
+ * Orders from the other Djiwa apps (served by the canonical Pay service on the other VPS) that were
+ * paid straight through the gateway. Same rule as Travel purchases: read-only history that never
+ * alters the balance.
+ */
+export function canonicalDirectPurchases(
+  payments: readonly CustomerDirectPayment[],
+): TravelPurchaseRow[] {
+  return payments.map((payment) => {
+    const brand = (payment.brand_slug ?? "").trim().toLowerCase();
+    const app = BRAND_LABELS[brand] ?? (brand ? brand : "Djiwa Tentram");
+    return {
+      id: `pay-${payment.source_id}`,
+      title: `Pesanan ${app}${payment.order_number ? ` #${payment.order_number}` : ""}`,
+      reference: payment.order_number ?? payment.source_id,
+      createdAtMs: payment.created_at,
+      amount: payment.total_amount,
+      statusLabel: "Berhasil",
+      methodLabel: directMethodLabel(payment.payment_method),
+    };
+  });
+}
 
 /**
  * Travel purchases paid straight through the payment provider (QRIS/VA).
@@ -109,6 +152,50 @@ export function travelDirectPurchases(
       createdAtMs: order.createdAtMs,
       amount: order.amount,
       statusLabel: PURCHASE_STATUS_LABELS[order.status] ?? "Dibayar",
+      methodLabel: directMethodLabel(order.paymentMethod),
     }))
     .sort((a, b) => b.createdAtMs - a.createdAtMs);
+}
+
+export type WalletHistoryItem =
+  | { kind: "ledger"; atMs: number; entry: CustomerWalletLedgerEntry }
+  | { kind: "purchase"; atMs: number; purchase: TravelPurchaseRow };
+
+export type WalletHistoryGroup = { key: string; label: string; items: WalletHistoryItem[] };
+
+/**
+ * One chronological history, grouped by month: balance movements from the Pay ledger plus Travel
+ * purchases paid directly. Both are read-only here; purchases never alter the balance.
+ */
+export function groupWalletHistory(
+  ledger: readonly CustomerWalletLedgerEntry[],
+  purchases: readonly TravelPurchaseRow[],
+  locale = "id-ID",
+): WalletHistoryGroup[] {
+  const items: WalletHistoryItem[] = [
+    ...ledger.map((entry) => ({
+      kind: "ledger" as const,
+      atMs: new Date(entry.created_at).getTime(),
+      entry,
+    })),
+    ...purchases.map((purchase) => ({
+      kind: "purchase" as const,
+      atMs: purchase.createdAtMs,
+      purchase,
+    })),
+  ].sort((a, b) => b.atMs - a.atMs);
+  const groups = new Map<string, WalletHistoryGroup>();
+  for (const item of items) {
+    const date = new Date(item.atMs);
+    const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+    const label = new Intl.DateTimeFormat(locale, {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+    const group = groups.get(key) ?? { key, label, items: [] };
+    group.items.push(item);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
 }

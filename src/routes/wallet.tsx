@@ -29,8 +29,9 @@ import {
   type CustomerWalletLedgerEntry,
 } from "@/lib/customer-wallet.server";
 import {
-  groupWalletLedger,
   ledgerStatusLabel,
+  groupWalletHistory,
+  canonicalDirectPurchases,
   travelDirectPurchases,
   type TravelPurchaseRow,
   walletStatusLabel,
@@ -76,22 +77,22 @@ export function Wallet() {
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [scope, setScope] = useState<WalletScope>("all");
-  const [purchases, setPurchases] = useState<TravelPurchaseRow[]>([]);
+  const [travelPurchases, setTravelPurchases] = useState<TravelPurchaseRow[]>([]);
   useEffect(() => {
-    if (!user || scope !== "djiwa-travel") return;
+    if (!user) return;
     let cancelled = false;
     void getMemberOrders()
       .then((orders) => {
-        if (!cancelled) setPurchases(travelDirectPurchases(orders));
+        if (!cancelled) setTravelPurchases(travelDirectPurchases(orders));
       })
       .catch(() => {
         // Purchases are supplementary history; the wallet ledger must still render without them.
-        if (!cancelled) setPurchases([]);
+        if (!cancelled) setTravelPurchases([]);
       });
     return () => {
       cancelled = true;
     };
-  }, [user, scope]);
+  }, [user]);
   const [quickActionDialog, setQuickActionDialog] = useState<string | null>(null);
   // Presets and which quick actions are live come from the server; the shipped defaults render
   // immediately so the screen never waits on the config round-trip.
@@ -228,7 +229,14 @@ export function Wallet() {
     }
   }
 
-  const groups = useMemo(() => groupWalletLedger(data?.ledger ?? []), [data?.ledger]);
+  const purchases = useMemo(
+    () => [...travelPurchases, ...canonicalDirectPurchases(data?.direct_payments ?? [])],
+    [travelPurchases, data?.direct_payments],
+  );
+  const groups = useMemo(
+    () => groupWalletHistory(data?.ledger ?? [], purchases),
+    [data?.ledger, purchases],
+  );
   const wallet = data?.wallet;
   const formatted = (amount: number) => (visible ? rupiah(amount) : "Rp ••••••");
   const initialLoading = !isPayRoute && (authLoading || Boolean(user && loading && !data));
@@ -464,7 +472,7 @@ export function Wallet() {
             <SectionTitle
               action={
                 <span className="text-xs font-normal normal-case">
-                  {data.ledger.length + (scope === "djiwa-travel" ? purchases.length : 0)} transaksi
+                  {data.ledger.length + purchases.length} transaksi
                 </span>
               }
             >
@@ -496,25 +504,13 @@ export function Wallet() {
                 eSIM yang dibayar langsung (QRIS/VA) yang tidak memotong saldo.
               </p>
             )}
-            {scope === "djiwa-travel" && purchases.length > 0 && (
-              <div className="mt-3">
-                <h3 className="mb-2 px-4 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Pembelian eSIM
-                </h3>
-                <div className="overflow-hidden rounded-[20px] bg-surface">
-                  {purchases.map((purchase) => (
-                    <PurchaseRow key={purchase.id} purchase={purchase} visible={visible} />
-                  ))}
-                </div>
-              </div>
-            )}
-            {groups.length === 0 && !(scope === "djiwa-travel" && purchases.length > 0) ? (
+            {groups.length === 0 ? (
               <p className="mt-3 rounded-[20px] bg-surface px-4 py-5 text-sm text-muted-foreground">
                 {scope === "djiwa-travel"
                   ? "Belum ada transaksi Djiwa Travel yang tercatat."
                   : "Belum ada transaksi Wallet."}
               </p>
-            ) : groups.length === 0 ? null : (
+            ) : (
               <div className="mt-3 space-y-5">
                 {groups.map((group) => (
                   <div key={group.key}>
@@ -522,9 +518,21 @@ export function Wallet() {
                       {group.label}
                     </h3>
                     <div className="overflow-hidden rounded-[20px] bg-surface">
-                      {group.entries.map((entry) => (
-                        <LedgerRow key={String(entry.id)} entry={entry} visible={visible} />
-                      ))}
+                      {group.items.map((item) =>
+                        item.kind === "ledger" ? (
+                          <LedgerRow
+                            key={`l-${String(item.entry.id)}`}
+                            entry={item.entry}
+                            visible={visible}
+                          />
+                        ) : (
+                          <PurchaseRow
+                            key={`p-${item.purchase.id}`}
+                            purchase={item.purchase}
+                            visible={visible}
+                          />
+                        ),
+                      )}
                     </div>
                   </div>
                 ))}
@@ -609,23 +617,18 @@ function Summary({
 
 function PurchaseRow({ purchase, visible }: { purchase: TravelPurchaseRow; visible: boolean }) {
   return (
-    <div className="relative flex min-h-16 items-center gap-3 px-4 py-2.5 [&+&]:before:absolute [&+&]:before:left-[68px] [&+&]:before:right-0 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border/60 [&+&]:before:content-['']">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
-        <ArrowUpRight className="size-5" aria-hidden="true" />
+    <div className="relative flex min-h-14 items-center gap-3 px-4 py-2 [&+&]:before:absolute [&+&]:before:left-[64px] [&+&]:before:right-0 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border/60 [&+&]:before:content-['']">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
+        <ArrowUpRight className="size-4" aria-hidden="true" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold">
-          {purchase.title}
-          <span className="ml-1.5 rounded-full bg-brand-red-soft px-1.5 py-0.5 align-middle text-[10px] font-bold text-brand-red">
-            Djiwa Travel
-          </span>
-        </p>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="line-clamp-2 text-[13px] font-semibold leading-snug">{purchase.title}</p>
+        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
           {new Date(purchase.createdAtMs).toLocaleDateString("id-ID")} · {purchase.statusLabel} ·
-          Dibayar via QRIS, saldo tidak berubah
+          {purchase.methodLabel}, saldo tidak berubah
         </p>
       </div>
-      <p className="shrink-0 text-[15px] font-semibold tabular-nums">
+      <p className="shrink-0 text-[13px] font-semibold tabular-nums">
         {visible ? rupiah(purchase.amount) : "••••••"}
       </p>
     </div>
