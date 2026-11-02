@@ -464,6 +464,12 @@ export const getAdminDashboardHandler = async ({
       : period === "weekly"
         ? sql`${periodStart} + interval '7 days'`
         : sql`${periodStart} + interval '1 month'`;
+  // Daily view buckets by hour so a single day is still a trend; week/month bucket by day.
+  // The series ends at "now" so future buckets are not drawn as empty bars.
+  const bucketTrunc = sql.raw(period === "daily" ? "'hour'" : "'day'");
+  const bucketInterval = sql.raw(period === "daily" ? "interval '1 hour'" : "interval '1 day'");
+  const bucketFmt = sql.raw(period === "daily" ? "'YYYY-MM-DD HH24:00'" : "'YYYY-MM-DD'");
+  const bucketSeries = sql`generate_series(date_trunc(${bucketTrunc}, ${periodStart} at time zone 'Asia/Jakarta'), least((${periodEnd} at time zone 'Asia/Jakarta') - ${bucketInterval}, date_trunc(${bucketTrunc}, now() at time zone 'Asia/Jakarta')), ${bucketInterval})`;
   const [
     countResult,
     dailyResult,
@@ -480,7 +486,7 @@ export const getAdminDashboardHandler = async ({
       sql`select count(*)::int as total, count(*) filter (where paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(total_amount) filter (where currency_code = 'IDR' and (paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr, count(*) filter (where status in ('READY','INSTALLED'))::int as provisioning_ready, count(*) filter (where status = 'PROVISIONING_FAILED')::int as provisioning_failed, count(*) filter (where status in ('PAYMENT_CONFIRMED','PROVISIONING'))::int as paid_not_ready from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd}`,
     ),
     db.execute(
-      sql`select date_trunc('day', created_at at time zone 'Asia/Jakarta')::date::text as day, count(*)::int as count from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd} group by 1 order by 1`,
+      sql`with b as (select s as bucket from ${bucketSeries} s) select to_char(b.bucket, ${bucketFmt}) as day, count(o.id)::int as count from b left join public.customer_orders o on date_trunc(${bucketTrunc}, o.created_at at time zone 'Asia/Jakarta') = b.bucket and o.created_at >= ${periodStart} and o.created_at < ${periodEnd} group by b.bucket order by b.bucket`,
     ),
     db.execute(
       sql`select status, count(*)::int as count from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd} group by status order by count desc`,
@@ -499,7 +505,7 @@ export const getAdminDashboardHandler = async ({
       sql`select count(*)::int as total, count(*) filter (where paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(total_amount) filter (where currency_code = 'IDR' and (paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr from public.customer_orders where created_at >= ${periodStart} - (${periodEnd} - ${periodStart}) and created_at < ${periodStart}`,
     ),
     db.execute(
-      sql`select date_trunc('day', created_at at time zone 'Asia/Jakarta')::date::text as day, count(*) filter (where paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(total_amount) filter (where currency_code = 'IDR' and (paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd} group by 1 order by 1`,
+      sql`with b as (select s as bucket from ${bucketSeries} s) select to_char(b.bucket, ${bucketFmt}) as day, count(o.id) filter (where o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(o.total_amount) filter (where o.currency_code = 'IDR' and (o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr from b left join public.customer_orders o on date_trunc(${bucketTrunc}, o.created_at at time zone 'Asia/Jakarta') = b.bucket and o.created_at >= ${periodStart} and o.created_at < ${periodEnd} group by b.bucket order by b.bucket`,
     ),
     db.execute(
       sql`select coalesce(i.package_name_snapshot, 'Paket belum tersedia') as name, sum(i.quantity)::int as quantity, coalesce(sum(i.line_total),0)::numeric as revenue from public.customer_order_items i join public.customer_orders o on o.id = i.order_id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and o.currency_code = 'IDR' and (o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED')) group by 1 order by revenue desc limit 5`,

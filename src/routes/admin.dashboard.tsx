@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, ArrowRight, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { z } from "zod";
@@ -9,7 +9,6 @@ import {
   formatAdminDateTime,
   humanizeAdminStatus,
   maskSensitiveValue,
-  projectAdminAmount,
   projectAdminCustomer,
   projectAdminIdentifier,
   projectAdminTitle,
@@ -17,17 +16,10 @@ import {
 import {
   averageOrderValue,
   barPercent,
-  formatDelta,
   percentChange,
   sharePercent,
 } from "@/lib/admin-dashboard-metrics";
-import {
-  AdminShell,
-  AdminStatStrip,
-  AdminSurface,
-  SectionHeading,
-  StatusPill,
-} from "@/components/admin-shell";
+import { AdminShell, AdminSurface, StatusPill } from "@/components/admin-shell";
 
 export const Route = createFileRoute("/admin/dashboard")({
   beforeLoad: () => requireAdmin(),
@@ -48,73 +40,198 @@ const LOW_BALANCE_USD = 5;
 
 type ChartPoint = { key: string; label: string; value: number; display: string };
 
-/** Vertical bar chart with a value at the tip of the tallest bar and a hidden-table fallback. */
-function BarChart({
+/** Compact card title: one line, optional right-aligned slot. */
+function CardTitle({
   title,
   detail,
+  right,
+}: {
+  title: string;
+  detail?: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <h2 className="truncate text-xs font-semibold">{title}</h2>
+        {detail && <p className="truncate text-[10px] text-muted-foreground">{detail}</p>}
+      </div>
+      {right}
+    </div>
+  );
+}
+
+/** Signed change chip. Colour is never the only signal: the arrow and sign carry direction. */
+function Delta({ value }: { value: number | null }) {
+  if (value === null) return <span className="text-[10px] text-muted-foreground">baru</span>;
+  if (value === 0) return <span className="text-[10px] text-muted-foreground">▬ 0%</span>;
+  const up = value > 0;
+  return (
+    <span
+      className={`text-[10px] font-semibold tabular-nums ${up ? "text-success" : "text-brand-red"}`}
+    >
+      {up ? "▲" : "▼"} {Math.abs(value)}%
+    </span>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  sub,
+  tone = "neutral",
+  href,
+}: {
+  label: string;
+  value: string;
+  sub: React.ReactNode;
+  tone?: "neutral" | "warn";
+  href?: string;
+}) {
+  const body = (
+    <div
+      className={`h-full rounded-xl px-2.5 py-1.5 ${tone === "warn" ? "bg-[#fffaf0]" : "bg-surface"}`}
+    >
+      <p className="truncate text-[10px] font-medium text-muted-foreground">{label}</p>
+      <p className="truncate text-lg font-bold leading-tight tabular-nums">{value}</p>
+      <div className="truncate text-[10px] text-muted-foreground">{sub}</div>
+    </div>
+  );
+  return href ? (
+    <Link to={href as never} className="block min-w-0 hover:opacity-90">
+      {body}
+    </Link>
+  ) : (
+    <div className="min-w-0">{body}</div>
+  );
+}
+
+/** Bar chart that fills its parent's height. Values stay in a popover table for accessibility. */
+function BarChart({
+  title,
+  summary,
   points,
   privateMode,
   emptyText,
 }: {
   title: string;
-  detail: string;
+  summary: string;
   points: ChartPoint[];
   privateMode: boolean;
   emptyText: string;
 }) {
   const max = Math.max(...points.map((p) => p.value), 0);
   const peak = points.find((p) => p.value === max && max > 0);
+  const step = Math.max(1, Math.ceil(points.length / 8));
   return (
-    <AdminSurface className="p-3">
-      <SectionHeading title={title} detail={detail} />
+    <AdminSurface className="flex min-h-[220px] flex-col p-2.5 lg:min-h-0">
+      <CardTitle
+        title={title}
+        detail={summary}
+        right={
+          points.length > 0 ? (
+            <details className="relative shrink-0">
+              <summary className="cursor-pointer select-none rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary">
+                Tabel
+              </summary>
+              <div className="absolute right-0 top-6 z-20 max-h-56 w-48 divide-y overflow-auto rounded-xl border border-border bg-surface p-2 text-[11px] shadow-lg">
+                {points.map((point) => (
+                  <div key={point.key} className="flex justify-between gap-2 py-1">
+                    <span>{point.label}</span>
+                    <span className="font-semibold tabular-nums">
+                      {privateMode ? "••" : point.display}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : null
+        }
+      />
       {points.length ? (
-        <div className="mt-2">
+        <div className="mt-1.5 flex min-h-0 flex-1 flex-col">
           <div
-            className="flex h-40 items-end gap-1 border-b border-border"
+            className="relative flex min-h-0 flex-1 items-end gap-[3px] border-b border-border"
             role="img"
             aria-label={`${title}: ${points.length} titik data`}
           >
+            <div
+              className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-border/60"
+              aria-hidden="true"
+            />
             {points.map((point) => (
               <div
                 key={point.key}
-                className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
+                className="relative flex h-full min-w-0 flex-1 items-end justify-center"
                 title={projectAdminTitle(`${point.label}: ${point.display}`, privateMode)}
               >
-                <span className="h-3.5 text-[10px] tabular-nums text-muted-foreground">
-                  {peak?.key === point.key ? (privateMode ? "••" : point.display) : ""}
-                </span>
                 <div
                   className="w-full max-w-7 rounded-t bg-brand-red"
                   style={{
                     height: privateMode
                       ? "4px"
-                      : `${point.value > 0 ? barPercent(point.value, max) : 0}%`,
+                      : point.value > 0
+                        ? `${barPercent(point.value, max)}%`
+                        : "2px",
+                    opacity: point.value > 0 ? 1 : 0.25,
                   }}
                 />
-                <span className="text-[10px] text-muted-foreground">{point.label}</span>
+                {peak?.key === point.key && (
+                  <span className="pointer-events-none absolute -top-0.5 left-1/2 -translate-x-1/2 -translate-y-full whitespace-nowrap text-[10px] font-semibold tabular-nums">
+                    {privateMode ? "••" : point.display}
+                  </span>
+                )}
               </div>
             ))}
           </div>
-          <details className="mt-2 text-[11px] text-muted-foreground">
-            <summary className="cursor-pointer select-none py-1">Lihat tabel</summary>
-            <div className="mt-1 divide-y">
-              {points.map((point) => (
-                <div key={point.key} className="flex justify-between py-1">
-                  <span>{point.label}</span>
-                  <span className="font-semibold tabular-nums">
-                    {privateMode ? "••" : point.display}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </details>
+          <div className="mt-1 flex gap-[3px]">
+            {points.map((point, index) => (
+              <span
+                key={point.key}
+                className="min-w-0 flex-1 truncate text-center text-[9px] text-muted-foreground"
+              >
+                {index % step === 0 ? point.label : ""}
+              </span>
+            ))}
+          </div>
         </div>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">{emptyText}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{emptyText}</p>
       )}
     </AdminSurface>
   );
 }
+
+function ShareRow({
+  label,
+  value,
+  share,
+  masked,
+  tone = "brand",
+}: {
+  label: string;
+  value: string;
+  share: number | null;
+  masked: boolean;
+  tone?: "brand" | "muted";
+}) {
+  return (
+    <div className="text-[11px]">
+      <div className="flex justify-between gap-2">
+        <span className="min-w-0 truncate">{label}</span>
+        <b className="shrink-0 tabular-nums">{value}</b>
+      </div>
+      <div className="mt-0.5 h-1.5 rounded-full bg-muted">
+        <div
+          className={`h-1.5 rounded-full ${tone === "brand" ? "bg-brand-red" : "bg-muted-foreground/60"}`}
+          style={{ width: masked ? "4px" : `${Math.max(share ?? 0, share ? 2 : 0)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+const formatRupiah = (v: number) => `Rp${Math.round(v).toLocaleString("id-ID")}`;
 
 function AdminDashboard() {
   const data = Route.useLoaderData();
@@ -125,8 +242,7 @@ function AdminDashboard() {
   const series = useMemo(() => data.daily, [data.daily]);
   const count = (v: number) => maskSensitiveValue(v, privateMode);
   const id = (v: string | null | undefined) => projectAdminIdentifier(v, privateMode);
-  const amount = (v: number | null) =>
-    v === null ? "—" : privateMode ? "••••" : `Rp${v.toLocaleString("id-ID")}`;
+  const amount = (v: number | null) => (v === null ? "—" : privateMode ? "••••" : formatRupiah(v));
   const provider = data.providerBalance;
   const balance =
     provider.state !== "ok" || provider.usd === null
@@ -135,7 +251,7 @@ function AdminDashboard() {
         ? "••••"
         : `US$${provider.usd.toFixed(2)}`;
   const low = provider.state === "ok" && provider.usd !== null && provider.usd < LOW_BALANCE_USD;
-  const actions = data.items.slice(0, 5);
+  const actions = data.items.slice(0, 6);
 
   const total = data.counts.total;
   const paid = data.counts.paid;
@@ -144,29 +260,67 @@ function AdminDashboard() {
   const provisioningFailed = data.counts.provisioningFailed;
   const grossIdr = data.counts.grossIdr;
   const previous = data.previous;
-  const ordersDelta = formatDelta(percentChange(total, previous.total));
-  const paidDelta = formatDelta(percentChange(paid, previous.paid));
-  const grossDelta = formatDelta(
-    grossIdr === null ? null : percentChange(grossIdr, previous.grossIdr),
-  );
+  const ordersDelta = percentChange(total, previous.total);
+  const paidDelta = percentChange(paid, previous.paid);
+  const grossDelta = grossIdr === null ? null : percentChange(grossIdr, previous.grossIdr);
   const conversion = sharePercent(paid, total);
   const aov = averageOrderValue(grossIdr, paid);
-  const compare = `vs ${PERIOD_LABEL[period]} sebelumnya`;
-  const deltaDetail = (delta: string | null) =>
-    delta === null ? "Belum ada pembanding" : `${delta} ${compare}`;
 
+  // Everything that needs a human decision, in one list, most urgent first.
+  const alerts: { key: string; text: string; href: string; tone: "danger" | "warn" }[] = [];
+  if (provisioningFailed > 0)
+    alerts.push({
+      key: "failed",
+      text: `${count(provisioningFailed)} provisioning gagal`,
+      href: "/admin/provisioning",
+      tone: "danger",
+    });
+  if (provider.state !== "ok")
+    alerts.push({
+      key: "provider",
+      text: "Saldo provider tidak terbaca",
+      href: "/admin/settings",
+      tone: "danger",
+    });
+  else if (low)
+    alerts.push({
+      key: "low",
+      text: "Saldo provider rendah",
+      href: "/admin/finance",
+      tone: "warn",
+    });
+  if (data.counts.paymentExceptions > 0)
+    alerts.push({
+      key: "payment",
+      text: `${count(data.counts.paymentExceptions)} pengecualian bayar`,
+      href: "/admin/payments",
+      tone: "warn",
+    });
+  if (paidNotReady > 0)
+    alerts.push({
+      key: "waiting",
+      text: `${count(paidNotReady)} menunggu eSIM`,
+      href: "/admin/provisioning",
+      tone: "warn",
+    });
+
+  const pointLabel = (day: string) => (day.includes(" ") ? day.slice(11) : day.slice(5));
   const orderPoints: ChartPoint[] = series.map((p) => ({
     key: p.day,
-    label: p.day.slice(5),
+    label: pointLabel(p.day),
     value: p.count,
     display: String(p.count),
   }));
   const revenuePoints: ChartPoint[] = data.revenueDaily.map((p) => ({
     key: p.day,
-    label: p.day.slice(5),
+    label: pointLabel(p.day),
     value: p.grossIdr,
-    display: `Rp${Math.round(p.grossIdr).toLocaleString("id-ID")}`,
+    display: formatRupiah(p.grossIdr),
   }));
+  const bucketNoun = period === "daily" ? "jam" : "hari";
+  const peakOrders = Math.max(...orderPoints.map((p) => p.value), 0);
+  const ordersSummary = `Total ${privateMode ? "••" : total} · puncak ${privateMode ? "••" : peakOrders}/${bucketNoun}`;
+  const revenueSummary = `Total ${amount(grossIdr)} · ${PERIOD_LABEL[period]}`;
   const statusTotal = data.statuses.reduce((sum, item) => sum + item.count, 0);
   const packageMax = Math.max(...data.topPackages.map((p) => p.revenueIdr), 0);
   const paymentTotal = data.paymentMix.reduce((sum, item) => sum + item.count, 0);
@@ -179,12 +333,16 @@ function AdminDashboard() {
       setRefreshing(false);
     }
   };
+
+  const iconButton =
+    "inline-flex size-9 items-center justify-center rounded-xl border border-border bg-surface";
   return (
     <AdminShell title="Dashboard" subtitle="Ringkasan operasional Djiwa Travel">
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2" aria-live="polite">
+      <div className="flex flex-col gap-2 lg:h-[calc(100dvh-8.5rem)] lg:overflow-hidden">
+        {/* Row 1: period, live status, freshness, controls */}
+        <div className="flex shrink-0 flex-wrap items-center gap-2" aria-live="polite">
           <div
-            className="flex min-h-11 items-center gap-0.5 rounded-xl bg-surface p-1 shadow-sm"
+            className="flex items-center gap-0.5 rounded-xl bg-surface p-0.5 shadow-sm"
             aria-label="Periode"
           >
             {(["daily", "weekly", "monthly"] as Period[]).map((v) => (
@@ -195,264 +353,157 @@ function AdminDashboard() {
                   void router.navigate({ to: "/admin/dashboard", search: { period: v } } as never)
                 }
                 aria-pressed={period === v}
-                className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${period === v ? "bg-brand-red-soft text-brand-red" : "text-muted-foreground"}`}
+                className={`min-h-8 rounded-lg px-3 text-xs font-semibold ${period === v ? "bg-brand-red-soft text-brand-red" : "text-muted-foreground"}`}
               >
                 {v === "daily" ? "Harian" : v === "weekly" ? "Mingguan" : "Bulanan"}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-muted-foreground">
-              Diperbarui {formatAdminDateTime(data.generatedAt)}
-            </span>
-            <button
-              type="button"
-              onClick={refresh}
-              disabled={refreshing}
-              aria-label="Refresh dashboard"
-              className="min-h-11 min-w-11 rounded-xl border border-border bg-surface p-2"
-            >
-              <RefreshCw
-                className={`mx-auto size-4 ${refreshing ? "animate-spin" : ""} motion-reduce:animate-none`}
-              />
-            </button>
-            <button
-              type="button"
-              onClick={() => setPrivateMode((v) => !v)}
-              aria-pressed={privateMode}
-              aria-label="Mode privasi"
-              className="min-h-11 min-w-11 rounded-xl border border-border bg-surface p-2"
-            >
-              {privateMode ? (
-                <EyeOff className="mx-auto size-4" />
-              ) : (
-                <Eye className="mx-auto size-4" />
-              )}
-            </button>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            {alerts.length === 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#e8f6ec] px-2.5 py-1 text-[11px] font-semibold text-[#1f7a3d]">
+                <CheckCircle2 className="size-3.5" aria-hidden="true" /> Semua normal
+              </span>
+            ) : (
+              alerts.map((alert) => (
+                <Link
+                  key={alert.key}
+                  to={alert.href as never}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${alert.tone === "danger" ? "bg-[#fdecec] text-[#b42318]" : "bg-[#fff4df] text-[#9a6100]"}`}
+                >
+                  <AlertTriangle className="size-3.5" aria-hidden="true" />
+                  {alert.text}
+                </Link>
+              ))
+            )}
           </div>
-        </div>
-
-        <AdminSurface className="p-2.5">
-          <AdminStatStrip
-            columns={6}
-            items={[
-              {
-                label: "Orders",
-                value: count(total),
-                detail: deltaDetail(ordersDelta),
-                href: "/admin/orders",
-              },
-              {
-                label: "Dibayar",
-                value: count(paid),
-                detail: deltaDetail(paidDelta),
-                href: "/admin/orders",
-              },
-              {
-                label: "Konversi",
-                value: privateMode ? "••%" : conversion === null ? "—" : `${conversion}%`,
-                detail: "Dibayar dari order dibuat",
-              },
-              {
-                label: "Gross IDR",
-                value: amount(grossIdr),
-                detail: deltaDetail(grossDelta),
-              },
-              {
-                label: "Rata-rata order",
-                value: amount(aov),
-                detail: "Gross ÷ order dibayar",
-              },
-              {
-                label: "Pengecualian",
-                value: count(data.counts.paymentExceptions),
-                tone: data.counts.paymentExceptions > 0 ? "warn" : "neutral",
-                href: "/admin/payments",
-              },
-            ]}
-          />
-        </AdminSurface>
-
-        <AdminSurface className="p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold">Saldo provider eSIM</p>
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                {provider.state === "ok"
-                  ? `IDR ${amount(provider.idrReference)} · ceiling ${provider.sellableCeilingUsd === null ? "—" : `US$${provider.sellableCeilingUsd.toFixed(2)}`}`
-                  : "Tidak tersedia"}
-              </p>
-            </div>
-            <StatusPill tone={provider.state !== "ok" ? "danger" : low ? "warn" : "good"}>
-              {provider.state !== "ok"
-                ? "Tidak tersedia"
-                : privateMode
-                  ? "••••"
-                  : low
-                    ? "Perlu top-up"
-                    : "Sehat"}
-            </StatusPill>
-          </div>
-          <div className="mt-2 flex items-end justify-between gap-3">
-            <p className="text-[22px] font-bold tabular-nums">{balance}</p>
-            <div className="text-right text-[10px] text-muted-foreground">
-              {provider.state === "ok"
-                ? `≈ ${amount(provider.idrReference)} · ${formatAdminDateTime(provider.fetchedAt)}`
-                : "Saldo tidak bisa dibaca"}
-            </div>
-          </div>
-          {provider.state === "ok" && provider.sellableCeilingUsd !== null && (
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Habis di atas US${provider.sellableCeilingUsd.toFixed(2)} (buffer 15%)
-            </p>
-          )}
-        </AdminSurface>
-
-        <div className="grid gap-2 lg:grid-cols-2">
-          <BarChart
-            title="Tren order"
-            detail={`Order per hari pada periode ${PERIOD_LABEL[period]}.`}
-            points={orderPoints}
-            privateMode={privateMode}
-            emptyText="Belum ada data pada periode ini."
-          />
-          <BarChart
-            title="Pendapatan IDR"
-            detail="Gross order dibayar per hari (IDR)."
-            points={revenuePoints}
-            privateMode={privateMode}
-            emptyText="Belum ada pendapatan pada periode ini."
-          />
-        </div>
-
-        <div className="grid gap-2 md:grid-cols-3">
-          <AdminSurface className="p-3">
-            <SectionHeading title="Corong eSIM" detail="Dari order dibuat sampai siap dipakai." />
-            <div className="mt-2 space-y-2.5 text-xs">
-              {[
-                { label: "Order dibuat", value: total, share: 100 },
-                { label: "Dibayar", value: paid, share: sharePercent(paid, total) },
-                {
-                  label: "eSIM siap",
-                  value: provisioningReady,
-                  share: sharePercent(provisioningReady, total),
-                },
-              ].map((step) => (
-                <div key={step.label}>
-                  <div className="flex justify-between">
-                    <span>{step.label}</span>
-                    <b className="tabular-nums">
-                      {count(step.value)}
-                      {step.share !== null && !privateMode ? ` · ${step.share}%` : ""}
-                    </b>
-                  </div>
-                  <div className="mt-1 h-2 rounded-full bg-muted">
-                    <div
-                      className="h-2 rounded-full bg-brand-red"
-                      style={{
-                        width: privateMode ? "4px" : `${step.share ?? 0}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-              <StatusPill tone={paidNotReady > 0 ? "warn" : "neutral"}>
-                Belum siap {count(paidNotReady)}
-              </StatusPill>
-              <StatusPill tone={provisioningFailed > 0 ? "danger" : "neutral"}>
-                Gagal {count(provisioningFailed)}
-              </StatusPill>
-            </div>
-          </AdminSurface>
-
-          <AdminSurface className="p-3">
-            <SectionHeading title="Status order" detail="Sebaran status pada periode ini." />
-            <div className="mt-2 divide-y">
-              {data.statuses.length === 0 && (
-                <p className="py-3 text-sm text-muted-foreground">Belum ada data.</p>
-              )}
-              {data.statuses.slice(0, 6).map((item) => {
-                const share = sharePercent(item.count, statusTotal);
-                return (
-                  <div key={item.status} className="py-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="flex-1">{humanizeAdminStatus(item.status)}</span>
-                      <span className="font-semibold tabular-nums">
-                        {count(item.count)}
-                        {share !== null && !privateMode ? ` · ${share}%` : ""}
-                      </span>
-                    </div>
-                    <div className="mt-1 h-1.5 rounded-full bg-muted">
-                      <div
-                        className="h-1.5 rounded-full bg-muted-foreground/60"
-                        style={{ width: privateMode ? "4px" : `${share ?? 0}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </AdminSurface>
-
-          <AdminSurface className="p-3">
-            <SectionHeading title="Metode pembayaran" detail="Order dibayar per provider." />
-            <div className="mt-2 divide-y">
-              {data.paymentMix.length === 0 && (
-                <p className="py-3 text-sm text-muted-foreground">Belum ada pembayaran.</p>
-              )}
-              {data.paymentMix.map((item) => (
-                <div key={item.label} className="flex items-center gap-2 py-2 text-xs">
-                  <span className="flex-1">{item.label}</span>
-                  <span className="font-semibold tabular-nums">
-                    {count(item.count)}
-                    {!privateMode && paymentTotal > 0
-                      ? ` · ${sharePercent(item.count, paymentTotal)}%`
-                      : ""}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </AdminSurface>
-        </div>
-
-        <div className="grid gap-2 lg:grid-cols-[1.4fr_.8fr]">
-          <AdminSurface className="p-3">
-            <SectionHeading
-              title="Paket terlaris"
-              detail="Berdasarkan pendapatan order dibayar pada periode ini."
+          <span className="hidden text-[10px] text-muted-foreground md:inline">
+            Diperbarui {formatAdminDateTime(data.generatedAt)}
+            {data.updatedAt ? ` · order terakhir ${formatAdminDateTime(data.updatedAt)}` : ""}
+          </span>
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={refreshing}
+            aria-label="Refresh dashboard"
+            className={iconButton}
+          >
+            <RefreshCw
+              className={`size-4 ${refreshing ? "animate-spin" : ""} motion-reduce:animate-none`}
             />
-            <div className="mt-2 space-y-2.5">
-              {data.topPackages.length === 0 && (
-                <p className="py-3 text-sm text-muted-foreground">Belum ada penjualan paket.</p>
-              )}
-              {data.topPackages.map((pkg) => (
-                <div key={pkg.name} className="text-xs">
-                  <div className="flex justify-between gap-2">
-                    <span className="min-w-0 truncate">{pkg.name}</span>
-                    <b className="shrink-0 tabular-nums">
-                      {count(pkg.quantity)} eSIM · {amount(pkg.revenueIdr)}
-                    </b>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-muted">
-                    <div
-                      className="h-1.5 rounded-full bg-brand-red"
-                      style={{
-                        width: privateMode
-                          ? "4px"
-                          : `${barPercent(pkg.revenueIdr, packageMax, 2)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </AdminSurface>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPrivateMode((v) => !v)}
+            aria-pressed={privateMode}
+            aria-label="Mode privasi"
+            className={iconButton}
+          >
+            {privateMode ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
 
-          <div className="space-y-2">
-            <AdminSurface className="p-3">
-              <SectionHeading
+        {/* Row 2: KPI strip */}
+        <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
+          <Kpi
+            label="Orders"
+            value={count(total)}
+            sub={
+              <>
+                <Delta value={ordersDelta} /> vs lalu
+              </>
+            }
+            href="/admin/orders"
+          />
+          <Kpi
+            label="Dibayar"
+            value={count(paid)}
+            sub={
+              <>
+                <Delta value={paidDelta} /> vs lalu
+              </>
+            }
+            href="/admin/orders"
+          />
+          <Kpi
+            label="Konversi"
+            value={privateMode ? "••%" : conversion === null ? "—" : `${conversion}%`}
+            sub="dibayar ÷ dibuat"
+          />
+          <Kpi
+            label="Gross IDR"
+            value={amount(grossIdr)}
+            sub={
+              <>
+                <Delta value={grossDelta} /> vs lalu
+              </>
+            }
+          />
+          <Kpi label="Rata-rata order" value={amount(aov)} sub="gross ÷ dibayar" />
+          <Kpi
+            label="Pengecualian"
+            value={count(data.counts.paymentExceptions)}
+            sub={data.counts.paymentExceptions > 0 ? "perlu ditinjau" : "tidak ada"}
+            tone={data.counts.paymentExceptions > 0 ? "warn" : "neutral"}
+            href="/admin/payments"
+          />
+        </div>
+
+        {/* Row 3: trends + action column; takes all remaining height */}
+        <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-12">
+          <div className="grid min-h-0 gap-2 sm:grid-cols-2 lg:col-span-9">
+            <BarChart
+              title="Tren order"
+              summary={ordersSummary}
+              points={orderPoints}
+              privateMode={privateMode}
+              emptyText="Belum ada data pada periode ini."
+            />
+            <BarChart
+              title="Pendapatan IDR"
+              summary={revenueSummary}
+              points={revenuePoints}
+              privateMode={privateMode}
+              emptyText="Belum ada pendapatan pada periode ini."
+            />
+          </div>
+          <div className="flex min-h-0 flex-col gap-2 lg:col-span-3">
+            <AdminSurface className="shrink-0 p-2.5">
+              <CardTitle
+                title="Saldo provider eSIM"
+                detail={
+                  provider.state === "ok"
+                    ? `ceiling ${provider.sellableCeilingUsd === null ? "—" : `US$${provider.sellableCeilingUsd.toFixed(2)}`} · buffer 15%`
+                    : "Tidak tersedia"
+                }
+                right={
+                  <StatusPill tone={provider.state !== "ok" ? "danger" : low ? "warn" : "good"}>
+                    {provider.state !== "ok"
+                      ? "Error"
+                      : privateMode
+                        ? "••••"
+                        : low
+                          ? "Top-up"
+                          : "Sehat"}
+                  </StatusPill>
+                }
+              />
+              <div className="mt-1 flex items-end justify-between gap-2">
+                <p className="text-xl font-bold tabular-nums">{balance}</p>
+                <p className="truncate text-[10px] text-muted-foreground">
+                  {provider.state === "ok"
+                    ? `≈ ${amount(provider.idrReference)} · ${formatAdminDateTime(provider.fetchedAt)}`
+                    : "Saldo tidak bisa dibaca"}
+                </p>
+              </div>
+              {provider.state === "ok" && provider.sellableCeilingUsd !== null && (
+                <p className="sr-only">
+                  Habis di atas US${provider.sellableCeilingUsd.toFixed(2)} (buffer 15%)
+                </p>
+              )}
+            </AdminSurface>
+            <AdminSurface className="flex min-h-[140px] flex-1 flex-col p-2.5 lg:min-h-0">
+              <CardTitle
                 title="Perhatian"
                 detail={
                   actions.length
@@ -460,45 +511,122 @@ function AdminDashboard() {
                     : "Tidak ada exception aktif"
                 }
               />
-              {actions.map((item) => (
-                <Link
-                  key={item.detailHref}
-                  to={item.kind === "payment" ? "/admin/payments" : (item.detailHref as never)}
-                  className="mt-1.5 flex min-h-11 items-center gap-2 rounded-xl bg-[#fffaf0] px-2.5 text-xs"
-                >
-                  <AlertTriangle className="size-4 shrink-0 text-[#b87400]" />
-                  <span className="min-w-0 flex-1 truncate">
-                    <b>{id(item.displayIdentifier)}</b> ·{" "}
-                    {projectAdminCustomer(item.customer, privateMode).label} ·{" "}
-                    {humanizeAdminStatus(item.status)} · {ageFrom(item.exceptionAt)}
-                  </span>
-                  <ArrowRight className="size-3" />
-                </Link>
-              ))}
-            </AdminSurface>
-            <AdminSurface className="p-3">
-              <SectionHeading title="Health & freshness" />
-              <div className="mt-2 space-y-1.5 text-xs">
-                <div className="flex items-center gap-2">
-                  <Activity className="size-4 text-success" />
-                  <span className="flex-1">Database Travel</span>
-                  <StatusPill tone="good">Terhubung</StatusPill>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <span>Order terakhir</span>
-                  <b>
-                    {data.updatedAt
-                      ? formatAdminDateTime(data.updatedAt)
-                      : "Belum ada order periode ini"}
-                  </b>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <span>Provisioning gagal</span>
-                  <b>{count(provisioningFailed)}</b>
-                </div>
+              <div className="mt-1.5 min-h-0 flex-1 space-y-1 overflow-y-auto">
+                {actions.length === 0 && (
+                  <p className="flex items-center gap-1.5 py-2 text-[11px] text-muted-foreground">
+                    <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
+                    Semua order periode ini berjalan normal.
+                  </p>
+                )}
+                {actions.map((item) => (
+                  <Link
+                    key={item.detailHref}
+                    to={item.kind === "payment" ? "/admin/payments" : (item.detailHref as never)}
+                    className="flex min-h-9 items-center gap-1.5 rounded-lg bg-[#fffaf0] px-2 text-[11px]"
+                  >
+                    <AlertTriangle className="size-3.5 shrink-0 text-[#b87400]" />
+                    <span className="min-w-0 flex-1 truncate">
+                      <b>{id(item.displayIdentifier)}</b> ·{" "}
+                      {projectAdminCustomer(item.customer, privateMode).label} ·{" "}
+                      {humanizeAdminStatus(item.status)} · {ageFrom(item.exceptionAt)}
+                    </span>
+                    <ArrowRight className="size-3 shrink-0" />
+                  </Link>
+                ))}
               </div>
             </AdminSurface>
           </div>
+        </div>
+
+        {/* Row 4: breakdowns, fixed compact height */}
+        <div className="grid shrink-0 gap-2 sm:grid-cols-2 lg:h-[158px] lg:grid-cols-4">
+          <AdminSurface className="overflow-hidden p-2.5">
+            <CardTitle title="Corong eSIM" detail="Dibuat → dibayar → siap" />
+            <div className="mt-1.5 space-y-1.5">
+              {[
+                { label: "Order dibuat", value: total, share: total > 0 ? 100 : null },
+                { label: "Dibayar", value: paid, share: sharePercent(paid, total) },
+                {
+                  label: "eSIM siap",
+                  value: provisioningReady,
+                  share: sharePercent(provisioningReady, total),
+                },
+              ].map((step) => (
+                <ShareRow
+                  key={step.label}
+                  label={step.label}
+                  value={`${count(step.value)}${step.share !== null && !privateMode ? ` · ${step.share}%` : ""}`}
+                  share={step.share}
+                  masked={privateMode}
+                />
+              ))}
+            </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Belum siap {count(paidNotReady)} · Gagal {count(provisioningFailed)}
+            </p>
+          </AdminSurface>
+
+          <AdminSurface className="overflow-hidden p-2.5">
+            <CardTitle title="Status order" detail="Sebaran periode ini" />
+            <div className="mt-1.5 space-y-1.5">
+              {data.statuses.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">Belum ada data.</p>
+              )}
+              {data.statuses.slice(0, 4).map((item) => {
+                const share = sharePercent(item.count, statusTotal);
+                return (
+                  <ShareRow
+                    key={item.status}
+                    label={humanizeAdminStatus(item.status)}
+                    value={`${count(item.count)}${share !== null && !privateMode ? ` · ${share}%` : ""}`}
+                    share={share}
+                    masked={privateMode}
+                    tone="muted"
+                  />
+                );
+              })}
+            </div>
+          </AdminSurface>
+
+          <AdminSurface className="overflow-hidden p-2.5">
+            <CardTitle title="Metode pembayaran" detail="Order dibayar per provider" />
+            <div className="mt-1.5 space-y-1.5">
+              {data.paymentMix.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">Belum ada pembayaran.</p>
+              )}
+              {data.paymentMix.slice(0, 4).map((item) => {
+                const share = sharePercent(item.count, paymentTotal);
+                return (
+                  <ShareRow
+                    key={item.label}
+                    label={item.label}
+                    value={`${count(item.count)}${share !== null && !privateMode ? ` · ${share}%` : ""}`}
+                    share={share}
+                    masked={privateMode}
+                    tone="muted"
+                  />
+                );
+              })}
+            </div>
+          </AdminSurface>
+
+          <AdminSurface className="overflow-hidden p-2.5">
+            <CardTitle title="Paket terlaris" detail="Berdasarkan pendapatan" />
+            <div className="mt-1.5 space-y-1.5">
+              {data.topPackages.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">Belum ada penjualan paket.</p>
+              )}
+              {data.topPackages.slice(0, 3).map((pkg) => (
+                <ShareRow
+                  key={pkg.name}
+                  label={pkg.name}
+                  value={`${count(pkg.quantity)}× · ${amount(pkg.revenueIdr)}`}
+                  share={packageMax > 0 ? barPercent(pkg.revenueIdr, packageMax, 2) : null}
+                  masked={privateMode}
+                />
+              ))}
+            </div>
+          </AdminSurface>
         </div>
       </div>
     </AdminShell>
