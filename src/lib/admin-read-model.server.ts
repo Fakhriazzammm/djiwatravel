@@ -432,6 +432,16 @@ export const getAdminRefundRequests = createServerFn({ method: "GET" }).handler(
   getAdminRefundRequestsHandler,
 );
 
+/** Collapses unknown/null providers into one "Lainnya" bucket so labels stay unique. */
+function mergePaymentMix(rows: Row[]) {
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    const label = adminPaymentProviderLabel(r["provider"]) ?? "Lainnya";
+    totals.set(label, (totals.get(label) ?? 0) + number(r, "count"));
+  }
+  return [...totals].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+}
+
 export const getAdminDashboardInput = (data: { period?: "daily" | "weekly" | "monthly" } = {}) => ({
   period: data.period ?? "daily",
 });
@@ -461,6 +471,10 @@ export const getAdminDashboardHandler = async ({
     exceptionResult,
     paymentExceptionCountResult,
     freshnessResult,
+    previousResult,
+    revenueDailyResult,
+    topPackagesResult,
+    paymentMixResult,
   ] = await Promise.all([
     db.execute(
       sql`select count(*)::int as total, count(*) filter (where paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(total_amount) filter (where currency_code = 'IDR' and (paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr, count(*) filter (where status in ('READY','INSTALLED'))::int as provisioning_ready, count(*) filter (where status = 'PROVISIONING_FAILED')::int as provisioning_failed, count(*) filter (where status in ('PAYMENT_CONFIRMED','PROVISIONING'))::int as paid_not_ready from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd}`,
@@ -479,6 +493,19 @@ export const getAdminDashboardHandler = async ({
     ),
     db.execute(
       sql`select greatest(max(updated_at), max(created_at))::text as last_data_at from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd}`,
+    ),
+    // Previous window of identical length, for period-over-period deltas.
+    db.execute(
+      sql`select count(*)::int as total, count(*) filter (where paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(total_amount) filter (where currency_code = 'IDR' and (paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr from public.customer_orders where created_at >= ${periodStart} - (${periodEnd} - ${periodStart}) and created_at < ${periodStart}`,
+    ),
+    db.execute(
+      sql`select date_trunc('day', created_at at time zone 'Asia/Jakarta')::date::text as day, count(*) filter (where paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))::int as paid, coalesce(sum(total_amount) filter (where currency_code = 'IDR' and (paid_at is not null or status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))),0)::numeric as gross_idr from public.customer_orders where created_at >= ${periodStart} and created_at < ${periodEnd} group by 1 order by 1`,
+    ),
+    db.execute(
+      sql`select coalesce(i.package_name_snapshot, 'Paket belum tersedia') as name, sum(i.quantity)::int as quantity, coalesce(sum(i.line_total),0)::numeric as revenue from public.customer_order_items i join public.customer_orders o on o.id = i.order_id where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and o.currency_code = 'IDR' and (o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED')) group by 1 order by revenue desc limit 5`,
+    ),
+    db.execute(
+      sql`select o.payment_provider as provider, count(*)::int as count from public.customer_orders o where o.created_at >= ${periodStart} and o.created_at < ${periodEnd} and (o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED')) group by 1 order by count desc`,
     ),
   ]);
   const row = (countResult.rows[0] as Row | undefined) ?? {};
@@ -504,6 +531,23 @@ export const getAdminDashboardHandler = async ({
       day: text(r, "day")!,
       count: number(r, "count"),
     })),
+    /** Period-over-period baseline (same window length, immediately before the selected period). */
+    previous: {
+      total: number((previousResult.rows[0] as Row | undefined) ?? {}, "total"),
+      paid: number((previousResult.rows[0] as Row | undefined) ?? {}, "paid"),
+      grossIdr: nullableNumber((previousResult.rows[0] as Row | undefined) ?? {}, "gross_idr"),
+    },
+    revenueDaily: (revenueDailyResult.rows as Row[]).map((r) => ({
+      day: text(r, "day")!,
+      paid: number(r, "paid"),
+      grossIdr: nullableNumber(r, "gross_idr") ?? 0,
+    })),
+    topPackages: (topPackagesResult.rows as Row[]).map((r) => ({
+      name: text(r, "name") ?? "Paket belum tersedia",
+      quantity: number(r, "quantity"),
+      revenueIdr: nullableNumber(r, "revenue") ?? 0,
+    })),
+    paymentMix: mergePaymentMix(paymentMixResult.rows as Row[]),
     statuses: (statusResult.rows as Row[]).map((r) => ({
       status: text(r, "status")!,
       count: number(r, "count"),
