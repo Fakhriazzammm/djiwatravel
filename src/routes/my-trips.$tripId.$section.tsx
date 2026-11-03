@@ -596,7 +596,7 @@ export function ItineraryEditor({
                 aria-label="Tambah aktivitas"
                 aria-expanded={showForm}
               >
-                <Plus className="size-4" /> Tambah
+                <Plus className="size-4" /> Agenda
               </motion.button>
             </FixedLayer>
           </div>
@@ -790,7 +790,7 @@ export function ItineraryEditor({
                   : "space-y-2"
               }
             >
-              <div className="flex flex-wrap gap-1.5 px-0.5 pb-0.5">
+              <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain px-0.5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {days.length > 1 ? (
                   <>
                     {days.map((day) => (
@@ -1001,7 +1001,7 @@ export function ItineraryEditor({
                 </motion.button>
               </div>
               {(dayRouteUrl || (mapConfig?.poiHelper && !focus)) && (
-                <div className="flex flex-wrap gap-1.5 px-0.5 pb-0.5">
+                <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain px-0.5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {dayRouteUrl && (
                     <motion.a
                       href={dayRouteUrl}
@@ -1040,7 +1040,7 @@ export function ItineraryEditor({
                             {...(on
                               ? { style: { backgroundColor: category.color, color: "#fff" } }
                               : {})}
-                            className="tap inline-flex min-h-7 items-center gap-1 rounded-full bg-surface px-2.5 text-[11px] font-semibold shadow-sm"
+                            className="tap inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full bg-surface px-2.5 text-[11px] font-semibold shadow-sm"
                           >
                             <svg
                               viewBox="0 0 24 24"
@@ -1147,10 +1147,10 @@ const POI_FORM_CATEGORY: Record<PoiCategoryId, string> = {
 function AgendaMascot({ size }: { size: number }) {
   return (
     <motion.img
-      src="/assets/agenda/mascot-agenda-v1.png"
+      src="/assets/agenda/mascot-agenda-v2.png"
       alt=""
       width={size}
-      height={Math.round(size * (297 / 360))}
+      height={Math.round(size * (360 / 326))}
       loading="lazy"
       animate={{ y: [0, -5, 0] }}
       transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
