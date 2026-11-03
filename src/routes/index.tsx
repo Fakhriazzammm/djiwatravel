@@ -262,7 +262,7 @@ function Home() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="home-search-title"
-              className="w-full max-w-lg rounded-t-[28px] bg-background px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2 shadow-2xl duration-300 animate-in slide-in-from-bottom sm:rounded-[28px]"
+              className="w-full max-w-lg rounded-t-[28px] bg-background px-4 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2 shadow-2xl duration-300 animate-in slide-in-from-bottom sm:rounded-[22px]"
               onClick={(event) => event.stopPropagation()}
             >
               <div
@@ -295,7 +295,7 @@ function Home() {
               </label>
               <div className="mt-4 max-h-[min(55vh,24rem)] overflow-y-auto overflow-x-hidden">
                 {!normalizedQuery && bundleList.length > 0 && (
-                  <div className="no-scrollbar -mx-5 mb-3 flex gap-1.5 overflow-x-auto px-5 pb-1">
+                  <div className="no-scrollbar -mx-5 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
                     {bundleList.map((group) => (
                       <Link
                         key={group.code}
@@ -419,7 +419,7 @@ function Home() {
         )}
       </Reveal>
       {homeConfig.myTripsWidgetEnabled && (
-        <Reveal as="section" className="mt-6" aria-labelledby="home-trips-title">
+        <Reveal as="section" className="mt-4" aria-labelledby="home-trips-title">
           <SectionTitle action={<Link to="/my-trips">Buka ›</Link>}>
             <span id="home-trips-title">Perjalananmu</span>
           </SectionTitle>
@@ -433,7 +433,7 @@ function Home() {
       />
 
       <Stagger className="block">
-        <Reveal as="section" className="mt-6">
+        <Reveal as="section" className="mt-4">
           <SectionTitle action={<Link to="/explore">Lihat Semua ›</Link>}>
             Destinasi Populer
           </SectionTitle>
@@ -446,7 +446,7 @@ function Home() {
                   to="/destination/$code"
                   params={{ code: d.code.toLowerCase() }}
                   aria-label={`eSIM ${d.nameId}: lihat paket`}
-                  className="tap relative h-[20rem] w-[76%] max-w-[17rem] shrink-0 snap-center overflow-hidden rounded-[28px] bg-secondary"
+                  className="tap relative h-[20rem] w-[76%] max-w-[17rem] shrink-0 snap-center overflow-hidden rounded-[22px] bg-secondary"
                 >
                   {photo ? (
                     <img
@@ -499,9 +499,9 @@ function Home() {
           </div>
         </Reveal>
 
-        <InstallAppCard className="mt-6" />
+        <InstallAppCard className="mt-4" />
 
-        <Reveal as="section" className="mt-6" aria-labelledby="home-guides-title">
+        <Reveal as="section" className="mt-4" aria-labelledby="home-guides-title">
           <SectionTitle action={<Link to="/panduan">Lihat semua ›</Link>}>
             <span id="home-guides-title">Panduan Travel</span>
           </SectionTitle>

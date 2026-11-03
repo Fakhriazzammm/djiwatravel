@@ -93,7 +93,7 @@ function SharedEsimPage() {
 
       {landing.state === "available" && (
         <>
-          <section className="rounded-3xl bg-surface p-5" data-testid="shared-esim-preview">
+          <section className="rounded-2xl bg-surface p-4" data-testid="shared-esim-preview">
             <span className="inline-flex items-center gap-2 rounded-full bg-brand-red-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-red">
               <Sparkles className="size-3.5" aria-hidden="true" /> Hadiah eSIM
             </span>
@@ -105,7 +105,7 @@ function SharedEsimPage() {
               Wi-Fi.
             </p>
 
-            <dl className={`${group} mt-5`}>
+            <dl className={`${group} mt-4`}>
               <div className={row}>
                 <dt className="text-[13px] text-muted-foreground">Destinasi</dt>
                 <dd className="text-right text-[14px] font-semibold">
@@ -179,7 +179,7 @@ function SharedEsimPage() {
 
 function StateCard({ icon, title, detail }: { icon: ReactNode; title: string; detail: string }) {
   return (
-    <section className="rounded-3xl bg-surface p-5">
+    <section className="rounded-2xl bg-surface p-4">
       <div className="flex items-center gap-2">
         {icon}
         <h1 className="text-lg font-bold">{title}</h1>
@@ -203,7 +203,7 @@ function OpenEsim({ view }: { view: SharedEsimView }) {
 
   return (
     <>
-      <section className="rounded-3xl bg-surface p-5" data-testid="shared-esim-open">
+      <section className="rounded-2xl bg-surface p-4" data-testid="shared-esim-open">
         <div className="flex items-center gap-2">
           <ShieldCheck className="size-5 text-success" aria-hidden="true" />
           <h1 className="text-xl font-bold">eSIM siap dipasang</h1>

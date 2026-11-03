@@ -136,7 +136,7 @@ export function CustomerOnboardingGate() {
         onEscapeKeyDown={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
-        className="z-[70] max-h-[90dvh] overflow-y-auto rounded-t-[28px] border-border bg-background px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-6 sm:left-1/2 sm:right-auto sm:w-[min(100%,30rem)] sm:-translate-x-1/2 sm:rounded-t-[28px]"
+        className="z-[70] max-h-[90dvh] overflow-y-auto rounded-t-[28px] border-border bg-background px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 sm:left-1/2 sm:right-auto sm:w-[min(100%,30rem)] sm:-translate-x-1/2 sm:rounded-t-[28px]"
         aria-describedby="customer-onboarding-description"
       >
         {profileStatus === "loading" || profileStatus === "idle" ? (
@@ -172,7 +172,7 @@ export function CustomerOnboardingGate() {
             </SheetHeader>
 
             {profileStatus === "error" ? (
-              <div className="mt-5 rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+              <div className="mt-4 rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
                 <p role="alert" className="text-sm text-destructive">
                   Profil belum bisa diperiksa. Cek koneksi internet lalu coba lagi.
                 </p>
@@ -186,7 +186,7 @@ export function CustomerOnboardingGate() {
                 </button>
               </div>
             ) : (
-              <form onSubmit={(event) => void submitProfile(event)} className="mt-5 space-y-4">
+              <form onSubmit={(event) => void submitProfile(event)} className="mt-4 space-y-3">
                 <div className="space-y-2">
                   <label htmlFor="onboarding-email" className="text-sm font-semibold">
                     Email akun

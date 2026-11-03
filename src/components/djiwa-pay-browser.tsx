@@ -142,11 +142,11 @@ export function DjiwaPayBrowser({
 
               <div className="min-h-0 flex-1 bg-background">
                 {bridgeState === "loading" ? (
-                  <div className="flex h-full items-center justify-center px-6 text-center">
+                  <div className="flex h-full items-center justify-center px-4 text-center">
                     <p className="text-sm text-muted-foreground">Menghubungkan ke Djiwa Pay…</p>
                   </div>
                 ) : bridgeState === "error" ? (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+                  <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
                     <div>
                       <p className="font-semibold text-foreground">Silakan login terlebih dahulu</p>
                       <p className="mt-1 text-sm text-muted-foreground">

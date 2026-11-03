@@ -204,7 +204,7 @@ function ReceiptPage() {
       <Page>
         <div className="mt-24 text-center">
           <p className="text-muted-foreground">Struk tidak ditemukan di perangkat ini.</p>
-          <Link to="/my-esim" className={`${btnRed} mt-6`}>
+          <Link to="/my-esim" className={`${btnRed} mt-4`}>
             Lihat My eSIM
           </Link>
         </div>
@@ -258,7 +258,7 @@ function ReceiptPage() {
       <h1 className="text-[22px] font-bold leading-tight tracking-tight mb-1 mt-2">
         Struk pembayaran
       </h1>
-      <p className="mb-6 text-sm text-muted-foreground">
+      <p className="mb-4 text-sm text-muted-foreground">
         Simpan sebagai PDF atau cetak, lalu pasang eSIM pakai panduan di bawah.
       </p>
 
@@ -364,7 +364,7 @@ function ReceiptPage() {
       />
 
       {/* Installation tutorial travels with the receipt. */}
-      <section className="mt-8 rounded-2xl bg-surface p-4">
+      <section className="mt-4 rounded-2xl bg-surface p-4">
         <h2 className="text-base font-semibold">Cara pasang eSIM</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Lakukan sebelum berangkat, cukup sekali. Butuh koneksi Wi-Fi.
@@ -400,7 +400,7 @@ function ReceiptPage() {
           }
           supportBaseUrl={SUPPORT_WHATSAPP_URL}
         />
-        <div className="mt-5 flex flex-col gap-2">
+        <div className="mt-4 flex flex-col gap-2">
           {reorder && (
             <>
               <Link

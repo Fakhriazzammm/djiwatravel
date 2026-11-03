@@ -76,7 +76,7 @@ function TravelGuideDetail() {
         <h1 className="text-[22px] font-bold leading-tight tracking-tight mt-2">{guide.heading}</h1>
         <p className="mt-3 text-[15px] leading-7 text-muted-foreground">{guide.description}</p>
         {guide.image && (
-          <figure className="mt-6 overflow-hidden rounded-2xl bg-secondary">
+          <figure className="mt-4 overflow-hidden rounded-2xl bg-secondary">
             <img
               src={guide.image}
               alt={guide.imageAlt ?? "Ilustrasi panduan perjalanan Djiwa Travel"}
@@ -97,13 +97,13 @@ function TravelGuideDetail() {
           {` · ${guide.readTime}`}
         </p>
         <GuideShareActions title={guide.title} url={`${BASE_URL}/panduan/${guide.slug}`} />
-        <div className="mt-8 space-y-5 text-[15px] leading-7 text-foreground">
+        <div className="mt-4 space-y-3 text-[15px] leading-7 text-foreground">
           {guide.paragraphs.map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>
           ))}
         </div>
         {guide.sources && guide.sources.length > 0 && (
-          <section className="mt-8" aria-labelledby="guide-sources-title">
+          <section className="mt-4" aria-labelledby="guide-sources-title">
             <SectionTitle>Sumber resmi</SectionTitle>
             <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-6 text-muted-foreground">
               {guide.sources.map((source) => (
@@ -121,7 +121,7 @@ function TravelGuideDetail() {
             </ul>
           </section>
         )}
-        <section className="mt-8" aria-labelledby="guide-steps-title">
+        <section className="mt-4" aria-labelledby="guide-steps-title">
           <SectionTitle>Yang perlu disiapkan</SectionTitle>
           <ol className="divide-y divide-border overflow-hidden rounded-2xl bg-surface">
             {guide.steps.map((step, index) => (
@@ -135,7 +135,7 @@ function TravelGuideDetail() {
             ))}
           </ol>
         </section>
-        <section className="mt-8" aria-labelledby="related-destinations-title">
+        <section className="mt-4" aria-labelledby="related-destinations-title">
           <SectionTitle>Tujuan terkait</SectionTitle>
           <div className="flex flex-wrap gap-2">
             {guide.relatedDestinations.map((destination) => (
@@ -150,7 +150,7 @@ function TravelGuideDetail() {
             ))}
           </div>
         </section>
-        <section className="mt-8 rounded-2xl bg-primary p-5 text-primary-foreground">
+        <section className="mt-4 rounded-2xl bg-primary p-4 text-primary-foreground">
           <h2 className="text-lg font-bold">Siap tetap terhubung?</h2>
           <p className="mt-2 text-sm leading-6 text-primary-foreground/85">
             Pilih tujuanmu dan siapkan eSIM sebelum berangkat.

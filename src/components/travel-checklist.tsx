@@ -28,7 +28,7 @@ export function TravelChecklist({
 }) {
   return (
     <section
-      className={`rounded-2xl bg-surface ${compact ? "p-4" : "p-5"}`}
+      className={`rounded-2xl bg-surface ${compact ? "p-4" : "p-4"}`}
       data-testid="travel-checklist"
     >
       <div className="flex items-start justify-between gap-3">
@@ -47,7 +47,7 @@ export function TravelChecklist({
         <div className="h-full rounded-full bg-primary" style={{ width: `${progress.percent}%` }} />
       </div>
 
-      <div className="mt-5">
+      <div className="mt-4">
         <label className="block text-[13px] font-medium" htmlFor="departure-date">
           Tanggal keberangkatan
         </label>
@@ -91,7 +91,7 @@ export function TravelChecklist({
         )}
       </div>
 
-      <ul className={`${group} mt-5`}>
+      <ul className={`${group} mt-4`}>
         {items.map((item) => {
           const done = item.state === "done";
           return (

@@ -16,7 +16,7 @@ export function GeoAnswer({
   updatedLabel?: string | undefined;
 }) {
   return (
-    <section className="mt-8 space-y-4 pb-6" aria-labelledby="geo-answer-heading">
+    <section className="mt-4 space-y-3 pb-6" aria-labelledby="geo-answer-heading">
       <h2 id="geo-answer-heading" className="text-lg font-bold">
         {heading}
       </h2>

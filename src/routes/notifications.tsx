@@ -244,10 +244,10 @@ function Notifications() {
         <div className="shrink-0">
           <div className="flex items-start justify-between gap-3 pt-1">
             <div className="min-w-0">
-              <h1 className="text-[22px] font-bold leading-tight tracking-tight">
+              <h1 className="ios-title">
                 {selecting ? `${selected.size} dipilih` : archivedView ? "Arsip" : "Notifikasi"}
               </h1>
-              <p className="text-xs text-muted-foreground" aria-live="polite">
+              <p className="ios-subtitle" aria-live="polite">
                 {archivedView
                   ? "Notifikasi yang kamu arsipkan"
                   : unreadCount
@@ -333,7 +333,7 @@ function Notifications() {
           )}
 
           {!error && items.length === 0 && (
-            <div className="mt-8 rounded-2xl border border-dashed border-border bg-surface p-8 text-center">
+            <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface p-4 text-center">
               <Bell className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
               <p className="mt-3 font-semibold">
                 {archivedView ? "Arsip kosong" : "Belum ada notifikasi"}
@@ -346,7 +346,7 @@ function Notifications() {
             </div>
           )}
           {!error && items.length > 0 && visible.length === 0 && (
-            <p className="mt-8 text-center text-sm text-muted-foreground">
+            <p className="mt-4 text-center text-sm text-muted-foreground">
               Tidak ada notifikasi yang cocok.
             </p>
           )}
@@ -354,9 +354,7 @@ function Notifications() {
           {groups.map(([label, list]) => (
             <section key={label} className="mt-3">
               <div className="mb-1 flex items-center justify-between px-1">
-                <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {label}
-                </h2>
+                <h2 className="ios-section-label !mb-0 !px-0 font-bold">{label}</h2>
                 {label === "Hari ini" && !archivedView && unreadCount > 0 && !selecting && (
                   <button
                     type="button"
@@ -368,7 +366,7 @@ function Notifications() {
                   </button>
                 )}
               </div>
-              <div className="overflow-hidden rounded-xl bg-surface">
+              <div className="ios-group">
                 {list.map((item) => (
                   <Row
                     key={item.id}
@@ -414,10 +412,10 @@ function Notifications() {
           <div
             role="dialog"
             aria-label="Aksi notifikasi"
-            className="mb-[calc(6.5rem+env(safe-area-inset-bottom))] w-[calc(100%-24px)] max-w-md overflow-hidden rounded-3xl bg-surface shadow-2xl"
+            className="mb-[calc(6.5rem+env(safe-area-inset-bottom))] w-[calc(100%-24px)] max-w-md overflow-hidden rounded-2xl bg-surface shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="truncate px-5 pt-4 text-sm font-semibold">{sheetFor.title}</p>
+            <p className="truncate px-4 pt-4 text-sm font-semibold">{sheetFor.title}</p>
             <div className="mt-2 divide-y divide-border/70 text-[15px]">
               {!sheetFor.read_at && (
                 <SheetButton icon={Check} onClick={() => void run("read", [sheetFor.id])}>
@@ -425,7 +423,7 @@ function Notifications() {
                 </SheetButton>
               )}
               {sheetFor.action_href && (
-                <a href={sheetFor.action_href} className="flex min-h-12 items-center gap-3 px-5">
+                <a href={sheetFor.action_href} className="flex min-h-12 items-center gap-3 px-4">
                   <ExternalLink className="size-4" aria-hidden="true" />
                   Buka detail
                 </a>
@@ -534,7 +532,7 @@ function SheetButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-12 w-full items-center gap-3 px-5 ${danger ? "text-destructive" : ""}`}
+      className={`flex min-h-12 w-full items-center gap-3 px-4 ${danger ? "text-destructive" : ""}`}
     >
       <Icon className="size-4" aria-hidden="true" />
       {children}

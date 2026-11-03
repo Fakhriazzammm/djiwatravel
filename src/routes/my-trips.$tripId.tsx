@@ -265,7 +265,7 @@ function TripDetail() {
         </p>
       </header>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <section
           aria-label="Hitung mundur"
           className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-[#ff7a7e] via-brand-red to-[#c92f3a] p-4 text-white"
@@ -543,13 +543,13 @@ function ShareTripSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
+        className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
       >
         <div
           className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
           aria-hidden="true"
         />
-        <SheetHeader className="mb-5 text-left">
+        <SheetHeader className="mb-4 text-left">
           <SheetTitle>Bagikan itinerary</SheetTitle>
           <SheetDescription>
             Tautan baca-saja berisi nama perjalanan, tanggal, dan agenda. Pengeluaran, checklist,
@@ -558,7 +558,7 @@ function ShareTripSheet({
         </SheetHeader>
 
         {share ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="rounded-2xl bg-secondary/70 p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Tautan aktif
@@ -604,7 +604,7 @@ function ShareTripSheet({
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="rounded-2xl bg-secondary/70 p-4 text-sm text-muted-foreground">
               Buat tautan baca-saja yang bisa dibuka tanpa login. Isinya hanya itinerary perjalanan.
             </div>
@@ -695,7 +695,7 @@ function EditTripSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="mx-auto max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[24px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-6"
+        className="mx-auto max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[24px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4"
       >
         <SheetHeader className="mb-4 text-left">
           <SheetTitle>Edit perjalanan</SheetTitle>

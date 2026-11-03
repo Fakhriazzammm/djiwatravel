@@ -80,7 +80,7 @@ export function InstallAppCard({
         <button
           type="button"
           onClick={() => setGuideOpen(false)}
-          className="mt-5 min-h-10 w-full rounded-xl bg-primary text-[14px] font-semibold text-primary-foreground"
+          className="mt-4 min-h-10 w-full rounded-xl bg-primary text-[14px] font-semibold text-primary-foreground"
         >
           Mengerti
         </button>

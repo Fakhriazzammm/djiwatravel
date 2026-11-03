@@ -41,7 +41,7 @@ export const Route = createFileRoute("/explore")({
   pendingComponent: () => (
     <Page>
       <h1 className="text-[22px] font-bold leading-tight tracking-tight pt-4">Explore</h1>
-      <div role="status" aria-busy="true" className="mt-6 space-y-5">
+      <div role="status" aria-busy="true" className="mt-4 space-y-3">
         <span className="sr-only">Memuat katalog…</span>
         <div className="h-12 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
         <SkeletonCards />
@@ -220,7 +220,7 @@ function Explore() {
         <ChevronRight className="size-5 shrink-0 text-brand-red" />
       </Link>
       {available.source === "error" && (
-        <div role="alert" className="mt-4 rounded-2xl bg-surface p-5 text-center shadow-sm">
+        <div role="alert" className="mt-4 rounded-2xl bg-surface p-4 text-center shadow-sm">
           <p className="font-semibold">Explore belum dapat dimuat</p>
           <p className="mt-2 text-sm text-muted-foreground">
             {available.errorMessage} Tidak ada paket yang dibuat-buat.
@@ -228,18 +228,18 @@ function Explore() {
           <button
             type="button"
             onClick={() => void router.invalidate()}
-            className="mt-4 min-h-11 rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
+            className="mt-4 min-h-11 rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
           >
             Coba lagi
           </button>
         </div>
       )}
-      <section className="mt-8">
+      <section className="mt-4">
         <ServiceSectionHeading title="Kebutuhan perjalanan" detail="Layanan" />
         <ServiceCategoryGrid />
       </section>
       {res.length === 0 && available.source !== "error" && (
-        <p className="mb-6 text-center text-sm text-muted-foreground">
+        <p className="mb-4 text-center text-sm text-muted-foreground">
           Belum ada destinasi untuk “{q}”. Coba nama negara lain.
         </p>
       )}

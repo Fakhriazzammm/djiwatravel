@@ -55,7 +55,7 @@ function OrderStatus() {
   return (
     <Page tabs={false}>
       <BackBar title="Cek status pesanan" />
-      <div className="mt-5 rounded-2xl bg-surface p-4 sm:p-5">
+      <div className="mt-4 rounded-2xl bg-surface p-4 sm:p-4">
         <p className="text-sm text-muted-foreground">
           Masukkan kode pesanan dan kedua kontak saat checkout. Data dipakai hanya untuk verifikasi
           akses singkat.

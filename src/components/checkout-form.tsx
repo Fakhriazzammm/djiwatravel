@@ -41,7 +41,7 @@ const methods = [
 
 function Footer({ sheet, children }: { sheet: boolean; children: ReactNode }) {
   return sheet ? (
-    <div className="mt-5 pb-1">{children}</div>
+    <div className="mt-4 pb-1">{children}</div>
   ) : (
     <>
       {/* Reserves room for the pinned bar so the last payment options scroll above it. */}
@@ -205,7 +205,7 @@ export function CheckoutForm({
         <p className="shrink-0 text-right text-sm font-bold">{rupiah(price)}</p>
       </div>
 
-      <h2 className={`${label} mt-6`}>Dikirim ke</h2>
+      <h2 className={`${label} mt-4`}>Dikirim ke</h2>
       {!user && (
         <div className="mb-3 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-3 text-sm">
           <p className="font-semibold">Masuk untuk checkout</p>
@@ -283,7 +283,7 @@ export function CheckoutForm({
       )}
       <DeviceCompatibility />
 
-      <h2 className={`${label} mt-6`}>Pembayaran</h2>
+      <h2 className={`${label} mt-4`}>Pembayaran</h2>
       <div className={group}>
         {methods.map(({ id, label: name, desc, icon: I }) => (
           <button

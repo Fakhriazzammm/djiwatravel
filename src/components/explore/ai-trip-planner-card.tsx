@@ -7,7 +7,7 @@ export function AiTripPlannerCard() {
   const [open, setOpen] = useState(false);
   const [destination, setDestination] = useState("");
   return (
-    <section className="rounded-3xl bg-primary p-4 text-primary-foreground shadow-sm">
+    <section className="rounded-2xl bg-primary p-4 text-primary-foreground shadow-sm">
       <div className="flex items-start gap-3">
         <span className="flex size-10 items-center justify-center rounded-2xl bg-white/15">
           <Sparkles className="size-5" />

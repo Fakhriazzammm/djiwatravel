@@ -316,8 +316,8 @@ function MyEsim() {
           />
           <Wordmark className="mx-auto mt-2 h-12" />
           <p className="mt-2 text-muted-foreground">Bawa Djiwamu Lebih Jauh.</p>
-          <p className="mt-6">Belum ada eSIM. Mau pergi ke mana?</p>
-          <Link to="/explore" className={`${btnPrimary} mt-6`}>
+          <p className="mt-4">Belum ada eSIM. Mau pergi ke mana?</p>
+          <Link to="/explore" className={`${btnPrimary} mt-4`}>
             Cari Destinasi
           </Link>
         </div>
@@ -440,7 +440,7 @@ function EmptyTab({
       />
       <p className="mt-3 font-semibold">{title}</p>
       <p className="mt-1 text-[13px] text-muted-foreground">{hint}</p>
-      <div className="mt-5 flex flex-col items-center gap-2">
+      <div className="mt-4 flex flex-col items-center gap-2">
         <Link to="/esim/finder" className={btnPrimary}>
           Beli eSIM
         </Link>
@@ -460,7 +460,7 @@ function EmptyTab({
 
 function Section({ title, items, total }: { title: string; items: Order[]; total?: number }) {
   return (
-    <section className="mt-6">
+    <section className="mt-4">
       <h2 className="mb-3 flex items-center gap-2 px-1 text-sm font-medium text-muted-foreground">
         {title}
         <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold">

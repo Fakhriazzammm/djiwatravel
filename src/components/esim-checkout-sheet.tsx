@@ -49,7 +49,7 @@ export function EsimCheckoutSheet({
       <SheetContent
         side="bottom"
         data-testid="esim-checkout-sheet"
-        className="mx-auto max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] border-border/70 bg-background px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-6"
+        className="mx-auto max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] border-border/70 bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-6"
       >
         <SheetHeader className="mb-4 pr-10 text-left">
           <SheetTitle>Checkout</SheetTitle>

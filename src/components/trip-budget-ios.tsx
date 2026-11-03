@@ -235,8 +235,8 @@ export function BudgetEditor({
   }
 
   return (
-    <section className="space-y-4">
-      <div className={`flex items-center gap-4 p-3.5 ${iosGroup}`}>
+    <section className="space-y-3">
+      <div className={`flex items-center gap-3 p-3.5 ${iosGroup}`}>
         <div
           role="img"
           aria-label={`${percent}% anggaran terpakai`}
@@ -611,7 +611,7 @@ export function ExpenseEditor({
   );
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div className={`${iosGroup} p-3`}>
           <p className="text-[11px] text-muted-foreground">Total</p>
@@ -684,7 +684,7 @@ export function ExpenseEditor({
           </section>
         ))
       ) : (
-        <div className={`${iosGroup} p-6 text-center`}>
+        <div className={`${iosGroup} p-4 text-center`}>
           <p className="text-[15px] font-semibold">
             {items.length ? "Tidak ada pengeluaran di kategori ini" : "Belum ada pengeluaran"}
           </p>

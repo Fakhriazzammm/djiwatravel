@@ -118,7 +118,12 @@ function RefundPage() {
       <header className="flex h-14 items-center gap-3">
         <Link
           to="/profile"
-          search={{ admin: undefined }}
+          search={{
+            admin: undefined,
+            returnTo: undefined,
+            calendar: undefined,
+            calendarSync: undefined,
+          }}
           aria-label="Kembali ke profil"
           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-brand-red"
         >
@@ -132,7 +137,7 @@ function RefundPage() {
       {loading && (
         <div
           role="status"
-          className="mt-8 rounded-2xl border bg-surface p-6 text-center text-sm text-muted-foreground"
+          className="mt-4 rounded-2xl border bg-surface p-4 text-center text-sm text-muted-foreground"
         >
           Memuat kelayakan refund…
         </div>
@@ -140,7 +145,7 @@ function RefundPage() {
       {error && !loading && (
         <div
           role="alert"
-          className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+          className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
         >
           <p>{error}</p>
           <button
@@ -155,23 +160,20 @@ function RefundPage() {
       )}
       {!loading && !error && eligibility && (
         <>
-          <section
-            className="mt-6 rounded-2xl bg-surface p-4"
-            aria-labelledby="eligibility-title"
-          >
+          <section className="mt-4 rounded-2xl bg-surface p-4" aria-labelledby="eligibility-title">
             <h2 id="eligibility-title" className="text-lg font-bold">
               Ringkasan pesanan
             </h2>
             <dl className="mt-3 divide-y divide-border/70 text-sm">
-              <div className="flex min-h-12 items-center justify-between gap-4 py-2">
+              <div className="flex min-h-12 items-center justify-between gap-3 py-2">
                 <dt className="text-muted-foreground">Kode pesanan</dt>
                 <dd className="text-right font-semibold">{eligibility.public_order_code}</dd>
               </div>
-              <div className="flex min-h-12 items-center justify-between gap-4 py-2">
+              <div className="flex min-h-12 items-center justify-between gap-3 py-2">
                 <dt className="text-muted-foreground">Status</dt>
                 <dd className="font-semibold">{eligibility.status}</dd>
               </div>
-              <div className="flex min-h-12 items-center justify-between gap-4 py-2">
+              <div className="flex min-h-12 items-center justify-between gap-3 py-2">
                 <dt className="text-muted-foreground">Provisioning</dt>
                 <dd className="text-right font-semibold">
                   {eligibility.provisioning_started ? "Sudah dimulai" : "Belum dimulai"}
@@ -231,8 +233,13 @@ function RefundPage() {
       )}
       <Link
         to="/profile"
-        search={{ admin: undefined }}
-        className="mt-8 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2"
+        search={{
+          admin: undefined,
+          returnTo: undefined,
+          calendar: undefined,
+          calendarSync: undefined,
+        }}
+        className="mt-4 inline-flex min-h-11 items-center font-semibold text-brand-red underline underline-offset-2"
       >
         Kembali ke profil
       </Link>

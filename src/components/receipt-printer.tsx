@@ -103,7 +103,7 @@ export function ReceiptPrinter({
         >
           <article
             data-testid="receipt-paper"
-            className="min-h-[22rem] bg-surface px-6 pt-7 pb-8 font-mono text-[13px] leading-relaxed text-foreground shadow-[0_10px_28px_-14px_rgba(15,23,42,0.4)]"
+            className="min-h-[22rem] bg-surface px-4 pt-7 pb-8 font-mono text-[13px] leading-relaxed text-foreground shadow-[0_10px_28px_-14px_rgba(15,23,42,0.4)]"
             style={{ clipPath: RECEIPT_CLIP_PATH }}
           >
             {children}

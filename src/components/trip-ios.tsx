@@ -140,7 +140,7 @@ export function ConfirmDialog({
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="w-[calc(100%-2rem)] max-w-[320px] rounded-[18px] p-0 text-center">
-        <AlertDialogHeader className="p-5 pb-4 text-center sm:text-center">
+        <AlertDialogHeader className="p-4 pb-4 text-center sm:text-center">
           <AlertDialogTitle className="text-[15px]">{title}</AlertDialogTitle>
           <AlertDialogDescription className="text-[13px] leading-5">
             {description}

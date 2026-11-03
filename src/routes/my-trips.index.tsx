@@ -34,7 +34,7 @@ export const Route = createFileRoute("/my-trips/")({
   }),
   pendingComponent: () => (
     <Page>
-      <div className="space-y-4 pt-3">
+      <div className="space-y-3 pt-3">
         <div className="h-7 w-32 animate-pulse rounded-full bg-secondary" />
         <div className="h-[76px] animate-pulse rounded-[14px] bg-secondary" />
         <div className="h-[76px] animate-pulse rounded-[14px] bg-secondary" />
@@ -199,7 +199,7 @@ function ActionSheet({
               role="dialog"
               aria-modal="true"
               aria-labelledby="my-trips-sheet-title"
-              className="w-full max-w-md overflow-hidden rounded-[28px] bg-surface p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl ring-1 ring-border/60"
+              className="w-full max-w-md overflow-hidden rounded-[22px] bg-surface p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-2xl ring-1 ring-border/60"
             >
               <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25" />
               <div className="px-3 pb-2">
@@ -298,7 +298,7 @@ function TodayView({
   const upcoming = data.trips.filter((trip) => trip.status !== "past");
 
   return (
-    <div className="mt-3 space-y-4 pb-4">
+    <div className="mt-3 space-y-3 pb-4">
       {upcoming.length ? (
         <section aria-labelledby="all-trips-heading" className="space-y-2">
           <SectionHeading id="all-trips-heading" title="Perjalanan" count={upcoming.length} />
@@ -407,7 +407,7 @@ function LogbookView({ trips }: { trips: Trip[] }) {
           ))}
         </>
       ) : (
-        <section className="rounded-[14px] bg-surface px-4 py-6 text-center ring-1 ring-border/50">
+        <section className="rounded-[14px] bg-surface px-4 py-3 text-center ring-1 ring-border/50">
           <p className="text-[15px] font-semibold">Belum ada perjalanan selesai</p>
           <p className="mt-1 text-[12px] text-muted-foreground">
             Perjalanan yang sudah lewat akan tersimpan di sini.
@@ -428,7 +428,7 @@ function EmptyTrips({
   loading: boolean;
 }) {
   return (
-    <section className="rounded-[14px] bg-surface px-4 py-5 text-center ring-1 ring-border/50">
+    <section className="rounded-[14px] bg-surface px-4 py-3 text-center ring-1 ring-border/50">
       <h2 className="text-[16px] font-semibold">
         {loading
           ? "Memuat perjalanan…"
@@ -463,13 +463,13 @@ function Unauthenticated() {
   return (
     <Page>
       <div className="flex min-h-[70vh] items-center">
-        <section className="w-full rounded-[28px] bg-surface px-5 py-10 text-center ring-1 ring-border/60">
+        <section className="w-full rounded-[22px] bg-surface px-4 py-10 text-center ring-1 ring-border/60">
           <CheckCircle2 className="mx-auto size-8 text-brand-red" strokeWidth={1.5} />
           <h1 className="mt-4 text-[22px] font-bold">Masuk ke perjalananmu</h1>
           <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
             Login untuk menyimpan itinerary, checklist, budget, dan booking.
           </p>
-          <div className="mx-auto mt-6 max-w-xs">
+          <div className="mx-auto mt-4 max-w-xs">
             <CustomerAuth />
           </div>
         </section>

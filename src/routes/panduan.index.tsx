@@ -36,7 +36,7 @@ function TravelGuideIndex() {
       <p className="mt-3 text-[15px] leading-7 text-muted-foreground">
         Tips singkat dan bisa langsung dipakai untuk menyiapkan internet perjalananmu.
       </p>
-      <section className="mt-8" aria-labelledby="guide-list-title">
+      <section className="mt-4" aria-labelledby="guide-list-title">
         <SectionTitle>Artikel terbaru</SectionTitle>
         <div className="divide-y divide-border overflow-hidden rounded-2xl bg-surface">
           {newestGuides.map((guide) => (

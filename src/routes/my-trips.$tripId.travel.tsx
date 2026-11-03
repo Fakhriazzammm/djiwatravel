@@ -175,7 +175,7 @@ function TravelMode() {
     <Page>
       <BackBar title="Mode Perjalanan" />
 
-      <section className="rounded-[28px] bg-foreground p-5 text-background">
+      <section className="rounded-[28px] bg-foreground p-4 text-background">
         <div className="flex items-start justify-between gap-3">
           <span className="rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold">
             {phase}
@@ -242,7 +242,7 @@ function TravelMode() {
         </section>
       )}
 
-      <section className="mt-5" aria-labelledby="travel-today-heading">
+      <section className="mt-4" aria-labelledby="travel-today-heading">
         <div className="flex items-end justify-between gap-3">
           <div>
             <h2 id="travel-today-heading" className="text-[20px] font-bold tracking-[-0.03em]">
@@ -288,7 +288,7 @@ function TravelMode() {
             ))}
           </div>
         ) : (
-          <div className="mt-3 rounded-[20px] bg-surface px-4 py-6 text-center ring-1 ring-border/60">
+          <div className="mt-3 rounded-[20px] bg-surface px-4 py-3 text-center ring-1 ring-border/60">
             <CalendarDays className="mx-auto size-8 text-muted-foreground" strokeWidth={1.5} />
             <p className="mt-2 text-sm font-semibold">Belum ada agenda hari ini</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -305,7 +305,7 @@ function TravelMode() {
         )}
       </section>
 
-      <section className="mt-5" aria-labelledby="travel-checklist-heading">
+      <section className="mt-4" aria-labelledby="travel-checklist-heading">
         <div className="flex items-end justify-between gap-3">
           <div>
             <h2 id="travel-checklist-heading" className="text-[20px] font-bold tracking-[-0.03em]">
@@ -339,13 +339,13 @@ function TravelMode() {
             ))}
           </div>
         ) : (
-          <div className="mt-3 rounded-[20px] bg-surface px-4 py-5 text-center text-sm text-muted-foreground ring-1 ring-border/60">
+          <div className="mt-3 rounded-[20px] bg-surface px-4 py-3 text-center text-sm text-muted-foreground ring-1 ring-border/60">
             Semua persiapan selesai. Selamat menikmati perjalanan.
           </div>
         )}
       </section>
 
-      <section className="mt-5 rounded-[20px] bg-surface p-4 ring-1 ring-border/60">
+      <section className="mt-4 rounded-[20px] bg-surface p-4 ring-1 ring-border/60">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs text-muted-foreground">Sisa anggaran</p>

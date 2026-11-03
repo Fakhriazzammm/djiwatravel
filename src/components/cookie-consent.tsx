@@ -55,7 +55,7 @@ export function CookieConsent() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 340, damping: 30 }}
-            className="glass fixed bottom-[calc(5.4rem+env(safe-area-inset-bottom))] left-1/2 z-[45] w-[calc(100%-1.5rem)] max-w-[24rem] -translate-x-1/2 rounded-3xl border border-white/65 p-3.5 shadow-[0_14px_38px_rgb(40_30_90/0.22)]"
+            className="glass fixed bottom-[calc(5.4rem+env(safe-area-inset-bottom))] left-1/2 z-[45] w-[calc(100%-1.5rem)] max-w-[24rem] -translate-x-1/2 rounded-2xl border border-white/65 p-3.5 shadow-[0_14px_38px_rgb(40_30_90/0.22)]"
           >
             <div className="flex items-start gap-2.5">
               <span

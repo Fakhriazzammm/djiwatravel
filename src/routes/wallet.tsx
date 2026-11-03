@@ -253,8 +253,7 @@ export function Wallet() {
   const nativeActions = walletActions.filter((action) =>
     NATIVE_WALLET_ACTIONS.includes(action.label),
   );
-  const capClass =
-    "mb-1.5 mt-4 px-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
+  const capClass = "ios-section-label mt-4";
   const tileBase =
     "tap relative flex min-h-[72px] w-full flex-col items-center rounded-xl px-0.5 pb-1.5 pt-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
@@ -265,7 +264,7 @@ export function Wallet() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-red">
             Djiwa Travel
           </p>
-          <h1 className="text-[22px] font-bold leading-tight tracking-tight">Dompet</h1>
+          <h1 className="ios-title">Dompet</h1>
         </div>
         <button
           type="button"
@@ -363,7 +362,7 @@ export function Wallet() {
 
           {topupPending && (
             <section
-              className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
+              className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
               role="status"
               aria-live="polite"
             >
@@ -376,7 +375,7 @@ export function Wallet() {
           )}
           {topupVerifiedAmount > 0 && !topupPending && (
             <section
-              className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
+              className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
               role="status"
             >
               <p className="text-sm font-bold">Top up berhasil</p>
@@ -387,7 +386,7 @@ export function Wallet() {
           )}
           {topupTimedOut && !topupPending && (
             <section
-              className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950"
+              className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950"
               role="status"
             >
               <p className="text-sm font-bold">Pembayaran sedang diverifikasi</p>
@@ -406,7 +405,7 @@ export function Wallet() {
           )}
 
           <h2 className={capClass}>Aksi cepat</h2>
-          <section className="overflow-hidden rounded-2xl bg-surface" aria-label="Aksi cepat">
+          <section className="ios-group" aria-label="Aksi cepat">
             <div className="grid grid-cols-4 gap-0.5 px-1 py-2" role="list">
               {nativeActions.map((action) => (
                 <div key={action.label} role="listitem">
@@ -468,7 +467,7 @@ export function Wallet() {
             }}
           />
 
-          <section className="mt-5" aria-labelledby="wallet-history-title">
+          <section className="mt-4" aria-labelledby="wallet-history-title">
             <SectionTitle
               action={
                 <span className="text-xs font-normal normal-case">
@@ -505,7 +504,7 @@ export function Wallet() {
               </p>
             )}
             {groups.length === 0 ? (
-              <p className="mt-3 rounded-[20px] bg-surface px-4 py-5 text-sm text-muted-foreground">
+              <p className="mt-3 rounded-[20px] bg-surface px-4 py-3 text-sm text-muted-foreground">
                 {scope === "djiwa-travel"
                   ? "Belum ada transaksi Djiwa Travel yang tercatat."
                   : "Belum ada transaksi Wallet."}
@@ -554,7 +553,7 @@ export function Wallet() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="wallet-quick-action-dialog-title"
-              className="w-full max-w-md rounded-3xl bg-surface p-5 shadow-xl"
+              className="w-full max-w-md rounded-2xl bg-surface p-4 shadow-xl"
             >
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Djiwa Pay
@@ -681,7 +680,7 @@ function WalletLoadingSplash() {
         role="status"
         aria-live="polite"
         aria-busy="true"
-        className="fixed inset-0 z-[70] flex min-h-[100dvh] flex-col items-center justify-center gap-5 bg-background px-6 text-center"
+        className="fixed inset-0 z-[70] flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-background px-4 text-center"
       >
         <Wordmark className="h-12" />
         <PendingSpinner reduce={!!reduce} className="size-14" />
@@ -696,7 +695,7 @@ function WalletLoadingSplash() {
 
 function GuestState() {
   return (
-    <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm">
+    <div className="mt-4 rounded-2xl bg-surface p-4 text-center shadow-sm">
       <WalletCards className="mx-auto size-10 text-muted-foreground" aria-hidden="true" />
       <h2 className="mt-4 text-lg font-bold">Masuk untuk membuka Wallet</h2>
       <p className="mt-2 text-sm leading-5 text-muted-foreground">
@@ -707,7 +706,7 @@ function GuestState() {
 }
 function EmptyState() {
   return (
-    <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm">
+    <div className="mt-4 rounded-2xl bg-surface p-4 text-center shadow-sm">
       <WalletCards className="mx-auto size-10 text-muted-foreground" aria-hidden="true" />
       <h2 className="mt-4 text-lg font-bold">Wallet belum tersedia</h2>
       <p className="mt-2 text-sm leading-5 text-muted-foreground">
@@ -719,13 +718,13 @@ function EmptyState() {
 }
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="mt-5 rounded-3xl bg-surface p-6 text-center shadow-sm">
+    <div className="mt-4 rounded-2xl bg-surface p-4 text-center shadow-sm">
       <h2 className="text-lg font-bold">Wallet belum dapat dimuat</h2>
       <p className="mt-2 text-sm leading-5 text-muted-foreground">{message}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="mt-5 min-h-11 rounded-xl bg-primary px-5 font-semibold text-primary-foreground"
+        className="mt-4 min-h-11 rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
       >
         Coba lagi
       </button>

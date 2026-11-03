@@ -92,27 +92,27 @@ function Plan() {
         <p className="mt-3 text-[15px] leading-7 text-muted-foreground">
           Paket eSIM untuk {packageCoverageLabel(plan)} dengan {plan.durationDays} hari masa aktif.
         </p>
-        <dl className="mt-6 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4">
-          <div className="flex min-h-12 items-center justify-between gap-4 py-3">
+        <dl className="mt-4 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4">
+          <div className="flex min-h-12 items-center justify-between gap-3 py-3">
             <dt className="text-xs text-muted-foreground">Kuota</dt>
             <dd className="text-right text-sm font-semibold">{packageDataLabel(plan)}</dd>
           </div>
-          <div className="flex min-h-12 items-center justify-between gap-4 py-3">
+          <div className="flex min-h-12 items-center justify-between gap-3 py-3">
             <dt className="text-xs text-muted-foreground">Masa aktif</dt>
             <dd className="text-right text-sm font-semibold">{plan.durationDays} hari</dd>
           </div>
-          <div className="flex min-h-12 items-center justify-between gap-4 py-3">
+          <div className="flex min-h-12 items-center justify-between gap-3 py-3">
             <dt className="text-xs text-muted-foreground">Kompatibilitas</dt>
             <dd className="max-w-[60%] text-right text-sm font-semibold">
               Ponsel yang mendukung eSIM
             </dd>
           </div>
-          <div className="flex min-h-12 items-center justify-between gap-4 py-3">
+          <div className="flex min-h-12 items-center justify-between gap-3 py-3">
             <dt className="text-xs text-muted-foreground">Harga</dt>
             <dd className="text-right text-sm font-bold text-brand-red">{rupiah(plan.priceIdr)}</dd>
           </div>
         </dl>
-        <section className="mt-8" aria-labelledby="activation-title">
+        <section className="mt-4" aria-labelledby="activation-title">
           <h2 id="activation-title" className="text-lg font-bold">
             Cara aktivasi
           </h2>
@@ -129,11 +129,11 @@ function Plan() {
         <Link
           to="/checkout/$id"
           params={{ id: plan.packageCode }}
-          className="mt-6 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red px-4 py-3 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+          className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red px-4 py-3 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
         >
           Pilih paket ini
         </Link>
-        <div className="mt-5 flex flex-wrap gap-2 text-sm font-semibold">
+        <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
           <Link
             to="/destination/$code"
             params={{ code: destination.code.toLowerCase() }}

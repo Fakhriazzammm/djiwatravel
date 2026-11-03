@@ -84,7 +84,7 @@ export function EsimPreparingView({
         </button>
       </EsimStatusCard>
 
-      <section className="rounded-3xl bg-surface px-4 py-3">
+      <section className="rounded-2xl bg-surface px-4 py-3">
         <p className="mb-2.5 text-[11.5px] font-semibold uppercase tracking-wider text-muted-foreground">
           Siapkan selama menunggu
         </p>
@@ -137,7 +137,7 @@ export function EsimPreparingView({
         </ul>
       </section>
 
-      <section className="rounded-3xl bg-surface px-4 py-1">
+      <section className="rounded-2xl bg-surface px-4 py-1">
         <div className="flex justify-between py-2 text-[13.5px]">
           <span className="text-muted-foreground">Total dibayar</span>
           <span>{rupiah(order.amount)}</span>

@@ -133,7 +133,12 @@ function Support() {
       <header className="flex h-14 items-center justify-between">
         <Link
           to="/profile"
-          search={{ admin: undefined }}
+          search={{
+            admin: undefined,
+            returnTo: undefined,
+            calendar: undefined,
+            calendarSync: undefined,
+          }}
           className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-brand-red"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -215,7 +220,7 @@ function Support() {
                     key={item.id}
                     type="button"
                     onClick={() => setSelected(item)}
-                    className="w-full py-4 text-left first:pt-4 last:pb-4"
+                    className="w-full py-3 text-left first:pt-4 last:pb-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <span className="font-semibold">{item.subject}</span>
@@ -228,7 +233,7 @@ function Support() {
                 ))}
               </div>
             ) : (
-              <div className="mt-3 rounded-2xl border border-dashed p-6 text-center">
+              <div className="mt-3 rounded-2xl border border-dashed p-4 text-center">
                 <MessageCircle
                   className="mx-auto size-8 text-muted-foreground"
                   aria-hidden="true"
@@ -240,7 +245,7 @@ function Support() {
               </div>
             )}
           </section>
-          <form onSubmit={createCase} className="mt-7 space-y-3">
+          <form onSubmit={createCase} className="mt-4 space-y-3">
             <h2 className="text-lg font-bold">Buat kasus baru</h2>
             <label className="block text-sm font-semibold">
               Kategori

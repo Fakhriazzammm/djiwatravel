@@ -71,7 +71,7 @@ export function TravelWaitlistCard({ feature, label, sub, icon: Icon, trigger }:
               role="dialog"
               aria-modal="true"
               aria-labelledby={`${feature}-waitlist-title`}
-              className="max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-3xl bg-background p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-xl"
+              className="max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-background p-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-xl"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-center justify-between gap-3">
@@ -88,7 +88,7 @@ export function TravelWaitlistCard({ feature, label, sub, icon: Icon, trigger }:
                 </button>
               </div>
               {done ? (
-                <div className="mt-5 rounded-2xl bg-brand-red-soft p-4 text-sm">
+                <div className="mt-4 rounded-2xl bg-brand-red-soft p-4 text-sm">
                   <p className="font-semibold">Terdaftar.</p>
                   <p className="mt-1 text-muted-foreground">{`Kami akan memberi tahu saat ${label.toLowerCase()} tersedia.`}</p>
                   <button

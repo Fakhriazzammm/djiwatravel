@@ -281,7 +281,7 @@ function OrderPage() {
             timeline={activationTimeline(o.status)}
           />
         </div>
-        <div className="mt-3 rounded-3xl bg-surface p-4 text-center">
+        <div className="mt-3 rounded-2xl bg-surface p-4 text-center">
           {o.method === "djiwa_pay" ? (
             <>
               <p className="font-semibold">
@@ -359,7 +359,7 @@ function OrderPage() {
         <Link
           to="/receipt/$id"
           params={{ id: o.id }}
-          className="mt-5 block text-center text-sm font-semibold text-brand-red"
+          className="mt-4 block text-center text-sm font-semibold text-brand-red"
         >
           Lihat struk pembayaran
         </Link>
@@ -466,7 +466,7 @@ function OrderPage() {
         </button>
         <h1 className="text-[22px] font-bold leading-tight tracking-tight mb-4">QR Code</h1>
         <EsimInstallPanel esim={esim} />
-        <h2 className="mt-8 mb-2 px-1 text-sm font-medium text-muted-foreground">Pasang manual</h2>
+        <h2 className="mt-4 mb-2 px-1 text-sm font-medium text-muted-foreground">Pasang manual</h2>
         <ManualDetails esim={esim} />
       </Page>
     );
@@ -553,7 +553,7 @@ function OrderPage() {
 /** Printable receipt for a guest or member order (browser print / save as PDF). */
 function InvoiceCard({ order }: { order: Order }) {
   return (
-    <section className="invoice-card mt-6 rounded-2xl bg-surface p-4 text-sm">
+    <section className="invoice-card mt-4 rounded-2xl bg-surface p-4 text-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

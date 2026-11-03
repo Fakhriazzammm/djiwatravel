@@ -20,7 +20,7 @@ function Privacy() {
           Kebijakan privasi final sedang disiapkan oleh pemilik layanan. Halaman ini menjelaskan
           batas aman sementara, bukan dokumen legal final.
         </p>
-        <section className="border-t border-border px-4 py-4">
+        <section className="border-t border-border px-4 py-3">
           <h2 className="font-bold">Data yang dipakai</h2>
           <p className="mt-1 text-muted-foreground">
             Data kontak, kode pesanan, dan status transaksi dipakai untuk memproses pesanan,
@@ -28,14 +28,14 @@ function Privacy() {
             kompatibilitas.
           </p>
         </section>
-        <section className="border-t border-border px-4 py-4">
+        <section className="border-t border-border px-4 py-3">
           <h2 className="font-bold">Data sensitif</h2>
           <p className="mt-1 text-muted-foreground">
             Jangan kirim password, OTP, nomor kartu, CVC, atau rahasia QR melalui chat maupun
             formulir bantuan. Detail eSIM hanya ditampilkan setelah otorisasi pesanan.
           </p>
         </section>
-        <section className="border-t border-border px-4 py-4">
+        <section className="border-t border-border px-4 py-3">
           <h2 className="font-bold">Pertanyaan privasi</h2>
           <p className="mt-1 text-muted-foreground">
             Untuk pertanyaan atau permintaan bantuan, gunakan{" "}

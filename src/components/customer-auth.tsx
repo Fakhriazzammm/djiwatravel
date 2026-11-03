@@ -50,7 +50,7 @@ function AuthChoice() {
   return (
     <DialogContent
       overlayClassName="bg-black/35 backdrop-blur-[2px]"
-      className="bottom-0 left-0 top-auto max-h-[90dvh] w-full max-w-none translate-x-0 translate-y-0 gap-4 overflow-y-auto rounded-t-[28px] rounded-b-none border-x-0 border-b-0 border-t border-border/70 bg-background px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[min(90dvh,32rem)] sm:w-[calc(100%-2rem)] sm:max-w-sm sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[28px] sm:border sm:p-6 sm:shadow-xl sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:slide-out-to-bottom-0"
+      className="bottom-0 left-0 top-auto max-h-[90dvh] w-full max-w-none translate-x-0 translate-y-0 gap-3 overflow-y-auto rounded-t-[28px] rounded-b-none border-x-0 border-b-0 border-t border-border/70 bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[min(90dvh,32rem)] sm:w-[calc(100%-2rem)] sm:max-w-sm sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-[22px] sm:border sm:p-4 sm:shadow-xl sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:slide-out-to-bottom-0"
     >
       <div
         aria-hidden="true"

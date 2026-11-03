@@ -80,7 +80,7 @@ function SharedItinerary() {
     return (
       <Page tabs={false}>
         <div className="flex min-h-[70vh] items-center justify-center">
-          <section className="w-full rounded-[28px] bg-surface px-5 py-10 text-center ring-1 ring-border/60">
+          <section className="w-full rounded-[22px] bg-surface px-4 py-10 text-center ring-1 ring-border/60">
             <Compass className="mx-auto size-8 text-muted-foreground" strokeWidth={1.4} />
             <h1 className="mt-4 text-[22px] font-bold">Tautan tidak tersedia</h1>
             <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
@@ -88,7 +88,7 @@ function SharedItinerary() {
             </p>
             <Link
               to="/"
-              className="tap mx-auto mt-6 flex h-11 max-w-xs items-center justify-center rounded-xl bg-brand-red text-sm font-semibold text-white"
+              className="tap mx-auto mt-4 flex h-11 max-w-xs items-center justify-center rounded-xl bg-brand-red text-sm font-semibold text-white"
             >
               Ke Beranda
             </Link>
@@ -111,7 +111,7 @@ function SharedItinerary() {
             <ShieldCheck className="size-3" /> Baca-saja
           </span>
         </div>
-        <p className="mt-8 text-xs font-bold uppercase tracking-[0.14em] text-brand-red">
+        <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-brand-red">
           Itinerary dibagikan
         </p>
         <h1 className="mt-1.5 text-[22px] font-bold leading-tight tracking-tight">{trip.name}</h1>
@@ -126,7 +126,7 @@ function SharedItinerary() {
         </p>
       </header>
 
-      <div className="mt-5 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2">
         <div className="rounded-2xl bg-surface p-4 ring-1 ring-border/60">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Hari agenda
@@ -141,12 +141,12 @@ function SharedItinerary() {
         </div>
       </div>
 
-      <section className="mt-6" aria-labelledby="shared-itinerary-heading">
+      <section className="mt-4" aria-labelledby="shared-itinerary-heading">
         <h2 id="shared-itinerary-heading" className="text-[20px] font-bold tracking-[-0.03em]">
           Rencana perjalanan
         </h2>
         {days.length ? (
-          <div className="mt-3 space-y-4">
+          <div className="mt-3 space-y-3">
             {days.map((day) => (
               <section key={day.date} className="rounded-[20px] bg-surface px-4 py-3.5">
                 <div className="flex items-center justify-between gap-3">
@@ -199,7 +199,7 @@ function SharedItinerary() {
             ))}
           </div>
         ) : (
-          <div className="mt-3 rounded-[20px] bg-surface px-5 py-10 text-center ring-1 ring-border/60">
+          <div className="mt-3 rounded-[20px] bg-surface px-4 py-10 text-center ring-1 ring-border/60">
             <Plane className="mx-auto size-9 text-muted-foreground" strokeWidth={1.5} />
             <p className="mt-3 text-sm font-semibold">Belum ada agenda</p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -209,7 +209,7 @@ function SharedItinerary() {
         )}
       </section>
 
-      <footer className="mt-8 rounded-[24px] bg-foreground px-5 py-6 text-center text-background">
+      <footer className="mt-4 rounded-[24px] bg-foreground px-4 py-3 text-center text-background">
         <p className="text-sm font-semibold">Mau menyusun itinerary seperti ini?</p>
         <p className="mt-1 text-xs text-background/65">
           Simpan agenda, checklist, dan anggaran perjalananmu di Djiwa Travel.

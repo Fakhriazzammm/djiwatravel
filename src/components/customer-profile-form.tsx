@@ -35,7 +35,7 @@ export function CustomerProfileForm({
     errors[field] ? <p className="mt-1 text-xs text-destructive">{errors[field]}</p> : null;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6" noValidate>
+    <form onSubmit={onSubmit} className="space-y-3" noValidate>
       <section aria-labelledby="profile-account-heading">
         <h2
           id="profile-account-heading"

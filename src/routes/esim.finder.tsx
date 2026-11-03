@@ -68,7 +68,7 @@ function Finder() {
             Pilih tujuan perjalanan untuk melihat semua paket eSIM dan memilih yang sesuai.
           </p>
         </header>
-        <section className="mt-6" aria-labelledby="finder-destinations-title">
+        <section className="mt-4" aria-labelledby="finder-destinations-title">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 id="finder-destinations-title" className="text-base font-semibold">
               Pilih destinasi
@@ -172,7 +172,7 @@ function Finder() {
               ))}
             </div>
           ) : (
-            <p className="rounded-2xl bg-surface px-4 py-5 text-sm text-muted-foreground">
+            <p className="rounded-2xl bg-surface px-4 py-3 text-sm text-muted-foreground">
               {available.destinations.length
                 ? "Destinasi tidak ditemukan."
                 : "Belum ada destinasi live dari katalog."}

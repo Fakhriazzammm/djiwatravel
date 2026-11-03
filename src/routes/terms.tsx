@@ -20,21 +20,21 @@ function Terms() {
           Dokumen ketentuan final sedang disiapkan oleh pemilik layanan. Jangan gunakan halaman ini
           sebagai pengganti kontrak tertulis.
         </p>
-        <section className="border-t border-border px-4 py-4">
+        <section className="border-t border-border px-4 py-3">
           <h2 className="font-bold">Layanan</h2>
           <p className="mt-1 text-muted-foreground">
             Djiwa Travel membantu pembelian dan aktivasi eSIM perjalanan. Detail paket, harga, masa
             aktif, cakupan, dan ketersediaan mengikuti katalog/provider yang tampil saat checkout.
           </p>
         </section>
-        <section className="border-t border-border px-4 py-4">
+        <section className="border-t border-border px-4 py-3">
           <h2 className="font-bold">Pesanan dan pembayaran</h2>
           <p className="mt-1 text-muted-foreground">
             Redirect ke penyedia pembayaran bukan bukti settlement. Status pesanan mengikuti
             konfirmasi server dan provider.
           </p>
         </section>
-        <section className="border-t border-border px-4 py-4">
+        <section className="border-t border-border px-4 py-3">
           <h2 className="font-bold">Bantuan</h2>
           <p className="mt-1 text-muted-foreground">
             Jika ada masalah, buka{" "}

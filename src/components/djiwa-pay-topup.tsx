@@ -202,12 +202,12 @@ export function DjiwaPayTopup({
           </motion.section>
         </motion.div>
         {stage !== "idle" && (
-          <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-slate-950/60 px-5 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
             <section
               role="status"
               aria-live="polite"
               aria-labelledby="djiwa-pay-redirect-title"
-              className="w-full max-w-sm rounded-[28px] bg-surface p-6 text-center shadow-xl"
+              className="w-full max-w-sm rounded-[22px] bg-surface p-4 text-center shadow-xl"
             >
               <LoaderCircle
                 aria-hidden="true"

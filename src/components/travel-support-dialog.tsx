@@ -89,7 +89,7 @@ export function TravelSupportDialog({
           className="absolute inset-0 bg-black/40"
         />
         <div className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-surface">
-          <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
               <Headphones className="size-4 text-brand-red" aria-hidden="true" />
               <p className="font-semibold">Bantuan pesanan ini</p>
@@ -104,7 +104,7 @@ export function TravelSupportDialog({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="flex-1 overflow-y-auto px-4 py-3">
             <p className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
               Apa yang terjadi?
             </p>
@@ -126,7 +126,7 @@ export function TravelSupportDialog({
               ))}
             </div>
 
-            <p className="mt-5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mt-4 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
               Data yang akan dibagikan
             </p>
             <pre className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-secondary p-3 text-[12px] leading-relaxed text-muted-foreground">
@@ -146,7 +146,7 @@ export function TravelSupportDialog({
             )}
           </div>
 
-          <div className="border-t border-border px-5 py-4">
+          <div className="border-t border-border px-4 py-3">
             <button
               type="button"
               onClick={send}

@@ -64,7 +64,7 @@ export function EsimStatusCard({
   testId?: string;
 }) {
   return (
-    <section className="rounded-3xl bg-surface p-3.5 shadow-sm" data-testid={testId}>
+    <section className="rounded-2xl bg-surface p-3.5 shadow-sm" data-testid={testId}>
       <div className="flex items-center gap-3.5">
         <div className="grid size-[104px] shrink-0 place-items-center rounded-2xl bg-secondary/60 p-2">
           {lpa ? (

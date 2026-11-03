@@ -368,7 +368,7 @@ function Profile() {
   const rowClass =
     "tap relative flex min-h-[52px] w-full items-center gap-3 px-4 text-left text-[16px]";
   const capClass =
-    "mb-2 mt-6 px-4 text-[13px] font-medium uppercase tracking-wide text-muted-foreground";
+    "mb-2 mt-4 px-4 text-[13px] font-medium uppercase tracking-wide text-muted-foreground";
   const detailRows: Array<[string, string]> = [
     ["WhatsApp", profile.whatsapp],
     ...(profile.displayName ? [["Nama lengkap", profile.displayName] as [string, string]] : []),
@@ -431,7 +431,7 @@ function Profile() {
         )}
         {user && (!profileSaved || editingProfile) && (
           <div className="border-t border-border/60 p-4">
-            <div className="mb-5">
+            <div className="mb-4">
               <p className="font-semibold">Data profil</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Simpan detail traveler agar perjalanan berikutnya terasa lebih ringkas.
@@ -469,7 +469,7 @@ function Profile() {
             <div id="profile-detail" hidden={!detailOpen} className="border-t border-border/60">
               <dl className="divide-y divide-border/60">
                 {detailRows.map(([term, value]) => (
-                  <div key={term} className="flex min-h-11 items-center justify-between gap-4 px-4">
+                  <div key={term} className="flex min-h-11 items-center justify-between gap-3 px-4">
                     <dt className="text-[15px] text-muted-foreground">{term}</dt>
                     <dd className="text-right text-[15px] font-medium">{value}</dd>
                   </div>
@@ -513,7 +513,7 @@ function Profile() {
       <h2 className={capClass}>Pesanan terakhir</h2>
       <section className={groupClass} aria-label="Pesanan terakhir">
         {recentOrders.length === 0 ? (
-          <p className="px-4 py-4 text-[15px] text-muted-foreground">Belum ada pesanan.</p>
+          <p className="px-4 py-3 text-[15px] text-muted-foreground">Belum ada pesanan.</p>
         ) : (
           recentOrders.map((o, index) => {
             const status = effectiveOrderStatus(o.status, o.expiresAt);
@@ -604,13 +604,13 @@ function Profile() {
         ))}
       </nav>
 
-      <section aria-label="Aplikasi" className={`${groupClass} mt-6 empty:hidden`}>
+      <section aria-label="Aplikasi" className={`${groupClass} mt-4 empty:hidden`}>
         <InstallAppCard variant="row" />
         {user ? <PushOptInRow /> : null}
       </section>
 
       {user && (
-        <section className={`${groupClass} mt-6`}>
+        <section className={`${groupClass} mt-4`}>
           <button
             type="button"
             className={`${rowClass} justify-center font-medium text-destructive`}

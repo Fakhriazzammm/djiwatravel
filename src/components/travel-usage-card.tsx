@@ -9,7 +9,7 @@ export function TravelUsageCard({ view, compact = false }: { view: UsageView; co
 
   return (
     <section
-      className={`rounded-2xl bg-surface ${compact ? "p-4" : "p-5"}`}
+      className={`rounded-2xl bg-surface ${compact ? "p-4" : "p-4"}`}
       data-testid="travel-usage"
     >
       <div className="flex items-center gap-2">

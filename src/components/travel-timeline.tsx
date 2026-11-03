@@ -70,7 +70,7 @@ export function TravelTimeline({
 
   return (
     <section
-      className={`rounded-2xl bg-surface ${compact ? "p-4" : "p-5"}`}
+      className={`rounded-2xl bg-surface ${compact ? "p-4" : "p-4"}`}
       data-testid="travel-timeline"
     >
       <div className="flex items-start justify-between gap-3">
@@ -103,7 +103,7 @@ export function TravelTimeline({
         {doneCount} dari {timeline.stages.length} tahap selesai
       </p>
 
-      <ol className="mt-5 grid grid-cols-4 gap-1">
+      <ol className="mt-4 grid grid-cols-4 gap-1">
         {timeline.stages.map((stage, index) => (
           <li
             key={stage.id}
@@ -128,7 +128,7 @@ export function TravelTimeline({
         ))}
       </ol>
 
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-3">
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
         <span className="text-[12px] text-muted-foreground">
           {typeof lastSyncedAt === "number"
             ? `Terakhir diperbarui ${snapshotAgeLabel(lastSyncedAt)}`

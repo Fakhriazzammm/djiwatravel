@@ -51,7 +51,7 @@ export function EsimDestinationSheet({
     <Sheet open={destination !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="bottom"
-        className="mx-auto flex max-h-[86dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[28px] border-border/70 bg-background px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-6"
+        className="mx-auto flex max-h-[86dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[28px] border-border/70 bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-6"
       >
         <SheetHeader className="shrink-0 mb-4 pr-10 text-left">
           <SheetTitle>
@@ -61,53 +61,56 @@ export function EsimDestinationSheet({
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col">
-        {state.kind === "loading" && (
-          <div aria-busy="true" aria-label="Memuat paket" className="space-y-2">
-            {[0, 1, 2].map((item) => (
-              <div
-                key={item}
-                className="h-14 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none"
-              />
-            ))}
-          </div>
-        )}
-        {state.kind === "error" && (
-          <div role="alert" className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">
-            <p>Paket belum dapat dimuat. Tidak ada pesanan yang dibuat.</p>
-            <button
-              type="button"
-              onClick={() => setAttempt((value) => value + 1)}
-              className="tap mt-3 min-h-11 rounded-xl bg-brand-red px-4 font-semibold text-white"
+          {state.kind === "loading" && (
+            <div aria-busy="true" aria-label="Memuat paket" className="space-y-2">
+              {[0, 1, 2].map((item) => (
+                <div
+                  key={item}
+                  className="h-14 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none"
+                />
+              ))}
+            </div>
+          )}
+          {state.kind === "error" && (
+            <div
+              role="alert"
+              className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground"
             >
-              Coba lagi
-            </button>
-          </div>
-        )}
-        {state.kind === "ready" &&
-          (state.data.packages.length === 0 ? (
-            <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">
-              Belum ada paket live untuk destinasi ini.
-            </p>
-          ) : (
-            <>
-              <EsimPackagePicker
-                packages={state.data.packages}
-                stockPending={state.data.stockPending}
-                onNavigate={onClose}
-                footer={
-                  <Link
-                    to="/destination/$code"
-                    params={{ code: state.data.destination.code.toLowerCase() }}
-                    search={{ availability: "all" }}
-                    onClick={onClose}
-                    className="tap mt-1 flex min-h-11 items-center justify-center text-[13px] font-semibold text-muted-foreground"
-                  >
-                    Lihat semua paket &amp; bandingkan
-                  </Link>
-                }
-              />
-            </>
-          ))}
+              <p>Paket belum dapat dimuat. Tidak ada pesanan yang dibuat.</p>
+              <button
+                type="button"
+                onClick={() => setAttempt((value) => value + 1)}
+                className="tap mt-3 min-h-11 rounded-xl bg-brand-red px-4 font-semibold text-white"
+              >
+                Coba lagi
+              </button>
+            </div>
+          )}
+          {state.kind === "ready" &&
+            (state.data.packages.length === 0 ? (
+              <p className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">
+                Belum ada paket live untuk destinasi ini.
+              </p>
+            ) : (
+              <>
+                <EsimPackagePicker
+                  packages={state.data.packages}
+                  stockPending={state.data.stockPending}
+                  onNavigate={onClose}
+                  footer={
+                    <Link
+                      to="/destination/$code"
+                      params={{ code: state.data.destination.code.toLowerCase() }}
+                      search={{ availability: "all" }}
+                      onClick={onClose}
+                      className="tap mt-1 flex min-h-11 items-center justify-center text-[13px] font-semibold text-muted-foreground"
+                    >
+                      Lihat semua paket &amp; bandingkan
+                    </Link>
+                  }
+                />
+              </>
+            ))}
         </div>
       </SheetContent>
     </Sheet>

@@ -223,7 +223,7 @@ function Detail() {
         {cardActions}
       </EsimDetailCard>
 
-      <div className="mt-2.5 flex rounded-3xl bg-surface py-2.5" data-testid="esim-detail-stats">
+      <div className="mt-2.5 flex rounded-2xl bg-surface py-2.5" data-testid="esim-detail-stats">
         {[
           ["Paket", quotaLabel],
           ["Durasi", `${durationDays} hari`],
@@ -243,7 +243,7 @@ function Detail() {
       )}
 
       {detailTab === "summary" && (
-        <section className="rounded-3xl bg-surface px-4 py-1">
+        <section className="rounded-2xl bg-surface px-4 py-1">
           <div className={group}>
             {[
               ["Destinasi", locationLabel],

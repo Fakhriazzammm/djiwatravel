@@ -529,7 +529,7 @@ function Destination() {
       <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
         <SheetContent
           side="bottom"
-          className="mx-auto max-h-[78dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] border-border/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-6"
+          className="mx-auto max-h-[78dvh] w-full max-w-md overflow-y-auto rounded-t-[28px] border-border/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-4"
         >
           <SheetHeader className="mb-3 pr-10 text-left">
             <SheetTitle>Pilih negara tujuan</SheetTitle>
@@ -592,12 +592,12 @@ function Destination() {
         </p>
       )}
       {packages.length === 0 ? (
-        <p className="mt-8 rounded-xl bg-surface p-4 text-sm text-muted-foreground">
+        <p className="mt-4 rounded-xl bg-surface p-4 text-sm text-muted-foreground">
           Belum ada paket live untuk destinasi ini. Lihat semua paket yang tersedia di katalog.
         </p>
       ) : (
         <>
-          <section className="mt-5" aria-labelledby="trip-length">
+          <section className="mt-4" aria-labelledby="trip-length">
             <h2 id="trip-length" className="mb-2 text-[15px] font-bold">
               Berapa lama perjalananmu?
             </h2>
@@ -687,7 +687,7 @@ function Destination() {
             </section>
           )}
           {regionalList.length > 0 && (
-            <section className="mt-5" aria-labelledby="regional">
+            <section className="mt-4" aria-labelledby="regional">
               <h2 id="regional" className="text-[15px] font-bold">
                 Jalan-jalan ke lebih dari satu negara?
               </h2>
@@ -710,7 +710,7 @@ function Destination() {
               )}
             </section>
           )}
-          <div className="mt-6 flex items-center justify-between gap-3">
+          <div className="mt-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-[15px] font-bold">
                 {showAllDurations
@@ -859,7 +859,7 @@ function Destination() {
       <Sheet open={comparisonOpen && selectedPackages.length > 0} onOpenChange={setComparisonOpen}>
         <SheetContent
           side="bottom"
-          className="z-[70] max-h-[88dvh] overflow-y-auto rounded-t-3xl border-border bg-background px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6 sm:left-1/2 sm:right-auto sm:w-[min(100%,44rem)] sm:-translate-x-1/2"
+          className="z-[70] max-h-[88dvh] overflow-y-auto rounded-t-3xl border-border bg-background px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 sm:left-1/2 sm:right-auto sm:w-[min(100%,44rem)] sm:-translate-x-1/2"
           aria-describedby="comparison-description"
         >
           <SheetHeader className="pr-8 text-left">

@@ -175,7 +175,7 @@ export function EsimShareSheet({
           className="absolute inset-0 bg-black/40"
         />
         <div className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-surface">
-          <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
               <Share2 className="size-4 text-brand-red" aria-hidden="true" />
               <p id="esim-share-title" className="font-semibold">
@@ -192,7 +192,7 @@ export function EsimShareSheet({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="flex-1 overflow-y-auto px-4 py-3">
             <p className="text-[13px] leading-5 text-muted-foreground">
               Kirim link ke orang yang akan memakai eSIM ini. Mereka membukanya di HP masing-masing,
               menekan <b>Buka eSIM</b> sekali, lalu memasangnya. Kamu tidak perlu mengirim foto QR.

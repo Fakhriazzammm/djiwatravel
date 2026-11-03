@@ -53,13 +53,13 @@ export function TripCountryPicker({
         }}
       >
         <SheetContent side="bottom" className="flex max-h-[85vh] flex-col rounded-t-[28px] p-0">
-          <SheetHeader className="px-5 pb-2 pt-5 text-left">
+          <SheetHeader className="px-4 pb-2 pt-5 text-left">
             <SheetTitle className="text-[18px]">Pilih negara tujuan</SheetTitle>
             <SheetDescription className="text-[13px]">
               Ketik nama negara untuk mencari.
             </SheetDescription>
           </SheetHeader>
-          <div className="px-5 pb-3">
+          <div className="px-4 pb-3">
             <label className="flex h-11 items-center gap-2 rounded-xl bg-secondary px-3">
               <Search className="size-4 text-muted-foreground" aria-hidden="true" />
               <input
@@ -78,7 +78,7 @@ export function TripCountryPicker({
             className="flex-1 overflow-y-auto border-t border-border/70 pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             {results.length === 0 && (
-              <li className="px-5 py-6 text-center text-sm text-muted-foreground">
+              <li className="px-4 py-3 text-center text-sm text-muted-foreground">
                 Negara tidak ditemukan
               </li>
             )}
@@ -87,7 +87,7 @@ export function TripCountryPicker({
                 <button
                   type="button"
                   onClick={() => pick(country)}
-                  className="tap flex min-h-12 w-full items-center gap-3 px-5 py-2.5 text-left text-[16px] active:bg-secondary"
+                  className="tap flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left text-[15px] active:bg-secondary"
                 >
                   <span aria-hidden="true" className="text-xl">
                     {country.flag}

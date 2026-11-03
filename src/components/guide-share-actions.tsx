@@ -34,7 +34,10 @@ export function GuideShareActions({ title, url }: { title: string; url: string }
   };
 
   return (
-    <section className="mt-5 rounded-2xl border border-border/70 bg-surface p-4" aria-label="Bagikan panduan">
+    <section
+      className="mt-4 rounded-2xl border border-border/70 bg-surface p-4"
+      aria-label="Bagikan panduan"
+    >
       <div className="flex items-center gap-2 text-sm font-semibold">
         <Share2 className="size-4 text-brand-red" aria-hidden="true" />
         Bagikan panduan ini

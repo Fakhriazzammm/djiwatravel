@@ -5,7 +5,7 @@ export function DeviceCompatibility() {
   const [open, setOpen] = useState(false);
   const [checks, setChecks] = useState({ unlocked: false, esim: false });
   return (
-    <section className="mt-6 rounded-2xl bg-surface p-4" aria-labelledby="compatibility-title">
+    <section className="mt-4 rounded-2xl bg-surface p-4" aria-labelledby="compatibility-title">
       <div className="flex items-start gap-3">
         <Info className="mt-0.5 size-5 shrink-0 text-brand-red" aria-hidden="true" />
         <div className="min-w-0 flex-1">

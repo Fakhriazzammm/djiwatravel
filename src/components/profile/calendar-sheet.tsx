@@ -43,7 +43,7 @@ export function CalendarSheet(props: CalendarSheetProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="mx-auto max-w-md rounded-t-[28px] px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-3"
+        className="mx-auto max-w-md rounded-t-[28px] px-4 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-3"
       >
         <div className="mx-auto mb-4 h-1.5 w-9 rounded-full bg-border" aria-hidden="true" />
         <div className="flex items-center gap-3.5">
@@ -77,7 +77,7 @@ export function CalendarSheet(props: CalendarSheetProps) {
             {message}
           </p>
         )}
-        <div className="mt-5 space-y-2">
+        <div className="mt-4 space-y-2">
           {loading ? (
             <p className="text-sm text-muted-foreground">Memeriksa koneksi…</p>
           ) : !signedIn ? (

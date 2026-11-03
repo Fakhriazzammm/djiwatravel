@@ -13,7 +13,7 @@ import { maskSensitive } from "@/lib/sensitive-data";
 
 export function EsimQr({ esim, compact = false }: { esim: EsimProfile; compact?: boolean }) {
   return (
-    <div className={`flex flex-col items-center rounded-2xl bg-surface ${compact ? "p-4" : "p-6"}`}>
+    <div className={`flex flex-col items-center rounded-2xl bg-surface ${compact ? "p-4" : "p-4"}`}>
       <div className="rounded-xl bg-white p-2">
         <QRCodeSVG value={esim.lpa} size={compact ? 168 : 200} />
       </div>
@@ -41,7 +41,7 @@ export function EsimInstallPanel({
   useEffect(() => setPlatform(installPlatformFromUserAgent(navigator.userAgent)), []);
   const link = platform ? esimInstallLink(esim.lpa, platform) : null;
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {link && (
         <a
           href={link}

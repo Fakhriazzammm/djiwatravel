@@ -27,7 +27,7 @@ export function PayServicesCard() {
           Buka ›
         </Link>
       </div>
-      <div className="overflow-hidden rounded-2xl bg-surface">
+      <div className="ios-group">
         <div className="grid grid-cols-4 gap-0.5 px-1 pb-1 pt-2" role="list">
           {PAY_ACTIONS.map((action) => (
             <div key={action.id} role="listitem">
