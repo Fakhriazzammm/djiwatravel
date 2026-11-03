@@ -143,7 +143,7 @@ export function TripTicket({
           >
             {stub.value}
           </span>
-          <span className="-mt-0.5 text-center text-[8.5px] font-bold leading-tight tracking-[0.1em]">
+          <span className="-mt-0.5 max-w-full break-words px-1 text-center text-[8.5px] font-bold leading-tight tracking-[0.06em]">
             {stub.unit}
           </span>
           <span

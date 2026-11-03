@@ -14,7 +14,7 @@ export function ticketStub(trip: TicketTrip, today: string): { value: string; un
   if (returnDate && today > returnDate) return { value: "✓", unit: "SELESAI" };
   const until = dayNumber(departure) - dayNumber(today);
   if (until > 0) return { value: String(until), unit: "HARI" };
-  if (until === 0) return { value: "Hari", unit: "KEBERANGKATAN" };
+  if (until === 0) return { value: "Hari ini", unit: "BERANGKAT" };
   return { value: String(Math.abs(until) + 1), unit: "HARI KE-" };
 }
 

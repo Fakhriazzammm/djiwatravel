@@ -16,9 +16,10 @@ describe("trip ticket stub", () => {
   });
 
   it("marks departure day, ongoing day number and finished trips", () => {
-    expect(ticketStub({ departure_date: today, return_date: "2026-11-07" }, today).unit).toBe(
-      "KEBERANGKATAN",
-    );
+    expect(ticketStub({ departure_date: today, return_date: "2026-11-07" }, today)).toEqual({
+      value: "Hari ini",
+      unit: "BERANGKAT",
+    });
     expect(ticketStub({ departure_date: "2026-11-01", return_date: "2026-11-07" }, today)).toEqual({
       value: "3",
       unit: "HARI KE-",
