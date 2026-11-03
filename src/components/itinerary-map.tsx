@@ -55,10 +55,14 @@ export default function ItineraryMap({
     const markerStore = markers.current;
     void (async () => {
       try {
-        const [maplibre] = await Promise.all([
+        const [maplibre, workerModule] = await Promise.all([
           import("maplibre-gl"),
+          // MapLibre guesses its worker file next to its own chunk, which does not exist once the
+          // bundler renames chunks. Point it at the worker Vite builds for us.
+          import("maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url"),
           import("maplibre-gl/dist/maplibre-gl.css"),
         ]);
+        maplibre.setWorkerUrl(workerModule.default);
         if (disposed || !host.current) return;
         lib.current = maplibre;
         const map = new maplibre.Map({
@@ -79,7 +83,7 @@ export default function ItineraryMap({
         loadTimer = setTimeout(() => {
           if (!disposed && !map.loaded()) latest.current.onUnavailable?.();
         }, 12000);
-        map.on("load", () => {
+        map.once("style.load", () => {
           if (disposed) return;
           clearTimeout(loadTimer);
           map.addSource(ROUTE_SOURCE, {
