@@ -582,7 +582,7 @@ export function ItineraryEditor({
               )}
             </div>
             <div className="pointer-events-none absolute -bottom-3 right-1 z-10">
-              <AgendaMascot size={88} />
+              <AgendaMascot size={104} />
             </div>
             <FixedLayer>
               <motion.button
@@ -1147,10 +1147,10 @@ const POI_FORM_CATEGORY: Record<PoiCategoryId, string> = {
 function AgendaMascot({ size }: { size: number }) {
   return (
     <motion.img
-      src="/assets/agenda/mascot-agenda-v2.png"
+      src="/assets/agenda/mascot-agenda-v3.png"
       alt=""
       width={size}
-      height={Math.round(size * (360 / 326))}
+      height={Math.round(size * (278 / 360))}
       loading="lazy"
       animate={{ y: [0, -5, 0] }}
       transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
