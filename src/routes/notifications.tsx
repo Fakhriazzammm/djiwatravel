@@ -17,7 +17,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Page } from "@/components/shell";
+import { FixedLayer } from "@/components/motion-primitives";
+import { Page, TabBar } from "@/components/shell";
 import { getCustomerNotificationsFeed } from "@/lib/customer-notifications.fn";
 
 type Category = "esim" | "bayar" | "trip" | "info";
@@ -238,155 +239,172 @@ function Notifications() {
   ];
 
   return (
-    <Page>
-      <div className="flex items-center justify-between pt-4 text-[15px] font-semibold text-brand-red">
-        <button
-          type="button"
-          className="min-h-10"
-          onClick={() => {
-            const next = !archivedView;
-            setArchivedView(next);
-            setFilter("all");
-            exitSelect();
-            void load(next ? "archived" : "inbox");
-          }}
-        >
-          {archivedView ? "← Kotak masuk" : "Arsip"}
-        </button>
-        <button
-          type="button"
-          className="min-h-10 disabled:opacity-40"
-          disabled={items.length === 0}
-          onClick={() => (selecting ? exitSelect() : setSelecting(true))}
-        >
-          {selecting ? "Selesai" : "Ubah"}
-        </button>
-      </div>
-      <h1 className="large-title mt-1">
-        {selecting ? `${selected.size} dipilih` : archivedView ? "Arsip" : "Notifikasi"}
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
-        {archivedView
-          ? "Notifikasi yang kamu arsipkan"
-          : unreadCount
-            ? `${unreadCount} belum dibaca`
-            : "Semua sudah dibaca"}
-      </p>
-
-      <label className="mt-4 flex min-h-10 items-center gap-2 rounded-xl bg-secondary px-3 text-sm">
-        <Search className="size-4 text-muted-foreground" aria-hidden="true" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cari notifikasi"
-          aria-label="Cari notifikasi"
-          className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
-        />
-      </label>
-
-      {!archivedView && (
-        <div
-          className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1"
-          role="tablist"
-          aria-label="Filter notifikasi"
-        >
-          {filters.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              role="tab"
-              aria-selected={filter === f.id}
-              onClick={() => setFilter(f.id)}
-              className={`min-h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold ${filter === f.id ? "bg-foreground text-background" : "bg-surface text-muted-foreground"}`}
-            >
-              {f.label}
-              {f.count ? <span className="ml-1 opacity-70">{f.count}</span> : null}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <div
-          role="alert"
-          className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
-        >
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={() => void load(archivedView ? "archived" : "inbox")}
-            className="mt-3 inline-flex min-h-10 items-center gap-2 font-semibold underline underline-offset-2"
-          >
-            <RefreshCw className="size-4" aria-hidden="true" />
-            Coba lagi
-          </button>
-        </div>
-      )}
-
-      {!error && items.length === 0 && (
-        <div className="mt-8 rounded-2xl border border-dashed border-border bg-surface p-8 text-center">
-          <Bell className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
-          <p className="mt-3 font-semibold">
-            {archivedView ? "Arsip kosong" : "Belum ada notifikasi"}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {archivedView
-              ? "Notifikasi yang diarsipkan akan muncul di sini."
-              : "Kami akan memberi tahu kalau ada kabar baru untuk perjalananmu."}
-          </p>
-        </div>
-      )}
-      {!error && items.length > 0 && visible.length === 0 && (
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          Tidak ada notifikasi yang cocok.
-        </p>
-      )}
-
-      {groups.map(([label, list]) => (
-        <section key={label} className="mt-5">
-          <div className="mb-2 flex items-center justify-between px-1">
-            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              {label}
-            </h2>
-            {label === "Hari ini" && !archivedView && unreadCount > 0 && !selecting && (
+    <>
+      <div className="mx-auto flex h-dvh w-full max-w-md flex-col overflow-hidden px-4 safe-top">
+        <div className="shrink-0">
+          <div className="flex items-start justify-between gap-3 pt-1">
+            <div className="min-w-0">
+              <h1 className="text-[22px] font-bold leading-tight tracking-tight">
+                {selecting ? `${selected.size} dipilih` : archivedView ? "Arsip" : "Notifikasi"}
+              </h1>
+              <p className="text-xs text-muted-foreground" aria-live="polite">
+                {archivedView
+                  ? "Notifikasi yang kamu arsipkan"
+                  : unreadCount
+                    ? `${unreadCount} belum dibaca`
+                    : "Semua sudah dibaca"}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1 text-[13px] font-semibold text-brand-red">
               <button
                 type="button"
-                onClick={() => void run("read_all", [])}
-                className="inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-brand-red"
+                className="min-h-9 px-2"
+                onClick={() => {
+                  const next = !archivedView;
+                  setArchivedView(next);
+                  setFilter("all");
+                  exitSelect();
+                  void load(next ? "archived" : "inbox");
+                }}
               >
-                <CheckCheck className="size-3.5" aria-hidden="true" />
-                Tandai semua dibaca
+                {archivedView ? "← Kotak masuk" : "Arsip"}
               </button>
-            )}
+              <button
+                type="button"
+                className="min-h-9 px-2 disabled:opacity-40"
+                disabled={items.length === 0}
+                onClick={() => (selecting ? exitSelect() : setSelecting(true))}
+              >
+                {selecting ? "Selesai" : "Ubah"}
+              </button>
+            </div>
           </div>
-          <div className="overflow-hidden rounded-2xl bg-surface">
-            {list.map((item) => (
-              <Row
-                key={item.id}
-                item={item}
-                archivedView={archivedView}
-                selecting={selecting}
-                checked={selected.has(item.id)}
-                open={openId === item.id}
-                onOpenChange={(v) => setOpenId(v ? item.id : null)}
-                onToggle={() => toggleSelect(item.id)}
-                onMenu={() => setSheetFor(item)}
-                onRead={() => void run("read", [item.id])}
-                onArchive={() =>
-                  void run(archivedView ? "unarchive" : "archive", [item.id], {
-                    toast: archivedView ? "Dikembalikan ke kotak masuk" : "Notifikasi diarsipkan",
-                    undo: archivedView ? "archive" : "unarchive",
-                  })
-                }
-                onDelete={() =>
-                  void run("delete", [item.id], { toast: "Notifikasi dihapus", undo: "restore" })
-                }
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+
+          <label className="mt-2 flex min-h-9 items-center gap-2 rounded-xl bg-secondary px-3 text-[13px]">
+            <Search className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cari notifikasi"
+              aria-label="Cari notifikasi"
+              className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
+            />
+          </label>
+
+          {!archivedView && (
+            <div
+              className="-mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]"
+              role="tablist"
+              aria-label="Filter notifikasi"
+            >
+              {filters.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === f.id}
+                  onClick={() => setFilter(f.id)}
+                  className={`min-h-8 shrink-0 rounded-full px-3 text-xs font-semibold ${filter === f.id ? "bg-foreground text-background" : "bg-surface text-muted-foreground"}`}
+                >
+                  {f.label}
+                  {f.count ? <span className="ml-1 opacity-70">{f.count}</span> : null}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-28 [scrollbar-width:none]">
+          {error && (
+            <div
+              role="alert"
+              className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+            >
+              <p>{error}</p>
+              <button
+                type="button"
+                onClick={() => void load(archivedView ? "archived" : "inbox")}
+                className="mt-3 inline-flex min-h-10 items-center gap-2 font-semibold underline underline-offset-2"
+              >
+                <RefreshCw className="size-4" aria-hidden="true" />
+                Coba lagi
+              </button>
+            </div>
+          )}
+
+          {!error && items.length === 0 && (
+            <div className="mt-8 rounded-2xl border border-dashed border-border bg-surface p-8 text-center">
+              <Bell className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
+              <p className="mt-3 font-semibold">
+                {archivedView ? "Arsip kosong" : "Belum ada notifikasi"}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {archivedView
+                  ? "Notifikasi yang diarsipkan akan muncul di sini."
+                  : "Kami akan memberi tahu kalau ada kabar baru untuk perjalananmu."}
+              </p>
+            </div>
+          )}
+          {!error && items.length > 0 && visible.length === 0 && (
+            <p className="mt-8 text-center text-sm text-muted-foreground">
+              Tidak ada notifikasi yang cocok.
+            </p>
+          )}
+
+          {groups.map(([label, list]) => (
+            <section key={label} className="mt-3">
+              <div className="mb-1 flex items-center justify-between px-1">
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {label}
+                </h2>
+                {label === "Hari ini" && !archivedView && unreadCount > 0 && !selecting && (
+                  <button
+                    type="button"
+                    onClick={() => void run("read_all", [])}
+                    className="inline-flex min-h-7 items-center gap-1 text-[11px] font-semibold text-brand-red"
+                  >
+                    <CheckCheck className="size-3.5" aria-hidden="true" />
+                    Tandai semua dibaca
+                  </button>
+                )}
+              </div>
+              <div className="overflow-hidden rounded-xl bg-surface">
+                {list.map((item) => (
+                  <Row
+                    key={item.id}
+                    item={item}
+                    archivedView={archivedView}
+                    selecting={selecting}
+                    checked={selected.has(item.id)}
+                    open={openId === item.id}
+                    onOpenChange={(v) => setOpenId(v ? item.id : null)}
+                    onToggle={() => toggleSelect(item.id)}
+                    onMenu={() => setSheetFor(item)}
+                    onRead={() => void run("read", [item.id])}
+                    onArchive={() =>
+                      void run(archivedView ? "unarchive" : "archive", [item.id], {
+                        toast: archivedView
+                          ? "Dikembalikan ke kotak masuk"
+                          : "Notifikasi diarsipkan",
+                        undo: archivedView ? "archive" : "unarchive",
+                      })
+                    }
+                    onDelete={() =>
+                      void run("delete", [item.id], {
+                        toast: "Notifikasi dihapus",
+                        undo: "restore",
+                      })
+                    }
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+      <FixedLayer>
+        <TabBar />
+      </FixedLayer>
 
       {sheetFor && (
         <div
@@ -497,7 +515,7 @@ function Notifications() {
           </button>
         </div>
       )}
-    </Page>
+    </>
   );
 }
 
@@ -593,7 +611,7 @@ function Row({
         </button>
       </div>
       <div
-        className={`relative flex gap-3 bg-surface p-3.5 ${drag === null ? "transition-transform duration-200 motion-reduce:transition-none" : ""}`}
+        className={`relative flex gap-2.5 bg-surface px-3 py-2.5 ${drag === null ? "transition-transform duration-200 motion-reduce:transition-none" : ""}`}
         style={{ transform: `translateX(${offset}px)`, touchAction: "pan-y" }}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -646,14 +664,16 @@ function Row({
           </span>
         )}
         <div
-          className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${tone}`}
+          className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${tone}`}
           aria-hidden="true"
         >
-          <Icon className="size-[18px]" />
+          <Icon className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className={`leading-snug ${item.read_at ? "font-medium" : "font-semibold"}`}>
+            <h3
+              className={`text-[14px] leading-snug ${item.read_at ? "font-medium" : "font-semibold"}`}
+            >
               {item.title}
             </h3>
             <div className="flex shrink-0 items-center gap-1.5">
@@ -669,13 +689,15 @@ function Row({
               </time>
             </div>
           </div>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{item.body}</p>
-          <div className="mt-1.5 flex items-center justify-between">
+          <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-snug text-muted-foreground">
+            {item.body}
+          </p>
+          <div className="flex items-center justify-between">
             {item.action_href && !selecting ? (
               <a
                 href={item.action_href}
                 onClick={() => !item.read_at && onRead()}
-                className="inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-brand-red"
+                className="inline-flex min-h-8 items-center gap-1 text-[13px] font-semibold text-brand-red"
               >
                 Buka detail
                 <ExternalLink className="size-3.5" aria-hidden="true" />
@@ -688,9 +710,9 @@ function Row({
                 type="button"
                 onClick={onMenu}
                 aria-label={`Aksi untuk ${item.title}`}
-                className="flex size-9 items-center justify-center rounded-full text-muted-foreground"
+                className="flex size-8 items-center justify-center rounded-full text-muted-foreground"
               >
-                <Ellipsis className="size-5" aria-hidden="true" />
+                <Ellipsis className="size-4" aria-hidden="true" />
               </button>
             )}
           </div>
