@@ -100,7 +100,7 @@ export function EsimCard({ o, index = 0 }: { o: Order; index?: number }) {
       >
         <div className="flex items-start gap-3">
           <span
-            className={`grid size-14 shrink-0 place-items-center rounded-2xl bg-white/70 ${history ? "opacity-60 grayscale" : ""}`}
+            className={`grid size-10 shrink-0 place-items-center rounded-2xl bg-white/70 ${history ? "opacity-60 grayscale" : ""}`}
           >
             {art.src && !artFailed ? (
               <img
@@ -111,7 +111,7 @@ export function EsimCard({ o, index = 0 }: { o: Order; index?: number }) {
                 loading="lazy"
                 decoding="async"
                 onError={() => setArtFailed(true)}
-                className="size-12 object-contain"
+                className="size-8 object-contain"
               />
             ) : (
               <Globe2 className="size-7 text-muted-foreground" aria-hidden="true" />
@@ -291,7 +291,7 @@ function MyEsim() {
     <Page>
       <header className="flex items-start justify-between gap-3 pt-4">
         <div>
-          <h1 className="large-title">My eSIM</h1>
+          <h1 className="text-[22px] font-bold leading-tight tracking-tight">My eSIM</h1>
           {summary && <p className="mt-1 text-[13px] text-muted-foreground">{summary}</p>}
         </div>
         <Link
@@ -312,7 +312,7 @@ function MyEsim() {
             alt=""
             width={128}
             height={128}
-            className="mx-auto size-32 object-contain"
+            className="mx-auto size-20 object-contain"
           />
           <Wordmark className="mx-auto mt-2 h-12" />
           <p className="mt-2 text-muted-foreground">Bawa Djiwamu Lebih Jauh.</p>
@@ -436,7 +436,7 @@ function EmptyTab({
         alt=""
         width={96}
         height={96}
-        className="mx-auto size-24 object-contain opacity-90"
+        className="mx-auto size-16 object-contain opacity-90"
       />
       <p className="mt-3 font-semibold">{title}</p>
       <p className="mt-1 text-[13px] text-muted-foreground">{hint}</p>

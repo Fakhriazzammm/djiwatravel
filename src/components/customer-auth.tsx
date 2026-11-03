@@ -68,7 +68,7 @@ function AuthChoice() {
       <div className="space-y-2 pt-1">
         <button
           type="button"
-          className={`${button} flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+          className={`${button} flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
           disabled={googleLoading}
           onClick={() => void googleLogin()}
         >

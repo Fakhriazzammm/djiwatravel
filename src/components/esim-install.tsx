@@ -46,7 +46,7 @@ export function EsimInstallPanel({
         <a
           href={link}
           rel="noopener noreferrer"
-          className="tap flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-red px-4 text-[15px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="tap flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-red px-4 text-[14px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Smartphone className="size-5" aria-hidden="true" /> Pasang langsung di perangkat ini
         </a>

@@ -44,7 +44,7 @@ export function PushOptInRow() {
         disabled={busy}
         aria-pressed={on}
         data-testid="push-opt-in-row"
-        className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-[17px]"
+        className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-[15px]"
       >
         <Bell className="size-5 text-primary" aria-hidden="true" />
         <span className="flex-1">Notifikasi eSIM & pesanan</span>

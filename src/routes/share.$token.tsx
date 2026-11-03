@@ -81,7 +81,7 @@ function SharedItinerary() {
       <Page tabs={false}>
         <div className="flex min-h-[70vh] items-center justify-center">
           <section className="w-full rounded-[28px] bg-surface px-5 py-10 text-center ring-1 ring-border/60">
-            <Compass className="mx-auto size-12 text-muted-foreground" strokeWidth={1.4} />
+            <Compass className="mx-auto size-8 text-muted-foreground" strokeWidth={1.4} />
             <h1 className="mt-4 text-[22px] font-bold">Tautan tidak tersedia</h1>
             <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
               Tautan itinerary ini tidak ditemukan atau sudah dicabut oleh pemilik perjalanan.
@@ -114,9 +114,7 @@ function SharedItinerary() {
         <p className="mt-8 text-xs font-bold uppercase tracking-[0.14em] text-brand-red">
           Itinerary dibagikan
         </p>
-        <h1 className="mt-1.5 text-[32px] font-bold leading-[1.1] tracking-[-0.04em]">
-          {trip.name}
-        </h1>
+        <h1 className="mt-1.5 text-[22px] font-bold leading-tight tracking-tight">{trip.name}</h1>
         <p className="mt-2 flex items-center gap-1.5 text-[15px] text-muted-foreground">
           <MapPin className="size-4" />
           {trip.destination_name}
@@ -133,13 +131,13 @@ function SharedItinerary() {
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Hari agenda
           </p>
-          <p className="mt-1 text-2xl font-bold">{days.length}</p>
+          <p className="mt-1 text-xl font-bold">{days.length}</p>
         </div>
         <div className="rounded-2xl bg-surface p-4 ring-1 ring-border/60">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Aktivitas
           </p>
-          <p className="mt-1 text-2xl font-bold">{activityCount}</p>
+          <p className="mt-1 text-xl font-bold">{activityCount}</p>
         </div>
       </div>
 

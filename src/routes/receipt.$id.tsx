@@ -255,7 +255,9 @@ function ReceiptPage() {
         </Link>
       </div>
 
-      <h1 className="large-title mb-1 mt-2">Struk pembayaran</h1>
+      <h1 className="text-[22px] font-bold leading-tight tracking-tight mb-1 mt-2">
+        Struk pembayaran
+      </h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Simpan sebagai PDF atau cetak, lalu pasang eSIM pakai panduan di bawah.
       </p>

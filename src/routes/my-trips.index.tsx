@@ -72,7 +72,7 @@ function MyTrips() {
   return (
     <Page>
       <TopBar onMenu={() => setSheet("menu")} onAdd={() => setSheet("actions")} />
-      <h1 className="px-1 pb-2 pt-1 text-[30px] font-bold leading-[1.1] tracking-[-0.03em]">
+      <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
         Perjalanan
       </h1>
 
@@ -119,7 +119,7 @@ function TopBar({ onMenu, onAdd }: { onMenu: () => void; onAdd: () => void }) {
       <Link
         to="/"
         aria-label="Kembali ke beranda"
-        className="tap -ml-2 flex min-h-11 items-center gap-0.5 rounded-xl pl-1 pr-3 text-[17px] text-brand-red"
+        className="tap -ml-2 flex min-h-11 items-center gap-0.5 rounded-xl pl-1 pr-3 text-[15px] text-brand-red"
       >
         <ChevronLeft className="size-6" strokeWidth={2.4} aria-hidden="true" />
         Beranda
@@ -273,7 +273,7 @@ function ActionSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="tap mt-2 min-h-12 w-full rounded-2xl bg-secondary font-semibold text-muted-foreground"
+                className="tap mt-2 min-h-10 w-full rounded-xl bg-secondary font-semibold text-muted-foreground"
               >
                 Batal
               </button>
@@ -291,7 +291,7 @@ function TodayView({
   authLoading,
 }: {
   data: HomeData;
-  user: { id: string; email: string } | null;
+  user: { id: string; email?: string | null } | null;
   authLoading: boolean;
 }) {
   const focusTrip = data.focusTrip;
@@ -424,7 +424,7 @@ function EmptyTrips({
   loading,
 }: {
   trips: Trip[];
-  user: { id: string; email: string } | null | undefined;
+  user: { id: string; email?: string | null } | null | undefined;
   loading: boolean;
 }) {
   return (
@@ -464,7 +464,7 @@ function Unauthenticated() {
     <Page>
       <div className="flex min-h-[70vh] items-center">
         <section className="w-full rounded-[28px] bg-surface px-5 py-10 text-center ring-1 ring-border/60">
-          <CheckCircle2 className="mx-auto size-12 text-brand-red" strokeWidth={1.5} />
+          <CheckCircle2 className="mx-auto size-8 text-brand-red" strokeWidth={1.5} />
           <h1 className="mt-4 text-[22px] font-bold">Masuk ke perjalananmu</h1>
           <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
             Login untuk menyimpan itinerary, checklist, budget, dan booking.

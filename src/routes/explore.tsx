@@ -40,7 +40,7 @@ export const Route = createFileRoute("/explore")({
   // A cold provider read can legitimately take a few seconds; say so instead of showing a gap.
   pendingComponent: () => (
     <Page>
-      <h1 className="large-title pt-4">Explore</h1>
+      <h1 className="text-[22px] font-bold leading-tight tracking-tight pt-4">Explore</h1>
       <div role="status" aria-busy="true" className="mt-6 space-y-5">
         <span className="sr-only">Memuat katalog…</span>
         <div className="h-12 animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
@@ -79,7 +79,7 @@ function Explore() {
     let timeout: ReturnType<typeof setTimeout>;
 
     const tick = () => {
-      const word = examples[wordIndex];
+      const word = examples[wordIndex] ?? "";
       characterCount += deleting ? -1 : 1;
       setPlaceholderText(`Cari ${word.slice(0, characterCount)}`);
 
@@ -102,7 +102,7 @@ function Explore() {
     <Page>
       <header className="pt-4">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-red">Djiwa Travel</p>
-        <h1 className="mt-1 large-title">Explore</h1>
+        <h1 className="mt-1 text-[22px] font-bold leading-tight tracking-tight">Explore</h1>
         <p className="mt-2 text-sm text-muted-foreground">Mau pergi ke mana?</p>
       </header>
       <div className="relative">

@@ -61,7 +61,9 @@ function Finder() {
       <Page>
         <BackBar title="eSIM Finder" />
         <header className="pt-2">
-          <h1 className="large-title">Pilih destinasi eSIM</h1>
+          <h1 className="text-[22px] font-bold leading-tight tracking-tight">
+            Pilih destinasi eSIM
+          </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Pilih tujuan perjalanan untuk melihat semua paket eSIM dan memilih yang sesuai.
           </p>

@@ -164,7 +164,7 @@ export function CustomerOnboardingGate() {
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-brand-red">
                 Satu langkah lagi
               </p>
-              <SheetTitle className="pt-1 text-2xl tracking-tight">Lengkapi profilmu</SheetTitle>
+              <SheetTitle className="pt-1 text-xl tracking-tight">Lengkapi profilmu</SheetTitle>
               <SheetDescription id="customer-onboarding-description" className="max-w-sm pt-1">
                 Kami memakai data ini untuk mengirim detail pesanan dan eSIM. Lengkapi dulu untuk
                 melanjutkan menggunakan Djiwa Travel.
@@ -235,7 +235,7 @@ export function CustomerOnboardingGate() {
                 <button
                   type="submit"
                   disabled={saving || loggingOut}
-                  className="tap flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-red px-4 text-sm font-bold text-white shadow-md shadow-brand-red/20 transition hover:brightness-95 active:scale-[0.99] disabled:opacity-60"
+                  className="tap flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-red px-4 text-sm font-bold text-white shadow-md shadow-brand-red/20 transition hover:brightness-95 active:scale-[0.99] disabled:opacity-60"
                 >
                   {saving ? (
                     <>

@@ -57,7 +57,15 @@ export const Route = createFileRoute("/my-trips/$tripId")({
       return await getTrip({ data: { tripId: params.tripId } });
     } catch (error) {
       if (isTripAuthenticationError(error)) {
-        throw redirect({ to: "/profile", search: { returnTo: location.href } });
+        throw redirect({
+          to: "/profile",
+          search: {
+            returnTo: location.href,
+            admin: undefined,
+            calendar: undefined,
+            calendarSync: undefined,
+          },
+        });
       }
       throw error;
     }
@@ -246,7 +254,7 @@ function TripDetail() {
       />
 
       <header className="px-1 pb-3 pt-1">
-        <h1 className="text-[30px] font-bold leading-[1.1] tracking-[-0.03em]">{trip.name}</h1>
+        <h1 className="text-[22px] font-bold leading-tight tracking-tight">{trip.name}</h1>
         <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[14px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <MapPin className="size-3.5" aria-hidden="true" />
@@ -264,7 +272,7 @@ function TripDetail() {
         >
           <Plane className="absolute right-4 top-4 size-8 opacity-90" aria-hidden="true" />
           <p className="text-[12px] font-medium text-white/85">{countdown.label}</p>
-          <p className="text-[34px] font-bold leading-tight tracking-[-0.03em]">
+          <p className="text-[28px] font-bold leading-tight tracking-[-0.03em]">
             {countdown.value}
           </p>
           <p className="text-[12px] text-white/85">
@@ -570,14 +578,14 @@ function ShareTripSheet({
               <button
                 type="button"
                 onClick={() => void copy()}
-                className={`${btnSoft} min-h-12 rounded-2xl`}
+                className={`${btnSoft} min-h-10 rounded-xl`}
               >
                 <Copy className="size-4" /> Salin
               </button>
               <button
                 type="button"
                 onClick={() => void shareNative()}
-                className={`${btnRed} min-h-12 rounded-2xl`}
+                className={`${btnRed} min-h-10 rounded-xl`}
               >
                 <Share2 className="size-4" /> Bagikan
               </button>
@@ -604,7 +612,7 @@ function ShareTripSheet({
               type="button"
               onClick={() => void create()}
               disabled={busy}
-              className={`${btnRed} min-h-12 rounded-2xl`}
+              className={`${btnRed} min-h-10 rounded-xl`}
             >
               {busy ? "Membuat tautan…" : "Buat tautan bagikan"}
             </button>

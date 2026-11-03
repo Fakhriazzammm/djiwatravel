@@ -21,7 +21,15 @@ export const Route = createFileRoute("/my-trips/$tripId/travel")({
       return await getTrip({ data: { tripId: params.tripId } });
     } catch (error) {
       if (isTripAuthenticationError(error)) {
-        throw redirect({ to: "/profile", search: { returnTo: location.href } });
+        throw redirect({
+          to: "/profile",
+          search: {
+            returnTo: location.href,
+            admin: undefined,
+            calendar: undefined,
+            calendarSync: undefined,
+          },
+        });
       }
       throw error;
     }

@@ -29,7 +29,7 @@ export function DestinationCard({
           />
         ) : (
           <div className="flex size-full items-center justify-center">
-            <span className="text-3xl drop-shadow-sm" aria-hidden="true">
+            <span className="text-xl drop-shadow-sm" aria-hidden="true">
               {destination.flag}
             </span>
           </div>

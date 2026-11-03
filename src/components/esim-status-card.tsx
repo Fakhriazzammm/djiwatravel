@@ -83,7 +83,7 @@ export function EsimStatusCard({
               width={96}
               height={96}
               decoding="async"
-              className="size-24 object-contain"
+              className="size-16 object-contain"
             />
           )}
         </div>
@@ -91,7 +91,7 @@ export function EsimStatusCard({
           <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {summary}
           </p>
-          <h1 className="mt-0.5 mb-1.5 text-[17px] font-bold leading-tight tracking-tight">
+          <h1 className="mt-0.5 mb-1.5 text-[15px] font-bold leading-tight tracking-tight">
             {headline}
           </h1>
           <EsimStatusBadge status={status} />

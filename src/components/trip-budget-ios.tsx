@@ -246,14 +246,14 @@ export function BudgetEditor({
           <span className="grid size-[70px] place-items-center rounded-full bg-surface text-center text-[10px] leading-tight text-muted-foreground">
             <span>
               Terpakai
-              <b className="block text-[17px] tracking-tight text-foreground">{percent}%</b>
+              <b className="block text-[15px] tracking-tight text-foreground">{percent}%</b>
             </span>
           </span>
         </div>
         <dl className="min-w-0 flex-1 space-y-1.5">
           <div>
             <dt className="text-[11px] text-muted-foreground">Terpakai</dt>
-            <dd className="truncate text-[17px] font-bold tracking-tight">
+            <dd className="truncate text-[15px] font-bold tracking-tight">
               {money(spent, currency)}
             </dd>
           </div>
@@ -390,7 +390,7 @@ export function BudgetEditor({
           />
           <button
             disabled={busy || !newName.trim()}
-            className={`${btnRed} min-h-12 w-full rounded-xl`}
+            className={`${btnRed} min-h-10 w-full rounded-xl`}
           >
             {busy ? "Menyimpan…" : "Tambah kategori"}
           </button>
@@ -448,12 +448,12 @@ export function BudgetEditor({
             onValueChange={setDraft}
             aria-label="Batas kategori"
             placeholder="Rp 0"
-            className="w-full rounded-xl bg-transparent py-3 text-center text-[32px] font-bold tracking-tight outline-none placeholder:text-muted-foreground/40"
+            className="w-full rounded-xl bg-transparent py-3 text-center text-[28px] font-bold tracking-tight outline-none placeholder:text-muted-foreground/40"
           />
           <p className="text-center text-[12px] text-muted-foreground">
             Terpakai {money(editing?.["spent_minor"], currency)}
           </p>
-          <button className={`${btnRed} min-h-12 w-full rounded-xl`}>Simpan batas</button>
+          <button className={`${btnRed} min-h-10 w-full rounded-xl`}>Simpan batas</button>
         </form>
       </SheetFrame>
     </section>
@@ -615,11 +615,11 @@ export function ExpenseEditor({
       <div className="grid grid-cols-2 gap-3">
         <div className={`${iosGroup} p-3`}>
           <p className="text-[11px] text-muted-foreground">Total</p>
-          <p className="truncate text-[17px] font-bold tracking-tight">{money(total, currency)}</p>
+          <p className="truncate text-[15px] font-bold tracking-tight">{money(total, currency)}</p>
         </div>
         <div className={`${iosGroup} p-3`}>
           <p className="text-[11px] text-muted-foreground">Rata-rata / hari</p>
-          <p className="truncate text-[17px] font-bold tracking-tight">
+          <p className="truncate text-[15px] font-bold tracking-tight">
             {money(average, currency)}
           </p>
         </div>
@@ -713,7 +713,7 @@ export function ExpenseEditor({
             onValueChange={(digits) => setForm({ ...form, amount: digits })}
             aria-label="Nominal"
             placeholder="Rp 0"
-            className="w-full bg-transparent py-2 text-center text-[32px] font-bold tracking-tight outline-none placeholder:text-muted-foreground/40"
+            className="w-full bg-transparent py-2 text-center text-[28px] font-bold tracking-tight outline-none placeholder:text-muted-foreground/40"
           />
           <input
             required
@@ -752,7 +752,7 @@ export function ExpenseEditor({
               })}
             </div>
           </div>
-          <button disabled={saving} className={`${btnRed} min-h-12 w-full rounded-xl`}>
+          <button disabled={saving} className={`${btnRed} min-h-10 w-full rounded-xl`}>
             {saving ? "Menyimpan…" : "Simpan pengeluaran"}
           </button>
         </form>

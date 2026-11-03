@@ -546,7 +546,7 @@ function Destination() {
                   search={{ availability: "all" }}
                   onClick={() => setPickerOpen(false)}
                   aria-current={active ? "page" : undefined}
-                  className={`tap flex min-h-12 items-center gap-2 rounded-2xl border px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  className={`tap flex min-h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     active
                       ? "border-brand-red bg-brand-red/10 text-brand-red"
                       : "border-border/70 bg-surface"
@@ -563,10 +563,10 @@ function Destination() {
         </SheetContent>
       </Sheet>
       <section className="mt-3 px-0.5">
-        <span className="block text-[64px] leading-none" aria-hidden="true">
+        <span className="block text-[28px] leading-none" aria-hidden="true">
           {destination.flag}
         </span>
-        <h1 className="mt-4 text-[34px] font-extrabold leading-tight tracking-tight">
+        <h1 className="mt-4 text-[22px] font-bold leading-tight tracking-tight">
           eSIM {destination.nameId}
         </h1>
         <p className="mt-1 text-[15px] text-muted-foreground">
@@ -649,7 +649,7 @@ function Destination() {
                       >
                         {deckLabel(pkg, index)}
                       </span>
-                      <span className="mt-1 block text-[30px] font-extrabold leading-none tracking-tight">
+                      <span className="mt-1 block text-[22px] font-extrabold leading-none tracking-tight">
                         {shortData(pkg)}
                       </span>
                       <span className={`text-xs ${on ? "text-white/80" : "text-muted-foreground"}`}>
@@ -680,7 +680,7 @@ function Destination() {
               <Link
                 to="/checkout/$id"
                 params={{ id: chosen.packageCode }}
-                className="tap mt-3 flex min-h-12 w-full items-center justify-center rounded-2xl bg-brand-red text-[15px] font-bold text-white transition hover:brightness-95 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+                className="tap mt-3 flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red text-[14px] font-bold text-white transition hover:brightness-95 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
               >
                 Beli {shortData(chosen)} · {rupiah(chosen.priceIdr)}
               </Link>

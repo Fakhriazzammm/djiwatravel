@@ -93,7 +93,7 @@ export function TripNavBar({
   action?: ReactNode;
 }) {
   const className =
-    "tap -ml-2 flex min-h-11 items-center gap-0.5 rounded-xl pl-1 pr-3 text-[17px] text-brand-red";
+    "tap -ml-2 flex min-h-11 items-center gap-0.5 rounded-xl pl-1 pr-3 text-[15px] text-brand-red";
   return (
     <div className="flex h-11 items-center justify-between">
       {backTo === "trip" && backTripId ? (
@@ -141,7 +141,7 @@ export function ConfirmDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="w-[calc(100%-2rem)] max-w-[320px] rounded-[18px] p-0 text-center">
         <AlertDialogHeader className="p-5 pb-4 text-center sm:text-center">
-          <AlertDialogTitle className="text-[17px]">{title}</AlertDialogTitle>
+          <AlertDialogTitle className="text-[15px]">{title}</AlertDialogTitle>
           <AlertDialogDescription className="text-[13px] leading-5">
             {description}
           </AlertDialogDescription>
@@ -149,7 +149,7 @@ export function ConfirmDialog({
         <AlertDialogFooter className="grid grid-cols-2 gap-0 divide-x divide-border/70 border-t border-border/70 sm:space-x-0">
           <AlertDialogCancel
             disabled={busy}
-            className="m-0 min-h-12 rounded-none rounded-bl-[18px] border-0 bg-transparent text-[17px] text-brand-red shadow-none"
+            className="m-0 min-h-10 rounded-none rounded-bl-[18px] border-0 bg-transparent text-[14px] text-brand-red shadow-none"
           >
             Batal
           </AlertDialogCancel>
@@ -159,7 +159,7 @@ export function ConfirmDialog({
               event.preventDefault();
               void onConfirm();
             }}
-            className={`m-0 min-h-12 rounded-none rounded-br-[18px] bg-transparent text-[17px] font-semibold shadow-none hover:bg-transparent ${
+            className={`m-0 min-h-10 rounded-none rounded-br-[18px] bg-transparent text-[14px] font-semibold shadow-none hover:bg-transparent ${
               destructive ? "text-destructive" : "text-brand-red"
             }`}
           >
@@ -214,7 +214,7 @@ export function TripActionSheet({
                 onOpenChange(false);
                 onSelect();
               }}
-              className={`tap flex min-h-[52px] w-full items-center justify-center gap-2 border-t border-border/60 text-[17px] disabled:opacity-40 ${
+              className={`tap flex min-h-[52px] w-full items-center justify-center gap-2 border-t border-border/60 text-[15px] disabled:opacity-40 ${
                 destructive ? "text-destructive" : "text-brand-red"
               } ${primary ? "font-semibold" : ""}`}
             >
@@ -226,7 +226,7 @@ export function TripActionSheet({
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="tap min-h-[52px] w-full rounded-[14px] bg-background text-[17px] font-semibold text-brand-red"
+          className="tap min-h-[52px] w-full rounded-[14px] bg-background text-[15px] font-semibold text-brand-red"
         >
           Batal
         </button>

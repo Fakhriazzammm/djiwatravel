@@ -32,7 +32,7 @@ function TravelGuideIndex() {
     <Page>
       <BackBar title="Panduan Travel" />
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-red">Djiwa Travel</p>
-      <h1 className="large-title mt-2">Panduan Travel</h1>
+      <h1 className="text-[22px] font-bold leading-tight tracking-tight mt-2">Panduan Travel</h1>
       <p className="mt-3 text-[15px] leading-7 text-muted-foreground">
         Tips singkat dan bisa langsung dipakai untuk menyiapkan internet perjalananmu.
       </p>

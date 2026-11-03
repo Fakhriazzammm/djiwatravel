@@ -340,7 +340,7 @@ function Home() {
                         }}
                         className="tap flex w-full items-center gap-3 px-4 py-3 text-left"
                       >
-                        <span className="text-2xl">{destination.flag}</span>
+                        <span className="text-xl">{destination.flag}</span>
                         <span className="min-w-0 flex-1">
                           <span className="block font-medium">{destination.nameId}</span>
                           <span className="block text-xs text-muted-foreground">
@@ -472,7 +472,7 @@ function Home() {
                   <span className="absolute left-5 top-[1.125rem] text-[12px] font-bold tracking-[0.08em] text-white [text-shadow:0_1px_8px_rgb(0_0_0/0.5)]">
                     POPULER
                   </span>
-                  <h3 className="absolute inset-x-5 top-9 text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] text-white [text-shadow:0_2px_14px_rgb(0_0_0/0.45)]">
+                  <h3 className="absolute inset-x-5 top-9 text-[22px] font-bold leading-tight tracking-tight text-white [text-shadow:0_2px_14px_rgb(0_0_0/0.45)]">
                     {d.nameId}
                   </h3>
                   <div className="glass !bg-[rgb(40_40_44/0.38)] absolute inset-x-2.5 bottom-2.5 flex items-center gap-3 rounded-[20px] py-2.5 pl-3.5 pr-3 text-white">

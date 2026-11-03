@@ -80,7 +80,7 @@ export function InstallAppCard({
         <button
           type="button"
           onClick={() => setGuideOpen(false)}
-          className="mt-5 min-h-12 w-full rounded-2xl bg-primary text-[15px] font-semibold text-primary-foreground"
+          className="mt-5 min-h-10 w-full rounded-xl bg-primary text-[14px] font-semibold text-primary-foreground"
         >
           Mengerti
         </button>
@@ -96,7 +96,7 @@ export function InstallAppCard({
           onClick={act}
           disabled={busy}
           data-testid="install-app-row"
-          className={`flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-[17px] ${className}`}
+          className={`flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-[15px] ${className}`}
         >
           <Download className="size-5 text-primary" aria-hidden="true" />
           <span className="flex-1">{config.promptTitle}</span>
@@ -114,7 +114,7 @@ export function InstallAppCard({
         data-testid="install-app-card"
         className={`relative flex items-center gap-3 rounded-[22px] bg-surface p-4 shadow-[0_12px_28px_-22px_rgba(0,0,0,0.35)] ring-1 ring-border/60 ${className}`}
       >
-        <img src="/icon-192.png" alt="" width={48} height={48} className="size-12 rounded-[12px]" />
+        <img src="/icon-192.png" alt="" width={40} height={40} className="size-10 rounded-[10px]" />
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-semibold leading-tight">{config.promptTitle}</p>
           <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">

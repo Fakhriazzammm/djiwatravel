@@ -44,9 +44,15 @@ export const Route = createFileRoute("/panduan/$slug")({
         { property: "og:type", content: "article" },
         { property: "og:url", content: url },
         { property: "og:locale", content: "id_ID" },
-        { property: "og:image", content: loaderData.image ? `${BASE_URL}${loaderData.image}` : `${BASE_URL}/icon-512.png` },
+        {
+          property: "og:image",
+          content: loaderData.image ? `${BASE_URL}${loaderData.image}` : `${BASE_URL}/icon-512.png`,
+        },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:image", content: loaderData.image ? `${BASE_URL}${loaderData.image}` : `${BASE_URL}/icon-512.png` },
+        {
+          name: "twitter:image",
+          content: loaderData.image ? `${BASE_URL}${loaderData.image}` : `${BASE_URL}/icon-512.png`,
+        },
       ],
       links: [{ rel: "canonical", href: url }],
       scripts: [
@@ -67,7 +73,7 @@ function TravelGuideDetail() {
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-red">
           {guide.eyebrow}
         </p>
-        <h1 className="large-title mt-2">{guide.heading}</h1>
+        <h1 className="text-[22px] font-bold leading-tight tracking-tight mt-2">{guide.heading}</h1>
         <p className="mt-3 text-[15px] leading-7 text-muted-foreground">{guide.description}</p>
         {guide.image && (
           <figure className="mt-6 overflow-hidden rounded-2xl bg-secondary">

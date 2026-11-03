@@ -52,7 +52,7 @@ export function CalendarSheet(props: CalendarSheetProps) {
             alt=""
             width={56}
             height={56}
-            className="size-14 object-contain mix-blend-multiply"
+            className="size-10 object-contain mix-blend-multiply"
           />
           <div className="min-w-0">
             <SheetTitle className="text-[19px] font-semibold tracking-tight">
@@ -93,7 +93,7 @@ export function CalendarSheet(props: CalendarSheetProps) {
                   type="button"
                   disabled={busy}
                   onClick={onRetrySync}
-                  className="tap min-h-12 w-full rounded-2xl bg-brand-red text-[16px] font-semibold text-white disabled:opacity-50"
+                  className="tap min-h-10 w-full rounded-xl bg-brand-red text-[14px] font-semibold text-white disabled:opacity-50"
                 >
                   {busy ? "Menyinkronkan…" : "Coba sinkronkan lagi"}
                 </button>
@@ -110,7 +110,7 @@ export function CalendarSheet(props: CalendarSheetProps) {
           ) : (
             <a
               href="/api/google-calendar/connect"
-              className="tap flex min-h-12 w-full items-center justify-center rounded-2xl bg-brand-red text-[16px] font-semibold text-white"
+              className="tap flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red text-[14px] font-semibold text-white"
             >
               Hubungkan Google Calendar
             </a>
@@ -118,7 +118,7 @@ export function CalendarSheet(props: CalendarSheetProps) {
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="tap min-h-12 w-full rounded-2xl text-[16px] font-semibold text-muted-foreground"
+            className="tap min-h-10 w-full rounded-xl text-[14px] font-semibold text-muted-foreground"
           >
             Tutup
           </button>

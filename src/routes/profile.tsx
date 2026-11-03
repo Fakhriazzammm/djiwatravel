@@ -389,7 +389,7 @@ function Profile() {
   ];
   return (
     <Page>
-      <h1 className="large-title pt-4">Profil</h1>
+      <h1 className="text-[22px] font-bold leading-tight tracking-tight pt-4">Profil</h1>
       {admin === "unauthorized" && (
         <div
           role="alert"
@@ -488,14 +488,14 @@ function Profile() {
                     setProfileError(null);
                     setProfileFieldErrors({});
                   }}
-                  className="tap min-h-12 flex-1 text-[15px] font-medium text-[#0a84ff]"
+                  className="tap min-h-10 flex-1 text-[14px] font-medium text-[#0a84ff]"
                 >
                   Ubah data diri
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(true)}
-                  className="tap min-h-12 flex-1 text-[15px] font-medium text-destructive"
+                  className="tap min-h-10 flex-1 text-[14px] font-medium text-destructive"
                 >
                   Hapus data
                 </button>
@@ -534,7 +534,7 @@ function Profile() {
                 className={`${rowClass} min-h-[76px] py-3 ${index > 0 ? "border-t border-border/60" : ""}`}
               >
                 <span
-                  className={`grid size-12 shrink-0 place-items-center rounded-2xl ${art.tint} ${finished ? "opacity-60 grayscale" : ""}`}
+                  className={`grid size-10 shrink-0 place-items-center rounded-2xl ${art.tint} ${finished ? "opacity-60 grayscale" : ""}`}
                 >
                   {art.src ? (
                     <img

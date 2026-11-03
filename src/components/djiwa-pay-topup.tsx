@@ -116,14 +116,14 @@ export function DjiwaPayTopup({
               <span className="w-11" aria-hidden="true" />
             </div>
             <div className="mt-3 divide-y divide-border rounded-2xl bg-background px-3">
-              <div className="flex min-h-14 items-center justify-between">
+              <div className="flex min-h-12 items-center justify-between">
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground">Dari</p>
                   <p className="text-sm font-semibold">Wallet Djiwa Travel</p>
                 </div>
                 <Wallet className="size-5 text-primary" aria-hidden="true" />
               </div>
-              <div className="flex min-h-14 items-center justify-between">
+              <div className="flex min-h-12 items-center justify-between">
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground">Ke</p>
                   <p className="text-sm font-semibold">Wallet Djiwa Pay</p>
@@ -155,7 +155,7 @@ export function DjiwaPayTopup({
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
                 Nominal isi saldo
               </p>
-              <p className="mt-1 min-h-[48px] text-[34px] font-bold tracking-tight">
+              <p className="mt-1 min-h-[36px] text-[28px] font-bold tracking-tight">
                 {rupiah(Number(amount) || 0)}
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">Minimal isi saldo Rp1.000</p>
@@ -195,7 +195,7 @@ export function DjiwaPayTopup({
               type="button"
               disabled={busy || !Number.isSafeInteger(Number(amount)) || Number(amount) < minimum}
               onClick={() => void submit()}
-              className="tap mt-2 min-h-12 w-full rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+              className="tap mt-2 min-h-10 w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? paymentProgressLabel(stage) : "Lanjutkan"}
             </button>

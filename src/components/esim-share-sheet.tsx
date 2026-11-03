@@ -313,7 +313,7 @@ export function EsimShareSheet({
                 type="button"
                 onClick={() => void create()}
                 disabled={busy === "create"}
-                className="tap mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-red px-4 text-[15px] font-bold text-white disabled:opacity-50"
+                className="tap mt-4 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-red px-4 text-[14px] font-bold text-white disabled:opacity-50"
               >
                 {busy === "create" ? (
                   <Loader2 className="size-5 animate-spin" aria-hidden="true" />

@@ -86,26 +86,28 @@ function Plan() {
       <BackBar title={`${destination.flag} ${destination.nameId}`} />
       <article>
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-red">Paket eSIM</p>
-        <h1 className="large-title mt-2">{packageDestinationLabel(plan)}</h1>
+        <h1 className="text-[22px] font-bold leading-tight tracking-tight mt-2">
+          {packageDestinationLabel(plan)}
+        </h1>
         <p className="mt-3 text-[15px] leading-7 text-muted-foreground">
           Paket eSIM untuk {packageCoverageLabel(plan)} dengan {plan.durationDays} hari masa aktif.
         </p>
         <dl className="mt-6 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface px-4">
-          <div className="flex min-h-14 items-center justify-between gap-4 py-3">
+          <div className="flex min-h-12 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Kuota</dt>
             <dd className="text-right text-sm font-semibold">{packageDataLabel(plan)}</dd>
           </div>
-          <div className="flex min-h-14 items-center justify-between gap-4 py-3">
+          <div className="flex min-h-12 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Masa aktif</dt>
             <dd className="text-right text-sm font-semibold">{plan.durationDays} hari</dd>
           </div>
-          <div className="flex min-h-14 items-center justify-between gap-4 py-3">
+          <div className="flex min-h-12 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Kompatibilitas</dt>
             <dd className="max-w-[60%] text-right text-sm font-semibold">
               Ponsel yang mendukung eSIM
             </dd>
           </div>
-          <div className="flex min-h-14 items-center justify-between gap-4 py-3">
+          <div className="flex min-h-12 items-center justify-between gap-4 py-3">
             <dt className="text-xs text-muted-foreground">Harga</dt>
             <dd className="text-right text-sm font-bold text-brand-red">{rupiah(plan.priceIdr)}</dd>
           </div>
@@ -127,7 +129,7 @@ function Plan() {
         <Link
           to="/checkout/$id"
           params={{ id: plan.packageCode }}
-          className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-brand-red px-4 py-3 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+          className="mt-6 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red px-4 py-3 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
         >
           Pilih paket ini
         </Link>

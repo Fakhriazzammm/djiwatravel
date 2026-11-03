@@ -53,7 +53,7 @@ export function TravelWaitlistCard({ feature, label, sub, icon: Icon, trigger }:
           onClick={() => setOpen(true)}
           className="tap ios-card flex h-32 flex-col items-center justify-center text-center"
         >
-          <span className="flex size-12 items-center justify-center rounded-[14px] bg-secondary text-muted-foreground">
+          <span className="flex size-9 items-center justify-center rounded-[14px] bg-secondary text-muted-foreground">
             <Icon className="size-6" strokeWidth={1.8} />
           </span>
           <span className="mt-2.5 text-[15px] font-semibold text-foreground">{label}</span>

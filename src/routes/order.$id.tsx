@@ -464,7 +464,7 @@ function OrderPage() {
         >
           ‹ Kembali
         </button>
-        <h1 className="large-title mb-4">QR Code</h1>
+        <h1 className="text-[22px] font-bold leading-tight tracking-tight mb-4">QR Code</h1>
         <EsimInstallPanel esim={esim} />
         <h2 className="mt-8 mb-2 px-1 text-sm font-medium text-muted-foreground">Pasang manual</h2>
         <ManualDetails esim={esim} />
@@ -479,7 +479,9 @@ function OrderPage() {
         >
           ‹ Kembali
         </button>
-        <h1 className="large-title mb-4">Panduan Instalasi</h1>
+        <h1 className="text-[22px] font-bold leading-tight tracking-tight mb-4">
+          Panduan Instalasi
+        </h1>
         <InstallGuide />
       </Page>
     );

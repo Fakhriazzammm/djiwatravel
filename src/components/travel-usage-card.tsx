@@ -23,7 +23,7 @@ export function TravelUsageCard({ view, compact = false }: { view: UsageView; co
         <>
           <div className="mt-3 flex items-center justify-between gap-3">
             <div>
-              <p className={`${compact ? "text-2xl" : "text-3xl"} font-bold`}>
+              <p className={`${compact ? "text-xl" : "text-[28px]"} font-bold`}>
                 {formatData(view.remainingBytes)}
               </p>
               <p className="text-sm text-muted-foreground">
@@ -52,7 +52,7 @@ export function TravelUsageCard({ view, compact = false }: { view: UsageView; co
         </>
       ) : view.kind === "unlimited" ? (
         <>
-          <p className={`${compact ? "text-2xl" : "text-3xl"} mt-3 font-bold`}>Unlimited</p>
+          <p className={`${compact ? "text-xl" : "text-[28px]"} mt-3 font-bold`}>Unlimited</p>
           <p className="text-sm text-muted-foreground">
             {view.usedBytes !== null ? `Terpakai ${formatGb(view.usedBytes)}` : view.note}
           </p>

@@ -50,7 +50,15 @@ export const Route = createFileRoute("/my-trips/$tripId/$section")({
       });
     } catch (error) {
       if (isTripAuthenticationError(error)) {
-        throw redirect({ to: "/profile", search: { returnTo: location.href } });
+        throw redirect({
+          to: "/profile",
+          search: {
+            returnTo: location.href,
+            admin: undefined,
+            calendar: undefined,
+            calendarSync: undefined,
+          },
+        });
       }
       throw error;
     }
@@ -134,7 +142,7 @@ function TripSection() {
   return (
     <Page tabs={false}>
       <TripNavBar backLabel={trip.name} backTo="trip" backTripId={tripId} />
-      <h1 className="px-1 pb-2 pt-1 text-[30px] font-bold leading-[1.1] tracking-[-0.03em]">
+      <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
         {labels[section] ?? "Perjalanan"}
       </h1>
       {(section === "budget" || section === "expenses") && (
@@ -301,7 +309,7 @@ export function ItineraryEditor({
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
                 placeholder="Contoh: Makan malam"
-                className="min-h-12 w-full rounded-xl border border-border/70 bg-secondary/70 px-3.5 text-[15px] outline-none transition focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3.5 text-[14px] outline-none transition focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -315,7 +323,7 @@ export function ItineraryEditor({
                   type="date"
                   value={form.date}
                   onChange={(event) => setForm({ ...form, date: event.target.value })}
-                  className="min-h-12 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                  className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
                 />
               </div>
               <div className="space-y-1.5">
@@ -327,7 +335,7 @@ export function ItineraryEditor({
                   value={form.location}
                   onChange={(event) => setForm({ ...form, location: event.target.value })}
                   placeholder="Tambahkan lokasi"
-                  className="min-h-12 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                  className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
                 />
               </div>
             </div>
@@ -346,7 +354,7 @@ export function ItineraryEditor({
                     type="time"
                     value={form.startTime}
                     onChange={(event) => setForm({ ...form, startTime: event.target.value })}
-                    className="min-h-12 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
                   />
                 </label>
                 <label className="space-y-1.5 text-xs text-muted-foreground">
@@ -355,7 +363,7 @@ export function ItineraryEditor({
                     type="time"
                     value={form.endTime}
                     onChange={(event) => setForm({ ...form, endTime: event.target.value })}
-                    className="min-h-12 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
                   />
                 </label>
               </div>
@@ -368,7 +376,7 @@ export function ItineraryEditor({
                 id="agenda-category"
                 value={form.category}
                 onChange={(event) => setForm({ ...form, category: event.target.value })}
-                className="min-h-12 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
               >
                 <option value="">Pilih kategori</option>
                 <option value="flight">Penerbangan</option>
@@ -383,14 +391,14 @@ export function ItineraryEditor({
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className={`${btnSoft} min-h-12 flex-1 rounded-full`}
+                className={`${btnSoft} min-h-10 flex-1 rounded-full`}
               >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className={`${btnRed} min-h-12 flex-[1.4] rounded-full disabled:opacity-60`}
+                className={`${btnRed} min-h-10 flex-[1.4] rounded-full disabled:opacity-60`}
               >
                 {saving ? "Menyimpan…" : "Simpan aktivitas"}
               </button>
@@ -443,7 +451,7 @@ function groupItineraryByDay(items: Item[]) {
       ),
     )
     .forEach((item) => {
-      const date = itineraryDateKey(item.activity_date);
+      const date = itineraryDateKey(item.activity_date) ?? "";
       groups.set(date, [...(groups.get(date) ?? []), item]);
     });
   return [...groups.entries()].map(([date, groupedItems]) => ({ date, items: groupedItems }));
@@ -706,7 +714,7 @@ function ChecklistEditor({
       <button
         type="button"
         onClick={() => setShowAdd(true)}
-        className={`${btnRed} mt-3 min-h-12 w-full rounded-2xl`}
+        className={`${btnRed} mt-3 min-h-10 w-full rounded-xl`}
       >
         Tambah checklist
       </button>
@@ -731,7 +739,7 @@ function ChecklistEditor({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Tambah checklist"
-              className="min-h-12 min-w-0 flex-1 rounded-xl bg-secondary px-3 text-sm"
+              className="min-h-10 min-w-0 flex-1 rounded-xl bg-secondary px-3 text-sm"
             />
             <button disabled={saving} className={btnSoft}>
               {saving ? "Menyimpan…" : "Tambah"}
@@ -808,7 +816,7 @@ export function BookingEditor({
       <button
         type="button"
         onClick={() => setShowForm(true)}
-        className={`${btnRed} mb-4 min-h-12 w-full rounded-2xl`}
+        className={`${btnRed} mb-4 min-h-10 w-full rounded-xl`}
       >
         Tambah pemesanan
       </button>
@@ -847,7 +855,7 @@ export function BookingEditor({
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="Nama booking"
-                className="min-h-12 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
+                className="min-h-10 min-w-0 flex-1 rounded-xl bg-secondary px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
             </div>
             <div className="flex gap-2">
@@ -855,16 +863,16 @@ export function BookingEditor({
                 type="date"
                 value={form.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="min-h-12 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-red/25"
+                className="min-h-10 min-w-0 flex-1 rounded-xl bg-secondary px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
               <input
                 value={form.provider}
                 onChange={(e) => setForm({ ...form, provider: e.target.value })}
                 placeholder="Provider"
-                className="min-h-12 min-w-0 flex-1 rounded-2xl bg-secondary px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
+                className="min-h-10 min-w-0 flex-1 rounded-xl bg-secondary px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-red/25"
               />
             </div>
-            <button disabled={saving} className={`${btnRed} min-h-12 rounded-2xl`}>
+            <button disabled={saving} className={`${btnRed} min-h-10 rounded-xl`}>
               {saving ? "Menyimpan…" : "Tambah booking"}
             </button>
           </form>
