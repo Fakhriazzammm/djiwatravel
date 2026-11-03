@@ -27,9 +27,9 @@ export type TripTabId = "summary" | "itinerary" | "bookings" | "checklist" | "bu
 const tripTabs: Array<{ id: TripTabId; label: string; icon: LucideIcon }> = [
   { id: "summary", label: "Ringkas", icon: Home },
   { id: "itinerary", label: "Agenda", icon: CalendarDays },
-  { id: "bookings", label: "Booking", icon: Ticket },
-  { id: "checklist", label: "Checklist", icon: CheckCircle2 },
   { id: "budget", label: "Biaya", icon: WalletCards },
+  { id: "checklist", label: "Checklist", icon: CheckCircle2 },
+  { id: "bookings", label: "Booking", icon: Ticket },
 ];
 
 /** Bottom tab bar scoped to one trip (replaces the global bar on trip pages), iOS style. */
