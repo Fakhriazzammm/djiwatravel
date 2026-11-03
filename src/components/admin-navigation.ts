@@ -1,6 +1,5 @@
 import {
   CreditCard,
-  BarChart3,
   FileClock,
   Handshake,
   Gauge,
@@ -18,7 +17,6 @@ import {
 export const adminNavigation = [
   ["Dashboard", "/admin/dashboard", Gauge],
   ["Customers", "/admin/customers", UsersRound],
-  ["Analytics", "/admin/analytics", BarChart3],
   ["Orders", "/admin/orders", ListChecks],
   ["Payments", "/admin/payments", CreditCard],
   ["Refunds", "/admin/refunds", RotateCcw],

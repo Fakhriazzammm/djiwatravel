@@ -32,6 +32,6 @@ describe("home eSIM funnel events", () => {
     expect(readFileSync("migrations/026_home_esim_events.sql", "utf8")).toContain(
       "home_esim_events",
     );
-    expect(readFileSync("src/routes/admin.analytics.tsx", "utf8")).toContain("getHomeEsimFunnel");
+    expect(readFileSync("src/routes/admin.dashboard.tsx", "utf8")).toContain("getHomeEsimFunnel");
   });
 });

@@ -64,12 +64,14 @@ export function BarChart({
   points,
   privateMode,
   emptyText,
+  actions,
 }: {
   title: string;
   summary: string;
   points: ChartPoint[];
   privateMode: boolean;
   emptyText: string;
+  actions?: React.ReactNode;
 }) {
   const max = Math.max(...points.map((p) => p.value), 0);
   const peak = points.find((p) => p.value === max && max > 0);
@@ -80,23 +82,26 @@ export function BarChart({
         title={title}
         detail={summary}
         right={
-          points.length > 0 ? (
-            <details className="relative shrink-0">
-              <summary className="cursor-pointer select-none rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary">
-                Tabel
-              </summary>
-              <div className="absolute right-0 top-6 z-20 max-h-56 w-48 divide-y overflow-auto rounded-xl border border-border bg-surface p-2 text-[11px] shadow-lg">
-                {points.map((point) => (
-                  <div key={point.key} className="flex justify-between gap-2 py-1">
-                    <span>{point.label}</span>
-                    <span className="font-semibold tabular-nums">
-                      {privateMode ? "••" : point.display}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </details>
-          ) : null
+          <div className="flex shrink-0 items-center gap-1">
+            {actions}
+            {points.length > 0 ? (
+              <details className="relative shrink-0">
+                <summary className="cursor-pointer select-none rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary">
+                  Tabel
+                </summary>
+                <div className="absolute right-0 top-6 z-20 max-h-56 w-48 divide-y overflow-auto rounded-xl border border-border bg-surface p-2 text-[11px] shadow-lg">
+                  {points.map((point) => (
+                    <div key={point.key} className="flex justify-between gap-2 py-1">
+                      <span>{point.label}</span>
+                      <span className="font-semibold tabular-nums">
+                        {privateMode ? "••" : point.display}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+          </div>
         }
       />
       {points.length ? (

@@ -10,7 +10,6 @@ describe("admin UI contracts", () => {
     expect(hrefs).toEqual([
       "/admin/dashboard",
       "/admin/customers",
-      "/admin/analytics",
       "/admin/orders",
       "/admin/payments",
       "/admin/refunds",

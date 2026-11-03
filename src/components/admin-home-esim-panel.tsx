@@ -156,9 +156,7 @@ export function AdminHomeEsimPanel({
           <select
             id="home-hero-sky"
             value={draft.heroSky}
-            onChange={(event) =>
-              setDraft({ ...draft, heroSky: event.target.value as HeroSkyMode })
-            }
+            onChange={(event) => setDraft({ ...draft, heroSky: event.target.value as HeroSkyMode })}
             className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"
           >
             <option value="auto">Otomatis mengikuti jam perangkat pelanggan</option>
@@ -308,8 +306,7 @@ export function AdminHomeEsimPanel({
           </div>
           <p className="text-xs text-muted-foreground">
             Jadwal dinilai di server. Promo hanya tampil di Beranda, tidak dikirim lewat notifikasi
-            operasional. Ketukan rel, sheet, dan promo dicatat anonim; corongnya ada di Admin →
-            Analytics.
+            operasional. Ketukan rel, sheet, dan promo dicatat anonim; corongnya ada di Dashboard.
           </p>
         </fieldset>
 
