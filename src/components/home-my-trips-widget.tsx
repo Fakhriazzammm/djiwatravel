@@ -14,10 +14,17 @@ import {
   Sun,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import ItineraryMap from "@/components/itinerary-map";
 import { TripMiniRoute } from "@/components/trip-mini-route";
 import { formatTripMoney } from "@/lib/trip-money";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
-import { DEFAULT_ITINERARY_MAP_CONFIG, type ItineraryMapConfig } from "@/lib/itinerary-map";
+import {
+  BRAND_RED,
+  DEFAULT_ITINERARY_MAP_CONFIG,
+  type ItineraryMapConfig,
+  type MapPin,
+  type MapRoute,
+} from "@/lib/itinerary-map";
 import { buildHomeTripWidget, buildMyTripsHome, type HomeTripWidget } from "@/lib/my-trips-home";
 import { compactMoney } from "@/lib/trip-overview";
 import { getTripWeather } from "@/lib/trip-weather.fn";
@@ -137,6 +144,7 @@ export function HomeMyTripsWidget({ signedIn }: { signedIn: boolean }) {
 function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> }) {
   const [config, setConfig] = useState<ItineraryMapConfig>(DEFAULT_ITINERARY_MAP_CONFIG);
   const [weather, setWeather] = useState<DayWeather | null>(null);
+  const [mapBroken, setMapBroken] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +158,28 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
   }, []);
 
   const showRoute = Boolean(config.enabled && config.summaryMap && view.route);
+  // The same map as Ringkas and Agenda (MapLibre + OpenStreetMap), framed on the day's pins.
+  const mapModel = useMemo(() => {
+    if (!view.route) return { pins: [] as MapPin[], routes: [] as MapRoute[] };
+    const pins: MapPin[] = view.route.pins.map((pin) => ({
+      ...pin,
+      date: view.route!.date,
+      color: BRAND_RED,
+      muted: false,
+    }));
+    const routes: MapRoute[] =
+      pins.length > 1
+        ? [
+            {
+              date: view.route.date,
+              color: BRAND_RED,
+              muted: false,
+              points: pins.map((pin) => ({ lat: pin.lat, lng: pin.lng })),
+            },
+          ]
+        : [];
+    return { pins, routes };
+  }, [view.route]);
   const weatherPlace = useMemo(() => {
     const first = view.route?.pins[0];
     if (!config.weather || !view.route || !first) return null;
@@ -266,9 +296,30 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
     <div className={`${CARD} overflow-hidden`} data-testid="home-trips-widget" data-state="trip">
       {showRoute && view.route && (
         <div className="relative h-[118px]">
-          <TripMiniRoute pins={view.route.pins} />
-          <div className="absolute left-2.5 top-2.5">{badgeEl}</div>
-          {weatherChip && <div className="absolute right-2.5 top-2.5">{weatherChip}</div>}
+          {mapBroken ? (
+            <TripMiniRoute pins={view.route.pins} />
+          ) : (
+            <ItineraryMap
+              pins={mapModel.pins}
+              routes={mapModel.routes}
+              focus
+              activeId={null}
+              onSelect={() => undefined}
+              styleUrl={config.styleUrl}
+              framePadding={{ top: 44, bottom: 16 }}
+              onUnavailable={() => setMapBroken(true)}
+            />
+          )}
+          <Link
+            to="/my-trips/$tripId"
+            params={{ tripId: view.tripId }}
+            aria-label="Buka peta di Ringkas"
+            className="absolute inset-0 z-10"
+          />
+          <div className="pointer-events-none absolute left-2.5 top-2.5 z-20">{badgeEl}</div>
+          {weatherChip && (
+            <div className="pointer-events-none absolute right-2.5 top-2.5 z-20">{weatherChip}</div>
+          )}
         </div>
       )}
       <div className="px-3.5 pb-3.5 pt-3">

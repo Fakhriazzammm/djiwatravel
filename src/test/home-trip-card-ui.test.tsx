@@ -50,6 +50,11 @@ vi.mock("@/lib/my-trips.fn", () => ({
     ),
   ),
 }));
+vi.mock("@/components/itinerary-map", () => ({
+  default: ({ pins }: { pins: { id: string; n: number; title: string }[] }) => (
+    <div data-testid="map" data-pins={pins.map((p) => `${p.n}:${p.title}`).join(",")} />
+  ),
+}));
 vi.mock("@/lib/itinerary-map.fn", () => ({
   getItineraryMapConfig: vi.fn(),
 }));
@@ -69,7 +74,8 @@ describe("Home trip card (design A)", () => {
     });
     render(<HomeMyTripsWidget signedIn />);
     expect(await screen.findByText("Sedang berlangsung · Hari ke-1")).toBeTruthy();
-    expect(screen.getByLabelText("Rute 1 titik hari ini")).toBeTruthy();
+    expect(screen.getByTestId("map").dataset["pins"]).toBe("1:ngopi");
+    expect(screen.getByLabelText("Buka peta di Ringkas")).toBeTruthy();
     expect(await screen.findByText(/16°/)).toBeTruthy();
     expect(screen.getByText("ngopi")).toBeTruthy();
     expect(screen.getByText("2/2")).toBeTruthy();
@@ -86,7 +92,7 @@ describe("Home trip card (design A)", () => {
     });
     render(<HomeMyTripsWidget signedIn />);
     await screen.findByText("Buka Ringkas");
-    await waitFor(() => expect(screen.queryByLabelText("Rute 1 titik hari ini")).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId("map")).toBeNull());
     expect(screen.getByText("ngopi")).toBeTruthy();
   });
 });

@@ -143,7 +143,10 @@ export type HomeTripWidget =
       bookingCount: number;
       budget: { set: boolean; remainingMinor: number; currency: string };
       /** Pins of the agenda day shown on the mini route (numbered per day). */
-      route: { date: string; pins: { id: string; n: number; lat: number; lng: number }[] } | null;
+      route: {
+        date: string;
+        pins: { id: string; n: number; lat: number; lng: number; title: string }[];
+      } | null;
     };
 
 export type HomeAgendaNow = {
@@ -243,7 +246,16 @@ export function buildHomeTripWidget(
             latitude: item.latitude,
             longitude: item.longitude,
           });
-          return point ? [{ id: item.id ?? `a${index}`, lat: point.lat, lng: point.lng }] : [];
+          return point
+            ? [
+                {
+                  id: item.id ?? `a${index}`,
+                  lat: point.lat,
+                  lng: point.lng,
+                  title: item.title,
+                },
+              ]
+            : [];
         })
         .map((pin, index) => ({ ...pin, n: index + 1 }))
     : [];
