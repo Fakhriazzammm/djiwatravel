@@ -9,6 +9,9 @@ from memory:
   cross-project contracts, VPS targets, and release runbooks.
 - `DESIGN.md` — customer/admin UI, iOS-inspired hierarchy, accessibility,
   interaction, motion, and 3D asset contracts.
+- `DESIGN.md` → "Mobile compact scale" is mandatory for every customer page
+  or page fix (iOS density, no oversized or AI-slop UI); use the
+  `djiwa-mobile-ui` skill.
 - `LESSONS.md` — verified incidents, root causes, safe fixes, and prevention
   rules; append lessons instead of duplicating architecture facts.
 - `README.md` — short onboarding, command matrix, and document index.

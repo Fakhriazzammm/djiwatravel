@@ -280,3 +280,12 @@ Use this structure for each new lesson:
   (sekarang di `autodeploy.sh` dan `djiwa verify`); `deploy-vps.sh` memegang `flock` yang sama dengan
   autodeploy; jangan menjalankan dua jalur deploy bersamaan.
 - Verification boundary: pemicu deploy manual yang tepat tidak ditemukan di log.
+
+## Customer pages shipped oversized on mobile (2026-11-03)
+
+- Symptom: `/notifications` and `/wallet` looked like a scaled-up website on a phone: 28–38px titles and balances, 48px icons, 96px tiles, 44–48px buttons, so little content fit and the page scrolled as a whole.
+- Root cause: no numeric size standard; each page picked "comfortable" values by feel, and the old design guidance said "generous breathing room".
+- Safe fix: compact pass on both pages and a single scale in `DESIGN.md` ("Mobile compact scale"); notifications uses a fixed header with one inner scroll region.
+- Prevention rule: build and fix customer pages to the compact scale, load the `djiwa-mobile-ui` skill, and add migrated pages to `src/test/mobile-compact-scale.test.ts`. Sheets and toasts must clear the tab bar.
+- Verification boundary: sizes verified by source and tests; visual check on a 390×844 device is still manual.
+

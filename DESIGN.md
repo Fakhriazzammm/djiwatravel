@@ -32,10 +32,65 @@ primitives before adding a one-off value.
 | Radius | `--radius` plus existing radius utilities | Controls are smaller than cards; sheets are the largest continuous radius. |
 | Motion | short press feedback and route transitions | Respect `prefers-reduced-motion`; motion must explain state or direct attention. |
 
-Suggested scale: 4/8px rhythm, 16px minimum horizontal page padding, 24px
-section spacing, 32px+ hero breathing room. A touch target should be at least
-44px high even when its visual glyph is smaller. Avoid dense desktop tables on
+Suggested scale: 4/8px rhythm and 16px minimum horizontal page padding. For
+sizes, spacing, and density use the **Mobile compact scale** below; it overrides
+older generous-spacing guidance. A touch target keeps a ≥44px hit area even when
+its visual glyph is smaller. Avoid dense desktop tables on
 mobile; use cards or horizontally scrollable data with an accessible summary.
+
+## Mobile compact scale (iOS density standard)
+
+Every customer page and every page fix is built to this scale so the app feels
+like a native iOS app on a 390×844 device, not a scaled-up website. This is the
+default; a bigger value needs a stated reason in the PR/handoff. Home hero and
+marketing surfaces are the only places that may exceed it.
+
+| Element | Standard |
+| --- | --- |
+| Page padding | `px-4`; `max-w-md`; `safe-top`; content ends above the tab bar (`pb-24`/`pb-28`) |
+| Spacing | between groups `mt-3`–`mt-4`; inside cards `p-3` (hero card `p-4`); list row `px-3 py-2` |
+| Page title | `text-[22px] font-bold leading-tight tracking-tight` + one 12px muted subtitle. Do **not** use `large-title`/`large-title-xl` on app screens. |
+| Section label | `text-[11px] font-medium uppercase tracking-wide text-muted-foreground`, `px-3` |
+| Row title / body / meta | 14px semibold / 13px muted / 11px muted. Nothing above 16px except the money figure. |
+| Money hero / summary | hero balance max 28px bold; summary tiles 15px bold |
+| Buttons | primary CTA `min-h-10 rounded-xl text-[14px]`; secondary `min-h-9 text-[13px]`; text link 13px |
+| Chips / segmented / search | chip `min-h-8 text-xs`; segmented and search `min-h-9` |
+| Header icon button | `size-9` with `size-4` glyph |
+| Icons | inline glyph `size-4`; leading tile `size-8 rounded-lg` with `size-4` glyph; 3D/illustration tile `size-9` (36px) |
+| Radius | grouped lists `rounded-2xl`; hero card `rounded-[22px]`; controls `rounded-xl`; chips `rounded-full` |
+| List row height | whole row is the tap target, `min-h-12` (48px) |
+| Touch targets | visual size may be 32–40px; keep a ≥44px hit area (row tap, `tap` utility, or padding) for small icon buttons |
+| Sheets / toasts | sit above the tab bar: `mb-[calc(6.5rem+env(safe-area-inset-bottom))]` or `bottom-24`; never behind it |
+
+Layout rules:
+
+- A page has at most one scroll region. App-like screens with a fixed header
+  (inbox, lists with filters) use `h-dvh flex-col overflow-hidden` with a header
+  `shrink-0` and an inner `min-h-0 flex-1 overflow-y-auto overscroll-contain
+  pb-28` list; see `src/routes/notifications.tsx`. Content pages scroll normally
+  inside `Page`.
+- The first screen at 390×844 must show the header, the primary action, and at
+  least three rows/cards of real content. If it does not, shrink or merge before
+  adding anything.
+- iOS patterns first: inset grouped lists, swipe actions, action sheets,
+  segmented controls, undo toasts instead of confirm dialogs for reversible
+  actions.
+
+Anti-slop rules (reject in review):
+
+- No oversized empty states (icon ≤ `size-8`, two short lines), no hero copy
+  blocks, no repeated subtitle that restates the title.
+- No emoji or decorative sparkles as UI icons; use lucide at 1.8 stroke or the
+  approved 3D assets. No gradients except the brand wallet card/hero.
+- No nested cards, heavy shadows, or glass blur on content surfaces.
+- One primary action per card; secondary actions are text links or ⋯ menus.
+- Copy is short, concrete Indonesian. No filler like "Kami akan senang…".
+- Never ship a size by feel: use the table or write the exception down.
+
+`src/test/mobile-compact-scale.test.ts` enforces the type-size ceiling on the
+pages already migrated; add a page to its list when you bring it to this scale.
+The project skill `djiwa-mobile-ui` (`.claude/skills/djiwa-mobile-ui/`) applies
+this checklist when building or fixing any page.
 
 ## Responsive app shell
 
