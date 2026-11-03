@@ -60,7 +60,7 @@ import {
   type ItineraryMapConfig,
 } from "@/lib/itinerary-map";
 import { Page, btnRed, btnSoft, group } from "@/components/shell";
-import { TripNavBar, TripTabBar, type TripTabId } from "@/components/trip-ios";
+import { TripTabBar, type TripTabId } from "@/components/trip-ios";
 import { BudgetEditor, ExpenseEditor } from "@/components/trip-budget-ios";
 import {
   Sheet,
@@ -202,7 +202,6 @@ function TripSection() {
   const categories = data.categories as CategoryOption[];
   return (
     <Page tabs={false}>
-      <TripNavBar backLabel={trip.name} backTo="trip" backTripId={tripId} iconOnly />
       {section !== "itinerary" && (
         <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
           {labels[section] ?? "Perjalanan"}
