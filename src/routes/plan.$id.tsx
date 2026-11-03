@@ -7,6 +7,7 @@ import {
   packageDestinationLabel,
 } from "@/lib/package-copy";
 import { breadcrumbJsonLd, jsonLdScript, productJsonLd, SEO_BASE_URL } from "@/lib/seo";
+import { destinationOgImage } from "@/lib/destination-artwork";
 import { getIndexablePlan } from "@/lib/seo-indexability.fn";
 
 export const Route = createFileRoute("/plan/$id")({
@@ -51,7 +52,7 @@ export const Route = createFileRoute("/plan/$id")({
             url,
             priceIdr: plan.priceIdr,
             available: plan.sellable,
-            image: `${SEO_BASE_URL}/icon-512.png`,
+            image: destinationOgImage(destination.code, SEO_BASE_URL),
             durationDays: plan.durationDays,
             dataLabel: packageDataLabel(plan),
             coverage: packageCoverageLabel(plan),

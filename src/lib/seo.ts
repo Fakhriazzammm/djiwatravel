@@ -68,6 +68,17 @@ export function productJsonLd(input: {
       availability:
         input.available === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
       seller: { "@type": "Organization", name: "Djiwa Travel", url: `${SEO_BASE_URL}/` },
+      // eSIM is delivered digitally (QR/activation link), so shipping is free and has no transit.
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "IDR" },
+        shippingDestination: { "@type": "DefinedRegion", addressCountry: "ID" },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" },
+          transitTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 0, unitCode: "DAY" },
+        },
+      },
     },
   };
 }

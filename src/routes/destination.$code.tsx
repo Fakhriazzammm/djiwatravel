@@ -279,10 +279,14 @@ function PackageRow({
         aria-label={`Bandingkan ${pkg.name}`}
       />
       <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-bold tracking-tight">
+        <Link
+          to="/plan/$id"
+          params={{ id: pkg.packageCode }}
+          className="block rounded-sm text-[15px] font-bold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           {packageDataLabel(pkg)}
           <span className="font-medium text-muted-foreground"> · {pkg.durationDays} hari</span>
-        </p>
+        </Link>
         <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
           {showCoverage
             ? packageCoverageLabel(pkg)
