@@ -734,7 +734,7 @@ export function ItineraryEditor({
                   : "space-y-2"
               }
             >
-              <div className="flex gap-1.5 overflow-x-auto px-0.5 pb-0.5">
+              <div className="flex flex-wrap gap-1.5 px-0.5 pb-0.5">
                 {days.length > 1 ? (
                   <>
                     {days.map((day) => (
@@ -945,7 +945,7 @@ export function ItineraryEditor({
                 </motion.button>
               </div>
               {(dayRouteUrl || (mapConfig?.poiHelper && !focus)) && (
-                <div className="flex gap-1.5 overflow-x-auto px-0.5 pb-0.5">
+                <div className="flex flex-wrap gap-1.5 px-0.5 pb-0.5">
                   {dayRouteUrl && (
                     <motion.a
                       href={dayRouteUrl}
@@ -984,7 +984,7 @@ export function ItineraryEditor({
                             {...(on
                               ? { style: { backgroundColor: category.color, color: "#fff" } }
                               : {})}
-                            className="tap inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full bg-surface px-2.5 text-[11px] font-semibold shadow-sm"
+                            className="tap inline-flex min-h-7 items-center gap-1 rounded-full bg-surface px-2.5 text-[11px] font-semibold shadow-sm"
                           >
                             <svg
                               viewBox="0 0 24 24"
