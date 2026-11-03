@@ -254,27 +254,27 @@ export function Wallet() {
     NATIVE_WALLET_ACTIONS.includes(action.label),
   );
   const capClass =
-    "mb-2 mt-6 px-4 text-[13px] font-medium uppercase tracking-wide text-muted-foreground";
+    "mb-1.5 mt-4 px-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
   const tileBase =
-    "tap relative flex min-h-[96px] w-full flex-col items-center rounded-2xl px-0.5 pb-2.5 pt-1.5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "tap relative flex min-h-[72px] w-full flex-col items-center rounded-xl px-0.5 pb-1.5 pt-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <Page>
-      <header className="flex items-end justify-between gap-3 pt-2">
+      <header className="flex items-center justify-between gap-3 pt-1">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-red">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-red">
             Djiwa Travel
           </p>
-          <h1 className="large-title mt-1">Dompet</h1>
+          <h1 className="text-[22px] font-bold leading-tight tracking-tight">Dompet</h1>
         </div>
         <button
           type="button"
-          className="tap flex size-11 items-center justify-center rounded-full bg-surface shadow-[inset_0_0_0_1px_rgba(60,60,67,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="tap flex size-9 items-center justify-center rounded-full bg-surface shadow-[inset_0_0_0_1px_rgba(60,60,67,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Segarkan Wallet"
           onClick={() => void loadWallet()}
           disabled={loading || authLoading || !user}
         >
-          <RefreshCw className={`size-5 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
+          <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
         </button>
       </header>
 
@@ -290,7 +290,7 @@ export function Wallet() {
             initial={reduce ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={reduce ? { duration: 0 } : springIos}
-            className="relative mt-4 overflow-hidden rounded-[28px] bg-[linear-gradient(150deg,#e5303f,#a81f33)] p-5 text-white shadow-[0_20px_36px_-22px_rgba(229,48,63,0.8)]"
+            className="relative mt-3 overflow-hidden rounded-[22px] bg-[linear-gradient(150deg,#e5303f,#a81f33)] p-4 text-white shadow-[0_20px_36px_-22px_rgba(229,48,63,0.8)]"
             aria-labelledby="wallet-card-title"
           >
             <div
@@ -300,53 +300,53 @@ export function Wallet() {
             <div className="relative">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p id="wallet-card-title" className="text-sm font-semibold text-white/85">
+                  <p id="wallet-card-title" className="text-[13px] font-semibold text-white/85">
                     Wallet Djiwa Pay
                   </p>
-                  <p className="mt-0.5 text-xs text-white/70">
+                  <p className="text-[11px] text-white/70">
                     IDR · {walletStatusLabel(wallet.status)}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setVisible((current) => !current)}
-                  className="tap flex size-11 items-center justify-center rounded-full bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="tap flex size-9 items-center justify-center rounded-full bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"}
                 >
                   {visible ? (
-                    <EyeOff className="size-5" aria-hidden="true" />
+                    <EyeOff className="size-4" aria-hidden="true" />
                   ) : (
-                    <Eye className="size-5" aria-hidden="true" />
+                    <Eye className="size-4" aria-hidden="true" />
                   )}
                 </button>
               </div>
-              <p className="mt-5 text-xs text-white/75">Saldo tersedia</p>
-              <p className="mt-0.5 text-[38px] font-bold leading-tight tracking-tight tabular-nums">
+              <p className="mt-3 text-[11px] text-white/75">Saldo tersedia</p>
+              <p className="mt-0.5 text-[28px] font-bold leading-tight tracking-tight tabular-nums">
                 {formatted(wallet.available_balance)}
               </p>
-              <p className="mt-1 text-xs text-white/70">
+              <p className="text-[11px] text-white/70">
                 ID Wallet · {maskedId(wallet.customer_id, visible)}
               </p>
-              <div className="mt-5 flex gap-2.5">
+              <div className="mt-3 flex gap-2">
                 <button
                   type="button"
                   onClick={() => setTopupOpen(true)}
-                  className="tap min-h-12 flex-1 rounded-2xl bg-white text-[16px] font-semibold text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="tap min-h-10 flex-1 rounded-xl bg-white text-[14px] font-semibold text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                   Isi Saldo
                 </button>
                 <Link
                   to="/wallet/pay"
-                  className="tap inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-white/20 text-[16px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="tap inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-white/20 text-[14px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                   Buka Djiwa Pay
-                  <ExternalLink className="size-4" aria-hidden="true" />
+                  <ExternalLink className="size-3.5" aria-hidden="true" />
                 </Link>
               </div>
             </div>
           </motion.section>
 
-          <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <Summary
               label="Total masuk"
               value={formatted(wallet.total_credited)}
@@ -406,8 +406,8 @@ export function Wallet() {
           )}
 
           <h2 className={capClass}>Aksi cepat</h2>
-          <section className="overflow-hidden rounded-[20px] bg-surface" aria-label="Aksi cepat">
-            <div className="grid grid-cols-4 gap-0.5 px-1.5 py-3" role="list">
+          <section className="overflow-hidden rounded-2xl bg-surface" aria-label="Aksi cepat">
+            <div className="grid grid-cols-4 gap-0.5 px-1 py-2" role="list">
               {nativeActions.map((action) => (
                 <div key={action.label} role="listitem">
                   <button
@@ -419,11 +419,11 @@ export function Wallet() {
                     <img
                       src={action.asset}
                       alt=""
-                      width={48}
-                      height={48}
-                      className="size-12 object-contain"
+                      width={36}
+                      height={36}
+                      className="size-9 object-contain"
                     />
-                    <span className="mt-1.5 text-[11px] font-semibold leading-tight">
+                    <span className="mt-1 text-[10.5px] font-semibold leading-tight">
                       {action.label}
                     </span>
                     {!action.supported && (
@@ -441,12 +441,12 @@ export function Wallet() {
                   <img
                     src="/assets/explore/services/esim.svg"
                     alt=""
-                    width={48}
-                    height={48}
-                    className="size-12 object-contain"
+                    width={36}
+                    height={36}
+                    className="size-9 object-contain"
                   />
-                  <span className="mt-1.5 text-[11px] font-semibold leading-tight">Beli eSIM</span>
-                  <span className="text-[10px] text-muted-foreground">Bayar dari saldo</span>
+                  <span className="mt-1 text-[10.5px] font-semibold leading-tight">Beli eSIM</span>
+                  <span className="text-[9px] text-muted-foreground">Bayar dari saldo</span>
                 </Link>
               </div>
             </div>
@@ -468,7 +468,7 @@ export function Wallet() {
             }}
           />
 
-          <section className="mt-7" aria-labelledby="wallet-history-title">
+          <section className="mt-5" aria-labelledby="wallet-history-title">
             <SectionTitle
               action={
                 <span className="text-xs font-normal normal-case">
@@ -481,7 +481,7 @@ export function Wallet() {
               </span>
             </SectionTitle>
             <div
-              className="mt-3 grid grid-cols-2 gap-0.5 rounded-xl bg-secondary p-0.5"
+              className="mt-2 grid grid-cols-2 gap-0.5 rounded-lg bg-secondary p-0.5"
               role="group"
               aria-label="Filter riwayat Wallet"
             >
@@ -492,7 +492,7 @@ export function Wallet() {
                   aria-pressed={scope === option}
                   onClick={() => setScope(option)}
                   disabled={loading}
-                  className={`tap min-h-11 rounded-[10px] text-[13px] font-semibold transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${scope === option ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground"}`}
+                  className={`tap min-h-9 rounded-[8px] text-xs font-semibold transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${scope === option ? "bg-surface text-foreground shadow-sm" : "text-muted-foreground"}`}
                 >
                   {WALLET_SCOPE_LABELS[option]}
                 </button>
@@ -511,13 +511,13 @@ export function Wallet() {
                   : "Belum ada transaksi Wallet."}
               </p>
             ) : (
-              <div className="mt-3 space-y-5">
+              <div className="mt-2 space-y-3">
                 {groups.map((group) => (
                   <div key={group.key}>
-                    <h3 className="mb-2 px-4 text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <h3 className="mb-1 px-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                       {group.label}
                     </h3>
-                    <div className="overflow-hidden rounded-[20px] bg-surface">
+                    <div className="overflow-hidden rounded-2xl bg-surface">
                       {group.items.map((item) =>
                         item.kind === "ledger" ? (
                           <LedgerRow
@@ -605,20 +605,20 @@ function Summary({
   tone: string;
 }) {
   return (
-    <div className="rounded-[18px] bg-surface p-3.5">
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className={`size-4 ${tone}`} aria-hidden="true" />
+    <div className="rounded-2xl bg-surface px-3 py-2.5">
+      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        <Icon className={`size-3.5 ${tone}`} aria-hidden="true" />
         {label}
       </p>
-      <p className="mt-1 truncate text-[18px] font-bold tabular-nums">{value}</p>
+      <p className="truncate text-[15px] font-bold tabular-nums">{value}</p>
     </div>
   );
 }
 
 function PurchaseRow({ purchase, visible }: { purchase: TravelPurchaseRow; visible: boolean }) {
   return (
-    <div className="relative flex min-h-14 items-center gap-3 px-4 py-2 [&+&]:before:absolute [&+&]:before:left-[64px] [&+&]:before:right-0 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border/60 [&+&]:before:content-['']">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
+    <div className="relative flex min-h-12 items-center gap-2.5 px-3 py-2 [&+&]:before:absolute [&+&]:before:left-[56px] [&+&]:before:right-0 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border/60 [&+&]:before:content-['']">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
         <ArrowUpRight className="size-4" aria-hidden="true" />
       </span>
       <div className="min-w-0 flex-1">
@@ -643,14 +643,14 @@ function LedgerRow({ entry, visible }: { entry: CustomerWalletLedgerEntry; visib
   const StatusIcon = credit ? ArrowDownLeft : ArrowUpRight;
   const fromTravel = isDjiwaTravelSourceApp(entry.source_app);
   return (
-    <div className="relative flex min-h-16 items-center gap-3 px-4 py-2.5 [&+&]:before:absolute [&+&]:before:left-[68px] [&+&]:before:right-0 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border/60 [&+&]:before:content-['']">
+    <div className="relative flex min-h-12 items-center gap-2.5 px-3 py-2 [&+&]:before:absolute [&+&]:before:left-[56px] [&+&]:before:right-0 [&+&]:before:top-0 [&+&]:before:h-px [&+&]:before:bg-border/60 [&+&]:before:content-['']">
       <span
-        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${credit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-brand-red"}`}
+        className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${credit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-brand-red"}`}
       >
-        <StatusIcon className="size-5" aria-hidden="true" />
+        <StatusIcon className="size-4" aria-hidden="true" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold">
+        <p className="truncate text-[13px] font-semibold">
           {title}
           {fromTravel && (
             <span className="ml-1.5 rounded-full bg-brand-red-soft px-1.5 py-0.5 align-middle text-[10px] font-bold text-brand-red">
@@ -658,13 +658,13 @@ function LedgerRow({ entry, visible }: { entry: CustomerWalletLedgerEntry; visib
             </span>
           )}
         </p>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-[11px] text-muted-foreground">
           {date.toLocaleDateString("id-ID")} · {ledgerStatusLabel(entry.status)}
           {reference ? ` · ${reference}` : ""}
         </p>
       </div>
       <p
-        className={`shrink-0 text-[15px] font-semibold tabular-nums ${credit ? "text-emerald-700" : "text-foreground"}`}
+        className={`shrink-0 text-[13px] font-semibold tabular-nums ${credit ? "text-emerald-700" : "text-foreground"}`}
       >
         {visible ? `${credit ? "+" : "−"}${rupiah(entry.amount)}` : "••••••"}
       </p>
