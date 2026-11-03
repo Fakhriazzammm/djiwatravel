@@ -1,0 +1,7 @@
+[Unit]
+Description=Djiwa Travel payment sweep and eSIM sync
+After=djiwatravel.service
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/djiwatravel-task.env
+ExecStart=/usr/bin/curl -fsS -m 120 -X POST -H "x-djiwa-task-secret: ${ESIM_SYNC_TASK_SECRET}" http://127.0.0.1:3000/api/tasks/esim-sync

@@ -223,6 +223,10 @@ The separate Tentram/Pay target is conventionally documented at
 Travel deploy script against that checkout or infer its database/service from
 Travel's values.
 
+Alur kerja harian, peta aliran lintas VPS, runbook Tentram, dan CLI `scripts/djiwa`
+(`status`, `verify`, `gate`, `ship`, `db`, `env`, `drift`, `logs`, `new`) ada di
+[`docs/DEV-WORKFLOW.md`](docs/DEV-WORKFLOW.md).
+
 ## Release reporting contract
 
 Use these distinct states in handoff notes:

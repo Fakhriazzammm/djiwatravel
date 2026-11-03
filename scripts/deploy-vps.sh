@@ -127,6 +127,24 @@ if [ "${DRY_RUN}" = "1" ]; then
   exit 0
 fi
 
+# Auto-deploy di VPS dan script ini sama-sama menukar .output. Tanpa kunci bersama, swap keduanya
+# bisa berselang-seling: proses yang berjalan memegang daftar aset satu build sementara folder
+# berisi build lain, sehingga HTML merujuk JS yang dijawab 404 dan halaman hanya menampilkan
+# skeleton (insiden 3 Nov 2026, lihat LESSONS.md). Pegang flock yang sama dengan autodeploy.sh
+# selama seluruh proses; sebuah ssh latar belakang memegangnya dan dilepas saat script ini selesai.
+LOCK_FILE="${DJIWA_DEPLOY_LOCK:-/tmp/djiwa-autodeploy.lock}"
+LOCK_FIFO="$(mktemp -u "${TMPDIR:-/tmp}/djiwa-lock.XXXXXX")"
+mkfifo "${LOCK_FIFO}"
+ssh -tt "${SSH_OPTS[@]}" "${HOST}" "exec 9>'${LOCK_FILE}'; flock -n 9 || { echo BUSY; exit 0; }; echo LOCKED; while :; do sleep 2; done" >"${LOCK_FIFO}" 2>/dev/null &
+LOCK_SSH_PID=$!
+trap 'kill "${LOCK_SSH_PID}" 2>/dev/null || true; rm -f "${LOCK_FIFO}"' EXIT
+LOCK_STATE="$(head -n 1 "${LOCK_FIFO}" | tr -d '\r')"
+if [ "${LOCK_STATE}" != "LOCKED" ]; then
+  echo "ERROR: auto-deploy (atau deploy lain) sedang berjalan di ${HOST}; coba lagi beberapa menit lagi." >&2
+  exit 2
+fi
+echo "lock    : ${LOCK_FILE} dipegang (auto-deploy menunggu sampai selesai)"
+
 if [ "${SKIP_MIGRATE}" = "0" ]; then
   step "Migrasi database"
   # Sync dulu supaya scripts/apply-migrations.sh dan migrations/ terbaru ada di host.

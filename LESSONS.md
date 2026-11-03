@@ -263,3 +263,20 @@ Use this structure for each new lesson:
   Tentram `pos.mayar_payment_events` queue needs `djiwa-mayar-processor.timer` to drain.
 - Verification boundary: Travel finance posting was confirmed by the sweep report, not by reading
   the Pay ledger.
+
+### 2026-11-03 — Halaman hanya skeleton setelah dua deploy bertabrakan
+
+- Symptom: `djiwatravel.com` memuat tetapi hanya menampilkan skeleton; data tidak pernah muncul.
+- Evidence: HTML merujuk `index-D_GZSaka.js` dan 4 JS lain yang dijawab **404** oleh Nitro maupun nginx,
+  padahal file-nya ada di `.output/public/assets`. Dua cadangan `.output.bak-20261103-185521` dan
+  `-185531` menunjukkan `.output` ditukar dua kali dalam 10 detik. Respons aset membawa
+  `last-modified` yang berbeda dari manifest di `index.mjs` pada disk.
+- Root cause: autodeploy dan sebuah deploy manual (`deploy-vps.sh`, tanpa `flock`) menukar `.output`
+  bersamaan. Proses Node yang berjalan menyajikan aset dari daftar yang dimuat saat start (satu build)
+  sementara chunk server dimuat malas dari folder yang sudah berisi build lain. Cek autodeploy lama hanya
+  memastikan file ada di disk, jadi deploy rusak itu lolos.
+- Safe fix: `sudo systemctl restart djiwatravel` (proses memuat build yang konsisten).
+- Prevention rule: verifikasi deploy harus meminta setiap JS/CSS yang dirujuk beranda **lewat server**
+  (sekarang di `autodeploy.sh` dan `djiwa verify`); `deploy-vps.sh` memegang `flock` yang sama dengan
+  autodeploy; jangan menjalankan dua jalur deploy bersamaan.
+- Verification boundary: pemicu deploy manual yang tepat tidak ditemukan di log.

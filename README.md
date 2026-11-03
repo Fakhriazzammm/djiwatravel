@@ -51,6 +51,8 @@ Sebelum menyebut fitur/perbaikan selesai, pastikan:
 | Build | `npm run build` | `.output/server/index.mjs` tersedia |
 | Lint | `npm run lint` | error lint dicatat atau nol |
 | Route inventory | `bash scripts/list-routes.sh` | route bersumber dari `src/routes/` |
+| Status 2 VPS | `scripts/djiwa status` | deploy, service, timer, kontrak lintas VPS |
+| Gate + rilis | `scripts/djiwa gate` / `scripts/djiwa ship -m "…" <path>` | lint/tsc/tes, commit terarah, push, autodeploy terverifikasi |
 
 Gunakan `.env.example` hanya sebagai daftar nama variable. Nilai auth,
 database, AI, eSIM Access, Mayar, dan Calendar harus berada di environment
@@ -79,6 +81,9 @@ production atau deploy ke VPS hanya jika diminta. Auto-deploy dan timer ada di
 Laporkan status secara terpisah: local source, commit, pushed revision,
 deployed artifact, service/listener health, dan public reachability. HTTP 200
 saja tidak membuktikan artifact, auth, data, atau migrasi yang benar.
+
+Alur kerja lengkap (auto-deploy, peta 2 VPS, runbook Tentram, CLI `scripts/djiwa`)
+ada di [`docs/DEV-WORKFLOW.md`](docs/DEV-WORKFLOW.md).
 
 ## Cross-project boundary
 

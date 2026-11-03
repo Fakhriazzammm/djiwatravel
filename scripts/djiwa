@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Shortcut: scripts/djiwa <command>   (same as: node scripts/djiwa.mjs <command>)
+exec node "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/djiwa.mjs" "$@"
