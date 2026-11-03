@@ -1,4 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import { motion, useReducedMotion } from "motion/react";
+import texture from "@/assets/ticket-texture.jpg";
+import { springSheet } from "@/lib/motion";
 import { ticketStub, localDayKey } from "@/lib/trip-ticket";
 
 export type TicketData = {
@@ -23,11 +26,27 @@ const shortDate = (value: string | null) => {
     : new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
 };
 
-/** Compact boarding-pass style card: trip info on the left, countdown stub on the right. */
-export function TripTicket({ trip, title }: { trip: TicketData; title: string }) {
+const barcode = (color: string) =>
+  `repeating-linear-gradient(90deg, ${color} 0 1px, transparent 1px 3px, ${color} 3px 5px, transparent 5px 6px, ${color} 6px 7px, transparent 7px 10px)`;
+
+/**
+ * Compact boarding-pass style card: soft map texture and a red edge on the left, a countdown
+ * stub (perforation, notches, barcode) on the right. Enters with a stagger and, for active
+ * trips, a slow light sweep; both are skipped when the user prefers reduced motion.
+ */
+export function TripTicket({
+  trip,
+  title,
+  index = 0,
+}: {
+  trip: TicketData;
+  title: string;
+  index?: number;
+}) {
+  const reduce = useReducedMotion();
   const stub = ticketStub(trip, localDayKey());
   const past = trip.status === "past";
-  const undated = !trip.departure_date;
+  const muted = past || !trip.departure_date;
   const from = shortDate(trip.departure_date);
   const to = shortDate(trip.return_date);
   const progress =
@@ -36,60 +55,104 @@ export function TripTicket({ trip, title }: { trip: TicketData; title: string })
       : trip.total_budget_minor > 0
         ? Math.min(100, Math.round((trip.spent_minor / trip.total_budget_minor) * 100))
         : 0;
-  const stubTone = past
-    ? "bg-secondary text-muted-foreground"
-    : undated
-      ? "bg-secondary text-muted-foreground"
-      : "bg-brand-red-soft text-brand-red";
 
   return (
-    <Link
-      to="/my-trips/$tripId"
-      params={{ tripId: trip.id }}
-      className="tap relative flex min-h-[76px] overflow-hidden rounded-[14px] bg-surface ring-1 ring-border/50"
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 14, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={reduce ? { duration: 0 } : { ...springSheet, delay: Math.min(index, 6) * 0.06 }}
+      {...(reduce ? {} : { whileTap: { scale: 0.98 } })}
     >
-      <div className="min-w-0 flex-1 px-3 py-2.5">
-        <p className="truncate text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground">
-          {trip.destination_name}
-        </p>
-        <h2 className="truncate text-[15px] font-semibold leading-tight">{title}</h2>
-        <p className="truncate text-[11.5px] text-muted-foreground">
-          {from && to ? `${from} – ${to}` : "Tanggal belum diatur"}
-          {trip.travelers_count ? ` · ${trip.travelers_count} traveler` : ""}
-        </p>
-        {progress > 0 && !past && (
-          <div
-            className="mt-1.5 h-1 overflow-hidden rounded-full bg-secondary"
-            role="progressbar"
-            aria-label="Progres persiapan"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-          >
-            <div className="h-full rounded-full bg-brand-red" style={{ width: `${progress}%` }} />
-          </div>
-        )}
-      </div>
-      <div
-        className={`relative flex w-[68px] shrink-0 flex-col items-center justify-center border-l-[1.5px] border-dashed border-border px-1 text-center ${stubTone}`}
+      <Link
+        to="/my-trips/$tripId"
+        params={{ tripId: trip.id }}
+        className="relative flex min-h-[84px] overflow-hidden rounded-2xl bg-surface shadow-[0_1px_2px_rgba(20,24,40,0.06)] ring-1 ring-border/50"
       >
         <span
           aria-hidden="true"
-          className="absolute -top-1.5 -left-[7px] size-3 rounded-full bg-background"
+          className="pointer-events-none absolute inset-0 opacity-[0.17] mix-blend-multiply"
+          style={{
+            backgroundImage: `url(${texture})`,
+            backgroundSize: "cover",
+            backgroundPosition: "left center",
+          }}
         />
         <span
           aria-hidden="true"
-          className="absolute -bottom-1.5 -left-[7px] size-3 rounded-full bg-background"
+          className={`absolute inset-x-0 top-0 h-[3px] ${muted ? "bg-border" : "bg-gradient-to-r from-[#ff8a8e] to-brand-red"}`}
         />
-        <span
-          className={`font-extrabold leading-none ${stub.value.length > 3 ? "text-[12px]" : "text-[20px]"}`}
+        {!muted && !reduce && (
+          <motion.span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/70 to-transparent"
+            initial={{ x: "-130%" }}
+            animate={{ x: "420%" }}
+            transition={{
+              duration: 1.6,
+              ease: "easeInOut",
+              delay: 0.8 + index * 0.35,
+              repeat: Infinity,
+              repeatDelay: 6,
+            }}
+          />
+        )}
+
+        <div className="relative min-w-0 flex-1 px-3.5 pb-2.5 pt-3">
+          <p className="flex items-center gap-1.5 truncate text-[9.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <span aria-hidden="true" className="text-brand-red">
+              ✈
+            </span>
+            {trip.destination_name}
+          </p>
+          <h2 className="truncate text-[16px] font-semibold leading-snug tracking-tight">
+            {title}
+          </h2>
+          <p className="truncate text-[11.5px] text-muted-foreground">
+            {from && to ? `${from} – ${to}` : "Tanggal belum diatur"}
+            {trip.travelers_count ? ` · ${trip.travelers_count} traveler` : ""}
+          </p>
+          {progress > 0 && !past && (
+            <div
+              className="mt-2 h-[3px] w-[70%] overflow-hidden rounded-full bg-secondary"
+              role="progressbar"
+              aria-label="Progres persiapan"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progress}
+            >
+              <div className="h-full rounded-full bg-brand-red" style={{ width: `${progress}%` }} />
+            </div>
+          )}
+        </div>
+
+        <div
+          className={`relative flex w-[78px] shrink-0 flex-col items-center justify-center gap-1 border-l-[1.5px] border-dashed border-border ${
+            muted ? "bg-secondary/60 text-muted-foreground" : "bg-brand-red-soft/70 text-brand-red"
+          }`}
         >
-          {stub.value}
-        </span>
-        <span className="mt-0.5 text-[8.5px] font-semibold leading-tight tracking-wide">
-          {stub.unit}
-        </span>
-      </div>
-    </Link>
+          <span
+            aria-hidden="true"
+            className="absolute -left-[7px] -top-[7px] size-[13px] rounded-full bg-background ring-1 ring-inset ring-border/60"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute -bottom-[7px] -left-[7px] size-[13px] rounded-full bg-background ring-1 ring-inset ring-border/60"
+          />
+          <span
+            className={`font-extrabold leading-none tracking-tight ${stub.value.length > 3 ? "text-[15px]" : "text-[22px]"}`}
+          >
+            {stub.value}
+          </span>
+          <span className="-mt-0.5 text-center text-[8.5px] font-bold leading-tight tracking-[0.1em]">
+            {stub.unit}
+          </span>
+          <span
+            aria-hidden="true"
+            className="mt-0.5 h-3 w-9 opacity-55"
+            style={{ backgroundImage: barcode(muted ? "#8e8e93" : "#c92f3a") }}
+          />
+        </div>
+      </Link>
+    </motion.div>
   );
 }

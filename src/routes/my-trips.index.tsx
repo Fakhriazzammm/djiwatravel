@@ -302,8 +302,8 @@ function TodayView({
       {upcoming.length ? (
         <section aria-labelledby="all-trips-heading" className="space-y-2">
           <SectionHeading id="all-trips-heading" title="Perjalanan" count={upcoming.length} />
-          {upcoming.map((trip) => (
-            <TripTicket key={trip.id} trip={trip} title={tripTitle(trip)} />
+          {upcoming.map((trip, index) => (
+            <TripTicket key={trip.id} trip={trip} title={tripTitle(trip)} index={index} />
           ))}
         </section>
       ) : (
@@ -402,8 +402,8 @@ function LogbookView({ trips }: { trips: Trip[] }) {
       {pastTrips.length ? (
         <>
           <SectionHeading id="past-trips-heading" title="Selesai" count={pastTrips.length} />
-          {pastTrips.map((trip) => (
-            <TripTicket key={trip.id} trip={trip} title={tripTitle(trip)} />
+          {pastTrips.map((trip, index) => (
+            <TripTicket key={trip.id} trip={trip} title={tripTitle(trip)} index={index} />
           ))}
         </>
       ) : (
