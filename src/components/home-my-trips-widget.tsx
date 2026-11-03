@@ -1,24 +1,46 @@
 import { Link } from "@tanstack/react-router";
 import {
-  BriefcaseBusiness,
   CalendarRange,
   Check,
   ChevronRight,
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  CloudSun,
   Landmark,
-  Ticket,
+  Snowflake,
+  Sun,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { buildHomeTripWidget, buildMyTripsHome } from "@/lib/my-trips-home";
+import { TripMiniRoute } from "@/components/trip-mini-route";
+import { formatTripMoney } from "@/lib/trip-money";
+import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
+import { DEFAULT_ITINERARY_MAP_CONFIG, type ItineraryMapConfig } from "@/lib/itinerary-map";
+import { buildHomeTripWidget, buildMyTripsHome, type HomeTripWidget } from "@/lib/my-trips-home";
+import { compactMoney } from "@/lib/trip-overview";
+import { getTripWeather } from "@/lib/trip-weather.fn";
+import {
+  describeWeather,
+  forecastablePlaces,
+  type DayWeather,
+  type WeatherKind,
+} from "@/lib/trip-weather";
 import { getMyTripsHome } from "@/lib/my-trips.fn";
 
 type Section = "itinerary" | "budget" | "checklist" | "bookings";
 
-const SECTIONS: { id: Section; label: string; icon: typeof Check; tone: string }[] = [
-  { id: "itinerary", label: "Itinerary", icon: CalendarRange, tone: "bg-[#E8F1FF] text-[#0a84ff]" },
-  { id: "budget", label: "Budget", icon: Landmark, tone: "bg-[#E8F8EE] text-[#28b84f]" },
-  { id: "checklist", label: "Checklist", icon: Check, tone: "bg-[#FFF2DD] text-[#ff8a00]" },
-  { id: "bookings", label: "Booking", icon: Ticket, tone: "bg-[#F1E8FF] text-[#8e44ff]" },
-];
+const WEATHER_ICON: Record<WeatherKind, typeof Sun> = {
+  sun: Sun,
+  partly: CloudSun,
+  cloud: Cloud,
+  fog: CloudFog,
+  drizzle: CloudDrizzle,
+  rain: CloudRain,
+  storm: CloudLightning,
+  snow: Snowflake,
+};
 
 type State = { status: "loading" } | { status: "ready"; home: ReturnType<typeof buildMyTripsHome> };
 
@@ -108,103 +130,184 @@ export function HomeMyTripsWidget({ signedIn }: { signedIn: boolean }) {
     );
   }
 
-  const pct = view.checklistTotal
-    ? Math.round((view.checklistDone / view.checklistTotal) * 100)
-    : 0;
-  return (
-    <div className={CARD} data-testid="home-trips-widget" data-state="trip">
-      <div className="flex items-center gap-2.5">
-        <span className="flex size-9 items-center justify-center rounded-[10px] bg-gradient-to-b from-[#ff7a7a] to-brand-red text-white">
-          <BriefcaseBusiness className="size-5" aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[12px] font-semibold text-muted-foreground">
-            {view.status === "ongoing" ? "Perjalanan sekarang" : "Perjalanan berikutnya"}
-          </p>
-          <h3 className="truncate text-[18px] font-bold tracking-[-0.02em]">{view.title}</h3>
-        </div>
-        <span className="shrink-0 rounded-full bg-brand-red-soft px-3 py-1 text-[13px] font-bold text-brand-red">
-          {view.countdown}
-        </span>
-      </div>
-      <p className="mt-2 text-[13px] text-muted-foreground">
-        {view.dateRange} · {view.travelers} traveler
-      </p>
-      {view.checklistTotal > 0 && (
-        <div className="mt-3">
-          <div className="mb-1.5 flex justify-between text-[13px] text-muted-foreground">
-            <span>Persiapan</span>
-            <b className="text-foreground">
-              {view.checklistDone} dari {view.checklistTotal} siap
-            </b>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={pct}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Progres persiapan"
-            className="h-2 overflow-hidden rounded-full bg-black/[0.08]"
-          >
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#ff7a7a] to-brand-red transition-[width] duration-500"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
-      )}
-      <Link
-        to="/my-trips/$tripId/$section"
-        params={{
-          tripId: view.tripId,
-          section: view.checklistTotal > view.checklistDone ? "checklist" : "itinerary",
-        }}
-        className="tap mt-3 flex min-h-12 items-center gap-2.5 rounded-2xl bg-secondary px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <span className="size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold">{view.nextStep.label}</span>
-          <span className="block text-[12px] text-muted-foreground">{view.nextStep.hint}</span>
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
-      </Link>
-      <SectionShortcuts tripId={view.tripId} />
-      <Link
-        to="/my-trips/$tripId"
-        params={{ tripId: view.tripId }}
-        className="tap mt-4 flex h-11 items-center justify-center rounded-full bg-brand-red-soft text-[15px] font-bold text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        Lanjutkan persiapan
-      </Link>
-    </div>
-  );
+  return <TripCard view={view} />;
 }
 
-function SectionShortcuts({ tripId }: { tripId: string }) {
+/** The focus trip card: route preview and weather on top, then what is next and the key numbers. */
+function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> }) {
+  const [config, setConfig] = useState<ItineraryMapConfig>(DEFAULT_ITINERARY_MAP_CONFIG);
+  const [weather, setWeather] = useState<DayWeather | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    // The map and weather are extras: a failed lookup keeps the card without them.
+    getItineraryMapConfig()
+      .then((value) => !cancelled && setConfig(value))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const showRoute = Boolean(config.enabled && config.summaryMap && view.route);
+  const weatherPlace = useMemo(() => {
+    const first = view.route?.pins[0];
+    if (!config.weather || !view.route || !first) return null;
+    const today = new Date();
+    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    return (
+      forecastablePlaces([{ date: view.route.date, lat: first.lat, lng: first.lng }], key)[0] ??
+      null
+    );
+  }, [config.weather, view.route]);
+  const weatherKey = weatherPlace
+    ? `${weatherPlace.date}|${weatherPlace.lat}|${weatherPlace.lng}`
+    : "";
+
+  useEffect(() => {
+    if (!weatherPlace) {
+      setWeather(null);
+      return;
+    }
+    let cancelled = false;
+    getTripWeather({ data: { places: [weatherPlace] } })
+      .then(
+        (result) =>
+          !cancelled && setWeather(result.status === "ok" ? (result.days[0] ?? null) : null),
+      )
+      .catch(() => !cancelled && setWeather(null));
+    return () => {
+      cancelled = true;
+    };
+    // weatherKey stands for weatherPlace's contents.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weatherKey]);
+
+  const WeatherIcon = weather ? WEATHER_ICON[describeWeather(weather.code).kind] : null;
+  const badge =
+    view.status === "ongoing"
+      ? `Sedang berlangsung${view.dayLabel ? ` · ${view.dayLabel}` : ""}`
+      : view.countdown;
+  const weatherChip =
+    weather && WeatherIcon ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold shadow">
+        <WeatherIcon className="size-3.5 text-brand-red" aria-hidden="true" />
+        {weather.tempMax}°
+        {weather.rainPercent !== null && weather.rainPercent >= 30
+          ? ` · hujan ${weather.rainPercent}%`
+          : ` · ${describeWeather(weather.code).label}`}
+      </span>
+    ) : null;
+  const badgeEl = (
+    <span className="inline-flex rounded-full bg-brand-red px-2.5 py-1 text-[11px] font-semibold text-white">
+      {badge}
+    </span>
+  );
+  const agendaLink = view.agenda ? (
+    <Link
+      to="/my-trips/$tripId/$section"
+      params={{ tripId: view.tripId, section: "itinerary" }}
+      className="tap mt-2.5 flex min-h-12 items-center gap-2.5 rounded-2xl bg-secondary px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-brand-red text-white">
+        <CalendarRange className="size-4" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14px] font-semibold">{view.agenda.title}</span>
+        <span className="block truncate text-[11px] text-muted-foreground">
+          {[view.agenda.time, view.agenda.location, view.agenda.when].filter(Boolean).join(" · ")}
+        </span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+    </Link>
+  ) : (
+    <Link
+      to="/my-trips/$tripId/$section"
+      params={{
+        tripId: view.tripId,
+        section: view.checklistTotal > view.checklistDone ? "checklist" : "itinerary",
+      }}
+      className="tap mt-2.5 flex min-h-12 items-center gap-2.5 rounded-2xl bg-secondary px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14px] font-semibold">{view.nextStep.label}</span>
+        <span className="block text-[11px] text-muted-foreground">{view.nextStep.hint}</span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+    </Link>
+  );
+  const stats: { section: Section; label: string; value: string }[] = [
+    {
+      section: "itinerary",
+      label: "Agenda",
+      value:
+        view.status === "ongoing"
+          ? `${view.todayAgendaCount} hari ini`
+          : `${view.agendaCount} agenda`,
+    },
+    {
+      section: "checklist",
+      label: "Checklist",
+      value: view.checklistTotal ? `${view.checklistDone}/${view.checklistTotal}` : "Belum ada",
+    },
+    { section: "bookings", label: "Booking", value: String(view.bookingCount) },
+    {
+      section: "budget",
+      label: "Sisa",
+      value: view.budget.set
+        ? compactMoney(
+            view.budget.remainingMinor,
+            formatTripMoney(view.budget.remainingMinor, view.budget.currency),
+          )
+        : "Atur",
+    },
+  ];
   return (
-    <div className="mt-4 grid grid-cols-4 gap-1.5">
-      {SECTIONS.map(({ id, label, icon: Icon, tone }) => {
-        const inner = (
-          <>
-            <span className={`flex size-11 items-center justify-center rounded-[14px] ${tone}`}>
-              <Icon className="size-[22px]" strokeWidth={1.9} aria-hidden="true" />
-            </span>
-            <span className="text-[11px] font-semibold">{label}</span>
-          </>
-        );
-        const cls =
-          "tap flex flex-col items-center gap-1.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-        return (
-          <Link
-            key={id}
-            to="/my-trips/$tripId/$section"
-            params={{ tripId, section: id }}
-            className={cls}
-          >
-            {inner}
-          </Link>
-        );
-      })}
+    <div className={`${CARD} overflow-hidden`} data-testid="home-trips-widget" data-state="trip">
+      {showRoute && view.route && (
+        <div className="relative h-[118px]">
+          <TripMiniRoute pins={view.route.pins} />
+          <div className="absolute left-2.5 top-2.5">{badgeEl}</div>
+          {weatherChip && <div className="absolute right-2.5 top-2.5">{weatherChip}</div>}
+        </div>
+      )}
+      <div className="px-3.5 pb-3.5 pt-3">
+        {!showRoute && (
+          <div className="mb-2 flex items-center justify-between gap-2">
+            {badgeEl}
+            {weatherChip}
+          </div>
+        )}
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="truncate text-[18px] font-bold tracking-[-0.02em]">{view.title}</h3>
+          <p className="shrink-0 text-[11px] text-muted-foreground">
+            {view.destination} · {view.dateRange} · {view.travelers} traveler
+          </p>
+        </div>
+        {agendaLink}
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
+          {stats.map((stat) => (
+            <Link
+              key={stat.section}
+              to="/my-trips/$tripId/$section"
+              params={{ tripId: view.tripId, section: stat.section }}
+              className="tap min-w-0 rounded-xl bg-secondary px-2.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="block truncate text-[11px] text-muted-foreground">{stat.label}</span>
+              <span className="block truncate text-[14px] font-bold tabular-nums">
+                {stat.value}
+              </span>
+            </Link>
+          ))}
+        </div>
+        <Link
+          to="/my-trips/$tripId"
+          params={{ tripId: view.tripId }}
+          className="tap mt-2.5 flex min-h-10 items-center justify-center rounded-xl bg-brand-red text-[14px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Buka Ringkas
+        </Link>
+      </div>
     </div>
   );
 }

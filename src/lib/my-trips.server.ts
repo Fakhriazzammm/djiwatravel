@@ -184,7 +184,9 @@ export async function listTrips() {
   const result = await pool.query(
     `select t.*, coalesce(sum(e.converted_amount_minor), 0) as spent_minor,
       (select count(*) from travel_checklist_items c where c.trip_id=t.id) as checklist_total,
-      (select count(*) from travel_checklist_items c where c.trip_id=t.id and c.is_completed) as checklist_done
+      (select count(*) from travel_checklist_items c where c.trip_id=t.id and c.is_completed) as checklist_done,
+      (select count(*) from travel_bookings b where b.trip_id=t.id
+        and lower(coalesce(b.status,'')) not in ('cancelled','canceled','dibatalkan')) as booking_count
      from travel_trips t left join travel_expenses e on e.trip_id=t.id
      where t.customer_auth_subject=$1 group by t.id order by t.departure_date asc`,
     [user.id],
@@ -201,6 +203,7 @@ export async function listTrips() {
       status: statusFor(departureDate ?? "", returnDate ?? ""),
       checklist_total: Number(row.checklist_total ?? 0),
       checklist_done: Number(row.checklist_done ?? 0),
+      booking_count: Number(row.booking_count ?? 0),
     };
   });
 }
@@ -966,7 +969,7 @@ export const getMyTripsHomeHandler = async () => {
 
     const [agenda, checklist] = await Promise.all([
       pool.query(
-        `select id, trip_id, activity_date::text as activity_date, start_time, end_time, title, location, activity_category
+        `select id, trip_id, activity_date::text as activity_date, start_time, end_time, title, location, latitude, longitude, activity_category
          from travel_itinerary_items
          where trip_id=$1 and activity_date between current_date and current_date + 14
          order by activity_date asc, start_time asc nulls last

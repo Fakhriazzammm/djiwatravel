@@ -1,3 +1,6 @@
+import { itemPoint } from "./itinerary-map";
+import { pickNowNext } from "./trip-overview";
+
 export type MyTripsHomeStatus = "upcoming" | "ongoing" | "past";
 
 export type MyTripsHomeTrip = {
@@ -14,6 +17,7 @@ export type MyTripsHomeTrip = {
   spent_minor: number;
   checklist_total: number;
   checklist_done: number;
+  booking_count?: number;
 };
 
 /** `YYYY-MM-DD` from a date column that can arrive as a string or, from a raw pg row, a Date. */
@@ -31,6 +35,8 @@ export type MyTripsHomeAgendaItem = {
   end_time?: string | null;
   title: string;
   location?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   activity_category?: string | null;
 };
 
@@ -128,7 +134,28 @@ export type HomeTripWidget =
       checklistDone: number;
       checklistTotal: number;
       nextStep: { label: string; hint: string };
+      /** "Hari ke-2" while the trip runs, else null. */
+      dayLabel: string | null;
+      /** What is on now or comes next, for the card's agenda row. */
+      agenda: HomeAgendaNow | null;
+      todayAgendaCount: number;
+      agendaCount: number;
+      bookingCount: number;
+      budget: { set: boolean; remainingMinor: number; currency: string };
+      /** Pins of the agenda day shown on the mini route (numbered per day). */
+      route: { date: string; pins: { id: string; n: number; lat: number; lng: number }[] } | null;
     };
+
+export type HomeAgendaNow = {
+  id: string;
+  title: string;
+  /** "10:00" or null when the activity has no time. */
+  time: string | null;
+  location: string | null;
+  /** "sedang berlangsung", "25 mnt lagi", "2 jam lagi", "Besok", "5 Nov". */
+  when: string;
+  isNow: boolean;
+};
 
 const MS_DAY = 86_400_000;
 const parseDay = (value: string | null | undefined) => {
@@ -186,6 +213,50 @@ export function buildHomeTripWidget(
         ? { label: displayChecklistTitle(pending.title), hint: "Selanjutnya di checklist" }
         : { label: "Semua persiapan siap", hint: "Cek itinerary perjalananmu" };
 
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const dayAgenda = [...home.agenda].map((item) => ({
+    ...item,
+    activity_date: agendaDayKey(item.activity_date),
+  }));
+  const { current, next } = pickNowNext(
+    dayAgenda.map((item, index) => ({ ...item, id: item.id ?? `a${index}` })),
+    todayKey,
+    nowMinutes,
+  );
+  const focus = current ?? next;
+  const agenda: HomeAgendaNow | null = focus
+    ? {
+        id: focus.id,
+        title: focus.title,
+        time: focus.start_time ? String(focus.start_time).slice(0, 5) : null,
+        location: focus.location ? String(focus.location) : null,
+        ...agendaWhen(focus, current !== null, todayKey, today, nowMinutes),
+      }
+    : null;
+  const routeDate = focus ? agendaDayKey(focus.activity_date) : "";
+  const routePins = routeDate
+    ? dayAgenda
+        .filter((item) => item.activity_date === routeDate)
+        .flatMap((item, index) => {
+          const point = itemPoint({
+            id: item.id ?? `a${index}`,
+            latitude: item.latitude,
+            longitude: item.longitude,
+          });
+          return point ? [{ id: item.id ?? `a${index}`, lat: point.lat, lng: point.lng }] : [];
+        })
+        .map((pin, index) => ({ ...pin, n: index + 1 }))
+    : [];
+  const totalDays = (() => {
+    const a = parseDay(trip.departure_date);
+    const b = parseDay(trip.return_date);
+    return a && b ? Math.round((b.getTime() - a.getTime()) / MS_DAY) + 1 : 0;
+  })();
+  const dayLabel =
+    trip.status === "ongoing" && departure
+      ? `Hari ke-${Math.min(totalDays || 1, Math.max(1, Math.round((today.getTime() - departure.getTime()) / MS_DAY) + 1))}`
+      : null;
+
   const name = trip.name?.trim() ?? "";
   return {
     kind: "trip",
@@ -199,5 +270,50 @@ export function buildHomeTripWidget(
     checklistDone: trip.checklist_done,
     checklistTotal: trip.checklist_total,
     nextStep,
+    dayLabel,
+    agenda,
+    todayAgendaCount: dayAgenda.filter((item) => item.activity_date === todayKey).length,
+    agendaCount: dayAgenda.length,
+    bookingCount: trip.booking_count ?? 0,
+    budget: {
+      set: trip.total_budget_minor > 0,
+      remainingMinor: trip.total_budget_minor - trip.spent_minor,
+      currency: trip.primary_currency,
+    },
+    route: routePins.length ? { date: routeDate, pins: routePins } : null,
+  };
+}
+
+const startMinutes = (value: unknown) => {
+  const match = String(value ?? "").match(/^(\d{2}):(\d{2})/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+};
+
+/** Short Indonesian phrase for when an activity happens relative to now. */
+function agendaWhen(
+  item: { activity_date: string; start_time?: string | null },
+  isNow: boolean,
+  todayKey: string,
+  today: Date,
+  nowMinutes: number,
+): { when: string; isNow: boolean } {
+  if (isNow) return { when: "sedang berlangsung", isNow: true };
+  const date = parseDay(item.activity_date);
+  const dayDiff = date ? Math.round((date.getTime() - today.getTime()) / MS_DAY) : null;
+  if (item.activity_date === todayKey) {
+    const start = startMinutes(item.start_time);
+    if (start === null) return { when: "hari ini", isNow: false };
+    const left = Math.max(0, start - nowMinutes);
+    return {
+      when: left < 60 ? `${left} mnt lagi` : `${Math.round(left / 60)} jam lagi`,
+      isNow: false,
+    };
+  }
+  if (dayDiff === 1) return { when: "besok", isNow: false };
+  return {
+    when: date
+      ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date)
+      : "segera",
+    isNow: false,
   };
 }
