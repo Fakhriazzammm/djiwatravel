@@ -157,6 +157,28 @@ if [ "${FAILED}" = "0" ]; then
   elif [ -n "${asset}" ]; then
     echo "PERINGATAN: HTML publik memuat ${asset} yang tidak ada di build ini" >&2
   fi
+
+  # Cek di disk tidak cukup: proses yang berjalan menyajikan aset dari daftar yang dimuat saat start.
+  # Jika .output ditukar oleh deploy lain (atau service belum dimuat ulang), HTML merujuk JS yang
+  # dijawab 404 dan halaman hanya menampilkan skeleton. Minta setiap JS/CSS yang dirujuk beranda
+  # lewat server itu sendiri; satu saja bukan 200 berarti deploy ini rusak dan di-rollback.
+  ASSET_FAILED=0
+  ASSET_TOTAL=0
+  while IFS= read -r ref; do
+    [ -n "${ref}" ] || continue
+    ASSET_TOTAL=$((ASSET_TOTAL + 1))
+    acode="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000${ref}" || true)"
+    if [ "${acode}" != "200" ]; then
+      echo "GAGAL: ${ref} dijawab ${acode} oleh server" >&2
+      ASSET_FAILED=1
+    fi
+  done < <(curl -s --compressed http://127.0.0.1:3000/ | grep -a -o '/assets/[A-Za-z0-9._/-]*\.\(js\|css\)' | sort -u)
+  if [ "${ASSET_TOTAL}" = "0" ]; then
+    echo "GAGAL: beranda tidak merujuk aset JS/CSS satu pun" >&2
+    ASSET_FAILED=1
+  fi
+  echo "  aset beranda dilayani server: ${ASSET_TOTAL} dicek"
+  [ "${ASSET_FAILED}" = "0" ] || FAILED=1
 fi
 
 if [ "${FAILED}" != "0" ]; then
