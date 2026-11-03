@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getCanonicalCustomerIdentity, type CanonicalCustomerIdentity } from "./customer-identity.fn";
+import type { CanonicalCustomerIdentity } from "./customer-identity.fn";
 import { DJIWA_TRAVEL_SOURCE_APP } from "./wallet-scope";
 
 const topupInputSchema = z.object({
@@ -66,7 +66,10 @@ export async function resolveVerifiedCanonicalCustomerIdentity(
   cookie?: string | null,
 ): Promise<CanonicalCustomerIdentity> {
   try {
-    return await getCanonicalCustomerIdentity({ data: { authenticatedEmail: user.email, cookie: cookie ?? "" } });
+    // Call the server resolver directly: this runs inside an HTTP route handler, where a nested
+    // server-function RPC has no request context and always failed.
+    const { resolveCanonicalCustomerIdentity } = await import("./customer-identity.server");
+    return await resolveCanonicalCustomerIdentity(user.email, cookie ?? "");
   } catch {
     throw new CanonicalIdentityConfigurationError();
   }
