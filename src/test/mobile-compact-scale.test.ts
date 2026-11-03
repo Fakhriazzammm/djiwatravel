@@ -25,6 +25,7 @@ const COMPACT_PAGES = [
   "src/components/travel-waitlist-card.tsx",
   "src/components/trip-budget-ios.tsx",
   "src/components/trip-ios.tsx",
+  "src/components/place-search-field.tsx",
   "src/routes/destination.$code.tsx",
   "src/routes/esim.finder.tsx",
   "src/routes/explore.tsx",
@@ -52,6 +53,10 @@ describe("mobile compact scale (iOS density)", () => {
       expect(source).not.toMatch(/\btext-(2xl|3xl|4xl|5xl)\b/);
       expect(source).not.toMatch(/\bsize-(1[2-3])\b(?!4)/);
       expect(source).not.toMatch(/\bmin-h-(14|16)\b/);
+      // Vertical rhythm: blocks mt-4, cards p-3/p-4, items gap-3, no rounded-3xl cards.
+      expect(source).not.toMatch(
+        /(?<![\w-])(?:[a-z0-9]+:)*(mt-(5|6|7|8)|p-(5|6)|px-(5|6)|py-(4|5|6)|gap-(4|5|6)|space-y-(4|5|6))(?![\w.-])/,
+      );
       // CTA buttons are 40px (min-h-10); only list rows/tab items may be 48px.
       expect(source).not.toMatch(/(btnRed|btnSoft|bg-brand-red|bg-primary)[^\n]*\bmin-h-12\b/);
     });

@@ -18,6 +18,10 @@ Canonical rules: `DESIGN.md` → **Mobile compact scale**. Read it first; this s
 - Spacing between groups `mt-3`–`mt-4`.
 - Sheets/toasts above the tab bar: `mb-[calc(6.5rem+env(safe-area-inset-bottom))]` / `bottom-24`.
 
+## Shared utilities (use first)
+
+`ios-title`, `ios-subtitle`, `ios-section-label`, `ios-group`, `ios-row`, `ios-btn`, `ios-chip`, `ios-tile` in `src/styles.css`. Component specs (cards, grids, forms, sheets, hero, shadow) are in `DESIGN.md` → *Component specs (iOS density)*. Vertical rhythm: blocks `mt-4`, items `gap-2`/`gap-3`, card `p-3`/`p-4`; never `mt-5+`, `p-5+`, `py-4+`, `gap-4+`, `rounded-3xl` (except bottom sheets).
+
 ## Workflow
 
 1. Open the page and one already-migrated reference (`src/routes/notifications.tsx`, `src/routes/wallet.tsx`).

@@ -22,15 +22,15 @@ The implementation source is [`src/styles.css`](src/styles.css) and existing
 primitives are in [`src/components/ui/`](src/components/ui/). Reuse tokens and
 primitives before adding a one-off value.
 
-| Token | Current direction | Contract |
-| --- | --- | --- |
-| Typography | system stack: SF-style system fonts, Inter fallback | Use `large-title` for page titles; use weight and spacing before oversized text. |
-| Background | very light cool neutral | Keep long-reading surfaces quiet; use `surface` for cards and sheets. |
-| Brand | `--brand-red` and `--brand-red-soft` | Reserve brand red for primary travel actions, emphasis, and the active product signal. |
-| Semantic | `--success`, warning, destructive, muted | Color must pair with text, icon/shape, or status label; never use color alone. |
-| Border | restrained neutral border | Prefer separation by spacing and surface before heavy outlines. |
-| Radius | `--radius` plus existing radius utilities | Controls are smaller than cards; sheets are the largest continuous radius. |
-| Motion | short press feedback and route transitions | Respect `prefers-reduced-motion`; motion must explain state or direct attention. |
+| Token      | Current direction                                   | Contract                                                                               |
+| ---------- | --------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Typography | system stack: SF-style system fonts, Inter fallback | Use `large-title` for page titles; use weight and spacing before oversized text.       |
+| Background | very light cool neutral                             | Keep long-reading surfaces quiet; use `surface` for cards and sheets.                  |
+| Brand      | `--brand-red` and `--brand-red-soft`                | Reserve brand red for primary travel actions, emphasis, and the active product signal. |
+| Semantic   | `--success`, warning, destructive, muted            | Color must pair with text, icon/shape, or status label; never use color alone.         |
+| Border     | restrained neutral border                           | Prefer separation by spacing and surface before heavy outlines.                        |
+| Radius     | `--radius` plus existing radius utilities           | Controls are smaller than cards; sheets are the largest continuous radius.             |
+| Motion     | short press feedback and route transitions          | Respect `prefers-reduced-motion`; motion must explain state or direct attention.       |
 
 Suggested scale: 4/8px rhythm and 16px minimum horizontal page padding. For
 sizes, spacing, and density use the **Mobile compact scale** below; it overrides
@@ -45,29 +45,57 @@ like a native iOS app on a 390×844 device, not a scaled-up website. This is the
 default; a bigger value needs a stated reason in the PR/handoff. Home hero and
 marketing surfaces are the only places that may exceed it.
 
-| Element | Standard |
-| --- | --- |
-| Page padding | `px-4`; `max-w-md`; `safe-top`; content ends above the tab bar (`pb-24`/`pb-28`) |
-| Spacing | between groups `mt-3`–`mt-4`; inside cards `p-3` (hero card `p-4`); list row `px-3 py-2` |
-| Page title | `text-[22px] font-bold leading-tight tracking-tight` + one 12px muted subtitle. Do **not** use `large-title`/`large-title-xl` on app screens. |
-| Section label | `text-[11px] font-medium uppercase tracking-wide text-muted-foreground`, `px-3` |
-| Row title / body / meta | 14px semibold / 13px muted / 11px muted. Nothing above 16px except the money figure. |
-| Money hero / summary | hero balance max 28px bold; summary tiles 15px bold |
-| Buttons | primary CTA `min-h-10 rounded-xl text-[14px]`; secondary `min-h-9 text-[13px]`; text link 13px |
-| Chips / segmented / search | chip `min-h-8 text-xs`; segmented and search `min-h-9` |
-| Header icon button | `size-9` with `size-4` glyph |
-| Icons | inline glyph `size-4`; leading tile `size-8 rounded-lg` with `size-4` glyph; 3D/illustration tile `size-9` (36px) |
-| Radius | grouped lists `rounded-2xl`; hero card `rounded-[22px]`; controls `rounded-xl`; chips `rounded-full` |
-| List row height | whole row is the tap target, `min-h-12` (48px) |
-| Touch targets | visual size may be 32–40px; keep a ≥44px hit area (row tap, `tap` utility, or padding) for small icon buttons |
-| Sheets / toasts | sit above the tab bar: `mb-[calc(6.5rem+env(safe-area-inset-bottom))]` or `bottom-24`; never behind it |
+| Element                    | Standard                                                                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page padding               | `px-4`; `max-w-md`; `safe-top`; content ends above the tab bar (`pb-24`/`pb-28`)                                                              |
+| Spacing                    | between groups `mt-3`–`mt-4`; inside cards `p-3` (hero card `p-4`); list row `px-3 py-2`                                                      |
+| Page title                 | `text-[22px] font-bold leading-tight tracking-tight` + one 12px muted subtitle. Do **not** use `large-title`/`large-title-xl` on app screens. |
+| Section label              | `text-[11px] font-medium uppercase tracking-wide text-muted-foreground`, `px-3`                                                               |
+| Row title / body / meta    | 14px semibold / 13px muted / 11px muted. Nothing above 16px except the money figure.                                                          |
+| Money hero / summary       | hero balance max 28px bold; summary tiles 15px bold                                                                                           |
+| Buttons                    | primary CTA `min-h-10 rounded-xl text-[14px]`; secondary `min-h-9 text-[13px]`; text link 13px                                                |
+| Chips / segmented / search | chip `min-h-8 text-xs`; segmented and search `min-h-9`                                                                                        |
+| Header icon button         | `size-9` with `size-4` glyph                                                                                                                  |
+| Icons                      | inline glyph `size-4`; leading tile `size-8 rounded-lg` with `size-4` glyph; 3D/illustration tile `size-9` (36px)                             |
+| Radius                     | grouped lists `rounded-2xl`; hero card `rounded-[22px]`; controls `rounded-xl`; chips `rounded-full`                                          |
+| List row height            | whole row is the tap target, `min-h-12` (48px)                                                                                                |
+| Touch targets              | visual size may be 32–40px; keep a ≥44px hit area (row tap, `tap` utility, or padding) for small icon buttons                                 |
+| Sheets / toasts            | sit above the tab bar: `mb-[calc(6.5rem+env(safe-area-inset-bottom))]` or `bottom-24`; never behind it                                        |
+
+### Component specs (iOS density)
+
+Use the shared utilities in `src/styles.css` before writing raw classes:
+`ios-title`, `ios-subtitle`, `ios-section-label`, `ios-group`, `ios-row`,
+`ios-btn`, `ios-chip`, `ios-tile`. Reference pages: `notifications.tsx`,
+`wallet.tsx`.
+
+| Component         | Spec                                                                                                                                                                                         |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page title block  | `ios-title` + optional `ios-subtitle`; header icon button `size-9`, glyph `size-4`; no extra top hero padding (`pt-1`)                                                                       |
+| Section           | `ios-section-label` (11px) above an `ios-group`; gap between sections `mt-4`; never `mt-6`+                                                                                                  |
+| Grouped list      | `ios-group` (`rounded-2xl`, `bg-surface`); rows `ios-row` (min 48px, `px-3 py-2`); hairline separator `border-t border-border/60` inset to the text; leading `ios-tile` (32px, `rounded-lg`) |
+| Info card         | `rounded-2xl bg-surface p-3`; feature/hero card `p-4`, `rounded-[22px]`; one title (14px semibold), one body (13px muted), one action                                                        |
+| Stat tile         | 2-column grid `gap-2`, `px-3 py-2.5`, label 11px, value 15px bold                                                                                                                            |
+| Action tile grid  | 4 columns, tile `min-h-[72px]`, icon `size-9`, label 10.5px, no more than 2 rows before a "Lihat semua"                                                                                      |
+| Form              | field `min-h-10 rounded-xl bg-secondary px-3 text-[14px]`; label 12px above, 4px gap; help text 11px; fields `space-y-3`                                                                     |
+| Buttons           | `ios-btn` (primary `bg-brand-red text-white`, secondary `bg-secondary`); full-width only inside cards/sheets; max one primary per card                                                       |
+| Chips / segmented | `ios-chip` 32px; segmented control 36px with `rounded-lg` track                                                                                                                              |
+| Sheet / dialog    | `rounded-3xl` only for bottom sheets; padding `p-3`/`p-4`; actions are 40–48px rows; sits above the tab bar                                                                                  |
+| Header / nav      | fixed header block `shrink-0`, list scrolls under it; no collapsing large title on app screens                                                                                               |
+| Hero              | image/banner height ≤ 160px; title ≤ 22px; Home hero is the only exception                                                                                                                   |
+| Text              | max 2 lines for titles in rows (`line-clamp-2`), 1 line + truncate for meta; line-height `leading-snug`                                                                                      |
+| Shadow            | none on rows/cards; `ios-card`-style hairline only for floating cards; sheets/toasts may use `shadow-xl`                                                                                     |
+
+Vertical rhythm: page `px-4`; blocks `mt-4`; items inside a block `gap-2`/`gap-3`
+(`space-y-3`); card padding `p-3`/`p-4`. Never use `mt-5+`, `p-5+`, `py-4+`,
+`rounded-3xl` (outside bottom sheets), or `gap-4+` on mobile app screens.
 
 Layout rules:
 
 - A page has at most one scroll region. App-like screens with a fixed header
   (inbox, lists with filters) use `h-dvh flex-col overflow-hidden` with a header
   `shrink-0` and an inner `min-h-0 flex-1 overflow-y-auto overscroll-contain
-  pb-28` list; see `src/routes/notifications.tsx`. Content pages scroll normally
+pb-28` list; see `src/routes/notifications.tsx`. Content pages scroll normally
   inside `Page`.
 - The first screen at 390×844 must show the header, the primary action, and at
   least three rows/cards of real content. If it does not, shrink or merge before
