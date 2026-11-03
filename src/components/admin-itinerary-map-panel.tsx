@@ -25,6 +25,8 @@ export function AdminItineraryMapPanel({
   const [enabled, setEnabled] = useState(initial.enabled);
   const [placeSearch, setPlaceSearch] = useState(initial.placeSearch);
   const [poiHelper, setPoiHelper] = useState(initial.poiHelper);
+  const [locateMe, setLocateMe] = useState(initial.locateMe);
+  const [placeImages, setPlaceImages] = useState(initial.placeImages);
   const [styleUrl, setStyleUrl] = useState(initial.styleUrl);
   const [version, setVersion] = useState(initialVersion);
   const [reason, setReason] = useState("");
@@ -35,7 +37,14 @@ export function AdminItineraryMapPanel({
   const save = async () => {
     setStatus({ kind: "saving" });
     try {
-      const config = parseItineraryMapConfig({ enabled, placeSearch, poiHelper, styleUrl });
+      const config = parseItineraryMapConfig({
+        enabled,
+        placeSearch,
+        poiHelper,
+        locateMe,
+        placeImages,
+        styleUrl,
+      });
       const result = await saveAdminItineraryMap({
         data: { config, reason, expectedVersion: version },
       });
@@ -101,10 +110,30 @@ export function AdminItineraryMapPanel({
           />
           Penanda stasiun, bandara, makan, dan atraksi di peta
         </label>
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={locateMe}
+            onChange={(event) => setLocateMe(event.target.checked)}
+            className="size-5 accent-primary"
+          />
+          Tombol "Lokasi saya" (GPS perangkat)
+        </label>
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={placeImages}
+            onChange={(event) => setPlaceImages(event.target.checked)}
+            className="size-5 accent-primary"
+          />
+          Foto tempat di kartu agenda (dari Wikipedia)
+        </label>
         <p className="text-xs leading-5 text-muted-foreground">
-          Pencarian berjalan lewat server Djiwa (tanpa kunci di browser) dan dibatasi per pelanggan.
-          Jika dimatikan, lokasi tetap bisa diketik sebagai teks. Menonaktifkan peta tidak menghapus
-          titik yang sudah tersimpan dan tidak mengubah daftar Agenda.
+          Posisi GPS tidak disimpan. Posisi hanya dikirim ke server saat pelanggan menekan "Tambah
+          di sini" untuk mencari nama jalan. Pencarian berjalan lewat server Djiwa (tanpa kunci di
+          browser) dan dibatasi per pelanggan. Jika dimatikan, lokasi tetap bisa diketik sebagai
+          teks. Menonaktifkan peta tidak menghapus titik yang sudah tersimpan dan tidak mengubah
+          daftar Agenda.
         </p>
         <label className="block text-sm font-semibold">
           Gaya peta (URL style MapLibre)

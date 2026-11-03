@@ -5,6 +5,7 @@ import {
   boundsOf,
   curvedRoute,
   type MapPin,
+  type MapRoute,
   type PoiCategoryId,
 } from "@/lib/itinerary-map";
 
@@ -15,7 +16,11 @@ const RED = "#c4353b";
 
 type Props = {
   pins: MapPin[];
-  routes: { lat: number; lng: number }[][];
+  routes: MapRoute[];
+  /** Focus mode: only the selected day's points and route, framed tightly, no helper markers. */
+  focus?: boolean;
+  /** The traveler's position from the device, shown as a blue dot. */
+  userPoint?: { lat: number; lng: number } | null;
   activeId: string | null;
   onSelect: (id: string) => void;
   styleUrl: string;
@@ -44,16 +49,25 @@ function ensurePinStyle() {
   document.head.appendChild(style);
 }
 
-type MarkerEntry = { marker: Marker; el: HTMLElement; n: number; title: string };
+type MarkerEntry = {
+  marker: Marker;
+  el: HTMLElement;
+  n: number;
+  title: string;
+  color: string;
+  muted: boolean;
+};
 
-function paintMarker(entry: MarkerEntry, active: boolean) {
-  const { el, n, title } = entry;
-  const size = active ? 30 : 24;
+function paintMarker(entry: MarkerEntry, active: boolean, animate = false) {
+  const { el, n, title, color, muted } = entry;
+  const size = active ? 30 : muted ? 20 : 24;
   // `el` is positioned by MapLibre (its own class and transform): never touch those, draw inside.
   el.replaceChildren();
-  el.style.zIndex = active ? "2" : "1";
+  el.style.zIndex = active ? "3" : muted ? "1" : "2";
   const root = document.createElement("div");
   root.className = "djiwa-pin";
+  if (!animate) root.style.animation = "none";
+  if (muted && !active) root.style.opacity = "0.85";
   el.appendChild(root);
   if (active) {
     const label = document.createElement("div");
@@ -66,18 +80,20 @@ function paintMarker(entry: MarkerEntry, active: boolean) {
   body.textContent = String(n);
   body.style.cssText = [
     `width:${size}px;height:${size}px`,
-    `background:${active ? RED : "#fff"};color:${active ? "#fff" : RED}`,
-    `border:2px solid ${active ? "#fff" : RED}`,
+    `background:${active ? color : "#fff"};color:${active ? "#fff" : color}`,
+    `border:2px solid ${active ? "#fff" : color}`,
+    muted && !active ? "font-size:10px" : "",
     `box-shadow:0 1px 6px rgba(0,0,0,.35)`,
   ].join(";");
   if (active) {
     const pulse = document.createElement("span");
     pulse.className = "djiwa-pin-pulse";
+    pulse.style.background = color;
     body.prepend(pulse);
   }
   const tip = document.createElement("div");
   tip.className = "djiwa-pin-tip";
-  tip.style.borderTop = `7px solid ${active ? RED : "#fff"}`;
+  tip.style.borderTop = `7px solid ${active ? color : "#fff"}`;
   root.append(body, tip);
 }
 
@@ -167,6 +183,8 @@ const poiLayerIds = () =>
 export default function ItineraryMap({
   pins,
   routes,
+  focus = false,
+  userPoint = null,
   activeId,
   onSelect,
   styleUrl,
@@ -246,7 +264,11 @@ export default function ItineraryMap({
             id: "agenda-route-line",
             type: "line",
             source: ROUTE_SOURCE,
-            paint: { "line-color": RED, "line-width": 3.5, "line-dasharray": [0.01, 2.2] },
+            paint: {
+              "line-color": ["get", "color"],
+              "line-width": 3.5,
+              "line-dasharray": [0.01, 2.2],
+            },
             layout: { "line-cap": "round", "line-join": "round" },
           });
           await addPoiLayers(map, poiRef.current);
@@ -285,6 +307,8 @@ export default function ItineraryMap({
       observer?.disconnect();
       markerStore.forEach(({ marker }) => marker.remove());
       markerStore.clear();
+      userMarker.current?.remove();
+      userMarker.current = null;
       mapRef.current?.remove();
       mapRef.current = null;
       setReady(false);
@@ -308,8 +332,14 @@ export default function ItineraryMap({
       const existing = markers.current.get(pin.id);
       if (existing) {
         existing.marker.setLngLat([pin.lng, pin.lat]);
+        const changed =
+          existing.n !== pin.n || existing.color !== pin.color || existing.muted !== pin.muted;
         existing.n = pin.n;
         existing.title = pin.title;
+        existing.color = pin.color;
+        existing.muted = pin.muted;
+        if (changed) paintMarker(existing, pin.id === latest.current.activeId);
+        existing.el.style.display = focus && pin.muted ? "none" : "";
         continue;
       }
       const el = document.createElement("button");
@@ -323,42 +353,87 @@ export default function ItineraryMap({
       const marker = new maplibre.Marker({ element: el, anchor: "bottom" })
         .setLngLat([pin.lng, pin.lat])
         .addTo(map);
-      const entry: MarkerEntry = { marker, el, n: pin.n, title: pin.title };
-      paintMarker(entry, pin.id === latest.current.activeId);
+      const entry: MarkerEntry = {
+        marker,
+        el,
+        n: pin.n,
+        title: pin.title,
+        color: pin.color,
+        muted: pin.muted,
+      };
+      paintMarker(entry, pin.id === latest.current.activeId, true);
+      el.style.display = focus && pin.muted ? "none" : "";
       markers.current.set(pin.id, entry);
     }
     const source = map.getSource(ROUTE_SOURCE) as { setData: (data: unknown) => void } | undefined;
     source?.setData({
       type: "FeatureCollection",
-      features: routes.map((route) => ({
-        type: "Feature",
-        properties: {},
-        geometry: {
-          type: "LineString",
-          coordinates: curvedRoute(route).map((p) => [p.lng, p.lat]),
-        },
-      })),
+      features: routes
+        .filter((route) => !(focus && route.muted))
+        .map((route) => ({
+          type: "Feature",
+          properties: { color: route.color },
+          geometry: {
+            type: "LineString",
+            coordinates: curvedRoute(route.points).map((p) => [p.lng, p.lat]),
+          },
+        })),
     });
-    const bounds = boundsOf(pins);
+    const framed = pins.filter((pin) => !pin.muted);
+    const fitPins = framed.length ? framed : pins;
+    const bounds = boundsOf(fitPins);
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (bounds) {
-      if (pins.length === 1)
-        map.easeTo({ center: [pins[0]!.lng, pins[0]!.lat], zoom: 14, duration: reduce ? 0 : 400 });
-      else map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: reduce ? 0 : 400 });
+      const duration = reduce ? 0 : 450;
+      // Leave room for the chips drawn over the top of the map.
+      const padding = { top: focus ? 60 : 96, bottom: 56, left: 44, right: 44 };
+      if (fitPins.length === 1)
+        map.easeTo({ center: [fitPins[0]!.lng, fitPins[0]!.lat], zoom: 14, duration });
+      else map.fitBounds(bounds, { padding, maxZoom: 15, duration });
     }
-  }, [pins, routes, ready]);
+  }, [pins, routes, ready, focus]);
+
+  // The traveler's own position.
+  const userMarker = useRef<Marker | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    const maplibre = lib.current;
+    if (!ready || !map || !maplibre) return;
+    if (!userPoint) {
+      userMarker.current?.remove();
+      userMarker.current = null;
+      return;
+    }
+    if (!userMarker.current) {
+      const el = document.createElement("div");
+      el.setAttribute("aria-label", "Lokasi kamu");
+      el.style.cssText =
+        "width:16px;height:16px;border-radius:9999px;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25),0 1px 6px rgba(0,0,0,.4)";
+      userMarker.current = new maplibre.Marker({ element: el })
+        .setLngLat([userPoint.lng, userPoint.lat])
+        .addTo(map);
+    } else {
+      userMarker.current.setLngLat([userPoint.lng, userPoint.lat]);
+    }
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    map.easeTo({
+      center: [userPoint.lng, userPoint.lat],
+      zoom: Math.max(map.getZoom(), 14),
+      duration: reduce ? 0 : 500,
+    });
+  }, [userPoint, ready]);
 
   // Category helper layers follow the chips.
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
     for (const c of POI_CATEGORIES) {
-      const visibility = poiCategories.includes(c.id) ? "visible" : "none";
+      const visibility = !focus && poiCategories.includes(c.id) ? "visible" : "none";
       for (const id of [`djiwa-poi-${c.id}`, `djiwa-poi-${c.id}-iata`]) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visibility);
       }
     }
-  }, [poiCategories, ready]);
+  }, [poiCategories, ready, focus]);
 
   // Active pin styling and re-centering.
   useEffect(() => {

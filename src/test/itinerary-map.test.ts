@@ -21,6 +21,7 @@ import {
   routeLengthKm,
 } from "@/lib/itinerary-map";
 import { validateAdminSetting } from "@/lib/admin-settings";
+import { isAllowedImageUrl, pickPlaceImage } from "@/lib/place-image";
 import { allowPlaceSearch, mapPhotonFeatures } from "@/lib/itinerary-map.server";
 
 const shibuya = { id: "a", title: "Makan", latitude: 35.659, longitude: 139.7006 };
@@ -53,26 +54,36 @@ describe("itinerary points and model", () => {
     expect(itemPoint(noPoint)).toBeNull();
     expect(itemPoint({ id: "x", latitude: 999, longitude: 0 })).toBeNull();
   });
-  it("numbers pins 1..n without gaps and builds one route per day", () => {
-    const model = buildMapModel(
-      [
-        { date: "2026-11-03", items: [shibuya, noPoint, sensoji] },
-        { date: "2026-11-04", items: [{ ...shibuya, id: "d" }] },
-      ],
-      "all",
-    );
-    expect(model.pins.map((p) => [p.id, p.n])).toEqual([
-      ["a", 1],
-      ["b", 2],
-      ["d", 3],
+  it("numbers pins per day, keeps other days grey and colours days apart in all mode", () => {
+    const days = [
+      { date: "2026-11-03", items: [shibuya, noPoint, sensoji] },
+      {
+        date: "2026-11-04",
+        items: [
+          { ...shibuya, id: "d" },
+          { ...sensoji, id: "e" },
+        ],
+      },
+    ];
+    const one = buildMapModel(days, "2026-11-04");
+    expect(one.pins.map((p) => [p.id, p.n, p.muted])).toEqual([
+      ["a", 1, true],
+      ["b", 2, true],
+      ["d", 1, false],
+      ["e", 2, false],
     ]);
-    expect(model.routes).toHaveLength(1);
-    const day = buildMapModel(
-      [{ date: "2026-11-04", items: [{ ...shibuya, id: "d" }] }],
-      "2026-11-04",
-    );
-    expect(day.pins[0]?.n).toBe(1);
-    expect(day.routes).toHaveLength(0);
+    expect(one.routes.map((r) => [r.date, r.muted, r.color])).toEqual([
+      ["2026-11-03", true, "#9aa0a6"],
+      ["2026-11-04", false, "#c4353b"],
+    ]);
+    expect(one.pinnedCount).toBe(2);
+    const all = buildMapModel(days, "all");
+    expect(all.pins.every((p) => !p.muted)).toBe(true);
+    expect(new Set(all.pins.map((p) => p.color)).size).toBe(2);
+    expect(
+      buildMapModel([{ date: "2026-11-04", items: [{ ...shibuya, id: "d" }] }], "2026-11-04")
+        .routes,
+    ).toHaveLength(0);
   });
   it("measures straight-line distance and frames the pins", () => {
     const km = routeLengthKm([
@@ -246,5 +257,42 @@ describe("map helper categories", () => {
   it("lets Admin turn the helper off", () => {
     expect(parseItineraryMapConfig({ poiHelper: false }).poiHelper).toBe(false);
     expect(() => parseItineraryMapConfig({ poiHelper: "no" })).toThrow();
+  });
+});
+
+describe("place photos", () => {
+  const wiki = "https://upload.wikimedia.org/a.jpg";
+  it("only accepts https images from Wikimedia", () => {
+    expect(isAllowedImageUrl(wiki)).toBe(true);
+    expect(isAllowedImageUrl("http://upload.wikimedia.org/a.jpg")).toBe(false);
+    expect(isAllowedImageUrl("https://evil.example/a.jpg")).toBe(false);
+    expect(isAllowedImageUrl(null)).toBe(false);
+  });
+  it("shows a photo only when the article matches the place, or sits right on it", () => {
+    const pages = [
+      { title: "Sensō-ji", thumbnail: { source: wiki }, dist: 120 },
+      { title: "Asakusa Station", thumbnail: { source: wiki + "?s" }, dist: 30 },
+    ];
+    expect(pickPlaceImage(pages, ["Kuil Sensō-ji"])?.title).toBe("Sensō-ji");
+    expect(
+      pickPlaceImage(
+        [{ title: "Random Tower", thumbnail: { source: wiki }, dist: 200 }],
+        ["Kafe kecil"],
+      ),
+    ).toBeNull();
+    expect(
+      pickPlaceImage(
+        [{ title: "Random Tower", thumbnail: { source: wiki }, dist: 20 }],
+        ["Kafe kecil"],
+      )?.title,
+    ).toBe("Random Tower");
+    expect(pickPlaceImage([{ title: "No photo" }], ["No photo"])).toBeNull();
+  });
+  it("lets Admin turn GPS and photos off", () => {
+    expect(parseItineraryMapConfig({ locateMe: false, placeImages: false })).toMatchObject({
+      locateMe: false,
+      placeImages: false,
+    });
+    expect(() => parseItineraryMapConfig({ locateMe: 1 })).toThrow();
   });
 });

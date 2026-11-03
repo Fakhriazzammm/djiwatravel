@@ -17,6 +17,7 @@ vi.mock("@/lib/my-trips.fn", () => ({
   postChecklist: vi.fn(),
   postExpense: vi.fn(),
   postItinerary: vi.fn(),
+  patchItinerary: vi.fn(),
 }));
 
 afterEach(cleanup);

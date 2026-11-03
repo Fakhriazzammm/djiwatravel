@@ -5,6 +5,7 @@ import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { getAuthenticatedUser } from "./customer-session.fn";
+import { isAllowedImageUrl, pickPlaceImage, type WikiPage } from "./place-image";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
   ITINERARY_MAP_SETTING_KEY,
@@ -236,4 +237,163 @@ export async function saveItineraryMapConfigHandler({
   } finally {
     client.release();
   }
+}
+
+/* ------------------------------------------------- reverse geocode and photos */
+
+const reverseSchema = z.object({
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+});
+export const reversePlaceInput = (data: unknown) => reverseSchema.parse(data);
+
+/** Name for the traveler's own position, so "add here" has a readable location. */
+export async function reversePlaceHandler({
+  data,
+}: {
+  data: ReturnType<typeof reversePlaceInput>;
+}) {
+  const user = await getAuthenticatedUser();
+  const { config } = await readItineraryMapConfig();
+  if (!config.enabled || !config.locateMe) return { place: null, status: "disabled" as const };
+  if (!allowPlaceSearch(`rev:${user.id}`)) return { place: null, status: "rate_limited" as const };
+  const url = new URL(PLACE_SEARCH_URL().replace(/\/api\/?$/, "/reverse"));
+  url.searchParams.set("lat", String(data.lat));
+  url.searchParams.set("lon", String(data.lng));
+  url.searchParams.set("lang", "en");
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "DjiwaTravel/1.0 (https://djiwatravel.com)",
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) return { place: null, status: "unavailable" as const };
+    const [first] = mapPhotonFeatures(await response.json());
+    return {
+      place: first ? { ...first, lat: data.lat, lng: data.lng } : null,
+      status: "ok" as const,
+    };
+  } catch {
+    return { place: null, status: "unavailable" as const };
+  }
+}
+
+const imageCache = new Map<string, { at: number; value: { url: string; title: string } | null }>();
+const IMAGE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export async function lookupPlaceImage(point: { lat: number; lng: number }, names: string[]) {
+  const key = `${point.lat.toFixed(4)},${point.lng.toFixed(4)}|${names.join("|").toLowerCase()}`;
+  const hit = imageCache.get(key);
+  if (hit && Date.now() - hit.at < IMAGE_TTL_MS) return hit.value;
+  const url = new URL("https://en.wikipedia.org/w/api.php");
+  url.search = new URLSearchParams({
+    action: "query",
+    format: "json",
+    generator: "geosearch",
+    ggscoord: `${point.lat}|${point.lng}`,
+    ggsradius: "250",
+    ggslimit: "10",
+    prop: "pageimages|coordinates",
+    piprop: "thumbnail",
+    pithumbsize: "480",
+    pilimit: "10",
+    colimit: "10",
+  }).toString();
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "DjiwaTravel/1.0 (https://djiwatravel.com)" },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as {
+      query?: {
+        pages?: Record<string, WikiPage & { coordinates?: { lat: number; lon: number }[] }>;
+      };
+    };
+    const pages = Object.values(payload.query?.pages ?? {}).map((page) => {
+      const c = page.coordinates?.[0];
+      const dist = c ? distanceMeters(point, { lat: c.lat, lng: c.lon }) : undefined;
+      return { title: page.title, thumbnail: page.thumbnail, dist };
+    });
+    const value = pickPlaceImage(pages, names);
+    if (imageCache.size > 500) imageCache.clear();
+    imageCache.set(key, { at: Date.now(), value });
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const h =
+    Math.sin(rad(b.lat - a.lat) / 2) ** 2 +
+    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+const placeImageSchema = z.object({
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  label: z.string().trim().min(1).max(200),
+});
+export const placeImageInput = (data: unknown) => placeImageSchema.parse(data);
+
+/** Photo for a place the traveler tapped on the map. Nothing is stored. */
+export async function placeImageHandler({ data }: { data: ReturnType<typeof placeImageInput> }) {
+  const user = await getAuthenticatedUser();
+  const { config } = await readItineraryMapConfig();
+  if (!config.enabled || !config.placeImages) return { image: null };
+  if (!allowPlaceSearch(`img:${user.id}`)) return { image: null };
+  return { image: await lookupPlaceImage({ lat: data.lat, lng: data.lng }, [data.label]) };
+}
+
+const itemImageSchema = z.object({ itemId: z.string().uuid() });
+export const itemImageInput = (data: unknown) => itemImageSchema.parse(data);
+
+/** Looks up and stores the photo of one of the traveler's own activities, once. */
+export async function resolveItemImageHandler({
+  data,
+}: {
+  data: ReturnType<typeof itemImageInput>;
+}) {
+  const user = await getAuthenticatedUser();
+  const { config } = await readItineraryMapConfig();
+  if (!config.enabled || !config.placeImages) return { url: null as string | null, checked: false };
+  const row = (
+    await pool.query(
+      `select i.title, i.location, i.latitude, i.longitude, i.place_image_url, i.place_image_checked_at
+       from public.travel_itinerary_items i join public.travel_trips t on t.id = i.trip_id
+       where i.id = $1 and t.customer_auth_subject = $2`,
+      [data.itemId, user.id],
+    )
+  ).rows[0] as
+    | {
+        title: string;
+        location: string | null;
+        latitude: number | null;
+        longitude: number | null;
+        place_image_url: string | null;
+        place_image_checked_at: string | null;
+      }
+    | undefined;
+  if (!row || row.latitude === null || row.longitude === null) return { url: null, checked: true };
+  if (row.place_image_checked_at) {
+    return {
+      url: isAllowedImageUrl(row.place_image_url) ? row.place_image_url : null,
+      checked: true,
+    };
+  }
+  if (!allowPlaceSearch(`img:${user.id}`)) return { url: null, checked: false };
+  const found = await lookupPlaceImage(
+    { lat: row.latitude, lng: row.longitude },
+    [row.location ?? "", row.title].filter(Boolean),
+  );
+  await pool.query(
+    "update public.travel_itinerary_items set place_image_url = $2, place_image_checked_at = now() where id = $1",
+    [data.itemId, found?.url ?? null],
+  );
+  return { url: found?.url ?? null, checked: true };
 }

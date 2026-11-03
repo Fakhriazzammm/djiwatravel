@@ -1,15 +1,22 @@
 import { formatTripMoney } from "@/lib/trip-money";
 import { MoneyInput } from "@/components/money-input";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { springIos, springSnappy } from "@/lib/motion";
+import { FixedLayer } from "@/components/motion-primitives";
+import { toast } from "sonner";
+import { getPlaceImage, resolveItemImage, reversePlace } from "@/lib/itinerary-map.fn";
+import { isAllowedImageUrl } from "@/lib/place-image";
 import {
   BedDouble,
   CalendarDays,
   ChevronRight,
   Expand,
+  Focus,
   Footprints,
+  LocateFixed,
+  Pencil,
   Navigation,
   Route as RouteIcon,
   Shrink,
@@ -34,6 +41,8 @@ import {
   DEFAULT_ITINERARY_MAP_CONFIG,
   POI_CATEGORIES,
   buildMapModel,
+  distanceKm,
+  type MapPin as AgendaPin,
   conflictingIds,
   findConflicts,
   itinerarySortKey,
@@ -71,6 +80,7 @@ import {
   postBooking,
   postChecklist,
   postExpense,
+  patchItinerary,
   postItinerary,
 } from "@/lib/my-trips.fn";
 
@@ -138,6 +148,8 @@ type Item = {
   location?: unknown;
   latitude?: unknown;
   longitude?: unknown;
+  place_image_url?: unknown;
+  place_image_checked_at?: unknown;
   notes?: unknown;
   activity_category?: unknown;
   booking_reference?: unknown;
@@ -289,6 +301,11 @@ export function ItineraryEditor({
   );
   const [poi, setPoi] = useState<PickedPoi | null>(null);
   const [conflicts, setConflicts] = useState<TimedItem[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [focus, setFocus] = useState(false);
+  const [me, setMe] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [poiImage, setPoiImage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
@@ -299,7 +316,12 @@ export function ItineraryEditor({
     event?.preventDefault();
     if (!force && form.startTime) {
       const hits = findConflicts(
-        { date: form.date, start: form.startTime, end: form.endTime || null },
+        {
+          date: form.date,
+          start: form.startTime,
+          end: form.endTime || null,
+          ...(editingId ? { id: editingId } : {}),
+        },
         items.map(toTimedItem),
       );
       if (hits.length) {
@@ -310,22 +332,23 @@ export function ItineraryEditor({
     setSaving(true);
     try {
       const saved = await runTripMutation({
-        action: () =>
-          postItinerary({
-            data: {
-              tripId,
-              title: form.title,
-              activityDate: form.date,
-              startTime: form.startTime || undefined,
-              endTime: form.endTime || undefined,
-              location: form.location || undefined,
-              latitude: point?.lat,
-              longitude: point?.lng,
-              activityCategory: form.category || undefined,
-            },
-          }),
+        action: () => {
+          const fields = {
+            title: form.title,
+            activityDate: form.date,
+            startTime: form.startTime || undefined,
+            endTime: form.endTime || undefined,
+            location: form.location || undefined,
+            latitude: point?.lat,
+            longitude: point?.lng,
+            activityCategory: form.category || undefined,
+          };
+          return editingId
+            ? patchItinerary({ data: { id: editingId, ...fields } })
+            : postItinerary({ data: { tripId, ...fields } });
+        },
         refresh: onSaved,
-        successMessage: "Aktivitas disimpan",
+        successMessage: editingId ? "Perubahan disimpan" : "Aktivitas disimpan",
         failureMessage: "Aktivitas belum tersimpan. Periksa tanggal dan waktu lalu coba lagi.",
       });
       if (saved) {
@@ -338,12 +361,145 @@ export function ItineraryEditor({
           category: "",
         });
         setPoint(null);
+        setEditingId(null);
         setShowForm(false);
       }
     } finally {
       setSaving(false);
     }
   }
+
+  function openNew() {
+    setEditingId(null);
+    setConflicts([]);
+    setForm((current) => ({
+      title: "",
+      date: scope && scope !== "all" ? scope : current.date,
+      startTime: "",
+      endTime: "",
+      location: "",
+      category: "",
+    }));
+    setPoint(null);
+    setShowForm(true);
+  }
+
+  function openEdit(item: Item) {
+    const p = itemPoint(item);
+    setEditingId(item.id);
+    setConflicts([]);
+    setForm({
+      title: String(item.title ?? ""),
+      date: itineraryDateKey(item.activity_date) ?? today(),
+      startTime: hhmm(item.start_time) ?? "",
+      endTime: hhmm(item.end_time) ?? "",
+      location: String(item.location ?? ""),
+      category: String(item.activity_category ?? ""),
+    });
+    setPoint(p);
+    setShowForm(true);
+  }
+
+  function selectActivity(id: string) {
+    setActiveId(id);
+    const found = days.find((d) => d.items.some((i) => i.id === id));
+    if (found && scope !== "all" && scope !== found.date) setSelectedDay(found.date);
+  }
+
+  function handleFormOpenChange(open: boolean) {
+    setShowForm(open);
+    if (!open) {
+      setEditingId(null);
+      setConflicts([]);
+    }
+  }
+
+  function locateMe() {
+    if (!navigator.geolocation) {
+      toast.error("Perangkat ini tidak mendukung GPS.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        setPoi(null);
+        setMe({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
+      },
+      (error) => {
+        setLocating(false);
+        toast.error(
+          error.code === error.PERMISSION_DENIED
+            ? "Izin lokasi ditolak. Aktifkan lokasi untuk Djiwa Travel di pengaturan browser."
+            : "Lokasi belum bisa ditemukan. Coba lagi di tempat terbuka.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
+  }
+
+  async function addHere() {
+    if (!me) return;
+    let label = "Lokasi saya";
+    try {
+      const found = await reversePlace({ data: { lat: me.lat, lng: me.lng } });
+      if (found.place?.label) label = found.place.label;
+    } catch {
+      // The name is a convenience; the point itself is what matters.
+    }
+    openNew();
+    setForm((current) => ({ ...current, location: label, title: current.title || "" }));
+    setPoint({ lat: me.lat, lng: me.lng });
+  }
+
+  // A tapped place gets its photo when one exists.
+  useEffect(() => {
+    setPoiImage(null);
+    if (!poi || !mapConfig?.placeImages) return;
+    let cancelled = false;
+    getPlaceImage({ data: { lat: poi.lat, lng: poi.lng, label: poi.label } })
+      .then((result) => {
+        if (!cancelled && result.image?.url && isAllowedImageUrl(result.image.url)) {
+          setPoiImage(result.image.url);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [poi, mapConfig?.placeImages]);
+
+  // Activities with a point but no photo lookup yet: ask the server once, then refresh the list.
+  const imageTried = useRef(new Set<string>());
+  useEffect(() => {
+    if (!mapConfig?.enabled || !mapConfig.placeImages) return;
+    const pending = items.filter(
+      (item) => itemPoint(item) && !item.place_image_checked_at && !imageTried.current.has(item.id),
+    );
+    if (!pending.length) return;
+    let cancelled = false;
+    void (async () => {
+      let changed = false;
+      for (const item of pending.slice(0, 8)) {
+        imageTried.current.add(item.id);
+        try {
+          const result = await resolveItemImage({ data: { itemId: item.id } });
+          if (result.checked) changed = true;
+        } catch {
+          // Photos are optional.
+        }
+        if (cancelled) return;
+      }
+      if (changed && !cancelled) await onSaved();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [items, mapConfig?.enabled, mapConfig?.placeImages, onSaved]);
 
   const days = useMemo(() => groupItineraryByDay(items), [items]);
   const overlapIds = useMemo(() => conflictingIds(items.map(toTimedItem)), [items]);
@@ -354,7 +510,13 @@ export function ItineraryEditor({
       ? selectedDay
       : defaultDay;
   const model = useMemo(() => buildMapModel(days, scope || "all"), [days, scope]);
-  const pinNumbers = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin.n])), [model]);
+  const pinInfo = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin])), [model]);
+  const nearestKm = useMemo(() => {
+    if (!me) return null;
+    const candidates = model.pins.filter((pin) => !pin.muted);
+    if (!candidates.length) return null;
+    return Math.min(...candidates.map((pin) => distanceKm(me, pin)));
+  }, [me, model]);
   const pinnedTotal = items.filter((item) => itemPoint(item)).length;
   const dayRouteUrl =
     scope && scope !== "all"
@@ -367,19 +529,23 @@ export function ItineraryEditor({
         <section className="space-y-3" aria-label="Agenda perjalanan">
           <div className="flex items-center justify-between px-1 pt-1">
             <h1 className="text-[22px] font-bold leading-tight tracking-tight">Agenda</h1>
-            <motion.button
-              type="button"
-              onClick={() => setShowForm(true)}
-              whileTap={{ scale: 0.95 }}
-              transition={springSnappy}
-              className="tap flex min-h-9 items-center gap-1.5 rounded-xl bg-brand-red px-3 text-[13px] font-semibold text-white"
-              aria-label="Tambah aktivitas"
-              aria-expanded={showForm}
-            >
-              <Plus className="size-4" /> Tambah
-            </motion.button>
+            <FixedLayer>
+              <motion.button
+                type="button"
+                onClick={openNew}
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileTap={{ scale: 0.94 }}
+                transition={springSnappy}
+                className="tap fixed bottom-24 right-[max(1rem,calc((100vw-28rem)/2+1rem))] z-40 flex min-h-11 items-center gap-1.5 rounded-full bg-brand-red px-4 text-[13px] font-semibold text-white shadow-lg"
+                aria-label="Tambah aktivitas"
+                aria-expanded={showForm}
+              >
+                <Plus className="size-4" /> Tambah
+              </motion.button>
+            </FixedLayer>
           </div>
-          <Sheet open={showForm} onOpenChange={setShowForm}>
+          <Sheet open={showForm} onOpenChange={handleFormOpenChange}>
             <SheetContent
               side="bottom"
               className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border-border/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7 sm:rounded-t-[28px]"
@@ -389,7 +555,9 @@ export function ItineraryEditor({
                 aria-hidden="true"
               />
               <SheetHeader className="mb-4 pr-8 text-left">
-                <SheetTitle className="text-[22px] tracking-tight">Tambah aktivitas</SheetTitle>
+                <SheetTitle className="text-[22px] tracking-tight">
+                  {editingId ? "Ubah aktivitas" : "Tambah aktivitas"}
+                </SheetTitle>
                 <SheetDescription>
                   Susun rencana perjalananmu. Semua waktu mengikuti zona lokal.
                 </SheetDescription>
@@ -539,7 +707,7 @@ export function ItineraryEditor({
                 <div className="sticky bottom-0 -mx-5 flex gap-3 border-t border-border/60 bg-background/95 px-4 pb-1 pt-4 backdrop-blur">
                   <button
                     type="button"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => handleFormOpenChange(false)}
                     className={`${btnSoft} min-h-10 flex-1 rounded-full`}
                   >
                     Batal
@@ -549,7 +717,7 @@ export function ItineraryEditor({
                     disabled={saving}
                     className={`${btnRed} min-h-10 flex-[1.4] rounded-full disabled:opacity-60`}
                   >
-                    {saving ? "Menyimpan…" : "Simpan aktivitas"}
+                    {saving ? "Menyimpan…" : editingId ? "Simpan perubahan" : "Simpan aktivitas"}
                   </button>
                 </div>
               </form>
@@ -575,11 +743,16 @@ export function ItineraryEditor({
               <ItineraryMap
                 pins={model.pins}
                 routes={model.routes}
+                focus={focus}
+                userPoint={me}
                 activeId={activeId}
-                onSelect={setActiveId}
+                onSelect={selectActivity}
                 styleUrl={mapConfig!.styleUrl}
                 poiCategories={mapConfig?.poiHelper ? poiOn : []}
-                onPoiSelect={setPoi}
+                onPoiSelect={(picked) => {
+                  setMe(null);
+                  setPoi(picked);
+                }}
                 onUnavailable={() => setMapBroken(true)}
               />
               <div
@@ -609,9 +782,9 @@ export function ItineraryEditor({
                   </span>
                 )}
               </div>
-              {mapConfig?.poiHelper && (
+              {mapConfig?.poiHelper && !focus && (
                 <div
-                  className={`absolute left-2 right-2 flex gap-1.5 overflow-x-auto ${expanded ? "top-[calc(env(safe-area-inset-top)+3rem)]" : "top-12"}`}
+                  className={`absolute left-2 right-12 flex gap-1.5 overflow-x-auto ${expanded ? "top-[calc(env(safe-area-inset-top)+3rem)]" : "top-12"}`}
                   role="group"
                   aria-label="Tampilkan di peta"
                 >
@@ -656,6 +829,46 @@ export function ItineraryEditor({
                 </div>
               )}
               <AnimatePresence>
+                {me && (
+                  <motion.div
+                    key="me"
+                    initial={{ y: 16, opacity: 0, scale: 0.96 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    exit={{ y: 12, opacity: 0 }}
+                    transition={springIos}
+                    className={`absolute inset-x-2 z-10 flex items-center gap-2.5 rounded-2xl bg-surface p-2.5 shadow-lg ${expanded ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)]" : "bottom-12"}`}
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
+                      <LocateFixed className="size-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-semibold">Lokasi kamu</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        ±{Math.max(1, Math.round(me.accuracy))} m
+                        {nearestKm !== null
+                          ? ` · ${formatKm(nearestKm)} dari titik agenda terdekat`
+                          : ""}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void addHere()}
+                      className="tap min-h-8 rounded-lg bg-brand-red px-3 text-[12px] font-semibold text-white"
+                    >
+                      Tambah di sini
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMe(null)}
+                      aria-label="Tutup"
+                      className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <AnimatePresence>
                 {poi && (
                   <motion.div
                     key={`${poi.lat}-${poi.lng}`}
@@ -665,8 +878,16 @@ export function ItineraryEditor({
                     transition={springIos}
                     className={`absolute inset-x-2 z-10 flex items-center gap-2.5 rounded-2xl bg-surface p-2.5 shadow-lg ${expanded ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)]" : "bottom-12"}`}
                   >
+                    {poiImage && (
+                      <img
+                        src={poiImage}
+                        alt=""
+                        loading="lazy"
+                        className="size-10 shrink-0 rounded-lg object-cover"
+                      />
+                    )}
                     <span
-                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-white"
+                      className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-white ${poiImage ? "hidden" : ""}`}
                       style={{ backgroundColor: poiCategory(poi.category)?.color }}
                     >
                       <svg
@@ -716,6 +937,37 @@ export function ItineraryEditor({
                   </motion.div>
                 )}
               </AnimatePresence>
+              <div
+                className={`absolute right-2 flex flex-col gap-2 ${expanded ? "top-[calc(env(safe-area-inset-top)+3.25rem)]" : "top-12"}`}
+              >
+                <motion.button
+                  type="button"
+                  onClick={() => setFocus((value) => !value)}
+                  aria-pressed={focus}
+                  aria-label={focus ? "Matikan mode fokus" : "Mode fokus: hanya titik agenda"}
+                  whileTap={{ scale: 0.9 }}
+                  transition={springSnappy}
+                  className={`tap flex size-9 items-center justify-center rounded-full shadow ${focus ? "bg-brand-red text-white" : "bg-surface/95"}`}
+                >
+                  <Focus className="size-4" />
+                </motion.button>
+                {mapConfig?.locateMe && (
+                  <motion.button
+                    type="button"
+                    onClick={locateMe}
+                    disabled={locating}
+                    aria-label="Lokasi saya"
+                    whileTap={{ scale: 0.9 }}
+                    animate={locating ? { rotate: 360 } : { rotate: 0 }}
+                    transition={
+                      locating ? { repeat: Infinity, duration: 1.2, ease: "linear" } : springSnappy
+                    }
+                    className={`tap flex size-9 items-center justify-center rounded-full shadow ${me ? "bg-blue-600 text-white" : "bg-surface/95"}`}
+                  >
+                    <LocateFixed className="size-4" />
+                  </motion.button>
+                )}
+              </div>
               <motion.button
                 type="button"
                 onClick={() => setExpanded((value) => !value)}
@@ -754,14 +1006,11 @@ export function ItineraryEditor({
                 key={day.date}
                 date={day.date}
                 items={day.items}
-                pinNumbers={pinNumbers}
+                pinInfo={pinInfo}
                 overlapIds={overlapIds}
                 activeId={activeId}
-                onSelect={(id) => {
-                  setActiveId(id);
-                  const found = days.find((d) => d.items.some((i) => i.id === id));
-                  if (found && scope !== "all" && scope !== found.date) setSelectedDay(found.date);
-                }}
+                onSelect={selectActivity}
+                onEdit={openEdit}
                 onDelete={async (id) => {
                   await runTripMutation({
                     action: () => deleteItinerary({ data: { id } }),
@@ -781,7 +1030,7 @@ export function ItineraryEditor({
               </p>
               <button
                 type="button"
-                onClick={() => setShowForm(true)}
+                onClick={openNew}
                 className="tap mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-background px-4 text-sm font-semibold text-brand-red"
               >
                 <Plus className="size-4" /> Tambah aktivitas
@@ -934,18 +1183,20 @@ function TravelHop({ km }: { km: number }) {
 function ItineraryDay({
   date,
   items,
-  pinNumbers,
+  pinInfo,
   overlapIds,
   activeId,
   onSelect,
+  onEdit,
   onDelete,
 }: {
   date: string;
   items: Item[];
-  pinNumbers: Map<string, number>;
+  pinInfo: Map<string, AgendaPin>;
   overlapIds: Set<string>;
   activeId: string | null;
   onSelect: (id: string) => void;
+  onEdit: (item: Item) => void;
   onDelete: (id: string) => Promise<void>;
 }) {
   const dateLabel = formatItineraryDate(date);
@@ -985,10 +1236,11 @@ function ItineraryDay({
             {hops[index] != null && <TravelHop km={hops[index]!} />}
             <ItineraryItem
               item={item}
-              pin={pinNumbers.get(item.id)}
+              pin={pinInfo.get(item.id)}
               overlaps={overlapIds.has(item.id)}
               active={activeId === item.id}
               onSelect={onSelect}
+              onEdit={onEdit}
               onDelete={onDelete}
             />
           </motion.div>
@@ -1004,16 +1256,19 @@ function ItineraryItem({
   overlaps,
   active,
   onSelect,
+  onEdit,
   onDelete,
 }: {
   item: Item;
-  pin?: number | undefined;
+  pin?: AgendaPin | undefined;
   overlaps: boolean;
   active: boolean;
   onSelect: (id: string) => void;
+  onEdit: (item: Item) => void;
   onDelete: (id: string) => Promise<void>;
 }) {
   const point = itemPoint(item);
+  const imageUrl = isAllowedImageUrl(item.place_image_url) ? item.place_image_url : null;
   const [deleting, setDeleting] = useState(false);
   const time = String(item.start_time ?? "").slice(0, 5);
   const endTime = String(item.end_time ?? "").slice(0, 5);
@@ -1045,10 +1300,17 @@ function ItineraryItem({
         <motion.div
           animate={{ scale: active ? 1.08 : 1 }}
           transition={springSnappy}
-          className={`flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${active ? "bg-brand-red text-white" : "bg-brand-red-soft text-brand-red"}`}
-          aria-label={`Titik ${pin} di peta`}
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+          style={
+            pin.muted && !active
+              ? { backgroundColor: "#eceef1", color: "#8a9099" }
+              : active
+                ? { backgroundColor: pin.color, color: "#fff" }
+                : { backgroundColor: `${pin.color}1f`, color: pin.color }
+          }
+          aria-label={`Titik ${pin.n} di peta`}
         >
-          {pin}
+          {pin.n}
         </motion.div>
       ) : (
         <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
@@ -1090,7 +1352,7 @@ function ItineraryItem({
           </span>
         )}
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex flex-col items-end gap-1">
         {point && (
           <motion.a
             href={googleMapsDirectionsUrl(point)}
@@ -1105,21 +1367,54 @@ function ItineraryItem({
             <Navigation className="size-3.5" /> Rute
           </motion.a>
         )}
-        <motion.button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            void remove();
-          }}
-          disabled={deleting}
-          whileTap={{ scale: 0.88 }}
-          transition={springSnappy}
-          className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-brand-red disabled:opacity-50"
-          aria-label={`Hapus ${String(item.title ?? "aktivitas")}`}
-        >
-          <Trash2 className="size-4" />
-        </motion.button>
+        <div className="flex">
+          <motion.button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(item);
+            }}
+            whileTap={{ scale: 0.88 }}
+            transition={springSnappy}
+            className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-brand-red"
+            aria-label={`Ubah ${String(item.title ?? "aktivitas")}`}
+          >
+            <Pencil className="size-4" />
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              void remove();
+            }}
+            disabled={deleting}
+            whileTap={{ scale: 0.88 }}
+            transition={springSnappy}
+            className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-brand-red disabled:opacity-50"
+            aria-label={`Hapus ${String(item.title ?? "aktivitas")}`}
+          >
+            <Trash2 className="size-4" />
+          </motion.button>
+        </div>
       </div>
+      {imageUrl && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={springIos}
+          className="relative col-span-2 col-start-2 mt-0.5 overflow-hidden rounded-xl bg-secondary"
+        >
+          <img
+            src={imageUrl}
+            alt={`Foto ${String(item.location ?? item.title ?? "tempat")}`}
+            loading="lazy"
+            className="h-24 w-full object-cover"
+          />
+          <span className="absolute bottom-1 right-1.5 rounded bg-black/50 px-1.5 text-[9px] text-white">
+            Wikipedia
+          </span>
+        </motion.div>
+      )}
     </motion.article>
   );
 }

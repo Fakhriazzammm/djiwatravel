@@ -16,6 +16,7 @@ import {
   deleteTripItem,
   patchBudgetCategory,
   toggleChecklist,
+  updateItineraryItem,
 } from "@/lib/my-trips.server";
 
 vi.mock("@/db/client.server", () => ({ pool: { query: vi.fn(), connect: vi.fn() } }));
@@ -106,6 +107,36 @@ describe("My Trips isolated persistence flows", () => {
     });
     const params = query.mock.calls[1]?.[1] as unknown[];
     expect(params.slice(6, 10)).toEqual(["Shibuya", null, null, null]);
+  });
+
+  it("edits an itinerary item only through the owner's trip and re-syncs the calendar", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: itemId, title: "Ngopi" }] } as never);
+    await expect(
+      updateItineraryItem({
+        id: itemId,
+        activityDate: "2026-11-04",
+        startTime: "10:00",
+        endTime: "11:00",
+        title: "Ngopi",
+        location: "Fuglen Tokyo",
+        latitude: 35.66,
+        longitude: 139.69,
+      }),
+    ).resolves.toMatchObject({ id: itemId });
+    const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("t.customer_auth_subject=$2");
+    expect(sql).toContain("place_image_checked_at");
+    expect(params.slice(0, 2)).toEqual([itemId, ownerId]);
+    expect(params).toEqual(expect.arrayContaining([35.66, 139.69, "Fuglen Tokyo"]));
+    expect(syncCalendar).toHaveBeenCalledWith(itemId, ownerId);
+  });
+
+  it("does not edit an item that is not the caller's", async () => {
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    await expect(
+      updateItineraryItem({ id: itemId, activityDate: "2026-11-04", title: "X" }),
+    ).rejects.toThrow("Aktivitas tidak ditemukan");
+    expect(syncCalendar).not.toHaveBeenCalled();
   });
 
   it("rejects an out-of-range coordinate before touching the database", async () => {

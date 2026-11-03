@@ -838,6 +838,52 @@ export async function addExpense(input: unknown) {
   return result.rows[0];
 }
 
+const itineraryUpdateSchema = itinerarySchema
+  .omit({ tripId: true })
+  .extend({ id: z.string().uuid() });
+
+/** Edits one of the traveler's own activities. Ownership comes from the trip, never the browser. */
+export async function updateItineraryItem(input: unknown) {
+  const data = itineraryUpdateSchema.parse(input);
+  const point =
+    data.latitude !== undefined && data.longitude !== undefined
+      ? { lat: data.latitude, lng: data.longitude }
+      : null;
+  const user = await getAuthenticatedUser();
+  const result = await pool.query(
+    `update travel_itinerary_items i set
+       activity_date=$3, start_time=$4, end_time=$5, title=$6, location=$7,
+       latitude=$8, longitude=$9, place_label=$10, activity_category=$11,
+       place_image_url = case when i.latitude is not distinct from $8 and i.longitude is not distinct from $9 then i.place_image_url else null end,
+       place_image_checked_at = case when i.latitude is not distinct from $8 and i.longitude is not distinct from $9 then i.place_image_checked_at else null end,
+       updated_at=now()
+     from travel_trips t
+     where i.id=$1 and i.trip_id=t.id and t.customer_auth_subject=$2
+     returning i.*`,
+    [
+      data.id,
+      user.id,
+      data.activityDate,
+      data.startTime ?? null,
+      data.endTime ?? null,
+      data.title,
+      data.location ?? null,
+      point ? point.lat : null,
+      point ? point.lng : null,
+      point ? (data.location ?? null) : null,
+      data.activityCategory ?? null,
+    ],
+  );
+  const item = result.rows[0];
+  if (!item) throw new Error("Aktivitas tidak ditemukan");
+  try {
+    await syncItineraryItem(item.id, user.id);
+  } catch (error) {
+    console.error("[my-trips] failed to sync edited itinerary item to Google Calendar", error);
+  }
+  return item;
+}
+
 export async function addItineraryItem(input: unknown) {
   const data = itinerarySchema.parse(input);
   // A point only makes sense as a pair; half a coordinate is dropped, never stored.
@@ -1052,6 +1098,14 @@ export const deleteExpenseHandler = ({ data }: { data: ReturnType<typeof deleteE
 export const deleteExpense = createServerFn({ method: "POST" })
   .validator(itemIdSchema)
   .handler(deleteExpenseHandler);
+export const patchItineraryInput = (data: z.input<typeof itineraryUpdateSchema>) =>
+  itineraryUpdateSchema.parse(data);
+export const patchItineraryHandler = ({ data }: { data: ReturnType<typeof patchItineraryInput> }) =>
+  updateItineraryItem(data);
+
+export const patchItinerary = createServerFn({ method: "POST" })
+  .validator(itineraryUpdateSchema)
+  .handler(patchItineraryHandler);
 export const deleteItineraryInput = (data: z.input<typeof itemIdSchema>) =>
   itemIdSchema.parse(data);
 export const deleteItineraryHandler = ({

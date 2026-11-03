@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ItineraryEditor } from "@/routes/my-trips.$tripId.$section";
-import { postItinerary } from "@/lib/my-trips.fn";
+import { patchItinerary, postItinerary } from "@/lib/my-trips.fn";
 import { searchPlaces } from "@/lib/itinerary-map.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG } from "@/lib/itinerary-map";
 
@@ -19,10 +19,14 @@ vi.mock("@/lib/my-trips.fn", () => ({
   postChecklist: vi.fn(),
   postExpense: vi.fn(),
   postItinerary: vi.fn(),
+  patchItinerary: vi.fn(),
 }));
 vi.mock("@/lib/itinerary-map.fn", () => ({
   searchPlaces: vi.fn(),
   getItineraryMapConfig: vi.fn(),
+  getPlaceImage: vi.fn(async () => ({ image: null })),
+  resolveItemImage: vi.fn(async () => ({ url: null, checked: true })),
+  reversePlace: vi.fn(async () => ({ place: null, status: "ok" })),
 }));
 vi.mock("@/components/itinerary-map", () => ({
   default: ({ pins, activeId }: { pins: { id: string; n: number }[]; activeId: string | null }) => (
@@ -230,5 +234,170 @@ describe("agenda map", () => {
     fireEvent.change(screen.getByLabelText("Mulai"), { target: { value: "10:30" } });
     fireEvent.click(screen.getByRole("button", { name: "Simpan aktivitas" }));
     await waitFor(() => expect(postItinerary).toHaveBeenCalledOnce());
+  });
+
+  it("edits an activity in place and does not flag it against itself", async () => {
+    vi.mocked(patchItinerary).mockResolvedValue({} as never);
+    const rows = [
+      {
+        id: "y",
+        activity_date: "2026-11-04",
+        start_time: "10:00:00",
+        end_time: "11:00:00",
+        title: "Ngopi",
+        location: "Fuglen",
+        activity_category: "food",
+      },
+    ];
+    render(
+      <ItineraryEditor tripId="t" items={rows} onSaved={vi.fn(async () => {})} mapConfig={null} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ubah Ngopi" }));
+    expect(screen.getByRole("dialog", { name: "Ubah aktivitas" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nama aktivitas")).toHaveValue("Ngopi");
+    expect(screen.getByLabelText("Mulai")).toHaveValue("10:00");
+    fireEvent.change(screen.getByLabelText("Nama aktivitas"), { target: { value: "Ngopi pagi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+    await waitFor(() =>
+      expect(patchItinerary).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          id: "y",
+          title: "Ngopi pagi",
+          startTime: "10:00",
+          endTime: "11:00",
+        }),
+      }),
+    );
+    expect(postItinerary).not.toHaveBeenCalled();
+  });
+
+  it("keeps other days on the map in grey while numbering each day from 1", () => {
+    const rows = [
+      {
+        id: "a",
+        activity_date: "2026-11-04",
+        start_time: "10:00:00",
+        title: "A",
+        latitude: 35.6,
+        longitude: 139.7,
+      },
+      {
+        id: "b",
+        activity_date: "2026-11-05",
+        start_time: "10:00:00",
+        title: "B",
+        latitude: 35.7,
+        longitude: 139.8,
+      },
+    ];
+    render(
+      <ItineraryEditor
+        tripId="t"
+        items={rows}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    expect(screen.getByTestId("map").dataset["pins"]).toBe("1:a,1:b");
+    expect(screen.getAllByLabelText("Titik 1 di peta")).toHaveLength(2);
+  });
+
+  it("shows a place photo when one is known, and nothing otherwise", () => {
+    const rows = [
+      {
+        id: "a",
+        activity_date: "2026-11-04",
+        title: "Kuil Senso-ji",
+        location: "Asakusa",
+        latitude: 35.7,
+        longitude: 139.8,
+        place_image_url: "https://upload.wikimedia.org/x.jpg",
+        place_image_checked_at: "2026-11-04",
+      },
+      {
+        id: "b",
+        activity_date: "2026-11-04",
+        title: "Kafe",
+        location: "Ueno",
+        latitude: 35.71,
+        longitude: 139.77,
+        place_image_url: "https://evil.example/x.jpg",
+        place_image_checked_at: "2026-11-04",
+      },
+    ];
+    render(
+      <ItineraryEditor
+        tripId="t"
+        items={rows}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    expect(screen.getByRole("img", { name: "Foto Asakusa" })).toHaveAttribute(
+      "src",
+      "https://upload.wikimedia.org/x.jpg",
+    );
+    expect(screen.queryByRole("img", { name: "Foto Ueno" })).not.toBeInTheDocument();
+  });
+
+  it("toggles focus mode and offers my-location only when Admin allows it", () => {
+    const rows = [
+      { id: "a", activity_date: "2026-11-04", title: "A", latitude: 35.6, longitude: 139.7 },
+    ];
+    const { rerender } = render(
+      <ItineraryEditor
+        tripId="t"
+        items={rows}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    const focus = screen.getByRole("button", { name: /Mode fokus/ });
+    expect(focus).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(focus);
+    expect(screen.getByRole("button", { name: "Matikan mode fokus" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Lokasi saya" })).toBeInTheDocument();
+    rerender(
+      <ItineraryEditor
+        tripId="t"
+        items={rows}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={{ ...DEFAULT_ITINERARY_MAP_CONFIG, locateMe: false }}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Lokasi saya" })).not.toBeInTheDocument();
+  });
+
+  it("finds the traveler and offers to add an activity at that spot", async () => {
+    const getCurrentPosition = vi.fn((ok: PositionCallback) =>
+      ok({
+        coords: { latitude: 35.659, longitude: 139.7006, accuracy: 18 },
+      } as GeolocationPosition),
+    );
+    Object.defineProperty(navigator, "geolocation", {
+      value: { getCurrentPosition },
+      configurable: true,
+    });
+    const rows = [
+      { id: "a", activity_date: "2026-11-04", title: "A", latitude: 35.7, longitude: 139.8 },
+    ];
+    render(
+      <ItineraryEditor
+        tripId="t"
+        items={rows}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Lokasi saya" }));
+    expect(await screen.findByText("Lokasi kamu")).toBeInTheDocument();
+    expect(screen.getByText(/±18 m/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tambah di sini" }));
+    expect(await screen.findByRole("dialog", { name: "Tambah aktivitas" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /Lokasi/ })).toHaveValue("Lokasi saya");
+    expect(screen.getByText("Titik peta tersimpan.")).toBeInTheDocument();
   });
 });

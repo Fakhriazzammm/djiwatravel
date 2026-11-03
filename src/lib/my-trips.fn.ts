@@ -171,6 +171,18 @@ export const deleteExpense = createServerFn({ method: "POST" })
     return deleteExpenseHandler({ data });
   });
 
+export const patchItinerary = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./my-trips.server").patchItineraryInput>[0]) => {
+      const { patchItineraryInput } = await import("./my-trips.server");
+      return patchItineraryInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { patchItineraryHandler } = await import("./my-trips.server");
+    return patchItineraryHandler({ data });
+  });
+
 export const deleteItinerary = createServerFn({ method: "POST" })
   .validator(
     async (data: Parameters<typeof import("./my-trips.server").deleteItineraryInput>[0]) => {

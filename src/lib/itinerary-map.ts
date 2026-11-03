@@ -21,6 +21,10 @@ export type ItineraryMapConfig = {
   placeSearch: boolean;
   /** Category helper on the map (stations, airports, food...). Off = plain map with pins only. */
   poiHelper: boolean;
+  /** "My location" button (browser GPS) and "add here". */
+  locateMe: boolean;
+  /** Place photos from Wikipedia on activities and tapped places. */
+  placeImages: boolean;
   /** MapLibre style JSON URL for the basemap. */
   styleUrl: string;
 };
@@ -29,6 +33,8 @@ export const DEFAULT_ITINERARY_MAP_CONFIG: ItineraryMapConfig = {
   enabled: true,
   placeSearch: true,
   poiHelper: true,
+  locateMe: true,
+  placeImages: true,
   styleUrl: DEFAULT_MAP_STYLE_URL,
 };
 
@@ -49,7 +55,7 @@ export function parseItineraryMapConfig(value: unknown): ItineraryMapConfig {
     throw new Error("itineraryMap harus berupa objek");
   }
   const raw = value as Record<string, unknown>;
-  for (const key of ["enabled", "placeSearch", "poiHelper"] as const) {
+  for (const key of ["enabled", "placeSearch", "poiHelper", "locateMe", "placeImages"] as const) {
     if (raw[key] !== undefined && typeof raw[key] !== "boolean") {
       throw new Error(`itineraryMap.${key} harus boolean`);
     }
@@ -65,6 +71,9 @@ export function parseItineraryMapConfig(value: unknown): ItineraryMapConfig {
     placeSearch:
       (raw["placeSearch"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.placeSearch,
     poiHelper: (raw["poiHelper"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.poiHelper,
+    locateMe: (raw["locateMe"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.locateMe,
+    placeImages:
+      (raw["placeImages"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.placeImages,
     styleUrl: styleUrl.trim(),
   };
 }
@@ -206,46 +215,65 @@ export function googleMapsPointUrl(point: GeoPoint) {
 
 export type MapPin = {
   id: string;
+  /** Position within its own day, so it matches the number on the list row. */
   n: number;
   lat: number;
   lng: number;
   title: string;
   date: string;
+  color: string;
+  /** Belongs to another day than the selected one: drawn grey. */
+  muted: boolean;
 };
-export type MapModel = { pins: MapPin[]; routes: GeoPoint[][]; pinnedCount: number };
+export type MapRoute = { date: string; color: string; muted: boolean; points: GeoPoint[] };
+export type MapModel = { pins: MapPin[]; routes: MapRoute[]; pinnedCount: number };
 
 type DayInput<T extends MapItem & { title?: unknown }> = { date: string; items: T[] };
 
+export const BRAND_RED = "#c4353b";
+export const MUTED_GREY = "#9aa0a6";
+/** One colour per day when every day is shown together. */
+export const DAY_COLORS = [BRAND_RED, "#2563eb", "#16a34a", "#9333ea", "#ea580c", "#0891b2"];
+
 /**
- * Pins for the selected day (or every day). Numbers run 1..n across what is shown, so the badge on
- * the list row, the pin on the map and the order of the route line always agree. Each day has its
- * own route line so two days never get joined by a line across the city.
+ * Pins and routes for every day. The selected day is red; other days stay on the map in grey (still
+ * with their dotted route) so the trip reads as a whole. With "all" each day gets its own colour.
+ * Numbers restart per day so the pin, the list badge and the route order always agree.
  */
 export function buildMapModel<T extends MapItem & { title?: unknown }>(
   days: DayInput<T>[],
   selected: string | "all",
 ): MapModel {
   const pins: MapPin[] = [];
-  const routes: GeoPoint[][] = [];
-  for (const day of days) {
-    if (selected !== "all" && day.date !== selected) continue;
+  const routes: MapRoute[] = [];
+  days.forEach((day, dayIndex) => {
+    const muted = selected !== "all" && day.date !== selected;
+    const color =
+      selected === "all"
+        ? DAY_COLORS[dayIndex % DAY_COLORS.length]!
+        : muted
+          ? MUTED_GREY
+          : BRAND_RED;
     const route: GeoPoint[] = [];
+    let n = 0;
     for (const item of day.items) {
       const point = itemPoint(item);
       if (!point) continue;
       pins.push({
         id: item.id,
-        n: pins.length + 1,
+        n: ++n,
         lat: point.lat,
         lng: point.lng,
         title: String(item.title ?? "Aktivitas"),
         date: day.date,
+        color,
+        muted,
       });
       route.push(point);
     }
-    if (route.length > 1) routes.push(route);
-  }
-  return { pins, routes, pinnedCount: pins.length };
+    if (route.length > 1) routes.push({ date: day.date, color, muted, points: route });
+  });
+  return { pins, routes, pinnedCount: pins.filter((pin) => !pin.muted).length };
 }
 
 export type TravelLeg = { mode: "walk" | "rail"; minutes: number; km: number };

@@ -37,3 +37,39 @@ export const saveAdminItineraryMap = createServerFn({ method: "POST" })
     const { saveItineraryMapConfigHandler } = await import("./itinerary-map.server");
     return saveItineraryMapConfigHandler({ data });
   });
+
+export const reversePlace = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./itinerary-map.server").reversePlaceInput>[0]) => {
+      const { reversePlaceInput } = await import("./itinerary-map.server");
+      return reversePlaceInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { reversePlaceHandler } = await import("./itinerary-map.server");
+    return reversePlaceHandler({ data });
+  });
+
+export const getPlaceImage = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./itinerary-map.server").placeImageInput>[0]) => {
+      const { placeImageInput } = await import("./itinerary-map.server");
+      return placeImageInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { placeImageHandler } = await import("./itinerary-map.server");
+    return placeImageHandler({ data });
+  });
+
+export const resolveItemImage = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./itinerary-map.server").itemImageInput>[0]) => {
+      const { itemImageInput } = await import("./itinerary-map.server");
+      return itemImageInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { resolveItemImageHandler } = await import("./itinerary-map.server");
+    return resolveItemImageHandler({ data });
+  });
