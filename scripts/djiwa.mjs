@@ -765,11 +765,13 @@ COMMANDS.env = {
     "cek NAMA env (tak pernah nilai): template vs Travel, dan kontrak rahasia lintas VPS (fingerprint)",
   run() {
     const template = parseEnvNames(readFileSync(join(ROOT, ".env.example"), "utf8"));
+    // Names come from the env files AND the systemd unit's own Environment=, which is where
+    // some settings (e.g. TRAVEL_SELLABILITY_MODE) legitimately live. Values are never read here.
     const present = sshOrDie(
       TRAVEL,
-      `sudo -n grep -h -E "^[A-Z][A-Z0-9_]*=." ${TRAVEL.envFile} ${TRAVEL.taskEnvFile} 2>/dev/null | cut -d= -f1 | sort -u`,
+      `{ sudo -n grep -h -E "^[A-Z][A-Z0-9_]*=." ${TRAVEL.envFile} ${TRAVEL.taskEnvFile} 2>/dev/null | cut -d= -f1; systemctl show ${TRAVEL.service} -p Environment --value | tr ' ' '\\n' | tr -d '"' | grep -E "^[A-Z][A-Z0-9_]*=." | cut -d= -f1; } | sort -u`,
     ).split("\n");
-    console.log(bold(`Travel: .env.example vs ${TRAVEL.envFile}`));
+    console.log(bold(`Travel: .env.example vs ${TRAVEL.envFile} + unit systemd`));
     const missing = template.filter((name) => !present.includes(name));
     line(
       missing.length === 0 ? true : null,
