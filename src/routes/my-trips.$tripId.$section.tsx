@@ -1,11 +1,14 @@
 import { formatTripMoney } from "@/lib/trip-money";
 import { MoneyInput } from "@/components/money-input";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   BedDouble,
   CalendarDays,
   ChevronRight,
+  Maximize2,
+  Minimize2,
+  Route as RouteIcon,
   ClipboardCheck,
   Coffee,
   Hotel,
@@ -16,6 +19,18 @@ import {
   Utensils,
   WalletCards,
 } from "lucide-react";
+import ItineraryMap from "@/components/itinerary-map";
+import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
+import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
+import {
+  buildMapModel,
+  formatKm,
+  googleMapsDayRouteUrl,
+  googleMapsDirectionsUrl,
+  itemPoint,
+  routeLengthKm,
+  type ItineraryMapConfig,
+} from "@/lib/itinerary-map";
 import { Page, btnRed, btnSoft, group } from "@/components/shell";
 import { TripNavBar, TripTabBar, type TripTabId } from "@/components/trip-ios";
 import { BudgetEditor, ExpenseEditor } from "@/components/trip-budget-ios";
@@ -45,9 +60,16 @@ import {
 export const Route = createFileRoute("/my-trips/$tripId/$section")({
   loader: async ({ params, location }) => {
     try {
-      return await getTripSection({
-        data: { tripId: params.tripId, section: params.section as FeatureId },
-      });
+      const [section, mapConfig] = await Promise.all([
+        getTripSection({
+          data: { tripId: params.tripId, section: params.section as FeatureId },
+        }),
+        // The map is an enhancement: if its setting cannot be read the Agenda still loads.
+        params.section === "itinerary"
+          ? getItineraryMapConfig().catch(() => null)
+          : Promise.resolve(null),
+      ]);
+      return { ...section, mapConfig };
     } catch (error) {
       if (isTripAuthenticationError(error)) {
         throw redirect({
@@ -97,6 +119,8 @@ type Item = {
   end_time?: unknown;
   title?: unknown;
   location?: unknown;
+  latitude?: unknown;
+  longitude?: unknown;
   notes?: unknown;
   activity_category?: unknown;
   booking_reference?: unknown;
@@ -168,7 +192,7 @@ function TripSection() {
           ))}
         </div>
       )}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {section === "budget" && (
           <BudgetEditor
             tripId={tripId}
@@ -188,7 +212,12 @@ function TripSection() {
           />
         )}
         {section === "itinerary" && (
-          <ItineraryEditor tripId={tripId} items={items} onSaved={refresh} />
+          <ItineraryEditor
+            tripId={tripId}
+            items={items}
+            onSaved={refresh}
+            mapConfig={(data.mapConfig as ItineraryMapConfig | null) ?? null}
+          />
         )}
         {section === "checklist" && (
           <ChecklistEditor tripId={tripId} items={items} onSaved={refresh} />
@@ -216,10 +245,12 @@ export function ItineraryEditor({
   tripId,
   items,
   onSaved,
+  mapConfig = null,
 }: {
   tripId: string;
   items: Item[];
   onSaved: () => Promise<void>;
+  mapConfig?: ItineraryMapConfig | null;
 }) {
   const [form, setForm] = useState({
     title: "",
@@ -229,6 +260,11 @@ export function ItineraryEditor({
     location: "",
     category: "",
   });
+  const [point, setPoint] = useState<PickedPlace>(null);
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [mapBroken, setMapBroken] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
@@ -246,6 +282,8 @@ export function ItineraryEditor({
               startTime: form.startTime || undefined,
               endTime: form.endTime || undefined,
               location: form.location || undefined,
+              latitude: point?.lat,
+              longitude: point?.lng,
               activityCategory: form.category || undefined,
             },
           }),
@@ -262,6 +300,7 @@ export function ItineraryEditor({
           location: "",
           category: "",
         });
+        setPoint(null);
         setShowForm(false);
       }
     } finally {
@@ -269,9 +308,23 @@ export function ItineraryEditor({
     }
   }
 
-  const days = groupItineraryByDay(items);
+  const days = useMemo(() => groupItineraryByDay(items), [items]);
+  const mapOn = Boolean(mapConfig?.enabled) && !mapBroken;
+  const defaultDay = days.find((day) => day.date === today())?.date ?? days[0]?.date ?? "";
+  const scope =
+    selectedDay === "all" || days.some((day) => day.date === selectedDay)
+      ? selectedDay
+      : defaultDay;
+  const model = useMemo(() => buildMapModel(days, scope || "all"), [days, scope]);
+  const pinNumbers = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin.n])), [model]);
+  const pinnedTotal = items.filter((item) => itemPoint(item)).length;
+  const dayRouteUrl =
+    scope && scope !== "all"
+      ? googleMapsDayRouteUrl(model.pins.map((pin) => ({ lat: pin.lat, lng: pin.lng })))
+      : null;
+  const searchEnabled = Boolean(mapConfig?.enabled && mapConfig.placeSearch);
   return (
-    <section className="space-y-4" aria-label="Agenda perjalanan">
+    <section className="space-y-3" aria-label="Agenda perjalanan">
       <div className="flex items-center justify-end">
         <button
           type="button"
@@ -285,19 +338,19 @@ export function ItineraryEditor({
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent
           side="bottom"
-          className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border-border/70 px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7 sm:rounded-t-[28px]"
+          className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border-border/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7 sm:rounded-t-[28px]"
         >
           <div
             className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
             aria-hidden="true"
           />
-          <SheetHeader className="mb-5 pr-8 text-left">
+          <SheetHeader className="mb-4 pr-8 text-left">
             <SheetTitle className="text-[22px] tracking-tight">Tambah aktivitas</SheetTitle>
             <SheetDescription>
               Susun rencana perjalananmu. Semua waktu mengikuti zona lokal.
             </SheetDescription>
           </SheetHeader>
-          <form onSubmit={submit} className="space-y-5">
+          <form onSubmit={submit} className="space-y-3">
             <div className="space-y-1.5">
               <label htmlFor="agenda-title" className="text-[13px] font-semibold">
                 Nama aktivitas
@@ -312,32 +365,33 @@ export function ItineraryEditor({
                 className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3.5 text-[14px] outline-none transition focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label htmlFor="agenda-date" className="text-[13px] font-semibold">
-                  Tanggal
-                </label>
-                <input
-                  id="agenda-date"
-                  required
-                  type="date"
-                  value={form.date}
-                  onChange={(event) => setForm({ ...form, date: event.target.value })}
-                  className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="agenda-location" className="text-[13px] font-semibold">
-                  Lokasi <span className="font-normal text-muted-foreground">(opsional)</span>
-                </label>
-                <input
-                  id="agenda-location"
-                  value={form.location}
-                  onChange={(event) => setForm({ ...form, location: event.target.value })}
-                  placeholder="Tambahkan lokasi"
-                  className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <label htmlFor="agenda-date" className="text-[13px] font-semibold">
+                Tanggal
+              </label>
+              <input
+                id="agenda-date"
+                required
+                type="date"
+                value={form.date}
+                onChange={(event) => setForm({ ...form, date: event.target.value })}
+                className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="agenda-location" className="text-[13px] font-semibold">
+                Lokasi <span className="font-normal text-muted-foreground">(opsional)</span>
+              </label>
+              <PlaceSearchField
+                id="agenda-location"
+                value={form.location}
+                picked={point}
+                searchEnabled={searchEnabled}
+                onChange={(location, picked) => {
+                  setForm((current) => ({ ...current, location }));
+                  setPoint(picked);
+                }}
+              />
             </div>
             <div>
               <p className="mb-1.5 text-[13px] font-semibold">
@@ -387,7 +441,7 @@ export function ItineraryEditor({
                 <option value="other">Lainnya</option>
               </select>
             </div>
-            <div className="sticky bottom-0 -mx-5 flex gap-3 border-t border-border/60 bg-background/95 px-5 pb-1 pt-4 backdrop-blur">
+            <div className="sticky bottom-0 -mx-5 flex gap-3 border-t border-border/60 bg-background/95 px-4 pb-1 pt-4 backdrop-blur">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
@@ -406,12 +460,95 @@ export function ItineraryEditor({
           </form>
         </SheetContent>
       </Sheet>
+      {mapOn && model.pinnedCount > 0 ? (
+        <div
+          className={
+            expanded
+              ? "fixed inset-0 z-50 bg-background"
+              : "relative h-[230px] overflow-hidden rounded-2xl bg-secondary"
+          }
+        >
+          <ItineraryMap
+            pins={model.pins}
+            routes={model.routes}
+            activeId={activeId}
+            onSelect={setActiveId}
+            styleUrl={mapConfig!.styleUrl}
+            onUnavailable={() => setMapBroken(true)}
+          />
+          <div
+            className={`absolute left-2 flex max-w-[calc(100%-3.5rem)] gap-1.5 overflow-x-auto ${expanded ? "top-[calc(env(safe-area-inset-top)+0.5rem)]" : "top-2"}`}
+          >
+            {days.length > 1 ? (
+              <>
+                {days.map((day) => {
+                  const label = formatItineraryDate(day.date);
+                  return (
+                    <button
+                      key={day.date}
+                      type="button"
+                      onClick={() => setSelectedDay(day.date)}
+                      aria-pressed={scope === day.date}
+                      className={`tap min-h-8 shrink-0 rounded-full px-2.5 text-xs font-semibold shadow ${scope === day.date ? "bg-brand-red text-white" : "bg-surface/95 text-foreground"}`}
+                    >
+                      {label.full}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setSelectedDay("all")}
+                  aria-pressed={scope === "all"}
+                  className={`tap min-h-8 shrink-0 rounded-full px-2.5 text-xs font-semibold shadow ${scope === "all" ? "bg-brand-red text-white" : "bg-surface/95 text-foreground"}`}
+                >
+                  Semua hari
+                </button>
+              </>
+            ) : (
+              <span className="inline-flex min-h-8 items-center rounded-full bg-brand-red px-2.5 text-xs font-semibold text-white shadow">
+                {formatItineraryDate(days[0]?.date ?? "").full}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            aria-label={expanded ? "Tutup peta layar penuh" : "Buka peta layar penuh"}
+            className={`tap absolute right-2 flex size-9 items-center justify-center rounded-full bg-surface/95 shadow ${expanded ? "top-[calc(env(safe-area-inset-top)+0.5rem)]" : "top-2"}`}
+          >
+            {expanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+          </button>
+          {dayRouteUrl && (
+            <a
+              href={dayRouteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`tap absolute left-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-surface/95 px-2.5 text-xs font-semibold shadow ${expanded ? "bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]" : "bottom-6"}`}
+            >
+              <RouteIcon className="size-3.5 text-brand-red" />
+              Rute hari ini · {model.pinnedCount} titik
+            </a>
+          )}
+        </div>
+      ) : mapOn && days.length > 0 && pinnedTotal === 0 ? (
+        <p className="flex items-center gap-2 rounded-2xl bg-secondary px-3 py-2.5 text-xs text-muted-foreground">
+          <MapPin className="size-4 shrink-0 text-brand-red" />
+          Cari tempat saat menambah aktivitas agar muncul di peta.
+        </p>
+      ) : null}
       {days.length ? (
         days.map((day) => (
           <ItineraryDay
             key={day.date}
             date={day.date}
             items={day.items}
+            pinNumbers={pinNumbers}
+            activeId={activeId}
+            onSelect={(id) => {
+              setActiveId(id);
+              const found = days.find((d) => d.items.some((i) => i.id === id));
+              if (found && scope !== "all" && scope !== found.date) setSelectedDay(found.date);
+            }}
             onDelete={async (id) => {
               await runTripMutation({
                 action: () => deleteItinerary({ data: { id } }),
@@ -423,7 +560,7 @@ export function ItineraryEditor({
           />
         ))
       ) : (
-        <div className="rounded-2xl bg-secondary p-6 text-center">
+        <div className="rounded-2xl bg-secondary p-4 text-center">
           <CalendarDays className="mx-auto size-9 text-muted-foreground" strokeWidth={1.5} />
           <p className="mt-3 text-sm font-semibold">Belum ada aktivitas</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -481,13 +618,29 @@ function formatItineraryDate(value: string) {
 function ItineraryDay({
   date,
   items,
+  pinNumbers,
+  activeId,
+  onSelect,
   onDelete,
 }: {
   date: string;
   items: Item[];
+  pinNumbers: Map<string, number>;
+  activeId: string | null;
+  onSelect: (id: string) => void;
   onDelete: (id: string) => Promise<void>;
 }) {
   const dateLabel = formatItineraryDate(date);
+  const points = items.map((item) => itemPoint(item));
+  const dayPoints = points.filter((point): point is NonNullable<typeof point> => Boolean(point));
+  const lengthKm = dayPoints.length > 1 ? routeLengthKm(dayPoints) : 0;
+  let previous: (typeof dayPoints)[number] | null = null;
+  const hops = points.map((point) => {
+    if (!point) return null;
+    const hop = previous ? routeLengthKm([previous, point]) : null;
+    previous = point;
+    return hop;
+  });
   return (
     <section className="rounded-[20px] bg-surface px-4 py-3.5">
       <div className="flex items-center justify-between gap-3">
@@ -495,11 +648,21 @@ function ItineraryDay({
           {dateLabel.weekday ? `${dateLabel.weekday}, ` : ""}
           {dateLabel.full}
         </h3>
-        <span className="shrink-0 text-xs text-muted-foreground">{items.length} aktivitas</span>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {items.length} aktivitas{lengthKm > 0 ? ` · ±${formatKm(lengthKm)}` : ""}
+        </span>
       </div>
       <div className="mt-2 divide-y divide-border/60">
-        {items.map((item) => (
-          <ItineraryItem key={item.id} item={item} onDelete={onDelete} />
+        {items.map((item, index) => (
+          <ItineraryItem
+            key={item.id}
+            item={item}
+            pin={pinNumbers.get(item.id)}
+            active={activeId === item.id}
+            hopKm={hops[index] ?? null}
+            onSelect={onSelect}
+            onDelete={onDelete}
+          />
         ))}
       </div>
     </section>
@@ -508,11 +671,20 @@ function ItineraryDay({
 
 function ItineraryItem({
   item,
+  pin,
+  active,
+  hopKm,
+  onSelect,
   onDelete,
 }: {
   item: Item;
+  pin?: number | undefined;
+  active: boolean;
+  hopKm: number | null;
+  onSelect: (id: string) => void;
   onDelete: (id: string) => Promise<void>;
 }) {
+  const point = itemPoint(item);
   const [deleting, setDeleting] = useState(false);
   const time = String(item.start_time ?? "").slice(0, 5);
   const endTime = String(item.end_time ?? "").slice(0, 5);
@@ -526,13 +698,26 @@ function ItineraryItem({
     }
   }
   return (
-    <article className="flex items-start gap-3 py-3 first:pt-1 last:pb-1">
+    <article
+      className={`flex items-start gap-3 py-3 first:pt-1 last:pb-1 ${point ? "cursor-pointer" : ""} ${active ? "rounded-xl bg-brand-red-soft/60" : ""}`}
+      aria-current={active ? "true" : undefined}
+      onClick={() => point && onSelect(item.id)}
+    >
       <div className="w-11 shrink-0 pt-0.5 text-right text-xs font-medium tabular-nums text-muted-foreground">
         {time || "—"}
       </div>
-      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-        <Icon className="size-3.5" strokeWidth={1.8} />
-      </div>
+      {pin ? (
+        <div
+          className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${active ? "bg-brand-red text-white" : "bg-brand-red-soft text-brand-red"}`}
+          aria-label={`Titik ${pin} di peta`}
+        >
+          {pin}
+        </div>
+      ) : (
+        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+          <Icon className="size-3.5" strokeWidth={1.8} />
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
@@ -553,11 +738,27 @@ function ItineraryItem({
                   {time}–{endTime}
                 </span>
               )}
+              {hopKm !== null && <span>±{formatKm(hopKm)} dari titik sebelumnya</span>}
             </div>
           </div>
+          {point && (
+            <a
+              href={googleMapsDirectionsUrl(point)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => event.stopPropagation()}
+              className="tap inline-flex shrink-0 items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-brand-red"
+              aria-label={`Rute ke ${String(item.title ?? "aktivitas")} di Google Maps`}
+            >
+              <RouteIcon className="size-3.5" /> Rute
+            </a>
+          )}
           <button
             type="button"
-            onClick={() => void remove()}
+            onClick={(event) => {
+              event.stopPropagation();
+              void remove();
+            }}
             disabled={deleting}
             className="tap shrink-0 rounded-lg px-1.5 py-1 text-xs font-semibold text-muted-foreground hover:text-brand-red"
             aria-label={`Hapus ${String(item.title ?? "aktivitas")}`}
@@ -721,13 +922,13 @@ function ChecklistEditor({
       <Sheet open={showAdd} onOpenChange={setShowAdd}>
         <SheetContent
           side="bottom"
-          className="mx-auto max-h-[88dvh] w-full max-w-lg rounded-t-[28px] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
+          className="mx-auto max-h-[88dvh] w-full max-w-lg rounded-t-[28px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
         >
           <div
             className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
             aria-hidden="true"
           />
-          <SheetHeader className="mb-5 text-left">
+          <SheetHeader className="mb-4 text-left">
             <SheetTitle>Tambah checklist</SheetTitle>
             <SheetDescription>
               Tambahkan hal yang perlu disiapkan untuk perjalanan.
@@ -823,13 +1024,13 @@ export function BookingEditor({
       <Sheet open={showForm} onOpenChange={setShowForm}>
         <SheetContent
           side="bottom"
-          className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
+          className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
         >
           <div
             className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
             aria-hidden="true"
           />
-          <SheetHeader className="mb-5 text-left">
+          <SheetHeader className="mb-4 text-left">
             <SheetTitle>Tambah pemesanan</SheetTitle>
             <SheetDescription>
               Simpan detail tiket, hotel, transportasi, atau aktivitas.

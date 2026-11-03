@@ -73,9 +73,52 @@ describe("My Trips isolated persistence flows", () => {
       null,
       null,
       null,
+      null,
+      null,
+      null,
       "attraction",
     ]);
     expect(syncCalendar).toHaveBeenCalledWith(itemId, ownerId);
+  });
+
+  it("stores the map point with the place name, and drops half a coordinate", async () => {
+    queueOwnedTripAndItem({ id: itemId, title: "Makan" });
+    await addItineraryItem({
+      tripId,
+      activityDate: "2026-11-03",
+      title: "Makan",
+      location: "Shibuya Crossing",
+      latitude: 35.659,
+      longitude: 139.7006,
+    });
+    expect(query.mock.calls[1]?.[1]).toEqual(
+      expect.arrayContaining([35.659, 139.7006, "Shibuya Crossing"]),
+    );
+
+    query.mockReset();
+    queueOwnedTripAndItem({ id: itemId, title: "Makan" });
+    await addItineraryItem({
+      tripId,
+      activityDate: "2026-11-03",
+      title: "Makan",
+      location: "Shibuya",
+      latitude: 35.659,
+    });
+    const params = query.mock.calls[1]?.[1] as unknown[];
+    expect(params.slice(6, 10)).toEqual(["Shibuya", null, null, null]);
+  });
+
+  it("rejects an out-of-range coordinate before touching the database", async () => {
+    await expect(
+      addItineraryItem({
+        tripId,
+        activityDate: "2026-11-03",
+        title: "Makan",
+        latitude: 123,
+        longitude: 10,
+      }),
+    ).rejects.toThrow();
+    expect(query).not.toHaveBeenCalled();
   });
 
   it("persists an itinerary that continues past midnight", async () => {

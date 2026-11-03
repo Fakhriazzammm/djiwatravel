@@ -289,3 +289,9 @@ Use this structure for each new lesson:
 - Prevention rule: build and fix customer pages to the compact scale, load the `djiwa-mobile-ui` skill, and add migrated pages to `src/test/mobile-compact-scale.test.ts`. Sheets and toasts must clear the tab bar.
 - Verification boundary: sizes verified by source and tests; visual check on a 390×844 device is still manual.
 
+
+## Agenda map: keep the map optional (2026-11-04)
+
+- The map is an enhancement on top of the Agenda list. The route loader reads `itineraryMap` with a catch, the component loads MapLibre only in the browser, and a basemap or style error switches the map off while the list keeps working. Never make the Agenda depend on tile availability.
+- Coordinates are stored only as a pair and only from a server-proxied place search; a typed location stays plain text. Do not put a geocoder or Google key in the browser.
+- Local `npm run build` can fail on `Rolldown failed to resolve import "canvg"` when the optional `canvg` dependency of `jspdf` is not installed; install it with `npm install --no-save canvg` before judging a build.

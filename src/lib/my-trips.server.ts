@@ -94,6 +94,8 @@ const itinerarySchema = z.object({
   timezone: z.string().trim().max(80).optional(),
   title: z.string().trim().min(1).max(160),
   location: z.string().trim().max(200).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
   notes: z.string().trim().max(2000).optional(),
   estimatedCostMinor: z.number().int().min(0).optional(),
   currency: z.string().trim().length(3).optional(),
@@ -330,8 +332,8 @@ export async function duplicateTripRecord(tripId: string) {
       [id, tripId],
     );
     await client.query(
-      `insert into travel_itinerary_items (trip_id,activity_date,start_time,end_time,timezone,title,location,notes,estimated_cost_minor,currency,booking_reference,activity_category)
-       select $1,activity_date,start_time,end_time,timezone,title,location,notes,estimated_cost_minor,currency,booking_reference,activity_category from travel_itinerary_items where trip_id=$2`,
+      `insert into travel_itinerary_items (trip_id,activity_date,start_time,end_time,timezone,title,location,latitude,longitude,place_label,notes,estimated_cost_minor,currency,booking_reference,activity_category)
+       select $1,activity_date,start_time,end_time,timezone,title,location,latitude,longitude,place_label,notes,estimated_cost_minor,currency,booking_reference,activity_category from travel_itinerary_items where trip_id=$2`,
       [id, tripId],
     );
     await client.query(
@@ -443,7 +445,7 @@ export async function loadSharedTrip(token: string) {
   const trip = share.rows[0];
   const itinerary = await pool.query(
     `select id, activity_date::text as activity_date, start_time, end_time, timezone,
-      title, location, notes, activity_category
+      title, location, latitude, longitude, notes, activity_category
      from travel_itinerary_items
      where trip_id=$1
      order by activity_date, start_time nulls last`,
@@ -838,11 +840,16 @@ export async function addExpense(input: unknown) {
 
 export async function addItineraryItem(input: unknown) {
   const data = itinerarySchema.parse(input);
+  // A point only makes sense as a pair; half a coordinate is dropped, never stored.
+  const point =
+    data.latitude !== undefined && data.longitude !== undefined
+      ? { lat: data.latitude, lng: data.longitude }
+      : null;
   const user = await getAuthenticatedUser();
   await ownedTrip(data.tripId, user.id);
   const result = await pool.query(
-    `insert into travel_itinerary_items (trip_id,activity_date,start_time,end_time,timezone,title,location,notes,estimated_cost_minor,currency,booking_reference,activity_category)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *`,
+    `insert into travel_itinerary_items (trip_id,activity_date,start_time,end_time,timezone,title,location,latitude,longitude,place_label,notes,estimated_cost_minor,currency,booking_reference,activity_category)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning *`,
     [
       data.tripId,
       data.activityDate,
@@ -851,6 +858,9 @@ export async function addItineraryItem(input: unknown) {
       data.timezone ?? null,
       data.title,
       data.location ?? null,
+      point ? point.lat : null,
+      point ? point.lng : null,
+      point ? (data.location ?? null) : null,
       data.notes ?? null,
       data.estimatedCostMinor ?? null,
       data.currency?.toUpperCase() ?? null,

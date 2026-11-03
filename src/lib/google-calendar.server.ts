@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { pool } from "@/db/client.server";
+import { googleMapsPointUrl } from "./itinerary-map";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -16,6 +17,8 @@ type TripItem = {
   timezone: string | null;
   title: string;
   location: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   notes: string | null;
   booking_reference: string | null;
 };
@@ -82,6 +85,9 @@ function eventBody(item: TripItem, trip: { name: string; destination_name: strin
     `Trip: ${trip.name}`,
     `Destinasi: ${trip.destination_name}`,
     item.booking_reference ? `Booking: ${item.booking_reference}` : "",
+    item.latitude != null && item.longitude != null
+      ? `Peta: ${googleMapsPointUrl({ lat: Number(item.latitude), lng: Number(item.longitude) })}`
+      : "",
     item.notes ?? "",
     `Dibuat oleh Djiwa Travel: ${baseUrl()}/my-trips/${item.trip_id}`,
   ].filter(Boolean).join("\n");
