@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMyTripsHome, getMyTripsActions } from "@/lib/my-trips-home";
+import { buildHomeTripWidget, buildMyTripsHome, getMyTripsActions } from "@/lib/my-trips-home";
 import { isLocalDevelopmentHost } from "@/lib/local-development";
 
 const trip = (id: string, status: "upcoming" | "ongoing" | "past", departure: string) => ({
@@ -74,5 +74,21 @@ describe("my trips home read model", () => {
       "bookings",
       "share",
     ]);
+  });
+
+  it("does not crash when an agenda date arrives as a Date (raw pg row)", () => {
+    const home = buildMyTripsHome(
+      [trip("now", "ongoing", "2026-11-03")],
+      [
+        {
+          trip_id: "now",
+          title: "ngopi",
+          activity_date: new Date("2026-11-04T00:00:00Z") as unknown as string,
+        },
+      ],
+      [],
+    );
+    const widget = buildHomeTripWidget(home, new Date(2026, 10, 4, 9, 0));
+    expect(widget.kind).toBe("trip");
   });
 });

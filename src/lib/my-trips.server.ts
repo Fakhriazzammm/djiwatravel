@@ -966,7 +966,7 @@ export const getMyTripsHomeHandler = async () => {
 
     const [agenda, checklist] = await Promise.all([
       pool.query(
-        `select id, trip_id, activity_date, start_time, end_time, title, location, activity_category
+        `select id, trip_id, activity_date::text as activity_date, start_time, end_time, title, location, activity_category
          from travel_itinerary_items
          where trip_id=$1 and activity_date between current_date and current_date + 14
          order by activity_date asc, start_time asc nulls last
@@ -974,7 +974,7 @@ export const getMyTripsHomeHandler = async () => {
         [focusId],
       ),
       pool.query(
-        `select id, trip_id, title, due_date, is_completed
+        `select id, trip_id, title, due_date::text as due_date, is_completed
          from travel_checklist_items
          where trip_id=$1
          order by is_completed asc, due_date asc nulls last, sort_order asc

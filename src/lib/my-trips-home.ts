@@ -16,6 +16,13 @@ export type MyTripsHomeTrip = {
   checklist_done: number;
 };
 
+/** `YYYY-MM-DD` from a date column that can arrive as a string or, from a raw pg row, a Date. */
+function agendaDayKey(value: unknown) {
+  if (value instanceof Date)
+    return Number.isNaN(value.getTime()) ? "" : value.toISOString().slice(0, 10);
+  return String(value ?? "").slice(0, 10);
+}
+
 export type MyTripsHomeAgendaItem = {
   id?: string;
   trip_id: string;
@@ -167,7 +174,7 @@ export function buildHomeTripWidget(
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
     today.getDate(),
   ).padStart(2, "0")}`;
-  const nextAgenda = home.agenda.find((item) => item.activity_date.slice(0, 10) >= todayKey);
+  const nextAgenda = home.agenda.find((item) => agendaDayKey(item.activity_date) >= todayKey);
 
   const nextStep =
     trip.status === "ongoing" && nextAgenda
