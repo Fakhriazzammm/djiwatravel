@@ -27,6 +27,8 @@ export type ItineraryMapConfig = {
   placeImages: boolean;
   /** Map on the trip's Ringkas (overview) page. Off = the overview keeps its lists without a map. */
   summaryMap: boolean;
+  /** Day-by-day weather on the trip's Ringkas page (forecast for days that have a map point). */
+  weather: boolean;
   /** MapLibre style JSON URL for the basemap. */
   styleUrl: string;
 };
@@ -38,6 +40,7 @@ export const DEFAULT_ITINERARY_MAP_CONFIG: ItineraryMapConfig = {
   locateMe: true,
   placeImages: true,
   summaryMap: true,
+  weather: true,
   styleUrl: DEFAULT_MAP_STYLE_URL,
 };
 
@@ -65,6 +68,7 @@ export function parseItineraryMapConfig(value: unknown): ItineraryMapConfig {
     "locateMe",
     "placeImages",
     "summaryMap",
+    "weather",
   ] as const) {
     if (raw[key] !== undefined && typeof raw[key] !== "boolean") {
       throw new Error(`itineraryMap.${key} harus boolean`);
@@ -86,6 +90,7 @@ export function parseItineraryMapConfig(value: unknown): ItineraryMapConfig {
       (raw["placeImages"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.placeImages,
     summaryMap:
       (raw["summaryMap"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.summaryMap,
+    weather: (raw["weather"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.weather,
     styleUrl: styleUrl.trim(),
   };
 }

@@ -28,6 +28,7 @@ export function AdminItineraryMapPanel({
   const [locateMe, setLocateMe] = useState(initial.locateMe);
   const [placeImages, setPlaceImages] = useState(initial.placeImages);
   const [summaryMap, setSummaryMap] = useState(initial.summaryMap);
+  const [weather, setWeather] = useState(initial.weather);
   const [styleUrl, setStyleUrl] = useState(initial.styleUrl);
   const [version, setVersion] = useState(initialVersion);
   const [reason, setReason] = useState("");
@@ -45,6 +46,7 @@ export function AdminItineraryMapPanel({
         locateMe,
         placeImages,
         summaryMap,
+        weather,
         styleUrl,
       });
       const result = await saveAdminItineraryMap({
@@ -102,6 +104,15 @@ export function AdminItineraryMapPanel({
             className="size-5 accent-primary"
           />
           Tampilkan peta di halaman Ringkas trip
+        </label>
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={weather}
+            onChange={(event) => setWeather(event.target.checked)}
+            className="size-5 accent-primary"
+          />
+          Prakiraan cuaca per hari di halaman Ringkas trip
         </label>
         <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
           <input

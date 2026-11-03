@@ -1,8 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   CalendarDays,
   CheckCircle2,
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  CloudSun,
+  Droplets,
+  Expand,
+  Focus,
   ChevronLeft,
   ChevronRight,
   LocateFixed,
@@ -10,6 +19,9 @@ import {
   Navigation,
   Pencil,
   Plus,
+  Shrink,
+  Snowflake,
+  Sun,
   Ticket,
   Trash2,
   WalletCards,
@@ -27,6 +39,14 @@ import {
 import { deleteItinerary, patchChecklist } from "@/lib/my-trips.fn";
 import { displayChecklistTitle } from "@/lib/my-trips-home";
 import { runTripMutation } from "@/lib/trip-actions";
+import { getTripWeather } from "@/lib/trip-weather.fn";
+import {
+  describeWeather,
+  forecastablePlaces,
+  weatherPlaces,
+  type DayWeather,
+  type WeatherKind,
+} from "@/lib/trip-weather";
 import {
   buildAttention,
   compactMoney,
@@ -69,8 +89,25 @@ const shortDate = (key: string) => {
     : new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
 };
 
-const glass =
-  "tap grid size-9 shrink-0 place-items-center rounded-xl bg-surface text-foreground shadow-md";
+const WEATHER_ICON: Record<WeatherKind, typeof Sun> = {
+  sun: Sun,
+  partly: CloudSun,
+  cloud: Cloud,
+  fog: CloudFog,
+  drizzle: CloudDrizzle,
+  rain: CloudRain,
+  storm: CloudLightning,
+  snow: Snowflake,
+};
+
+const dayOffset = (key: string, today: string) =>
+  Math.round((Date.parse(`${key}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000);
+
+const glassBase = "tap grid size-9 shrink-0 place-items-center rounded-xl shadow-md";
+const glass = `${glassBase} bg-surface text-foreground`;
+/** Round map buttons that switch to an accent colour while on. */
+const toggleGlass = (on: boolean, onClass: string) =>
+  `${glassBase} ${on ? onClass : "bg-surface text-foreground"}`;
 
 const AGENDA_PREVIEW = 4;
 
@@ -96,10 +133,39 @@ export function TripOverview(props: Props) {
   const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [mapBroken, setMapBroken] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [focus, setFocus] = useState(false);
+  const [forecast, setForecast] = useState<DayWeather[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [rowMenu, setRowMenu] = useState<Row | null>(null);
   const [toDelete, setToDelete] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const weatherWanted = useMemo(
+    () => (mapConfig?.weather ? forecastablePlaces(weatherPlaces(days), today) : []),
+    [mapConfig?.weather, days, today],
+  );
+  const weatherKey = JSON.stringify(weatherWanted);
+  useEffect(() => {
+    if (!weatherWanted.length) {
+      setForecast([]);
+      return;
+    }
+    let cancelled = false;
+    // Weather is an extra: a failed or disabled lookup just hides the strip.
+    getTripWeather({ data: { places: weatherWanted } })
+      .then((result) => {
+        if (!cancelled) setForecast(result.status === "ok" ? result.days : []);
+      })
+      .catch(() => {
+        if (!cancelled) setForecast([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // weatherKey stands for weatherWanted's contents.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weatherKey]);
 
   const model = useMemo(() => buildMapModel(days, scope || "all"), [days, scope]);
   const pinInfo = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin])), [model]);
@@ -197,15 +263,22 @@ export function TripOverview(props: Props) {
 
   return (
     <div className="mx-auto min-h-dvh w-full max-w-md pb-28">
+      {mapOn && expanded && <div className="h-[300px]" aria-hidden="true" />}
       <section
         aria-label="Peta perjalanan"
-        className={`relative overflow-hidden ${mapOn ? "h-[300px] bg-secondary" : "bg-brand-red pb-5 text-white"}`}
+        className={`overflow-hidden ${
+          mapOn
+            ? expanded
+              ? "fixed inset-0 z-50 h-dvh bg-secondary"
+              : "relative h-[300px] bg-secondary"
+            : "relative bg-brand-red pb-5 text-white"
+        }`}
       >
         {mapOn && (
           <ItineraryMap
             pins={model.pins}
             routes={model.routes}
-            focus={scope !== "all"}
+            focus={focus}
             userPoint={me}
             activeId={activeId}
             onSelect={setActiveId}
@@ -259,16 +332,41 @@ export function TripOverview(props: Props) {
             </div>
           )}
         </div>
-        {mapOn && mapConfig?.locateMe && (
-          <button
-            type="button"
-            onClick={locateMe}
-            disabled={locating}
-            aria-label="Lokasi saya"
-            className={`${glass} absolute bottom-8 right-4 ${me ? "text-blue-600" : ""}`}
-          >
-            <LocateFixed className="size-4" aria-hidden="true" />
-          </button>
+        {mapOn && (
+          <div className="absolute right-4 top-[calc(max(env(safe-area-inset-top),0.75rem)+5.75rem)] flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              aria-label={expanded ? "Tutup peta layar penuh" : "Buka peta layar penuh"}
+              className={glass}
+            >
+              {expanded ? (
+                <Shrink className="size-4" aria-hidden="true" />
+              ) : (
+                <Expand className="size-4" aria-hidden="true" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFocus((value) => !value)}
+              aria-pressed={focus}
+              aria-label={focus ? "Matikan mode fokus" : "Mode fokus: hanya titik agenda"}
+              className={toggleGlass(focus, "bg-brand-red text-white")}
+            >
+              <Focus className="size-4" aria-hidden="true" />
+            </button>
+            {mapConfig?.locateMe && (
+              <button
+                type="button"
+                onClick={locateMe}
+                disabled={locating}
+                aria-label="Lokasi saya"
+                className={toggleGlass(Boolean(me), "bg-blue-600 text-white")}
+              >
+                <LocateFixed className="size-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
         )}
         {!mapOn && (
           <div className="px-4 pt-16">
@@ -347,6 +445,51 @@ export function TripOverview(props: Props) {
               </a>
             )}
           </div>
+        )}
+
+        {forecast.length > 0 && (
+          <section aria-label="Prakiraan cuaca" className="mt-3">
+            <h2 className={`${iosHeading} px-1`}>Cuaca</h2>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+              {forecast.map((day) => {
+                const info = describeWeather(day.code);
+                const Icon = WEATHER_ICON[info.kind];
+                const offset = dayOffset(day.date, today);
+                const label =
+                  offset === 0 ? "Hari ini" : offset === 1 ? "Besok" : shortDate(day.date);
+                return (
+                  <button
+                    key={day.date}
+                    type="button"
+                    onClick={() => setPicked(day.date)}
+                    aria-pressed={scope === day.date}
+                    aria-label={`${label}: ${info.label}, ${day.tempMax} derajat tertinggi, ${day.tempMin} terendah${day.rainPercent !== null ? `, peluang hujan ${day.rainPercent} persen` : ""}`}
+                    className={`tap flex min-w-[92px] shrink-0 flex-col gap-1 rounded-xl p-2.5 text-left ring-1 ${
+                      scope === day.date
+                        ? "bg-brand-red/5 ring-brand-red"
+                        : "bg-surface ring-border/40"
+                    }`}
+                  >
+                    <span className="text-[11px] font-semibold text-muted-foreground">{label}</span>
+                    <span className="flex items-center gap-1.5">
+                      <Icon className="size-5 text-brand-red" aria-hidden="true" />
+                      <span className="text-[14px] font-bold tabular-nums">{day.tempMax}°</span>
+                      <span className="text-[11px] tabular-nums text-muted-foreground">
+                        {day.tempMin}°
+                      </span>
+                    </span>
+                    <span className="truncate text-[11px] text-muted-foreground">{info.label}</span>
+                    {day.rainPercent !== null && (
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Droplets className="size-3" aria-hidden="true" />
+                        {day.rainPercent}%
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         )}
 
         <div className="mt-3 flex items-end justify-between">

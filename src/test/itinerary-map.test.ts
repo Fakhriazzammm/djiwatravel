@@ -296,6 +296,11 @@ describe("place photos", () => {
     });
     expect(() => parseItineraryMapConfig({ summaryMap: "no" })).toThrow();
   });
+  it("lets Admin turn the weather strip off", () => {
+    expect(DEFAULT_ITINERARY_MAP_CONFIG.weather).toBe(true);
+    expect(parseItineraryMapConfig({ weather: false })).toMatchObject({ weather: false });
+    expect(() => parseItineraryMapConfig({ weather: "off" })).toThrow();
+  });
   it("lets Admin turn GPS and photos off", () => {
     expect(parseItineraryMapConfig({ locateMe: false, placeImages: false })).toMatchObject({
       locateMe: false,

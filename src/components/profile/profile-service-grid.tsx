@@ -72,7 +72,7 @@ export function ProfileServiceGrid({
     esim: "/my-esim",
     trips: "/my-trips",
     wallet: "/wallet",
-    orders: "/order-status",
+    orders: "/my-orders",
     notifications: "/notifications",
     support: "/support",
     guides: "/panduan",

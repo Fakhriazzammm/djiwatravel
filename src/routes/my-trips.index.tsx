@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Ellipsis,
   FolderPlus,
   ListChecks,
   MapPin,
@@ -65,13 +64,13 @@ function MyTrips() {
   const data = Route.useLoaderData();
   const { user, loading: authLoading } = useBetterAuthUser();
   const [view, setView] = useState<"today" | "logbook">("today");
-  const [sheet, setSheet] = useState<"menu" | "actions" | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   if (!user && !authLoading) return <Unauthenticated />;
 
   return (
     <Page>
-      <TopBar onMenu={() => setSheet("menu")} onAdd={() => setSheet("actions")} />
+      <TopBar onAdd={() => setSheetOpen(true)} />
       <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
         Perjalanan
       </h1>
@@ -104,16 +103,15 @@ function MyTrips() {
       )}
 
       <ActionSheet
-        open={sheet !== null}
-        kind={sheet ?? "actions"}
+        open={sheetOpen}
         focusTrip={data.focusTrip}
-        onClose={() => setSheet(null)}
+        onClose={() => setSheetOpen(false)}
       />
     </Page>
   );
 }
 
-function TopBar({ onMenu, onAdd }: { onMenu: () => void; onAdd: () => void }) {
+function TopBar({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex h-11 items-center justify-between">
       <Link
@@ -124,38 +122,26 @@ function TopBar({ onMenu, onAdd }: { onMenu: () => void; onAdd: () => void }) {
         <ChevronLeft className="size-6" strokeWidth={2.4} aria-hidden="true" />
         Beranda
       </Link>
-      <div className="flex items-center">
-        <button
-          type="button"
-          aria-label="Menu perjalanan"
-          onClick={onMenu}
-          className="tap grid size-11 place-items-center rounded-full text-brand-red"
-        >
-          <Ellipsis className="size-6" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          aria-label="Buat perjalanan baru"
-          onClick={onAdd}
-          className="tap grid size-11 place-items-center"
-        >
-          <span className="grid size-7 place-items-center rounded-full bg-brand-red text-white">
-            <Plus className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
-          </span>
-        </button>
-      </div>
+      <button
+        type="button"
+        aria-label="Buat perjalanan baru"
+        onClick={onAdd}
+        className="tap grid size-11 place-items-center"
+      >
+        <span className="grid size-7 place-items-center rounded-full bg-brand-red text-white">
+          <Plus className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
+        </span>
+      </button>
     </div>
   );
 }
 
 function ActionSheet({
   open,
-  kind,
   focusTrip,
   onClose,
 }: {
   open: boolean;
-  kind: "menu" | "actions";
   focusTrip: Trip | null;
   onClose: () => void;
 }) {
@@ -207,7 +193,7 @@ function ActionSheet({
                   Djiwa Travel
                 </p>
                 <h2 id="my-trips-sheet-title" className="mt-1 text-xl font-bold">
-                  {kind === "menu" ? "Menu perjalanan" : "Tambah ke perjalanan"}
+                  Tambah ke perjalanan
                 </h2>
               </div>
               <div className="space-y-1">

@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TripOverview } from "@/components/trip-overview";
 import { deleteItinerary, patchChecklist } from "@/lib/my-trips.fn";
+import { getTripWeather } from "@/lib/trip-weather.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG } from "@/lib/itinerary-map";
 
 const navigate = vi.fn();
@@ -23,6 +24,9 @@ vi.mock("@/components/itinerary-map", () => ({
       data-active={activeId ?? ""}
     />
   ),
+}));
+vi.mock("@/lib/trip-weather.fn", () => ({
+  getTripWeather: vi.fn(async () => ({ status: "ok", days: [] })),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -127,5 +131,37 @@ describe("TripOverview (Ringkas)", () => {
     expect(screen.getAllByText(/Berikutnya|Sedang berlangsung/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Catat biaya").length).toBe(1);
     expect(screen.getByText("Sisa anggaran")).toBeTruthy();
+  });
+
+  it("has the same three map buttons as the Agenda map", () => {
+    render(<TripOverview {...base} />);
+    const expand = screen.getByLabelText("Buka peta layar penuh");
+    fireEvent.click(expand);
+    expect(screen.getByLabelText("Tutup peta layar penuh")).toBeTruthy();
+    const focus = screen.getByLabelText("Mode fokus: hanya titik agenda");
+    fireEvent.click(focus);
+    expect(screen.getByLabelText("Matikan mode fokus").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByLabelText("Lokasi saya")).toBeTruthy();
+  });
+
+  it("shows the forecast per day and selects a day from it", async () => {
+    vi.mocked(getTripWeather).mockResolvedValueOnce({
+      status: "ok",
+      days: [{ date: key, code: 61, tempMax: 19, tempMin: 11, rainPercent: 70 }],
+    });
+    render(<TripOverview {...base} />);
+    const card = await screen.findByLabelText(/^Hari ini: Hujan, 19 derajat/);
+    expect(card.textContent).toContain("70%");
+    expect(getTripWeather).toHaveBeenCalledWith({
+      data: { places: [{ date: key, lat: 35.67, lng: 139.69 }] },
+    });
+  });
+
+  it("hides the forecast when Admin turns weather off", () => {
+    render(
+      <TripOverview {...base} mapConfig={{ ...DEFAULT_ITINERARY_MAP_CONFIG, weather: false }} />,
+    );
+    expect(getTripWeather).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Prakiraan cuaca")).toBeNull();
   });
 });

@@ -8,7 +8,7 @@ describe("profile page structure", () => {
   it("shows the data grid, a short order list, and a link to every order", () => {
     expect(source).toContain("<ProfileServiceGrid");
     expect(source).toContain("orders.slice(0, 3)");
-    expect(source).toContain('to="/order-status"');
+    expect(source).toContain('to="/my-orders"');
   });
 
   it("confirms before deleting the saved profile and names what is kept", () => {

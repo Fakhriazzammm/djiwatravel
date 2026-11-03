@@ -566,7 +566,7 @@ function Profile() {
         )}
         {orders.length > 0 && (
           <Link
-            to="/order-status"
+            to="/my-orders"
             className={`${rowClass} min-h-[46px] justify-center border-t border-border/60 text-[15px] font-medium text-[#0a84ff]`}
           >
             Lihat semua pesanan

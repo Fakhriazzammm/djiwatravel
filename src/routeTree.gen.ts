@@ -16,6 +16,7 @@ import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OrderStatusRouteImport } from './routes/order-status'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -121,6 +122,11 @@ const LiveCatalogRoute = LiveCatalogRouteImport.update({
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   id: '/llms.txt',
   path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyOrdersRoute = MyOrdersRouteImport.update({
+  id: '/my-orders',
+  path: '/my-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -494,6 +500,7 @@ export interface FileRoutesByFullPath {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/my-orders': typeof MyOrdersRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/privacy': typeof PrivacyRoute
@@ -574,6 +581,7 @@ export interface FileRoutesByTo {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/my-orders': typeof MyOrdersRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/privacy': typeof PrivacyRoute
@@ -655,6 +663,7 @@ export interface FileRoutesById {
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/my-orders': typeof MyOrdersRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/privacy': typeof PrivacyRoute
@@ -737,6 +746,7 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/llms.txt'
+    | '/my-orders'
     | '/notifications'
     | '/order-status'
     | '/privacy'
@@ -817,6 +827,7 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/llms.txt'
+    | '/my-orders'
     | '/notifications'
     | '/order-status'
     | '/privacy'
@@ -897,6 +908,7 @@ export interface FileRouteTypes {
     | '/finder'
     | '/live-catalog'
     | '/llms.txt'
+    | '/my-orders'
     | '/notifications'
     | '/order-status'
     | '/privacy'
@@ -978,6 +990,7 @@ export interface RootRouteChildren {
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
+  MyOrdersRoute: typeof MyOrdersRoute
   NotificationsRoute: typeof NotificationsRoute
   OrderStatusRoute: typeof OrderStatusRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -1096,6 +1109,13 @@ declare module '@tanstack/react-router' {
       path: '/llms.txt'
       fullPath: '/llms.txt'
       preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-orders': {
+      id: '/my-orders'
+      path: '/my-orders'
+      fullPath: '/my-orders'
+      preLoaderRoute: typeof MyOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -1643,6 +1663,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
+  MyOrdersRoute: MyOrdersRoute,
   NotificationsRoute: NotificationsRoute,
   OrderStatusRoute: OrderStatusRoute,
   PrivacyRoute: PrivacyRoute,

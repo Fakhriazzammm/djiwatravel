@@ -19,6 +19,7 @@ const COMPACT_PAGES = [
   "src/routes/my-trips.$tripId.travel.tsx",
   "src/routes/my-trips.$tripId.tsx",
   "src/routes/my-trips.index.tsx",
+  "src/routes/my-orders.tsx",
   "src/routes/my-trips.new.tsx",
   "src/routes/notifications.tsx",
   "src/routes/order-status.tsx",
