@@ -27,7 +27,16 @@ export function validateTopupAmount(amount: number) {
 }
 
 export function parseCanonicalTopupResponse(raw: unknown): DjiwaPayTopup {
-  const parsed = canonicalResponseSchema.safeParse(raw);
+  // The canonical service wraps the payload as { success, result: {...} }; accept both shapes.
+  const body =
+    raw &&
+    typeof raw === "object" &&
+    "result" in raw &&
+    raw.result &&
+    typeof raw.result === "object"
+      ? raw.result
+      : raw;
+  const parsed = canonicalResponseSchema.safeParse(body);
   if (!parsed.success) throw new Error("Respons invoice Djiwa Pay tidak valid");
   return parsed.data;
 }
