@@ -29,9 +29,13 @@ export async function beginDjiwaPayTopup(amount: number, userId: string): Promis
     body: JSON.stringify({ amount, idempotencyKey: idempotencyKey(userId) }),
   });
   const payload = await response.json().catch(() => null);
-  if (!response.ok)
+  if (!response.ok) {
+    // A failed attempt must not pin the next try to the same key: the canonical service has already
+    // stored that key, so reusing it fails forever with a duplicate-key error.
+    resetDjiwaPayTopupIdempotency(userId);
     throw new Error(
       payload && typeof payload.error === "string" ? payload.error : "Top up gagal. Coba lagi.",
     );
+  }
   return payload as DjiwaPayTopup;
 }
