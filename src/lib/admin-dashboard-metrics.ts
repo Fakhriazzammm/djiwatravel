@@ -36,3 +36,5 @@ export function formatDelta(delta: number | null): string | null {
   if (delta === 0) return "0%";
   return `${delta > 0 ? "+" : "−"}${Math.abs(delta)}%`;
 }
+
+export const formatRupiah = (v: number) => `Rp${Math.round(v).toLocaleString("id-ID")}`;
