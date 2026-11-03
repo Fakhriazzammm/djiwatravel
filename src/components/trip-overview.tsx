@@ -9,7 +9,6 @@ import {
   CloudLightning,
   CloudRain,
   CloudSun,
-  Droplets,
   Expand,
   Focus,
   ChevronLeft,
@@ -166,6 +165,8 @@ export function TripOverview(props: Props) {
     // weatherKey stands for weatherWanted's contents.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weatherKey]);
+
+  const weatherDetail = forecast.find((day) => day.date === scope) ?? forecast[0] ?? null;
 
   const model = useMemo(() => buildMapModel(days, scope || "all"), [days, scope]);
   const pinInfo = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin])), [model]);
@@ -449,46 +450,45 @@ export function TripOverview(props: Props) {
 
         {forecast.length > 0 && (
           <section aria-label="Prakiraan cuaca" className="mt-3">
-            <h2 className={`${iosHeading} px-1`}>Cuaca</h2>
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+            <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]">
               {forecast.map((day) => {
                 const info = describeWeather(day.code);
                 const Icon = WEATHER_ICON[info.kind];
                 const offset = dayOffset(day.date, today);
                 const label =
                   offset === 0 ? "Hari ini" : offset === 1 ? "Besok" : shortDate(day.date);
+                const selected = scope === day.date;
                 return (
                   <button
                     key={day.date}
                     type="button"
                     onClick={() => setPicked(day.date)}
-                    aria-pressed={scope === day.date}
+                    aria-pressed={selected}
                     aria-label={`${label}: ${info.label}, ${day.tempMax} derajat tertinggi, ${day.tempMin} terendah${day.rainPercent !== null ? `, peluang hujan ${day.rainPercent} persen` : ""}`}
-                    className={`tap flex min-w-[92px] shrink-0 flex-col gap-1 rounded-xl p-2.5 text-left ring-1 ${
-                      scope === day.date
-                        ? "bg-brand-red/5 ring-brand-red"
-                        : "bg-surface ring-border/40"
+                    className={`tap flex min-h-11 shrink-0 flex-col items-center justify-center rounded-xl px-2.5 ring-1 ${
+                      selected ? "bg-brand-red/5 ring-brand-red" : "bg-surface ring-border/40"
                     }`}
                   >
-                    <span className="text-[11px] font-semibold text-muted-foreground">{label}</span>
-                    <span className="flex items-center gap-1.5">
-                      <Icon className="size-5 text-brand-red" aria-hidden="true" />
-                      <span className="text-[14px] font-bold tabular-nums">{day.tempMax}°</span>
-                      <span className="text-[11px] tabular-nums text-muted-foreground">
-                        {day.tempMin}°
-                      </span>
+                    <span className="text-[10px] font-semibold leading-tight text-muted-foreground">
+                      {label}
                     </span>
-                    <span className="truncate text-[11px] text-muted-foreground">{info.label}</span>
-                    {day.rainPercent !== null && (
-                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <Droplets className="size-3" aria-hidden="true" />
-                        {day.rainPercent}%
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1 text-[13px] font-bold leading-tight tabular-nums">
+                      <Icon className="size-4 text-brand-red" aria-hidden="true" />
+                      {day.tempMax}°
+                    </span>
                   </button>
                 );
               })}
             </div>
+            {weatherDetail && (
+              <p className="mt-1.5 px-1 text-[11px] text-muted-foreground" aria-live="polite">
+                <span className="font-semibold text-foreground">
+                  {describeWeather(weatherDetail.code).label}
+                </span>
+                {` · ${weatherDetail.tempMax}°/${weatherDetail.tempMin}°`}
+                {weatherDetail.rainPercent !== null && ` · hujan ${weatherDetail.rainPercent}%`}
+              </p>
+            )}
           </section>
         )}
 

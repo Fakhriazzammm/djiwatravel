@@ -151,7 +151,8 @@ describe("TripOverview (Ringkas)", () => {
     });
     render(<TripOverview {...base} />);
     const card = await screen.findByLabelText(/^Hari ini: Hujan, 19 derajat/);
-    expect(card.textContent).toContain("70%");
+    expect(card.textContent).toContain("19°");
+    expect(screen.getByText(/hujan 70%/)).toBeTruthy();
     expect(getTripWeather).toHaveBeenCalledWith({
       data: { places: [{ date: key, lat: 35.67, lng: 139.69 }] },
     });

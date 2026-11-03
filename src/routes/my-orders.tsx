@@ -1,10 +1,8 @@
-import { EsimStatusBadge } from "@/components/esim-status-badge";
 import { OrderLoading } from "@/components/order-loading";
-import { RowChevron } from "@/components/profile/profile-service-grid";
 import { BackBar, Page, btnPrimary } from "@/components/shell";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { destinationArt } from "@/lib/destination-art";
-import { effectiveOrderStatus } from "@/lib/esim-status";
+import { ChevronRight } from "lucide-react";
+import { effectiveOrderStatus, esimStatusBadge, type EsimBadgeTone } from "@/lib/esim-status";
 import { useOrders } from "@/lib/orders";
 import { rupiah } from "@/lib/pricing";
 
@@ -18,43 +16,52 @@ export const Route = createFileRoute("/my-orders")({
   component: MyOrders,
 });
 
-const FINISHED = ["EXPIRED", "REFUNDED", "CANCELLED", "PROVISIONING_FAILED"];
+const DOT: Record<EsimBadgeTone, string> = {
+  success: "bg-[#34C759]",
+  warning: "bg-[#FF9F0A]",
+  info: "bg-[#0A84FF]",
+  danger: "bg-brand-red",
+  muted: "bg-[#8E8E93]",
+};
+
+const TEXT: Record<EsimBadgeTone, string> = {
+  success: "text-[#1E7A4D]",
+  warning: "text-[#9A5B00]",
+  info: "text-[#0057B8]",
+  danger: "text-brand-red",
+  muted: "text-muted-foreground",
+};
 
 /** Every order this customer owns (signed-in account plus guest orders held by this browser). */
 function MyOrders() {
   const orders = useOrders();
   const sorted = orders ? [...orders].sort((a, b) => b.createdAt - a.createdAt) : null;
-  const groupClass = "overflow-hidden rounded-[20px] bg-surface";
-  const rowClass =
-    "tap relative flex min-h-[76px] w-full items-center gap-3 px-4 py-3 text-left text-[16px]";
 
   return (
     <Page tabs={false}>
       <BackBar title="Pesanan saya" fallbackTo="/profile" />
       {sorted === null ? (
-        <div className="mt-4">
+        <div className="mt-3">
           <OrderLoading list label="Memuat pesanan…" />
         </div>
       ) : sorted.length === 0 ? (
-        <div className="mt-12 text-center">
-          <p className="font-semibold">Belum ada pesanan</p>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+        <div className="mt-10 text-center">
+          <p className="text-[14px] font-semibold">Belum ada pesanan</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
             Pesanan eSIM kamu akan muncul di sini.
           </p>
-          <Link to="/explore" className={`${btnPrimary} mt-4`}>
+          <Link to="/explore" className={`${btnPrimary} mt-3`}>
             Cari Destinasi
           </Link>
         </div>
       ) : (
         <>
-          <p className="px-1 pb-2 pt-3 text-[13px] text-muted-foreground">
+          <p className="px-3 pb-1.5 pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             {sorted.length} pesanan
           </p>
-          <section className={groupClass} aria-label="Daftar pesanan">
+          <section className="overflow-hidden rounded-2xl bg-surface" aria-label="Daftar pesanan">
             {sorted.map((o, index) => {
-              const status = effectiveOrderStatus(o.status, o.expiresAt);
-              const finished = FINISHED.includes(status);
-              const art = destinationArt(o.locationCodes?.[0]);
+              const badge = esimStatusBadge(effectiveOrderStatus(o.status, o.expiresAt));
               const code = (o.publicOrderCode ?? o.id).slice(0, 6).toUpperCase();
               const date = new Date(o.createdAt).toLocaleDateString("id-ID", {
                 day: "numeric",
@@ -66,35 +73,29 @@ function MyOrders() {
                   key={o.id}
                   to="/order/$id"
                   params={{ id: o.id }}
-                  className={`${rowClass} ${index > 0 ? "border-t border-border/60" : ""}`}
+                  className={`tap flex min-h-12 items-center gap-2 px-3 py-2 ${index > 0 ? "border-t border-border/60" : ""}`}
                 >
-                  <span
-                    className={`grid size-10 shrink-0 place-items-center rounded-2xl ${art.tint} ${finished ? "opacity-60 grayscale" : ""}`}
-                  >
-                    {art.src ? (
-                      <img
-                        src={art.src}
-                        alt=""
-                        width={36}
-                        height={36}
-                        loading="lazy"
-                        decoding="async"
-                        className="size-9 object-contain"
-                      />
-                    ) : null}
-                  </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[16px] font-semibold leading-tight">
+                    <span className="block truncate text-[14px] font-semibold leading-tight">
                       {o.packageName ?? o.packageId}
                     </span>
-                    <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">
+                    <span className="block truncate text-[12px] leading-4 text-muted-foreground">
                       {rupiah(o.amount)} · {date} · #{code}
                     </span>
-                    <span className="mt-1.5 block">
-                      <EsimStatusBadge status={status} />
+                    <span
+                      className={`mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium ${TEXT[badge.tone]}`}
+                    >
+                      <span
+                        className={`size-1.5 rounded-full ${DOT[badge.tone]}`}
+                        aria-hidden="true"
+                      />
+                      {badge.label}
                     </span>
                   </span>
-                  <RowChevron />
+                  <ChevronRight
+                    className="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
                 </Link>
               );
             })}
