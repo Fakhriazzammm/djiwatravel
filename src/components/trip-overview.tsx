@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Compass,
   LocateFixed,
   MoreHorizontal,
   Navigation,
@@ -32,6 +31,7 @@ import {
   buildAttention,
   compactMoney,
   groupOverviewDays,
+  pickNowNext,
   pickOverviewDay,
 } from "@/lib/trip-overview";
 
@@ -112,7 +112,12 @@ export function TripOverview(props: Props) {
   const activeBookings = props.bookings.filter(
     (row) => !/^(cancelled|canceled|dibatalkan)$/i.test(String(row["status"] ?? "")),
   ).length;
-  const attention = buildAttention(props.checklist, props.bookings);
+  const attention = buildAttention(props.checklist, props.bookings, 6);
+  const { current, next } = useMemo(() => {
+    const now = new Date();
+    return pickNowNext(props.itinerary, today, now.getHours() * 60 + now.getMinutes());
+  }, [props.itinerary, today]);
+  const focusRow = (current ?? next) as Row | null;
 
   function locateMe() {
     if (!navigator.geolocation) {
@@ -303,6 +308,47 @@ export function TripOverview(props: Props) {
           )}
         </div>
 
+        {focusRow && (
+          <div
+            className={`mt-3 flex items-center gap-2.5 rounded-2xl p-3 ${current ? "bg-brand-red text-white" : "bg-surface ring-1 ring-border/40"}`}
+          >
+            <div className="min-w-0 flex-1">
+              <p
+                className={`text-[11px] font-semibold uppercase tracking-wide ${current ? "text-white/80" : "text-brand-red"}`}
+              >
+                {current ? "Sedang berlangsung" : "Berikutnya"}
+              </p>
+              <p className="truncate text-[15px] font-bold">
+                {String(focusRow["title"] ?? "Aktivitas")}
+              </p>
+              <p
+                className={`truncate text-[11px] ${current ? "text-white/80" : "text-muted-foreground"}`}
+              >
+                {[
+                  String(focusRow["activity_date"] ?? "").slice(0, 10) === today
+                    ? ""
+                    : shortDate(String(focusRow["activity_date"] ?? "").slice(0, 10)),
+                  String(focusRow["start_time"] ?? "").slice(0, 5) || "Fleksibel",
+                  String(focusRow["location"] ?? ""),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+            {itemPoint(focusRow) && (
+              <a
+                href={googleMapsPointUrl(itemPoint(focusRow)!)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`tap inline-flex min-h-9 shrink-0 items-center gap-1 rounded-xl px-3 text-xs font-semibold ${current ? "bg-white text-brand-red" : "bg-brand-red text-white"}`}
+              >
+                <Navigation className="size-3.5" aria-hidden="true" />
+                Rute
+              </a>
+            )}
+          </div>
+        )}
+
         <div className="mt-3 flex items-end justify-between">
           <h2 className={`${iosHeading} px-1`}>
             Agenda{scope && scope !== "all" ? ` · ${shortDate(scope)}` : ""}
@@ -448,18 +494,28 @@ export function TripOverview(props: Props) {
           </>
         )}
 
-        <div className={`${iosGroup} mt-4`}>
+        <div className={`${iosGroup} mt-4 flex items-center gap-2.5 p-3`}>
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-red-soft text-brand-red">
+            <WalletCards className="size-4" aria-hidden="true" />
+          </span>
           <Link
-            to="/my-trips/$tripId/travel"
-            params={{ tripId }}
-            className="tap flex min-h-12 items-center gap-2.5 px-3"
+            to="/my-trips/$tripId/$section"
+            params={{ tripId, section: "budget" }}
+            className="tap min-w-0 flex-1"
           >
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-foreground text-background">
-              <Compass className="size-4" aria-hidden="true" />
+            <span className="block text-[11px] text-muted-foreground">Sisa anggaran</span>
+            <span className="block truncate text-[15px] font-bold">
+              {props.budgetSet ? props.remainingLabel : "Belum diatur"}
             </span>
-            <span className="flex-1 text-[14px] font-semibold">Mode perjalanan</span>
-            <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden="true" />
           </Link>
+          <button
+            type="button"
+            onClick={() => goAdd("expenses")}
+            className="tap inline-flex min-h-9 shrink-0 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold"
+          >
+            <Plus className="size-3.5" aria-hidden="true" />
+            Catat biaya
+          </button>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import {
   buildAttention,
   compactMoney,
   groupOverviewDays,
+  pickNowNext,
   pickOverviewDay,
 } from "@/lib/trip-overview";
 
@@ -48,5 +49,21 @@ describe("trip overview model", () => {
     expect(compactMoney(45_000_000, "Rp 450.000")).toBe("450 rb");
     expect(compactMoney(5_000, "Rp 50")).toBe("Rp 50");
     expect(compactMoney(100_000, "¥1,000")).toBe("¥1,000");
+  });
+
+  it("finds what is on now and what is next", () => {
+    const rows = [
+      { id: "a", activity_date: "2026-11-04", start_time: "09:00", end_time: "10:00" },
+      { id: "b", activity_date: "2026-11-04", start_time: "10:30", end_time: "12:00" },
+      { id: "c", activity_date: "2026-11-04", start_time: "15:00" },
+      { id: "d", activity_date: "2026-11-05", start_time: "08:00" },
+    ];
+    const at = (h: number, m = 0) => pickNowNext(rows, "2026-11-04", h * 60 + m);
+    expect(at(10, 45).current?.id).toBe("b");
+    expect(at(10, 45).next?.id).toBe("c");
+    expect(at(10, 15).current).toBeNull();
+    expect(at(10, 15).next?.id).toBe("b");
+    expect(at(23).next?.id).toBe("d");
+    expect(pickNowNext(rows, "2026-12-01", 600)).toEqual({ current: null, next: null });
   });
 });

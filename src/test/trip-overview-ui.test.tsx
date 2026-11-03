@@ -72,7 +72,7 @@ describe("TripOverview (Ringkas)", () => {
   it("shows the day's pins, the stats and the agenda rows", () => {
     render(<TripOverview {...base} />);
     expect(screen.getByTestId("map").dataset["pins"]).toBe("a1");
-    expect(screen.getByText("ngopi")).toBeTruthy();
+    expect(screen.getAllByText("ngopi")[0]).toBeTruthy();
     expect(screen.getByText("Makan siang")).toBeTruthy();
     expect(screen.getByText("0/1")).toBeTruthy();
     expect(screen.getByText("7,6 jt")).toBeTruthy();
@@ -81,7 +81,7 @@ describe("TripOverview (Ringkas)", () => {
 
   it("focuses a pin when its row is tapped", () => {
     render(<TripOverview {...base} />);
-    fireEvent.click(screen.getByText("ngopi"));
+    fireEvent.click(screen.getAllByText("ngopi").at(-1)!);
     expect(screen.getByTestId("map").dataset["active"]).toBe("a1");
   });
 
@@ -90,7 +90,7 @@ describe("TripOverview (Ringkas)", () => {
       <TripOverview {...base} mapConfig={{ ...DEFAULT_ITINERARY_MAP_CONFIG, summaryMap: false }} />,
     );
     expect(screen.queryByTestId("map")).toBeNull();
-    expect(screen.getByText("ngopi")).toBeTruthy();
+    expect(screen.getAllByText("ngopi")[0]).toBeTruthy();
   });
 
   it("completes a checklist item without leaving the page", async () => {
@@ -113,11 +113,19 @@ describe("TripOverview (Ringkas)", () => {
   it("opens the right editor from the add sheet", async () => {
     render(<TripOverview {...base} />);
     fireEvent.click(screen.getByLabelText("Tambah"));
-    fireEvent.click(await screen.findByText("Catat biaya"));
+    fireEvent.click((await screen.findAllByText("Catat biaya")).at(-1)!);
     expect(navigate).toHaveBeenCalledWith({
       to: "/my-trips/$tripId/$section",
       params: { tripId: "t1", section: "expenses" },
       search: { add: true },
     });
+  });
+
+  it("merges Mode perjalanan: shows the next activity with a route link and the budget shortcut", () => {
+    render(<TripOverview {...base} />);
+    expect(screen.queryByText("Mode perjalanan")).toBeNull();
+    expect(screen.getAllByText(/Berikutnya|Sedang berlangsung/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Catat biaya").length).toBe(1);
+    expect(screen.getByText("Sisa anggaran")).toBeTruthy();
   });
 });

@@ -71,3 +71,42 @@ export function compactMoney(minor: number, formatted: string) {
   }
   return formatted;
 }
+
+type TimedRow = {
+  id: string;
+  activity_date?: unknown;
+  start_time?: unknown;
+  end_time?: unknown;
+};
+
+const toMinutes = (value: unknown) => {
+  const match = String(value ?? "").match(/^(\d{2}):(\d{2})/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+};
+
+/** An activity without an end time is treated as lasting an hour. */
+const DEFAULT_DURATION_MINUTES = 60;
+
+/**
+ * What is happening now (today, start <= now < end) and what comes next (the first activity that
+ * has not started yet, today or later). Rows must already be sorted by date and time.
+ */
+export function pickNowNext<T extends TimedRow>(rows: T[], today: string, nowMinutes: number) {
+  let current: T | null = null;
+  let next: T | null = null;
+  for (const row of rows) {
+    const date = dateKey(row.activity_date);
+    if (!date || date < today) continue;
+    const start = toMinutes(row.start_time);
+    if (date === today && start !== null) {
+      const end = toMinutes(row.end_time) ?? start + DEFAULT_DURATION_MINUTES;
+      if (start <= nowMinutes && nowMinutes < end) {
+        current ??= row;
+        continue;
+      }
+      if (end <= nowMinutes) continue;
+    }
+    next ??= row;
+  }
+  return { current, next };
+}
