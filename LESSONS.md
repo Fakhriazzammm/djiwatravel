@@ -295,3 +295,12 @@ Use this structure for each new lesson:
 - The map is an enhancement on top of the Agenda list. The route loader reads `itineraryMap` with a catch, the component loads MapLibre only in the browser, and a basemap or style error switches the map off while the list keeps working. Never make the Agenda depend on tile availability.
 - Coordinates are stored only as a pair and only from a server-proxied place search; a typed location stays plain text. Do not put a geocoder or Google key in the browser.
 - Local `npm run build` can fail on `Rolldown failed to resolve import "canvg"` when the optional `canvg` dependency of `jspdf` is not installed; install it with `npm install --no-save canvg` before judging a build.
+
+## Every deploy briefly showed "Halaman gagal dimuat" (2026-11-04)
+
+- Symptom: customers, mostly logged-in ones, saw the root error screen ("Halaman gagal dimuat") right after logging in or while using the app; the site was fine a minute later.
+- Evidence: nginx `error.log` had `connect() failed (111: Connection refused)` and the access log 502s only inside autodeploy restart windows (five deploys in one hour, 20-60 s each). Auth (`/api/auth/get-session` 200 in <0.3 s), the Travel database and both Helipod VPS were healthy; Google sign-in callbacks returned 302.
+- Root cause: autodeploy stops the service, swaps `.output` and starts it (by design, see the swap lesson above), and `djiwatravel.service` had no `TimeoutStopSec`, so a stop took 20-30 s while the old node process drained. Logged-in pages call `/api/auth/get-session` and server functions constantly, so they hit the gap.
+- Safe fix: systemd drop-in `/etc/systemd/system/djiwatravel.service.d/stop.conf` with `TimeoutStopSec=8`; nginx `error_page 502 503 504` serves `/var/www/djiwa-updating/updating.html` (an auto-refreshing "Sedang diperbarui" page, source `public/updating.html`, snippet `scripts/nginx/djiwatravel-updating.conf`); the root error component retries quietly up to 5 times per minute.
+- Prevention rule: batch small commits instead of pushing one every few minutes; keep the stop timeout and the friendly 502 page when rebuilding the VPS. Status codes stay 502 so webhooks and fetch callers still retry.
+- Verification boundary: the 502 page was installed and nginx reloaded cleanly, but only a real deploy proves it; the Tentram VPS disk was at 88.5% when checked and should be cleaned up separately.

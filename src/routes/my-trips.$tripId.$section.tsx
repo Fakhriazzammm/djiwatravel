@@ -202,12 +202,7 @@ function TripSection() {
   const categories = data.categories as CategoryOption[];
   return (
     <Page tabs={false}>
-      <TripNavBar
-        backLabel={trip.name}
-        backTo="trip"
-        backTripId={tripId}
-        iconOnly={section === "itinerary"}
-      />
+      <TripNavBar backLabel={trip.name} backTo="trip" backTripId={tripId} iconOnly />
       {section !== "itinerary" && (
         <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
           {labels[section] ?? "Perjalanan"}

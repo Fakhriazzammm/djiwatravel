@@ -46,6 +46,11 @@ function NotFoundComponent() {
   );
 }
 
+// The error screen remounts after each quiet retry, so the budget lives outside the component:
+// up to 5 retries per minute, then the manual button is all that is left.
+let autoRetryCount = 0;
+let autoRetryWindowStart = 0;
+
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
@@ -59,7 +64,20 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     }
     if (reloadOnceForStaleChunk(error, storage, () => window.location.reload())) return;
     reportRuntimeError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
+    // A deploy restarts the app for a few seconds: retry quietly a few times before giving up.
+    const now = Date.now();
+    if (now - autoRetryWindowStart > 60_000) {
+      autoRetryWindowStart = now;
+      autoRetryCount = 0;
+    }
+    if (autoRetryCount >= 5) return;
+    const timer = window.setTimeout(() => {
+      autoRetryCount += 1;
+      void router.invalidate();
+      reset();
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [error, reset, router]);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">

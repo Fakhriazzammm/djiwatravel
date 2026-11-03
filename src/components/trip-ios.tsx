@@ -96,7 +96,7 @@ export function TripNavBar({
   iconOnly?: boolean;
 }) {
   const className = iconOnly
-    ? "tap -ml-1 flex size-11 items-center justify-center"
+    ? "tap flex size-11 items-center justify-center"
     : "tap -ml-2 flex min-h-11 items-center gap-0.5 rounded-xl pl-1 pr-3 text-[15px] text-brand-red";
   const backContent = iconOnly ? (
     <span className="flex size-9 items-center justify-center rounded-full bg-surface text-brand-red shadow-sm ring-1 ring-border/50">
