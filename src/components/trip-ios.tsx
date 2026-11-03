@@ -86,25 +86,47 @@ export function TripNavBar({
   backTo,
   backTripId,
   action,
+  iconOnly = false,
 }: {
   backLabel: string;
   backTo: "list" | "trip";
   backTripId?: string;
   action?: ReactNode;
+  /** iOS-style round back button with just the chevron; the label stays as its accessible name. */
+  iconOnly?: boolean;
 }) {
-  const className =
-    "tap -ml-2 flex min-h-11 items-center gap-0.5 rounded-xl pl-1 pr-3 text-[15px] text-brand-red";
+  const className = iconOnly
+    ? "tap -ml-1 flex size-11 items-center justify-center"
+    : "tap -ml-2 flex min-h-11 items-center gap-0.5 rounded-xl pl-1 pr-3 text-[15px] text-brand-red";
+  const backContent = iconOnly ? (
+    <span className="flex size-9 items-center justify-center rounded-full bg-surface text-brand-red shadow-sm ring-1 ring-border/50">
+      <ChevronLeft className="size-5 -ml-0.5" strokeWidth={2.6} aria-hidden="true" />
+    </span>
+  ) : (
+    <>
+      <ChevronLeft className="size-6" strokeWidth={2.4} aria-hidden="true" />
+      <span className="max-w-[60vw] truncate">{backLabel}</span>
+    </>
+  );
+  const backName = iconOnly ? `Kembali ke ${backLabel}` : undefined;
   return (
     <div className="flex h-11 items-center justify-between">
       {backTo === "trip" && backTripId ? (
-        <Link to="/my-trips/$tripId" params={{ tripId: backTripId }} className={className}>
-          <ChevronLeft className="size-6" strokeWidth={2.4} aria-hidden="true" />
-          <span className="max-w-[60vw] truncate">{backLabel}</span>
+        <Link
+          to="/my-trips/$tripId"
+          params={{ tripId: backTripId }}
+          className={className}
+          {...(backName ? { "aria-label": backName } : {})}
+        >
+          {backContent}
         </Link>
       ) : (
-        <Link to="/my-trips" className={className}>
-          <ChevronLeft className="size-6" strokeWidth={2.4} aria-hidden="true" />
-          <span className="max-w-[60vw] truncate">{backLabel}</span>
+        <Link
+          to="/my-trips"
+          className={className}
+          {...(backName ? { "aria-label": backName } : {})}
+        >
+          {backContent}
         </Link>
       )}
       <div className="flex items-center">{action}</div>

@@ -416,6 +416,7 @@ describe("agenda map", () => {
         mapConfig={null}
       />,
     );
-    expect(screen.getByText(/Perjalanan spring · Tokyo · 3–9 Nov 2026/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Mau ke mana saja di Tokyo?" })).toBeInTheDocument();
+    expect(screen.getByText(/^spring · 3–9 Nov 2026$/)).toBeInTheDocument();
   });
 });

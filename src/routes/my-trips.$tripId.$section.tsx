@@ -201,7 +201,12 @@ function TripSection() {
   const categories = data.categories as CategoryOption[];
   return (
     <Page tabs={false}>
-      <TripNavBar backLabel={trip.name} backTo="trip" backTripId={tripId} />
+      <TripNavBar
+        backLabel={trip.name}
+        backTo="trip"
+        backTripId={tripId}
+        iconOnly={section === "itinerary"}
+      />
       {section !== "itinerary" && (
         <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
           {labels[section] ?? "Perjalanan"}
@@ -574,10 +579,14 @@ export function ItineraryEditor({
         <section className="space-y-3 pb-28" aria-label="Agenda perjalanan">
           <div className="relative flex items-center justify-between px-1 pt-1">
             <div className="min-w-0">
-              <h1 className="text-[22px] font-bold leading-tight tracking-tight">Agenda</h1>
+              <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight">
+                {trip?.destination_name
+                  ? `Mau ke mana saja di ${trip.destination_name}?`
+                  : "Mau ke mana saja?"}
+              </h1>
               {trip && (
                 <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
-                  {tripSubtitle(trip)}
+                  {tripSubtitle(trip, items.length)}
                 </p>
               )}
             </div>
@@ -1166,12 +1175,15 @@ function AgendaMascot({ size }: { size: number }) {
   );
 }
 
-function tripSubtitle(trip: {
-  name: string;
-  destination_name: string;
-  departure_date: string | null;
-  return_date: string | null;
-}) {
+function tripSubtitle(
+  trip: {
+    name: string;
+    destination_name: string;
+    departure_date: string | null;
+    return_date: string | null;
+  },
+  count = 0,
+) {
   const fmt = (value: string | null, withYear: boolean) => {
     const m = String(value ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (!m) return null;
@@ -1192,7 +1204,7 @@ function tripSubtitle(trip: {
     const to = fmt(trip.return_date, true);
     range = from && to ? `${from} – ${to}` : (to ?? from);
   }
-  return [`Perjalanan ${trip.name}`, trip.destination_name, range].filter(Boolean).join(" · ");
+  return [trip.name, range, count > 0 ? `${count} agenda` : null].filter(Boolean).join(" · ");
 }
 
 function groupItineraryByDay(items: Item[]) {
