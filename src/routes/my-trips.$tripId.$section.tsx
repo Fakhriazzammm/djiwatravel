@@ -1088,7 +1088,7 @@ export function ItineraryEditor({
             ))
           ) : (
             <div className="rounded-2xl bg-secondary p-4 text-center">
-              <CalendarDays className="mx-auto size-9 text-muted-foreground" strokeWidth={1.5} />
+              <AgendaMascot size={132} />
               <p className="mt-3 text-sm font-semibold">Belum ada aktivitas</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Rencana perjalananmu akan tersusun di sini.
@@ -1100,6 +1100,14 @@ export function ItineraryEditor({
               >
                 <Plus className="size-4" /> Tambah aktivitas
               </button>
+            </div>
+          )}
+          {days.length > 0 && (
+            <div className="flex flex-col items-center gap-1 pt-2 text-center">
+              <AgendaMascot size={120} />
+              <p className="text-[12px] text-muted-foreground">
+                {items.length} aktivitas tersusun. Tambah lagi kapan saja.
+              </p>
             </div>
           )}
         </section>
@@ -1139,6 +1147,23 @@ const POI_FORM_CATEGORY: Record<PoiCategoryId, string> = {
   hotel: "hotel",
   shop: "other",
 };
+
+/** The scheduling mascot (a plush plane with a calendar and pencil), floating gently. */
+function AgendaMascot({ size }: { size: number }) {
+  return (
+    <motion.img
+      src="/assets/agenda/mascot-agenda-v1.png"
+      alt=""
+      width={size}
+      height={Math.round(size * (297 / 360))}
+      loading="lazy"
+      animate={{ y: [0, -5, 0] }}
+      transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
+      className="mx-auto select-none"
+      draggable={false}
+    />
+  );
+}
 
 function tripSubtitle(trip: {
   name: string;
