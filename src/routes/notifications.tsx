@@ -1,9 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bell, Check, ExternalLink, RefreshCw } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  Archive,
+  ArchiveRestore,
+  Bell,
+  Check,
+  CheckCheck,
+  CreditCard,
+  Ellipsis,
+  ExternalLink,
+  Gift,
+  Plane,
+  RefreshCw,
+  Search,
+  Smartphone,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Page } from "@/components/shell";
 import { getCustomerNotificationsFeed } from "@/lib/customer-notifications.fn";
 
+type Category = "esim" | "bayar" | "trip" | "info";
 type Notification = {
   id: string;
   type: string;
@@ -13,17 +30,48 @@ type Notification = {
   created_at: string;
   expires_at: string | null;
   read_at: string | null;
+  archived_at: string | null;
+  category: Category;
 };
 type NotificationData = {
   notifications: Notification[];
   unread_count: number;
   next_cursor: string | null;
 };
+type Action = "read" | "read_all" | "archive" | "unarchive" | "delete" | "restore";
+type Filter = "all" | "unread" | Category;
+
+const CATEGORY: Record<Category, { label: string; Icon: LucideIcon; tone: string }> = {
+  esim: { label: "eSIM", Icon: Smartphone, tone: "bg-emerald-100 text-emerald-700" },
+  bayar: { label: "Bayar", Icon: CreditCard, tone: "bg-amber-100 text-amber-700" },
+  trip: { label: "Trip", Icon: Plane, tone: "bg-sky-100 text-sky-700" },
+  info: { label: "Info", Icon: Gift, tone: "bg-brand-red/10 text-brand-red" },
+};
+const TZ = "Asia/Jakarta";
+const dayKey = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ });
+function dayLabel(iso: string) {
+  const key = dayKey(iso);
+  const now = Date.now();
+  if (key === dayKey(new Date(now).toISOString())) return "Hari ini";
+  if (key === dayKey(new Date(now - 86_400_000).toISOString())) return "Kemarin";
+  return new Date(iso).toLocaleDateString("id-ID", {
+    timeZone: TZ,
+    day: "numeric",
+    month: "long",
+  });
+}
+const timeLabel = (iso: string) =>
+  new Date(iso).toLocaleTimeString("id-ID", {
+    timeZone: TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 // Uses the server function directly: a relative fetch("/api/...") fails during SSR, which made
 // the loader always report "belum dapat dimuat" on first render.
-async function fetchNotifications(): Promise<NotificationData> {
+async function fetchNotifications(view: "inbox" | "archived" = "inbox"): Promise<NotificationData> {
   const payload: unknown = await getCustomerNotificationsFeed({
-    data: { limit: 50, unreadOnly: false },
+    data: { limit: 50, unreadOnly: false, view },
   });
   if (
     !payload ||
@@ -33,6 +81,17 @@ async function fetchNotifications(): Promise<NotificationData> {
     throw new Error("Unable to load notifications");
   }
   return payload as NotificationData;
+}
+
+async function mutate(action: Action, ids: string[]) {
+  const response = await fetch("/api/customer-notifications", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, notification_ids: ids }),
+  });
+  const payload: unknown = await response.json().catch(() => null);
+  if (!response.ok || !payload || (payload as { ok?: unknown }).ok !== true)
+    throw new Error("Unable to update notifications");
 }
 
 export const Route = createFileRoute("/notifications")({
@@ -63,87 +122,200 @@ function NotificationsLoading() {
   );
 }
 
+const ACTION_W = 168;
+
 function Notifications() {
   const initial = Route.useLoaderData();
-  const [data, setData] = useState(initial.data);
+  const [items, setItems] = useState<Notification[]>(initial.data?.notifications ?? []);
   const [error, setError] = useState(initial.error);
-  const [readingId, setReadingId] = useState<string | null>(null);
-  const unreadCount = data?.unread_count ?? 0;
-  const notifications = useMemo(() => data?.notifications ?? [], [data]);
+  const [archivedView, setArchivedView] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sheetFor, setSheetFor] = useState<Notification | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; undo: () => void } | null>(null);
+  const toastTimer = useRef<number | null>(null);
 
-  async function retry() {
+  const unreadCount = useMemo(
+    () => (archivedView ? 0 : items.filter((n) => !n.read_at).length),
+    [items, archivedView],
+  );
+
+  const load = useCallback(async (view: "inbox" | "archived") => {
     setError(null);
     try {
-      const next = await fetchNotifications();
-      setData(next);
+      setItems((await fetchNotifications(view)).notifications);
     } catch {
       setError("Notifikasi belum dapat dimuat. Coba lagi sebentar.");
     }
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    },
+    [],
+  );
+
+  function showToast(text: string, undo: () => void) {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    setToast({ text, undo });
+    toastTimer.current = window.setTimeout(() => setToast(null), 6000);
   }
 
-  async function markRead(item: Notification) {
-    if (item.read_at || readingId) return;
-    setReadingId(item.id);
+  /** Optimistic mutation: apply locally, persist, and roll back with an error if the server refuses. */
+  async function run(action: Action, ids: string[], opts?: { toast?: string; undo?: Action }) {
+    const snapshot = items;
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    setOpenId(null);
+    setSheetFor(null);
+    setItems((cur) => {
+      if (action === "read")
+        return cur.map((n) => (idSet.has(n.id) && !n.read_at ? { ...n, read_at: now } : n));
+      if (action === "read_all") return cur.map((n) => (n.read_at ? n : { ...n, read_at: now }));
+      return cur.filter((n) => !idSet.has(n.id)); // archive/unarchive/delete leave the current view
+    });
     try {
-      const response = await fetch("/api/customer-notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "read", notification_id: item.id }),
-      });
-      const payload: unknown = await response.json().catch(() => null);
-      if (
-        !response.ok ||
-        !payload ||
-        typeof payload !== "object" ||
-        (payload as { ok?: unknown }).ok !== true
-      )
-        throw new Error("Unable to mark notification read");
-      setData(
-        (current) =>
-          current && {
-            ...current,
-            unread_count: Math.max(0, current.unread_count - 1),
-            notifications: current.notifications.map((notification) =>
-              notification.id === item.id
-                ? { ...notification, read_at: new Date().toISOString() }
-                : notification,
-            ),
-          },
-      );
+      await mutate(action, ids);
+      if (opts?.toast && opts.undo) {
+        const undoAction = opts.undo;
+        showToast(opts.toast, () => {
+          setToast(null);
+          void mutate(undoAction, ids)
+            .then(() => load(archivedView ? "archived" : "inbox"))
+            .catch(() => setError("Gagal mengurungkan. Coba lagi."));
+        });
+      }
     } catch {
-      setError("Notifikasi belum ditandai sudah dibaca. Coba lagi.");
-    } finally {
-      setReadingId(null);
+      setItems(snapshot);
+      setError("Perubahan belum tersimpan. Coba lagi.");
     }
   }
 
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((n) => {
+      if (filter === "unread" && n.read_at) return false;
+      if (filter !== "all" && filter !== "unread" && n.category !== filter) return false;
+      return !q || `${n.title} ${n.body}`.toLowerCase().includes(q);
+    });
+  }, [items, filter, query]);
+
+  const groups = useMemo(() => {
+    const map = new Map<string, Notification[]>();
+    for (const n of visible) {
+      const label = dayLabel(n.created_at);
+      map.set(label, [...(map.get(label) ?? []), n]);
+    }
+    return [...map.entries()];
+  }, [visible]);
+
+  const toggleSelect = (id: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const exitSelect = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+  const bulk = async (action: Action, label: string, undo?: Action) => {
+    const ids = [...selected];
+    exitSelect();
+    await run(action, ids, undo ? { toast: label, undo } : undefined);
+  };
+
+  const filters: { id: Filter; label: string; count?: number }[] = [
+    { id: "all", label: "Semua", count: items.length },
+    { id: "unread", label: "Belum dibaca", count: unreadCount },
+    { id: "esim", label: "eSIM" },
+    { id: "bayar", label: "Bayar" },
+    { id: "trip", label: "Trip" },
+  ];
+
   return (
     <Page>
-      <div className="flex items-start justify-between gap-3 pt-4">
-        <div>
-          <p className="text-sm font-semibold text-brand-red">Pusat notifikasi</p>
-          <h1 className="large-title mt-1">Notifikasi</h1>
-        </div>
-        <div
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary"
-          aria-label={`${unreadCount} notifikasi belum dibaca`}
+      <div className="flex items-center justify-between pt-4 text-[15px] font-semibold text-brand-red">
+        <button
+          type="button"
+          className="min-h-10"
+          onClick={() => {
+            const next = !archivedView;
+            setArchivedView(next);
+            setFilter("all");
+            exitSelect();
+            void load(next ? "archived" : "inbox");
+          }}
         >
-          <Bell className="size-5" aria-hidden="true" />
-        </div>
+          {archivedView ? "← Kotak masuk" : "Arsip"}
+        </button>
+        <button
+          type="button"
+          className="min-h-10 disabled:opacity-40"
+          disabled={items.length === 0}
+          onClick={() => (selecting ? exitSelect() : setSelecting(true))}
+        >
+          {selecting ? "Selesai" : "Ubah"}
+        </button>
       </div>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {unreadCount ? `${unreadCount} belum dibaca` : "Semua sudah dibaca"}
+      <h1 className="large-title mt-1">
+        {selecting ? `${selected.size} dipilih` : archivedView ? "Arsip" : "Notifikasi"}
+      </h1>
+      <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
+        {archivedView
+          ? "Notifikasi yang kamu arsipkan"
+          : unreadCount
+            ? `${unreadCount} belum dibaca`
+            : "Semua sudah dibaca"}
       </p>
+
+      <label className="mt-4 flex min-h-10 items-center gap-2 rounded-xl bg-secondary px-3 text-sm">
+        <Search className="size-4 text-muted-foreground" aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Cari notifikasi"
+          aria-label="Cari notifikasi"
+          className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
+        />
+      </label>
+
+      {!archivedView && (
+        <div
+          className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1"
+          role="tablist"
+          aria-label="Filter notifikasi"
+        >
+          {filters.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              role="tab"
+              aria-selected={filter === f.id}
+              onClick={() => setFilter(f.id)}
+              className={`min-h-9 shrink-0 rounded-full px-3.5 text-[13px] font-semibold ${filter === f.id ? "bg-foreground text-background" : "bg-surface text-muted-foreground"}`}
+            >
+              {f.label}
+              {f.count ? <span className="ml-1 opacity-70">{f.count}</span> : null}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && (
         <div
           role="alert"
-          className="mt-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+          className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
         >
           <p>{error}</p>
           <button
             type="button"
-            onClick={() => void retry()}
+            onClick={() => void load(archivedView ? "archived" : "inbox")}
             className="mt-3 inline-flex min-h-10 items-center gap-2 font-semibold underline underline-offset-2"
           >
             <RefreshCw className="size-4" aria-hidden="true" />
@@ -151,69 +323,379 @@ function Notifications() {
           </button>
         </div>
       )}
-      {!error && notifications.length === 0 && (
+
+      {!error && items.length === 0 && (
         <div className="mt-8 rounded-2xl border border-dashed border-border bg-surface p-8 text-center">
           <Bell className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
-          <p className="mt-3 font-semibold">Belum ada notifikasi</p>
+          <p className="mt-3 font-semibold">
+            {archivedView ? "Arsip kosong" : "Belum ada notifikasi"}
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Kami akan memberi tahu kalau ada kabar baru untuk perjalananmu.
+            {archivedView
+              ? "Notifikasi yang diarsipkan akan muncul di sini."
+              : "Kami akan memberi tahu kalau ada kabar baru untuk perjalananmu."}
           </p>
         </div>
       )}
-      <div className="mt-5 divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface">
-        {notifications.map((item) => (
-          <article
-            key={item.id}
-            className={`border-b p-4 last:border-b-0 ${item.read_at ? "bg-surface" : "bg-brand-red/[0.04]"}`}
-          >
-            <div className="flex gap-3">
-              <div
-                className={`mt-1 size-2 shrink-0 rounded-full ${item.read_at ? "bg-muted" : "bg-brand-red"}`}
-                aria-hidden="true"
+      {!error && items.length > 0 && visible.length === 0 && (
+        <p className="mt-8 text-center text-sm text-muted-foreground">
+          Tidak ada notifikasi yang cocok.
+        </p>
+      )}
+
+      {groups.map(([label, list]) => (
+        <section key={label} className="mt-5">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              {label}
+            </h2>
+            {label === "Hari ini" && !archivedView && unreadCount > 0 && !selecting && (
+              <button
+                type="button"
+                onClick={() => void run("read_all", [])}
+                className="inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-brand-red"
+              >
+                <CheckCheck className="size-3.5" aria-hidden="true" />
+                Tandai semua dibaca
+              </button>
+            )}
+          </div>
+          <div className="overflow-hidden rounded-2xl bg-surface">
+            {list.map((item) => (
+              <Row
+                key={item.id}
+                item={item}
+                archivedView={archivedView}
+                selecting={selecting}
+                checked={selected.has(item.id)}
+                open={openId === item.id}
+                onOpenChange={(v) => setOpenId(v ? item.id : null)}
+                onToggle={() => toggleSelect(item.id)}
+                onMenu={() => setSheetFor(item)}
+                onRead={() => void run("read", [item.id])}
+                onArchive={() =>
+                  void run(archivedView ? "unarchive" : "archive", [item.id], {
+                    toast: archivedView ? "Dikembalikan ke kotak masuk" : "Notifikasi diarsipkan",
+                    undo: archivedView ? "archive" : "unarchive",
+                  })
+                }
+                onDelete={() =>
+                  void run("delete", [item.id], { toast: "Notifikasi dihapus", undo: "restore" })
+                }
               />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className="font-semibold leading-snug">{item.title}</h2>
-                  <time
-                    className="shrink-0 text-xs text-muted-foreground"
-                    dateTime={item.created_at}
-                  >
-                    {new Date(item.created_at).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </time>
-                </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
-                  {item.body}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-4 text-sm font-semibold">
-                  {!item.read_at && (
-                    <button
-                      type="button"
-                      onClick={() => void markRead(item)}
-                      disabled={readingId === item.id}
-                      className="inline-flex min-h-10 items-center gap-2 underline underline-offset-2 disabled:opacity-60"
-                    >
-                      <Check className="size-4" aria-hidden="true" />
-                      {readingId === item.id ? "Menyimpan…" : "Tandai sudah dibaca"}
-                    </button>
-                  )}
-                  {item.action_href && (
-                    <a
-                      href={item.action_href}
-                      className="inline-flex min-h-10 items-center gap-2 text-brand-red underline underline-offset-2"
-                    >
-                      Buka detail
-                      <ExternalLink className="size-4" aria-hidden="true" />
-                    </a>
-                  )}
-                </div>
-              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+
+      {sheetFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/30"
+          onClick={() => setSheetFor(null)}
+        >
+          <div
+            role="dialog"
+            aria-label="Aksi notifikasi"
+            className="mb-4 w-[calc(100%-24px)] max-w-md overflow-hidden rounded-3xl bg-surface shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="truncate px-5 pt-4 text-sm font-semibold">{sheetFor.title}</p>
+            <div className="mt-2 divide-y divide-border/70 text-[15px]">
+              {!sheetFor.read_at && (
+                <SheetButton icon={Check} onClick={() => void run("read", [sheetFor.id])}>
+                  Tandai dibaca
+                </SheetButton>
+              )}
+              {sheetFor.action_href && (
+                <a href={sheetFor.action_href} className="flex min-h-12 items-center gap-3 px-5">
+                  <ExternalLink className="size-4" aria-hidden="true" />
+                  Buka detail
+                </a>
+              )}
+              <SheetButton
+                icon={archivedView ? ArchiveRestore : Archive}
+                onClick={() =>
+                  void run(archivedView ? "unarchive" : "archive", [sheetFor.id], {
+                    toast: archivedView ? "Dikembalikan ke kotak masuk" : "Notifikasi diarsipkan",
+                    undo: archivedView ? "archive" : "unarchive",
+                  })
+                }
+              >
+                {archivedView ? "Kembalikan" : "Arsipkan"}
+              </SheetButton>
+              <SheetButton
+                icon={Trash2}
+                danger
+                onClick={() =>
+                  void run("delete", [sheetFor.id], {
+                    toast: "Notifikasi dihapus",
+                    undo: "restore",
+                  })
+                }
+              >
+                Hapus
+              </SheetButton>
             </div>
-          </article>
-        ))}
-      </div>
+            <button
+              type="button"
+              onClick={() => setSheetFor(null)}
+              className="min-h-12 w-full border-t border-border/70 text-[15px] font-semibold"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selecting && (
+        <div className="fixed inset-x-3 bottom-24 z-40 mx-auto flex max-w-md items-center justify-around rounded-full bg-surface py-1 text-sm font-semibold shadow-xl">
+          <button
+            type="button"
+            disabled={selected.size === 0}
+            onClick={() => void bulk("read", "")}
+            className="min-h-11 px-3 text-brand-red disabled:opacity-40"
+          >
+            Baca
+          </button>
+          <button
+            type="button"
+            disabled={selected.size === 0}
+            onClick={() =>
+              void bulk(
+                archivedView ? "unarchive" : "archive",
+                archivedView ? "Dikembalikan" : "Diarsipkan",
+                archivedView ? "archive" : "unarchive",
+              )
+            }
+            className="min-h-11 px-3 disabled:opacity-40"
+          >
+            {archivedView ? "Kembalikan" : "Arsip"}
+          </button>
+          <button
+            type="button"
+            disabled={selected.size === 0}
+            onClick={() => void bulk("delete", "Notifikasi dihapus", "restore")}
+            className="min-h-11 px-3 text-destructive disabled:opacity-40"
+          >
+            Hapus
+          </button>
+        </div>
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          className="fixed inset-x-3 bottom-24 z-50 mx-auto flex max-w-md items-center justify-between rounded-2xl bg-foreground px-4 py-3 text-sm text-background shadow-xl"
+        >
+          <span>{toast.text}</span>
+          <button
+            type="button"
+            onClick={toast.undo}
+            className="min-h-8 font-bold text-brand-red-soft"
+          >
+            Urungkan
+          </button>
+        </div>
+      )}
     </Page>
+  );
+}
+
+function SheetButton({
+  icon: Icon,
+  danger,
+  onClick,
+  children,
+}: {
+  icon: LucideIcon;
+  danger?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-12 w-full items-center gap-3 px-5 ${danger ? "text-destructive" : ""}`}
+    >
+      <Icon className="size-4" aria-hidden="true" />
+      {children}
+    </button>
+  );
+}
+
+function Row({
+  item,
+  archivedView,
+  selecting,
+  checked,
+  open,
+  onOpenChange,
+  onToggle,
+  onMenu,
+  onRead,
+  onArchive,
+  onDelete,
+}: {
+  item: Notification;
+  archivedView: boolean;
+  selecting: boolean;
+  checked: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onToggle: () => void;
+  onMenu: () => void;
+  onRead: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+}) {
+  const { Icon, tone } = CATEGORY[item.category];
+  const [drag, setDrag] = useState<number | null>(null);
+  const start = useRef<{ x: number; y: number; base: number } | null>(null);
+  const moved = useRef(false);
+  const press = useRef<number | null>(null);
+  const offset = drag ?? (open ? -ACTION_W : 0);
+  const clearPress = () => {
+    if (press.current) window.clearTimeout(press.current);
+    press.current = null;
+  };
+
+  return (
+    <article className="relative overflow-hidden border-b border-border/70 last:border-b-0">
+      <div
+        className="absolute inset-y-0 right-0 flex"
+        style={{ width: ACTION_W }}
+        aria-hidden={!open}
+      >
+        <button
+          type="button"
+          tabIndex={open ? 0 : -1}
+          onClick={onRead}
+          className="flex-1 bg-sky-500 text-xs font-bold text-white"
+        >
+          Baca
+        </button>
+        <button
+          type="button"
+          tabIndex={open ? 0 : -1}
+          onClick={onArchive}
+          className="flex-1 bg-zinc-500 text-xs font-bold text-white"
+        >
+          {archivedView ? "Kembalikan" : "Arsip"}
+        </button>
+        <button
+          type="button"
+          tabIndex={open ? 0 : -1}
+          onClick={onDelete}
+          className="flex-1 bg-red-600 text-xs font-bold text-white"
+        >
+          Hapus
+        </button>
+      </div>
+      <div
+        className={`relative flex gap-3 bg-surface p-3.5 ${drag === null ? "transition-transform duration-200 motion-reduce:transition-none" : ""}`}
+        style={{ transform: `translateX(${offset}px)`, touchAction: "pan-y" }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (!selecting) onMenu();
+        }}
+        onPointerDown={(e) => {
+          if (selecting) return;
+          start.current = { x: e.clientX, y: e.clientY, base: open ? -ACTION_W : 0 };
+          moved.current = false;
+          clearPress();
+          press.current = window.setTimeout(() => {
+            if (!moved.current) onMenu();
+          }, 550);
+        }}
+        onPointerMove={(e) => {
+          if (!start.current) return;
+          const dx = e.clientX - start.current.x;
+          const dy = e.clientY - start.current.y;
+          if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+            moved.current = true;
+            clearPress();
+          }
+          if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8)
+            setDrag(Math.min(0, Math.max(-ACTION_W, start.current.base + dx)));
+        }}
+        onPointerUp={() => {
+          clearPress();
+          if (drag !== null) onOpenChange(drag < -ACTION_W / 2);
+          setDrag(null);
+          start.current = null;
+        }}
+        onPointerCancel={() => {
+          clearPress();
+          setDrag(null);
+          start.current = null;
+        }}
+        onClick={() => {
+          if (selecting) onToggle();
+          else if (open) onOpenChange(false);
+        }}
+      >
+        {selecting && (
+          <span
+            className={`mt-2 flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${checked ? "border-brand-red bg-brand-red text-white" : "border-border"}`}
+            role="checkbox"
+            aria-checked={checked}
+            aria-label={`Pilih ${item.title}`}
+          >
+            {checked && <Check className="size-3" aria-hidden="true" />}
+          </span>
+        )}
+        <div
+          className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${tone}`}
+          aria-hidden="true"
+        >
+          <Icon className="size-[18px]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className={`leading-snug ${item.read_at ? "font-medium" : "font-semibold"}`}>
+              {item.title}
+            </h3>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {!item.read_at && (
+                <span
+                  className="size-2 rounded-full bg-brand-red"
+                  role="img"
+                  aria-label="Belum dibaca"
+                />
+              )}
+              <time className="text-xs text-muted-foreground" dateTime={item.created_at}>
+                {timeLabel(item.created_at)}
+              </time>
+            </div>
+          </div>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{item.body}</p>
+          <div className="mt-1.5 flex items-center justify-between">
+            {item.action_href && !selecting ? (
+              <a
+                href={item.action_href}
+                onClick={() => !item.read_at && onRead()}
+                className="inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-brand-red"
+              >
+                Buka detail
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+              </a>
+            ) : (
+              <span />
+            )}
+            {!selecting && (
+              <button
+                type="button"
+                onClick={onMenu}
+                aria-label={`Aksi untuk ${item.title}`}
+                className="flex size-9 items-center justify-center rounded-full text-muted-foreground"
+              >
+                <Ellipsis className="size-5" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }

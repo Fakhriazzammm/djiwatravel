@@ -22,6 +22,7 @@ describe("simplified admin P0 scope", () => {
       "Payments",
       "Refunds",
       "Support",
+      "Notifikasi",
       "Keuangan",
       "Affiliate",
       "Katalog",

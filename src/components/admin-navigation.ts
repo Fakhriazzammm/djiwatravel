@@ -1,4 +1,5 @@
 import {
+  Bell,
   CreditCard,
   FileClock,
   Handshake,
@@ -21,6 +22,7 @@ export const adminNavigation = [
   ["Payments", "/admin/payments", CreditCard],
   ["Refunds", "/admin/refunds", RotateCcw],
   ["Support", "/admin/support", LifeBuoy],
+  ["Notifikasi", "/admin/notifications", Bell],
   ["Keuangan", "/admin/finance", Wallet],
   ["Affiliate", "/admin/affiliates", Handshake],
   ["Katalog", "/admin/catalog", Tags],

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   listCustomerNotifications,
   markCustomerNotificationRead,
+  mutateCustomerNotifications,
   mutateCustomerPush,
 } from "@/lib/customer-notifications.server";
 const json = (body: unknown, status = 200) =>
@@ -12,9 +13,22 @@ async function receive(request: Request) {
       return json(
         await listCustomerNotifications(Object.fromEntries(new URL(request.url).searchParams)),
       );
-    const body = (await request.json()) as { action?: string; notification_id?: string };
-    if (body.action === "read")
-      return json(await markCustomerNotificationRead(body.notification_id ?? ""));
+    const body = (await request.json()) as {
+      action?: string;
+      notification_id?: string;
+      notification_ids?: string[];
+    };
+    if (body.action === "read" && body.notification_id)
+      return json(await markCustomerNotificationRead(body.notification_id));
+    if (
+      ["read", "read_all", "archive", "unarchive", "delete", "restore"].includes(body.action ?? "")
+    )
+      return json(
+        await mutateCustomerNotifications({
+          action: body.action,
+          ids: body.notification_ids ?? [],
+        }),
+      );
     return json(await mutateCustomerPush(body));
   } catch (e) {
     return json(

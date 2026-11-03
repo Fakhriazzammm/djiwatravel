@@ -14,6 +14,7 @@ describe("admin UI contracts", () => {
       "/admin/payments",
       "/admin/refunds",
       "/admin/support",
+      "/admin/notifications",
       "/admin/finance",
       "/admin/affiliates",
       "/admin/catalog",
