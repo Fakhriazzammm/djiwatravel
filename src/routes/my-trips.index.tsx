@@ -1,16 +1,14 @@
 import { glassIconButtonClass } from "@/components/shell";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  ArrowLeft,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
-  Clock3,
   Ellipsis,
   FolderPlus,
   ListChecks,
   MapPin,
-  Plane,
   Plus,
   WalletCards,
 } from "lucide-react";
@@ -19,7 +17,7 @@ import { useState, type ReactNode } from "react";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FixedLayer } from "@/components/motion-primitives";
 import { Page } from "@/components/shell";
-import { destinationPhoto } from "@/lib/destination-artwork";
+import { TripTicket } from "@/components/trip-ticket";
 import { getMyTripsActions } from "@/lib/my-trips-home";
 import { getMyTripsHome } from "@/lib/my-trips.fn";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
@@ -38,8 +36,8 @@ export const Route = createFileRoute("/my-trips/")({
     <Page>
       <div className="space-y-4 pt-3">
         <div className="h-7 w-32 animate-pulse rounded-full bg-secondary" />
-        <div className="h-52 animate-pulse rounded-[28px] bg-secondary" />
-        <div className="h-40 animate-pulse rounded-[28px] bg-secondary" />
+        <div className="h-[76px] animate-pulse rounded-[14px] bg-secondary" />
+        <div className="h-[76px] animate-pulse rounded-[14px] bg-secondary" />
       </div>
     </Page>
   ),
@@ -73,16 +71,13 @@ function MyTrips() {
 
   return (
     <Page>
-      <div className="relative pt-1">
-        <TopBar onMenu={() => setSheet("menu")} />
-        <h1 className="mt-5 text-[34px] font-bold leading-none tracking-[-0.045em]">Perjalanan</h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">
-          {view === "today" ? "Satu langkah kecil untuk perjalananmu." : "Semua perjalananmu."}
-        </p>
-      </div>
+      <TopBar onMenu={() => setSheet("menu")} onAdd={() => setSheet("actions")} />
+      <h1 className="px-1 pb-2 pt-1 text-[30px] font-bold leading-[1.1] tracking-[-0.03em]">
+        Perjalanan
+      </h1>
 
       <nav
-        className="no-scrollbar mt-5 flex gap-1 overflow-x-auto rounded-full bg-secondary p-1"
+        className="flex rounded-[10px] bg-secondary p-0.5"
         role="tablist"
         aria-label="Tampilan perjalanan"
       >
@@ -93,11 +88,11 @@ function MyTrips() {
             role="tab"
             aria-selected={view === item}
             onClick={() => setView(item)}
-            className={`min-h-10 flex-1 rounded-xl px-4 text-[13px] font-semibold transition-colors ${
-              view === item ? "bg-surface text-foreground" : "text-muted-foreground"
+            className={`min-h-9 flex-1 rounded-lg px-4 text-[13px] font-medium transition-colors ${
+              view === item ? "bg-surface font-semibold shadow-sm" : "text-muted-foreground"
             }`}
           >
-            {item === "today" ? "Hari ini" : "Riwayat"}
+            {item === "today" ? "Mendatang" : "Riwayat"}
           </button>
         ))}
       </nav>
@@ -108,15 +103,6 @@ function MyTrips() {
         <LogbookView trips={data.trips} />
       )}
 
-      <motion.button
-        type="button"
-        aria-label="Buat perjalanan baru"
-        onClick={() => setSheet("actions")}
-        className="tap fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-5 z-30 flex size-14 items-center justify-center rounded-full bg-brand-red text-white ring-4 ring-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
-        {...pressable}
-      >
-        <Plus className="size-7" strokeWidth={2.1} />
-      </motion.button>
       <ActionSheet
         open={sheet !== null}
         kind={sheet ?? "actions"}
@@ -127,24 +113,37 @@ function MyTrips() {
   );
 }
 
-function TopBar({ onMenu }: { onMenu: () => void }) {
+function TopBar({ onMenu, onAdd }: { onMenu: () => void; onAdd: () => void }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex h-11 items-center justify-between">
       <Link
         to="/"
         aria-label="Kembali ke beranda"
-        className={glassIconButtonClass}
+        className="tap -ml-2 flex min-h-11 items-center gap-0.5 rounded-xl pl-1 pr-3 text-[17px] text-brand-red"
       >
-        <ArrowLeft className="size-5" strokeWidth={2.2} />
+        <ChevronLeft className="size-6" strokeWidth={2.4} aria-hidden="true" />
+        Beranda
       </Link>
-      <button
-        type="button"
-        aria-label="Menu perjalanan"
-        onClick={onMenu}
-        className={glassIconButtonClass}
-      >
-        <Ellipsis className="size-5" strokeWidth={2.2} />
-      </button>
+      <div className="flex items-center">
+        <button
+          type="button"
+          aria-label="Menu perjalanan"
+          onClick={onMenu}
+          className="tap grid size-11 place-items-center rounded-full text-brand-red"
+        >
+          <Ellipsis className="size-6" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label="Buat perjalanan baru"
+          onClick={onAdd}
+          className="tap grid size-11 place-items-center"
+        >
+          <span className="grid size-7 place-items-center rounded-full bg-brand-red text-white">
+            <Plus className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -296,160 +295,80 @@ function TodayView({
   authLoading: boolean;
 }) {
   const focusTrip = data.focusTrip;
-
-  if (!focusTrip) {
-    return (
-      <>
-        <EmptyTrips trips={data.trips} user={user} loading={authLoading} />
-        {data.trips.length > 0 && (
-          <section aria-labelledby="all-trips-heading" className="mt-6 space-y-3 pb-5">
-            <SectionHeading
-              id="all-trips-heading"
-              title="Semua perjalanan"
-              subtitle={`${data.trips.length} perjalanan tersimpan`}
-            />
-            {data.trips.map((trip) => (
-              <LogbookCard key={trip.id} trip={trip} />
-            ))}
-          </section>
-        )}
-      </>
-    );
-  }
+  const upcoming = data.trips.filter((trip) => trip.status !== "past");
 
   return (
-    <div className="mt-5 space-y-6 pb-5">
-      <FocusTripCard trip={focusTrip} />
+    <div className="mt-3 space-y-4 pb-4">
+      {upcoming.length ? (
+        <section aria-labelledby="all-trips-heading" className="space-y-2">
+          <SectionHeading id="all-trips-heading" title="Perjalanan" count={upcoming.length} />
+          {upcoming.map((trip) => (
+            <TripTicket key={trip.id} trip={trip} title={tripTitle(trip)} />
+          ))}
+        </section>
+      ) : (
+        <EmptyTrips trips={data.trips} user={user} loading={authLoading} />
+      )}
 
-      <section aria-labelledby="today-agenda-heading">
-        <SectionHeading
-          id="today-agenda-heading"
-          title="Agenda mendatang"
-          subtitle="Untuk 14 hari ke depan"
-          action={
+      {focusTrip && (
+        <section aria-labelledby="today-agenda-heading">
+          <SectionHeading
+            id="today-agenda-heading"
+            title="Agenda mendatang"
+            action={
+              <Link
+                to="/my-trips/$tripId/$section"
+                params={{ tripId: focusTrip.id, section: "itinerary" }}
+                className="tap text-[12px] font-medium text-brand-red"
+              >
+                Lihat semua
+              </Link>
+            }
+          />
+          {data.agenda.length ? (
+            <div className="overflow-hidden rounded-[14px] bg-surface ring-1 ring-border/50">
+              {data.agenda.slice(0, 5).map((item) => (
+                <AgendaRow
+                  key={item.id ?? `${item.trip_id}-${item.title}`}
+                  item={item}
+                  tripId={focusTrip.id}
+                />
+              ))}
+            </div>
+          ) : (
             <Link
               to="/my-trips/$tripId/$section"
               params={{ tripId: focusTrip.id, section: "itinerary" }}
-              className="tap text-[12px] font-semibold text-brand-red"
+              className="tap flex min-h-12 items-center gap-3 rounded-[14px] bg-surface px-3 text-[13px] text-muted-foreground ring-1 ring-border/50"
             >
-              Lihat semua
+              <CalendarDays className="size-[18px] text-brand-red" aria-hidden="true" />
+              <span className="flex-1">Belum ada agenda. Susun hari perjalananmu.</span>
+              <ChevronRight className="size-4" aria-hidden="true" />
             </Link>
-          }
-        />
-        {data.agenda.length ? (
-          <div className="mt-3 space-y-1">
-            {data.agenda.slice(0, 5).map((item) => (
-              <AgendaRow
-                key={item.id ?? `${item.trip_id}-${item.title}`}
-                item={item}
-                tripId={focusTrip.id}
-              />
-            ))}
-          </div>
-        ) : (
-          <Link
-            to="/my-trips/$tripId/$section"
-            params={{ tripId: focusTrip.id, section: "itinerary" }}
-            className="tap mt-3 flex items-center gap-3 rounded-2xl bg-surface px-4 py-4 text-sm text-muted-foreground ring-1 ring-border/60"
-          >
-            <CalendarDays className="size-5 text-brand-red" />
-            <span className="flex-1">Belum ada agenda. Susun hari perjalananmu.</span>
-            <ChevronRight className="size-4" />
-          </Link>
-        )}
-      </section>
-      {data.trips.length > 1 && (
-        <section aria-labelledby="all-trips-heading" className="space-y-3">
-          <SectionHeading
-            id="all-trips-heading"
-            title="Semua perjalanan"
-            subtitle={`${data.trips.length} perjalanan tersimpan`}
-          />
-          {data.trips.map((trip) => (
-            <LogbookCard key={trip.id} trip={trip} />
-          ))}
+          )}
         </section>
       )}
     </div>
   );
 }
 
-function FocusTripCard({ trip }: { trip: Trip }) {
-  const reduce = useReducedMotion();
-  const photo = destinationPhoto(String(trip.destination_code ?? ""));
-  const pct =
-    trip.total_budget_minor > 0
-      ? Math.min(100, Math.round((trip.spent_minor / trip.total_budget_minor) * 100))
-      : 0;
-  return (
-    <motion.div
-      initial={reduce ? false : { opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={reduce ? { duration: 0 } : springSheet}
-    >
-      <Link
-        to="/my-trips/$tripId"
-        params={{ tripId: trip.id }}
-        className="tap relative block overflow-hidden rounded-[24px] bg-[#123b68] shadow-[0_12px_32px_rgba(15,43,74,0.16)]"
-      >
-        {photo && (
-          <img src={photo} alt="" className="absolute inset-0 size-full object-cover opacity-80" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#061d36] via-[#123b68]/45 to-transparent" />
-        <div className="relative flex min-h-40 flex-col justify-between p-4 text-white">
-          <div className="flex items-start justify-between gap-3">
-            <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10.5px] font-semibold backdrop-blur-md">
-              {trip.status === "ongoing" ? "Sedang berlangsung" : "Berikutnya"}
-            </span>
-            <Plane className="size-4" />
-          </div>
-          <div>
-            <p className="text-[12px] font-medium text-white/75">
-              {trip.departure_date && trip.return_date
-                ? `${formatDate(trip.departure_date)} — ${formatDate(trip.return_date)}`
-                : "Atur tanggal perjalanan"}
-            </p>
-            <h2 className="mt-0.5 line-clamp-2 break-words text-[20px] font-bold leading-tight tracking-[-0.03em]">
-              {tripTitle(trip)}
-            </h2>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-white/80">
-              <MapPin className="size-3.5" />
-              {trip.destination_name}
-            </p>
-            {trip.total_budget_minor > 0 && (
-              <div className="mt-3 flex items-center gap-2 text-[10.5px] text-white/75">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/25">
-                  <div className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
-                </div>
-                <span>{pct}% anggaran terpakai</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </Link>
-    </motion.div>
-  );
-}
-
 function SectionHeading({
   id,
   title,
-  subtitle,
+  count,
   action,
 }: {
   id: string;
   title: string;
-  subtitle: string;
+  count?: number;
   action?: ReactNode;
 }) {
   return (
-    <div className="flex items-end justify-between gap-3">
-      <div>
-        <h2 id={id} className="text-[20px] font-bold tracking-[-0.03em]">
-          {title}
-        </h2>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">{subtitle}</p>
-      </div>
+    <div className="mb-1.5 flex items-end justify-between gap-3 px-1">
+      <h2 id={id} className="text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
+        {title}
+        {count !== undefined && <span className="ml-1.5 normal-case">{count}</span>}
+      </h2>
       {action}
     </div>
   );
@@ -460,19 +379,18 @@ function AgendaRow({ item, tripId }: { item: AgendaItem; tripId: string }) {
     <Link
       to="/my-trips/$tripId/$section"
       params={{ tripId, section: "itinerary" }}
-      className="tap flex items-center gap-3 rounded-2xl px-2 py-3"
+      className="tap flex min-h-[48px] items-center gap-3 border-b border-border/60 px-3 last:border-b-0"
     >
-      <div className="flex w-14 shrink-0 flex-col items-center text-[11px] font-semibold text-muted-foreground">
-        <Clock3 className="mb-1 size-4 text-brand-red" />
+      <span className="w-11 shrink-0 text-[11.5px] font-medium tabular-nums text-muted-foreground">
         {formatTime(item.start_time)}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold">{item.title}</p>
-        <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14px] font-medium">{item.title}</span>
+        <span className="block truncate text-[11px] text-muted-foreground">
           {item.location || item.activity_category || formatDate(item.activity_date)}
-        </p>
-      </div>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
     </Link>
   );
 }
@@ -480,88 +398,23 @@ function AgendaRow({ item, tripId }: { item: AgendaItem; tripId: string }) {
 function LogbookView({ trips }: { trips: Trip[] }) {
   const pastTrips = trips.filter((trip) => trip.status === "past");
   return (
-    <div className="mt-5 space-y-4 pb-5">
-      <div className="flex items-center justify-between">
-        <p className="text-[15px] font-semibold text-muted-foreground">
-          {new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(new Date())}
-        </p>
-        <span className="text-[13px] text-muted-foreground">{pastTrips.length} perjalanan</span>
-      </div>
+    <div className="mt-3 space-y-2 pb-4">
       {pastTrips.length ? (
-        pastTrips.map((trip) => <LogbookCard key={trip.id} trip={trip} />)
+        <>
+          <SectionHeading id="past-trips-heading" title="Selesai" count={pastTrips.length} />
+          {pastTrips.map((trip) => (
+            <TripTicket key={trip.id} trip={trip} title={tripTitle(trip)} />
+          ))}
+        </>
       ) : (
-        <section className="rounded-2xl bg-surface px-5 py-10 text-center ring-1 ring-border/60">
-          <p className="text-base font-semibold">Belum ada perjalanan selesai</p>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <section className="rounded-[14px] bg-surface px-4 py-6 text-center ring-1 ring-border/50">
+          <p className="text-[15px] font-semibold">Belum ada perjalanan selesai</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
             Perjalanan yang sudah lewat akan tersimpan di sini.
           </p>
         </section>
       )}
     </div>
-  );
-}
-
-function LogbookCard({ trip }: { trip: Trip }) {
-  const photo = destinationPhoto(String(trip.destination_code ?? ""));
-  const pct =
-    trip.total_budget_minor > 0
-      ? Math.min(100, Math.round((trip.spent_minor / trip.total_budget_minor) * 100))
-      : 0;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={springSheet}
-    >
-      <Link
-        to="/my-trips/$tripId"
-        params={{ tripId: trip.id }}
-        className="tap block overflow-hidden rounded-[26px] bg-surface shadow-[0_4px_18px_rgba(15,23,42,0.05)] ring-1 ring-border/60"
-      >
-        <div className="relative h-36 overflow-hidden bg-gradient-to-br from-brand-red-soft via-secondary to-background">
-          {photo ? (
-            <img src={photo} alt="" className="size-full object-cover" />
-          ) : (
-            <div className="flex size-full items-center justify-center">
-              <Plane className="size-10 text-brand-red/50" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
-          <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold">
-            {trip.status === "past"
-              ? "Selesai"
-              : trip.status === "ongoing"
-                ? "Berjalan"
-                : "Akan datang"}
-          </span>
-        </div>
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="truncate text-[19px] font-bold tracking-[-0.025em]">
-                {tripTitle(trip)}
-              </h2>
-              <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
-                <MapPin className="size-3.5" />
-                {trip.destination_name}
-              </p>
-            </div>
-            <ChevronRight className="mt-1 size-5 shrink-0 text-muted-foreground" />
-          </div>
-          <div className="mt-4 flex items-center justify-between text-[12px] text-muted-foreground">
-            <span>
-              {formatDate(trip.departure_date, { day: "numeric", month: "short", year: "numeric" })}
-            </span>
-            <span>
-              {trip.checklist_done}/{trip.checklist_total} checklist
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full rounded-full bg-brand-red" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-      </Link>
-    </motion.div>
   );
 }
 
@@ -575,31 +428,30 @@ function EmptyTrips({
   loading: boolean;
 }) {
   return (
-    <section className="mt-7 rounded-[28px] bg-surface px-5 py-10 text-center ring-1 ring-border/60">
-      <CheckCircle2 className="mx-auto size-12 text-brand-red" strokeWidth={1.5} />
-      <h2 className="mt-4 text-[20px] font-bold">
+    <section className="rounded-[14px] bg-surface px-4 py-5 text-center ring-1 ring-border/50">
+      <h2 className="text-[16px] font-semibold">
         {loading
           ? "Memuat perjalanan…"
           : trips.length
-            ? "Belum ada perjalanan aktif"
+            ? "Belum ada perjalanan mendatang"
             : "Mulai perjalananmu"}
       </h2>
-      <p className="mx-auto mt-2 max-w-xs text-[14px] leading-6 text-muted-foreground">
+      <p className="mx-auto mt-1 max-w-xs text-[12.5px] leading-5 text-muted-foreground">
         {loading
           ? "Sebentar, kami menyiapkan ruang perjalananmu."
-          : "Simpan agenda, checklist, budget, dan booking dalam satu ruang yang tenang."}
+          : "Simpan agenda, checklist, budget, dan booking di satu tempat."}
       </p>
       {!loading &&
         (user ? (
           <Link
             to="/my-trips/new"
-            className="tap mx-auto mt-6 flex h-11 max-w-xs items-center justify-center gap-2 rounded-xl bg-brand-red text-sm font-semibold text-white"
+            className="tap mx-auto mt-3 flex h-11 max-w-xs items-center justify-center gap-2 rounded-xl bg-brand-red text-[14px] font-semibold text-white"
           >
-            <Plus className="size-4" />
+            <Plus className="size-4" aria-hidden="true" />
             Buat perjalanan
           </Link>
         ) : (
-          <div className="mx-auto mt-6 max-w-xs">
+          <div className="mx-auto mt-4 max-w-xs">
             <CustomerAuth />
           </div>
         ))}
