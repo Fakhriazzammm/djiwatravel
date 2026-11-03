@@ -396,7 +396,7 @@ function Notifications() {
           <div
             role="dialog"
             aria-label="Aksi notifikasi"
-            className="mb-4 w-[calc(100%-24px)] max-w-md overflow-hidden rounded-3xl bg-surface shadow-2xl"
+            className="mb-[calc(6.5rem+env(safe-area-inset-bottom))] w-[calc(100%-24px)] max-w-md overflow-hidden rounded-3xl bg-surface shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="truncate px-5 pt-4 text-sm font-semibold">{sheetFor.title}</p>
