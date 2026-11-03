@@ -526,7 +526,7 @@ export function ItineraryEditor({
   return (
     <MotionConfig reducedMotion="user">
       <LayoutGroup id="agenda">
-        <section className="space-y-3" aria-label="Agenda perjalanan">
+        <section className="space-y-3 pb-28" aria-label="Agenda perjalanan">
           <div className="flex items-center justify-between px-1 pt-1">
             <h1 className="text-[22px] font-bold leading-tight tracking-tight">Agenda</h1>
             <FixedLayer>
