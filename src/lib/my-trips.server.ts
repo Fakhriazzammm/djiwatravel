@@ -386,6 +386,13 @@ export async function getActiveTripShare(tripId: string) {
   }
 }
 
+/** Read the active share link of an owned trip (the trip list shows share sheets without loading the trip). */
+export async function readTripShareLink(tripId: string) {
+  const user = await getAuthenticatedUser();
+  await ownedTrip(tripId, user.id);
+  return getActiveTripShare(tripId);
+}
+
 export async function createTripShareLink(tripId: string) {
   const user = await getAuthenticatedUser();
   await ownedTrip(tripId, user.id);
@@ -1142,6 +1149,13 @@ export const deleteBookingRecordHandler = ({
 export const deleteBookingRecord = createServerFn({ method: "POST" })
   .validator(itemIdSchema)
   .handler(deleteBookingRecordHandler);
+export const getTripShareInput = (data: z.input<typeof tripIdSchema>) => tripIdSchema.parse(data);
+export const getTripShareHandler = ({ data }: { data: ReturnType<typeof getTripShareInput> }) =>
+  readTripShareLink(data.tripId);
+
+export const getTripShare = createServerFn({ method: "GET" })
+  .validator(tripIdSchema)
+  .handler(getTripShareHandler);
 export const postTripShareInput = (data: z.input<typeof tripIdSchema>) => tripIdSchema.parse(data);
 export const postTripShareHandler = ({ data }: { data: ReturnType<typeof postTripShareInput> }) =>
   createTripShareLink(data.tripId);

@@ -219,6 +219,16 @@ export const deleteBookingRecord = createServerFn({ method: "POST" })
     return deleteBookingRecordHandler({ data });
   });
 
+export const getTripShare = createServerFn({ method: "GET" })
+  .validator(async (data: Parameters<typeof import("./my-trips.server").getTripShareInput>[0]) => {
+    const { getTripShareInput } = await import("./my-trips.server");
+    return getTripShareInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { getTripShareHandler } = await import("./my-trips.server");
+    return getTripShareHandler({ data });
+  });
+
 export const postTripShare = createServerFn({ method: "POST" })
   .validator(async (data: Parameters<typeof import("./my-trips.server").postTripShareInput>[0]) => {
     const { postTripShareInput } = await import("./my-trips.server");

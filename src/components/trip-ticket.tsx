@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Share2 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import texture from "@/assets/ticket-texture.jpg";
 import { springSheet } from "@/lib/motion";
@@ -38,10 +39,13 @@ export function TripTicket({
   trip,
   title,
   index = 0,
+  onShare,
 }: {
   trip: TicketData;
   title: string;
   index?: number;
+  /** Shows a share button on the ticket; the card itself still opens the trip. */
+  onShare?: (trip: TicketData) => void;
 }) {
   const reduce = useReducedMotion();
   const stub = ticketStub(trip, localDayKey());
@@ -62,6 +66,7 @@ export function TripTicket({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={reduce ? { duration: 0 } : { ...springSheet, delay: Math.min(index, 6) * 0.06 }}
       {...(reduce ? {} : { whileTap: { scale: 0.98 } })}
+      className="relative"
     >
       <Link
         to="/my-trips/$tripId"
@@ -153,6 +158,16 @@ export function TripTicket({
           />
         </div>
       </Link>
+      {onShare && (
+        <button
+          type="button"
+          aria-label={`Bagikan ${title}`}
+          onClick={() => onShare(trip)}
+          className="tap absolute right-[78px] top-0.5 z-10 grid size-11 place-items-center rounded-full text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Share2 className="size-4" aria-hidden="true" />
+        </button>
+      )}
     </motion.div>
   );
 }

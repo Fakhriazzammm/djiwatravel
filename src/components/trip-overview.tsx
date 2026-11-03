@@ -167,7 +167,7 @@ export function TripOverview(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weatherKey]);
 
-  const weatherDetail = forecast.find((day) => day.date === scope) ?? forecast[0] ?? null;
+  const weatherDetail = forecast.find((day) => day.date === scope) ?? null;
 
   const model = useMemo(() => buildMapModel(days, scope || "all"), [days, scope]);
   const pinInfo = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin])), [model]);
@@ -243,11 +243,6 @@ export function TripOverview(props: Props) {
     });
   }
 
-  const chip = (selected: boolean) =>
-    `tap inline-flex min-h-8 shrink-0 items-center rounded-full px-3 text-xs font-semibold shadow ${
-      selected ? "bg-brand-red text-white" : "bg-surface text-foreground"
-    }`;
-
   const stat = (
     section: "itinerary" | "bookings" | "checklist" | "budget",
     label: string,
@@ -311,35 +306,9 @@ export function TripOverview(props: Props) {
               <MoreHorizontal className="size-5" aria-hidden="true" />
             </button>
           </div>
-          {mapOn && (
-            <div className="pointer-events-auto -mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
-              {days.map((day) => (
-                <button
-                  key={day.date}
-                  type="button"
-                  onClick={() => setPicked(day.date)}
-                  aria-pressed={scope === day.date}
-                  className={chip(scope === day.date)}
-                >
-                  {shortDate(day.date)}
-                  {day.date === today ? " · Hari ini" : ""}
-                </button>
-              ))}
-              {days.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setPicked("all")}
-                  aria-pressed={scope === "all"}
-                  className={chip(scope === "all")}
-                >
-                  Semua
-                </button>
-              )}
-            </div>
-          )}
         </div>
         {mapOn && (
-          <div className="absolute right-4 top-[calc(max(env(safe-area-inset-top),0.75rem)+5.75rem)] flex flex-col gap-2">
+          <div className="absolute right-4 top-[calc(max(env(safe-area-inset-top),0.75rem)+3.25rem)] flex flex-col gap-2">
             <button
               type="button"
               onClick={() => setExpanded((value) => !value)}
@@ -412,6 +381,74 @@ export function TripOverview(props: Props) {
           )}
         </div>
 
+        {days.length > 0 && (
+          <section aria-label="Hari dan cuaca" className="mt-3">
+            <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]">
+              {days.map((day) => {
+                const wx = forecast.find((item) => item.date === day.date);
+                const info = wx ? describeWeather(wx.code) : null;
+                const Icon = info ? WEATHER_ICON[info.kind] : null;
+                const offset = dayOffset(day.date, today);
+                const label =
+                  offset === 0 ? "Hari ini" : offset === 1 ? "Besok" : shortDate(day.date);
+                const selected = scope === day.date;
+                return (
+                  <button
+                    key={day.date}
+                    type="button"
+                    onClick={() => setPicked(day.date)}
+                    aria-pressed={selected}
+                    aria-label={
+                      wx && info
+                        ? `${label}: ${info.label}, ${wx.tempMax} derajat tertinggi, ${wx.tempMin} terendah${wx.rainPercent !== null ? `, peluang hujan ${wx.rainPercent} persen` : ""}`
+                        : label
+                    }
+                    className={`tap inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-semibold ring-1 ${
+                      selected
+                        ? "bg-brand-red text-white ring-brand-red"
+                        : "bg-surface text-foreground ring-border/40"
+                    }`}
+                  >
+                    {label}
+                    {wx && Icon && (
+                      <span className="inline-flex items-center gap-0.5 tabular-nums">
+                        <Icon
+                          className={`size-3.5 ${selected ? "text-white" : "text-brand-red"}`}
+                          aria-hidden="true"
+                        />
+                        {wx.tempMax}°
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+              {days.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setPicked("all")}
+                  aria-pressed={scope === "all"}
+                  className={`tap inline-flex min-h-9 shrink-0 items-center rounded-full px-3 text-xs font-semibold ring-1 ${
+                    scope === "all"
+                      ? "bg-brand-red text-white ring-brand-red"
+                      : "bg-surface text-foreground ring-border/40"
+                  }`}
+                >
+                  Semua
+                </button>
+              )}
+            </div>
+            {weatherDetail && scope !== "all" && (
+              <p className="mt-1.5 px-1 text-[11px] text-muted-foreground" aria-live="polite">
+                <span className="font-semibold text-foreground">
+                  {describeWeather(weatherDetail.code).label}
+                </span>
+                {` · ${weatherDetail.tempMax}°/${weatherDetail.tempMin}°`}
+                {weatherDetail.rainPercent !== null && ` · hujan ${weatherDetail.rainPercent}%`}
+              </p>
+            )}
+          </section>
+        )}
+
         {focusRow && (
           <div
             className={`mt-3 flex items-center gap-2.5 rounded-2xl p-3 ${current ? "bg-brand-red text-white" : "bg-surface ring-1 ring-border/40"}`}
@@ -451,50 +488,6 @@ export function TripOverview(props: Props) {
               </a>
             )}
           </div>
-        )}
-
-        {forecast.length > 0 && (
-          <section aria-label="Prakiraan cuaca" className="mt-3">
-            <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]">
-              {forecast.map((day) => {
-                const info = describeWeather(day.code);
-                const Icon = WEATHER_ICON[info.kind];
-                const offset = dayOffset(day.date, today);
-                const label =
-                  offset === 0 ? "Hari ini" : offset === 1 ? "Besok" : shortDate(day.date);
-                const selected = scope === day.date;
-                return (
-                  <button
-                    key={day.date}
-                    type="button"
-                    onClick={() => setPicked(day.date)}
-                    aria-pressed={selected}
-                    aria-label={`${label}: ${info.label}, ${day.tempMax} derajat tertinggi, ${day.tempMin} terendah${day.rainPercent !== null ? `, peluang hujan ${day.rainPercent} persen` : ""}`}
-                    className={`tap flex min-h-11 shrink-0 flex-col items-center justify-center rounded-xl px-2.5 ring-1 ${
-                      selected ? "bg-brand-red/5 ring-brand-red" : "bg-surface ring-border/40"
-                    }`}
-                  >
-                    <span className="text-[10px] font-semibold leading-tight text-muted-foreground">
-                      {label}
-                    </span>
-                    <span className="flex items-center gap-1 text-[13px] font-bold leading-tight tabular-nums">
-                      <Icon className="size-4 text-brand-red" aria-hidden="true" />
-                      {day.tempMax}°
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {weatherDetail && (
-              <p className="mt-1.5 px-1 text-[11px] text-muted-foreground" aria-live="polite">
-                <span className="font-semibold text-foreground">
-                  {describeWeather(weatherDetail.code).label}
-                </span>
-                {` · ${weatherDetail.tempMax}°/${weatherDetail.tempMin}°`}
-                {weatherDetail.rainPercent !== null && ` · hujan ${weatherDetail.rainPercent}%`}
-              </p>
-            )}
-          </section>
         )}
 
         <div className="mt-3 flex items-end justify-between">

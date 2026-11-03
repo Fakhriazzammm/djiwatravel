@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TripTicket, type TicketData } from "@/components/trip-ticket";
@@ -48,5 +48,14 @@ describe("TripTicket", () => {
     );
     expect(screen.getByText("SELESAI")).toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("offers a share button only when a share handler is given", () => {
+    const { rerender } = render(<TripTicket trip={trip} title="Bali 5 Hari" />);
+    expect(screen.queryByLabelText("Bagikan Bali 5 Hari")).toBeNull();
+    const onShare = vi.fn();
+    rerender(<TripTicket trip={trip} title="Bali 5 Hari" onShare={onShare} />);
+    fireEvent.click(screen.getByLabelText("Bagikan Bali 5 Hari"));
+    expect(onShare).toHaveBeenCalledWith(trip);
   });
 });

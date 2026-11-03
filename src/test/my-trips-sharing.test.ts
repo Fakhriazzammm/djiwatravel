@@ -6,6 +6,7 @@ import {
   duplicateTripRecord,
   getTripSectionData,
   loadSharedTrip,
+  readTripShareLink,
   revokeTripShareLink,
 } from "@/lib/my-trips.server";
 
@@ -92,9 +93,21 @@ describe("My Trips sharing", () => {
     authenticate.mockResolvedValue({ id: ownerId, email: "traveler@example.test" });
   });
 
+  it("reads the active link only for a trip the session user owns", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: tripId }] } as never).mockResolvedValueOnce({
+      rows: [{ token: "b".repeat(32), created_at: "2026-10-30T00:00:00.000Z" }],
+    } as never);
+    await expect(readTripShareLink(tripId)).resolves.toMatchObject({ token: "b".repeat(32) });
+
+    query.mockReset();
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    await expect(readTripShareLink(tripId)).rejects.toThrow();
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
   it("creates a fresh bearer token and revokes older active links", async () => {
     query.mockResolvedValueOnce({ rows: [{ id: tripId }] } as never);
-    const clientQuery = vi.fn(async (sql: string) => {
+    const clientQuery = vi.fn(async (sql: string, _params?: unknown[]) => {
       if (sql.includes("insert into travel_trip_shares")) {
         return { rows: [{ token: "a".repeat(32), created_at: "2026-10-30T00:00:00.000Z" }] };
       }

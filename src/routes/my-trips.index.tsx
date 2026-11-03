@@ -16,6 +16,7 @@ import { useState, type ReactNode } from "react";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FixedLayer } from "@/components/motion-primitives";
 import { Page } from "@/components/shell";
+import { TripShareDialog, type ShareTripInfo } from "@/components/trip-share-sheet";
 import { TripTicket } from "@/components/trip-ticket";
 import { getMyTripsActions } from "@/lib/my-trips-home";
 import { getMyTripsHome } from "@/lib/my-trips.fn";
@@ -65,6 +66,13 @@ function MyTrips() {
   const { user, loading: authLoading } = useBetterAuthUser();
   const [view, setView] = useState<"today" | "logbook">("today");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [shareTrip, setShareTrip] = useState<ShareTripInfo | null>(null);
+  const openShare = (trip: ShareTripInfo) =>
+    setShareTrip({
+      id: trip.id,
+      name: tripTitle(trip as Trip),
+      destination_name: trip.destination_name,
+    });
 
   if (!user && !authLoading) return <Unauthenticated />;
 
@@ -97,16 +105,18 @@ function MyTrips() {
       </nav>
 
       {view === "today" ? (
-        <TodayView data={data} user={user} authLoading={authLoading} />
+        <TodayView data={data} user={user} authLoading={authLoading} onShare={openShare} />
       ) : (
-        <LogbookView trips={data.trips} />
+        <LogbookView trips={data.trips} onShare={openShare} />
       )}
 
       <ActionSheet
         open={sheetOpen}
         focusTrip={data.focusTrip}
         onClose={() => setSheetOpen(false)}
+        onShare={openShare}
       />
+      <TripShareDialog trip={shareTrip} onOpenChange={(open) => !open && setShareTrip(null)} />
     </Page>
   );
 }
@@ -140,27 +150,16 @@ function ActionSheet({
   open,
   focusTrip,
   onClose,
+  onShare,
 }: {
   open: boolean;
   focusTrip: Trip | null;
   onClose: () => void;
+  onShare: (trip: Trip) => void;
 }) {
   const reduce = useReducedMotion();
   const actions = getMyTripsActions(Boolean(focusTrip));
   const visibleActions = actions;
-
-  async function shareTrip() {
-    const shareData = {
-      title: focusTrip?.name ?? "Perjalanan saya",
-      text: focusTrip
-        ? `${focusTrip.name} ke ${focusTrip.destination_name}`
-        : "Rencanakan perjalanan bersama Djiwa Travel",
-      url: window.location.href,
-    };
-    if (navigator.share) await navigator.share(shareData);
-    else await navigator.clipboard?.writeText(window.location.href);
-    onClose();
-  }
 
   return (
     <AnimatePresence>
@@ -215,7 +214,10 @@ function ActionSheet({
                       <motion.button
                         key={action.id}
                         type="button"
-                        onClick={() => void shareTrip()}
+                        onClick={() => {
+                          onClose();
+                          if (focusTrip) onShare(focusTrip);
+                        }}
                         className="tap flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-left font-semibold hover:bg-secondary"
                         {...pressable}
                       >
@@ -275,10 +277,12 @@ function TodayView({
   data,
   user,
   authLoading,
+  onShare,
 }: {
   data: HomeData;
   user: { id: string; email?: string | null } | null;
   authLoading: boolean;
+  onShare: (trip: ShareTripInfo) => void;
 }) {
   const focusTrip = data.focusTrip;
   const upcoming = data.trips.filter((trip) => trip.status !== "past");
@@ -289,7 +293,13 @@ function TodayView({
         <section aria-labelledby="all-trips-heading" className="space-y-2">
           <SectionHeading id="all-trips-heading" title="Perjalanan" count={upcoming.length} />
           {upcoming.map((trip, index) => (
-            <TripTicket key={trip.id} trip={trip} title={tripTitle(trip)} index={index} />
+            <TripTicket
+              key={trip.id}
+              trip={trip}
+              title={tripTitle(trip)}
+              index={index}
+              onShare={() => onShare(trip)}
+            />
           ))}
         </section>
       ) : (
@@ -381,7 +391,13 @@ function AgendaRow({ item, tripId }: { item: AgendaItem; tripId: string }) {
   );
 }
 
-function LogbookView({ trips }: { trips: Trip[] }) {
+function LogbookView({
+  trips,
+  onShare,
+}: {
+  trips: Trip[];
+  onShare: (trip: ShareTripInfo) => void;
+}) {
   const pastTrips = trips.filter((trip) => trip.status === "past");
   return (
     <div className="mt-3 space-y-2 pb-4">
@@ -389,7 +405,13 @@ function LogbookView({ trips }: { trips: Trip[] }) {
         <>
           <SectionHeading id="past-trips-heading" title="Selesai" count={pastTrips.length} />
           {pastTrips.map((trip, index) => (
-            <TripTicket key={trip.id} trip={trip} title={tripTitle(trip)} index={index} />
+            <TripTicket
+              key={trip.id}
+              trip={trip}
+              title={tripTitle(trip)}
+              index={index}
+              onShare={() => onShare(trip)}
+            />
           ))}
         </>
       ) : (

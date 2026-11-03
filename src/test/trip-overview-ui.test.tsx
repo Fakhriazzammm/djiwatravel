@@ -165,4 +165,19 @@ describe("TripOverview (Ringkas)", () => {
     expect(getTripWeather).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Prakiraan cuaca")).toBeNull();
   });
+
+  it("merges the day chips and the weather into one row above the next-activity card", async () => {
+    vi.mocked(getTripWeather).mockResolvedValueOnce({
+      status: "ok",
+      days: [{ date: key, code: 61, tempMax: 19, tempMin: 11, rainPercent: 70 }],
+    });
+    render(<TripOverview {...base} />);
+    const chip = await screen.findByLabelText(/^Hari ini: Hujan/);
+    expect(chip.textContent).toContain("19°");
+    expect(screen.queryByLabelText("Prakiraan cuaca")).toBeNull();
+    const row = screen.getByLabelText("Hari dan cuaca");
+    expect(row.contains(chip)).toBe(true);
+    const nextCard = screen.getAllByText("Berikutnya")[0]!;
+    expect(row.compareDocumentPosition(nextCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
