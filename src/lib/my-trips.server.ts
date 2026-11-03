@@ -669,10 +669,25 @@ export async function getTripSectionData(tripId: string, section: string) {
   const selectedQuery = queries[section];
   if (!selectedQuery) throw new Error("Section perjalanan tidak valid");
   const result = await selectedQuery();
+  // Bookings pick their category from the budget categories the traveler maintains.
+  const bookingCategories =
+    section === "bookings"
+      ? (
+          await pool.query(
+            "select id, name, allocated_minor, currency from travel_budget_categories where trip_id=$1 order by sort_order",
+            [tripId],
+          )
+        ).rows.map((row) => ({
+          id: String(row.id),
+          name: String(row.name),
+          allocated_minor: money(row.allocated_minor),
+          currency: String(row.currency).trim(),
+        }))
+      : ([] as TripSectionCategory[]);
   return {
     trip: tripView,
     items: result.rows.map(normalizeSectionItem),
-    categories: [] as TripSectionCategory[],
+    categories: bookingCategories satisfies TripSectionCategory[],
     summary: emptySummary(budgetMinor),
   };
 }

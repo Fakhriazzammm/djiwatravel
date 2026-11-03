@@ -186,7 +186,7 @@ function TripSection() {
           <ChecklistEditor tripId={tripId} items={items} onSaved={refresh} />
         )}
         {section === "bookings" && (
-          <BookingEditor tripId={tripId} items={items} onSaved={refresh} />
+          <BookingEditor tripId={tripId} items={items} categories={categories} onSaved={refresh} />
         )}
         {["places", "documents", "group", "split-bill", "currency", "ai-planner"].includes(
           section,
@@ -743,16 +743,32 @@ function ChecklistEditor({
   );
 }
 
-function BookingEditor({
+const OTHER_BOOKING_CATEGORY = "Lainnya";
+
+export function BookingEditor({
   tripId,
   items,
+  categories,
   onSaved,
 }: {
   tripId: string;
   items: Item[];
+  categories: CategoryOption[];
   onSaved: () => Promise<void>;
 }) {
-  const [form, setForm] = useState({ category: "Lainnya", title: "", date: "", provider: "" });
+  // Options are the traveler's own budget categories; "Lainnya" stays available as a fallback.
+  const categoryOptions = [
+    ...new Set([
+      ...categories.map((category) => displayBudgetCategory(category.name)),
+      OTHER_BOOKING_CATEGORY,
+    ]),
+  ];
+  const [form, setForm] = useState({
+    category: categoryOptions[0] ?? OTHER_BOOKING_CATEGORY,
+    title: "",
+    date: "",
+    provider: "",
+  });
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   async function submit(e: React.FormEvent) {
@@ -775,7 +791,12 @@ function BookingEditor({
         failureMessage: "Pemesanan belum tersimpan. Periksa data lalu coba lagi.",
       });
       if (saved) {
-        setForm({ category: "Lainnya", title: "", date: "", provider: "" });
+        setForm({
+          category: categoryOptions[0] ?? OTHER_BOOKING_CATEGORY,
+          title: "",
+          date: "",
+          provider: "",
+        });
         setShowForm(false);
       }
     } finally {
@@ -808,13 +829,19 @@ function BookingEditor({
           </SheetHeader>
           <form onSubmit={submit} className="space-y-3">
             <div className="flex gap-2">
-              <input
+              <select
                 required
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                placeholder="Kategori"
-                className="min-h-12 w-1/3 rounded-2xl bg-secondary px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-red/25"
-              />
+                aria-label="Kategori"
+                className="min-h-10 w-2/5 min-w-0 rounded-xl bg-secondary px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-red/25"
+              >
+                {categoryOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
               <input
                 required
                 value={form.title}
