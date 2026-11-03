@@ -28,6 +28,8 @@ type Props = {
   poiCategories?: PoiCategoryId[];
   onPoiSelect?: (poi: PickedPoi) => void;
   className?: string;
+  /** Room kept free at the top and bottom when framing pins (for controls drawn over the map). */
+  framePadding?: { top: number; bottom: number };
   onUnavailable?: () => void;
 };
 
@@ -191,6 +193,7 @@ export default function ItineraryMap({
   poiCategories = [],
   onPoiSelect,
   className,
+  framePadding,
   onUnavailable,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
@@ -386,12 +389,17 @@ export default function ItineraryMap({
     if (bounds) {
       const duration = reduce ? 0 : 450;
       // Leave room for the chips drawn over the top of the map.
-      const padding = { top: focus ? 60 : 96, bottom: 56, left: 44, right: 44 };
+      const padding = {
+        top: framePadding?.top ?? (focus ? 60 : 96),
+        bottom: framePadding?.bottom ?? 56,
+        left: 44,
+        right: 44,
+      };
       if (fitPins.length === 1)
         map.easeTo({ center: [fitPins[0]!.lng, fitPins[0]!.lat], zoom: 14, duration });
       else map.fitBounds(bounds, { padding, maxZoom: 15, duration });
     }
-  }, [pins, routes, ready, focus]);
+  }, [pins, routes, ready, focus, framePadding?.top, framePadding?.bottom]);
 
   // The traveler's own position.
   const userMarker = useRef<Marker | null>(null);

@@ -499,15 +499,18 @@ export function ExpenseEditor({
   items,
   categories,
   onSaved,
+  initialCreating = false,
 }: {
   tripId: string;
   currency: string;
   items: Row[];
   categories: CategoryOption[];
   onSaved: () => Promise<void>;
+  /** Open the "catat biaya" form on arrival (from the Ringkas "+" sheet). */
+  initialCreating?: boolean;
 }) {
   const [filter, setFilter] = useState<string>("all");
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(initialCreating);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<Row | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Row | null>(null);

@@ -27,6 +27,7 @@ export function AdminItineraryMapPanel({
   const [poiHelper, setPoiHelper] = useState(initial.poiHelper);
   const [locateMe, setLocateMe] = useState(initial.locateMe);
   const [placeImages, setPlaceImages] = useState(initial.placeImages);
+  const [summaryMap, setSummaryMap] = useState(initial.summaryMap);
   const [styleUrl, setStyleUrl] = useState(initial.styleUrl);
   const [version, setVersion] = useState(initialVersion);
   const [reason, setReason] = useState("");
@@ -43,6 +44,7 @@ export function AdminItineraryMapPanel({
         poiHelper,
         locateMe,
         placeImages,
+        summaryMap,
         styleUrl,
       });
       const result = await saveAdminItineraryMap({
@@ -91,6 +93,15 @@ export function AdminItineraryMapPanel({
             className="size-5 accent-primary"
           />
           Tampilkan peta di Agenda
+        </label>
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={summaryMap}
+            onChange={(event) => setSummaryMap(event.target.checked)}
+            className="size-5 accent-primary"
+          />
+          Tampilkan peta di halaman Ringkas trip
         </label>
         <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
           <input

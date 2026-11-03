@@ -112,6 +112,11 @@ export const Route = createFileRoute("/my-trips/$tripId/$section")({
       throw error;
     }
   },
+  // `add` and `edit` come from the Ringkas page: they open the matching form on arrival.
+  validateSearch: (search: Record<string, unknown>): { add?: boolean; edit?: string } => ({
+    ...(search["add"] === true || search["add"] === "true" ? { add: true } : {}),
+    ...(typeof search["edit"] === "string" && search["edit"] ? { edit: search["edit"] } : {}),
+  }),
   component: TripSection,
 });
 const labels: Record<string, string> = {
@@ -177,6 +182,7 @@ const money = (minor: unknown, currency: unknown) => formatTripMoney(minor, curr
 
 function TripSection() {
   const { section, tripId } = Route.useParams();
+  const { add, edit } = Route.useSearch();
   const data = Route.useLoaderData();
   const router = useRouter();
   const items = data.items as Item[];
@@ -240,6 +246,7 @@ function TripSection() {
             items={items}
             categories={categories}
             onSaved={refresh}
+            initialCreating={Boolean(add)}
           />
         )}
         {section === "itinerary" && (
@@ -248,13 +255,26 @@ function TripSection() {
             items={items}
             onSaved={refresh}
             mapConfig={(data.mapConfig as ItineraryMapConfig | null) ?? null}
+            initialAdd={Boolean(add)}
+            initialEditId={edit ?? null}
           />
         )}
         {section === "checklist" && (
-          <ChecklistEditor tripId={tripId} items={items} onSaved={refresh} />
+          <ChecklistEditor
+            tripId={tripId}
+            items={items}
+            onSaved={refresh}
+            initialAdd={Boolean(add)}
+          />
         )}
         {section === "bookings" && (
-          <BookingEditor tripId={tripId} items={items} categories={categories} onSaved={refresh} />
+          <BookingEditor
+            tripId={tripId}
+            items={items}
+            categories={categories}
+            onSaved={refresh}
+            initialAdd={Boolean(add)}
+          />
         )}
         {["places", "documents", "group", "split-bill", "currency", "ai-planner"].includes(
           section,
@@ -277,11 +297,17 @@ export function ItineraryEditor({
   items,
   onSaved,
   mapConfig = null,
+  initialAdd = false,
+  initialEditId = null,
 }: {
   tripId: string;
   items: Item[];
   onSaved: () => Promise<void>;
   mapConfig?: ItineraryMapConfig | null;
+  /** Open the "add activity" form on arrival (from the Ringkas "+" sheet). */
+  initialAdd?: boolean;
+  /** Open this activity for editing on arrival (from the Ringkas row menu). */
+  initialEditId?: string | null;
 }) {
   const [form, setForm] = useState({
     title: "",
@@ -405,6 +431,15 @@ export function ItineraryEditor({
     const found = days.find((d) => d.items.some((i) => i.id === id));
     if (found && scope !== "all" && scope !== found.date) setSelectedDay(found.date);
   }
+
+  // Arriving from Ringkas with ?add or ?edit opens the form once.
+  useEffect(() => {
+    const target = initialEditId ? items.find((item) => item.id === initialEditId) : null;
+    if (target) openEdit(target);
+    else if (initialAdd) openNew();
+    // Only on arrival; later list refreshes must not reopen the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleFormOpenChange(open: boolean) {
     setShowForm(open);
@@ -1464,15 +1499,17 @@ function ChecklistEditor({
   tripId,
   items,
   onSaved,
+  initialAdd = false,
 }: {
   tripId: string;
   items: Item[];
   onSaved: () => Promise<void>;
+  initialAdd?: boolean;
 }) {
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAdd, setShowAdd] = useState(initialAdd);
   const done = items.filter((item) => Boolean(item.is_completed)).length;
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -1610,11 +1647,13 @@ export function BookingEditor({
   items,
   categories,
   onSaved,
+  initialAdd = false,
 }: {
   tripId: string;
   items: Item[];
   categories: CategoryOption[];
   onSaved: () => Promise<void>;
+  initialAdd?: boolean;
 }) {
   // Options are the traveler's own budget categories; "Lainnya" stays available as a fallback.
   const categoryOptions = [
@@ -1630,7 +1669,7 @@ export function BookingEditor({
     provider: "",
   });
   const [saving, setSaving] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(initialAdd);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);

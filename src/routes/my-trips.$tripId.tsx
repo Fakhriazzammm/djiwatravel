@@ -2,7 +2,6 @@ import { formatTripMoney } from "@/lib/trip-money";
 import { MoneyInput } from "@/components/money-input";
 import {
   createFileRoute,
-  Link,
   Outlet,
   redirect,
   useNavigate,
@@ -10,21 +9,9 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  CalendarDays,
-  ChevronRight,
-  Compass,
-  Copy,
-  Link2,
-  MapPin,
-  MoreHorizontal,
-  Pencil,
-  Plane,
-  Share2,
-  Trash2,
-} from "lucide-react";
+import { Copy, Link2, Pencil, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Page, btnRed, btnSoft } from "@/components/shell";
+import { btnRed, btnSoft } from "@/components/shell";
 import {
   Sheet,
   SheetContent,
@@ -32,15 +19,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  ConfirmDialog,
-  ProgressRing,
-  TripActionSheet,
-  TripNavBar,
-  TripTabBar,
-  iosGroup,
-  iosHeading,
-} from "@/components/trip-ios";
+import { ConfirmDialog, TripActionSheet, TripTabBar } from "@/components/trip-ios";
+import { TripOverview } from "@/components/trip-overview";
+import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
+import { DEFAULT_ITINERARY_MAP_CONFIG, type ItineraryMapConfig } from "@/lib/itinerary-map";
 import {
   deleteTripRecord,
   deleteTripShare,
@@ -54,7 +36,12 @@ import { isTripAuthenticationError } from "@/lib/trip-actions";
 export const Route = createFileRoute("/my-trips/$tripId")({
   loader: async ({ params, location }) => {
     try {
-      return await getTrip({ data: { tripId: params.tripId } });
+      const [trip, mapConfig] = await Promise.all([
+        getTrip({ data: { tripId: params.tripId } }),
+        // The map is an enhancement: if its setting cannot be read the overview still loads.
+        getItineraryMapConfig().catch(() => DEFAULT_ITINERARY_MAP_CONFIG),
+      ]);
+      return { ...trip, mapConfig };
     } catch (error) {
       if (isTripAuthenticationError(error)) {
         throw redirect({
@@ -98,17 +85,6 @@ type Trip = {
 };
 
 type ShareLink = { token: string; createdAt: string } | null;
-type ItineraryRow = {
-  id?: string;
-  activity_date?: string | Date | null;
-  start_time?: string | null;
-  end_time?: string | null;
-  title?: string | null;
-  location?: string | null;
-  activity_category?: string | null;
-};
-type BookingRow = { id?: string; title?: unknown; status?: unknown; provider?: unknown };
-
 const dateKey = (value?: string | Date | null) => {
   if (!value) return "";
   if (value instanceof Date) {
@@ -144,29 +120,6 @@ function tripCountdown(trip: Trip) {
   return { label: "Sedang berlangsung", value: `Hari ke-${day}`, totalDays };
 }
 
-function nextAgenda(itinerary: ItineraryRow[], trip: Trip) {
-  const today = localTodayKey();
-  const sorted = [...itinerary]
-    .filter((item) => dateKey(item.activity_date))
-    .sort((a, b) =>
-      `${dateKey(a.activity_date)}T${String(a.start_time ?? "99:99")}`.localeCompare(
-        `${dateKey(b.activity_date)}T${String(b.start_time ?? "99:99")}`,
-      ),
-    );
-  const returnDate = dateKey(trip.return_date);
-  if (returnDate && today > returnDate) return sorted[sorted.length - 1] ?? null;
-  return sorted.find((item) => dateKey(item.activity_date) >= today) ?? sorted[0] ?? null;
-}
-
-const bookingStatus = (value: unknown) => {
-  const key = String(value ?? "").toLowerCase();
-  if (["confirmed", "terkonfirmasi", "booked", "paid"].includes(key))
-    return { label: "Terkonfirmasi", tone: "bg-success/15 text-success" };
-  if (["cancelled", "canceled", "dibatalkan"].includes(key))
-    return { label: "Dibatalkan", tone: "bg-destructive/10 text-destructive" };
-  return { label: key ? "Menunggu" : "Tersimpan", tone: "bg-warning/15 text-warning-foreground" };
-};
-
 function TripDetail() {
   const data = Route.useLoaderData();
   const router = useRouter();
@@ -185,16 +138,9 @@ function TripDetail() {
   const trip = data.trip as unknown as Trip;
   const currency = String(trip.primary_currency).trim();
   const budget = Number(trip.total_budget_minor ?? 0);
-  const spent = Number(data.totals.spentMinor ?? 0);
   const remaining = Number(data.totals.remainingMinor ?? 0);
-  const budgetPercent = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
-  const checklistItems = data.checklist as Array<{ is_completed?: boolean }>;
-  const completed = checklistItems.filter((item) => item.is_completed).length;
-  const checklistPercent = checklistItems.length ? (completed / checklistItems.length) * 100 : 0;
   const share = data.share as ShareLink;
-  const bookings = data.bookings as BookingRow[];
   const countdown = tripCountdown(trip);
-  const next = nextAgenda(data.itinerary as ItineraryRow[], trip);
   const dates =
     trip.departure_date && trip.return_date
       ? `${dateLabel(trip.departure_date)} – ${dateLabel(trip.return_date)}${
@@ -237,167 +183,23 @@ function TripDetail() {
   }
 
   return (
-    <Page tabs={false}>
-      <TripNavBar
-        backLabel="Perjalanan"
-        backTo="list"
-        action={
-          <button
-            type="button"
-            aria-label="Menu perjalanan"
-            onClick={() => setMenuOpen(true)}
-            className="tap grid size-11 place-items-center rounded-full text-brand-red"
-          >
-            <MoreHorizontal className="size-6" aria-hidden="true" />
-          </button>
-        }
+    <>
+      <TripOverview
+        tripId={trip.id}
+        name={trip.name}
+        destination={trip.destination_name}
+        dayLabel={countdown.value}
+        datesLabel={`${trip.destination_name} · ${dates}`}
+        itinerary={data.itinerary as never}
+        checklist={data.checklist as never}
+        bookings={data.bookings as never}
+        budgetSet={budget > 0}
+        remainingLabel={money(remaining, currency)}
+        remainingMinor={remaining}
+        mapConfig={(data.mapConfig as ItineraryMapConfig | null) ?? null}
+        onMenu={() => setMenuOpen(true)}
+        onChanged={() => router.invalidate()}
       />
-
-      <header className="px-1 pb-3 pt-1">
-        <h1 className="text-[22px] font-bold leading-tight tracking-tight">{trip.name}</h1>
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[14px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="size-3.5" aria-hidden="true" />
-            {trip.destination_name}
-          </span>
-          <span aria-hidden="true">·</span>
-          <span>{dates}</span>
-        </p>
-      </header>
-
-      <div className="space-y-3">
-        <section
-          aria-label="Hitung mundur"
-          className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-[#ff7a7e] via-brand-red to-[#c92f3a] p-4 text-white"
-        >
-          <Plane className="absolute right-4 top-4 size-8 opacity-90" aria-hidden="true" />
-          <p className="text-[12px] font-medium text-white/85">{countdown.label}</p>
-          <p className="text-[28px] font-bold leading-tight tracking-[-0.03em]">
-            {countdown.value}
-          </p>
-          <p className="text-[12px] text-white/85">
-            {trip.travelers_count} traveler{trip.travelers_count === 1 ? "" : "s"}
-          </p>
-        </section>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Link
-            to="/my-trips/$tripId/$section"
-            params={{ tripId: trip.id, section: "checklist" }}
-            className={`tap flex items-center gap-3 p-3 ${iosGroup}`}
-          >
-            <ProgressRing
-              percent={checklistPercent}
-              label="Checklist selesai"
-              color="var(--brand-red)"
-            />
-            <span className="min-w-0">
-              <span className="block text-[13px] font-semibold">Checklist</span>
-              <span className="block truncate text-[12px] text-muted-foreground">
-                {checklistItems.length
-                  ? `${completed}/${checklistItems.length} selesai`
-                  : "Belum ada"}
-              </span>
-            </span>
-          </Link>
-          <Link
-            to="/my-trips/$tripId/$section"
-            params={{ tripId: trip.id, section: "budget" }}
-            className={`tap flex items-center gap-3 p-3 ${iosGroup}`}
-          >
-            <ProgressRing
-              percent={budgetPercent}
-              label="Anggaran terpakai"
-              color="var(--success)"
-            />
-            <span className="min-w-0">
-              <span className="block text-[13px] font-semibold">Anggaran</span>
-              <span className="block truncate text-[12px] text-muted-foreground">
-                {budget > 0 ? `Sisa ${money(remaining, currency)}` : "Belum diatur"}
-              </span>
-            </span>
-          </Link>
-        </div>
-
-        <section>
-          <h2 className={iosHeading}>Berikutnya</h2>
-          <div className={iosGroup}>
-            <Link
-              to="/my-trips/$tripId/$section"
-              params={{ tripId: trip.id, section: "itinerary" }}
-              className="tap flex min-h-[56px] items-center gap-3 px-3"
-            >
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-red text-white">
-                <CalendarDays className="size-[18px]" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-medium">
-                  {next?.title || "Belum ada agenda"}
-                </span>
-                <span className="block truncate text-[12px] text-muted-foreground">
-                  {next
-                    ? `${dateLabel(dateKey(next.activity_date))}${
-                        next.start_time ? ` · ${String(next.start_time).slice(0, 5)}` : ""
-                      }${next.location ? ` · ${String(next.location)}` : ""}`
-                    : "Susun rencana perjalananmu"}
-                </span>
-              </span>
-              <ChevronRight
-                className="size-4 shrink-0 text-muted-foreground/60"
-                aria-hidden="true"
-              />
-            </Link>
-            <Link
-              to="/my-trips/$tripId/travel"
-              params={{ tripId: trip.id }}
-              className="tap flex min-h-[48px] items-center gap-3 border-t border-border/60 px-3"
-            >
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-foreground text-background">
-                <Compass className="size-[18px]" aria-hidden="true" />
-              </span>
-              <span className="flex-1 text-[15px] font-medium">Mode perjalanan</span>
-              <ChevronRight
-                className="size-4 shrink-0 text-muted-foreground/60"
-                aria-hidden="true"
-              />
-            </Link>
-          </div>
-        </section>
-
-        <section>
-          <h2 className={iosHeading}>Pemesanan</h2>
-          <div className={iosGroup}>
-            {bookings.slice(0, 3).map((booking, index) => {
-              const status = bookingStatus(booking.status);
-              return (
-                <Link
-                  key={String(booking.id ?? index)}
-                  to="/my-trips/$tripId/$section"
-                  params={{ tripId: trip.id, section: "bookings" }}
-                  className="tap flex min-h-[48px] items-center gap-3 border-b border-border/60 px-3 last:border-b-0"
-                >
-                  <span className="min-w-0 flex-1 truncate text-[15px]">
-                    {String(booking.title ?? "Pemesanan")}
-                  </span>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.tone}`}
-                  >
-                    {status.label}
-                  </span>
-                </Link>
-              );
-            })}
-            <Link
-              to="/my-trips/$tripId/$section"
-              params={{ tripId: trip.id, section: "bookings" }}
-              className="tap flex min-h-[48px] items-center justify-between px-3 text-[15px] text-brand-red"
-            >
-              {bookings.length ? `Lihat semua (${bookings.length})` : "Tambah pemesanan"}
-              <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden="true" />
-            </Link>
-          </div>
-        </section>
-      </div>
 
       <TripTabBar tripId={trip.id} active="summary" />
 
@@ -452,7 +254,7 @@ function TripDetail() {
         share={share}
         onChanged={() => router.invalidate()}
       />
-    </Page>
+    </>
   );
 }
 

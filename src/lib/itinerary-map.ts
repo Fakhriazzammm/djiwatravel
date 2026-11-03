@@ -25,6 +25,8 @@ export type ItineraryMapConfig = {
   locateMe: boolean;
   /** Place photos from Wikipedia on activities and tapped places. */
   placeImages: boolean;
+  /** Map on the trip's Ringkas (overview) page. Off = the overview keeps its lists without a map. */
+  summaryMap: boolean;
   /** MapLibre style JSON URL for the basemap. */
   styleUrl: string;
 };
@@ -35,6 +37,7 @@ export const DEFAULT_ITINERARY_MAP_CONFIG: ItineraryMapConfig = {
   poiHelper: true,
   locateMe: true,
   placeImages: true,
+  summaryMap: true,
   styleUrl: DEFAULT_MAP_STYLE_URL,
 };
 
@@ -55,7 +58,14 @@ export function parseItineraryMapConfig(value: unknown): ItineraryMapConfig {
     throw new Error("itineraryMap harus berupa objek");
   }
   const raw = value as Record<string, unknown>;
-  for (const key of ["enabled", "placeSearch", "poiHelper", "locateMe", "placeImages"] as const) {
+  for (const key of [
+    "enabled",
+    "placeSearch",
+    "poiHelper",
+    "locateMe",
+    "placeImages",
+    "summaryMap",
+  ] as const) {
     if (raw[key] !== undefined && typeof raw[key] !== "boolean") {
       throw new Error(`itineraryMap.${key} harus boolean`);
     }
@@ -74,6 +84,8 @@ export function parseItineraryMapConfig(value: unknown): ItineraryMapConfig {
     locateMe: (raw["locateMe"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.locateMe,
     placeImages:
       (raw["placeImages"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.placeImages,
+    summaryMap:
+      (raw["summaryMap"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.summaryMap,
     styleUrl: styleUrl.trim(),
   };
 }

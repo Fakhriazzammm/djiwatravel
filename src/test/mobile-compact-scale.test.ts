@@ -88,6 +88,7 @@ const COMPACT_PAGES = [
   "src/components/trip-budget-ios.tsx",
   "src/components/trip-country-picker.tsx",
   "src/components/trip-ios.tsx",
+  "src/components/trip-overview.tsx",
   "src/components/trip-ticket.tsx",
   "src/components/wallet/pay-services-card.tsx",
 ];

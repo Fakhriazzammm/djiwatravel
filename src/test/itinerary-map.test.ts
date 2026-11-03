@@ -288,6 +288,14 @@ describe("place photos", () => {
     ).toBe("Random Tower");
     expect(pickPlaceImage([{ title: "No photo" }], ["No photo"])).toBeNull();
   });
+  it("lets Admin turn the Ringkas map off on its own", () => {
+    expect(DEFAULT_ITINERARY_MAP_CONFIG.summaryMap).toBe(true);
+    expect(parseItineraryMapConfig({ summaryMap: false })).toMatchObject({
+      enabled: true,
+      summaryMap: false,
+    });
+    expect(() => parseItineraryMapConfig({ summaryMap: "no" })).toThrow();
+  });
   it("lets Admin turn GPS and photos off", () => {
     expect(parseItineraryMapConfig({ locateMe: false, placeImages: false })).toMatchObject({
       locateMe: false,
