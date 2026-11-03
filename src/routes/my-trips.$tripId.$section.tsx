@@ -572,14 +572,17 @@ export function ItineraryEditor({
     <MotionConfig reducedMotion="user">
       <LayoutGroup id="agenda">
         <section className="space-y-3 pb-28" aria-label="Agenda perjalanan">
-          <div className="flex items-center justify-between px-1 pt-1">
-            <div className="min-w-0">
+          <div className="relative flex items-center justify-between px-1 pt-1">
+            <div className="min-w-0 pr-24">
               <h1 className="text-[22px] font-bold leading-tight tracking-tight">Agenda</h1>
               {trip && (
                 <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
                   {tripSubtitle(trip)}
                 </p>
               )}
+            </div>
+            <div className="pointer-events-none absolute -bottom-3 right-1 z-10">
+              <AgendaMascot size={88} />
             </div>
             <FixedLayer>
               <motion.button
@@ -1088,7 +1091,7 @@ export function ItineraryEditor({
             ))
           ) : (
             <div className="rounded-2xl bg-secondary p-4 text-center">
-              <AgendaMascot size={132} />
+              <CalendarDays className="mx-auto size-9 text-muted-foreground" strokeWidth={1.5} />
               <p className="mt-3 text-sm font-semibold">Belum ada aktivitas</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Rencana perjalananmu akan tersusun di sini.
@@ -1100,14 +1103,6 @@ export function ItineraryEditor({
               >
                 <Plus className="size-4" /> Tambah aktivitas
               </button>
-            </div>
-          )}
-          {days.length > 0 && (
-            <div className="flex flex-col items-center gap-1 pt-2 text-center">
-              <AgendaMascot size={120} />
-              <p className="text-[12px] text-muted-foreground">
-                {items.length} aktivitas tersusun. Tambah lagi kapan saja.
-              </p>
             </div>
           )}
         </section>
