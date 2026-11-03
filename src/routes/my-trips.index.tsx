@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   CalendarDays,
   CheckCircle2,
-  ChevronLeft,
   ChevronRight,
   FolderPlus,
   ListChecks,
@@ -78,7 +77,6 @@ function MyTrips() {
 
   return (
     <Page>
-      <TopBar onAdd={() => setSheetOpen(true)} />
       <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
         Perjalanan
       </h1>
@@ -117,32 +115,17 @@ function MyTrips() {
         onShare={openShare}
       />
       <TripShareDialog trip={shareTrip} onOpenChange={(open) => !open && setShareTrip(null)} />
+      <FixedLayer>
+        <button
+          type="button"
+          aria-label="Buat perjalanan baru"
+          onClick={() => setSheetOpen(true)}
+          className="tap fixed bottom-24 right-[max(1rem,calc((100vw-28rem)/2+1rem))] z-40 grid size-11 place-items-center rounded-full bg-brand-red text-white shadow-lg"
+        >
+          <Plus className="size-5" strokeWidth={2.4} aria-hidden="true" />
+        </button>
+      </FixedLayer>
     </Page>
-  );
-}
-
-function TopBar({ onAdd }: { onAdd: () => void }) {
-  return (
-    <div className="flex h-11 items-center justify-between">
-      <Link
-        to="/"
-        aria-label="Kembali ke beranda"
-        className="tap -ml-2 flex min-h-11 items-center gap-0.5 rounded-xl pl-1 pr-3 text-[15px] text-brand-red"
-      >
-        <ChevronLeft className="size-6" strokeWidth={2.4} aria-hidden="true" />
-        Beranda
-      </Link>
-      <button
-        type="button"
-        aria-label="Buat perjalanan baru"
-        onClick={onAdd}
-        className="tap grid size-11 place-items-center"
-      >
-        <span className="grid size-7 place-items-center rounded-full bg-brand-red text-white">
-          <Plus className="size-[18px]" strokeWidth={2.4} aria-hidden="true" />
-        </span>
-      </button>
-    </div>
   );
 }
 
