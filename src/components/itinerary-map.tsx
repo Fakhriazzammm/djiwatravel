@@ -38,14 +38,17 @@ type MarkerEntry = { marker: Marker; el: HTMLElement; n: number; title: string }
 function paintMarker(entry: MarkerEntry, active: boolean) {
   const { el, n, title } = entry;
   const size = active ? 30 : 24;
+  // `el` is positioned by MapLibre (its own class and transform): never touch those, draw inside.
   el.replaceChildren();
-  el.className = "djiwa-pin";
   el.style.zIndex = active ? "2" : "1";
+  const root = document.createElement("div");
+  root.className = "djiwa-pin";
+  el.appendChild(root);
   if (active) {
     const label = document.createElement("div");
     label.className = "djiwa-pin-label";
     label.textContent = title;
-    el.appendChild(label);
+    root.appendChild(label);
   }
   const body = document.createElement("div");
   body.className = "djiwa-pin-body";
@@ -64,7 +67,7 @@ function paintMarker(entry: MarkerEntry, active: boolean) {
   const tip = document.createElement("div");
   tip.className = "djiwa-pin-tip";
   tip.style.borderTop = `7px solid ${active ? RED : "#fff"}`;
-  el.append(body, tip);
+  root.append(body, tip);
 }
 
 /**
@@ -120,6 +123,14 @@ export default function ItineraryMap({
         map.on("error", (event) => {
           console.error("[itinerary-map]", event.error?.message ?? event);
         });
+        // Keep the required attribution, but collapsed to its small "i" button.
+        const collapseAttribution = () => {
+          const attribution = host.current?.querySelector(".maplibregl-ctrl-attrib");
+          attribution?.removeAttribute("open");
+          attribution?.classList.remove("maplibregl-compact-show");
+        };
+        collapseAttribution();
+        map.once("idle", collapseAttribution);
         loadTimer = setTimeout(() => {
           if (!disposed && !map.loaded()) latest.current.onUnavailable?.();
         }, 12000);
@@ -144,10 +155,6 @@ export default function ItineraryMap({
             paint: { "line-color": RED, "line-width": 3.5, "line-dasharray": [0.01, 2.2] },
             layout: { "line-cap": "round", "line-join": "round" },
           });
-          // Keep the required attribution, but collapsed to its small "i" button.
-          const attribution = host.current?.querySelector(".maplibregl-ctrl-attrib");
-          attribution?.removeAttribute("open");
-          attribution?.classList.remove("maplibregl-compact-show");
           setReady(true);
         });
         observer = new ResizeObserver(() => map.resize());
