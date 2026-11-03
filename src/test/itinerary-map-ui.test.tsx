@@ -87,6 +87,7 @@ describe("agenda map", () => {
     expect(route).toHaveAttribute("target", "_blank");
     expect(screen.getAllByRole("link", { name: /Rute ke/ })).toHaveLength(2);
     expect(screen.getAllByText(/±/).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("travel-hop")).toHaveTextContent(/Kereta · ≈\d+ mnt/);
     fireEvent.click(screen.getByText("Kuil Senso-ji"));
     expect(screen.getByTestId("map").dataset["active"]).toBe("c");
   });

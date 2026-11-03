@@ -1,14 +1,20 @@
 import { formatTripMoney } from "@/lib/trip-money";
 import { MoneyInput } from "@/components/money-input";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
+import { springIos, springSnappy } from "@/lib/motion";
 import {
   BedDouble,
   CalendarDays,
   ChevronRight,
-  Maximize2,
-  Minimize2,
+  Expand,
+  Footprints,
+  Navigation,
   Route as RouteIcon,
+  Shrink,
+  TrainFront,
+  Trash2,
   ClipboardCheck,
   Coffee,
   Hotel,
@@ -25,7 +31,9 @@ import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
   buildMapModel,
+  estimateLeg,
   formatKm,
+  formatMinutes,
   googleMapsDayRouteUrl,
   googleMapsDirectionsUrl,
   itemPoint,
@@ -167,9 +175,11 @@ function TripSection() {
   return (
     <Page tabs={false}>
       <TripNavBar backLabel={trip.name} backTo="trip" backTripId={tripId} />
-      <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
-        {labels[section] ?? "Perjalanan"}
-      </h1>
+      {section !== "itinerary" && (
+        <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
+          {labels[section] ?? "Perjalanan"}
+        </h1>
+      )}
       {(section === "budget" || section === "expenses") && (
         <div
           role="tablist"
@@ -325,264 +335,274 @@ export function ItineraryEditor({
       : null;
   const searchEnabled = Boolean(mapConfig?.enabled && mapConfig.placeSearch);
   return (
-    <section className="space-y-3" aria-label="Agenda perjalanan">
-      <div className="flex items-center justify-end">
-        <button
-          type="button"
-          onClick={() => setShowForm(true)}
-          className="tap flex min-h-10 items-center gap-2 rounded-full bg-brand-red px-4 text-sm font-semibold text-white"
-          aria-expanded={showForm}
-        >
-          <Plus className="size-4" /> Tambah aktivitas
-        </button>
-      </div>
-      <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent
-          side="bottom"
-          className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border-border/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7 sm:rounded-t-[28px]"
-        >
-          <div
-            className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
-            aria-hidden="true"
-          />
-          <SheetHeader className="mb-4 pr-8 text-left">
-            <SheetTitle className="text-[22px] tracking-tight">Tambah aktivitas</SheetTitle>
-            <SheetDescription>
-              Susun rencana perjalananmu. Semua waktu mengikuti zona lokal.
-            </SheetDescription>
-          </SheetHeader>
-          <form onSubmit={submit} className="space-y-3">
-            <div className="space-y-1.5">
-              <label htmlFor="agenda-title" className="text-[13px] font-semibold">
-                Nama aktivitas
-              </label>
-              <input
-                id="agenda-title"
-                required
-                autoFocus
-                value={form.title}
-                onChange={(event) => setForm({ ...form, title: event.target.value })}
-                placeholder="Contoh: Makan malam"
-                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3.5 text-[14px] outline-none transition focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+    <MotionConfig reducedMotion="user">
+      <LayoutGroup id="agenda">
+        <section className="space-y-3" aria-label="Agenda perjalanan">
+          <div className="flex items-center justify-between px-1 pt-1">
+            <h1 className="text-[22px] font-bold leading-tight tracking-tight">Agenda</h1>
+            <motion.button
+              type="button"
+              onClick={() => setShowForm(true)}
+              whileTap={{ scale: 0.95 }}
+              transition={springSnappy}
+              className="tap flex min-h-9 items-center gap-1.5 rounded-xl bg-brand-red px-3 text-[13px] font-semibold text-white"
+              aria-label="Tambah aktivitas"
+              aria-expanded={showForm}
+            >
+              <Plus className="size-4" /> Tambah
+            </motion.button>
+          </div>
+          <Sheet open={showForm} onOpenChange={setShowForm}>
+            <SheetContent
+              side="bottom"
+              className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border-border/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7 sm:rounded-t-[28px]"
+            >
+              <div
+                className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
+                aria-hidden="true"
               />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="agenda-date" className="text-[13px] font-semibold">
-                Tanggal
-              </label>
-              <input
-                id="agenda-date"
-                required
-                type="date"
-                value={form.date}
-                onChange={(event) => setForm({ ...form, date: event.target.value })}
-                className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+              <SheetHeader className="mb-4 pr-8 text-left">
+                <SheetTitle className="text-[22px] tracking-tight">Tambah aktivitas</SheetTitle>
+                <SheetDescription>
+                  Susun rencana perjalananmu. Semua waktu mengikuti zona lokal.
+                </SheetDescription>
+              </SheetHeader>
+              <form onSubmit={submit} className="space-y-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="agenda-title" className="text-[13px] font-semibold">
+                    Nama aktivitas
+                  </label>
+                  <input
+                    id="agenda-title"
+                    required
+                    autoFocus
+                    value={form.title}
+                    onChange={(event) => setForm({ ...form, title: event.target.value })}
+                    placeholder="Contoh: Makan malam"
+                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3.5 text-[14px] outline-none transition focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="agenda-date" className="text-[13px] font-semibold">
+                    Tanggal
+                  </label>
+                  <input
+                    id="agenda-date"
+                    required
+                    type="date"
+                    value={form.date}
+                    onChange={(event) => setForm({ ...form, date: event.target.value })}
+                    className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="agenda-location" className="text-[13px] font-semibold">
+                    Lokasi <span className="font-normal text-muted-foreground">(opsional)</span>
+                  </label>
+                  <PlaceSearchField
+                    id="agenda-location"
+                    value={form.location}
+                    picked={point}
+                    searchEnabled={searchEnabled}
+                    onChange={(location, picked) => {
+                      setForm((current) => ({ ...current, location }));
+                      setPoint(picked);
+                    }}
+                  />
+                </div>
+                <div>
+                  <p className="mb-1.5 text-[13px] font-semibold">
+                    Waktu <span className="font-normal text-muted-foreground">(opsional)</span>
+                  </p>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    Jika selesai lebih awal dari mulai, aktivitas dianggap berlanjut sampai hari
+                    berikutnya.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="space-y-1.5 text-xs text-muted-foreground">
+                      Mulai
+                      <input
+                        type="time"
+                        value={form.startTime}
+                        onChange={(event) => setForm({ ...form, startTime: event.target.value })}
+                        className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                      />
+                    </label>
+                    <label className="space-y-1.5 text-xs text-muted-foreground">
+                      Selesai
+                      <input
+                        type="time"
+                        value={form.endTime}
+                        onChange={(event) => setForm({ ...form, endTime: event.target.value })}
+                        className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="agenda-category" className="text-[13px] font-semibold">
+                    Kategori <span className="font-normal text-muted-foreground">(opsional)</span>
+                  </label>
+                  <select
+                    id="agenda-category"
+                    value={form.category}
+                    onChange={(event) => setForm({ ...form, category: event.target.value })}
+                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                  >
+                    <option value="">Pilih kategori</option>
+                    <option value="flight">Penerbangan</option>
+                    <option value="hotel">Hotel</option>
+                    <option value="food">Makan</option>
+                    <option value="attraction">Atraksi</option>
+                    <option value="transport">Transportasi</option>
+                    <option value="other">Lainnya</option>
+                  </select>
+                </div>
+                <div className="sticky bottom-0 -mx-5 flex gap-3 border-t border-border/60 bg-background/95 px-4 pb-1 pt-4 backdrop-blur">
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className={`${btnSoft} min-h-10 flex-1 rounded-full`}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className={`${btnRed} min-h-10 flex-[1.4] rounded-full disabled:opacity-60`}
+                  >
+                    {saving ? "Menyimpan…" : "Simpan aktivitas"}
+                  </button>
+                </div>
+              </form>
+            </SheetContent>
+          </Sheet>
+          {mapOn && model.pinnedCount > 0 ? (
+            <motion.div
+              initial={{ y: 10, scale: 0.98 }}
+              animate={{ y: 0, scale: 1 }}
+              transition={springIos}
+              className={
+                expanded
+                  ? "fixed inset-0 z-50 bg-background"
+                  : "relative h-[230px] overflow-hidden rounded-[18px] bg-secondary"
+              }
+            >
+              {mapBroken && (
+                <p className="absolute inset-x-3 top-1/2 z-10 -translate-y-1/2 rounded-xl bg-surface/95 px-3 py-2 text-center text-xs text-muted-foreground shadow">
+                  Peta belum bisa dimuat. Daftar agenda tetap bisa dipakai; pakai tombol Rute untuk
+                  membuka Google Maps.
+                </p>
+              )}
+              <ItineraryMap
+                pins={model.pins}
+                routes={model.routes}
+                activeId={activeId}
+                onSelect={setActiveId}
+                styleUrl={mapConfig!.styleUrl}
+                onUnavailable={() => setMapBroken(true)}
               />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="agenda-location" className="text-[13px] font-semibold">
-                Lokasi <span className="font-normal text-muted-foreground">(opsional)</span>
-              </label>
-              <PlaceSearchField
-                id="agenda-location"
-                value={form.location}
-                picked={point}
-                searchEnabled={searchEnabled}
-                onChange={(location, picked) => {
-                  setForm((current) => ({ ...current, location }));
-                  setPoint(picked);
+              <div
+                className={`absolute left-2 flex max-w-[calc(100%-3.5rem)] gap-1.5 overflow-x-auto ${expanded ? "top-[calc(env(safe-area-inset-top)+0.5rem)]" : "top-2"}`}
+              >
+                {days.length > 1 ? (
+                  <>
+                    {days.map((day) => (
+                      <DayChip
+                        key={day.date}
+                        selected={scope === day.date}
+                        onClick={() => setSelectedDay(day.date)}
+                      >
+                        {formatItineraryDate(day.date).weekday
+                          ? `${formatItineraryDate(day.date).weekday}, `
+                          : ""}
+                        {formatItineraryDate(day.date).full}
+                      </DayChip>
+                    ))}
+                    <DayChip selected={scope === "all"} onClick={() => setSelectedDay("all")}>
+                      Semua hari
+                    </DayChip>
+                  </>
+                ) : (
+                  <span className="inline-flex min-h-8 items-center rounded-full bg-brand-red px-3 text-[11px] font-semibold text-white shadow">
+                    {formatItineraryDate(days[0]?.date ?? "").full}
+                  </span>
+                )}
+              </div>
+              <motion.button
+                type="button"
+                onClick={() => setExpanded((value) => !value)}
+                whileTap={{ scale: 0.9, rotate: 8 }}
+                transition={springSnappy}
+                aria-label={expanded ? "Tutup peta layar penuh" : "Buka peta layar penuh"}
+                className={`tap absolute right-2 flex size-9 items-center justify-center rounded-full bg-surface/95 shadow ${expanded ? "top-[calc(env(safe-area-inset-top)+0.5rem)]" : "top-2"}`}
+              >
+                {expanded ? <Shrink className="size-4" /> : <Expand className="size-4" />}
+              </motion.button>
+              {dayRouteUrl && (
+                <motion.a
+                  href={dayRouteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ y: 12, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ ...springIos, delay: 0.25 }}
+                  whileTap={{ scale: 0.96 }}
+                  className={`tap absolute left-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-surface/95 px-3 text-[11px] font-semibold shadow ${expanded ? "bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]" : "bottom-2"}`}
+                >
+                  <RouteIcon className="size-3.5 text-brand-red" />
+                  Rute hari ini · {model.pinnedCount} titik
+                </motion.a>
+              )}
+            </motion.div>
+          ) : mapOn && days.length > 0 && pinnedTotal === 0 ? (
+            <p className="flex items-center gap-2 rounded-2xl bg-secondary px-3 py-2.5 text-xs text-muted-foreground">
+              <MapPin className="size-4 shrink-0 text-brand-red" />
+              Cari tempat saat menambah aktivitas agar muncul di peta.
+            </p>
+          ) : null}
+          {days.length ? (
+            days.map((day) => (
+              <ItineraryDay
+                key={day.date}
+                date={day.date}
+                items={day.items}
+                pinNumbers={pinNumbers}
+                activeId={activeId}
+                onSelect={(id) => {
+                  setActiveId(id);
+                  const found = days.find((d) => d.items.some((i) => i.id === id));
+                  if (found && scope !== "all" && scope !== found.date) setSelectedDay(found.date);
+                }}
+                onDelete={async (id) => {
+                  await runTripMutation({
+                    action: () => deleteItinerary({ data: { id } }),
+                    refresh: onSaved,
+                    successMessage: "Aktivitas dihapus",
+                    failureMessage: "Aktivitas belum terhapus. Coba lagi.",
+                  });
                 }}
               />
-            </div>
-            <div>
-              <p className="mb-1.5 text-[13px] font-semibold">
-                Waktu <span className="font-normal text-muted-foreground">(opsional)</span>
+            ))
+          ) : (
+            <div className="rounded-2xl bg-secondary p-4 text-center">
+              <CalendarDays className="mx-auto size-9 text-muted-foreground" strokeWidth={1.5} />
+              <p className="mt-3 text-sm font-semibold">Belum ada aktivitas</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Rencana perjalananmu akan tersusun di sini.
               </p>
-              <p className="mb-2 text-xs text-muted-foreground">
-                Jika selesai lebih awal dari mulai, aktivitas dianggap berlanjut sampai hari
-                berikutnya.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="space-y-1.5 text-xs text-muted-foreground">
-                  Mulai
-                  <input
-                    type="time"
-                    value={form.startTime}
-                    onChange={(event) => setForm({ ...form, startTime: event.target.value })}
-                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                  />
-                </label>
-                <label className="space-y-1.5 text-xs text-muted-foreground">
-                  Selesai
-                  <input
-                    type="time"
-                    value={form.endTime}
-                    onChange={(event) => setForm({ ...form, endTime: event.target.value })}
-                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                  />
-                </label>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="agenda-category" className="text-[13px] font-semibold">
-                Kategori <span className="font-normal text-muted-foreground">(opsional)</span>
-              </label>
-              <select
-                id="agenda-category"
-                value={form.category}
-                onChange={(event) => setForm({ ...form, category: event.target.value })}
-                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-              >
-                <option value="">Pilih kategori</option>
-                <option value="flight">Penerbangan</option>
-                <option value="hotel">Hotel</option>
-                <option value="food">Makan</option>
-                <option value="attraction">Atraksi</option>
-                <option value="transport">Transportasi</option>
-                <option value="other">Lainnya</option>
-              </select>
-            </div>
-            <div className="sticky bottom-0 -mx-5 flex gap-3 border-t border-border/60 bg-background/95 px-4 pb-1 pt-4 backdrop-blur">
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
-                className={`${btnSoft} min-h-10 flex-1 rounded-full`}
+                onClick={() => setShowForm(true)}
+                className="tap mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-background px-4 text-sm font-semibold text-brand-red"
               >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className={`${btnRed} min-h-10 flex-[1.4] rounded-full disabled:opacity-60`}
-              >
-                {saving ? "Menyimpan…" : "Simpan aktivitas"}
+                <Plus className="size-4" /> Tambah aktivitas
               </button>
             </div>
-          </form>
-        </SheetContent>
-      </Sheet>
-      {mapOn && model.pinnedCount > 0 ? (
-        <div
-          className={
-            expanded
-              ? "fixed inset-0 z-50 bg-background"
-              : "relative h-[230px] overflow-hidden rounded-2xl bg-secondary"
-          }
-        >
-          {mapBroken && (
-            <p className="absolute inset-x-3 top-1/2 z-10 -translate-y-1/2 rounded-xl bg-surface/95 px-3 py-2 text-center text-xs text-muted-foreground shadow">
-              Peta belum bisa dimuat. Daftar agenda tetap bisa dipakai; pakai tombol Rute untuk
-              membuka Google Maps.
-            </p>
           )}
-          <ItineraryMap
-            pins={model.pins}
-            routes={model.routes}
-            activeId={activeId}
-            onSelect={setActiveId}
-            styleUrl={mapConfig!.styleUrl}
-            onUnavailable={() => setMapBroken(true)}
-          />
-          <div
-            className={`absolute left-2 flex max-w-[calc(100%-3.5rem)] gap-1.5 overflow-x-auto ${expanded ? "top-[calc(env(safe-area-inset-top)+0.5rem)]" : "top-2"}`}
-          >
-            {days.length > 1 ? (
-              <>
-                {days.map((day) => {
-                  const label = formatItineraryDate(day.date);
-                  return (
-                    <button
-                      key={day.date}
-                      type="button"
-                      onClick={() => setSelectedDay(day.date)}
-                      aria-pressed={scope === day.date}
-                      className={`tap min-h-8 shrink-0 rounded-full px-2.5 text-xs font-semibold shadow ${scope === day.date ? "bg-brand-red text-white" : "bg-surface/95 text-foreground"}`}
-                    >
-                      {label.full}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  onClick={() => setSelectedDay("all")}
-                  aria-pressed={scope === "all"}
-                  className={`tap min-h-8 shrink-0 rounded-full px-2.5 text-xs font-semibold shadow ${scope === "all" ? "bg-brand-red text-white" : "bg-surface/95 text-foreground"}`}
-                >
-                  Semua hari
-                </button>
-              </>
-            ) : (
-              <span className="inline-flex min-h-8 items-center rounded-full bg-brand-red px-2.5 text-xs font-semibold text-white shadow">
-                {formatItineraryDate(days[0]?.date ?? "").full}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            aria-label={expanded ? "Tutup peta layar penuh" : "Buka peta layar penuh"}
-            className={`tap absolute right-2 flex size-9 items-center justify-center rounded-full bg-surface/95 shadow ${expanded ? "top-[calc(env(safe-area-inset-top)+0.5rem)]" : "top-2"}`}
-          >
-            {expanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
-          </button>
-          {dayRouteUrl && (
-            <a
-              href={dayRouteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`tap absolute left-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-surface/95 px-2.5 text-xs font-semibold shadow ${expanded ? "bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]" : "bottom-6"}`}
-            >
-              <RouteIcon className="size-3.5 text-brand-red" />
-              Rute hari ini · {model.pinnedCount} titik
-            </a>
-          )}
-        </div>
-      ) : mapOn && days.length > 0 && pinnedTotal === 0 ? (
-        <p className="flex items-center gap-2 rounded-2xl bg-secondary px-3 py-2.5 text-xs text-muted-foreground">
-          <MapPin className="size-4 shrink-0 text-brand-red" />
-          Cari tempat saat menambah aktivitas agar muncul di peta.
-        </p>
-      ) : null}
-      {days.length ? (
-        days.map((day) => (
-          <ItineraryDay
-            key={day.date}
-            date={day.date}
-            items={day.items}
-            pinNumbers={pinNumbers}
-            activeId={activeId}
-            onSelect={(id) => {
-              setActiveId(id);
-              const found = days.find((d) => d.items.some((i) => i.id === id));
-              if (found && scope !== "all" && scope !== found.date) setSelectedDay(found.date);
-            }}
-            onDelete={async (id) => {
-              await runTripMutation({
-                action: () => deleteItinerary({ data: { id } }),
-                refresh: onSaved,
-                successMessage: "Aktivitas dihapus",
-                failureMessage: "Aktivitas belum terhapus. Coba lagi.",
-              });
-            }}
-          />
-        ))
-      ) : (
-        <div className="rounded-2xl bg-secondary p-4 text-center">
-          <CalendarDays className="mx-auto size-9 text-muted-foreground" strokeWidth={1.5} />
-          <p className="mt-3 text-sm font-semibold">Belum ada aktivitas</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Rencana perjalananmu akan tersusun di sini.
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="tap mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-background px-4 text-sm font-semibold text-brand-red"
-          >
-            <Plus className="size-4" /> Tambah aktivitas
-          </button>
-        </div>
-      )}
-    </section>
+        </section>
+      </LayoutGroup>
+    </MotionConfig>
   );
 }
 
@@ -622,6 +642,75 @@ function formatItineraryDate(value: string) {
   };
 }
 
+function DayChip({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      whileTap={{ scale: 0.94 }}
+      transition={springSnappy}
+      className={`tap relative min-h-8 shrink-0 rounded-full px-3 text-[11px] font-semibold shadow ${selected ? "text-white" : "bg-surface/95 text-foreground"}`}
+    >
+      {selected && (
+        <motion.span
+          layoutId="agenda-day-pill"
+          transition={springSnappy}
+          className="absolute inset-0 rounded-full bg-brand-red"
+        />
+      )}
+      <span className="relative">{children}</span>
+    </motion.button>
+  );
+}
+
+function TravelHop({ km }: { km: number }) {
+  const leg = estimateLeg(km);
+  const Icon = leg.mode === "walk" ? Footprints : TrainFront;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.15 }}
+      className="ml-6 flex items-center gap-2 py-1 text-[11px] tabular-nums text-muted-foreground"
+      data-testid="travel-hop"
+    >
+      <motion.i
+        aria-hidden="true"
+        initial={{ scaleY: 0 }}
+        animate={{ scaleY: 1 }}
+        transition={springIos}
+        style={{
+          originY: 0,
+          backgroundImage:
+            "repeating-linear-gradient(to bottom, var(--color-border) 0 3px, transparent 3px 6px)",
+        }}
+        className="block h-4 w-0.5"
+      />
+      <motion.span
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ ...springSnappy, delay: 0.2 }}
+        className="flex"
+      >
+        <Icon className="size-3.5" strokeWidth={1.8} />
+      </motion.span>
+      <span>
+        {leg.mode === "walk" ? "Jalan kaki" : "Kereta"} · ≈{formatMinutes(leg.minutes)} ·{" "}
+        {formatKm(leg.km)}
+      </span>
+    </motion.div>
+  );
+}
+
 function ItineraryDay({
   date,
   items,
@@ -649,30 +738,40 @@ function ItineraryDay({
     return hop;
   });
   return (
-    <section className="rounded-[20px] bg-surface px-4 py-3.5">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-semibold capitalize tracking-tight">
+    <motion.section
+      initial={{ y: 12, opacity: 0.4 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={springIos}
+    >
+      <div className="mb-1.5 mt-3.5 flex items-baseline justify-between gap-3 px-0.5">
+        <h3 className="text-[14px] font-bold capitalize tracking-tight">
           {dateLabel.weekday ? `${dateLabel.weekday}, ` : ""}
           {dateLabel.full}
         </h3>
-        <span className="shrink-0 text-xs text-muted-foreground">
+        <span className="shrink-0 text-[11px] text-muted-foreground">
           {items.length} aktivitas{lengthKm > 0 ? ` · ±${formatKm(lengthKm)}` : ""}
         </span>
       </div>
-      <div className="mt-2 divide-y divide-border/60">
+      <AnimatePresence initial={false}>
         {items.map((item, index) => (
-          <ItineraryItem
+          <motion.div
             key={item.id}
-            item={item}
-            pin={pinNumbers.get(item.id)}
-            active={activeId === item.id}
-            hopKm={hops[index] ?? null}
-            onSelect={onSelect}
-            onDelete={onDelete}
-          />
+            layout="position"
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={springIos}
+          >
+            {hops[index] != null && <TravelHop km={hops[index]!} />}
+            <ItineraryItem
+              item={item}
+              pin={pinNumbers.get(item.id)}
+              active={activeId === item.id}
+              onSelect={onSelect}
+              onDelete={onDelete}
+            />
+          </motion.div>
         ))}
-      </div>
-    </section>
+      </AnimatePresence>
+    </motion.section>
   );
 }
 
@@ -680,14 +779,12 @@ function ItineraryItem({
   item,
   pin,
   active,
-  hopKm,
   onSelect,
   onDelete,
 }: {
   item: Item;
   pin?: number | undefined;
   active: boolean;
-  hopKm: number | null;
   onSelect: (id: string) => void;
   onDelete: (id: string) => Promise<void>;
 }) {
@@ -705,85 +802,95 @@ function ItineraryItem({
     }
   }
   return (
-    <article
-      className={`flex items-start gap-3 py-3 first:pt-1 last:pb-1 ${point ? "cursor-pointer" : ""} ${active ? "rounded-xl bg-brand-red-soft/60" : ""}`}
+    <motion.article
+      {...(point ? { whileTap: { scale: 0.985 } } : {})}
+      transition={springSnappy}
+      className={`relative grid grid-cols-[28px_minmax(0,1fr)_auto] items-start gap-2.5 rounded-[14px] bg-surface px-2.5 py-2 ${point ? "cursor-pointer" : ""}`}
       aria-current={active ? "true" : undefined}
       onClick={() => point && onSelect(item.id)}
     >
-      <div className="w-11 shrink-0 pt-0.5 text-right text-xs font-medium tabular-nums text-muted-foreground">
-        {time || "—"}
-      </div>
+      {active && (
+        <motion.span
+          layoutId="agenda-active-ring"
+          transition={springSnappy}
+          className="pointer-events-none absolute inset-0 rounded-[14px] ring-[1.5px] ring-inset ring-brand-red"
+        />
+      )}
       {pin ? (
-        <div
-          className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${active ? "bg-brand-red text-white" : "bg-brand-red-soft text-brand-red"}`}
+        <motion.div
+          animate={{ scale: active ? 1.08 : 1 }}
+          transition={springSnappy}
+          className={`flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${active ? "bg-brand-red text-white" : "bg-brand-red-soft text-brand-red"}`}
           aria-label={`Titik ${pin} di peta`}
         >
           {pin}
-        </div>
+        </motion.div>
       ) : (
-        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-          <Icon className="size-3.5" strokeWidth={1.8} />
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+          <Icon className="size-4" strokeWidth={1.8} />
         </div>
       )}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <h4 className="text-sm font-semibold leading-snug">
-              {String(item.title ?? "Aktivitas")}
-            </h4>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              {item.location ? (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="size-3" />
-                  {String(item.location)}
-                </span>
-              ) : (
-                <span>Lokasi belum diatur</span>
-              )}
-              {endTime && time && (
-                <span>
-                  {time}–{endTime}
-                </span>
-              )}
-              {hopKm !== null && <span>±{formatKm(hopKm)} dari titik sebelumnya</span>}
-            </div>
-          </div>
-          {point && (
-            <a
-              href={googleMapsDirectionsUrl(point)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(event) => event.stopPropagation()}
-              className="tap inline-flex shrink-0 items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-brand-red"
-              aria-label={`Rute ke ${String(item.title ?? "aktivitas")} di Google Maps`}
-            >
-              <RouteIcon className="size-3.5" /> Rute
-            </a>
+      <div className="min-w-0">
+        <h4 className="text-[14px] font-semibold leading-snug">
+          {String(item.title ?? "Aktivitas")}
+        </h4>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+          {item.location ? (
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <MapPin className="size-3 shrink-0" />
+              <span className="truncate">{String(item.location)}</span>
+            </span>
+          ) : (
+            <span>Lokasi belum diatur</span>
           )}
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              void remove();
-            }}
-            disabled={deleting}
-            className="tap shrink-0 rounded-lg px-1.5 py-1 text-xs font-semibold text-muted-foreground hover:text-brand-red"
-            aria-label={`Hapus ${String(item.title ?? "aktivitas")}`}
-          >
-            {deleting ? "…" : "Hapus"}
-          </button>
+          {time && (
+            <span className="tabular-nums">
+              {time}
+              {endTime ? `–${endTime}` : ""}
+            </span>
+          )}
         </div>
         {item.booking_reference ? (
-          <span className="mt-2 inline-flex rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
+          <span className="mt-1.5 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-700">
             Booking tersimpan
           </span>
         ) : (
-          <span className="mt-2 inline-flex rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">
+          <span className="mt-1.5 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10.5px] font-semibold text-amber-700">
             Perlu booking
           </span>
         )}
       </div>
-    </article>
+      <div className="flex items-center gap-1">
+        {point && (
+          <motion.a
+            href={googleMapsDirectionsUrl(point)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            whileTap={{ scale: 0.93 }}
+            transition={springSnappy}
+            className="tap inline-flex min-h-8 items-center gap-1 rounded-lg bg-brand-red-soft px-2.5 text-[11px] font-semibold text-brand-red"
+            aria-label={`Rute ke ${String(item.title ?? "aktivitas")} di Google Maps`}
+          >
+            <Navigation className="size-3.5" /> Rute
+          </motion.a>
+        )}
+        <motion.button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            void remove();
+          }}
+          disabled={deleting}
+          whileTap={{ scale: 0.88 }}
+          transition={springSnappy}
+          className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-brand-red disabled:opacity-50"
+          aria-label={`Hapus ${String(item.title ?? "aktivitas")}`}
+        >
+          <Trash2 className="size-4" />
+        </motion.button>
+      </div>
+    </motion.article>
   );
 }
 

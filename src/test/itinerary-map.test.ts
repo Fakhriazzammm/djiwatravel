@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
   boundsOf,
+  curvedRoute,
+  estimateLeg,
+  formatMinutes,
   buildMapModel,
   formatKm,
   googleMapsDayRouteUrl,
@@ -148,5 +151,27 @@ describe("migration and wiring", () => {
     expect(readFileSync("src/routes/admin.settings.tsx", "utf8")).toContain(
       "AdminItineraryMapPanel",
     );
+  });
+});
+
+describe("travel legs and curved route", () => {
+  it("walks short hops and takes rail for longer ones, with an estimated time", () => {
+    expect(estimateLeg(0.5)).toMatchObject({ mode: "walk", minutes: 8 });
+    const rail = estimateLeg(9.6);
+    expect(rail.mode).toBe("rail");
+    expect(rail.minutes).toBeGreaterThan(20);
+    expect(rail.minutes).toBeLessThan(40);
+    expect(formatMinutes(38)).toBe("38 mnt");
+    expect(formatMinutes(65)).toBe("1 j 5 mnt");
+    expect(formatMinutes(120)).toBe("2 j");
+  });
+  it("draws an arc that keeps both stops as its ends", () => {
+    const a = { lat: 35.659, lng: 139.7006 };
+    const b = { lat: 35.7148, lng: 139.7967 };
+    const line = curvedRoute([a, b, { lat: 35.71, lng: 139.81 }]);
+    expect(line[0]).toEqual(a);
+    expect(line).toContainEqual(b);
+    expect(line.length).toBeGreaterThan(40);
+    expect(curvedRoute([a])).toEqual([]);
   });
 });

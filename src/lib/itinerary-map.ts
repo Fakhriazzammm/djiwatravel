@@ -5,7 +5,7 @@
  */
 export const ITINERARY_MAP_SETTING_KEY = "itineraryMap";
 
-export const DEFAULT_MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+export const DEFAULT_MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 /** Hosts an Admin may point the basemap at. Keeps a typo or a hostile value out of the browser. */
 export const ALLOWED_MAP_STYLE_HOSTS = [
   "tiles.openfreemap.org",
@@ -242,4 +242,63 @@ export function buildMapModel<T extends MapItem & { title?: unknown }>(
     if (route.length > 1) routes.push(route);
   }
   return { pins, routes, pinnedCount: pins.length };
+}
+
+export type TravelLeg = { mode: "walk" | "rail"; minutes: number; km: number };
+
+const WALK_MAX_KM = 1.5;
+/** Streets are longer than the straight line between two pins. */
+const DETOUR = 1.3;
+
+/**
+ * A quick guide between two stops, from the straight-line distance. Up to 1,5 km it is a walk,
+ * beyond that public rail. It is an estimate, not a routed time, and is shown with a "≈".
+ */
+export function estimateLeg(km: number): TravelLeg {
+  const road = km * DETOUR;
+  if (km <= WALK_MAX_KM) {
+    return { mode: "walk", minutes: Math.max(1, Math.round((road / 4.8) * 60)), km };
+  }
+  return { mode: "rail", minutes: Math.round(8 + (road / 35) * 60), km };
+}
+
+export function formatMinutes(minutes: number) {
+  if (minutes < 60) return `${minutes} mnt`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h} j ${m} mnt` : `${h} j`;
+}
+
+/**
+ * Points along a gentle arc between two stops (alternating sides), so the route reads as a drawn
+ * line like the design instead of a ruler line. Pure geometry; steps include both end points.
+ */
+export function curveBetween(a: GeoPoint, b: GeoPoint, side: 1 | -1, steps = 24): GeoPoint[] {
+  const dLat = b.lat - a.lat;
+  const dLng = b.lng - a.lng;
+  const bend = 0.18 * side;
+  const control = {
+    lat: (a.lat + b.lat) / 2 + dLng * bend,
+    lng: (a.lng + b.lng) / 2 - dLat * bend,
+  };
+  const out: GeoPoint[] = [];
+  for (let i = 0; i <= steps; i += 1) {
+    const t = i / steps;
+    const u = 1 - t;
+    out.push({
+      lat: u * u * a.lat + 2 * u * t * control.lat + t * t * b.lat,
+      lng: u * u * a.lng + 2 * u * t * control.lng + t * t * b.lng,
+    });
+  }
+  return out;
+}
+
+/** One smooth line through a day's stops, bending to alternate sides leg by leg. */
+export function curvedRoute(points: GeoPoint[]): GeoPoint[] {
+  const line: GeoPoint[] = [];
+  for (let i = 1; i < points.length; i += 1) {
+    const leg = curveBetween(points[i - 1]!, points[i]!, i % 2 ? 1 : -1);
+    line.push(...(i === 1 ? leg : leg.slice(1)));
+  }
+  return line;
 }
