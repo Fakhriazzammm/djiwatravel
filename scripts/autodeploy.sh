@@ -85,7 +85,8 @@ fi
 LOCK_HASH="$(sha256sum package-lock.json | cut -d' ' -f1)"
 if [ "${LOCK_HASH}" != "$(cat .deps-lock 2>/dev/null || true)" ]; then
   echo "--- dependency berubah, npm install ---"
-  if ! npm install --no-audit --no-fund; then
+  # NODE_ENV=production (systemd unit) would make npm prune devDependencies, which the build needs.
+  if ! npm install --include=dev --no-audit --no-fund; then
     echo "ERROR: npm install gagal; build lama tetap jalan" >&2
     exit 1
   fi
