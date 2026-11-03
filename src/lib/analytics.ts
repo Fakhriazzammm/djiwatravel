@@ -1,4 +1,5 @@
 import { analyticsConsentGranted } from "./cookie-consent";
+import { deviceFromWidth, sanitizeClickTarget, type SiteEventName } from "./site-events";
 
 export type AnalyticsEventName =
   | "page_view"
@@ -140,6 +141,51 @@ function trackHomeEsimEvent(name: AnalyticsEventName, properties?: AnalyticsEven
   });
 }
 
+const SITE_EVENT_ENDPOINT = "/api/site-events";
+const SITE_EVENT_NAMES_SENT: readonly string[] = [
+  "page_view",
+  "destination_view",
+  "finder_submit",
+  "checkout_start",
+];
+
+/**
+ * First-party, anonymous traffic sink that Admin Analytics reads (`site_events`). It stores a
+ * random session id, the public path, the referrer host and a viewport device class only.
+ */
+function sendSiteEvent(name: SiteEventName, path: string, target?: string) {
+  if (!isBrowser() || !isPublicPath(path)) return;
+  try {
+    const attribution = readAttribution();
+    const referrerHost = attribution.referrer ? new URL(attribution.referrer).hostname : undefined;
+    void fetch(SITE_EVENT_ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name,
+        path: (path.split("?")[0] ?? "").slice(0, 120),
+        ...(target ? { target } : {}),
+        sessionId: readSessionId(),
+        ...(referrerHost && referrerHost !== window.location.hostname ? { referrerHost } : {}),
+        ...(attribution.source ? { utmSource: attribution.source } : {}),
+        device: deviceFromWidth(window.innerWidth),
+      }),
+      keepalive: true,
+      credentials: "omit",
+    }).catch(() => {
+      // Measurement must never affect storefront behavior.
+    });
+  } catch {
+    // Storage or URL access can throw in private windows; measurement is best-effort.
+  }
+}
+
+/** Records one click on a public page, labelled by an internal path or a short plain label. */
+export function trackClick(path: string, rawTarget: string | null | undefined) {
+  const target = sanitizeClickTarget(rawTarget);
+  if (target) sendSiteEvent("click", path, target);
+}
+
 export function trackAnalytics(
   name: AnalyticsEventName,
   path: string,
@@ -149,6 +195,7 @@ export function trackAnalytics(
     trackHomeEsimEvent(name, properties);
     return;
   }
+  if (SITE_EVENT_NAMES_SENT.includes(name)) sendSiteEvent(name as SiteEventName, path);
   // Optional external analytics only after an explicit "Setuju" on the cookie notice.
   if (!analyticsConsentGranted()) return;
   const endpoint = configuredEndpoint();

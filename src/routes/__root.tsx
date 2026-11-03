@@ -23,7 +23,7 @@ import { CookieConsent } from "@/components/cookie-consent";
 import { CustomerOnboardingGate } from "../components/customer-onboarding-gate";
 import { easeIos } from "../lib/motion";
 import { warmResellerCatalog } from "../lib/explore-warm";
-import { trackAnalytics } from "../lib/analytics";
+import { trackAnalytics, trackClick } from "../lib/analytics";
 import { Toaster } from "../components/ui/sonner";
 import { PwaRuntime } from "../components/pwa-runtime";
 
@@ -167,6 +167,22 @@ function AnalyticsPageView() {
   useEffect(() => {
     trackAnalytics("page_view", pathname);
   }, [pathname]);
+  useEffect(() => {
+    // One delegated listener: links report their internal path, buttons their short aria-label.
+    const onClick = (event: MouseEvent) => {
+      const element = (event.target as Element | null)?.closest?.("a[href], button");
+      if (!element) return;
+      const path = window.location.pathname;
+      if (element instanceof HTMLAnchorElement) {
+        if (element.origin !== window.location.origin) return;
+        trackClick(path, element.pathname);
+      } else {
+        trackClick(path, element.getAttribute("data-track") ?? element.getAttribute("aria-label"));
+      }
+    };
+    document.addEventListener("click", onClick, { capture: true, passive: true });
+    return () => document.removeEventListener("click", onClick, { capture: true });
+  }, []);
   return null;
 }
 

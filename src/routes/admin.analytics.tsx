@@ -6,10 +6,8 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminDashboard } from "@/lib/admin-read-model.fn";
 import { AdminShell, AdminSurface } from "@/components/admin-shell";
 import { BarChart, CardTitle, Kpi, ShareRow, type ChartPoint } from "@/components/admin-charts";
-import { formatAdminDateTime, humanizeAdminStatus, maskSensitiveValue } from "@/lib/admin-display";
+import { formatAdminDateTime, maskSensitiveValue } from "@/lib/admin-display";
 import {
-  averageOrderValue,
-  formatRupiah,
   barPercent,
   formatDelta,
   percentChange,
@@ -17,6 +15,8 @@ import {
 } from "@/lib/admin-dashboard-metrics";
 import { getHomeEsimFunnel } from "@/lib/home-esim-events.fn";
 import { funnelRates } from "@/lib/home-esim-events";
+import { getSiteTraffic } from "@/lib/site-events.fn";
+import { bounceRate, pagesPerSession } from "@/lib/site-events";
 
 const analyticsSearch = z.object({
   period: z.enum(["daily", "weekly", "monthly"]).catch("daily").default("daily"),
@@ -27,10 +27,14 @@ export const Route = createFileRoute("/admin/analytics")({
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
   validateSearch: analyticsSearch,
   loaderDeps: ({ search }) => ({ period: search.period }),
-  loader: async ({ deps }) => ({
-    ...(await getAdminDashboard({ data: deps })),
-    homeFunnel: await getHomeEsimFunnel(),
-  }),
+  loader: async ({ deps }) => {
+    const [orders, traffic, homeFunnel] = await Promise.all([
+      getAdminDashboard({ data: deps }),
+      getSiteTraffic({ data: deps }),
+      getHomeEsimFunnel(),
+    ]);
+    return { orders, traffic, homeFunnel };
+  },
   component: AdminAnalytics,
 });
 
@@ -40,54 +44,22 @@ const PERIOD_LABEL: Record<Period, string> = {
   weekly: "minggu ini",
   monthly: "bulan ini",
 };
+const DEVICE_LABEL: Record<string, string> = {
+  mobile: "Ponsel",
+  tablet: "Tablet",
+  desktop: "Desktop",
+  other: "Lainnya",
+};
 
 function AdminAnalytics() {
-  const data = Route.useLoaderData();
+  const { orders, traffic, homeFunnel: funnel } = Route.useLoaderData();
   const router = useRouter();
-  const period = data.period as Period;
+  const period = orders.period as Period;
   const [privateMode, setPrivateMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const count = (v: number) => maskSensitiveValue(v, privateMode);
-  const rupiah = (v: number | null) => (v === null ? "—" : privateMode ? "••••" : formatRupiah(v));
   const withShare = (value: number, share: number | null) =>
     `${count(value)}${share !== null && !privateMode ? ` · ${share}%` : ""}`;
-
-  const { counts, previous } = data;
-  const conversion = sharePercent(counts.paid, counts.total);
-  const aov = averageOrderValue(counts.grossIdr, counts.paid);
-  const ordersDelta = formatDelta(percentChange(counts.total, previous.total));
-  const paidDelta = formatDelta(percentChange(counts.paid, previous.paid));
-  const grossDelta =
-    counts.grossIdr === null
-      ? null
-      : formatDelta(percentChange(counts.grossIdr, previous.grossIdr));
-  const vsPrev = (delta: string | null) => (delta ? `${delta} vs periode lalu` : "periode lalu: —");
-
-  const pointLabel = (day: string) => (day.includes(" ") ? day.slice(11) : day.slice(5));
-  const orderPoints: ChartPoint[] = data.daily.map((p) => ({
-    key: p.day,
-    label: pointLabel(p.day),
-    value: p.count,
-    display: String(p.count),
-  }));
-  const revenuePoints: ChartPoint[] = data.revenueDaily.map((p) => ({
-    key: p.day,
-    label: pointLabel(p.day),
-    value: p.grossIdr,
-    display: formatRupiah(p.grossIdr),
-  }));
-  const bucketNoun = period === "daily" ? "jam" : "hari";
-  const peakOrders = Math.max(...orderPoints.map((p) => p.value), 0);
-
-  const statusTotal = data.statuses.reduce((sum, item) => sum + item.count, 0);
-  const paymentTotal = data.paymentMix.reduce((sum, item) => sum + item.count, 0);
-  const packageMax = Math.max(...data.topPackages.map((p) => p.revenueIdr), 0);
-
-  const funnel = data.homeFunnel;
-  const funnelMax = funnel ? Math.max(funnel.chipTaps, funnel.sheetOpens, funnel.promoTaps, 0) : 0;
-  const chipToSheet = funnel ? funnelRates(funnel).chipToSheet : null;
-  const destMax = funnel ? Math.max(...funnel.topDestinations.map((d) => d.sheetOpens), 0) : 0;
-
   const refresh = async () => {
     setRefreshing(true);
     try {
@@ -98,9 +70,48 @@ function AdminAnalytics() {
   };
   const iconButton =
     "inline-flex size-9 items-center justify-center rounded-xl border border-border bg-surface";
+  const vsPrev = (delta: string | null) => (delta ? `${delta} vs periode lalu` : "periode lalu: —");
+
+  const bucketNoun = period === "daily" ? "jam" : "hari";
+  const visitorPoints: ChartPoint[] = (traffic?.series ?? []).map((p) => ({
+    key: p.bucket,
+    label: p.bucket,
+    value: p.visitors,
+    display: String(p.visitors),
+  }));
+  const clickPoints: ChartPoint[] = (traffic?.series ?? []).map((p) => ({
+    key: p.bucket,
+    label: p.bucket,
+    value: p.clicks,
+    display: String(p.clicks),
+  }));
+  const peak = (points: ChartPoint[]) => Math.max(...points.map((p) => p.value), 0);
+
+  const visitors = traffic?.visitors ?? 0;
+  const pageViews = traffic?.pageViews ?? 0;
+  const clicks = traffic?.clicks ?? 0;
+  const bounce = traffic ? bounceRate(traffic.bounceSessions, visitors) : null;
+  const perSession = traffic ? pagesPerSession(pageViews, visitors) : null;
+  const pct = (v: number | null) => (v === null || privateMode ? "—" : `${v}%`);
+
+  const steps = [
+    { label: "Pengunjung", value: visitors },
+    { label: "Cari paket (finder)", value: traffic?.finderSubmits ?? 0 },
+    { label: "Mulai checkout", value: traffic?.checkoutStarts ?? 0 },
+    { label: "Order dibuat", value: orders.counts.total },
+    { label: "Dibayar", value: orders.counts.paid },
+  ];
+  const stepMax = Math.max(...steps.map((s) => s.value), 0);
+
+  const funnelMax = funnel ? Math.max(funnel.chipTaps, funnel.sheetOpens, funnel.promoTaps, 0) : 0;
+  const chipToSheet = funnel ? funnelRates(funnel).chipToSheet : null;
+  const pageMax = Math.max(...(traffic?.topPages ?? []).map((p) => p.views), 0);
+  const clickMax = Math.max(...(traffic?.topClicks ?? []).map((c) => c.clicks), 0);
+  const deviceTotal = (traffic?.devices ?? []).reduce((sum, d) => sum + d.visitors, 0);
+  const sourceTotal = (traffic?.sources ?? []).reduce((sum, d) => sum + d.visitors, 0);
 
   return (
-    <AdminShell title="Analytics" subtitle="Tren order, pendapatan, dan corong eSIM Djiwa Travel.">
+    <AdminShell title="Analytics" subtitle="Traffic, klik, dan perilaku pengunjung Djiwa Travel.">
       <div className="flex flex-col gap-2 lg:h-[calc(100dvh-8.5rem)] lg:overflow-hidden">
         <div className="flex shrink-0 flex-wrap items-center gap-2" aria-live="polite">
           <div
@@ -122,11 +133,12 @@ function AdminAnalytics() {
             ))}
           </div>
           <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
-            Periode {PERIOD_LABEL[period]}
-            {funnel ? ` · corong Beranda ${funnel.days} hari terakhir` : ""}
+            {traffic === null
+              ? "Data traffic belum tersedia (tabel belum dimigrasi atau database tidak terbaca)."
+              : `Traffic ${PERIOD_LABEL[period]} · anonim, tanpa data pribadi`}
           </span>
           <span className="hidden text-[10px] text-muted-foreground md:inline">
-            Diperbarui {formatAdminDateTime(data.generatedAt)}
+            Diperbarui {formatAdminDateTime(orders.generatedAt)}
           </span>
           <button
             type="button"
@@ -151,53 +163,70 @@ function AdminAnalytics() {
         </div>
 
         <div className="grid shrink-0 grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6">
-          <Kpi label="Orders" value={count(counts.total)} sub={vsPrev(ordersDelta)} />
-          <Kpi label="Dibayar" value={count(counts.paid)} sub={vsPrev(paidDelta)} />
           <Kpi
-            label="Konversi"
-            value={conversion === null || privateMode ? "—" : `${conversion}%`}
-            sub="dibayar / order"
+            label="Pengunjung"
+            value={count(visitors)}
+            sub={vsPrev(formatDelta(percentChange(visitors, traffic?.previous.visitors)))}
           />
-          <Kpi label="Gross IDR" value={rupiah(counts.grossIdr)} sub={vsPrev(grossDelta)} />
-          <Kpi label="Rata-rata order" value={rupiah(aov)} sub="per order dibayar" />
           <Kpi
-            label="eSIM siap"
-            value={count(counts.provisioningReady)}
-            sub={`belum siap ${count(counts.paidNotReady)}`}
-            tone={counts.paidNotReady > 0 ? "warn" : "neutral"}
-            href="/admin/provisioning"
+            label="Page views"
+            value={count(pageViews)}
+            sub={vsPrev(formatDelta(percentChange(pageViews, traffic?.previous.pageViews)))}
+          />
+          <Kpi
+            label="Halaman / sesi"
+            value={perSession === null || privateMode ? "—" : String(perSession)}
+            sub="kedalaman kunjungan"
+          />
+          <Kpi label="Bounce rate" value={pct(bounce)} sub="sesi satu halaman" />
+          <Kpi
+            label="Total klik"
+            value={count(clicks)}
+            sub={vsPrev(formatDelta(percentChange(clicks, traffic?.previous.clicks)))}
+          />
+          <Kpi
+            label="Visit → checkout"
+            value={pct(sharePercent(traffic?.checkoutStarts ?? 0, visitors))}
+            sub={`${count(traffic?.checkoutStarts ?? 0)} mulai checkout`}
           />
         </div>
 
         <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-3">
           <BarChart
-            title="Tren order"
-            summary={`Total ${count(counts.total)} · puncak ${count(peakOrders)}/${bucketNoun}`}
-            points={orderPoints}
+            title="Pengunjung"
+            summary={`Total ${count(visitors)} · puncak ${count(peak(visitorPoints))}/${bucketNoun}`}
+            points={visitorPoints}
             privateMode={privateMode}
-            emptyText="Belum ada order pada periode ini."
+            emptyText="Belum ada kunjungan terekam pada periode ini."
           />
           <BarChart
-            title="Pendapatan IDR"
-            summary={`Total ${rupiah(counts.grossIdr)} · ${PERIOD_LABEL[period]}`}
-            points={revenuePoints}
+            title="Klik"
+            summary={`Total ${count(clicks)} · puncak ${count(peak(clickPoints))}/${bucketNoun}`}
+            points={clickPoints}
             privateMode={privateMode}
-            emptyText="Belum ada pendapatan pada periode ini."
+            emptyText="Belum ada klik terekam pada periode ini."
           />
           <AdminSurface className="flex min-h-[220px] flex-col overflow-hidden p-2.5 lg:min-h-0">
-            <CardTitle
-              title="Corong eSIM Beranda"
-              detail={
-                funnel ? `${funnel.days} hari terakhir · event anonim` : "Data event belum tersedia"
-              }
-            />
-            {funnel === null ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Tabel event belum dimigrasi atau database tidak terbaca.
+            <CardTitle title="Corong kunjungan" detail="Pengunjung → order dibayar" />
+            <div className="mt-1.5 space-y-1.5">
+              {steps.map((step) => (
+                <ShareRow
+                  key={step.label}
+                  label={step.label}
+                  value={withShare(step.value, sharePercent(step.value, visitors))}
+                  share={stepMax > 0 ? barPercent(step.value, stepMax, 2) : null}
+                  masked={privateMode}
+                />
+              ))}
+            </div>
+            <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto border-t border-border pt-1.5">
+              <p className="text-[10px] font-medium text-muted-foreground">
+                Kartu eSIM Beranda{funnel ? ` · ${funnel.days} hari` : ""}
               </p>
-            ) : (
-              <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2">
-                <div className="space-y-1.5">
+              {funnel === null ? (
+                <p className="text-[11px] text-muted-foreground">Data event belum tersedia.</p>
+              ) : (
+                <>
                   {[
                     { label: "Ketuk rel", value: funnel.chipTaps },
                     { label: "Sheet dibuka", value: funnel.sheetOpens },
@@ -209,63 +238,31 @@ function AdminAnalytics() {
                       value={count(step.value)}
                       share={funnelMax > 0 ? barPercent(step.value, funnelMax, 2) : null}
                       masked={privateMode}
-                    />
-                  ))}
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Rel → sheet: {chipToSheet === null || privateMode ? "—" : `${chipToSheet}%`} ·
-                  Order dibuat {funnel.ordersInWindow === null ? "—" : count(funnel.ordersInWindow)}{" "}
-                  (konteks, bukan konversi)
-                </p>
-                <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto border-t border-border pt-1.5">
-                  <p className="text-[10px] font-medium text-muted-foreground">
-                    Destinasi paling dibuka
-                  </p>
-                  {funnel.topDestinations.length === 0 && (
-                    <p className="text-[11px] text-muted-foreground">Belum ada event.</p>
-                  )}
-                  {funnel.topDestinations.slice(0, 5).map((item) => (
-                    <ShareRow
-                      key={item.code}
-                      label={item.code}
-                      value={count(item.sheetOpens)}
-                      share={destMax > 0 ? barPercent(item.sheetOpens, destMax, 2) : null}
-                      masked={privateMode}
                       tone="muted"
                     />
                   ))}
-                </div>
-              </div>
-            )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Rel → sheet {pct(chipToSheet)}
+                  </p>
+                </>
+              )}
+            </div>
           </AdminSurface>
         </div>
 
         <div className="grid shrink-0 gap-2 sm:grid-cols-2 lg:h-[158px] lg:grid-cols-4">
           <AdminSurface className="overflow-hidden p-2.5">
-            <CardTitle title="Corong order" detail="Dibuat → dibayar → siap" />
+            <CardTitle title="Halaman populer" detail="Page views per halaman" />
             <div className="mt-1.5 space-y-1.5">
-              {[
-                {
-                  label: "Order dibuat",
-                  value: counts.total,
-                  share: counts.total > 0 ? 100 : null,
-                },
-                {
-                  label: "Dibayar",
-                  value: counts.paid,
-                  share: sharePercent(counts.paid, counts.total),
-                },
-                {
-                  label: "eSIM siap",
-                  value: counts.provisioningReady,
-                  share: sharePercent(counts.provisioningReady, counts.total),
-                },
-              ].map((step) => (
+              {(traffic?.topPages.length ?? 0) === 0 && (
+                <p className="text-[11px] text-muted-foreground">Belum ada kunjungan.</p>
+              )}
+              {(traffic?.topPages ?? []).slice(0, 4).map((page) => (
                 <ShareRow
-                  key={step.label}
-                  label={step.label}
-                  value={withShare(step.value, step.share)}
-                  share={step.share}
+                  key={page.path}
+                  label={page.path}
+                  value={count(page.views)}
+                  share={pageMax > 0 ? barPercent(page.views, pageMax, 2) : null}
                   masked={privateMode}
                 />
               ))}
@@ -273,40 +270,18 @@ function AdminAnalytics() {
           </AdminSurface>
 
           <AdminSurface className="overflow-hidden p-2.5">
-            <CardTitle title="Status order" detail="Sebaran periode ini" />
+            <CardTitle title="Sumber trafik" detail="Pengunjung per sumber" />
             <div className="mt-1.5 space-y-1.5">
-              {data.statuses.length === 0 && (
+              {(traffic?.sources.length ?? 0) === 0 && (
                 <p className="text-[11px] text-muted-foreground">Belum ada data.</p>
               )}
-              {data.statuses.slice(0, 4).map((item) => {
-                const share = sharePercent(item.count, statusTotal);
-                return (
-                  <ShareRow
-                    key={item.status}
-                    label={humanizeAdminStatus(item.status)}
-                    value={withShare(item.count, share)}
-                    share={share}
-                    masked={privateMode}
-                    tone="muted"
-                  />
-                );
-              })}
-            </div>
-          </AdminSurface>
-
-          <AdminSurface className="overflow-hidden p-2.5">
-            <CardTitle title="Metode pembayaran" detail="Order dibayar per metode" />
-            <div className="mt-1.5 space-y-1.5">
-              {data.paymentMix.length === 0 && (
-                <p className="text-[11px] text-muted-foreground">Belum ada pembayaran.</p>
-              )}
-              {data.paymentMix.slice(0, 4).map((item) => {
-                const share = sharePercent(item.count, paymentTotal);
+              {(traffic?.sources ?? []).slice(0, 4).map((item) => {
+                const share = sharePercent(item.visitors, sourceTotal);
                 return (
                   <ShareRow
                     key={item.label}
                     label={item.label}
-                    value={withShare(item.count, share)}
+                    value={withShare(item.visitors, share)}
                     share={share}
                     masked={privateMode}
                     tone="muted"
@@ -317,17 +292,39 @@ function AdminAnalytics() {
           </AdminSurface>
 
           <AdminSurface className="overflow-hidden p-2.5">
-            <CardTitle title="Paket terlaris" detail="Berdasarkan pendapatan" />
+            <CardTitle title="Perangkat" detail="Pengunjung per jenis layar" />
             <div className="mt-1.5 space-y-1.5">
-              {data.topPackages.length === 0 && (
-                <p className="text-[11px] text-muted-foreground">Belum ada penjualan paket.</p>
+              {(traffic?.devices.length ?? 0) === 0 && (
+                <p className="text-[11px] text-muted-foreground">Belum ada data.</p>
               )}
-              {data.topPackages.slice(0, 3).map((pkg) => (
+              {(traffic?.devices ?? []).slice(0, 4).map((item) => {
+                const share = sharePercent(item.visitors, deviceTotal);
+                return (
+                  <ShareRow
+                    key={item.device}
+                    label={DEVICE_LABEL[item.device] ?? item.device}
+                    value={withShare(item.visitors, share)}
+                    share={share}
+                    masked={privateMode}
+                    tone="muted"
+                  />
+                );
+              })}
+            </div>
+          </AdminSurface>
+
+          <AdminSurface className="overflow-hidden p-2.5">
+            <CardTitle title="Klik teratas" detail="Tautan dan tombol paling diklik" />
+            <div className="mt-1.5 space-y-1.5">
+              {(traffic?.topClicks.length ?? 0) === 0 && (
+                <p className="text-[11px] text-muted-foreground">Belum ada klik.</p>
+              )}
+              {(traffic?.topClicks ?? []).slice(0, 4).map((item) => (
                 <ShareRow
-                  key={pkg.name}
-                  label={pkg.name}
-                  value={`${count(pkg.quantity)}× · ${rupiah(pkg.revenueIdr)}`}
-                  share={packageMax > 0 ? barPercent(pkg.revenueIdr, packageMax, 2) : null}
+                  key={item.target}
+                  label={item.target}
+                  value={count(item.clicks)}
+                  share={clickMax > 0 ? barPercent(item.clicks, clickMax, 2) : null}
                   masked={privateMode}
                 />
               ))}

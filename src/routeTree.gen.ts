@@ -49,6 +49,7 @@ import { Route as ApiCustomerSupportRouteImport } from './routes/api.customer-su
 import { Route as ApiHomeEsimEventsRouteImport } from './routes/api.home-esim-events'
 import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recovery'
 import { Route as ApiPwaEventsRouteImport } from './routes/api.pwa-events'
+import { Route as ApiSiteEventsRouteImport } from './routes/api.site-events'
 import { Route as ApiTravelWaitlistRouteImport } from './routes/api.travel-waitlist'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
@@ -287,6 +288,11 @@ const ApiPwaEventsRoute = ApiPwaEventsRouteImport.update({
   path: '/api/pwa-events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSiteEventsRoute = ApiSiteEventsRouteImport.update({
+  id: '/api/site-events',
+  path: '/api/site-events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTravelWaitlistRoute = ApiTravelWaitlistRouteImport.update({
   id: '/api/travel-waitlist',
   path: '/api/travel-waitlist',
@@ -514,6 +520,7 @@ export interface FileRoutesByFullPath {
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
+  '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -592,6 +599,7 @@ export interface FileRoutesByTo {
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
+  '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -671,6 +679,7 @@ export interface FileRoutesById {
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
+  '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
@@ -751,6 +760,7 @@ export interface FileRouteTypes {
     | '/api/home-esim-events'
     | '/api/order-recovery'
     | '/api/pwa-events'
+    | '/api/site-events'
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
@@ -829,6 +839,7 @@ export interface FileRouteTypes {
     | '/api/home-esim-events'
     | '/api/order-recovery'
     | '/api/pwa-events'
+    | '/api/site-events'
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
@@ -907,6 +918,7 @@ export interface FileRouteTypes {
     | '/api/home-esim-events'
     | '/api/order-recovery'
     | '/api/pwa-events'
+    | '/api/site-events'
     | '/api/travel-waitlist'
     | '/checkout/$id'
     | '/destination/$code'
@@ -986,6 +998,7 @@ export interface RootRouteChildren {
   ApiHomeEsimEventsRoute: typeof ApiHomeEsimEventsRoute
   ApiOrderRecoveryRoute: typeof ApiOrderRecoveryRoute
   ApiPwaEventsRoute: typeof ApiPwaEventsRoute
+  ApiSiteEventsRoute: typeof ApiSiteEventsRoute
   ApiTravelWaitlistRoute: typeof ApiTravelWaitlistRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
@@ -1301,6 +1314,13 @@ declare module '@tanstack/react-router' {
       path: '/api/pwa-events'
       fullPath: '/api/pwa-events'
       preLoaderRoute: typeof ApiPwaEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/site-events': {
+      id: '/api/site-events'
+      path: '/api/site-events'
+      fullPath: '/api/site-events'
+      preLoaderRoute: typeof ApiSiteEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/travel-waitlist': {
@@ -1635,6 +1655,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHomeEsimEventsRoute: ApiHomeEsimEventsRoute,
   ApiOrderRecoveryRoute: ApiOrderRecoveryRoute,
   ApiPwaEventsRoute: ApiPwaEventsRoute,
+  ApiSiteEventsRoute: ApiSiteEventsRoute,
   ApiTravelWaitlistRoute: ApiTravelWaitlistRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
