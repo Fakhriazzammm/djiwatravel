@@ -34,6 +34,7 @@ import {
   Utensils,
   WalletCards,
 } from "lucide-react";
+import { AgendaMascotBubble } from "@/components/agenda-mascot-bubble";
 import { CalendarConnectBanner } from "@/components/calendar-connect-banner";
 import ItineraryMap, { type PickedPoi } from "@/components/itinerary-map";
 import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
@@ -346,6 +347,7 @@ export function ItineraryEditor({
   const [focus, setFocus] = useState(false);
   const [me, setMe] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [locating, setLocating] = useState(false);
+  const [zoomTick, setZoomTick] = useState(0);
   const [poiImage, setPoiImage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -439,6 +441,12 @@ export function ItineraryEditor({
     });
     setPoint(p);
     setShowForm(true);
+  }
+
+  function exploreCategory(category: PoiCategoryId) {
+    setFocus(false);
+    setPoiOn((current) => (current.includes(category) ? current : [...current, category]));
+    setZoomTick((tick) => tick + 1);
   }
 
   function selectActivity(id: string) {
@@ -793,7 +801,7 @@ export function ItineraryEditor({
               className={
                 expanded
                   ? "fixed inset-0 z-50 flex flex-col gap-2 bg-background px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-[calc(env(safe-area-inset-top)+0.5rem)]"
-                  : "space-y-2"
+                  : "space-y-2 pt-6"
               }
             >
               <div
@@ -825,7 +833,13 @@ export function ItineraryEditor({
               </div>
               <div className={expanded ? "relative min-h-0 flex-1" : "relative"}>
                 {!expanded && (
-                  <div className="pointer-events-none absolute bottom-[calc(100%-10px)] right-3 z-0">
+                  <div className="pointer-events-none absolute bottom-[calc(100%-10px)] right-3 z-0 flex flex-col items-end">
+                    <AgendaMascotBubble
+                      hasItems={items.length > 0}
+                      canExploreMap={Boolean(mapConfig?.poiHelper)}
+                      onAdd={openNew}
+                      onExplore={exploreCategory}
+                    />
                     <AgendaMascot size={92} />
                   </div>
                 )}
@@ -847,6 +861,7 @@ export function ItineraryEditor({
                     routes={model.routes}
                     focus={focus}
                     userPoint={me}
+                    zoomTick={zoomTick}
                     activeId={activeId}
                     onSelect={selectActivity}
                     styleUrl={mapConfig!.styleUrl}

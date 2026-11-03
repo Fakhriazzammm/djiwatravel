@@ -309,3 +309,14 @@ describe("place photos", () => {
     expect(() => parseItineraryMapConfig({ locateMe: 1 })).toThrow();
   });
 });
+
+import { friendlyTripLine } from "@/lib/trip-overview";
+describe("friendly trip line on Ringkas", () => {
+  it("talks about the trip instead of showing a status label", () => {
+    expect(friendlyTripLine("Hari ke-2", "Jepang")).toBe("Hari ke-2 serunya di Jepang");
+    expect(friendlyTripLine("3 hari", "Jepang")).toBe("3 hari lagi menuju Jepang");
+    expect(friendlyTripLine("Berangkat!", "Jepang")).toBe("Hari ini berangkat ke Jepang!");
+    expect(friendlyTripLine("Selesai", "Jepang")).toBe("Kenangan serumu di Jepang");
+    expect(friendlyTripLine("Atur tanggal", "")).toBe("Rencanakan serumu di tujuanmu");
+  });
+});

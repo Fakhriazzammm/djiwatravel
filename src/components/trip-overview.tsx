@@ -52,6 +52,7 @@ import {
   groupOverviewDays,
   pickNowNext,
   pickOverviewDay,
+  friendlyTripLine,
 } from "@/lib/trip-overview";
 
 type Row = { id: string } & Record<string, unknown>;
@@ -294,8 +295,12 @@ export function TripOverview(props: Props) {
               <ChevronLeft className="size-5" aria-hidden="true" />
             </Link>
             <div className="flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-surface px-3 text-foreground shadow-md">
-              <span className="truncate text-[13px] font-bold">{props.name}</span>
-              <span className="shrink-0 text-[11px] text-muted-foreground">· {props.dayLabel}</span>
+              <span className="truncate text-[13px] font-bold">
+                {friendlyTripLine(props.dayLabel, props.destination)}
+              </span>
+              <span className="max-w-[30%] shrink-0 truncate text-[11px] text-muted-foreground">
+                · {props.name}
+              </span>
             </div>
             <button
               type="button"

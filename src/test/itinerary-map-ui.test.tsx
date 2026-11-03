@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ItineraryEditor } from "@/routes/my-trips.$tripId.$section";
 import { patchItinerary, postItinerary } from "@/lib/my-trips.fn";
@@ -418,5 +418,55 @@ describe("agenda map", () => {
     );
     expect(screen.getByRole("heading", { name: "Mau ke mana saja di Tokyo?" })).toBeInTheDocument();
     expect(screen.getByText(/^spring · 3–9 Nov 2026$/)).toBeInTheDocument();
+  });
+
+  it("has the mascot ask friendly questions and act when tapped", async () => {
+    const rows = [
+      { id: "a", activity_date: "2026-11-04", title: "A", latitude: 35.6, longitude: 139.7 },
+    ];
+    render(
+      <ItineraryEditor
+        tripId="t"
+        items={rows}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    const bubble = await screen.findByTestId("agenda-mascot-bubble");
+    expect(bubble).toHaveTextContent("Ke mana lagi ya?");
+    fireEvent.click(bubble);
+    expect(await screen.findByRole("dialog", { name: "Tambah aktivitas" })).toBeInTheDocument();
+    expect(screen.getByTestId("agenda-mascot-bubble")).toHaveTextContent("Yuk catat rencananya!");
+  });
+
+  it("turns on a map category when the mascot suggests it", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const rows = [
+        { id: "a", activity_date: "2026-11-04", title: "A", latitude: 35.6, longitude: 139.7 },
+      ];
+      render(
+        <ItineraryEditor
+          tripId="t"
+          items={rows}
+          onSaved={vi.fn(async () => {})}
+          mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+        />,
+      );
+      expect(screen.getByRole("button", { name: /^Hotel$/ })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+      for (let i = 0; i < 4; i += 1) await act(async () => void vi.advanceTimersByTime(6600));
+      const bubble = screen.getByTestId("agenda-mascot-bubble");
+      expect(bubble).toHaveTextContent("Perlu cari penginapan?");
+      fireEvent.click(bubble);
+      expect(screen.getByRole("button", { name: /^Hotel$/ })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

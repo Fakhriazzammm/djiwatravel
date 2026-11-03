@@ -110,3 +110,15 @@ export function pickNowNext<T extends TimedRow>(rows: T[], today: string, nowMin
   }
   return { current, next };
 }
+
+/** Warm one-liner for the map header on Ringkas, from the countdown value and the destination. */
+export function friendlyTripLine(dayLabel: string, destination: string) {
+  const place = destination.trim() || "tujuanmu";
+  const day = /^Hari ke-(\d+)$/.exec(dayLabel);
+  if (day) return `Hari ke-${day[1]} serunya di ${place}`;
+  const until = /^(\d+) hari$/.exec(dayLabel);
+  if (until) return `${until[1]} hari lagi menuju ${place}`;
+  if (dayLabel === "Berangkat!") return `Hari ini berangkat ke ${place}!`;
+  if (dayLabel === "Selesai") return `Kenangan serumu di ${place}`;
+  return `Rencanakan serumu di ${place}`;
+}

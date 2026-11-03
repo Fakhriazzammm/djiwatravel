@@ -21,6 +21,8 @@ type Props = {
   focus?: boolean;
   /** The traveler's position from the device, shown as a blue dot. */
   userPoint?: { lat: number; lng: number } | null;
+  /** Bump to zoom in on the activity points so nearby places become visible. */
+  zoomTick?: number;
   activeId: string | null;
   onSelect: (id: string) => void;
   styleUrl: string;
@@ -187,6 +189,7 @@ export default function ItineraryMap({
   routes,
   focus = false,
   userPoint = null,
+  zoomTick = 0,
   activeId,
   onSelect,
   styleUrl,
@@ -400,6 +403,24 @@ export default function ItineraryMap({
       else map.fitBounds(bounds, { padding, maxZoom: 15, duration });
     }
   }, [pins, routes, ready, focus, framePadding?.top, framePadding?.bottom]);
+
+  // "Zoom to explore": close enough for category markers to appear.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || zoomTick === 0) return;
+    const target =
+      latest.current.pins.find((p) => p.id === latest.current.activeId) ??
+      latest.current.pins.find((p) => !p.muted) ??
+      latest.current.pins[0];
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    map.easeTo({
+      ...(target ? { center: [target.lng, target.lat] as [number, number] } : {}),
+      zoom: Math.max(map.getZoom(), 14.6),
+      duration: reduce ? 0 : 600,
+    });
+    // Only a new tick should trigger this, not every data change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoomTick]);
 
   // The traveler's own position.
   const userMarker = useRef<Marker | null>(null);
