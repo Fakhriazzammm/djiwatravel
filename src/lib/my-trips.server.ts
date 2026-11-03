@@ -120,6 +120,10 @@ const bookingSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
 });
 const itemIdSchema = z.object({ id: z.string().uuid() });
+const budgetCategoryCreateSchema = z.object({
+  tripId: z.string().uuid(),
+  name: z.string().trim().min(1).max(80),
+});
 
 const tripIdSchema = z.object({ tripId: z.string().uuid() });
 const tripSectionSchema = z.object({
@@ -685,6 +689,38 @@ export async function patchBudgetCategory(input: unknown) {
   return result.rows[0];
 }
 
+export async function addBudgetCategory(input: unknown) {
+  const data = budgetCategoryCreateSchema.parse(input);
+  const user = await getAuthenticatedUser();
+  const trip = await ownedTrip(data.tripId, user.id);
+  const result = await pool.query(
+    `insert into travel_budget_categories (trip_id,name,category_key,allocated_minor,currency,sort_order)
+     values ($1,$2,$3,0,$4,coalesce((select max(sort_order)+1 from travel_budget_categories where trip_id=$1),0))
+     on conflict (trip_id, name) do nothing returning *`,
+    [
+      data.tripId,
+      data.name,
+      data.name.toLowerCase().replaceAll(/\s+/g, "-"),
+      trip["primary_currency"],
+    ],
+  );
+  if (!result.rows[0]) throw new Error("Kategori dengan nama itu sudah ada");
+  return result.rows[0];
+}
+
+/** Expenses keep their row: the FK is `on delete set null`, so they become uncategorized. */
+export async function deleteBudgetCategory(input: unknown) {
+  const data = itemIdSchema.parse(input);
+  const user = await getAuthenticatedUser();
+  const result = await pool.query(
+    `delete from travel_budget_categories c using travel_trips t
+     where c.id=$1 and c.trip_id=t.id and t.customer_auth_subject=$2 returning c.id`,
+    [data.id, user.id],
+  );
+  if (!result.rows[0]) throw new Error("Kategori budget tidak ditemukan");
+  return result.rows[0];
+}
+
 async function deleteOwned(
   table:
     "travel_expenses" | "travel_itinerary_items" | "travel_checklist_items" | "travel_bookings",
@@ -963,6 +999,20 @@ export const patchBudgetHandler = ({ data }: { data: ReturnType<typeof patchBudg
 export const patchBudget = createServerFn({ method: "POST" })
   .validator(budgetPatchSchema)
   .handler(patchBudgetHandler);
+export const postBudgetCategoryInput = (data: z.input<typeof budgetCategoryCreateSchema>) =>
+  budgetCategoryCreateSchema.parse(data);
+export const postBudgetCategoryHandler = ({
+  data,
+}: {
+  data: ReturnType<typeof postBudgetCategoryInput>;
+}) => addBudgetCategory(data);
+export const deleteBudgetCategoryInput = (data: z.input<typeof itemIdSchema>) =>
+  itemIdSchema.parse(data);
+export const deleteBudgetCategoryHandler = ({
+  data,
+}: {
+  data: ReturnType<typeof deleteBudgetCategoryInput>;
+}) => deleteBudgetCategory(data);
 export const postBookingInput = (data: z.input<typeof bookingSchema>) => bookingSchema.parse(data);
 export const postBookingHandler = ({ data }: { data: ReturnType<typeof postBookingInput> }) =>
   addBooking(data);

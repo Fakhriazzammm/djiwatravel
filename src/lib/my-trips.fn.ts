@@ -127,6 +127,30 @@ export const patchBudget = createServerFn({ method: "POST" })
     return patchBudgetHandler({ data });
   });
 
+export const postBudgetCategory = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./my-trips.server").postBudgetCategoryInput>[0]) => {
+      const { postBudgetCategoryInput } = await import("./my-trips.server");
+      return postBudgetCategoryInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { postBudgetCategoryHandler } = await import("./my-trips.server");
+    return postBudgetCategoryHandler({ data });
+  });
+
+export const deleteBudgetCategoryRecord = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./my-trips.server").deleteBudgetCategoryInput>[0]) => {
+      const { deleteBudgetCategoryInput } = await import("./my-trips.server");
+      return deleteBudgetCategoryInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { deleteBudgetCategoryHandler } = await import("./my-trips.server");
+    return deleteBudgetCategoryHandler({ data });
+  });
+
 export const postBooking = createServerFn({ method: "POST" })
   .validator(async (data: Parameters<typeof import("./my-trips.server").postBookingInput>[0]) => {
     const { postBookingInput } = await import("./my-trips.server");

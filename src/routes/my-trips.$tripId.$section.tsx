@@ -163,6 +163,7 @@ function TripSection() {
       <div className="space-y-4">
         {section === "budget" && (
           <BudgetEditor
+            tripId={tripId}
             items={items}
             currency={trip.primary_currency}
             summary={summary}

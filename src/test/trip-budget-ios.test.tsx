@@ -1,9 +1,16 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BudgetEditor, ExpenseEditor } from "@/components/trip-budget-ios";
-import { deleteExpense, patchBudget } from "@/lib/my-trips.fn";
+import {
+  deleteBudgetCategoryRecord,
+  deleteExpense,
+  patchBudget,
+  postBudgetCategory,
+} from "@/lib/my-trips.fn";
 
 vi.mock("@/lib/my-trips.fn", () => ({
+  postBudgetCategory: vi.fn(async () => ({})),
+  deleteBudgetCategoryRecord: vi.fn(async () => ({})),
   patchBudget: vi.fn(async () => ({})),
   postExpense: vi.fn(),
   deleteExpense: vi.fn(async () => ({})),
@@ -29,6 +36,7 @@ describe("budget iOS editor", () => {
     const onSaved = vi.fn(async () => {});
     render(
       <BudgetEditor
+        tripId="t1"
         items={[{ id: "c1", name: "Flights", allocated_minor: 0, spent_minor: 0 }]}
         currency="IDR"
         summary={summary}
@@ -49,6 +57,7 @@ describe("budget iOS editor", () => {
   it("does not let the limit go below zero", () => {
     render(
       <BudgetEditor
+        tripId="t1"
         items={[{ id: "c1", name: "Flights", allocated_minor: 0, spent_minor: 0 }]}
         currency="IDR"
         summary={summary}
@@ -56,6 +65,52 @@ describe("budget iOS editor", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Kurangi batas Penerbangan" })).toBeDisabled();
+  });
+});
+
+describe("budget categories", () => {
+  const item = { id: "c1", name: "Visa", allocated_minor: 0, spent_minor: 0 };
+
+  it("adds a category", async () => {
+    vi.useRealTimers();
+    render(
+      <BudgetEditor
+        tripId="t1"
+        items={[item]}
+        currency="IDR"
+        summary={summary}
+        onSaved={vi.fn(async () => {})}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tambah kategori" }));
+    fireEvent.change(await screen.findByLabelText("Nama kategori"), {
+      target: { value: "Oleh-oleh" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "Tambah kategori" }).at(-1)!);
+    await waitFor(() =>
+      expect(postBudgetCategory).toHaveBeenCalledWith({
+        data: { tripId: "t1", name: "Oleh-oleh" },
+      }),
+    );
+  });
+
+  it("deletes a category after confirmation", async () => {
+    vi.useRealTimers();
+    render(
+      <BudgetEditor
+        tripId="t1"
+        items={[item]}
+        currency="IDR"
+        summary={summary}
+        onSaved={vi.fn(async () => {})}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Opsi kategori Visa" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Hapus kategori" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Hapus" }));
+    await waitFor(() =>
+      expect(deleteBudgetCategoryRecord).toHaveBeenCalledWith({ data: { id: "c1" } }),
+    );
   });
 });
 

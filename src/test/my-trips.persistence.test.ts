@@ -4,6 +4,8 @@ import { getAuthenticatedUser } from "@/lib/customer-session.fn";
 import { syncItineraryItem } from "@/lib/google-calendar.server";
 import {
   addBooking,
+  addBudgetCategory,
+  deleteBudgetCategory,
   addChecklistItem,
   addExpense,
   addItineraryItem,
@@ -93,9 +95,10 @@ describe("My Trips isolated persistence flows", () => {
   it("waits for the new itinerary item calendar sync before completing", async () => {
     let releaseSync!: () => void;
     syncCalendar.mockImplementation(
-      () => new Promise<void>((resolve) => {
-        releaseSync = resolve;
-      }),
+      () =>
+        new Promise<void>((resolve) => {
+          releaseSync = resolve;
+        }),
     );
     queueOwnedTripAndItem({ id: itemId, title: "Museum" });
 
@@ -235,5 +238,29 @@ describe("My Trips isolated persistence flows", () => {
     ).rejects.toThrow("Perjalanan tidak ditemukan");
 
     expect(query).toHaveBeenCalledOnce();
+  });
+
+  it("adds a budget category in the trip currency and rejects duplicates", async () => {
+    authenticate.mockResolvedValue({ id: ownerId } as never);
+    query.mockResolvedValueOnce({ rows: [{ id: tripId, primary_currency: "IDR" }] } as never);
+    query.mockResolvedValueOnce({ rows: [{ id: itemId, name: "Oleh-oleh" }] } as never);
+    await expect(addBudgetCategory({ tripId, name: "Oleh-oleh" })).resolves.toMatchObject({
+      name: "Oleh-oleh",
+    });
+    expect(query.mock.calls[1]?.[1]).toEqual([tripId, "Oleh-oleh", "oleh-oleh", "IDR"]);
+
+    query.mockResolvedValueOnce({ rows: [{ id: tripId, primary_currency: "IDR" }] } as never);
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    await expect(addBudgetCategory({ tripId, name: "Oleh-oleh" })).rejects.toThrow("sudah ada");
+  });
+
+  it("deletes only a category owned by the signed-in customer", async () => {
+    authenticate.mockResolvedValue({ id: ownerId } as never);
+    query.mockResolvedValueOnce({ rows: [{ id: itemId }] } as never);
+    await deleteBudgetCategory({ id: itemId });
+    expect(query.mock.calls[0]?.[1]).toEqual([itemId, ownerId]);
+
+    query.mockResolvedValueOnce({ rows: [] } as never);
+    await expect(deleteBudgetCategory({ id: itemId })).rejects.toThrow("tidak ditemukan");
   });
 });

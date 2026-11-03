@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  BadgeCheck,
   CircleHelp,
   Ellipsis,
   Hotel,
@@ -22,7 +23,13 @@ import { MoneyInput } from "@/components/money-input";
 import { btnRed } from "@/components/shell";
 import { ConfirmDialog, TripActionSheet, iosGroup, iosHeading } from "@/components/trip-ios";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { deleteExpense, patchBudget, postExpense } from "@/lib/my-trips.fn";
+import {
+  deleteBudgetCategoryRecord,
+  deleteExpense,
+  patchBudget,
+  postBudgetCategory,
+  postExpense,
+} from "@/lib/my-trips.fn";
 import { displayBudgetCategory } from "@/lib/my-trips-home";
 import { isTripAuthenticationError, runTripMutation } from "@/lib/trip-actions";
 import { compactMoney, stepFor } from "@/lib/trip-budget-format";
@@ -43,20 +50,24 @@ export type CategoryOption = {
   currency: string;
 };
 
-const CATEGORY_STYLE: Record<string, { icon: LucideIcon; color: string }> = {
-  Flights: { icon: Plane, color: "#007aff" },
-  Accommodation: { icon: Hotel, color: "#5856d6" },
-  Transportation: { icon: Car, color: "#34c759" },
-  "Food & Drinks": { icon: Utensils, color: "#ff9500" },
-  Attractions: { icon: Ticket, color: "#af52de" },
-  Shopping: { icon: ShoppingBag, color: "#ff2d55" },
-  "eSIM & Internet": { icon: Wifi, color: "#32ade6" },
-  Insurance: { icon: ShieldCheck, color: "#30b0c7" },
-  Emergency: { icon: Siren, color: "#ff3b30" },
-  Other: { icon: Ellipsis, color: "#8e8e93" },
-};
-const styleFor = (name: unknown) =>
-  CATEGORY_STYLE[String(name ?? "")] ?? { icon: CircleHelp, color: "#8e8e93" };
+const CATEGORY_STYLE: Array<{ match: RegExp; icon: LucideIcon; color: string }> = [
+  { match: /penerbangan|flight/i, icon: Plane, color: "#007aff" },
+  { match: /akomodasi|accommodation|hotel|penginapan/i, icon: Hotel, color: "#5856d6" },
+  { match: /transport/i, icon: Car, color: "#34c759" },
+  { match: /makan|food|kuliner/i, icon: Utensils, color: "#ff9500" },
+  { match: /aktivitas|attraction|wisata/i, icon: Ticket, color: "#af52de" },
+  { match: /belanja|shopping/i, icon: ShoppingBag, color: "#ff2d55" },
+  { match: /esim|internet|sim/i, icon: Wifi, color: "#32ade6" },
+  { match: /visa/i, icon: BadgeCheck, color: "#00a699" },
+  { match: /asuransi|insurance/i, icon: ShieldCheck, color: "#30b0c7" },
+  { match: /darurat|emergency/i, icon: Siren, color: "#ff3b30" },
+  { match: /lain|other/i, icon: Ellipsis, color: "#8e8e93" },
+];
+const styleFor = (name: unknown): { icon: LucideIcon; color: string } =>
+  CATEGORY_STYLE.find((entry) => entry.match.test(String(name ?? ""))) ?? {
+    icon: CircleHelp,
+    color: "#8e8e93",
+  };
 
 const money = (minor: unknown, currency: unknown) => formatTripMoney(minor, currency);
 
@@ -106,11 +117,13 @@ function SheetFrame({
 /* ------------------------------------------------------------------ Anggaran */
 
 export function BudgetEditor({
+  tripId,
   items,
   currency,
   summary,
   onSaved,
 }: {
+  tripId: string;
   items: Row[];
   currency: string;
   summary: BudgetSummary | null;
@@ -121,6 +134,11 @@ export function BudgetEditor({
   );
   const [editing, setEditing] = useState<Row | null>(null);
   const [draft, setDraft] = useState("");
+  const [menuFor, setMenuFor] = useState<Row | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<Row | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const saved = useRef<Record<string, number>>(
     Object.fromEntries(items.map((x) => [x.id, Number(x["allocated_minor"] ?? 0)])),
@@ -173,6 +191,41 @@ export function BudgetEditor({
         );
       }
     }, 500);
+  }
+
+  async function addCategory(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const ok = await runTripMutation({
+        action: () => postBudgetCategory({ data: { tripId, name: newName.trim() } }),
+        refresh: onSaved,
+        successMessage: "Kategori ditambahkan",
+        failureMessage: "Kategori belum tersimpan. Nama mungkin sudah dipakai.",
+      });
+      if (ok) {
+        setNewName("");
+        setAdding(false);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeCategory(item: Row) {
+    setBusy(true);
+    try {
+      clearTimeout(timers.current[item.id]);
+      const ok = await runTripMutation({
+        action: () => deleteBudgetCategoryRecord({ data: { id: item.id } }),
+        refresh: onSaved,
+        successMessage: "Kategori dihapus",
+        failureMessage: "Kategori belum terhapus. Coba lagi.",
+      });
+      if (ok) setConfirmRemove(null);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function setLimit(id: string, minor: number) {
@@ -245,24 +298,31 @@ export function BudgetEditor({
                   key={item.id}
                   className="flex min-h-[52px] items-center gap-3 border-b border-border/60 px-3 last:border-b-0"
                 >
-                  <span
-                    className="grid size-8 shrink-0 place-items-center rounded-lg text-white"
-                    style={{ background: color }}
+                  <button
+                    type="button"
+                    aria-label={`Opsi kategori ${name}`}
+                    onClick={() => setMenuFor(item)}
+                    className="tap flex min-h-[52px] min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <Icon className="size-[17px]" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[14px] font-semibold">{name}</span>
                     <span
-                      className={`block truncate text-[11px] ${over || (limit === 0 && used > 0) ? "text-warning-foreground" : "text-muted-foreground"}`}
+                      className="grid size-8 shrink-0 place-items-center rounded-lg text-white"
+                      style={{ background: color }}
                     >
-                      {over
-                        ? `Melebihi ${compactMoney(used - limit, currency)}`
-                        : limit === 0 && used === 0
-                          ? "Belum diatur"
-                          : `Terpakai ${compactMoney(used, currency)}`}
+                      <Icon className="size-[17px]" aria-hidden="true" />
                     </span>
-                  </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14px] font-semibold">{name}</span>
+                      <span
+                        className={`block truncate text-[11px] ${over || (limit === 0 && used > 0) ? "text-warning-foreground" : "text-muted-foreground"}`}
+                      >
+                        {over
+                          ? `Melebihi ${compactMoney(used - limit, currency)}`
+                          : limit === 0 && used === 0
+                            ? "Belum diatur"
+                            : `Terpakai ${compactMoney(used, currency)}`}
+                      </span>
+                    </span>
+                  </button>
                   <div className="flex shrink-0 items-center rounded-[9px] bg-secondary">
                     <button
                       type="button"
@@ -299,11 +359,75 @@ export function BudgetEditor({
           ) : (
             <p className="p-4 text-[14px] text-muted-foreground">Belum ada kategori anggaran.</p>
           )}
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="tap flex min-h-[48px] w-full items-center gap-3 px-3 text-[15px] text-brand-red"
+          >
+            <span className="grid size-8 place-items-center rounded-lg bg-brand-red/10">
+              <Plus className="size-[18px]" aria-hidden="true" />
+            </span>
+            Tambah kategori
+          </button>
         </div>
         <p className="px-4 pt-1.5 text-[11px] text-muted-foreground">
-          − / + mengubah {money(step, currency)}. Ketuk angka untuk mengetik.
+          − / + mengubah {money(step, currency)}. Ketuk angka untuk mengetik, ketuk nama untuk
+          menghapus kategori.
         </p>
       </section>
+
+      <SheetFrame open={adding} onOpenChange={setAdding} title="Kategori baru">
+        <form onSubmit={addCategory} className="space-y-3">
+          <input
+            required
+            autoFocus
+            maxLength={80}
+            value={newName}
+            onChange={(event) => setNewName(event.target.value)}
+            placeholder="Mis. Oleh-oleh"
+            aria-label="Nama kategori"
+            className={field}
+          />
+          <button
+            disabled={busy || !newName.trim()}
+            className={`${btnRed} min-h-12 w-full rounded-xl`}
+          >
+            {busy ? "Menyimpan…" : "Tambah kategori"}
+          </button>
+        </form>
+      </SheetFrame>
+
+      <TripActionSheet
+        open={Boolean(menuFor)}
+        onOpenChange={(open) => !open && setMenuFor(null)}
+        title={displayBudgetCategory(String(menuFor?.["name"] ?? ""))}
+        actions={[
+          {
+            label: "Ketik batas",
+            onSelect: () => {
+              if (!menuFor) return;
+              setEditing(menuFor);
+              setDraft(limits[menuFor.id] ? String(Math.round(limits[menuFor.id]! / 100)) : "");
+            },
+          },
+          {
+            label: "Hapus kategori",
+            icon: Trash2,
+            destructive: true,
+            onSelect: () => setConfirmRemove(menuFor),
+          },
+        ]}
+      />
+      <ConfirmDialog
+        open={Boolean(confirmRemove)}
+        onOpenChange={(open) => !open && setConfirmRemove(null)}
+        title="Hapus kategori?"
+        description={`Pengeluaran di “${displayBudgetCategory(String(confirmRemove?.["name"] ?? ""))}” tidak ikut terhapus, tetapi menjadi belum berkategori.`}
+        confirmLabel="Hapus"
+        destructive
+        busy={busy}
+        onConfirm={() => (confirmRemove ? removeCategory(confirmRemove) : undefined)}
+      />
 
       <SheetFrame
         open={Boolean(editing)}

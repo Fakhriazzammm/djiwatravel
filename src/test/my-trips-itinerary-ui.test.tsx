@@ -5,6 +5,8 @@ import { postItinerary } from "@/lib/my-trips.fn";
 
 vi.mock("@/lib/my-trips.fn", () => ({
   deleteBookingRecord: vi.fn(),
+  deleteBudgetCategoryRecord: vi.fn(),
+  postBudgetCategory: vi.fn(),
   deleteChecklist: vi.fn(),
   deleteExpense: vi.fn(),
   deleteItinerary: vi.fn(),
