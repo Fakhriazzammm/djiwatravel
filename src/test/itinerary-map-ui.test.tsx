@@ -400,4 +400,22 @@ describe("agenda map", () => {
     expect(screen.getByRole("textbox", { name: /Lokasi/ })).toHaveValue("Lokasi saya");
     expect(screen.getByText("Titik peta tersimpan.")).toBeInTheDocument();
   });
+
+  it("says which trip the agenda belongs to", () => {
+    render(
+      <ItineraryEditor
+        tripId="t"
+        trip={{
+          name: "spring",
+          destination_name: "Tokyo",
+          departure_date: "2026-11-03",
+          return_date: "2026-11-09",
+        }}
+        items={[]}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={null}
+      />,
+    );
+    expect(screen.getByText(/Perjalanan spring · Tokyo · 3 Nov – 9 Nov 2026/)).toBeInTheDocument();
+  });
 });

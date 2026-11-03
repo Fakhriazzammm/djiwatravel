@@ -34,6 +34,7 @@ import {
   Utensils,
   WalletCards,
 } from "lucide-react";
+import { CalendarConnectBanner } from "@/components/calendar-connect-banner";
 import ItineraryMap, { type PickedPoi } from "@/components/itinerary-map";
 import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
@@ -252,6 +253,7 @@ function TripSection() {
         {section === "itinerary" && (
           <ItineraryEditor
             tripId={tripId}
+            trip={trip}
             items={items}
             onSaved={refresh}
             mapConfig={(data.mapConfig as ItineraryMapConfig | null) ?? null}
@@ -294,6 +296,7 @@ function TripSection() {
 
 export function ItineraryEditor({
   tripId,
+  trip,
   items,
   onSaved,
   mapConfig = null,
@@ -301,6 +304,13 @@ export function ItineraryEditor({
   initialEditId = null,
 }: {
   tripId: string;
+  /** Shown under the title so it is clear which trip this agenda belongs to. */
+  trip?: {
+    name: string;
+    destination_name: string;
+    departure_date: string | null;
+    return_date: string | null;
+  };
   items: Item[];
   onSaved: () => Promise<void>;
   mapConfig?: ItineraryMapConfig | null;
@@ -563,7 +573,14 @@ export function ItineraryEditor({
       <LayoutGroup id="agenda">
         <section className="space-y-3 pb-28" aria-label="Agenda perjalanan">
           <div className="flex items-center justify-between px-1 pt-1">
-            <h1 className="text-[22px] font-bold leading-tight tracking-tight">Agenda</h1>
+            <div className="min-w-0">
+              <h1 className="text-[22px] font-bold leading-tight tracking-tight">Agenda</h1>
+              {trip && (
+                <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
+                  {tripSubtitle(trip)}
+                </p>
+              )}
+            </div>
             <FixedLayer>
               <motion.button
                 type="button"
@@ -758,6 +775,7 @@ export function ItineraryEditor({
               </form>
             </SheetContent>
           </Sheet>
+          <CalendarConnectBanner />
           {mapOn && model.pinnedCount > 0 ? (
             <motion.div
               initial={{ y: 10, scale: 0.98 }}
@@ -1121,6 +1139,27 @@ const POI_FORM_CATEGORY: Record<PoiCategoryId, string> = {
   hotel: "hotel",
   shop: "other",
 };
+
+function tripSubtitle(trip: {
+  name: string;
+  destination_name: string;
+  departure_date: string | null;
+  return_date: string | null;
+}) {
+  const fmt = (value: string | null, withYear: boolean) => {
+    const m = String(value ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "short",
+      ...(withYear ? { year: "numeric" } : {}),
+    }).format(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12));
+  };
+  const from = fmt(trip.departure_date, false);
+  const to = fmt(trip.return_date, true);
+  const range = from && to ? `${from} – ${to}` : (to ?? from);
+  return [`Perjalanan ${trip.name}`, trip.destination_name, range].filter(Boolean).join(" · ");
+}
 
 function groupItineraryByDay(items: Item[]) {
   const groups = new Map<string, Item[]>();
