@@ -573,16 +573,13 @@ export function ItineraryEditor({
       <LayoutGroup id="agenda">
         <section className="space-y-3 pb-28" aria-label="Agenda perjalanan">
           <div className="relative flex items-center justify-between px-1 pt-1">
-            <div className="min-w-0 pr-24">
+            <div className="min-w-0">
               <h1 className="text-[22px] font-bold leading-tight tracking-tight">Agenda</h1>
               {trip && (
                 <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
                   {tripSubtitle(trip)}
                 </p>
               )}
-            </div>
-            <div className="pointer-events-none absolute -bottom-3 right-1 z-10">
-              <AgendaMascot size={104} />
             </div>
             <FixedLayer>
               <motion.button
@@ -790,7 +787,9 @@ export function ItineraryEditor({
                   : "space-y-2"
               }
             >
-              <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain px-0.5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div
+                className={`flex gap-1.5 overflow-x-auto overscroll-x-contain px-0.5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${expanded ? "" : "pr-24"}`}
+              >
                 {days.length > 1 ? (
                   <>
                     {days.map((day) => (
@@ -815,190 +814,197 @@ export function ItineraryEditor({
                   </span>
                 )}
               </div>
-              <div
-                className={
-                  expanded
-                    ? "relative min-h-0 flex-1 overflow-hidden rounded-2xl bg-secondary"
-                    : "relative h-[230px] overflow-hidden rounded-[18px] bg-secondary"
-                }
-              >
-                {mapBroken && (
-                  <p className="absolute inset-x-3 top-1/2 z-10 -translate-y-1/2 rounded-xl bg-surface/95 px-3 py-2 text-center text-xs text-muted-foreground shadow">
-                    Peta belum bisa dimuat. Daftar agenda tetap bisa dipakai; pakai tombol Rute
-                    untuk membuka Google Maps.
-                  </p>
+              <div className={expanded ? "relative min-h-0 flex-1" : "relative"}>
+                {!expanded && (
+                  <div className="pointer-events-none absolute bottom-[calc(100%-10px)] right-3 z-0">
+                    <AgendaMascot size={92} />
+                  </div>
                 )}
-                <ItineraryMap
-                  pins={model.pins}
-                  routes={model.routes}
-                  focus={focus}
-                  userPoint={me}
-                  activeId={activeId}
-                  onSelect={selectActivity}
-                  styleUrl={mapConfig!.styleUrl}
-                  poiCategories={mapConfig?.poiHelper ? poiOn : []}
-                  onPoiSelect={(picked) => {
-                    setMe(null);
-                    setPoi(picked);
-                  }}
-                  onUnavailable={() => setMapBroken(true)}
-                />
-                <AnimatePresence>
-                  {me && (
-                    <motion.div
-                      key="me"
-                      initial={{ y: 16, opacity: 0, scale: 0.96 }}
-                      animate={{ y: 0, opacity: 1, scale: 1 }}
-                      exit={{ y: 12, opacity: 0 }}
-                      transition={springIos}
-                      className={`absolute inset-x-2 z-10 flex items-center gap-2.5 rounded-2xl bg-surface p-2.5 shadow-lg ${"bottom-2"}`}
-                    >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
-                        <LocateFixed className="size-4" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-semibold">
-                          Lokasi kamu
-                        </span>
-                        <span className="block text-[11px] text-muted-foreground">
-                          ±{Math.max(1, Math.round(me.accuracy))} m
-                          {nearestKm !== null
-                            ? ` · ${formatKm(nearestKm)} dari titik agenda terdekat`
-                            : ""}
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => void addHere()}
-                        className="tap min-h-8 rounded-lg bg-brand-red px-3 text-[12px] font-semibold text-white"
-                      >
-                        Tambah di sini
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMe(null)}
-                        aria-label="Tutup"
-                        className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </motion.div>
+                <div
+                  className={
+                    expanded
+                      ? "relative z-10 h-full min-h-0 overflow-hidden rounded-2xl bg-secondary"
+                      : "relative z-10 h-[230px] overflow-hidden rounded-[18px] bg-secondary"
+                  }
+                >
+                  {mapBroken && (
+                    <p className="absolute inset-x-3 top-1/2 z-10 -translate-y-1/2 rounded-xl bg-surface/95 px-3 py-2 text-center text-xs text-muted-foreground shadow">
+                      Peta belum bisa dimuat. Daftar agenda tetap bisa dipakai; pakai tombol Rute
+                      untuk membuka Google Maps.
+                    </p>
                   )}
-                </AnimatePresence>
-                <AnimatePresence>
-                  {poi && (
-                    <motion.div
-                      key={`${poi.lat}-${poi.lng}`}
-                      initial={{ y: 16, opacity: 0, scale: 0.96 }}
-                      animate={{ y: 0, opacity: 1, scale: 1 }}
-                      exit={{ y: 12, opacity: 0 }}
-                      transition={springIos}
-                      className={`absolute inset-x-2 z-10 flex items-center gap-2.5 rounded-2xl bg-surface p-2.5 shadow-lg ${"bottom-2"}`}
-                    >
-                      {poiImage && (
-                        <img
-                          src={poiImage}
-                          alt=""
-                          loading="lazy"
-                          className="size-10 shrink-0 rounded-lg object-cover"
-                        />
-                      )}
-                      <span
-                        className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-white ${poiImage ? "hidden" : ""}`}
-                        style={{ backgroundColor: poiCategory(poi.category)?.color }}
+                  <ItineraryMap
+                    pins={model.pins}
+                    routes={model.routes}
+                    focus={focus}
+                    userPoint={me}
+                    activeId={activeId}
+                    onSelect={selectActivity}
+                    styleUrl={mapConfig!.styleUrl}
+                    poiCategories={mapConfig?.poiHelper ? poiOn : []}
+                    onPoiSelect={(picked) => {
+                      setMe(null);
+                      setPoi(picked);
+                    }}
+                    onUnavailable={() => setMapBroken(true)}
+                  />
+                  <AnimatePresence>
+                    {me && (
+                      <motion.div
+                        key="me"
+                        initial={{ y: 16, opacity: 0, scale: 0.96 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        exit={{ y: 12, opacity: 0 }}
+                        transition={springIos}
+                        className={`absolute inset-x-2 z-10 flex items-center gap-2.5 rounded-2xl bg-surface p-2.5 shadow-lg ${"bottom-2"}`}
                       >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="size-4"
-                          fill="none"
-                          stroke="#fff"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                          dangerouslySetInnerHTML={{
-                            __html: poiCategory(poi.category)?.icon ?? "",
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
+                          <LocateFixed className="size-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-semibold">
+                            Lokasi kamu
+                          </span>
+                          <span className="block text-[11px] text-muted-foreground">
+                            ±{Math.max(1, Math.round(me.accuracy))} m
+                            {nearestKm !== null
+                              ? ` · ${formatKm(nearestKm)} dari titik agenda terdekat`
+                              : ""}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void addHere()}
+                          className="tap min-h-8 rounded-lg bg-brand-red px-3 text-[12px] font-semibold text-white"
+                        >
+                          Tambah di sini
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMe(null)}
+                          aria-label="Tutup"
+                          className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <AnimatePresence>
+                    {poi && (
+                      <motion.div
+                        key={`${poi.lat}-${poi.lng}`}
+                        initial={{ y: 16, opacity: 0, scale: 0.96 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        exit={{ y: 12, opacity: 0 }}
+                        transition={springIos}
+                        className={`absolute inset-x-2 z-10 flex items-center gap-2.5 rounded-2xl bg-surface p-2.5 shadow-lg ${"bottom-2"}`}
+                      >
+                        {poiImage && (
+                          <img
+                            src={poiImage}
+                            alt=""
+                            loading="lazy"
+                            className="size-10 shrink-0 rounded-lg object-cover"
+                          />
+                        )}
+                        <span
+                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-white ${poiImage ? "hidden" : ""}`}
+                          style={{ backgroundColor: poiCategory(poi.category)?.color }}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="size-4"
+                            fill="none"
+                            stroke="#fff"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                            dangerouslySetInnerHTML={{
+                              __html: poiCategory(poi.category)?.icon ?? "",
+                            }}
+                          />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-semibold">
+                            {poi.label}
+                          </span>
+                          <span className="block text-[11px] text-muted-foreground">
+                            {poiCategory(poi.category)?.label}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForm((current) => ({
+                              ...current,
+                              title: current.title || poi.label,
+                              location: poi.label,
+                              date: scope && scope !== "all" ? scope : current.date,
+                              category: current.category || POI_FORM_CATEGORY[poi.category],
+                            }));
+                            setPoint({ lat: poi.lat, lng: poi.lng });
+                            setPoi(null);
+                            setShowForm(true);
                           }}
-                        />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-semibold">
-                          {poi.label}
-                        </span>
-                        <span className="block text-[11px] text-muted-foreground">
-                          {poiCategory(poi.category)?.label}
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm((current) => ({
-                            ...current,
-                            title: current.title || poi.label,
-                            location: poi.label,
-                            date: scope && scope !== "all" ? scope : current.date,
-                            category: current.category || POI_FORM_CATEGORY[poi.category],
-                          }));
-                          setPoint({ lat: poi.lat, lng: poi.lng });
-                          setPoi(null);
-                          setShowForm(true);
-                        }}
-                        className="tap min-h-8 rounded-lg bg-brand-red px-3 text-[12px] font-semibold text-white"
-                      >
-                        Tambah
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPoi(null)}
-                        aria-label="Tutup"
-                        className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                <div className={`absolute right-2 flex flex-col gap-2 ${"top-12"}`}>
-                  <motion.button
-                    type="button"
-                    onClick={() => setFocus((value) => !value)}
-                    aria-pressed={focus}
-                    aria-label={focus ? "Matikan mode fokus" : "Mode fokus: hanya titik agenda"}
-                    whileTap={{ scale: 0.9 }}
-                    transition={springSnappy}
-                    className={`tap flex size-9 items-center justify-center rounded-full shadow ${focus ? "bg-brand-red text-white" : "bg-surface/95"}`}
-                  >
-                    <Focus className="size-4" />
-                  </motion.button>
-                  {mapConfig?.locateMe && (
+                          className="tap min-h-8 rounded-lg bg-brand-red px-3 text-[12px] font-semibold text-white"
+                        >
+                          Tambah
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPoi(null)}
+                          aria-label="Tutup"
+                          className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <div className={`absolute right-2 flex flex-col gap-2 ${"top-12"}`}>
                     <motion.button
                       type="button"
-                      onClick={locateMe}
-                      disabled={locating}
-                      aria-label="Lokasi saya"
+                      onClick={() => setFocus((value) => !value)}
+                      aria-pressed={focus}
+                      aria-label={focus ? "Matikan mode fokus" : "Mode fokus: hanya titik agenda"}
                       whileTap={{ scale: 0.9 }}
-                      animate={locating ? { rotate: 360 } : { rotate: 0 }}
-                      transition={
-                        locating
-                          ? { repeat: Infinity, duration: 1.2, ease: "linear" }
-                          : springSnappy
-                      }
-                      className={`tap flex size-9 items-center justify-center rounded-full shadow ${me ? "bg-blue-600 text-white" : "bg-surface/95"}`}
+                      transition={springSnappy}
+                      className={`tap flex size-9 items-center justify-center rounded-full shadow ${focus ? "bg-brand-red text-white" : "bg-surface/95"}`}
                     >
-                      <LocateFixed className="size-4" />
+                      <Focus className="size-4" />
                     </motion.button>
-                  )}
+                    {mapConfig?.locateMe && (
+                      <motion.button
+                        type="button"
+                        onClick={locateMe}
+                        disabled={locating}
+                        aria-label="Lokasi saya"
+                        whileTap={{ scale: 0.9 }}
+                        animate={locating ? { rotate: 360 } : { rotate: 0 }}
+                        transition={
+                          locating
+                            ? { repeat: Infinity, duration: 1.2, ease: "linear" }
+                            : springSnappy
+                        }
+                        className={`tap flex size-9 items-center justify-center rounded-full shadow ${me ? "bg-blue-600 text-white" : "bg-surface/95"}`}
+                      >
+                        <LocateFixed className="size-4" />
+                      </motion.button>
+                    )}
+                  </div>
+                  <motion.button
+                    type="button"
+                    onClick={() => setExpanded((value) => !value)}
+                    whileTap={{ scale: 0.9, rotate: 8 }}
+                    transition={springSnappy}
+                    aria-label={expanded ? "Tutup peta layar penuh" : "Buka peta layar penuh"}
+                    className={`tap absolute right-2 flex size-9 items-center justify-center rounded-full bg-surface/95 shadow ${"top-2"}`}
+                  >
+                    {expanded ? <Shrink className="size-4" /> : <Expand className="size-4" />}
+                  </motion.button>
                 </div>
-                <motion.button
-                  type="button"
-                  onClick={() => setExpanded((value) => !value)}
-                  whileTap={{ scale: 0.9, rotate: 8 }}
-                  transition={springSnappy}
-                  aria-label={expanded ? "Tutup peta layar penuh" : "Buka peta layar penuh"}
-                  className={`tap absolute right-2 flex size-9 items-center justify-center rounded-full bg-surface/95 shadow ${"top-2"}`}
-                >
-                  {expanded ? <Shrink className="size-4" /> : <Expand className="size-4" />}
-                </motion.button>
               </div>
               {(dayRouteUrl || (mapConfig?.poiHelper && !focus)) && (
                 <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain px-0.5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -1147,12 +1153,12 @@ const POI_FORM_CATEGORY: Record<PoiCategoryId, string> = {
 function AgendaMascot({ size }: { size: number }) {
   return (
     <motion.img
-      src="/assets/agenda/mascot-agenda-v3.png"
+      src="/assets/agenda/mascot-agenda-v4.png"
       alt=""
       width={size}
-      height={Math.round(size * (278 / 360))}
+      height={Math.round(size * (272 / 360))}
       loading="lazy"
-      animate={{ y: [0, -5, 0] }}
+      animate={{ y: [0, -3, 0] }}
       transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
       className="mx-auto select-none"
       draggable={false}
@@ -1175,9 +1181,17 @@ function tripSubtitle(trip: {
       ...(withYear ? { year: "numeric" } : {}),
     }).format(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12));
   };
-  const from = fmt(trip.departure_date, false);
-  const to = fmt(trip.return_date, true);
-  const range = from && to ? `${from} – ${to}` : (to ?? from);
+  const a = String(trip.departure_date ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const b = String(trip.return_date ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  let range: string | null;
+  if (a && b && a[1] === b[1] && a[2] === b[2]) {
+    // Same month: "3–9 Nov 2026" is shorter and reads better on a phone.
+    range = `${Number(a[3])}–${fmt(trip.return_date, true)}`;
+  } else {
+    const from = fmt(trip.departure_date, false);
+    const to = fmt(trip.return_date, true);
+    range = from && to ? `${from} – ${to}` : (to ?? from);
+  }
   return [`Perjalanan ${trip.name}`, trip.destination_name, range].filter(Boolean).join(" · ");
 }
 

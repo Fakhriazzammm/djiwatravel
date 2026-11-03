@@ -416,6 +416,6 @@ describe("agenda map", () => {
         mapConfig={null}
       />,
     );
-    expect(screen.getByText(/Perjalanan spring · Tokyo · 3 Nov – 9 Nov 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Perjalanan spring · Tokyo · 3–9 Nov 2026/)).toBeInTheDocument();
   });
 });
