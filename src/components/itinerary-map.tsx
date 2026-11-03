@@ -51,6 +51,7 @@ export default function ItineraryMap({
   useEffect(() => {
     let disposed = false;
     let observer: ResizeObserver | null = null;
+    let loadTimer: ReturnType<typeof setTimeout> | undefined;
     const markerStore = markers.current;
     void (async () => {
       try {
@@ -70,13 +71,17 @@ export default function ItineraryMap({
         });
         mapRef.current = map;
         map.addControl(new maplibre.NavigationControl({ showCompass: false }), "bottom-right");
+        // Tile or sprite hiccups are logged only. If the basemap never finishes loading, the
+        // timeout below reports it so the Agenda can show a clear message instead of a blank box.
         map.on("error", (event) => {
-          // A broken basemap must not take the Agenda with it: fall back to the list.
-          if (!map.isStyleLoaded() && !disposed) latest.current.onUnavailable?.();
           console.error("[itinerary-map]", event.error?.message ?? event);
         });
+        loadTimer = setTimeout(() => {
+          if (!disposed && !map.loaded()) latest.current.onUnavailable?.();
+        }, 12000);
         map.on("load", () => {
           if (disposed) return;
+          clearTimeout(loadTimer);
           map.addSource(ROUTE_SOURCE, {
             type: "geojson",
             data: { type: "FeatureCollection", features: [] },
@@ -106,6 +111,7 @@ export default function ItineraryMap({
     })();
     return () => {
       disposed = true;
+      clearTimeout(loadTimer);
       observer?.disconnect();
       markerStore.forEach(({ marker }) => marker.remove());
       markerStore.clear();

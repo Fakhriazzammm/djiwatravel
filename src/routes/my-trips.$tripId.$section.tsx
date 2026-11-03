@@ -23,6 +23,7 @@ import ItineraryMap from "@/components/itinerary-map";
 import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import {
+  DEFAULT_ITINERARY_MAP_CONFIG,
   buildMapModel,
   formatKm,
   googleMapsDayRouteUrl,
@@ -66,7 +67,7 @@ export const Route = createFileRoute("/my-trips/$tripId/$section")({
         }),
         // The map is an enhancement: if its setting cannot be read the Agenda still loads.
         params.section === "itinerary"
-          ? getItineraryMapConfig().catch(() => null)
+          ? getItineraryMapConfig().catch(() => DEFAULT_ITINERARY_MAP_CONFIG)
           : Promise.resolve(null),
       ]);
       return { ...section, mapConfig };
@@ -309,7 +310,7 @@ export function ItineraryEditor({
   }
 
   const days = useMemo(() => groupItineraryByDay(items), [items]);
-  const mapOn = Boolean(mapConfig?.enabled) && !mapBroken;
+  const mapOn = Boolean(mapConfig?.enabled);
   const defaultDay = days.find((day) => day.date === today())?.date ?? days[0]?.date ?? "";
   const scope =
     selectedDay === "all" || days.some((day) => day.date === selectedDay)
@@ -468,6 +469,12 @@ export function ItineraryEditor({
               : "relative h-[230px] overflow-hidden rounded-2xl bg-secondary"
           }
         >
+          {mapBroken && (
+            <p className="absolute inset-x-3 top-1/2 z-10 -translate-y-1/2 rounded-xl bg-surface/95 px-3 py-2 text-center text-xs text-muted-foreground shadow">
+              Peta belum bisa dimuat. Daftar agenda tetap bisa dipakai; pakai tombol Rute untuk
+              membuka Google Maps.
+            </p>
+          )}
           <ItineraryMap
             pins={model.pins}
             routes={model.routes}
