@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapLibreMap, Marker } from "maplibre-gl";
-import { boundsOf, curvedRoute, type MapPin } from "@/lib/itinerary-map";
+import type { AddLayerObject, Map as MapLibreMap, Marker } from "maplibre-gl";
+import {
+  POI_CATEGORIES,
+  boundsOf,
+  curvedRoute,
+  type MapPin,
+  type PoiCategoryId,
+} from "@/lib/itinerary-map";
+
+export type PickedPoi = { category: PoiCategoryId; label: string; lat: number; lng: number };
 
 const ROUTE_SOURCE = "agenda-route";
 const RED = "#c4353b";
@@ -11,6 +19,9 @@ type Props = {
   activeId: string | null;
   onSelect: (id: string) => void;
   styleUrl: string;
+  /** Categories shown on the map. Empty = no helper layers at all. */
+  poiCategories?: PoiCategoryId[];
+  onPoiSelect?: (poi: PickedPoi) => void;
   className?: string;
   onUnavailable?: () => void;
 };
@@ -70,6 +81,85 @@ function paintMarker(entry: MarkerEntry, active: boolean) {
   root.append(body, tip);
 }
 
+function poiIconUrl(color: string, icon: string) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="25" fill="${color}" stroke="#fff" stroke-width="3"/><g transform="translate(14 14) scale(1.1667)" stroke="#fff" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</g></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image(56, 56);
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function addPoiLayers(map: MapLibreMap, enabled: PoiCategoryId[]) {
+  // Our category layers replace the basemap's own POI icons so each place shows once.
+  for (const layer of map.getStyle().layers ?? []) {
+    if (/^poi_|^airport$/.test(layer.id)) map.setLayoutProperty(layer.id, "visibility", "none");
+  }
+  if (!map.getSource("openmaptiles")) return;
+  try {
+    const images = await Promise.all(
+      POI_CATEGORIES.map((c) => loadImage(poiIconUrl(c.color, c.icon))),
+    );
+    POI_CATEGORIES.forEach((c, i) => {
+      if (!map.hasImage(`djiwa-${c.id}`))
+        map.addImage(`djiwa-${c.id}`, images[i]!, { pixelRatio: 2 });
+    });
+  } catch (error) {
+    console.error("[itinerary-map] poi icons failed", error);
+    return;
+  }
+  const addSymbol = (layer: Record<string, unknown>) =>
+    map.addLayer(layer as unknown as AddLayerObject);
+  const label = ["coalesce", ["get", "name:latin"], ["get", "name_en"], ["get", "name"]];
+  for (const c of POI_CATEGORIES) {
+    const visible = enabled.includes(c.id) ? "visible" : "none";
+    const layout = {
+      "icon-image": `djiwa-${c.id}`,
+      "icon-size": 0.78,
+      "icon-padding": 4,
+      "text-field": label,
+      "text-font": ["Noto Sans Regular"],
+      "text-size": 10,
+      "text-anchor": "top",
+      "text-offset": [0, 1.05],
+      "text-optional": true,
+      "text-max-width": 7,
+      visibility: visible,
+    } as const;
+    const paint = { "text-color": "#374151", "text-halo-color": "#ffffff", "text-halo-width": 1.4 };
+    addSymbol({
+      id: `djiwa-poi-${c.id}`,
+      type: "symbol",
+      source: "openmaptiles",
+      "source-layer": "poi",
+      minzoom: c.minZoom,
+      filter: ["match", ["get", "class"], c.classes, true, false],
+      layout: { ...layout, "symbol-sort-key": ["get", "rank"] },
+      paint,
+    });
+    if (c.id === "airport") {
+      addSymbol({
+        id: `djiwa-poi-${c.id}-iata`,
+        type: "symbol",
+        source: "openmaptiles",
+        "source-layer": "aerodrome_label",
+        minzoom: c.minZoom,
+        filter: ["has", "iata"],
+        layout,
+        paint,
+      });
+    }
+  }
+}
+
+const poiLayerIds = () =>
+  POI_CATEGORIES.flatMap((c) => [`djiwa-poi-${c.id}`, `djiwa-poi-${c.id}-iata`]);
+
 /**
  * MapLibre map (OpenStreetMap data) with numbered pins and a dashed route per day. Loaded in the
  * browser only; the library never runs during server rendering.
@@ -80,6 +170,8 @@ export default function ItineraryMap({
   activeId,
   onSelect,
   styleUrl,
+  poiCategories = [],
+  onPoiSelect,
   className,
   onUnavailable,
 }: Props) {
@@ -88,8 +180,10 @@ export default function ItineraryMap({
   const markers = useRef<Map<string, MarkerEntry>>(new Map());
   const lib = useRef<typeof import("maplibre-gl") | null>(null);
   const [ready, setReady] = useState(false);
-  const latest = useRef({ pins, routes, activeId, onSelect, onUnavailable });
-  latest.current = { pins, routes, activeId, onSelect, onUnavailable };
+  const latest = useRef({ pins, routes, activeId, onSelect, onUnavailable, onPoiSelect });
+  latest.current = { pins, routes, activeId, onSelect, onUnavailable, onPoiSelect };
+  const poiRef = useRef(poiCategories);
+  poiRef.current = poiCategories;
 
   useEffect(() => {
     let disposed = false;
@@ -134,7 +228,7 @@ export default function ItineraryMap({
         loadTimer = setTimeout(() => {
           if (!disposed && !map.loaded()) latest.current.onUnavailable?.();
         }, 12000);
-        map.once("style.load", () => {
+        map.once("style.load", async () => {
           if (disposed) return;
           clearTimeout(loadTimer);
           map.addSource(ROUTE_SOURCE, {
@@ -155,6 +249,27 @@ export default function ItineraryMap({
             paint: { "line-color": RED, "line-width": 3.5, "line-dasharray": [0.01, 2.2] },
             layout: { "line-cap": "round", "line-join": "round" },
           });
+          await addPoiLayers(map, poiRef.current);
+          if (disposed) return;
+          const ids = poiLayerIds().filter((id) => map.getLayer(id));
+          if (ids.length) {
+            map.on("click", ids, (event) => {
+              const feature = event.features?.[0];
+              if (!feature || feature.geometry.type !== "Point") return;
+              const props = (feature.properties ?? {}) as Record<string, unknown>;
+              const name = String(props["name:latin"] ?? props["name_en"] ?? props["name"] ?? "");
+              const category = POI_CATEGORIES.find((c) =>
+                feature.layer.id.startsWith(`djiwa-poi-${c.id}`),
+              );
+              const [lng, lat] = feature.geometry.coordinates as [number, number];
+              if (name && category)
+                latest.current.onPoiSelect?.({ category: category.id, label: name, lat, lng });
+            });
+            ids.forEach((id) => {
+              map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
+              map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
+            });
+          }
           setReady(true);
         });
         observer = new ResizeObserver(() => map.resize());
@@ -232,6 +347,18 @@ export default function ItineraryMap({
       else map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: reduce ? 0 : 400 });
     }
   }, [pins, routes, ready]);
+
+  // Category helper layers follow the chips.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    for (const c of POI_CATEGORIES) {
+      const visibility = poiCategories.includes(c.id) ? "visible" : "none";
+      for (const id of [`djiwa-poi-${c.id}`, `djiwa-poi-${c.id}-iata`]) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visibility);
+      }
+    }
+  }, [poiCategories, ready]);
 
   // Active pin styling and re-centering.
   useEffect(() => {

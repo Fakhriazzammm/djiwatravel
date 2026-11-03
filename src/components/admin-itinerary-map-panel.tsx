@@ -24,6 +24,7 @@ export function AdminItineraryMapPanel({
 }) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [placeSearch, setPlaceSearch] = useState(initial.placeSearch);
+  const [poiHelper, setPoiHelper] = useState(initial.poiHelper);
   const [styleUrl, setStyleUrl] = useState(initial.styleUrl);
   const [version, setVersion] = useState(initialVersion);
   const [reason, setReason] = useState("");
@@ -34,7 +35,7 @@ export function AdminItineraryMapPanel({
   const save = async () => {
     setStatus({ kind: "saving" });
     try {
-      const config = parseItineraryMapConfig({ enabled, placeSearch, styleUrl });
+      const config = parseItineraryMapConfig({ enabled, placeSearch, poiHelper, styleUrl });
       const result = await saveAdminItineraryMap({
         data: { config, reason, expectedVersion: version },
       });
@@ -90,6 +91,15 @@ export function AdminItineraryMapPanel({
             className="size-5 accent-primary"
           />
           Pencarian tempat saat menambah aktivitas
+        </label>
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={poiHelper}
+            onChange={(event) => setPoiHelper(event.target.checked)}
+            className="size-5 accent-primary"
+          />
+          Penanda stasiun, bandara, makan, dan atraksi di peta
         </label>
         <p className="text-xs leading-5 text-muted-foreground">
           Pencarian berjalan lewat server Djiwa (tanpa kunci di browser) dan dibatasi per pelanggan.

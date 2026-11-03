@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
   boundsOf,
+  conflictingIds,
+  findConflicts,
+  itinerarySortKey,
+  POI_CATEGORIES,
   curvedRoute,
   estimateLeg,
   formatMinutes,
@@ -173,5 +177,74 @@ describe("travel legs and curved route", () => {
     expect(line).toContainEqual(b);
     expect(line.length).toBeGreaterThan(40);
     expect(curvedRoute([a])).toEqual([]);
+  });
+});
+
+describe("schedule overlaps", () => {
+  const existing = [
+    { id: "a", title: "Ngopi", date: "2026-11-04", start: "10:00", end: "11:00" },
+    { id: "b", title: "Makan", date: "2026-11-04", start: "12:00", end: "13:00" },
+    { id: "c", title: "Kereta malam", date: "2026-11-04", start: "23:00", end: "01:00" },
+    { id: "d", title: "Tanpa jam", date: "2026-11-04", start: null, end: null },
+  ];
+  it("flags overlapping time ranges and ignores touching ones", () => {
+    expect(
+      findConflicts({ date: "2026-11-04", start: "10:30", end: "11:30" }, existing).map(
+        (x) => x.id,
+      ),
+    ).toEqual(["a"]);
+    expect(findConflicts({ date: "2026-11-04", start: "11:00", end: "12:00" }, existing)).toEqual(
+      [],
+    );
+    expect(findConflicts({ date: "2026-11-05", start: "10:30", end: "11:30" }, existing)).toEqual(
+      [],
+    );
+  });
+  it("counts an overnight activity into the next morning", () => {
+    expect(
+      findConflicts({ date: "2026-11-05", start: "00:30", end: "01:30" }, existing).map(
+        (x) => x.id,
+      ),
+    ).toEqual(["c"]);
+  });
+  it("treats a missing end time as 30 minutes and never flags an untimed activity", () => {
+    expect(
+      findConflicts({ date: "2026-11-04", start: "10:45", end: null }, existing).map((x) => x.id),
+    ).toEqual(["a"]);
+    expect(findConflicts({ date: "2026-11-04", start: null }, existing)).toEqual([]);
+  });
+  it("marks existing activities that overlap each other", () => {
+    const ids = conflictingIds([
+      ...existing,
+      { id: "e", title: "Cek", date: "2026-11-04", start: "12:30", end: "14:00" },
+    ]);
+    expect([...ids].sort()).toEqual(["b", "e"]);
+  });
+  it("sorts by date then start then end, untimed last", () => {
+    const rows = [
+      { activity_date: "2026-11-04", start_time: null },
+      { activity_date: "2026-11-04", start_time: "10:30:00", end_time: "12:00:00" },
+      { activity_date: "2026-11-04", start_time: "09:00:00" },
+      { activity_date: "2026-11-04", start_time: "10:30:00", end_time: "11:00:00" },
+    ];
+    const sorted = [...rows].sort((a, b) => itinerarySortKey(a).localeCompare(itinerarySortKey(b)));
+    expect(sorted.map((r) => r.start_time)).toEqual(["09:00:00", "10:30:00", "10:30:00", null]);
+    expect(sorted[1]!.end_time).toBe("11:00:00");
+  });
+});
+
+describe("map helper categories", () => {
+  it("offers station, airport and food markers with icons, on by default", () => {
+    const ids = POI_CATEGORIES.map((c) => c.id);
+    expect(ids).toEqual(expect.arrayContaining(["station", "airport", "food"]));
+    for (const c of POI_CATEGORIES) {
+      expect(c.icon.length).toBeGreaterThan(20);
+      expect(c.classes.length).toBeGreaterThan(0);
+    }
+    expect(POI_CATEGORIES.filter((c) => c.defaultOn).map((c) => c.id)).toContain("station");
+  });
+  it("lets Admin turn the helper off", () => {
+    expect(parseItineraryMapConfig({ poiHelper: false }).poiHelper).toBe(false);
+    expect(() => parseItineraryMapConfig({ poiHelper: "no" })).toThrow();
   });
 });

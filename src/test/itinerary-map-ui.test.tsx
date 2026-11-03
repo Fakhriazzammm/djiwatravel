@@ -163,4 +163,72 @@ describe("agenda map", () => {
     fireEvent.change(screen.getByLabelText(/Lokasi/), { target: { value: "Shibuya" } });
     expect(searchPlaces).not.toHaveBeenCalled();
   });
+
+  it("shows the time above the title and marks overlapping activities", () => {
+    const rows = [
+      {
+        id: "x",
+        activity_date: "2026-11-04",
+        start_time: "10:30:00",
+        end_time: "12:00:00",
+        title: "Belanja",
+        location: null,
+      },
+      {
+        id: "y",
+        activity_date: "2026-11-04",
+        start_time: "10:00:00",
+        end_time: "11:00:00",
+        title: "Ngopi",
+        location: null,
+      },
+    ];
+    render(
+      <ItineraryEditor tripId="t" items={rows} onSaved={vi.fn(async () => {})} mapConfig={null} />,
+    );
+    const titles = screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent);
+    expect(titles).toEqual(["Ngopi", "Belanja"]);
+    expect(screen.getByText("10:00–11:00")).toBeInTheDocument();
+    expect(screen.getAllByText("Jadwal bentrok")).toHaveLength(2);
+  });
+
+  it("warns before saving an activity that overlaps another and lets the user keep or change it", async () => {
+    vi.mocked(postItinerary).mockResolvedValue({} as never);
+    const rows = [
+      {
+        id: "y",
+        activity_date: "2026-11-04",
+        start_time: "10:00:00",
+        end_time: "11:00:00",
+        title: "Ngopi",
+        location: null,
+      },
+    ];
+    render(
+      <ItineraryEditor tripId="t" items={rows} onSaved={vi.fn(async () => {})} mapConfig={null} />,
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
+    fireEvent.change(screen.getByLabelText("Nama aktivitas"), { target: { value: "Makan" } });
+    fireEvent.change(screen.getByLabelText("Tanggal"), { target: { value: "2026-11-04" } });
+    fireEvent.change(screen.getByLabelText("Mulai"), { target: { value: "10:30" } });
+    fireEvent.change(screen.getByLabelText("Selesai"), { target: { value: "11:30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan aktivitas" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Jadwal bertabrakan");
+    expect(screen.getByRole("alert")).toHaveTextContent("Ngopi");
+    expect(postItinerary).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Tetap simpan" }));
+    await waitFor(() => expect(postItinerary).toHaveBeenCalledOnce());
+  });
+
+  it("saves straight away when the time is free", async () => {
+    vi.mocked(postItinerary).mockResolvedValue({} as never);
+    render(
+      <ItineraryEditor tripId="t" items={[]} onSaved={vi.fn(async () => {})} mapConfig={null} />,
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
+    fireEvent.change(screen.getByLabelText("Nama aktivitas"), { target: { value: "Makan" } });
+    fireEvent.change(screen.getByLabelText("Mulai"), { target: { value: "10:30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan aktivitas" }));
+    await waitFor(() => expect(postItinerary).toHaveBeenCalledOnce());
+  });
 });

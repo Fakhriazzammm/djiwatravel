@@ -1,7 +1,7 @@
 import { formatTripMoney } from "@/lib/trip-money";
 import { MoneyInput } from "@/components/money-input";
 import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
-import { Fragment, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { springIos, springSnappy } from "@/lib/motion";
 import {
@@ -13,6 +13,8 @@ import {
   Navigation,
   Route as RouteIcon,
   Shrink,
+  TriangleAlert,
+  X,
   TrainFront,
   Trash2,
   ClipboardCheck,
@@ -25,12 +27,18 @@ import {
   Utensils,
   WalletCards,
 } from "lucide-react";
-import ItineraryMap from "@/components/itinerary-map";
+import ItineraryMap, { type PickedPoi } from "@/components/itinerary-map";
 import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
+  POI_CATEGORIES,
   buildMapModel,
+  conflictingIds,
+  findConflicts,
+  itinerarySortKey,
+  poiCategory,
+  type PoiCategoryId,
   estimateLeg,
   formatKm,
   formatMinutes,
@@ -276,11 +284,29 @@ export function ItineraryEditor({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [mapBroken, setMapBroken] = useState(false);
+  const [poiOn, setPoiOn] = useState<PoiCategoryId[]>(() =>
+    POI_CATEGORIES.filter((category) => category.defaultOn).map((category) => category.id),
+  );
+  const [poi, setPoi] = useState<PickedPoi | null>(null);
+  const [conflicts, setConflicts] = useState<TimedItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  // A new time or date makes an earlier overlap warning stale.
+  useEffect(() => setConflicts([]), [form.date, form.startTime, form.endTime]);
+
+  async function submit(event?: React.FormEvent, force = false) {
+    event?.preventDefault();
+    if (!force && form.startTime) {
+      const hits = findConflicts(
+        { date: form.date, start: form.startTime, end: form.endTime || null },
+        items.map(toTimedItem),
+      );
+      if (hits.length) {
+        setConflicts(hits);
+        return;
+      }
+    }
     setSaving(true);
     try {
       const saved = await runTripMutation({
@@ -320,6 +346,7 @@ export function ItineraryEditor({
   }
 
   const days = useMemo(() => groupItineraryByDay(items), [items]);
+  const overlapIds = useMemo(() => conflictingIds(items.map(toTimedItem)), [items]);
   const mapOn = Boolean(mapConfig?.enabled);
   const defaultDay = days.find((day) => day.date === today())?.date ?? days[0]?.date ?? "";
   const scope =
@@ -367,7 +394,7 @@ export function ItineraryEditor({
                   Susun rencana perjalananmu. Semua waktu mengikuti zona lokal.
                 </SheetDescription>
               </SheetHeader>
-              <form onSubmit={submit} className="space-y-3">
+              <form onSubmit={(event) => void submit(event)} className="space-y-3">
                 <div className="space-y-1.5">
                   <label htmlFor="agenda-title" className="text-[13px] font-semibold">
                     Nama aktivitas
@@ -422,6 +449,7 @@ export function ItineraryEditor({
                     <label className="space-y-1.5 text-xs text-muted-foreground">
                       Mulai
                       <input
+                        id="agenda-start"
                         type="time"
                         value={form.startTime}
                         onChange={(event) => setForm({ ...form, startTime: event.target.value })}
@@ -458,6 +486,56 @@ export function ItineraryEditor({
                     <option value="other">Lainnya</option>
                   </select>
                 </div>
+                <AnimatePresence initial={false}>
+                  {conflicts.length > 0 && (
+                    <motion.div
+                      role="alert"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={springIos}
+                      className="overflow-hidden"
+                    >
+                      <div className="rounded-xl bg-amber-50 p-3 text-[12px] text-amber-900">
+                        <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+                          <TriangleAlert className="size-4" /> Jadwal bertabrakan
+                        </p>
+                        <p className="mt-1">Waktu ini beririsan dengan aktivitas lain:</p>
+                        <ul className="mt-1 space-y-0.5">
+                          {conflicts.map((conflict) => (
+                            <li key={conflict.id} className="tabular-nums">
+                              • {String(conflict.title)} · {conflict.start}
+                              {conflict.end ? `–${conflict.end}` : ""}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-1 text-amber-800/80">
+                          Tanpa jam selesai, aktivitas dihitung 30 menit.
+                        </p>
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConflicts([]);
+                              document.getElementById("agenda-start")?.focus();
+                            }}
+                            className="tap min-h-9 flex-1 rounded-lg bg-surface text-[12px] font-semibold"
+                          >
+                            Ubah waktu
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => void submit(undefined, true)}
+                            className="tap min-h-9 flex-1 rounded-lg bg-amber-600 text-[12px] font-semibold text-white disabled:opacity-60"
+                          >
+                            Tetap simpan
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <div className="sticky bottom-0 -mx-5 flex gap-3 border-t border-border/60 bg-background/95 px-4 pb-1 pt-4 backdrop-blur">
                   <button
                     type="button"
@@ -500,6 +578,8 @@ export function ItineraryEditor({
                 activeId={activeId}
                 onSelect={setActiveId}
                 styleUrl={mapConfig!.styleUrl}
+                poiCategories={mapConfig?.poiHelper ? poiOn : []}
+                onPoiSelect={setPoi}
                 onUnavailable={() => setMapBroken(true)}
               />
               <div
@@ -529,6 +609,113 @@ export function ItineraryEditor({
                   </span>
                 )}
               </div>
+              {mapConfig?.poiHelper && (
+                <div
+                  className={`absolute left-2 right-2 flex gap-1.5 overflow-x-auto ${expanded ? "top-[calc(env(safe-area-inset-top)+3rem)]" : "top-12"}`}
+                  role="group"
+                  aria-label="Tampilkan di peta"
+                >
+                  {POI_CATEGORIES.map((category, index) => {
+                    const on = poiOn.includes(category.id);
+                    return (
+                      <motion.button
+                        key={category.id}
+                        type="button"
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ ...springIos, delay: 0.1 + index * 0.04 }}
+                        whileTap={{ scale: 0.92 }}
+                        onClick={() =>
+                          setPoiOn((current) =>
+                            on
+                              ? current.filter((id) => id !== category.id)
+                              : [...current, category.id],
+                          )
+                        }
+                        aria-pressed={on}
+                        {...(on
+                          ? { style: { backgroundColor: category.color, color: "#fff" } }
+                          : {})}
+                        className="tap inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full bg-surface/95 px-2.5 text-[11px] font-semibold shadow"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="size-3.5"
+                          fill="none"
+                          stroke={on ? "#fff" : category.color}
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                          dangerouslySetInnerHTML={{ __html: category.icon }}
+                        />
+                        {category.label}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              )}
+              <AnimatePresence>
+                {poi && (
+                  <motion.div
+                    key={`${poi.lat}-${poi.lng}`}
+                    initial={{ y: 16, opacity: 0, scale: 0.96 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    exit={{ y: 12, opacity: 0 }}
+                    transition={springIos}
+                    className={`absolute inset-x-2 z-10 flex items-center gap-2.5 rounded-2xl bg-surface p-2.5 shadow-lg ${expanded ? "bottom-[calc(env(safe-area-inset-bottom)+3.5rem)]" : "bottom-12"}`}
+                  >
+                    <span
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-white"
+                      style={{ backgroundColor: poiCategory(poi.category)?.color }}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="size-4"
+                        fill="none"
+                        stroke="#fff"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                        dangerouslySetInnerHTML={{ __html: poiCategory(poi.category)?.icon ?? "" }}
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-semibold">{poi.label}</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {poiCategory(poi.category)?.label}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm((current) => ({
+                          ...current,
+                          title: current.title || poi.label,
+                          location: poi.label,
+                          date: scope && scope !== "all" ? scope : current.date,
+                          category: current.category || POI_FORM_CATEGORY[poi.category],
+                        }));
+                        setPoint({ lat: poi.lat, lng: poi.lng });
+                        setPoi(null);
+                        setShowForm(true);
+                      }}
+                      className="tap min-h-8 rounded-lg bg-brand-red px-3 text-[12px] font-semibold text-white"
+                    >
+                      Tambah
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPoi(null)}
+                      aria-label="Tutup"
+                      className="tap flex size-8 items-center justify-center rounded-lg text-muted-foreground"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <motion.button
                 type="button"
                 onClick={() => setExpanded((value) => !value)}
@@ -568,6 +755,7 @@ export function ItineraryEditor({
                 date={day.date}
                 items={day.items}
                 pinNumbers={pinNumbers}
+                overlapIds={overlapIds}
                 activeId={activeId}
                 onSelect={(id) => {
                   setActiveId(id);
@@ -606,13 +794,45 @@ export function ItineraryEditor({
   );
 }
 
+type TimedItem = {
+  id: string;
+  title: unknown;
+  date: string;
+  start: string | null;
+  end: string | null;
+};
+
+const hhmm = (value: unknown) => {
+  const text = String(value ?? "");
+  return /^\d{2}:\d{2}/.test(text) ? text.slice(0, 5) : null;
+};
+
+function toTimedItem(item: Item): TimedItem {
+  return {
+    id: item.id,
+    title: item.title,
+    date: itineraryDateKey(item.activity_date) ?? "",
+    start: hhmm(item.start_time),
+    end: hhmm(item.end_time),
+  };
+}
+
+const POI_FORM_CATEGORY: Record<PoiCategoryId, string> = {
+  station: "transport",
+  airport: "flight",
+  food: "food",
+  attraction: "attraction",
+  hotel: "hotel",
+  shop: "other",
+};
+
 function groupItineraryByDay(items: Item[]) {
   const groups = new Map<string, Item[]>();
   [...items]
-    .sort((a, b) =>
-      `${itineraryDateKey(a.activity_date)}T${String(a.start_time ?? "99:99")}`.localeCompare(
-        `${itineraryDateKey(b.activity_date)}T${String(b.start_time ?? "99:99")}`,
-      ),
+    .sort(
+      (a, b) =>
+        itinerarySortKey(a).localeCompare(itinerarySortKey(b)) ||
+        String(a.title ?? "").localeCompare(String(b.title ?? "")),
     )
     .forEach((item) => {
       const date = itineraryDateKey(item.activity_date) ?? "";
@@ -715,6 +935,7 @@ function ItineraryDay({
   date,
   items,
   pinNumbers,
+  overlapIds,
   activeId,
   onSelect,
   onDelete,
@@ -722,6 +943,7 @@ function ItineraryDay({
   date: string;
   items: Item[];
   pinNumbers: Map<string, number>;
+  overlapIds: Set<string>;
   activeId: string | null;
   onSelect: (id: string) => void;
   onDelete: (id: string) => Promise<void>;
@@ -764,6 +986,7 @@ function ItineraryDay({
             <ItineraryItem
               item={item}
               pin={pinNumbers.get(item.id)}
+              overlaps={overlapIds.has(item.id)}
               active={activeId === item.id}
               onSelect={onSelect}
               onDelete={onDelete}
@@ -778,12 +1001,14 @@ function ItineraryDay({
 function ItineraryItem({
   item,
   pin,
+  overlaps,
   active,
   onSelect,
   onDelete,
 }: {
   item: Item;
   pin?: number | undefined;
+  overlaps: boolean;
   active: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => Promise<void>;
@@ -831,6 +1056,12 @@ function ItineraryItem({
         </div>
       )}
       <div className="min-w-0">
+        {time && (
+          <p className="text-[11px] font-medium tabular-nums leading-tight text-muted-foreground">
+            {time}
+            {endTime ? `–${endTime}` : ""}
+          </p>
+        )}
         <h4 className="text-[14px] font-semibold leading-snug">
           {String(item.title ?? "Aktivitas")}
         </h4>
@@ -843,13 +1074,12 @@ function ItineraryItem({
           ) : (
             <span>Lokasi belum diatur</span>
           )}
-          {time && (
-            <span className="tabular-nums">
-              {time}
-              {endTime ? `–${endTime}` : ""}
-            </span>
-          )}
         </div>
+        {overlaps && (
+          <span className="mr-1.5 mt-1.5 inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[10.5px] font-semibold text-orange-700">
+            <TriangleAlert className="size-3" /> Jadwal bentrok
+          </span>
+        )}
         {item.booking_reference ? (
           <span className="mt-1.5 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-700">
             Booking tersimpan
