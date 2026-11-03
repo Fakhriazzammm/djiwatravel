@@ -16,7 +16,8 @@ import {
   Utensils,
   WalletCards,
 } from "lucide-react";
-import { BackBar, Page, btnRed, btnSoft, group } from "@/components/shell";
+import { Page, btnRed, btnSoft, group } from "@/components/shell";
+import { TripNavBar, TripTabBar, type TripTabId } from "@/components/trip-ios";
 import {
   Sheet,
   SheetContent,
@@ -69,36 +70,6 @@ const labels: Record<string, string> = {
   "ai-planner": "AI Planner",
 };
 type FeatureId = "budget" | "expenses" | "itinerary" | "checklist" | "bookings";
-const featureTabs: Array<{ id: FeatureId; label: string }> = [
-  { id: "itinerary", label: "Agenda" },
-  { id: "bookings", label: "Pemesanan" },
-  { id: "budget", label: "Anggaran" },
-  { id: "checklist", label: "Checklist" },
-  { id: "expenses", label: "Pengeluaran" },
-];
-
-export function TripFeatureNav({ tripId, active }: { tripId: string; active?: FeatureId }) {
-  return (
-    <nav
-      aria-label="Fitur perjalanan"
-      className="sticky top-0 z-20 -mx-4 mt-4 overflow-x-auto border-y border-border/60 bg-background/95 px-4 py-2 backdrop-blur-md scrollbar-none"
-    >
-      <div className="flex w-max gap-1.5">
-        {featureTabs.map((tab) => (
-          <Link
-            key={tab.id}
-            to="/my-trips/$tripId/$section"
-            params={{ tripId, section: tab.id }}
-            className={`tap flex min-h-11 items-center rounded-full px-4 text-[13px] font-semibold whitespace-nowrap transition-colors ${active === tab.id ? "bg-foreground text-background shadow-sm" : "bg-secondary text-muted-foreground"}`}
-            aria-current={active === tab.id ? "page" : undefined}
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </div>
-    </nav>
-  );
-}
 type Item = {
   id: string;
   name?: unknown;
@@ -160,19 +131,35 @@ function TripSection() {
   const summary = data.summary as BudgetSummary | null;
   const categories = data.categories as CategoryOption[];
   return (
-    <Page>
-      <BackBar title={trip.destination_name || trip.name} />
-      <div className="pt-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Ruang perjalanan
-        </p>
-        <h1 className="mt-1 text-[28px] font-bold tracking-[-0.04em]">
-          {labels[section] ?? "Perjalanan"}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{trip.name}</p>
-      </div>
-      <TripFeatureNav tripId={tripId} active={section as FeatureId} />
-      <div className="mt-5 space-y-4">
+    <Page tabs={false}>
+      <TripNavBar backLabel={trip.name} backTo="trip" backTripId={tripId} />
+      <h1 className="px-1 pb-2 pt-1 text-[30px] font-bold leading-[1.1] tracking-[-0.03em]">
+        {labels[section] ?? "Perjalanan"}
+      </h1>
+      {(section === "budget" || section === "expenses") && (
+        <div
+          role="tablist"
+          aria-label="Biaya"
+          className="mb-3 grid grid-cols-2 rounded-[10px] bg-secondary p-0.5 text-[13px] font-medium"
+        >
+          {(["budget", "expenses"] as const).map((id) => (
+            <Link
+              key={id}
+              role="tab"
+              aria-selected={section === id}
+              to="/my-trips/$tripId/$section"
+              params={{ tripId, section: id }}
+              replace
+              className={`tap flex min-h-9 items-center justify-center rounded-lg ${
+                section === id ? "bg-surface font-semibold shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              {id === "budget" ? "Anggaran" : "Pengeluaran"}
+            </Link>
+          ))}
+        </div>
+      )}
+      <div className="space-y-4">
         {section === "budget" && (
           <BudgetEditor
             items={items}
@@ -207,6 +194,10 @@ function TripSection() {
           </div>
         )}
       </div>
+      <TripTabBar
+        tripId={tripId}
+        active={section === "expenses" ? "budget" : (section as TripTabId)}
+      />
     </Page>
   );
 }
@@ -1271,83 +1262,6 @@ function EditableList({
       ) : (
         <div className="rounded-2xl bg-secondary p-4 text-sm text-muted-foreground">{empty}</div>
       )}
-    </div>
-  );
-}
-
-const workspaceGroups = [
-  {
-    title: "Rencana",
-    items: [
-      { id: "itinerary", title: "Agenda", icon: CalendarDays },
-      { id: "bookings", title: "Pemesanan", icon: Hotel },
-    ],
-  },
-  {
-    title: "Persiapan",
-    items: [{ id: "checklist", title: "Checklist", icon: ClipboardCheck }],
-  },
-  {
-    title: "Keuangan",
-    items: [{ id: "expenses", title: "Pengeluaran", icon: WalletCards }],
-  },
-] as const;
-
-export function TripWorkspace({
-  tripId,
-  expenses,
-  itinerary,
-  checklist,
-  bookings,
-}: {
-  tripId: string;
-  expenses: unknown[];
-  itinerary: unknown[];
-  checklist: unknown[];
-  bookings: unknown[];
-}) {
-  const completed = (checklist as Item[]).filter((item) => Boolean(item.is_completed)).length;
-  const summary = {
-    expenses: expenses.length ? `${expenses.length} catatan` : "Catat pengeluaran",
-    itinerary: itinerary.length ? `${itinerary.length} agenda` : "Tambah agenda",
-    checklist: checklist.length
-      ? `${completed} dari ${checklist.length} selesai`
-      : "Tambah checklist",
-    bookings: bookings.length ? `${bookings.length} pemesanan` : "Tambah pemesanan",
-  };
-
-  return (
-    <div className="mt-7 space-y-6" aria-label="Kelola perjalanan">
-      {workspaceGroups.map((group) => (
-        <section key={group.title} aria-labelledby={`workspace-${group.title}`}>
-          <h2
-            id={`workspace-${group.title}`}
-            className="px-3 text-[13px] font-semibold text-muted-foreground"
-          >
-            {group.title}
-          </h2>
-          <div className="mt-3 overflow-hidden rounded-[22px] bg-surface shadow-[0_4px_18px_rgba(15,23,42,0.04)] ring-1 ring-border/50">
-            {group.items.map(({ id, title, icon: Icon }) => (
-              <Link
-                key={id}
-                to="/my-trips/$tripId/$section"
-                params={{ tripId, section: id }}
-                className="tap flex min-h-[68px] items-center gap-3 border-b border-border/55 px-4 py-3 transition-colors last:border-b-0 active:bg-secondary/60"
-              >
-                <Icon className="size-5 shrink-0 text-foreground/65" strokeWidth={1.8} />
-                <span className="min-w-0 flex-1 text-[15px] font-medium">{title}</span>
-                <span className="max-w-[46%] truncate rounded-full bg-secondary px-2.5 py-1 text-right text-[11px] font-medium text-muted-foreground">
-                  {summary[id]}
-                </span>
-                <ChevronRight
-                  className="size-4 shrink-0 text-muted-foreground/55"
-                  strokeWidth={2}
-                />
-              </Link>
-            ))}
-          </div>
-        </section>
-      ))}
     </div>
   );
 }
