@@ -46,7 +46,8 @@ export const getItineraryMapConfigHandler = async () => {
 const searchSchema = z.object({ query: z.string().trim().min(2).max(120) });
 export const searchPlacesInput = (data: unknown) => searchSchema.parse(data);
 
-const PLACE_SEARCH_URL = () => process.env["PLACE_SEARCH_URL"] || "https://photon.komoot.io/api/";
+export const PLACE_SEARCH_URL = () =>
+  process.env["PLACE_SEARCH_URL"] || "https://photon.komoot.io/api/";
 const SEARCH_WINDOW_MS = 60_000;
 const SEARCH_MAX_PER_WINDOW = 20;
 const searchHits = new Map<string, number[]>();

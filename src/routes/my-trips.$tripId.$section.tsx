@@ -40,6 +40,9 @@ import ItineraryMap, { type PickedPoi } from "@/components/itinerary-map";
 import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import { getReceiptScanStatus } from "@/lib/receipt-scan.fn";
+import { getPlaceIdeasStatus } from "@/lib/place-ideas.fn";
+import { UNAVAILABLE_PLACE_IDEAS, type PlaceIdeasStatus } from "@/lib/place-ideas";
+import { PlaceIdeasFeature, type IdeaDay } from "@/components/place-ideas";
 import { UNAVAILABLE_RECEIPT_SCAN } from "@/lib/receipt-scan";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
@@ -91,7 +94,7 @@ import {
 export const Route = createFileRoute("/my-trips/$tripId/$section")({
   loader: async ({ params, location }) => {
     try {
-      const [section, mapConfig, receiptScan] = await Promise.all([
+      const [section, mapConfig, receiptScan, placeIdeas] = await Promise.all([
         getTripSection({
           data: { tripId: params.tripId, section: params.section as FeatureId },
         }),
@@ -103,8 +106,12 @@ export const Route = createFileRoute("/my-trips/$tripId/$section")({
         params.section === "expenses" || params.section === "budget"
           ? getReceiptScanStatus().catch(() => UNAVAILABLE_RECEIPT_SCAN)
           : Promise.resolve(UNAVAILABLE_RECEIPT_SCAN),
+        // Ide tempat is an extra too: without its status the Agenda simply hides the feature.
+        params.section === "itinerary"
+          ? getPlaceIdeasStatus().catch(() => UNAVAILABLE_PLACE_IDEAS)
+          : Promise.resolve(UNAVAILABLE_PLACE_IDEAS),
       ]);
-      return { ...section, mapConfig, receiptScan };
+      return { ...section, mapConfig, receiptScan, placeIdeas };
     } catch (error) {
       if (isTripAuthenticationError(error)) {
         throw redirect({
@@ -266,6 +273,7 @@ function TripSection() {
             items={items}
             onSaved={refresh}
             mapConfig={(data.mapConfig as ItineraryMapConfig | null) ?? null}
+            placeIdeas={data.placeIdeas}
             initialAdd={Boolean(add)}
             initialEditId={edit ?? null}
           />
@@ -309,6 +317,7 @@ export function ItineraryEditor({
   items,
   onSaved,
   mapConfig = null,
+  placeIdeas = UNAVAILABLE_PLACE_IDEAS,
   initialAdd = false,
   initialEditId = null,
 }: {
@@ -323,6 +332,8 @@ export function ItineraryEditor({
   items: Item[];
   onSaved: () => Promise<void>;
   mapConfig?: ItineraryMapConfig | null;
+  /** AI place ideas (carousel + "Ke mana lagi ya?" sheet); hidden unless available. */
+  placeIdeas?: PlaceIdeasStatus;
   /** Open the "add activity" form on arrival (from the Ringkas "+" sheet). */
   initialAdd?: boolean;
   /** Open this activity for editing on arrival (from the Ringkas row menu). */
@@ -354,6 +365,7 @@ export function ItineraryEditor({
   const [poiImage, setPoiImage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [ideasOpen, setIdeasOpen] = useState(false);
 
   // A new time or date makes an earlier overlap warning stale.
   useEffect(() => setConflicts([]), [form.date, form.startTime, form.endTime]);
@@ -570,6 +582,39 @@ export function ItineraryEditor({
     selectedDay === "all" || days.some((day) => day.date === selectedDay)
       ? selectedDay
       : defaultDay;
+  const ideaDays = useMemo<IdeaDay[]>(() => {
+    const byDate = new Map<string, Item[]>(days.map((day) => [day.date, day.items]));
+    const from = trip?.departure_date?.slice(0, 10);
+    const to = trip?.return_date?.slice(0, 10);
+    if (from && to && from <= to) {
+      const cursor = new Date(`${from}T00:00:00Z`);
+      for (let n = 0; n < 31 && cursor.toISOString().slice(0, 10) <= to; n += 1) {
+        const key = cursor.toISOString().slice(0, 10);
+        if (!byDate.has(key)) byDate.set(key, []);
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+    }
+    return [...byDate.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, dayItems]) => {
+        const label = formatItineraryDate(date);
+        return {
+          date,
+          label: label.weekday ? `${label.weekday}, ${label.full}` : label.full,
+          items: dayItems.map((item) => ({
+            start: hhmm(item.start_time),
+            end: hhmm(item.end_time),
+            lat:
+              item.latitude === null || item.latitude === undefined ? null : Number(item.latitude),
+            lng:
+              item.longitude === null || item.longitude === undefined
+                ? null
+                : Number(item.longitude),
+          })),
+        };
+      });
+  }, [days, trip?.departure_date, trip?.return_date]);
+  const ideasDate = scope && scope !== "all" ? scope : defaultDay || ideaDays[0]?.date || today();
   const model = useMemo(() => buildMapModel(days, scope || "all"), [days, scope]);
   const pinInfo = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin])), [model]);
   const nearestKm = useMemo(() => {
@@ -842,6 +887,7 @@ export function ItineraryEditor({
                       canExploreMap={Boolean(mapConfig?.poiHelper)}
                       onAdd={openNew}
                       onExplore={exploreCategory}
+                      onIdeas={placeIdeas.available ? () => setIdeasOpen(true) : undefined}
                     />
                     <AgendaMascot size={92} />
                   </div>
@@ -1101,6 +1147,16 @@ export function ItineraryEditor({
               Cari tempat saat menambah aktivitas agar muncul di peta.
             </p>
           ) : null}
+          <PlaceIdeasFeature
+            tripId={tripId}
+            destination={trip?.destination_name ?? "tujuanmu"}
+            status={placeIdeas}
+            days={ideaDays}
+            defaultDate={ideasDate}
+            open={ideasOpen}
+            onOpenChange={setIdeasOpen}
+            onAdded={onSaved}
+          />
           {days.length ? (
             days.map((day) => (
               <ItineraryDay

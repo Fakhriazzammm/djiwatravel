@@ -77,6 +77,7 @@ const COMPACT_PAGES = [
   "src/components/nav-progress.tsx",
   "src/components/offline-snapshot-banner.tsx",
   "src/components/order-outcome-card.tsx",
+  "src/components/place-ideas.tsx",
   "src/components/place-search-field.tsx",
   "src/components/profile/calendar-sheet.tsx",
   "src/components/profile/profile-avatar.tsx",

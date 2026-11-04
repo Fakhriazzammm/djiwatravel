@@ -163,6 +163,14 @@ confirmation that names the affected data. Calendar sync status must state
 connected, pending, partially synced, failed, or disconnected; never imply
 success from a local optimistic row alone.
 
+The Agenda also shows AI place ideas: a small carousel (116px cards: photo, name,
+kind and walking time) above the day list, and a "Ke mana lagi ya?" sheet opened
+from the carousel's "Lainnya" or the mascot bubble (search field, kind chips,
+list rows with a 64px photo, detail with day and time fields). Every idea shows
+its source; adding one uses the same activity record as a manual entry and
+offers an undo toast. Without a clear photo, show the per-kind illustration,
+never a guessed picture.
+
 ### Checkout, wallet, and booking
 
 Checkout and booking surfaces show package, price, payment state, provisioning

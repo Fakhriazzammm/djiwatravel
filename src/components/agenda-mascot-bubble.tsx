@@ -14,23 +14,41 @@ export function AgendaMascotBubble({
   canExploreMap,
   onAdd,
   onExplore,
+  onIdeas,
 }: {
   hasItems: boolean;
   /** The category helper is on, so "find food/stations" can show something. */
   canExploreMap: boolean;
   onAdd: () => void;
   onExplore: (category: PoiCategoryId) => void;
+  /** AI place ideas are on: the first question opens the ideas sheet instead of the add form. */
+  onIdeas?: (() => void) | undefined;
 }) {
   const reduceMotion = useReducedMotion();
   const prompts = useMemo<Prompt[]>(() => {
-    const list: Prompt[] = [
-      {
-        id: "add",
-        ask: hasItems ? "Ke mana lagi ya?" : "Mau mulai dari mana ya?",
-        reply: "Yuk catat rencananya!",
-        run: onAdd,
-      },
-    ];
+    const list: Prompt[] = onIdeas
+      ? [
+          {
+            id: "ideas",
+            ask: hasItems ? "Ke mana lagi ya?" : "Mau mulai dari mana ya?",
+            reply: "Aku carikan ide tempatnya!",
+            run: onIdeas,
+          },
+          {
+            id: "add",
+            ask: "Mau catat rencana sendiri?",
+            reply: "Yuk catat rencananya!",
+            run: onAdd,
+          },
+        ]
+      : [
+          {
+            id: "add",
+            ask: hasItems ? "Ke mana lagi ya?" : "Mau mulai dari mana ya?",
+            reply: "Yuk catat rencananya!",
+            run: onAdd,
+          },
+        ];
     if (canExploreMap) {
       list.push(
         {
@@ -60,7 +78,7 @@ export function AgendaMascotBubble({
       );
     }
     return list;
-  }, [hasItems, canExploreMap, onAdd, onExplore]);
+  }, [hasItems, canExploreMap, onAdd, onExplore, onIdeas]);
 
   const [index, setIndex] = useState(0);
   const [reply, setReply] = useState<string | null>(null);

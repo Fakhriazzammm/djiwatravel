@@ -20,6 +20,8 @@ import { getAdminEsimSharing } from "@/lib/admin-esim-share.fn";
 import { AdminItineraryMapPanel } from "@/components/admin-itinerary-map-panel";
 import { AdminReceiptScanPanel } from "@/components/admin-receipt-scan-panel";
 import { getAdminReceiptScan } from "@/lib/receipt-scan.fn";
+import { AdminPlaceIdeasPanel } from "@/components/admin-place-ideas-panel";
+import { getAdminPlaceIdeas } from "@/lib/place-ideas.fn";
 import { AdminGooglePanel } from "@/components/admin-google-panel";
 import { getAdminGoogle } from "@/lib/google-admin.fn";
 import { getAdminItineraryMap } from "@/lib/itinerary-map.fn";
@@ -35,14 +37,25 @@ export const Route = createFileRoute("/admin/settings")({
     esimSharing: await getAdminEsimSharing(),
     itineraryMap: await getAdminItineraryMap(),
     receiptScan: await getAdminReceiptScan(),
+    placeIdeas: await getAdminPlaceIdeas(),
     google: await getAdminGoogle(),
     rail: (await getHomeDestinationFeed().catch(() => ({ popular: [] }))).popular,
   }),
   component: AdminSettings,
 });
 function AdminSettings() {
-  const { readiness, homeEsim, geo, pwa, esimSharing, itineraryMap, receiptScan, google, rail } =
-    Route.useLoaderData();
+  const {
+    readiness,
+    homeEsim,
+    geo,
+    pwa,
+    esimSharing,
+    itineraryMap,
+    receiptScan,
+    placeIdeas,
+    google,
+    rail,
+  } = Route.useLoaderData();
   const counted = readiness.filter((x) => !x.external);
   const ready = counted.filter((x) => x.ready).length;
   return (
@@ -61,6 +74,13 @@ function AdminSettings() {
         version={receiptScan.version}
         stats={receiptScan.stats}
         aiConfigured={receiptScan.aiConfigured}
+      />
+      <AdminPlaceIdeasPanel
+        initial={placeIdeas.config}
+        version={placeIdeas.version}
+        stats={placeIdeas.stats}
+        recent={placeIdeas.recent}
+        keys={placeIdeas.keys}
       />
       <AdminGooglePanel overview={google} />
       <div className="space-y-2">
