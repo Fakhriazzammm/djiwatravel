@@ -4,6 +4,9 @@ import { renderAuthErrorPage } from "../lib/error-page";
 const UPSTREAM_BASE = "https://api.djiwatentram.web.id/api/auth";
 const PUBLIC_BASE = "https://djiwatravel.com/api/auth";
 
+/** Better Auth's default session lifetime (7 days); the re-issued app-root copy must match it. */
+const SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+
 function rewriteCookie(value: string) {
   const hostOnly = value.replace(/;\s*Domain=[^;]*/gi, "");
   if (/;\s*Path=/i.test(hostOnly)) return hostOnly.replace(/;\s*Path=[^;]*/gi, "; Path=/");
@@ -26,7 +29,12 @@ function copySessionCookieToAppRoot(request: Request, headers: Headers) {
     if (!value || !/session/i.test(name) || existingNames.has(name)) continue;
     // Older sessions may still be scoped to /api/auth. Re-issue the same
     // opaque token at the app root so SSR loaders such as /my-trips receive it.
-    headers.append("set-cookie", `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax`);
+    // Max-Age matters: without it this copy becomes a session-only cookie that replaces the
+    // persistent one and disappears when the browser or installed PWA is closed (forced re-login).
+    headers.append(
+      "set-cookie",
+      `${name}=${value}; Path=/; Max-Age=${SESSION_COOKIE_MAX_AGE_SECONDS}; HttpOnly; Secure; SameSite=Lax`,
+    );
     existingNames.add(name);
   }
 }
