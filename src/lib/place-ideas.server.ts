@@ -175,11 +175,14 @@ export const PLACE_IDEAS_SYSTEM_PROMPT = [
 async function askModel(model: string, userContent: string) {
   const key = process.env["HELIPOD_AI_KEY"];
   if (!key) throw new Error("not_configured");
-  const body = (withSchema: boolean) =>
+  // The model "thinks" before answering. On long pages that used up every token and cut the JSON
+  // off (verified live), so thinking is kept low and the answer has room to finish.
+  const body = (withSchema: boolean, withEffort: boolean) =>
     JSON.stringify({
       model,
       temperature: 0.2,
-      max_tokens: 1400,
+      max_tokens: 3000,
+      ...(withEffort ? { reasoning_effort: "low" } : {}),
       messages: [
         { role: "system", content: PLACE_IDEAS_SYSTEM_PROMPT },
         { role: "user", content: userContent },
@@ -193,18 +196,20 @@ async function askModel(model: string, userContent: string) {
           }
         : {}),
     });
-  const call = (withSchema: boolean) =>
+  const call = (withSchema: boolean, withEffort: boolean) =>
     fetch(`${aiBase()}/chat/completions`, {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: body(withSchema),
+      body: body(withSchema, withEffort),
       signal: AbortSignal.timeout(60_000),
     });
-  let response = await call(true);
-  if (response.status === 400) response = await call(false);
+  let response = await call(true, true);
+  // A model that rejects a parameter still answers when asked more plainly.
+  if (response.status === 400) response = await call(true, false);
+  if (response.status === 400) response = await call(false, false);
   if (response.status === 429 || response.status >= 500) {
     await new Promise((resolve) => setTimeout(resolve, 1200));
-    response = await call(true);
+    response = await call(true, true);
   }
   if (!response.ok) throw new Error(`ai_${response.status}`);
   const json = (await response.json()) as {
