@@ -24,7 +24,12 @@ import { CustomerOnboardingGate } from "../components/customer-onboarding-gate";
 import { easeIos } from "../lib/motion";
 import { warmResellerCatalog } from "../lib/explore-warm";
 import { trackAnalytics, trackClick } from "../lib/analytics";
-import { trackGooglePageView } from "../lib/google-analytics";
+import {
+  GA_INLINE_SCRIPT,
+  GA_SCRIPT_SRC,
+  syncGoogleConsent,
+  trackGooglePageView,
+} from "../lib/google-analytics";
 import { CONSENT_EVENT } from "../lib/cookie-consent";
 import { Toaster } from "../components/ui/sonner";
 import { PwaRuntime } from "../components/pwa-runtime";
@@ -100,6 +105,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
+    scripts: [{ src: GA_SCRIPT_SRC, async: true }, { children: GA_INLINE_SCRIPT }],
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
@@ -187,8 +193,8 @@ function AnalyticsPageView() {
   useEffect(() => {
     trackAnalytics("page_view", pathname);
     trackGooglePageView(pathname);
-    // Visitors who accept cookies after landing get this page counted straight away.
-    const onConsent = () => trackGooglePageView(window.location.pathname);
+    // Accepting cookies after landing upgrades the already-counted page to full analytics.
+    const onConsent = () => syncGoogleConsent();
     window.addEventListener(CONSENT_EVENT, onConsent);
     return () => window.removeEventListener(CONSENT_EVENT, onConsent);
   }, [pathname]);
