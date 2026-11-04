@@ -246,6 +246,7 @@ export function ReviewScreen({
   onSkip,
   onOpen,
   onCategory,
+  onChange,
   onRetake,
   onManual,
   onDrop,
@@ -265,6 +266,7 @@ export function ReviewScreen({
   onSkip: (id: string) => void;
   onOpen: (id: string) => void;
   onCategory: (id: string, categoryId: string) => void;
+  onChange: (id: string, patch: Partial<ScanEdit>) => void;
   onRetake: (id: string) => void;
   onManual: (id: string) => void;
   onDrop: (id: string) => void;
@@ -366,7 +368,7 @@ export function ReviewScreen({
                 type="button"
                 onClick={() => onOpen(item.id)}
                 className="tap flex w-full items-center gap-2.5 text-left"
-                aria-label={`Ubah ${edit.merchant || "struk"}`}
+                aria-label={`Lihat foto ${edit.merchant || "struk"}`}
               >
                 <Thumb item={item} size="sm" />
                 <span className="min-w-0 flex-1">
@@ -424,6 +426,12 @@ export function ReviewScreen({
                       </button>
                     </div>
                   )}
+                  <ReceiptFields
+                    edit={edit}
+                    tripCurrency={tripCurrency}
+                    today={today}
+                    onChange={(change) => onChange(item.id, change)}
+                  />
                   <div className="mt-2 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
                     {categories.map((c) => (
                       <button
@@ -459,7 +467,7 @@ export function ReviewScreen({
           />
         ))}
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
-          Ketuk kartu untuk mengubah. Geser ke kiri untuk melewati struk ini.
+          Semua kolom bisa diubah langsung. Geser kartu ke kiri untuk melewati struk ini.
         </p>
       </div>
     </Screen>
@@ -572,6 +580,185 @@ function Highlight({ region, label }: { region: ReceiptRegion; label: string }) 
   );
 }
 
+/** Editable store, date, currency, line items, total and rate. Shared by Tinjau and Cek item. */
+export function ReceiptFields({
+  edit,
+  tripCurrency,
+  today,
+  onChange,
+}: {
+  edit: ScanEdit;
+  tripCurrency: string;
+  today: string;
+  onChange: (patch: Partial<ScanEdit>) => void;
+}) {
+  const v = editedValidation(edit, today);
+  const line = matchLine(edit, v);
+  const input =
+    "min-h-11 w-full min-w-0 rounded-xl bg-surface px-3 text-[15px] outline-none ring-1 ring-border/50 focus:ring-2 focus:ring-brand-red/30";
+  const setItem = (index: number, patch: Partial<{ name: string; amount: string }>) =>
+    onChange({
+      items: edit.items.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+      edited: true,
+    });
+  const different = edit.currency !== tripCurrency;
+  return (
+    <>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <label className="col-span-2 block">
+          <span className="mb-1 block px-1 text-[11px] text-muted-foreground">Toko</span>
+          <input
+            value={edit.merchant}
+            onChange={(e) => onChange({ merchant: e.target.value, edited: true })}
+            className={input}
+            aria-label="Toko"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block px-1 text-[11px] text-muted-foreground">Tanggal</span>
+          <input
+            type="date"
+            value={edit.date}
+            onChange={(e) => onChange({ date: e.target.value, edited: true })}
+            className={input}
+            aria-label="Tanggal"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block px-1 text-[11px] text-muted-foreground">Mata uang</span>
+          <input
+            value={edit.currency}
+            maxLength={3}
+            onChange={(e) =>
+              onChange({
+                currency: e.target.value.toUpperCase(),
+                rate: null,
+                rateDate: null,
+                rateSource: null,
+                edited: true,
+              })
+            }
+            className={input}
+            aria-label="Mata uang"
+          />
+        </label>
+      </div>
+
+      <div className="mt-2 rounded-2xl bg-surface px-3 ring-1 ring-border/50">
+        {edit.items.map((row, index) => (
+          <div
+            key={index}
+            className={`flex min-h-11 items-center gap-2 ${index ? "border-t border-border/60" : ""}`}
+          >
+            <input
+              value={row.name}
+              onChange={(e) => setItem(index, { name: e.target.value })}
+              className="min-w-0 flex-1 bg-transparent py-2 text-[14px] outline-none"
+              aria-label={`Nama item ${index + 1}`}
+            />
+            <input
+              inputMode="decimal"
+              value={row.amount}
+              onChange={(e) => setItem(index, { amount: e.target.value })}
+              className="min-h-8 w-[84px] rounded-lg bg-secondary px-2 text-right text-[14px] font-semibold outline-none"
+              aria-label={`Harga item ${index + 1}`}
+            />
+            <button
+              type="button"
+              aria-label={`Hapus item ${index + 1}`}
+              onClick={() =>
+                onChange({ items: edit.items.filter((_, i) => i !== index), edited: true })
+              }
+              className="tap grid size-8 place-items-center text-muted-foreground"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() =>
+            onChange({
+              items: [
+                ...edit.items,
+                {
+                  name: v.matches === false ? "Item terlewat" : "",
+                  amount: v.matches === false ? String(Math.abs(v.difference)) : "",
+                },
+              ],
+              edited: true,
+            })
+          }
+          className={`${textBtn} flex w-full items-center gap-1.5 border-t border-border/60 text-[13px]`}
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          {v.matches === false ? "Item terlewat? Tambah" : "Tambah item"}
+        </button>
+      </div>
+
+      <div className="mt-2 flex items-center justify-between rounded-2xl bg-surface p-3 ring-1 ring-border/50">
+        <label className="min-w-0">
+          <span className="block text-[11px] text-muted-foreground">Total struk</span>
+          <input
+            inputMode="decimal"
+            value={edit.total}
+            onChange={(e) => onChange({ total: e.target.value, edited: true })}
+            className="w-[120px] bg-transparent text-[20px] font-bold outline-none"
+            aria-label="Total struk"
+          />
+        </label>
+        <div className="text-right">
+          {line ? (
+            <p
+              className={`flex items-center justify-end gap-1 text-[12px] font-semibold ${line.ok ? "text-[#17695A]" : "text-[#8A5300]"}`}
+            >
+              {line.ok && <Check className="size-3.5" strokeWidth={2.6} aria-hidden="true" />}
+              {line.ok ? line.text.replace(", cocok dengan total", "") : "Belum cocok"}
+            </p>
+          ) : (
+            <p className="text-[12px] text-muted-foreground">Tanpa rincian item</p>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            {line?.ok
+              ? "Cocok dengan total"
+              : line
+                ? "Tambah item yang terlewat"
+                : "Total dipakai apa adanya"}
+          </p>
+        </div>
+      </div>
+
+      {different && (
+        <div className="mt-2 rounded-2xl bg-surface p-3 ring-1 ring-border/50">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[12px] font-semibold">Kurs 1 {edit.currency} =</p>
+            <input
+              inputMode="decimal"
+              value={edit.rate ?? ""}
+              placeholder="Isi kurs"
+              onChange={(e) =>
+                onChange({
+                  rate: parseAmount(e.target.value),
+                  rateManual: true,
+                  rateSource: "Manual",
+                  edited: true,
+                })
+              }
+              className="min-h-9 w-[110px] rounded-lg bg-secondary px-2 text-right text-[14px] font-semibold outline-none"
+              aria-label="Kurs"
+            />
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {edit.rate
+              ? `≈ ${rp(convertedMinor(edit, tripCurrency) ?? 0, tripCurrency)} · ${edit.rateManual ? "kurs manual" : `${edit.rateSource ?? "Kurs"} ${edit.rateDate ? shortDate(edit.rateDate) : ""}`}`
+              : "Kurs belum tersedia. Isi manual agar bisa disimpan."}
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function CheckScreen({
   item,
   tripCurrency,
@@ -593,16 +780,7 @@ export function CheckScreen({
 }) {
   const edit = item.edit!;
   const v = editedValidation(edit, today);
-  const line = matchLine(edit, v);
   const [zoom, setZoom] = useState(false);
-  const input =
-    "min-h-11 w-full min-w-0 rounded-xl bg-surface px-3 text-[15px] outline-none ring-1 ring-border/50 focus:ring-2 focus:ring-brand-red/30";
-  const setItem = (index: number, patch: Partial<{ name: string; amount: string }>) =>
-    onChange({
-      items: edit.items.map((row, i) => (i === index ? { ...row, ...patch } : row)),
-      edited: true,
-    });
-  const different = edit.currency !== tripCurrency;
   return (
     <Screen
       footer={
@@ -666,157 +844,12 @@ export function CheckScreen({
             )}
           </div>
 
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <label className="col-span-2 block">
-              <span className="mb-1 block px-1 text-[11px] text-muted-foreground">Toko</span>
-              <input
-                value={edit.merchant}
-                onChange={(e) => onChange({ merchant: e.target.value, edited: true })}
-                className={input}
-                aria-label="Toko"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block px-1 text-[11px] text-muted-foreground">Tanggal</span>
-              <input
-                type="date"
-                value={edit.date}
-                onChange={(e) => onChange({ date: e.target.value, edited: true })}
-                className={input}
-                aria-label="Tanggal"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block px-1 text-[11px] text-muted-foreground">Mata uang</span>
-              <input
-                value={edit.currency}
-                maxLength={3}
-                onChange={(e) =>
-                  onChange({
-                    currency: e.target.value.toUpperCase(),
-                    rate: null,
-                    rateDate: null,
-                    rateSource: null,
-                    edited: true,
-                  })
-                }
-                className={input}
-                aria-label="Mata uang"
-              />
-            </label>
-          </div>
-
-          <div className="mt-2 rounded-2xl bg-surface px-3 ring-1 ring-border/50">
-            {edit.items.map((row, index) => (
-              <div
-                key={index}
-                className={`flex min-h-11 items-center gap-2 ${index ? "border-t border-border/60" : ""}`}
-              >
-                <input
-                  value={row.name}
-                  onChange={(e) => setItem(index, { name: e.target.value })}
-                  className="min-w-0 flex-1 bg-transparent py-2 text-[14px] outline-none"
-                  aria-label={`Nama item ${index + 1}`}
-                />
-                <input
-                  inputMode="decimal"
-                  value={row.amount}
-                  onChange={(e) => setItem(index, { amount: e.target.value })}
-                  className="min-h-8 w-[84px] rounded-lg bg-secondary px-2 text-right text-[14px] font-semibold outline-none"
-                  aria-label={`Harga item ${index + 1}`}
-                />
-                <button
-                  type="button"
-                  aria-label={`Hapus item ${index + 1}`}
-                  onClick={() =>
-                    onChange({ items: edit.items.filter((_, i) => i !== index), edited: true })
-                  }
-                  className="tap grid size-8 place-items-center text-muted-foreground"
-                >
-                  <X className="size-4" aria-hidden="true" />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                onChange({
-                  items: [
-                    ...edit.items,
-                    {
-                      name: v.matches === false ? "Item terlewat" : "",
-                      amount: v.matches === false ? String(Math.abs(v.difference)) : "",
-                    },
-                  ],
-                  edited: true,
-                })
-              }
-              className={`${textBtn} flex w-full items-center gap-1.5 border-t border-border/60 text-[13px]`}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              {v.matches === false ? "Item terlewat? Tambah" : "Tambah item"}
-            </button>
-          </div>
-
-          <div className="mt-2 flex items-center justify-between rounded-2xl bg-surface p-3 ring-1 ring-border/50">
-            <label className="min-w-0">
-              <span className="block text-[11px] text-muted-foreground">Total struk</span>
-              <input
-                inputMode="decimal"
-                value={edit.total}
-                onChange={(e) => onChange({ total: e.target.value, edited: true })}
-                className="w-[120px] bg-transparent text-[20px] font-bold outline-none"
-                aria-label="Total struk"
-              />
-            </label>
-            <div className="text-right">
-              {line ? (
-                <p
-                  className={`flex items-center justify-end gap-1 text-[12px] font-semibold ${line.ok ? "text-[#17695A]" : "text-[#8A5300]"}`}
-                >
-                  {line.ok && <Check className="size-3.5" strokeWidth={2.6} aria-hidden="true" />}
-                  {line.ok ? line.text.replace(", cocok dengan total", "") : "Belum cocok"}
-                </p>
-              ) : (
-                <p className="text-[12px] text-muted-foreground">Tanpa rincian item</p>
-              )}
-              <p className="text-[11px] text-muted-foreground">
-                {line?.ok
-                  ? "Cocok dengan total"
-                  : line
-                    ? "Tambah item yang terlewat"
-                    : "Total dipakai apa adanya"}
-              </p>
-            </div>
-          </div>
-
-          {different && (
-            <div className="mt-2 rounded-2xl bg-surface p-3 ring-1 ring-border/50">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[12px] font-semibold">Kurs 1 {edit.currency} =</p>
-                <input
-                  inputMode="decimal"
-                  value={edit.rate ?? ""}
-                  placeholder="Isi kurs"
-                  onChange={(e) =>
-                    onChange({
-                      rate: parseAmount(e.target.value),
-                      rateManual: true,
-                      rateSource: "Manual",
-                      edited: true,
-                    })
-                  }
-                  className="min-h-9 w-[110px] rounded-lg bg-secondary px-2 text-right text-[14px] font-semibold outline-none"
-                  aria-label="Kurs"
-                />
-              </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {edit.rate
-                  ? `≈ ${rp(convertedMinor(edit, tripCurrency) ?? 0, tripCurrency)} · ${edit.rateManual ? "kurs manual" : `${edit.rateSource ?? "Kurs"} ${edit.rateDate ? shortDate(edit.rateDate) : ""}`}`
-                  : "Kurs belum tersedia. Isi manual agar bisa disimpan."}
-              </p>
-            </div>
-          )}
+          <ReceiptFields
+            edit={edit}
+            tripCurrency={tripCurrency}
+            today={today}
+            onChange={onChange}
+          />
 
           <p className="mb-1.5 mt-3 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Kategori

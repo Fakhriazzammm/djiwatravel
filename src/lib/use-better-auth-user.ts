@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getBetterAuthSession, type BetterAuthUser } from "./better-auth-client";
+import { getBetterAuthSessionWithRetry, type BetterAuthUser } from "./better-auth-client";
 
 /**
  * Reads the Better Auth session once on mount so a returning customer is
@@ -18,7 +18,7 @@ export function useBetterAuthUser() {
 
   useEffect(() => {
     let active = true;
-    getBetterAuthSession()
+    getBetterAuthSessionWithRetry()
       .then((session) => {
         if (active) setUser(session?.user ?? null);
       })

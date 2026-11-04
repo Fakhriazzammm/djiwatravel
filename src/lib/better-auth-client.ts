@@ -36,6 +36,21 @@ export function getBetterAuthSession() {
   }
   return request("/get-session") as Promise<BetterAuthSession>;
 }
+/**
+ * Reads the session, retrying a failed read (network blip, slow auth host, 5xx) before giving up.
+ * A signed-out customer gets a normal `null` response, so only real failures are retried; this keeps a
+ * momentary hiccup from looking like a logout.
+ */
+export async function getBetterAuthSessionWithRetry(retries = 2, delayMs = 700) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await getBetterAuthSession();
+    } catch (error) {
+      if (attempt >= retries) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delayMs * (attempt + 1)));
+    }
+  }
+}
 export function signInEmail(email: string, password: string) {
   return request("/sign-in/email", { method: "POST", body: JSON.stringify({ email, password }) });
 }

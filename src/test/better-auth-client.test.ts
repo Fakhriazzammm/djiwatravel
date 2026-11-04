@@ -52,6 +52,27 @@ describe("Better Auth email requests", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("retries a failed session read instead of reporting a logout", async () => {
+    vi.stubGlobal("window", { location: { hostname: "djiwatravel.com" } });
+    const fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ user: { id: "u1" } }) });
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(getBetterAuthSessionWithRetry(2, 1)).resolves.toMatchObject({ user: { id: "u1" } });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after the retries are used", async () => {
+    vi.stubGlobal("window", { location: { hostname: "djiwatravel.com" } });
+    const fetch = vi.fn().mockRejectedValue(new Error("down"));
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(getBetterAuthSessionWithRetry(1, 1)).rejects.toThrow("down");
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("sends an empty JSON object when signing out", async () => {
     vi.stubGlobal("window", { location: { hostname: "djiwatravel.com" } });
     const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });

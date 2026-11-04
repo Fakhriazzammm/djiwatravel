@@ -467,6 +467,7 @@ export function ReceiptScanner({
             setScreen("check");
           }}
           onCategory={(id, categoryId) => updateEdit(id, { categoryId, edited: true })}
+          onChange={updateEdit}
           onRetake={retake}
           onManual={manual}
           onDrop={discard}
