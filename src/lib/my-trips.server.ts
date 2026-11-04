@@ -648,9 +648,38 @@ export async function getTripSectionData(tripId: string, section: string) {
         [tripId],
       ),
     ]);
+    // Receipt scan info is best effort: a deploy that has not run migration 039 yet still lists expenses.
+    const receiptInfo = new Map<string, { receipt_scan_id: string | null; from_scan: boolean }>();
+    try {
+      const [photos, scans] = await Promise.all([
+        pool.query(
+          "select expense_id, scan_id from public.travel_receipt_photos where trip_id=$1 and expense_id is not null",
+          [tripId],
+        ),
+        pool.query(
+          "select saved_expense_id from public.travel_receipt_scans where trip_id=$1 and saved_expense_id is not null",
+          [tripId],
+        ),
+      ]);
+      for (const row of scans.rows)
+        receiptInfo.set(String(row.saved_expense_id), { receipt_scan_id: null, from_scan: true });
+      for (const row of photos.rows)
+        receiptInfo.set(String(row.expense_id), {
+          receipt_scan_id: String(row.scan_id),
+          from_scan: true,
+        });
+    } catch (error) {
+      console.error(
+        "[my-trips] receipt info unavailable",
+        error instanceof Error ? error.message : error,
+      );
+    }
     return {
       trip: tripView,
-      items: expenses.rows.map(normalizeSectionItem),
+      items: expenses.rows.map((row) => ({
+        ...normalizeSectionItem(row),
+        ...(receiptInfo.get(String(row["id"])) ?? { receipt_scan_id: null, from_scan: false }),
+      })),
       categories: categories.rows.map((row) => ({
         id: String(row.id),
         name: String(row.name),

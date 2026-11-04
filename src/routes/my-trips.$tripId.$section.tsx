@@ -39,6 +39,8 @@ import { CalendarConnectBanner } from "@/components/calendar-connect-banner";
 import ItineraryMap, { type PickedPoi } from "@/components/itinerary-map";
 import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
+import { getReceiptScanStatus } from "@/lib/receipt-scan.fn";
+import { UNAVAILABLE_RECEIPT_SCAN } from "@/lib/receipt-scan";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
   POI_CATEGORIES,
@@ -89,7 +91,7 @@ import {
 export const Route = createFileRoute("/my-trips/$tripId/$section")({
   loader: async ({ params, location }) => {
     try {
-      const [section, mapConfig] = await Promise.all([
+      const [section, mapConfig, receiptScan] = await Promise.all([
         getTripSection({
           data: { tripId: params.tripId, section: params.section as FeatureId },
         }),
@@ -97,8 +99,12 @@ export const Route = createFileRoute("/my-trips/$tripId/$section")({
         params.section === "itinerary"
           ? getItineraryMapConfig().catch(() => DEFAULT_ITINERARY_MAP_CONFIG)
           : Promise.resolve(null),
+        // Scan struk is an extra: if its status cannot be read the Biaya page still loads.
+        params.section === "expenses" || params.section === "budget"
+          ? getReceiptScanStatus().catch(() => UNAVAILABLE_RECEIPT_SCAN)
+          : Promise.resolve(UNAVAILABLE_RECEIPT_SCAN),
       ]);
-      return { ...section, mapConfig };
+      return { ...section, mapConfig, receiptScan };
     } catch (error) {
       if (isTripAuthenticationError(error)) {
         throw redirect({
@@ -238,6 +244,7 @@ function TripSection() {
             currency={trip.primary_currency}
             summary={summary}
             onSaved={refresh}
+            receiptScan={data.receiptScan}
           />
         )}
         {section === "expenses" && (
@@ -247,6 +254,8 @@ function TripSection() {
             items={items}
             categories={categories}
             onSaved={refresh}
+            receiptScan={data.receiptScan}
+            budgetMinor={Number(trip.total_budget_minor ?? 0)}
             initialCreating={Boolean(add)}
           />
         )}

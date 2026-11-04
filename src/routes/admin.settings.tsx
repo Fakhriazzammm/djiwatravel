@@ -18,6 +18,8 @@ import { getAdminPwa } from "@/lib/pwa.fn";
 import { AdminEsimSharingPanel } from "@/components/admin-esim-sharing-panel";
 import { getAdminEsimSharing } from "@/lib/admin-esim-share.fn";
 import { AdminItineraryMapPanel } from "@/components/admin-itinerary-map-panel";
+import { AdminReceiptScanPanel } from "@/components/admin-receipt-scan-panel";
+import { getAdminReceiptScan } from "@/lib/receipt-scan.fn";
 import { getAdminItineraryMap } from "@/lib/itinerary-map.fn";
 import { getHomeDestinationFeed } from "@/lib/destination-availability.fn";
 export const Route = createFileRoute("/admin/settings")({
@@ -30,12 +32,14 @@ export const Route = createFileRoute("/admin/settings")({
     pwa: await getAdminPwa(),
     esimSharing: await getAdminEsimSharing(),
     itineraryMap: await getAdminItineraryMap(),
+    receiptScan: await getAdminReceiptScan(),
     rail: (await getHomeDestinationFeed().catch(() => ({ popular: [] }))).popular,
   }),
   component: AdminSettings,
 });
 function AdminSettings() {
-  const { readiness, homeEsim, geo, pwa, esimSharing, itineraryMap, rail } = Route.useLoaderData();
+  const { readiness, homeEsim, geo, pwa, esimSharing, itineraryMap, receiptScan, rail } =
+    Route.useLoaderData();
   const counted = readiness.filter((x) => !x.external);
   const ready = counted.filter((x) => x.ready).length;
   return (
@@ -48,6 +52,12 @@ function AdminSettings() {
         initial={itineraryMap.config}
         version={itineraryMap.version}
         stats={itineraryMap.stats}
+      />
+      <AdminReceiptScanPanel
+        initial={receiptScan.config}
+        version={receiptScan.version}
+        stats={receiptScan.stats}
+        aiConfigured={receiptScan.aiConfigured}
       />
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">

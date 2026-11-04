@@ -2,6 +2,7 @@ import { parseEsimSharingConfig } from "./esim-share";
 import { parseGeoConfig } from "./geo-config";
 import { parseHomeEsimConfig } from "./home-esim-config";
 import { parseItineraryMapConfig } from "./itinerary-map";
+import { parseReceiptScanConfig } from "./receipt-scan";
 import { parsePwaConfig } from "./pwa-config";
 
 export type AdminSettingKey =
@@ -20,7 +21,8 @@ export type AdminSettingKey =
   | "aiSearch"
   | "pwa"
   | "esimSharing"
-  | "itineraryMap";
+  | "itineraryMap"
+  | "receiptScan";
 export type AdminSettings = Record<AdminSettingKey, unknown>;
 export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "retryPolicy",
@@ -39,6 +41,7 @@ export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "pwa",
   "esimSharing",
   "itineraryMap",
+  "receiptScan",
 ];
 export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (
@@ -73,6 +76,7 @@ export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (key === "pwa") parsePwaConfig(value);
   if (key === "esimSharing") parseEsimSharingConfig(value);
   if (key === "itineraryMap") parseItineraryMapConfig(value);
+  if (key === "receiptScan") parseReceiptScanConfig(value);
   return true;
 }
 export function buildSettingAudit(

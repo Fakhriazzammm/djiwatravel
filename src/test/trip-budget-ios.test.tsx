@@ -146,3 +146,97 @@ describe("expense iOS editor", () => {
     await waitFor(() => expect(deleteExpense).toHaveBeenCalledWith({ data: { id: "e1" } }));
   });
 });
+
+describe("Biaya entry points for scan struk", () => {
+  const scan = {
+    available: true,
+    savePhoto: true,
+    maxPhotos: 10,
+    maxMb: 6,
+    dailyLimit: 30,
+    remaining: 30,
+  };
+  const categories = [{ id: "c1", name: "Food & Drinks", allocated_minor: 0, currency: "IDR" }];
+
+  it("shows the banner, the Scan button and a manual + button when scanning is available", () => {
+    vi.useRealTimers();
+    render(
+      <ExpenseEditor
+        tripId="t1"
+        currency="IDR"
+        categories={categories}
+        items={[]}
+        onSaved={vi.fn(async () => {})}
+        receiptScan={scan}
+      />,
+    );
+    expect(screen.getByText("Ada banyak struk?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Scan struk" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Catat manual" })).toBeInTheDocument();
+  });
+
+  it("keeps the plain Catat button when Admin turned scanning off", () => {
+    vi.useRealTimers();
+    render(
+      <ExpenseEditor
+        tripId="t1"
+        currency="IDR"
+        categories={categories}
+        items={[]}
+        onSaved={vi.fn(async () => {})}
+      />,
+    );
+    expect(screen.queryByText("Ada banyak struk?")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Scan struk" })).toBeNull();
+    expect(screen.getByRole("button", { name: /Catat/ })).toBeInTheDocument();
+  });
+
+  it("opens the scanner from the Scan button and marks scanned expenses", async () => {
+    vi.useRealTimers();
+    render(
+      <ExpenseEditor
+        tripId="t1"
+        currency="IDR"
+        categories={categories}
+        items={[
+          {
+            id: "e1",
+            description: "Fuglen Tokyo",
+            transaction_date: "2026-11-04",
+            category_id: "c1",
+            category_name: "Food & Drinks",
+            original_amount_minor: 14_948_000,
+            original_currency: "JPY",
+            converted_amount_minor: 14_948_000,
+            converted_currency: "IDR",
+            from_scan: true,
+            receipt_scan_id: "scan-1",
+          },
+        ]}
+        onSaved={vi.fn(async () => {})}
+        receiptScan={scan}
+      />,
+    );
+    expect(screen.getByText(/dari scan/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Fuglen Tokyo/ }));
+    expect(await screen.findByRole("button", { name: "Lihat foto struk" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Batal" }));
+    fireEvent.click(screen.getByRole("button", { name: "Scan struk" }));
+    expect(await screen.findByRole("dialog", { name: "Kamera scan struk" })).toBeInTheDocument();
+  });
+
+  it("shows the banner on the Anggaran tab too", () => {
+    vi.useRealTimers();
+    render(
+      <BudgetEditor
+        tripId="t1"
+        items={[]}
+        currency="IDR"
+        summary={summary}
+        onSaved={vi.fn(async () => {})}
+        receiptScan={scan}
+      />,
+    );
+    expect(screen.getByText("Ada banyak struk?")).toBeInTheDocument();
+  });
+});

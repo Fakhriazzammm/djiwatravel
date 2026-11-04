@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BadgeCheck,
+  Camera,
   CircleHelp,
   Ellipsis,
+  ImageIcon,
   Hotel,
   Car,
   Minus,
@@ -19,6 +21,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { FixedLayer } from "@/components/motion-primitives";
+import { ReceiptPhotoSheet, ScanReceiptBanner } from "@/components/receipt-scan-entry";
+import { ReceiptScanner } from "@/components/receipt-scanner";
 import { MoneyInput } from "@/components/money-input";
 import { btnRed } from "@/components/shell";
 import { ConfirmDialog, TripActionSheet, iosGroup, iosHeading } from "@/components/trip-ios";
@@ -34,6 +38,7 @@ import { displayBudgetCategory } from "@/lib/my-trips-home";
 import { isTripAuthenticationError, runTripMutation } from "@/lib/trip-actions";
 import { compactMoney, stepFor } from "@/lib/trip-budget-format";
 import { formatTripMoney } from "@/lib/trip-money";
+import { UNAVAILABLE_RECEIPT_SCAN, type ReceiptScanStatus } from "@/lib/receipt-scan";
 
 type Row = Record<string, unknown> & { id: string };
 export type BudgetSummary = {
@@ -122,13 +127,16 @@ export function BudgetEditor({
   currency,
   summary,
   onSaved,
+  receiptScan = UNAVAILABLE_RECEIPT_SCAN,
 }: {
   tripId: string;
   items: Row[];
   currency: string;
   summary: BudgetSummary | null;
   onSaved: () => Promise<void>;
+  receiptScan?: ReceiptScanStatus;
 }) {
+  const [scanning, setScanning] = useState(false);
   const [limits, setLimits] = useState<Record<string, number>>(() =>
     Object.fromEntries(items.map((x) => [x.id, Number(x["allocated_minor"] ?? 0)])),
   );
@@ -236,6 +244,18 @@ export function BudgetEditor({
 
   return (
     <section className="space-y-3">
+      {receiptScan.available && <ScanReceiptBanner onScan={() => setScanning(true)} />}
+      {scanning && (
+        <ReceiptScanner
+          tripId={tripId}
+          tripCurrency={currency}
+          categories={items.map((x) => ({ id: x.id, name: String(x["name"] ?? "") }))}
+          status={receiptScan}
+          budget={target > 0 ? { budgetMinor: target, spentMinor: spent } : null}
+          onClose={() => setScanning(false)}
+          onChanged={onSaved}
+        />
+      )}
       <div className={`flex items-center gap-3 p-3.5 ${iosGroup}`}>
         <div
           role="img"
@@ -500,6 +520,8 @@ export function ExpenseEditor({
   categories,
   onSaved,
   initialCreating = false,
+  receiptScan = UNAVAILABLE_RECEIPT_SCAN,
+  budgetMinor = 0,
 }: {
   tripId: string;
   currency: string;
@@ -508,7 +530,13 @@ export function ExpenseEditor({
   onSaved: () => Promise<void>;
   /** Open the "catat biaya" form on arrival (from the Ringkas "+" sheet). */
   initialCreating?: boolean;
+  /** Scan struk availability and today's quota (Admin switch + server AI key). */
+  receiptScan?: ReceiptScanStatus;
+  /** Trip budget in minor units, for "sisa anggaran" after scanning. */
+  budgetMinor?: number;
 }) {
+  const [scanning, setScanning] = useState(false);
+  const [photoOf, setPhotoOf] = useState<Row | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [creating, setCreating] = useState(initialCreating);
   const [saving, setSaving] = useState(false);
@@ -615,6 +643,7 @@ export function ExpenseEditor({
 
   return (
     <section className="space-y-3">
+      {receiptScan.available && <ScanReceiptBanner onScan={() => setScanning(true)} />}
       <div className="grid grid-cols-2 gap-3">
         <div className={`${iosGroup} p-3`}>
           <p className="text-[11px] text-muted-foreground">Total</p>
@@ -675,6 +704,7 @@ export function ExpenseEditor({
                       </span>
                       <span className="block truncate text-[11px] text-muted-foreground">
                         {name ? displayBudgetCategory(name) : "Belum berkategori"}
+                        {item["from_scan"] ? " · dari scan" : ""}
                       </span>
                     </span>
                     <span className="shrink-0 text-[13px] font-semibold tabular-nums">
@@ -698,14 +728,47 @@ export function ExpenseEditor({
       )}
 
       <FixedLayer>
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="tap fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-11 items-center gap-1.5 rounded-full bg-brand-red px-4 text-[14px] font-semibold text-white shadow-[0_8px_18px_rgba(229,72,77,0.4)]"
-        >
-          <Plus className="size-[18px]" aria-hidden="true" /> Catat
-        </button>
+        {receiptScan.available ? (
+          <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Catat manual"
+              onClick={() => setCreating(true)}
+              className="tap grid size-11 place-items-center rounded-full bg-surface text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
+            >
+              <Plus className="size-5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="Scan struk"
+              onClick={() => setScanning(true)}
+              className="tap flex h-14 items-center gap-2 rounded-full bg-brand-red px-4 text-[15px] font-semibold text-white shadow-[0_6px_16px_rgba(196,49,58,0.45)]"
+            >
+              <Camera className="size-6" aria-hidden="true" />
+              Scan
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="tap fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-11 items-center gap-1.5 rounded-full bg-brand-red px-4 text-[14px] font-semibold text-white shadow-[0_8px_18px_rgba(229,72,77,0.4)]"
+          >
+            <Plus className="size-[18px]" aria-hidden="true" /> Catat
+          </button>
+        )}
       </FixedLayer>
+      {scanning && (
+        <ReceiptScanner
+          tripId={tripId}
+          tripCurrency={currency}
+          categories={categories.map((category) => ({ id: category.id, name: category.name }))}
+          status={receiptScan}
+          budget={budgetMinor > 0 ? { budgetMinor, spentMinor: total } : null}
+          onClose={() => setScanning(false)}
+          onChanged={onSaved}
+        />
+      )}
 
       <SheetFrame open={creating} onOpenChange={setCreating} title="Catat pengeluaran">
         <form onSubmit={submit} className="space-y-3">
@@ -766,6 +829,15 @@ export function ExpenseEditor({
         onOpenChange={(open) => !open && setSelected(null)}
         title={String(selected?.["description"] ?? "Pengeluaran")}
         actions={[
+          ...(selected?.["receipt_scan_id"]
+            ? [
+                {
+                  label: "Lihat foto struk",
+                  icon: ImageIcon,
+                  onSelect: () => setPhotoOf(selected),
+                },
+              ]
+            : []),
           {
             label: "Hapus pengeluaran",
             icon: Trash2,
@@ -773,6 +845,11 @@ export function ExpenseEditor({
             onSelect: () => setConfirmDelete(selected),
           },
         ]}
+      />
+      <ReceiptPhotoSheet
+        scanId={photoOf ? String(photoOf["receipt_scan_id"] ?? "") || null : null}
+        title={String(photoOf?.["description"] ?? "")}
+        onClose={() => setPhotoOf(null)}
       />
       <ConfirmDialog
         open={Boolean(confirmDelete)}
