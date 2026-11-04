@@ -247,3 +247,34 @@ describe("Biaya entry points for scan struk", () => {
     expect(screen.getByRole("button", { name: "Scan struk" })).toBeInTheDocument();
   });
 });
+
+import { autoSplit } from "@/lib/budget-split";
+
+describe("autoSplit", () => {
+  const rows = [
+    { id: "a", key: "penerbangan", limit: 0 },
+    { id: "b", key: "akomodasi", limit: 0 },
+    { id: "c", key: "lainnya", limit: 0 },
+    { id: "d", key: "custom", limit: 0 },
+  ];
+  it("splits the budget by default shares and never exceeds it", () => {
+    const out = autoSplit(rows, 10_000_000_00, 100_000_00);
+    expect(Object.values(out).reduce((a, b) => a + b, 0)).toBe(10_000_000_00);
+    expect(out["a"]).toBeGreaterThan(out["b"] ?? 0);
+    expect(out["c"]).toBeUndefined();
+    expect(out["d"]).toBeUndefined();
+  });
+  it("only distributes what is still unallocated and keeps existing limits", () => {
+    const out = autoSplit(
+      [{ id: "a", key: "penerbangan", limit: 4_000_000_00 }, ...rows.slice(1)],
+      10_000_000_00,
+      100_000_00,
+    );
+    expect(out["a"]).toBeUndefined();
+    expect(out["b"]).toBe(6_000_000_00);
+  });
+  it("does nothing without a budget or when fully allocated", () => {
+    expect(autoSplit(rows, 0, 100)).toEqual({});
+    expect(autoSplit([{ id: "a", key: "visa", limit: 5 }], 5, 1)).toEqual({});
+  });
+});

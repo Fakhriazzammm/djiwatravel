@@ -24,6 +24,7 @@ import { FixedLayer } from "@/components/motion-primitives";
 import { ReceiptPhotoSheet } from "@/components/receipt-scan-entry";
 import { ReceiptScanner } from "@/components/receipt-scanner";
 import { ExpenseDetailSheet } from "@/components/expense-detail-sheet";
+import { autoSplit } from "@/lib/budget-split";
 import { DriveChip, TripGoogleCards } from "@/components/trip-google-cards";
 import { MoneyInput } from "@/components/money-input";
 import { btnRed } from "@/components/shell";
@@ -238,6 +239,24 @@ export function BudgetEditor({
     }
   }
 
+  const splitPlan =
+    budget > 0
+      ? autoSplit(
+          items.map((item) => ({
+            id: item.id,
+            key: String(item["category_key"] ?? ""),
+            limit: limits[item.id] ?? 0,
+          })),
+          budget,
+          step,
+        )
+      : {};
+  const canSplit = Object.values(splitPlan).some((value) => value > 0);
+  function applySplit() {
+    for (const [id, minor] of Object.entries(splitPlan)) if (minor > 0) setLimit(id, minor);
+    toast.success("Anggaran dibagi ke kategori. Ketuk − / + untuk menyesuaikan.");
+  }
+
   function setLimit(id: string, minor: number) {
     const next = Math.max(0, minor);
     setLimits((current) => ({ ...current, [id]: next }));
@@ -318,8 +337,28 @@ export function BudgetEditor({
       <section>
         <h2 className={`${iosHeading} flex justify-between`}>
           <span>Batas per kategori</span>
-          <span className="normal-case tracking-normal">{items.length}</span>
+          {canSplit ? (
+            <button
+              type="button"
+              onClick={applySplit}
+              className="tap normal-case tracking-normal font-semibold text-brand-red"
+            >
+              Bagi otomatis
+            </button>
+          ) : (
+            <span className="normal-case tracking-normal">{items.length}</span>
+          )}
         </h2>
+        {budget > 0 && (
+          <p
+            className={`-mt-1 mb-1.5 px-4 text-[11px] ${allocated > budget ? "text-destructive" : "text-muted-foreground"}`}
+            data-testid="allocation-summary"
+          >
+            {allocated > budget
+              ? `Batas melebihi total ${money(allocated - budget, currency)}`
+              : `Dibagi ${money(allocated, currency)} dari ${money(budget, currency)} · sisa ${money(budget - allocated, currency)}`}
+          </p>
+        )}
         <div className={iosGroup}>
           {items.length ? (
             items.map((item) => {
@@ -353,7 +392,7 @@ export function BudgetEditor({
                         {over
                           ? `Melebihi ${compactMoney(used - limit, currency)}`
                           : limit === 0 && used === 0
-                            ? "Belum diatur"
+                            ? "Belum dibagi"
                             : `Terpakai ${compactMoney(used, currency)}`}
                       </span>
                     </span>
