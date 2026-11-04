@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ExternalLink, RefreshCw } from "lucide-react";
+import { ExternalLink, FolderOpen, Info, RefreshCw } from "lucide-react";
 import { GoogleConsentSheet } from "@/components/google-consent-sheet";
 import { friendlySheetError } from "@/lib/google-sheets-errors";
 import { googleConnectHref, useGoogleStatus } from "@/lib/google-status";
@@ -87,6 +87,7 @@ export function TripGoogleCards({
   const [sheet, setSheet] = useState<SheetExport>(null);
   const [sheetLoaded, setSheetLoaded] = useState(false);
   const [folderUrl, setFolderUrl] = useState<string | null>(null);
+  const [help, setHelp] = useState(false);
   const returnTo = useRef("/my-trips");
   const syncing = useRef(false);
 
@@ -330,7 +331,7 @@ export function TripGoogleCards({
                   Coba lagi
                 </button>
               ) : sheet.spreadsheetUrl ? (
-                <div className="flex shrink-0 gap-1.5">
+                <div className="flex shrink-0 gap-1">
                   <button
                     type="button"
                     disabled={busy}
@@ -347,14 +348,35 @@ export function TripGoogleCards({
                     href={sheet.spreadsheetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label="Buka spreadsheet"
                     className={secondary}
                   >
-                    Buka <ExternalLink className="size-3.5" aria-hidden="true" />
+                    <ExternalLink className="size-3.5" aria-hidden="true" />
                   </a>
+                  {folderUrl && (
+                    <a
+                      href={folderUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Buka folder Drive trip ini"
+                      className={secondary}
+                    >
+                      <FolderOpen className="size-3.5" aria-hidden="true" />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Cara kerja"
+                    aria-expanded={help}
+                    onClick={() => setHelp((v) => !v)}
+                    className={secondary}
+                  >
+                    <Info className="size-3.5" aria-hidden="true" />
+                  </button>
                 </div>
               ) : null}
             </div>
-            {sheet?.spreadsheetUrl && (
+            {sheet?.spreadsheetUrl && help && (
               <p className="mt-1.5 text-[11px] text-muted-foreground">
                 Ubah di Sheets atau di aplikasi, keduanya saling tersambung lewat rumus. Jangan ubah
                 kolom ID dan kolom hitungan. Catatanmu taruh di kolom J ke kanan.
@@ -412,7 +434,7 @@ export function TripGoogleCards({
           </div>
         </div>
       ) : null}
-      {folderUrl && (
+      {folderUrl && !(sheetsOn && sheet?.spreadsheetUrl) && (
         <div className={card}>
           <div className="flex items-center gap-2.5">
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-100 text-[11px] font-bold text-amber-700">
