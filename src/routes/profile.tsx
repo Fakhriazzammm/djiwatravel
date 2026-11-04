@@ -54,9 +54,10 @@ export const Route = createFileRoute("/profile")({
       ? (search["calendar"] as "connected" | "failed" | "denied")
       : undefined,
     calendarSync: search["sync"] === "failed" ? ("failed" as const) : undefined,
-    google: ["connected", "partial", "denied", "failed"].includes(String(search["google"]))
-      ? (search["google"] as "connected" | "partial" | "denied" | "failed")
-      : undefined,
+    // Optional key (not `google: undefined`) so the many links to /profile need no change.
+    ...(["connected", "partial", "denied", "failed"].includes(String(search["google"]))
+      ? { google: search["google"] as "connected" | "partial" | "denied" | "failed" }
+      : {}),
   }),
   head: () => ({
     meta: [

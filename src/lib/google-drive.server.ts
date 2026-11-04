@@ -1,4 +1,5 @@
 import { pool } from "@/db/client.server";
+import { tripGoogleName } from "./google-trip-names";
 import {
   GoogleAccessRevokedError,
   connectionFor,
@@ -63,7 +64,7 @@ async function createFolder(subject: string, name: string, parentId?: string) {
   return (await driveJson<{ id: string }>(response, "buat folder")).id;
 }
 
-/** "Djiwa Travel / <trip name>" in the traveler's Drive, created once per trip. */
+/** "Djiwa Travel / <trip name · month year>" in the traveler's Drive, created once per trip. */
 export async function ensureTripFolder(
   subject: string,
   tripId: string,
@@ -180,7 +181,7 @@ async function claim(subject: string, limit: number, retryFailed: boolean) {
 
 async function uploadOne(subject: string, item: Claimed) {
   const photo = await pool.query(
-    `select p.mime, p.bytes, t.name as trip_name, e.description, e.transaction_date
+    `select p.mime, p.bytes, t.name as trip_name, t.departure_date, e.description, e.transaction_date
        from public.travel_receipt_photos p
        join travel_trips t on t.id=p.trip_id
        left join travel_expenses e on e.id=p.expense_id
@@ -192,6 +193,7 @@ async function uploadOne(subject: string, item: Claimed) {
         mime: string;
         bytes: Buffer | null;
         trip_name: string;
+        departure_date: Date | string | null;
         description: string | null;
         transaction_date: Date | string | null;
       }
@@ -208,14 +210,15 @@ async function uploadOne(subject: string, item: Claimed) {
     ? new Date(row.transaction_date).toISOString().slice(0, 10)
     : new Date().toISOString().slice(0, 10);
   const name = `${date} ${safeName(row.description ?? "Struk")}.${EXTENSION[row.mime] ?? "jpg"}`;
-  let folderId = await ensureTripFolder(subject, item.trip_id, row.trip_name);
+  const tripLabel = tripGoogleName(row.trip_name, row.departure_date);
+  let folderId = await ensureTripFolder(subject, item.trip_id, tripLabel);
   let fileId: string;
   try {
     fileId = await uploadFile(subject, folderId, name, row.mime, row.bytes);
   } catch (error) {
     // The traveler deleted the folder in Drive: recreate it once and retry.
     if ((error as { status?: number }).status !== 404) throw error;
-    folderId = await ensureTripFolder(subject, item.trip_id, row.trip_name, true);
+    folderId = await ensureTripFolder(subject, item.trip_id, tripLabel, true);
     fileId = await uploadFile(subject, folderId, name, row.mime, row.bytes);
   }
   const client = await pool.connect();
@@ -333,4 +336,48 @@ export async function driveSummary(subject: string) {
     counts[key] += Number(row.n);
   }
   return counts;
+}
+
+/** Link to the trip's Drive folder, once it exists. */
+export async function tripFolderUrl(subject: string, tripId: string) {
+  const result = await pool.query(
+    "select trip_folder_id from travel_google_drive_folders where trip_id=$1 and customer_auth_subject=$2",
+    [tripId, subject],
+  );
+  return result.rows[0]
+    ? `https://drive.google.com/drive/folders/${encodeURIComponent(String(result.rows[0].trip_folder_id))}`
+    : null;
+}
+
+/** Renames a Drive file or folder. Cosmetic: callers treat a failure as "try again later". */
+export async function renameDriveFile(subject: string, fileId: string, name: string) {
+  const response = await googleFetch(
+    subject,
+    `${DRIVE_API}/files/${encodeURIComponent(fileId)}?fields=id`,
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: safeName(name) }),
+    },
+  );
+  await driveJson(response, "ganti nama");
+}
+
+/** Moves a file into a folder (out of wherever it is) and confirms it landed there. */
+export async function moveToFolder(subject: string, fileId: string, folderId: string) {
+  const id = encodeURIComponent(fileId);
+  const current = await driveJson<{ parents?: string[] }>(
+    await googleFetch(subject, `${DRIVE_API}/files/${id}?fields=parents`),
+    "baca lokasi",
+  );
+  const parents = current.parents ?? [];
+  if (parents.length === 1 && parents[0] === folderId) return true;
+  const remove = parents.filter((parent) => parent !== folderId);
+  const query = new URLSearchParams({ addParents: folderId, fields: "parents" });
+  if (remove.length) query.set("removeParents", remove.join(","));
+  const moved = await driveJson<{ parents?: string[] }>(
+    await googleFetch(subject, `${DRIVE_API}/files/${id}?${query.toString()}`, { method: "PATCH" }),
+    "pindah",
+  );
+  return (moved.parents ?? []).includes(folderId);
 }

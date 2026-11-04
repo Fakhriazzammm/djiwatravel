@@ -229,6 +229,7 @@ export async function updateTrip(input: unknown) {
     ],
   );
   if (!result.rows[0]) throw new Error("Perjalanan tidak ditemukan");
+  void renameGoogleFiles(user.id, data.tripId);
   return result.rows[0];
 }
 
@@ -795,6 +796,19 @@ export async function deleteBudgetCategory(input: unknown) {
   );
   if (!result.rows[0]) throw new Error("Kategori budget tidak ditemukan");
   return result.rows[0];
+}
+
+/** Renames the trip's Drive folder and spreadsheet after the trip changed. Cosmetic and retried by the next sync. */
+async function renameGoogleFiles(subject: string, tripId: string) {
+  try {
+    const { renameTripGoogleFiles } = await import("@/lib/google-sheets.server");
+    await renameTripGoogleFiles(subject, tripId);
+  } catch (error) {
+    console.error(
+      "[my-trips] rename google files failed",
+      error instanceof Error ? error.message : error,
+    );
+  }
 }
 
 /** Keeps the traveler's Google Sheet in step with their expenses; never blocks or fails the change. */

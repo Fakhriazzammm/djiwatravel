@@ -2,6 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/customer-session.fn";
 
+/** Link to the trip's Drive folder, or null when it does not exist yet. */
+const folderUrl = async (subject: string, tripId: string) => {
+  const { tripFolderUrl } = await import("@/lib/google-drive.server");
+  return tripFolderUrl(subject, tripId);
+};
+
 const bodySchema = z.object({
   tripId: z.string().uuid(),
   action: z.enum(["start", "sync", "stop"]),
@@ -17,7 +23,10 @@ export const Route = createFileRoute("/api/google-sheets")({
           const tripId = z.string().uuid().parse(new URL(request.url).searchParams.get("tripId"));
           const { sheetExportStatus } = await import("@/lib/google-sheets.server");
           return Response.json(
-            { export: await sheetExportStatus(user.id, tripId) },
+            {
+              export: await sheetExportStatus(user.id, tripId),
+              folderUrl: await folderUrl(user.id, tripId),
+            },
             { headers: { "Cache-Control": "no-store" } },
           );
         } catch (error) {
@@ -42,7 +51,10 @@ export const Route = createFileRoute("/api/google-sheets")({
           }
           if (action === "stop") await sheets.stopSheetExport(user.id, tripId);
           return Response.json(
-            { export: await sheets.sheetExportStatus(user.id, tripId) },
+            {
+              export: await sheets.sheetExportStatus(user.id, tripId),
+              folderUrl: await folderUrl(user.id, tripId),
+            },
             { headers: { "Cache-Control": "no-store" } },
           );
         } catch (error) {

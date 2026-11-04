@@ -69,6 +69,7 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<SheetExport>(null);
   const [sheetLoaded, setSheetLoaded] = useState(false);
+  const [folderUrl, setFolderUrl] = useState<string | null>(null);
   const returnTo = useRef("/my-trips");
 
   useEffect(() => {
@@ -83,7 +84,9 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
         credentials: "include",
       });
       if (!response.ok) return;
-      setSheet(((await response.json()) as { export: SheetExport }).export ?? null);
+      const body = (await response.json()) as { export: SheetExport; folderUrl?: string | null };
+      setSheet(body.export ?? null);
+      setFolderUrl(body.folderUrl ?? null);
     } finally {
       setSheetLoaded(true);
     }
@@ -110,9 +113,14 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ tripId, action }),
       });
-      const body = (await response.json()) as { export?: SheetExport; error?: string };
+      const body = (await response.json()) as {
+        export?: SheetExport;
+        folderUrl?: string | null;
+        error?: string;
+      };
       if (!response.ok) throw new Error(body.error || "Ekspor Sheets gagal");
       setSheet(body.export ?? null);
+      setFolderUrl(body.folderUrl ?? null);
       if (action === "start") toast.success("Spreadsheet dibuat.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ekspor Sheets gagal");
@@ -279,6 +287,24 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
           </div>
         </div>
       ) : null}
+      {folderUrl && (
+        <div className={card}>
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-100 text-[11px] font-bold text-amber-700">
+              Dr
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[14px] font-semibold">Folder Drive trip ini</p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                Struk dan spreadsheet trip ini ada di satu folder
+              </p>
+            </div>
+            <a href={folderUrl} target="_blank" rel="noopener noreferrer" className={secondary}>
+              Buka <ExternalLink className="size-3.5" aria-hidden="true" />
+            </a>
+          </div>
+        </div>
+      )}
       <GoogleConsentSheet
         open={consent !== null}
         onOpenChange={(next) => !next && setConsent(null)}

@@ -7,7 +7,13 @@ import {
   markGoogleWorkRevoked,
   redactError,
 } from "./google-account.server";
-import { ensureTripFolder } from "./google-drive.server";
+import {
+  ensureTripFolder,
+  moveToFolder,
+  renameDriveFile,
+  tripFolderUrl,
+} from "./google-drive.server";
+import { tripGoogleName, tripSheetTitle } from "./google-trip-names";
 
 /**
  * One-way export of a trip's budget to a spreadsheet in the traveler's own Drive.
@@ -89,12 +95,14 @@ async function sheetsJson<T>(response: Response, action: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function ownedTripName(subject: string, tripId: string) {
+/** "Bali · Des 2026": the name used for the trip's Drive folder and spreadsheet. */
+async function ownedTripLabel(subject: string, tripId: string) {
   const result = await pool.query(
-    "select name from travel_trips where id=$1 and customer_auth_subject=$2",
+    "select name, departure_date from travel_trips where id=$1 and customer_auth_subject=$2",
     [tripId, subject],
   );
-  return result.rows[0] ? String(result.rows[0].name) : null;
+  const row = result.rows[0] as { name: string; departure_date: Date | string | null } | undefined;
+  return row ? tripGoogleName(String(row.name), row.departure_date) : null;
 }
 
 export async function sheetsActive(subject: string) {
@@ -106,12 +114,12 @@ export async function sheetsActive(subject: string) {
   }
 }
 
-async function createSpreadsheet(subject: string, tripName: string, tripId: string) {
+async function createSpreadsheet(subject: string, label: string) {
   const response = await googleFetch(subject, SHEETS_API, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      properties: { title: `Budget - ${tripName}`.slice(0, 120) },
+      properties: { title: tripSheetTitle(label) },
       sheets: [
         { properties: { title: EXPENSE_TAB, gridProperties: { frozenRowCount: 1 } } },
         { properties: { title: SUMMARY_TAB, gridProperties: { frozenRowCount: 1 } } },
@@ -122,24 +130,13 @@ async function createSpreadsheet(subject: string, tripName: string, tripId: stri
     response,
     "buat",
   );
-  // Best effort: tidy it into the trip's Drive folder next to the receipts.
-  try {
-    const folderId = await ensureTripFolder(subject, tripId, tripName);
-    await googleFetch(
-      subject,
-      `${DRIVE_API}/files/${encodeURIComponent(created.spreadsheetId)}?addParents=${encodeURIComponent(folderId)}&removeParents=root&fields=id`,
-      { method: "PATCH" },
-    );
-  } catch (error) {
-    console.error("[google-sheets] move to trip folder failed", { error: redactError(error) });
-  }
   return created;
 }
 
 /** Creates (or re-links) the export for a trip and runs the first sync. */
 export async function startSheetExport(subject: string, tripId: string) {
-  const tripName = await ownedTripName(subject, tripId);
-  if (!tripName) throw new Error("Perjalanan tidak ditemukan");
+  const label = await ownedTripLabel(subject, tripId);
+  if (!label) throw new Error("Perjalanan tidak ditemukan");
   const existing = await pool.query(
     "select spreadsheet_id from travel_google_sheet_exports where trip_id=$1 and customer_auth_subject=$2",
     [tripId, subject],
@@ -155,7 +152,7 @@ export async function startSheetExport(subject: string, tripId: string) {
     [tripId, subject],
   );
   try {
-    const created = await createSpreadsheet(subject, tripName, tripId);
+    const created = await createSpreadsheet(subject, label);
     await pool.query(
       "update travel_google_sheet_exports set spreadsheet_id=$1, spreadsheet_url=$2, updated_at=now() where trip_id=$3",
       [created.spreadsheetId, created.spreadsheetUrl, tripId],
@@ -193,11 +190,17 @@ export async function syncTripSheet(subject: string, tripId: string) {
         set status='syncing', attempts=attempts+1, updated_at=now()
       where trip_id=$1 and customer_auth_subject=$2 and spreadsheet_id is not null
         and (status in ('pending','failed') or (status='syncing' and updated_at < now() - interval '2 minutes'))
-      returning spreadsheet_id, spreadsheet_url`,
+      returning spreadsheet_id, spreadsheet_url, in_trip_folder, named_as`,
     [tripId, subject],
   );
   const target = claimed.rows[0] as
-    { spreadsheet_id: string; spreadsheet_url: string | null } | undefined;
+    | {
+        spreadsheet_id: string;
+        spreadsheet_url: string | null;
+        in_trip_folder: boolean;
+        named_as: string | null;
+      }
+    | undefined;
   if (!target) return null;
   try {
     const [expenses, categories] = await Promise.all([
@@ -262,10 +265,69 @@ export async function syncTripSheet(subject: string, tripId: string) {
       "update travel_google_sheet_exports set status='synced', last_synced_at=now(), last_error=null, updated_at=now() where trip_id=$1 and status='syncing'",
       [tripId],
     );
+    await tidyTripFiles(subject, tripId, target);
     return { spreadsheetUrl: target.spreadsheet_url };
   } catch (error) {
     await recordFailure(subject, tripId, error);
     return null;
+  }
+}
+
+/**
+ * Housekeeping after a successful sync: the spreadsheet sits in the trip's folder and both carry the
+ * current trip name. A failure here never fails the sync; the flags stay false and the next sync retries.
+ */
+async function tidyTripFiles(
+  subject: string,
+  tripId: string,
+  target: { spreadsheet_id: string; in_trip_folder: boolean; named_as: string | null },
+) {
+  const label = await ownedTripLabel(subject, tripId);
+  if (!label) return;
+  try {
+    if (!target.in_trip_folder) {
+      let folderId = await ensureTripFolder(subject, tripId, label);
+      let placed: boolean;
+      try {
+        placed = await moveToFolder(subject, target.spreadsheet_id, folderId);
+      } catch (error) {
+        // The traveler deleted the trip folder: make a new one and place the sheet there.
+        if ((error as { status?: number }).status !== 404) throw error;
+        folderId = await ensureTripFolder(subject, tripId, label, true);
+        placed = await moveToFolder(subject, target.spreadsheet_id, folderId);
+      }
+      if (placed)
+        await pool.query(
+          "update travel_google_sheet_exports set in_trip_folder=true where trip_id=$1",
+          [tripId],
+        );
+      else console.error("[google-sheets] spreadsheet not in trip folder after move", { tripId });
+    }
+    if (target.named_as !== label) await renameTripGoogleFiles(subject, tripId, label);
+  } catch (error) {
+    console.error("[google-sheets] tidy trip files failed", { tripId, error: redactError(error) });
+  }
+}
+
+/** Renames the trip's Drive folder and spreadsheet to the trip's current name. */
+export async function renameTripGoogleFiles(subject: string, tripId: string, known?: string) {
+  const label = known ?? (await ownedTripLabel(subject, tripId));
+  if (!label) return;
+  const folder = await pool.query(
+    "select trip_folder_id from travel_google_drive_folders where trip_id=$1 and customer_auth_subject=$2",
+    [tripId, subject],
+  );
+  if (folder.rows[0]) await renameDriveFile(subject, String(folder.rows[0].trip_folder_id), label);
+  const sheet = await pool.query(
+    "select spreadsheet_id from travel_google_sheet_exports where trip_id=$1 and customer_auth_subject=$2 and spreadsheet_id is not null",
+    [tripId, subject],
+  );
+  if (sheet.rows[0]) {
+    await renameDriveFile(subject, String(sheet.rows[0].spreadsheet_id), tripSheetTitle(label));
+    await pool.query("update travel_google_sheet_exports set named_as=$1 where trip_id=$2", [
+      label,
+      tripId,
+    ]);
   }
 }
 
