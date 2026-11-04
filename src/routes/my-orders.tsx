@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { effectiveOrderStatus, esimStatusBadge, type EsimBadgeTone } from "@/lib/esim-status";
 import { useOrders } from "@/lib/orders";
 import { rupiah } from "@/lib/pricing";
+import { customerPreorderState } from "@/lib/esim-preorder";
 
 export const Route = createFileRoute("/my-orders")({
   head: () => ({
@@ -61,7 +62,21 @@ function MyOrders() {
           </p>
           <section className="overflow-hidden rounded-2xl bg-surface" aria-label="Daftar pesanan">
             {sorted.map((o, index) => {
-              const badge = esimStatusBadge(effectiveOrderStatus(o.status, o.expiresAt));
+              const preorder = customerPreorderState({
+                fulfillmentMode: o.fulfillmentMode,
+                preorderStatus: o.preorderStatus,
+                orderStatus: o.status,
+              });
+              const preorderLabels = {
+                awaiting_payment: "Pre-order · menunggu pembayaran",
+                awaiting_balance: "Pre-order · menunggu saldo",
+                processing: "Pre-order · sedang diproses",
+                refund_review: "Pre-order · ditinjau admin",
+                fulfilled: "Pre-order · eSIM siap",
+              } as const;
+              const badge = preorder
+                ? { label: preorderLabels[preorder], tone: "warning" as const }
+                : esimStatusBadge(effectiveOrderStatus(o.status, o.expiresAt));
               const code = (o.publicOrderCode ?? o.id).slice(0, 6).toUpperCase();
               const date = new Date(o.createdAt).toLocaleDateString("id-ID", {
                 day: "numeric",

@@ -78,6 +78,7 @@ export function isPackageSellable(
 
 export type SellabilityPartition = {
   hidden: Set<string>;
+  preorderable: Set<string>;
   hiddenCount: number;
   sellableCount: number;
 };
@@ -88,13 +89,22 @@ export function partitionSellability<T extends SellablePackage>(
   buffer = SELLABILITY_BUFFER,
 ): SellabilityPartition {
   const hidden = new Set<string>();
+  const preorderable = new Set<string>();
   let hiddenCount = 0;
   for (const pkg of packages) {
     if (isPackageSellable(pkg, snapshot, buffer)) continue;
     hidden.add(pkg.packageCode);
+    if (
+      snapshot.balanceUnits !== null &&
+      Number.isFinite(snapshot.balanceUnits) &&
+      Number.isFinite(pkg.providerPriceUnits) &&
+      pkg.providerPriceUnits > 0
+    ) {
+      preorderable.add(pkg.packageCode);
+    }
     hiddenCount += 1;
   }
-  return { hidden, hiddenCount, sellableCount: packages.length - hiddenCount };
+  return { hidden, preorderable, hiddenCount, sellableCount: packages.length - hiddenCount };
 }
 
 /** Highest price we can still sell at the current balance — the number admins act on. */

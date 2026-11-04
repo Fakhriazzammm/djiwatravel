@@ -38,6 +38,7 @@ import { EsimStatusCard, statusPrimary, statusSecondary } from "@/components/esi
 import { snapshotAgeLabel } from "@/lib/offline-travel-snapshot";
 import { activationTimeline } from "@/lib/travel-journey";
 import { locationCodesLabel } from "@/lib/package-copy";
+import { customerPreorderState } from "@/lib/esim-preorder";
 
 /**
  * Support channel. Kept as one constant so every entry point points at the same place, and so
@@ -263,11 +264,62 @@ function OrderPage() {
         <p className="mt-20 text-center text-muted-foreground">Pesanan tidak ditemukan.</p>
       </Page>
     );
+  const preorderState = customerPreorderState({
+    fulfillmentMode: o.fulfillmentMode,
+    preorderStatus: o.preorderStatus,
+    orderStatus: o.status,
+  });
   const packageName = o.packageName ?? o.packageId;
   const locationLabel = locationCodesLabel(o.locationCodes);
   const quotaLabel =
     o.volumeBytes == null ? "Unlimited" : `${(o.volumeBytes / 1_000_000_000).toFixed(1)} GB`;
   const durationLabel = o.durationDays ? `${o.durationDays} hari` : "Durasi tersimpan di pesanan";
+
+  if (
+    preorderState === "awaiting_balance" ||
+    preorderState === "processing" ||
+    preorderState === "refund_review"
+  ) {
+    const deadline = o.preorderDeadlineAt
+      ? new Date(o.preorderDeadlineAt).toLocaleString("id-ID", {
+          dateStyle: "long",
+          timeStyle: "short",
+        })
+      : null;
+    const review = preorderState === "refund_review";
+    const processing = preorderState === "processing";
+    return (
+      <Page tabs={false}>
+        <section className="mt-3 rounded-2xl bg-surface p-4" aria-live="polite">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-red">Pre-order</p>
+          <h1 className="mt-1 text-[16px] font-bold leading-tight">
+            {review
+              ? "Pesanan sedang ditinjau Admin"
+              : processing
+                ? "eSIM sedang dibeli"
+                : "Menunggu saldo eSIM Access"}
+          </h1>
+          <p className="mt-2 text-[13px] leading-snug text-muted-foreground">
+            {review
+              ? "Batas 3 hari terlewati. Admin sedang meninjau pengembalian dana; statusnya akan dikirim lewat email."
+              : processing
+                ? "Saldo cukup dan pembelian eSIM sedang diproses otomatis."
+                : "Pembayaran sudah diterima. Kami akan membeli paket ini otomatis setelah saldo provider cukup."}
+          </p>
+          {deadline && !review && (
+            <p className="mt-2 text-[11px] text-muted-foreground">Batas pemenuhan: {deadline}</p>
+          )}
+          <p className="mt-3 text-[13px] font-semibold">{packageName}</p>
+          <p className="text-[12px] text-muted-foreground">
+            {locationLabel} · {quotaLabel} · {durationLabel} · {rupiah(o.amount)}
+          </p>
+          <Link to="/receipt/$id" params={{ id: o.id }} className={`${btnSoft} mt-3 w-full`}>
+            Lihat struk
+          </Link>
+        </section>
+      </Page>
+    );
+  }
 
   if (o.status === "ORDER_CREATED" || o.status === "WAITING_PAYMENT") {
     return (
@@ -277,7 +329,7 @@ function OrderPage() {
             status={o.status}
             summary={`${locationLabel} · ${quotaLabel} · ${durationLabel}`}
             headline={packageName}
-            hint={`Total ${rupiah(o.amount)}. Selesaikan pembayaran, eSIM diproses otomatis setelahnya.${o.publicOrderCode ? ` Kode: ${o.publicOrderCode}` : ""}`}
+            hint={`Total ${rupiah(o.amount)}. Selesaikan pembayaran, eSIM diproses otomatis setelahnya.${o.fulfillmentMode === "preorder" ? " Batas pemenuhan 3 hari dimulai setelah pembayaran diterima." : ""}${o.publicOrderCode ? ` Kode: ${o.publicOrderCode}` : ""}`}
             timeline={activationTimeline(o.status)}
           />
         </div>

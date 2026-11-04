@@ -8,13 +8,13 @@ import {
 } from "@/lib/package-copy";
 import { breadcrumbJsonLd, jsonLdScript, productJsonLd, SEO_BASE_URL } from "@/lib/seo";
 import { destinationOgImage } from "@/lib/destination-artwork";
-import { getIndexablePlan } from "@/lib/seo-indexability.fn";
+import { loadCheckout } from "@/lib/checkout-load.fn";
 
 export const Route = createFileRoute("/plan/$id")({
   loader: async ({ params }) => {
-    const indexable = await getIndexablePlan(params.id);
-    if (!indexable) throw notFound();
-    const plan = indexable.package;
+    const checkout = await loadCheckout({ data: params.id }).catch(() => null);
+    if (!checkout) throw notFound();
+    const plan = checkout.pkg;
     const destination =
       plan.locationCodes.map((code) => getDest(code)).find(Boolean) ?? getDest("ASIA");
     if (!destination) throw notFound();
@@ -41,6 +41,7 @@ export const Route = createFileRoute("/plan/$id")({
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
         { name: "twitter:image", content: `${SEO_BASE_URL}/icon-512.png` },
+        ...(!plan.sellable ? [{ name: "robots", content: "noindex, nofollow" }] : []),
       ],
       links: [{ rel: "canonical", href: url }],
       scripts: [
@@ -126,13 +127,19 @@ function Plan() {
             </li>
           </ol>
         </section>
-        <Link
-          to="/checkout/$id"
-          params={{ id: plan.packageCode }}
-          className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red px-4 py-3 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
-        >
-          Pilih paket ini
-        </Link>
+        {plan.sellable || plan.preorderAvailable ? (
+          <Link
+            to="/checkout/$id"
+            params={{ id: plan.packageCode }}
+            className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red px-4 py-3 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+          >
+            {plan.preorderAvailable && !plan.sellable ? "Pre-order paket ini" : "Pilih paket ini"}
+          </Link>
+        ) : (
+          <p role="status" className="mt-4 rounded-xl bg-secondary px-4 py-3 text-center text-sm text-muted-foreground">
+            Stok paket belum dapat dipastikan.
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap gap-2 text-sm font-semibold">
           <Link
             to="/destination/$code"

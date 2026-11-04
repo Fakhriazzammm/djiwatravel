@@ -41,6 +41,7 @@ import {
 import { buildSupportContext, supportTopicsFor } from "@/lib/travel-support";
 import { reorderIntent } from "@/lib/travel-journey";
 import { locationCodesLabel } from "@/lib/package-copy";
+import { customerPreorderState } from "@/lib/esim-preorder";
 
 export const Route = createFileRoute("/receipt/$id")({
   head: () => ({
@@ -55,6 +56,20 @@ export const Route = createFileRoute("/receipt/$id")({
 
 function buildReceiptDocument(order: Order): ReceiptDocument {
   const status = effectiveOrderStatus(order.status, order.expiresAt);
+  const preorder = customerPreorderState({
+    fulfillmentMode: order.fulfillmentMode,
+    preorderStatus: order.preorderStatus,
+    orderStatus: order.status,
+  });
+  const statusLabel = preorder
+    ? {
+        awaiting_payment: "Pre-order · menunggu pembayaran",
+        awaiting_balance: "Pre-order · menunggu saldo provider",
+        processing: "Pre-order · sedang diproses",
+        refund_review: "Pre-order · antrean Admin",
+        fulfilled: "Pre-order · eSIM siap",
+      }[preorder]
+    : ORDER_STATUS_LABEL[status];
   const ready = status === "READY" || status === "INSTALLED";
   const quota =
     order.volumeBytes == null
@@ -79,7 +94,7 @@ function buildReceiptDocument(order: Order): ReceiptDocument {
     },
     { label: "Tujuan email", value: order.email ?? "-" },
     { label: "WhatsApp", value: order.whatsapp ?? "-" },
-    { label: "Status", value: ORDER_STATUS_LABEL[status] },
+    { label: "Status", value: statusLabel },
     { label: "Total", value: formatReceiptAmount(order.amount) },
   ];
 
@@ -87,7 +102,7 @@ function buildReceiptDocument(order: Order): ReceiptDocument {
     brand: "Djiwa Travel",
     title: "Struk pembayaran eSIM",
     code,
-    statusLabel: ORDER_STATUS_LABEL[status],
+    statusLabel,
     fields,
     // The QR payload is only part of the document once the eSIM exists.
     ...(ready && order.esim ? { lpa: order.esim.lpa } : {}),
@@ -212,6 +227,20 @@ function ReceiptPage() {
     );
 
   const status = effectiveOrderStatus(order.status, order.expiresAt);
+  const preorder = customerPreorderState({
+    fulfillmentMode: order.fulfillmentMode,
+    preorderStatus: order.preorderStatus,
+    orderStatus: order.status,
+  });
+  const preorderStatusLabel = preorder
+    ? {
+        awaiting_payment: "Pre-order · menunggu pembayaran",
+        awaiting_balance: "Pre-order · menunggu saldo provider",
+        processing: "Pre-order · sedang diproses",
+        refund_review: "Pre-order · antrean Admin",
+        fulfilled: "Pre-order · eSIM siap",
+      }[preorder]
+    : null;
   const ready = status === "READY" || status === "INSTALLED";
   // Mirrors the order detail entry point: another purchase is only offered once this
   // order is settled. A pending or failed order needs support, not a second checkout.
@@ -264,7 +293,7 @@ function ReceiptPage() {
 
       <ReceiptPrinter
         stage={ready ? "complete" : "processing"}
-        statusText={ORDER_STATUS_LABEL[status]}
+        statusText={preorderStatusLabel ?? ORDER_STATUS_LABEL[status]}
         footer={
           <div className="print-hide mt-3 flex flex-col gap-2">
             <button
@@ -312,7 +341,7 @@ function ReceiptPage() {
           value={order.publicOrderCode ?? order.id.slice(0, 8).toUpperCase()}
         />
         <ReceiptLine label="Tanggal" value={formatReceiptDate(order.createdAt)} />
-        <ReceiptLine label="Status" value={ORDER_STATUS_LABEL[status]} />
+        <ReceiptLine label="Status" value={preorderStatusLabel ?? ORDER_STATUS_LABEL[status]} />
         <ReceiptRule />
         <ReceiptLine label="Paket" value={order.packageName ?? order.packageId} />
         <ReceiptLine label="Cakupan" value={locationCodesLabel(order.locationCodes)} />
@@ -353,6 +382,21 @@ function ReceiptPage() {
           Struk dibuat otomatis oleh Djiwa Travel dan sah tanpa tanda tangan.
         </p>
       </ReceiptPrinter>
+
+      {preorder && preorder !== "fulfilled" && (
+        <section className="mt-3 rounded-2xl bg-surface p-3 text-sm">
+          <p className="font-semibold">Status pre-order</p>
+          <p className="mt-1 text-muted-foreground">
+            {preorder === "awaiting_payment"
+              ? "Batas 3 hari dimulai setelah pembayaran terverifikasi."
+              : preorder === "awaiting_balance"
+                ? "Kami akan mencoba membeli paket otomatis saat saldo eSIM Access mencukupi."
+                : preorder === "processing"
+                  ? "Pembelian sedang diproses. eSIM akan muncul di pesanan ini setelah provider mengirim profilnya."
+                  : "Batas 3 hari terlewati dan pesanan sudah masuk antrean Admin untuk tindak lanjut."}
+          </p>
+        </section>
+      )}
 
       <OfflineSnapshotBanner
         snapshot={snapshot}

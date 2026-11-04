@@ -7,6 +7,11 @@ import {
 import { sweepPendingProviderPayments } from "@/lib/mayar-settlement-sweep.server";
 import { drainFinanceOutbox } from "@/lib/finance-outbox.server";
 import { sweepExpiredOrders } from "@/lib/order-expiry-worker.server";
+import { processPreorderQueue, sweepExpiredPreorders } from "@/lib/esim-preorder-queue.server";
+import {
+  drainTravelEmailOutbox,
+  repairPreorderNotifications,
+} from "@/lib/preorder-notifications.server";
 import { TRAVEL_TASK_WORKER, recordFailure, recordSuccess } from "@/lib/worker-heartbeat.server";
 
 /**
@@ -52,6 +57,22 @@ async function run(request: Request) {
     return { checked: 0, settled: 0, skipped: 0, failed: 0 };
   });
 
+  // Paid preorders past their three-day window require a human decision. They are moved before
+  // the automatic purchase sweep so a late top-up never buys an expired order without Admin review.
+  const preorderExpiry = await sweepExpiredPreorders().catch((error) => {
+    console.error("[travel] preorder expiry sweep failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+    return { movedToReview: 0 };
+  });
+
+  const preorders = await processPreorderQueue(10).catch((error) => {
+    console.error("[travel] preorder queue failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+    return { checked: 0, started: 0, waitingBalance: 0, busy: false, failed: ["queue"] };
+  });
+
   const orderIds = await activeProvisioningOrderIds(50);
   let ready = 0;
   let pending = 0;
@@ -87,23 +108,36 @@ async function run(request: Request) {
     return { scanned: 0, expired: 0, skipped: 0 };
   });
 
+  await repairPreorderNotifications().catch(() => undefined);
+  const email = await drainTravelEmailOutbox(20).catch((error) => {
+    console.error("[travel] email outbox drain failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+    return { sent: 0, failed: 1, configured: true };
+  });
+
+  const workerFailures = failed.length + preorders.failed.length + email.failed;
+
   // Liveness last, and only on a clean run: a heartbeat written by a failing worker would claim
   // health it does not have.
-  if (failed.length === 0) await recordSuccess(TRAVEL_TASK_WORKER).catch(() => undefined);
+  if (workerFailures === 0) await recordSuccess(TRAVEL_TASK_WORKER).catch(() => undefined);
   else
-    await recordFailure(TRAVEL_TASK_WORKER, `${failed.length} order(s) failed`).catch(
+    await recordFailure(TRAVEL_TASK_WORKER, `${workerFailures} task item(s) failed`).catch(
       () => undefined,
     );
 
   return json({
     ok: true,
     settlement,
+    preorderExpiry,
+    preorders,
     checked: orderIds.length,
     ready,
     pending,
     failed: failed.length,
     finance,
     expiry,
+    email,
   });
 }
 

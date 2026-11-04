@@ -143,30 +143,46 @@ export async function refreshTravelOrderProvisioning(
     sql`update public.esim_provisioning_orders set status = 'READY', last_provisioning_error = null, updated_at = now() where id = ${provisioningOrderId}::uuid and status in ('PROVISIONING','PENDING')`,
   );
   const becameReady = await db.execute(
-    sql`update public.customer_orders set status = 'READY', esim_activation_expires_at = coalesce(esim_activation_expires_at, ${expiresAtIso}::timestamptz, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = ${orderId}::uuid and status in ('PROVISIONING','PAYMENT_CONFIRMED','PROVISIONING_FAILED') returning id, customer_auth_subject`,
+    sql`update public.customer_orders set status = 'READY', preorder_status = case when fulfillment_mode = 'preorder' then 'fulfilled' else null end, esim_activation_expires_at = coalesce(esim_activation_expires_at, ${expiresAtIso}::timestamptz, (select expires_at from public.esim_profiles where provisioning_order_id = ${provisioningOrderId}::uuid and installable = true order by created_at desc limit 1)), updated_at = now() where id = ${orderId}::uuid and status in ('PROVISIONING','PAYMENT_CONFIRMED','PROVISIONING_FAILED') returning id, customer_auth_subject, fulfillment_mode`,
   );
-  const readyRow = becameReady.rows[0] as { customer_auth_subject?: string | null } | undefined;
+  const readyRow = becameReady.rows[0] as
+    { customer_auth_subject?: string | null; fulfillment_mode?: string } | undefined;
   if (readyRow?.customer_auth_subject) {
-    // Best effort and idempotent per order: a push failure must never undo or delay provisioning.
-    void import("./push.server")
-      .then(({ createCustomerNotification }) =>
-        createCustomerNotification({
-          subject: readyRow.customer_auth_subject!,
-          orderId,
-          type: "esim_ready",
-          title: "eSIM kamu siap! ✨",
-          body: "eSIM sudah bisa dipasang. Buka Djiwa Travel untuk lihat QR code dan panduan.",
-          href: `/my-esim/${orderId}`,
-          eventKey: `esim_ready:${orderId}`,
-          source: "provisioning",
-        }),
-      )
-      .catch((error) =>
-        console.warn(
-          "[travel] ready notification skipped",
-          error instanceof Error ? error.message : "",
-        ),
-      );
+    if (readyRow.fulfillment_mode === "preorder") {
+      void import("./preorder-notifications.server")
+        .then(({ notifyPreorderOrder }) => notifyPreorderOrder(orderId, "ready"))
+        .catch((error) =>
+          console.warn(
+            "[travel] preorder ready notification skipped",
+            error instanceof Error ? error.message : "",
+          ),
+        );
+    } else {
+      // Best effort and idempotent per order: a push failure must never undo or delay provisioning.
+      void import("./push.server")
+        .then(({ createCustomerNotification }) =>
+          createCustomerNotification({
+            subject: readyRow.customer_auth_subject!,
+            orderId,
+            type: "esim_ready",
+            title: "eSIM kamu siap! ✨",
+            body: "eSIM sudah bisa dipasang. Buka Djiwa Travel untuk lihat QR code dan panduan.",
+            href: `/my-esim/${orderId}`,
+            eventKey: `esim_ready:${orderId}`,
+            source: "provisioning",
+          }),
+        )
+        .catch((error) =>
+          console.warn(
+            "[travel] ready notification skipped",
+            error instanceof Error ? error.message : "",
+          ),
+        );
+    }
+  } else if (readyRow?.fulfillment_mode === "preorder") {
+    void import("./preorder-notifications.server")
+      .then(({ notifyPreorderOrder }) => notifyPreorderOrder(orderId, "ready"))
+      .catch(() => undefined);
   }
   // The activation window is provider truth, so keep it on every run — an order that is already
   // READY is skipped by the transition above and would otherwise never learn its expiry.

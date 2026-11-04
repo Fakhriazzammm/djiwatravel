@@ -64,7 +64,11 @@ export async function getDestinationPackagesHandler(code: string) {
     : new Set<string>(sellability.hidden);
   return {
     destination,
-    packages: toViewPackages(visible, unavailable),
+    packages: toViewPackages(
+      visible,
+      unavailable,
+      balanceUnknown ? undefined : sellability.preorderable,
+    ),
     stale: catalog.stale,
     soldOut: unavailable.size,
     balanceUnknown,

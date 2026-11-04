@@ -107,7 +107,11 @@ async function claimWalletOrder(orderId: string, authSubject: string) {
         UPDATE public.customer_orders
            SET status = 'PAYMENT_CONFIRMED', payment_provider = 'djiwa_pay',
                payment_reference = ${intent.provider_transaction_id},
-               paid_at = COALESCE(paid_at, now()), updated_at = now()
+               paid_at = COALESCE(paid_at, now()),
+               preorder_status = CASE WHEN fulfillment_mode = 'preorder' THEN 'pending' ELSE NULL END,
+               preorder_deadline_at = CASE WHEN fulfillment_mode = 'preorder'
+                 THEN COALESCE(preorder_deadline_at, now() + interval '72 hours') ELSE NULL END,
+               updated_at = now()
          WHERE id = ${orderId}::uuid AND customer_auth_subject = ${authSubject}
       `);
       return { status: "paid" as const, transactionId: intent.provider_transaction_id };
@@ -175,7 +179,11 @@ async function recordConfirmedWalletPayment(
     const updated = await tx.execute(sql`
       UPDATE public.customer_orders
          SET status = 'PAYMENT_CONFIRMED', payment_provider = 'djiwa_pay',
-             payment_reference = ${transactionId}, paid_at = now(), updated_at = now()
+             payment_reference = ${transactionId}, paid_at = now(),
+             preorder_status = CASE WHEN fulfillment_mode = 'preorder' THEN 'pending' ELSE NULL END,
+             preorder_deadline_at = CASE WHEN fulfillment_mode = 'preorder'
+               THEN COALESCE(preorder_deadline_at, now() + interval '72 hours') ELSE NULL END,
+             updated_at = now()
        WHERE id = ${orderId}::uuid AND customer_auth_subject = ${authSubject}
          AND status IN ('ORDER_CREATED', 'PAYMENT_PENDING')
        RETURNING id

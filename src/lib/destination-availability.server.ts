@@ -44,7 +44,7 @@ function withDeadline<T>(promise: Promise<T>, ms: number): Promise<T | null> {
 }
 
 /**
- * Codes that currently have at least one package we are allowed to sell.
+ * Codes that currently have at least one package we can sell or accept as a preorder.
  *
  * `deadlineMs` bounds how long a caller is willing to wait: the home page pays for the first paint,
  * so it waits briefly and falls back to the seeded list, while the sitemap (cached for an hour) can
@@ -62,7 +62,11 @@ export async function getSellableDestinationCodes(
     const sellability = await getSellabilityState(packages);
     const codes = new Set<string>();
     for (const pkg of packages) {
-      if (sellability.hidden.has(pkg.packageCode)) continue;
+      if (
+        sellability.hidden.has(pkg.packageCode) &&
+        !sellability.preorderable.has(pkg.packageCode)
+      )
+        continue;
       for (const code of pkg.locationCodes) {
         const normalized = code.trim().toUpperCase();
         if (normalized) codes.add(normalized);
@@ -92,15 +96,18 @@ export async function getListableDestinations(deadlineMs = 2_000): Promise<Desti
     const packages = catalog.packages.filter(isRecommendablePackage);
     if (packages.length === 0) return [...destinations];
     const sellability = await getSellabilityState(packages);
-    const sellable = packages.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
+    const listable = packages.filter(
+      (pkg) =>
+        !sellability.hidden.has(pkg.packageCode) || sellability.preorderable.has(pkg.packageCode),
+    );
     const codes = new Set<string>();
-    for (const pkg of sellable) {
+    for (const pkg of listable) {
       for (const code of pkg.locationCodes) {
         const normalized = code.trim().toUpperCase();
         if (normalized) codes.add(normalized);
       }
     }
-    return listableDestinations(sellable, {
+    return listableDestinations(listable, {
       codes: [...codes].sort(),
       source: catalog.stale ? "cached" : "live",
       degraded: false,

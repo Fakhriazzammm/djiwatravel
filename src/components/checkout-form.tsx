@@ -125,15 +125,16 @@ export function CheckoutForm({
     authenticated: Boolean(user),
     profileComplete: memberProfileReady,
   });
-  // Every order belongs to a verified account, so checkout needs a signed-in member with a
-  // complete profile. Guest checkout is retired.
+  // Members need their verified profile; guests can check out with the contact details above.
+  const packageCheckoutReady = pkg.sellable || pkg.preorderAvailable;
   const canPay =
-    Boolean(user) &&
     valid &&
-    memberProfileReady &&
+    (!user || memberProfileReady) &&
+    (Boolean(user) || method === "qris") &&
     (method !== "djiwa_pay" ||
       (walletAvailability === "available" &&
-        !(typeof walletBalance === "number" && walletBalance < price)));
+        !(typeof walletBalance === "number" && walletBalance < price))) &&
+    packageCheckoutReady;
   const insufficientBalance =
     method === "djiwa_pay" && typeof walletBalance === "number" && walletBalance < price;
 
@@ -150,6 +151,8 @@ export function CheckoutForm({
         email: email.trim(),
         whatsapp: normalizeWhatsapp(wa),
         method,
+        guestCheckout: !user,
+        preorderRequested: Boolean(pkg.preorderAvailable && !pkg.sellable),
       });
       // Go straight to the payment page: leaving the customer on the order screen when a
       // payment link already exists is a dead end they asked us to remove.
@@ -208,9 +211,9 @@ export function CheckoutForm({
       <h2 className={`${label} mt-4`}>Dikirim ke</h2>
       {!user && (
         <div className="mb-3 rounded-2xl border border-brand-red/20 bg-brand-red-soft p-3 text-sm">
-          <p className="font-semibold">Masuk untuk checkout</p>
+          <p className="font-semibold">Checkout sebagai tamu</p>
           <p className="mt-1 text-muted-foreground">
-            Pesanan disimpan ke akunmu agar bisa dibuka di perangkat mana pun.
+            Link status pesanan dan eSIM akan dikirim ke email ini. Isi kontak dengan benar.
           </p>
           <Link
             to="/profile"
@@ -222,7 +225,7 @@ export function CheckoutForm({
             }}
             className="mt-2 inline-flex font-semibold text-brand-red"
           >
-            Masuk di Profil →
+            Masuk sebagai member →
           </Link>
         </div>
       )}
@@ -244,9 +247,8 @@ export function CheckoutForm({
           </Link>
         </div>
       )}
-      {user && (
-        <>
-          <div className={group}>
+      <>
+        <div className={group}>
             <input
               className={input}
               type="email"
@@ -269,18 +271,17 @@ export function CheckoutForm({
                 setWa((value) => (isValidWhatsapp(value) ? formatWhatsapp(value) : value))
               }
             />
-          </div>
-          {wa.trim() !== "" && !isValidWhatsapp(wa) && (
+        </div>
+        {wa.trim() !== "" && !isValidWhatsapp(wa) && (
             <p role="alert" className="mt-2 px-1 text-xs text-destructive">
               Nomor WhatsApp belum valid. Contoh: 08123456789.
             </p>
           )}
-          <p className="mt-2 px-1 text-xs text-muted-foreground">
-            {user ? "Masuk sebagai member." : "Tanpa perlu daftar akun."} Boleh ketik 0812… — kami
-            ubah otomatis ke format 62….
-          </p>
-        </>
-      )}
+        <p className="mt-2 px-1 text-xs text-muted-foreground">
+          {user ? "Masuk sebagai member." : "Tanpa perlu daftar akun."} Boleh ketik 0812… — kami
+          ubah otomatis ke format 62….
+        </p>
+      </>
       <DeviceCompatibility />
 
       <h2 className={`${label} mt-4`}>Pembayaran</h2>
@@ -362,15 +363,23 @@ export function CheckoutForm({
       )}
 
       <Footer sheet={sheet}>
-        {!pkg.sellable && (
-          <p className="pb-2 text-center text-xs font-semibold text-destructive">
-            Paket ini sedang tidak tersedia. Silakan pilih paket lain.
+        {!pkg.sellable && pkg.preorderAvailable && (
+          <p className="pb-2 text-center text-xs font-semibold text-brand-red">
+            Pre-order dibayar sekarang. eSIM dibeli otomatis setelah saldo provider cukup; jika
+            belum terpenuhi dalam 3 hari, pesanan masuk antrean admin untuk ditinjau.
           </p>
         )}
-        {!canPay && !submitting && pkg.sellable && (
+        {!pkg.sellable && !pkg.preorderAvailable && (
+          <p className="pb-2 text-center text-xs font-semibold text-destructive">
+            Saldo provider belum dapat dipastikan. Checkout belum tersedia untuk paket ini.
+          </p>
+        )}
+        {!canPay && !submitting && packageCheckoutReady && (
           <p className="pb-2 text-center text-xs text-muted-foreground">
             {!user
-              ? "Masuk ke akun untuk melanjutkan checkout."
+              ? method === "djiwa_pay"
+                ? "Masuk sebagai member untuk membayar dengan saldo Djiwa Pay."
+                : "Isi email dan nomor WhatsApp untuk melanjutkan sebagai tamu."
               : !valid
                 ? "Isi email dan nomor WhatsApp yang valid untuk melanjutkan."
                 : method === "djiwa_pay"
@@ -385,17 +394,19 @@ export function CheckoutForm({
           </p>
         )}
         <button
-          disabled={!canPay || submitting || !pkg.sellable}
+          disabled={!canPay || submitting || !packageCheckoutReady}
           onClick={pay}
           className={`${btnRed} disabled:opacity-40`}
         >
           {submitting
             ? paymentProgressLabel(paymentProgress)
-            : pkg.sellable
+            : packageCheckoutReady
               ? method === "djiwa_pay"
                 ? `Bayar dengan Djiwa Pay · ${rupiah(price)}`
-                : `Buat pesanan · ${rupiah(price)}`
-              : "Habis"}
+                : pkg.preorderAvailable && !pkg.sellable
+                  ? `Pre-order · ${rupiah(price)}`
+                  : `Buat pesanan · ${rupiah(price)}`
+              : "Stok belum terverifikasi"}
         </button>
       </Footer>
     </>

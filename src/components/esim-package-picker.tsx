@@ -39,7 +39,10 @@ export function EsimPackagePicker({
 
   if (!bucket) return null;
   const best = bestValuePackage(bucket.packages)?.packageCode;
-  const chosen = bucket.packages.find((pkg) => pkg.packageCode === selected && pkg.sellable);
+  const chosen = bucket.packages.find(
+    (pkg) =>
+      pkg.packageCode === selected && (pkg.sellable || pkg.preorderAvailable),
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -82,7 +85,7 @@ export function EsimPackagePicker({
                 type="button"
                 role="radio"
                 aria-checked={checked}
-                disabled={!pkg.sellable}
+                disabled={!pkg.sellable && !pkg.preorderAvailable}
                 onClick={() => setSelected(pkg.packageCode)}
                 className={`tap flex min-h-12 w-full items-center gap-3 rounded-2xl border-2 px-4 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 ${
                   checked ? "border-brand-red bg-surface" : "border-transparent bg-secondary"
@@ -99,7 +102,13 @@ export function EsimPackagePicker({
                   </span>
                   <span className="block text-[12px] text-muted-foreground">
                     {pkg.durationDays} hari
-                    {!pkg.sellable ? (stockPending ? " · Memeriksa stok" : " · Habis") : ""}
+                    {!pkg.sellable
+                      ? pkg.preorderAvailable
+                        ? " · Pre-order"
+                        : stockPending
+                          ? " · Memeriksa stok"
+                          : " · Habis"
+                      : ""}
                   </span>
                 </span>
                 <span className="text-[15px] font-bold tabular-nums">{rupiah(pkg.priceIdr)}</span>
@@ -117,7 +126,7 @@ export function EsimPackagePicker({
             onClick={onNavigate}
             className="tap mt-3 flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red text-[14px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            Lanjut bayar · {rupiah(chosen.priceIdr)}
+            {chosen.preorderAvailable && !chosen.sellable ? "Pre-order" : "Lanjut bayar"} · {rupiah(chosen.priceIdr)}
           </Link>
         ) : (
           <p className="mt-3 rounded-xl bg-secondary p-3 text-center text-sm text-muted-foreground">

@@ -1,13 +1,14 @@
 import { fetchEsimAccessBalanceServer } from "./esim-access";
 import {
   affordableCeilingUsd,
+  checkoutSellabilityDecision,
   partitionSellability,
   sellabilityMode,
   type BalanceSnapshot,
   type SellabilityMode,
   type SellablePackage,
-  checkoutSellabilityDecision,
 } from "./sellability";
+import { classifyOrderFulfillment } from "./esim-preorder";
 
 /**
  * Server side of balance-aware sellability: one cached balance read shared by every catalogue page,
@@ -41,16 +42,16 @@ async function readProviderBalance(): Promise<number> {
   }
 }
 
-export async function getBalanceSnapshot(): Promise<BalanceSnapshot> {
+export async function getBalanceSnapshot(options: { forceRefresh?: boolean } = {}): Promise<BalanceSnapshot> {
   const now = Date.now();
-  if (lastKnown && now - lastKnown.at < CACHE_TTL_MS) {
+  if (!options.forceRefresh && lastKnown && now - lastKnown.at < CACHE_TTL_MS) {
     return { balanceUnits: lastKnown.units, capturedAtMs: lastKnown.at, source: "cache" };
   }
   try {
     const units = await readProviderBalance();
     return { balanceUnits: units, capturedAtMs: lastKnown?.at ?? now, source: "live" };
   } catch (error) {
-    if (lastKnown && now - lastKnown.at <= LAST_KNOWN_MAX_AGE_MS) {
+    if (!options.forceRefresh && lastKnown && now - lastKnown.at <= LAST_KNOWN_MAX_AGE_MS) {
       return { balanceUnits: lastKnown.units, capturedAtMs: lastKnown.at, source: "last-known" };
     }
     console.warn("[travel] saldo provider tidak terbaca, kelayakan jual dilewati (fail-open)", {
@@ -64,6 +65,7 @@ export type SellabilityState = {
   mode: SellabilityMode;
   snapshot: BalanceSnapshot;
   hidden: Set<string>;
+  preorderable: Set<string>;
   hiddenCount: number;
   sellableCount: number;
 };
@@ -81,6 +83,7 @@ export async function getSellabilityState<T extends SellablePackage>(
       mode,
       snapshot: { balanceUnits: null, capturedAtMs: null, source: "unknown" },
       hidden: new Set<string>(),
+      preorderable: new Set<string>(),
       hiddenCount: 0,
       sellableCount: packages.length,
     };
@@ -104,6 +107,7 @@ export async function getSellabilityState<T extends SellablePackage>(
       mode,
       snapshot,
       hidden: new Set<string>(),
+      preorderable: new Set<string>(),
       hiddenCount: partition.hiddenCount,
       sellableCount: packages.length,
     };
@@ -113,6 +117,7 @@ export async function getSellabilityState<T extends SellablePackage>(
     mode,
     snapshot,
     hidden: partition.hidden,
+    preorderable: partition.preorderable,
     hiddenCount: partition.hiddenCount,
     sellableCount: partition.sellableCount,
   };
@@ -138,4 +143,27 @@ export async function assertPackageSellableForOrder(pkg: SellablePackage): Promi
     });
     throw new Error("Paket ini sedang habis (sold out). Silakan pilih paket lain.");
   }
+}
+
+/** Rechecks the provider balance for checkout; preorder is granted only for a known shortage. */
+export async function resolveOrderFulfillment(
+  pkg: SellablePackage,
+  requestedPreorder: boolean,
+): Promise<"instant" | "preorder"> {
+  const snapshot = await getBalanceSnapshot();
+  const verdict = checkoutSellabilityDecision(pkg, snapshot);
+  const decision = classifyOrderFulfillment({
+    requestedPreorder,
+    sellable: verdict.ok,
+    balanceKnown: snapshot.balanceUnits !== null && Number.isFinite(snapshot.balanceUnits),
+    packageValid: verdict.ok || verdict.reason !== "provider_cost_invalid",
+  });
+  if (decision.mode !== "unavailable") return decision.mode;
+  if (decision.reason === "balance_unknown") {
+    throw new Error("Checkout sementara tidak tersedia karena saldo provider belum terverifikasi.");
+  }
+  if (decision.reason === "package_invalid") {
+    throw new Error("Harga paket belum dapat diverifikasi. Silakan coba lagi.");
+  }
+  throw new Error("Paket ini sedang habis (sold out). Silakan pilih Pre-order atau paket lain.");
 }

@@ -94,6 +94,16 @@ describe("partitionSellability", () => {
     const partition = partitionSellability([pkg("a", 3_816_900)], live(null, "unknown"));
     expect(partition.hiddenCount).toBe(1);
     expect(partition.hidden).toEqual(new Set(["a"]));
+    expect(partition.preorderable).toEqual(new Set());
+  });
+
+  it("marks only valid packages with known but insufficient balance as preorderable", () => {
+    const partition = partitionSellability(
+      [pkg("cheap", 3_000), pkg("expensive", 200_000), pkg("invalid", 0)],
+      live(REAL_BALANCE),
+    );
+    expect(partition.hidden).toEqual(new Set(["expensive", "invalid"]));
+    expect(partition.preorderable).toEqual(new Set(["expensive"]));
   });
 });
 
@@ -135,6 +145,25 @@ describe("view packages carry the sold-out flag", () => {
     expect(shown?.sellable).toBe(true);
   });
 
+  it("marks a known sold-out package as preorderable without exposing server prices", () => {
+    const view = toViewPackage(source, false, true);
+    expect(view.sellable).toBe(false);
+    expect(view.preorderAvailable).toBe(true);
+    expect(Object.keys(view).sort()).toEqual(
+      [
+        "packageCode",
+        "name",
+        "locationCodes",
+        "volumeBytes",
+        "unlimited",
+        "durationDays",
+        "priceIdr",
+        "sellable",
+        "preorderAvailable",
+      ].sort(),
+    );
+  });
+
   it("never leaks the cost basis to the browser payload", () => {
     const view = toViewPackage(source);
     expect(Object.keys(view).sort()).toEqual(
@@ -147,6 +176,7 @@ describe("view packages carry the sold-out flag", () => {
         "durationDays",
         "priceIdr",
         "sellable",
+        "preorderAvailable",
       ].sort(),
     );
   });

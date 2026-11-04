@@ -45,6 +45,9 @@ const memberOrderSelection = {
   createdAt: customerOrders.createdAt,
   expiresAt: customerOrders.esimActivationExpiresAt,
   paymentExpiresAt: customerOrders.paymentExpiresAt,
+  fulfillmentMode: customerOrders.fulfillmentMode,
+  preorderStatus: customerOrders.preorderStatus,
+  preorderDeadlineAt: customerOrders.preorderDeadlineAt,
   activationProfileExpiresAt: esimProfiles.expiresAt,
   packageCode: customerOrderItems.providerPackageCode,
   paymentProvider: customerOrders.paymentProvider,
@@ -95,6 +98,11 @@ function toGuestOrderRecord(
         ? new Date(row.expiresAt).getTime()
         : null,
     paymentExpiresAtMs: row.paymentExpiresAt ? new Date(row.paymentExpiresAt).getTime() : null,
+    fulfillmentMode: row.fulfillmentMode as "instant" | "preorder",
+    preorderStatus: row.preorderStatus,
+    preorderDeadlineAtMs: row.preorderDeadlineAt
+      ? new Date(row.preorderDeadlineAt).getTime()
+      : null,
     packageCode: row.packageCode,
     paymentMethod: row.paymentMethod ?? "qris",
     paymentProvider: row.paymentProvider,

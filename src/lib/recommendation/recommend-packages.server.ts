@@ -16,9 +16,13 @@ export const recommendPackages = createServerFn({ method: "POST" })
     return {
       // Only display fields go over the wire: the ranked records carry our cost
       // basis (lib/package-view.ts).
-      recommendations: rankPackages(filtered, preferences).map((item) => ({
+      recommendations: rankPackages(filtered, preferences).sort((a, b) => Number(sellability.hidden.has(a.package.packageCode)) - Number(sellability.hidden.has(b.package.packageCode))).map((item) => ({
         ...item,
-        package: toViewPackage(item.package, !sellability.hidden.has(item.package.packageCode)),
+        package: toViewPackage(
+          item.package,
+          !sellability.hidden.has(item.package.packageCode),
+          sellability.preorderable.has(item.package.packageCode),
+        ),
       })),
       catalogCount: catalog.packages.length,
       filteredCount: filtered.length,

@@ -31,7 +31,11 @@ export function bestValuePackage(packages: readonly ViewPackage[]): ViewPackage 
   return [...sellable].sort((a, b) => pricePerDay(a) - pricePerDay(b) || a.priceIdr - b.priceIdr)[0];
 }
 
-/** Preselect the best-value package; fall back to the first sellable one. */
+/** Preselect the best-value package; when none is sellable, allow a known-stock preorder choice. */
 export function defaultPackage(packages: readonly ViewPackage[]): ViewPackage | undefined {
-  return bestValuePackage(packages) ?? packages.find((pkg) => pkg.sellable);
+  return (
+    bestValuePackage(packages) ??
+    packages.find((pkg) => pkg.sellable) ??
+    packages.find((pkg) => pkg.preorderAvailable)
+  );
 }

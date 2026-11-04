@@ -222,6 +222,9 @@ export const customerOrders = pgTable(
     publicOrderCode: text("public_order_code").notNull(),
     customerId: uuid("customer_id"),
     status: text().notNull(),
+    fulfillmentMode: text("fulfillment_mode").default("instant").notNull(),
+    preorderStatus: text("preorder_status"),
+    preorderDeadlineAt: timestamp("preorder_deadline_at", { withTimezone: true, mode: "string" }),
     currencyCode: text("currency_code").default("IDR").notNull(),
     subtotalAmount: numeric("subtotal_amount").notNull(),
     markupAmount: numeric("markup_amount").notNull(),
@@ -272,12 +275,48 @@ export const customerOrders = pgTable(
       table.status.asc().nullsLast(),
       table.expiresAt.asc().nullsLast(),
     ),
+    index("customer_orders_preorder_queue_idx")
+      .using("btree", table.preorderStatus.asc().nullsLast(), table.preorderDeadlineAt.asc().nullsLast(), table.createdAt.asc().nullsLast())
+      .where(sql`fulfillment_mode = 'preorder'`),
     unique("customer_orders_public_order_code_key").on(table.publicOrderCode),
     unique("customer_orders_idempotency_key_key").on(table.idempotencyKey),
     check(
       "customer_orders_status_check",
       sql`status = ANY (ARRAY['DRAFT'::text, 'ORDER_CREATED'::text, 'PAYMENT_PENDING'::text, 'PAYMENT_CONFIRMED'::text, 'PROVISIONING'::text, 'READY'::text, 'INSTALLED'::text, 'EXPIRED'::text, 'PROVISIONING_FAILED'::text, 'CANCELLED'::text, 'REFUNDED'::text])`,
     ),
+    check("customer_orders_fulfillment_mode_check", sql`fulfillment_mode = ANY (ARRAY['instant'::text, 'preorder'::text])`),
+    check("customer_orders_preorder_status_check", sql`preorder_status IS NULL OR preorder_status = ANY (ARRAY['pending_payment'::text, 'pending'::text, 'processing'::text, 'refund_review'::text, 'fulfilled'::text])`),
+    check(
+      "customer_orders_preorder_fields_check",
+      sql`(fulfillment_mode = 'instant' AND preorder_status IS NULL AND preorder_deadline_at IS NULL) OR (fulfillment_mode = 'preorder' AND preorder_status = 'pending_payment' AND preorder_deadline_at IS NULL) OR (fulfillment_mode = 'preorder' AND preorder_status = ANY (ARRAY['pending'::text, 'processing'::text, 'refund_review'::text, 'fulfilled'::text]) AND preorder_deadline_at IS NOT NULL)`,
+    ),
+  ],
+);
+
+export const travelEmailOutbox = pgTable(
+  "travel_email_outbox",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    orderId: uuid("order_id").notNull(),
+    recipientEmail: text("recipient_email").notNull(),
+    subject: text().notNull(),
+    htmlBody: text("html_body").notNull(),
+    textBody: text("text_body").notNull(),
+    status: text().default("queued").notNull(),
+    attemptCount: integer("attempt_count").default(0).notNull(),
+    availableAt: timestamp("available_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true, mode: "string" }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique("travel_email_outbox_idempotency_key_key").on(table.idempotencyKey),
+    index("travel_email_outbox_queue_idx").using("btree", table.status.asc().nullsLast(), table.availableAt.asc().nullsLast(), table.createdAt.asc().nullsLast()),
+    foreignKey({ columns: [table.orderId], foreignColumns: [customerOrders.id], name: "travel_email_outbox_order_id_fkey" }).onDelete("restrict"),
+    check("travel_email_outbox_status_check", sql`status = ANY (ARRAY['queued'::text, 'sending'::text, 'sent'::text, 'failed'::text])`),
+    check("travel_email_outbox_attempt_count_check", sql`attempt_count >= 0`),
   ],
 );
 

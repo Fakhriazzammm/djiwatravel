@@ -26,6 +26,7 @@ describe("simplified admin P0 scope", () => {
       "Keuangan",
       "Affiliate",
       "Katalog",
+      "Pre-order",
       "Provisioning",
       "Audit log",
       "Team",

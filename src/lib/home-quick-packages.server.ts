@@ -6,6 +6,7 @@ import {
   pickQuickPackages,
   type PackageSales,
 } from "./home-quick-packages";
+import type { ViewPackage } from "./package-view";
 
 const SALES_WINDOW_DAYS = 90;
 
@@ -44,14 +45,18 @@ export async function getHomeQuickPackagesHandler(code: string) {
   const destCode = data.destination.code.toUpperCase();
   // Country picks use single-country packages (see countryScopedPackages).
   const scoped = countryScopedPackages(data.packages, destCode, data.destination.region);
-  const sellableCount = scoped.filter((pkg) => pkg.sellable).length;
+  const preorderPicks: ViewPackage[] = scoped
+    .filter((pkg) => !pkg.sellable && pkg.preorderAvailable &&
+      [pin.bestDealPackageCode, pin.bestSellerPackageCode].includes(pkg.packageCode))
+    .slice(0, 2);
   const fromPriceIdr = scoped
     .filter((pkg) => pkg.sellable)
     .reduce<number | null>((min, pkg) => (min === null || pkg.priceIdr < min ? pkg.priceIdr : min), null);
   return {
     destination: data.destination,
     picks: pickQuickPackages(scoped, sales, pin),
-    total: sellableCount,
+    preorderPicks,
+    total: scoped.filter((pkg) => pkg.sellable || pkg.preorderAvailable).length,
     fromPriceIdr,
     stale: data.stale,
     stockPending: data.stockPending,

@@ -20,7 +20,11 @@ export const loadCheckout = createServerFn({ method: "GET" })
     const sellability = await getSellabilityState([pkg]);
     // Display fields only: the full record carries our cost basis (lib/package-view.ts).
     return {
-      pkg: toViewPackage(pkg, !sellability.hidden.has(pkg.packageCode)),
+      pkg: toViewPackage(
+        pkg,
+        !sellability.hidden.has(pkg.packageCode),
+        sellability.preorderable.has(pkg.packageCode),
+      ),
       djiwaPayEnabled:
         Buffer.byteLength(
           process.env["DJIWA_TRAVEL_WALLET_PAYMENT_SECRET"]?.trim() ?? "",

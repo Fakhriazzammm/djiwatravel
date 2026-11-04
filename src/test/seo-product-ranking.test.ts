@@ -34,9 +34,10 @@ describe("public product SEO contract", () => {
       durationDays: 15,
       priceIdr: 75_000,
       sellable: true,
+      preorderAvailable: false,
     });
     expect(JSON.stringify(view)).not.toMatch(
-      /providerCost|margin|providerSnapshot|secret|iccid|order/i,
+      /providerCost|margin|providerSnapshot|secret|iccid|orderId|orderCode/i,
     );
   });
 

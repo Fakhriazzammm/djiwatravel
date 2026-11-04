@@ -39,6 +39,7 @@ beforeEach(() => {
     mode: "on",
     snapshot: { balanceUnits: 100_000, capturedAtMs: 1, source: "cache" },
     hidden: new Set(),
+    preorderable: new Set(),
     hiddenCount: 0,
     sellableCount: 1,
   });
@@ -55,15 +56,16 @@ describe("home eSIM catalog search", () => {
     );
   });
 
-  it("does not offer packages hidden by the sellability check", async () => {
+  it("offers known unaffordable packages as preorder", async () => {
     vi.mocked(getSellabilityState).mockResolvedValueOnce({
       mode: "on",
       snapshot: { balanceUnits: 1, capturedAtMs: 1, source: "cache" },
       hidden: new Set([japan.packageCode]),
+      preorderable: new Set([japan.packageCode]),
       hiddenCount: 1,
       sellableCount: 0,
     });
-    expect((await searchHomeEsimCatalogHandler("Jepang")).packages).toEqual([]);
+    expect((await searchHomeEsimCatalogHandler("Jepang")).packages[0]).toMatchObject({ sellable: false, preorderAvailable: true });
   });
 
   it("does not offer packages when sellability is required but unknown", async () => {
@@ -71,6 +73,7 @@ describe("home eSIM catalog search", () => {
       mode: "on",
       snapshot: { balanceUnits: null, capturedAtMs: null, source: "unknown" },
       hidden: new Set(),
+    preorderable: new Set(),
       hiddenCount: 0,
       sellableCount: 1,
     });

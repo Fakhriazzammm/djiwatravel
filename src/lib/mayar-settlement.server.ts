@@ -6,6 +6,7 @@ import { customerOrders, guestOrderAccess } from "../../drizzle/schema";
 import { resolveOrderAccess } from "./order-access.server";
 import { fetchMayarTransaction, type MayarTransaction } from "./mayar-gateway";
 import { provisionSettledTravelOrder } from "./mayar-provisioning.server";
+import { preorderDeadline } from "./esim-preorder";
 import { readMayarSnapshot, toIsoTimestamp } from "./payment-snapshot";
 import { assertPaymentNotExpired } from "./payment-expiry";
 import { enqueueFinancePosting } from "./finance-outbox.server";
@@ -155,7 +156,7 @@ async function settleLocalPayment(input: {
 }) {
   return db.transaction(async (tx) => {
     const rows = await tx.execute(
-      sql`select o.status, o.total_amount, o.payment_reference,
+      sql`select o.status, o.total_amount, o.payment_reference, o.fulfillment_mode,
                  coalesce(access.payment_method, case when o.payment_provider = 'mayar' then 'qris' end) as payment_method
             from public.customer_orders o
             left join public.guest_order_access access on access.order_id = o.id
@@ -168,6 +169,7 @@ async function settleLocalPayment(input: {
           total_amount: string | number;
           payment_reference: string | null;
           payment_method: string;
+          fulfillment_mode: string;
         }
       | undefined;
     if (!order) throw new Error("order_not_found");
@@ -187,8 +189,17 @@ async function settleLocalPayment(input: {
       values ('mayar', ${input.eventId}, 'payment.received', ${input.orderId}::uuid, 'PAID', ${input.amount}, 'IDR', ${JSON.stringify(input.gatewayPayload)}::jsonb, now(), ${input.financeError ?? null})`);
     if (SETTLED_STATUSES.has(order.status)) return { duplicate: true, status: order.status };
 
+    const deadlineAt =
+      order.fulfillment_mode === "preorder" ? preorderDeadline(input.paidAt) : null;
     await tx.execute(
-      sql`update public.customer_orders set status = 'PAYMENT_CONFIRMED', payment_provider = 'mayar', payment_reference = coalesce(${input.invoiceId ?? ""}, payment_reference), paid_at = ${input.paidAt}::timestamptz, updated_at = now() where id = ${input.orderId}::uuid`,
+      sql`update public.customer_orders
+             set status = 'PAYMENT_CONFIRMED', payment_provider = 'mayar',
+                 payment_reference = coalesce(${input.invoiceId ?? ""}, payment_reference),
+                 paid_at = ${input.paidAt}::timestamptz,
+                 preorder_status = case when fulfillment_mode = 'preorder' then 'pending' else null end,
+                 preorder_deadline_at = case when fulfillment_mode = 'preorder' then ${deadlineAt}::timestamptz else null end,
+                 updated_at = now()
+           where id = ${input.orderId}::uuid`,
     );
     return { duplicate: false, status: "PAYMENT_CONFIRMED" };
   });

@@ -1,6 +1,6 @@
 import { isRecommendablePackage, type ResellerCatalogPackage } from "./esim-access-catalog";
 import { packageDataLabel, packageDestinationLabel } from "./package-copy";
-import { toViewPackages } from "./package-view";
+import { toViewPackage } from "./package-view";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 import { getSellabilityState } from "./sellability.server";
 
@@ -48,10 +48,16 @@ export async function searchHomeEsimCatalogHandler(query: string) {
     throw new Error("Ketersediaan paket belum dapat dipastikan");
   }
 
-  const available = matching.filter((pkg) => !sellability.hidden.has(pkg.packageCode));
+  const preorderable = sellability.preorderable;
   return {
-    packages: toViewPackages(available.slice(0, RESULT_LIMIT)),
+    packages: matching.sort((a, b) => Number(sellability.hidden.has(a.packageCode)) - Number(sellability.hidden.has(b.packageCode))).slice(0, RESULT_LIMIT).map((pkg) =>
+      toViewPackage(
+        pkg,
+        !sellability.hidden.has(pkg.packageCode),
+        preorderable.has(pkg.packageCode),
+      ),
+    ),
     stale: catalog.stale,
-    hasMore: available.length > RESULT_LIMIT,
+    hasMore: matching.length > RESULT_LIMIT,
   };
 }

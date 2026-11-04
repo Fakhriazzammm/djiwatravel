@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   existing: [] as Array<Record<string, unknown>>,
   inserted: [] as Array<{ table: string; values: Record<string, unknown> }>,
   packages: [] as Array<Record<string, unknown>>,
+  fulfillmentMode: "instant" as "instant" | "preorder",
 }));
 
 vi.mock("../lib/customer-session.fn", () => ({
@@ -28,7 +29,7 @@ vi.mock("../lib/reseller-catalog-cache", () => ({
 }));
 
 vi.mock("../lib/sellability.server", () => ({
-  assertPackageSellableForOrder: vi.fn(async () => undefined),
+  resolveOrderFulfillment: vi.fn(async () => state.fulfillmentMode),
 }));
 
 vi.mock("../db/client.server", () => {
@@ -61,7 +62,19 @@ vi.mock("../db/client.server", () => {
 });
 
 vi.mock("../../drizzle/schema", () => ({
-  customerOrders: { _tableName: "customer_orders", id: "id", idempotencyKey: "idempotencyKey" },
+  customerOrders: {
+    _tableName: "customer_orders",
+    id: "id",
+    idempotencyKey: "idempotencyKey",
+    status: "status",
+    totalAmount: "totalAmount",
+    customerAuthSubject: "customerAuthSubject",
+    createdAt: "createdAt",
+    paymentExpiresAt: "paymentExpiresAt",
+    fulfillmentMode: "fulfillmentMode",
+    preorderStatus: "preorderStatus",
+    preorderDeadlineAt: "preorderDeadlineAt",
+  },
   customerOrderItems: { _tableName: "customer_order_items" },
   customerOrderPaymentDetails: { _tableName: "customer_order_payment_details" },
 }));
@@ -131,6 +144,7 @@ describe("createAuthenticatedOrderDraftHandler", () => {
     state.existing = [];
     state.inserted = [];
     state.packages = [PACKAGE];
+    state.fulfillmentMode = "instant";
   });
 
   it("creates nothing without a verified session", async () => {
@@ -166,6 +180,24 @@ describe("createAuthenticatedOrderDraftHandler", () => {
       whatsapp: completeProfile.whatsapp,
       paymentMethod: "djiwa_pay",
     });
+  });
+
+  it("records preorder intent only after the server classifies it as preorder", async () => {
+    state.fulfillmentMode = "preorder";
+    await createAuthenticatedOrderDraftHandler({
+      data: {
+        packageCode: "PKG-1",
+        paymentMethod: "qris",
+        idempotencyKey: KEY,
+        preorderRequested: true,
+      },
+    });
+    const order = state.inserted.find((row) => row.table === "customer_orders");
+    expect(order?.values).toMatchObject({
+      fulfillmentMode: "preorder",
+      preorderStatus: "pending_payment",
+    });
+    expect(order?.values).not.toHaveProperty("preorderDeadlineAt");
   });
 
   it("returns the existing order for the same subject on retry", async () => {

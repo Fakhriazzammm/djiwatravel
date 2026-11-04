@@ -22,6 +22,8 @@ export type ViewPackage = {
    * A boolean keeps the balance and the cost basis on the server.
    */
   sellable: boolean;
+  /** True only when a verified provider balance is below this package's buffered cost. */
+  preorderAvailable?: boolean;
 };
 
 /** Anything that carries at least the display fields — the full record or a narrower pick. */
@@ -30,7 +32,11 @@ export type PackageDisplaySource = Pick<
   "packageCode" | "name" | "locationCodes" | "volumeBytes" | "durationDays" | "sellingPrice"
 > & { unlimited?: boolean };
 
-export function toViewPackage(pkg: PackageDisplaySource, sellable = true): ViewPackage {
+export function toViewPackage(
+  pkg: PackageDisplaySource,
+  sellable = true,
+  preorderAvailable = false,
+): ViewPackage {
   return {
     packageCode: pkg.packageCode,
     name: pkg.name,
@@ -40,6 +46,7 @@ export function toViewPackage(pkg: PackageDisplaySource, sellable = true): ViewP
     durationDays: pkg.durationDays,
     priceIdr: pkg.sellingPrice.sellingPriceIdr,
     sellable,
+    preorderAvailable,
   };
 }
 
@@ -47,6 +54,13 @@ export function toViewPackage(pkg: PackageDisplaySource, sellable = true): ViewP
 export function toViewPackages(
   packages: PackageDisplaySource[],
   hidden?: ReadonlySet<string>,
+  preorderable?: ReadonlySet<string>,
 ): ViewPackage[] {
-  return packages.map((pkg) => toViewPackage(pkg, !hidden?.has(pkg.packageCode)));
+  return packages.map((pkg) =>
+    toViewPackage(
+      pkg,
+      !hidden?.has(pkg.packageCode),
+      preorderable?.has(pkg.packageCode) ?? false,
+    ),
+  );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { EsimProfile } from "./providers";
 import { getGuestOrders } from "./guest-orders.fn";
 import { createAuthenticatedOrder } from "./customer-orders.fn";
+import { createGuestOrderDraft } from "./guest-orders.fn";
 import { syncTripPlansFromServer } from "./travel-checklist-store";
 import { claimGuestOrderForMember, getMemberOrders } from "./member-orders.fn";
 import { rebuildMayarInvoice } from "./mayar-gateway";
@@ -53,6 +54,9 @@ export type Order = {
   priceSnapshot?: { amountIdr: number; capturedAt: number; currency: "IDR"; packageId: string };
   /** True when this order came from the verified member read path rather than a local guest token. */
   fromMemberAccount?: boolean;
+  fulfillmentMode?: "instant" | "preorder";
+  preorderStatus?: string | null;
+  preorderDeadlineAt?: number | null;
 };
 
 const KEY = "djiwa.orders";
@@ -265,7 +269,10 @@ type PendingOrder = {
   email: string;
   whatsapp: string;
   method: NewCheckoutPaymentMethod;
+  guestCheckout: boolean;
+  preorderRequested: boolean;
   idempotencyKey: string;
+  accessToken?: string;
   createdAt: number;
 };
 function readGuestAccess(): Record<string, string> {
@@ -298,6 +305,8 @@ export async function createOrder(
     email: string;
     whatsapp: string;
     method: NewCheckoutPaymentMethod;
+    guestCheckout?: boolean;
+    preorderRequested?: boolean;
   },
 ): Promise<Order> {
   let pending: PendingOrder | undefined;
@@ -314,29 +323,53 @@ export async function createOrder(
     pending.packageId === o.packageId &&
     pending.email === o.email &&
     pending.whatsapp === o.whatsapp &&
-    pending.method === o.method
+    pending.method === o.method &&
+    pending.guestCheckout === (o.guestCheckout ?? false) &&
+    pending.preorderRequested === (o.preorderRequested ?? false)
       ? pending
       : undefined;
   const idempotencyKey = matchingPending?.idempotencyKey ?? crypto.randomUUID();
+  const guestCheckout = o.guestCheckout ?? false;
+  if (guestCheckout && o.method !== "qris") {
+    throw new Error("Masuk sebagai member untuk membayar dengan saldo Djiwa Pay.");
+  }
+  const accessToken = guestCheckout
+    ? (matchingPending?.accessToken ?? crypto.randomUUID() + crypto.randomUUID())
+    : undefined;
   const nextPending: PendingOrder = {
     packageId: o.packageId,
     email: o.email,
     whatsapp: o.whatsapp,
     method: o.method,
+    guestCheckout,
+    preorderRequested: o.preorderRequested ?? false,
     idempotencyKey,
+    ...(accessToken ? { accessToken } : {}),
     createdAt: Date.now(),
   };
   sessionStorage.setItem("djiwa.pending-order", JSON.stringify(nextPending));
-  // The server derives the owner from the verified session and the contacts from the profile;
-  // the browser sends only the package, payment method, and idempotency key.
-  const saved = await createAuthenticatedOrder({
-    data: {
-      packageCode: o.packageId,
-      paymentMethod: o.method,
-      idempotencyKey,
-    },
-  });
+  const saved = guestCheckout
+    ? await createGuestOrderDraft({
+        data: {
+          packageCode: o.packageId,
+          paymentMethod: o.method,
+          idempotencyKey,
+          accessToken: accessToken!,
+          email: o.email,
+          whatsapp: o.whatsapp,
+          preorderRequested: o.preorderRequested ?? false,
+        },
+      })
+    : await createAuthenticatedOrder({
+        data: {
+          packageCode: o.packageId,
+          paymentMethod: o.method,
+          idempotencyKey,
+          preorderRequested: o.preorderRequested ?? false,
+        },
+      });
   sessionStorage.removeItem("djiwa.pending-order");
+  if (accessToken) saveGuestAccess(saved.id, accessToken);
   let paymentUrl: string | undefined;
   let paymentReference: string | undefined;
   let status: OrderStatus = "WAITING_PAYMENT";
@@ -385,6 +418,9 @@ export async function createOrder(
     ...(paymentUrl ? { paymentUrl } : {}),
     ...(paymentReference ? { paymentReference } : {}),
     createdAt: saved.createdAtMs,
+    fulfillmentMode: saved.fulfillmentMode === "preorder" ? "preorder" : "instant",
+    preorderStatus: saved.preorderStatus,
+    preorderDeadlineAt: saved.preorderDeadlineAtMs,
     priceSnapshot: {
       amountIdr: saved.amount,
       capturedAt: saved.createdAtMs,

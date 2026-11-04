@@ -19,7 +19,7 @@ import {
 import { normalizeWhatsapp, WHATSAPP_PATTERN } from "./phone";
 import { getResellerCatalog } from "./reseller-catalog-cache";
 import { loadLiveResellerPackage } from "./esim-access-catalog";
-import { assertPackageSellableForOrder } from "./sellability.server";
+import { resolveOrderFulfillment } from "./sellability.server";
 import { decryptEsimSecret } from "./esim-secret-crypto";
 import { readMayarSnapshot } from "./payment-snapshot";
 import { effectivePaymentStatus } from "./payment-expiry";
@@ -66,6 +66,7 @@ const createGuestOrderSchema = z.object({
   paymentMethod: newCheckoutPaymentMethodSchema,
   idempotencyKey: z.string().uuid(),
   accessToken: z.string().min(32).max(256),
+  preorderRequested: z.boolean().optional().default(false),
 });
 
 export const createGuestOrderDraftInput = (data: z.input<typeof createGuestOrderSchema>) =>
@@ -75,15 +76,13 @@ export const createGuestOrderDraftHandler = async ({
 }: {
   data: ReturnType<typeof createGuestOrderDraftInput>;
 }) => {
-  // Guest checkout is retired: every order belongs to a verified account. Reject first, before any
-  // write, so no unowned order can be created through this endpoint.
-  const { getRequestHeader } = await import("@tanstack/react-start/server");
-  await requireBetterAuthUser(getRequestHeader("cookie") ?? "");
   const walletCustomer =
     data.paymentMethod === "djiwa_pay" ? await requireCompleteWalletCustomer() : null;
-  // A signed-in customer's order belongs to the account whatever the payment method, so it shows
-  // on every device. The owner comes from the verified session, never from the request body.
+  // Members derive ownership from the verified session; true guests own the order through its
+  // high-entropy access token. Wallet payment always requires a verified member.
   const sessionCustomer = walletCustomer ?? (await optionalSessionCustomer());
+  if (data.paymentMethod === "djiwa_pay" && !sessionCustomer)
+    throw new Error("Masuk sebagai member untuk membayar dengan saldo Djiwa Pay.");
   const phone = normalizeGuestWhatsapp(data.whatsapp);
   const accessTokenHash = hashGuestAccessToken(data.accessToken);
   const previous = await db
@@ -121,6 +120,11 @@ export const createGuestOrderDraftHandler = async ({
       paymentExpiresAtMs: previous[0].paymentExpiresAt
         ? new Date(previous[0].paymentExpiresAt).getTime()
         : null,
+      fulfillmentMode: previous[0].fulfillmentMode,
+      preorderStatus: previous[0].preorderStatus,
+      preorderDeadlineAtMs: previous[0].preorderDeadlineAt
+        ? new Date(previous[0].preorderDeadlineAt).getTime()
+        : null,
       packageCode: data.packageCode,
       accessToken: data.accessToken,
     };
@@ -135,7 +139,7 @@ export const createGuestOrderDraftHandler = async ({
   if (!pkg) throw new Error("Paket eSIM tidak ditemukan atau sudah tidak tersedia");
   // Authoritative gate: the catalogue badge can be seconds stale, so re-check the balance here,
   // before an order row or an invoice exists.
-  await assertPackageSellableForOrder(pkg);
+  const fulfillmentMode = await resolveOrderFulfillment(pkg, data.preorderRequested);
   const price = pkg.sellingPrice;
   const id = randomUUID();
   const publicOrderCode = randomBytes(12).toString("hex").toUpperCase();
@@ -159,6 +163,8 @@ export const createGuestOrderDraftHandler = async ({
       id,
       publicOrderCode,
       status: "ORDER_CREATED",
+      fulfillmentMode,
+      ...(fulfillmentMode === "preorder" ? { preorderStatus: "pending_payment" } : {}),
       currencyCode: "IDR",
       subtotalAmount: String(price.providerCostIdr),
       markupAmount: String(price.markupIdr),
@@ -209,6 +215,9 @@ export const createGuestOrderDraftHandler = async ({
     paymentExpiresAtMs: expiresAt.getTime(),
     packageCode: pkg.packageCode,
     accessToken: data.accessToken,
+    fulfillmentMode,
+    preorderStatus: fulfillmentMode === "preorder" ? "pending_payment" : null,
+    preorderDeadlineAtMs: null,
   };
 };
 
@@ -247,6 +256,9 @@ export const getGuestOrdersHandler = async ({
           createdAt: customerOrders.createdAt,
           expiresAt: customerOrders.esimActivationExpiresAt,
           paymentExpiresAt: customerOrders.paymentExpiresAt,
+          fulfillmentMode: customerOrders.fulfillmentMode,
+          preorderStatus: customerOrders.preorderStatus,
+          preorderDeadlineAt: customerOrders.preorderDeadlineAt,
           activationProfileExpiresAt: esimProfiles.expiresAt,
           packageCode: customerOrderItems.providerPackageCode,
           paymentProvider: customerOrders.paymentProvider,
@@ -315,6 +327,11 @@ export const getGuestOrdersHandler = async ({
             ? new Date(row.expiresAt).getTime()
             : null,
         paymentExpiresAtMs: row.paymentExpiresAt ? new Date(row.paymentExpiresAt).getTime() : null,
+        fulfillmentMode: row.fulfillmentMode as "instant" | "preorder",
+        preorderStatus: row.preorderStatus,
+        preorderDeadlineAtMs: row.preorderDeadlineAt
+          ? new Date(row.preorderDeadlineAt).getTime()
+          : null,
         packageCode: row.packageCode,
         paymentMethod: storedPaymentMethod(row.paymentMethod),
         paymentProvider: row.paymentProvider,

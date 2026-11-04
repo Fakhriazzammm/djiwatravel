@@ -39,6 +39,7 @@ import { Route as AdminNotificationsRouteImport } from './routes/admin.notificat
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
+import { Route as AdminPreordersRouteImport } from './routes/admin.preorders'
 import { Route as AdminProvisioningRouteImport } from './routes/admin.provisioning'
 import { Route as AdminRefundsRouteImport } from './routes/admin.refunds'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -241,6 +242,11 @@ const AdminOverviewRoute = AdminOverviewRouteImport.update({
 const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
   id: '/admin/payments',
   path: '/admin/payments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPreordersRoute = AdminPreordersRouteImport.update({
+  id: '/admin/preorders',
+  path: '/admin/preorders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
@@ -546,6 +552,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders': typeof AdminOrdersRouteWithChildren
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/preorders': typeof AdminPreordersRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -631,6 +638,7 @@ export interface FileRoutesByTo {
   '/admin/orders': typeof AdminOrdersRouteWithChildren
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/preorders': typeof AdminPreordersRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -717,6 +725,7 @@ export interface FileRoutesById {
   '/admin/orders': typeof AdminOrdersRouteWithChildren
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/preorders': typeof AdminPreordersRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -804,6 +813,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/overview'
     | '/admin/payments'
+    | '/admin/preorders'
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
@@ -889,6 +899,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/overview'
     | '/admin/payments'
+    | '/admin/preorders'
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
@@ -974,6 +985,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/overview'
     | '/admin/payments'
+    | '/admin/preorders'
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
@@ -1060,6 +1072,7 @@ export interface RootRouteChildren {
   AdminOrdersRoute: typeof AdminOrdersRouteWithChildren
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
+  AdminPreordersRoute: typeof AdminPreordersRoute
   AdminProvisioningRoute: typeof AdminProvisioningRoute
   AdminRefundsRoute: typeof AdminRefundsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -1322,6 +1335,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/payments'
       fullPath: '/admin/payments'
       preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/preorders': {
+      id: '/admin/preorders'
+      path: '/admin/preorders'
+      fullPath: '/admin/preorders'
+      preLoaderRoute: typeof AdminPreordersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/provisioning': {
@@ -1765,6 +1785,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminOrdersRoute: AdminOrdersRouteWithChildren,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
+  AdminPreordersRoute: AdminPreordersRoute,
   AdminProvisioningRoute: AdminProvisioningRoute,
   AdminRefundsRoute: AdminRefundsRoute,
   AdminSettingsRoute: AdminSettingsRoute,

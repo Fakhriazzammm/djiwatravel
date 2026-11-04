@@ -5,6 +5,7 @@ import { getHomeQuickPackages } from "@/lib/home-quick-packages.fn";
 import type { QuickPackagePick, QuickPackageTag } from "@/lib/home-quick-packages";
 import { packageDataLabel } from "@/lib/package-copy";
 import { pricePerDay } from "@/lib/package-picker";
+import type { ViewPackage } from "@/lib/package-view";
 
 const rupiah = (value: number) => `Rp${value.toLocaleString("id-ID")}`;
 
@@ -20,6 +21,7 @@ type State =
       kind: "ready";
       code: string;
       picks: QuickPackagePick[];
+      preorderPicks: ViewPackage[];
       stockPending: boolean;
       total: number;
       fromPriceIdr: number | null;
@@ -57,11 +59,12 @@ export function EsimQuickBuyPanel({
           kind: "ready",
           code,
           picks: data.picks,
+          preorderPicks: data.preorderPicks ?? [],
           stockPending: data.stockPending,
           total: data.total,
           fromPriceIdr: data.fromPriceIdr,
         });
-        setSelected(data.picks[0]?.pkg.packageCode ?? null);
+        setSelected(data.picks[0]?.pkg.packageCode ?? data.preorderPicks?.[0]?.packageCode ?? null);
       },
       () => {
         if (live) setState({ kind: "error" });
@@ -73,7 +76,11 @@ export function EsimQuickBuyPanel({
   }, [code, attempt]);
 
   const chosen =
-    state.kind === "ready" ? state.picks.find((pick) => pick.pkg.packageCode === selected) : null;
+    state.kind === "ready"
+      ? state.picks.find((pick) => pick.pkg.packageCode === selected)?.pkg ??
+        state.preorderPicks.find((pkg) => pkg.packageCode === selected) ??
+        null
+      : null;
 
   return (
     <div
@@ -109,7 +116,7 @@ export function EsimQuickBuyPanel({
         </div>
       )}
 
-      {state.kind === "ready" && state.picks.length === 0 && (
+      {state.kind === "ready" && state.picks.length === 0 && state.preorderPicks.length === 0 && (
         <div className="rounded-2xl bg-secondary p-3 text-[13px] text-muted-foreground">
           <p>
             {state.stockPending
@@ -127,9 +134,9 @@ export function EsimQuickBuyPanel({
         </div>
       )}
 
-      {state.kind === "ready" && state.picks.length > 0 && (
+      {state.kind === "ready" && (state.picks.length > 0 || state.preorderPicks.length > 0) && (
         <>
-          <div role="radiogroup" aria-label="Pilih paket" className="flex gap-2">
+          {state.picks.length > 0 && <div role="radiogroup" aria-label="Pilih paket" className="flex gap-2">
             {state.picks.map((pick) => {
               const checked = pick.pkg.packageCode === selected;
               const tag = TAG[pick.tag];
@@ -168,16 +175,36 @@ export function EsimQuickBuyPanel({
                 </button>
               );
             })}
-          </div>
+          </div>}
+          {state.preorderPicks.length > 0 && (
+            <div className="mt-2 space-y-1.5" role="radiogroup" aria-label="Paket pre-order">
+              {state.preorderPicks.map((pkg) => (
+                <button
+                  key={pkg.packageCode}
+                  type="button"
+                  role="radio"
+                  aria-checked={pkg.packageCode === selected}
+                  onClick={() => setSelected(pkg.packageCode)}
+                  className={`tap flex min-h-10 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${pkg.packageCode === selected ? "border-brand-red bg-brand-red-soft/40" : "border-border/60 bg-secondary/60"}`}
+                >
+                  <span className="min-w-0 truncate font-semibold">
+                    <span className="mr-1.5 rounded-full bg-brand-red-soft px-2 py-0.5 text-[10px] font-bold text-brand-red">Pre-order</span>
+                    {packageDataLabel(pkg)} · {pkg.durationDays} hari
+                  </span>
+                  <span className="shrink-0 font-bold tabular-nums">{rupiah(pkg.priceIdr)}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             disabled={!chosen}
             aria-haspopup="dialog"
-            onClick={() => chosen && onBuy(chosen.pkg.packageCode)}
+            onClick={() => chosen && onBuy(chosen.packageCode)}
             className="tap mt-2 flex min-h-10 w-full items-center justify-between rounded-full bg-brand-red px-4 text-[14px] font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <span>Beli sekarang</span>
-            <span className="tabular-nums">{chosen ? rupiah(chosen.pkg.priceIdr) : ""}</span>
+            <span>{chosen?.preorderAvailable && !chosen.sellable ? "Lanjut pre-order" : "Beli sekarang"}</span>
+            <span className="tabular-nums">{chosen ? rupiah(chosen.priceIdr) : ""}</span>
           </button>
           <Link
             to="/destination/$code"

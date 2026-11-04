@@ -17,7 +17,7 @@ import {
 } from "./customer-profile";
 import { loadLiveResellerPackage } from "./esim-access-catalog";
 import { getResellerCatalog } from "./reseller-catalog-cache";
-import { assertPackageSellableForOrder } from "./sellability.server";
+import { resolveOrderFulfillment } from "./sellability.server";
 
 export const AUTH_PAYMENT_METHODS = ["qris", "djiwa_pay"] as const;
 
@@ -25,9 +25,10 @@ export const createAuthenticatedOrderSchema = z.object({
   packageCode: z.string().trim().min(1).max(160),
   paymentMethod: z.enum(AUTH_PAYMENT_METHODS),
   idempotencyKey: z.string().uuid(),
+  preorderRequested: z.boolean().optional().default(false),
 });
 
-export type CreateAuthenticatedOrderInput = z.infer<typeof createAuthenticatedOrderSchema>;
+export type CreateAuthenticatedOrderInput = z.input<typeof createAuthenticatedOrderSchema>;
 
 export const createAuthenticatedOrderInput = (data: unknown) =>
   createAuthenticatedOrderSchema.parse(data);
@@ -40,6 +41,9 @@ const orderSummaryColumns = {
   customerAuthSubject: customerOrders.customerAuthSubject,
   createdAt: customerOrders.createdAt,
   paymentExpiresAt: customerOrders.paymentExpiresAt,
+  fulfillmentMode: customerOrders.fulfillmentMode,
+  preorderStatus: customerOrders.preorderStatus,
+  preorderDeadlineAt: customerOrders.preorderDeadlineAt,
 };
 
 /** Shape the checkout page consumes; no owner id or contact is returned to the browser. */
@@ -51,6 +55,9 @@ function toClientOrder(
     totalAmount: string;
     createdAt: string;
     paymentExpiresAt: string | null;
+    fulfillmentMode: string;
+    preorderStatus: string | null;
+    preorderDeadlineAt: string | null;
   },
   packageCode: string,
 ) {
@@ -62,6 +69,9 @@ function toClientOrder(
     amount: Number(row.totalAmount),
     createdAtMs: Date.parse(row.createdAt),
     paymentExpiresAtMs: row.paymentExpiresAt ? Date.parse(row.paymentExpiresAt) : null,
+    fulfillmentMode: row.fulfillmentMode,
+    preorderStatus: row.preorderStatus,
+    preorderDeadlineAtMs: row.preorderDeadlineAt ? Date.parse(row.preorderDeadlineAt) : null,
   };
 }
 
@@ -106,7 +116,7 @@ export async function createAuthenticatedOrderDraftHandler({
   const catalog = await getResellerCatalog();
   const pkg = live ?? catalog.packages.find((item) => item.packageCode === data.packageCode);
   if (!pkg) throw new Error("Paket eSIM tidak ditemukan atau sudah tidak tersedia");
-  await assertPackageSellableForOrder(pkg);
+  const fulfillmentMode = await resolveOrderFulfillment(pkg, data.preorderRequested ?? false);
 
   const price = pkg.sellingPrice;
   const id = randomUUID();
@@ -117,6 +127,8 @@ export async function createAuthenticatedOrderDraftHandler({
       id,
       publicOrderCode,
       status: "ORDER_CREATED",
+      fulfillmentMode,
+      ...(fulfillmentMode === "preorder" ? { preorderStatus: "pending_payment" } : {}),
       currencyCode: "IDR",
       subtotalAmount: String(price.providerCostIdr),
       markupAmount: String(price.markupIdr),

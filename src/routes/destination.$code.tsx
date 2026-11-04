@@ -274,7 +274,9 @@ function PackageRow({
 }) {
   const perDay = pricePerDay(pkg);
   return (
-    <li className={`flex items-center gap-3 px-3 py-3 ${pkg.sellable ? "" : "opacity-60"}`}>
+    <li
+      className={`flex items-center gap-3 px-3 py-3 ${pkg.sellable || pkg.preorderAvailable ? "" : "opacity-60"}`}
+    >
       <input
         type="checkbox"
         checked={selected}
@@ -293,6 +295,7 @@ function PackageRow({
           <span className="font-medium text-muted-foreground"> · {pkg.durationDays} hari</span>
         </Link>
         <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
+          {pkg.preorderAvailable && !pkg.sellable ? "Pre-order · " : ""}
           {showCoverage
             ? packageCoverageLabel(pkg)
             : isDailyQuota(pkg)
@@ -306,14 +309,14 @@ function PackageRow({
           {Number.isFinite(perDay) ? `≈ ${rupiah(Math.round(perDay))}/hari` : ""}
         </p>
       </div>
-      {pkg.sellable ? (
+      {pkg.sellable || pkg.preorderAvailable ? (
         <Link
           to="/checkout/$id"
           params={{ id: pkg.packageCode }}
-          aria-label={`Pilih paket ${pkg.name}`}
+          aria-label={`${pkg.preorderAvailable && !pkg.sellable ? "Pre-order" : "Pilih paket"} ${pkg.name}`}
           className="tap inline-flex min-h-11 min-w-16 shrink-0 items-center justify-center gap-0.5 rounded-xl bg-brand-red px-3 text-sm font-bold text-white transition hover:brightness-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
         >
-          Pilih <ChevronRight className="size-4" strokeWidth={2.5} aria-hidden="true" />
+          {pkg.preorderAvailable && !pkg.sellable ? "Pre-order" : "Pilih"} <ChevronRight className="size-4" strokeWidth={2.5} aria-hidden="true" />
         </Link>
       ) : (
         <span
@@ -816,7 +819,7 @@ function Destination() {
               open={availability === "sold-out"}
             >
               <summary className="tap flex min-h-12 cursor-pointer items-center justify-between px-4 text-sm font-semibold">
-                Habis sementara ({soldOut.length})
+                Pre-order atau habis sementara ({soldOut.length})
                 <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
               </summary>
               <ul className="divide-y divide-border/70 border-t border-border/70">

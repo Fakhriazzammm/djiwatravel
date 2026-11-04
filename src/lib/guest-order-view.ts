@@ -23,6 +23,9 @@ export type GuestOrderRecord = {
   createdAtMs: number;
   expiresAtMs?: number | null;
   paymentExpiresAtMs?: number | null;
+  fulfillmentMode?: "instant" | "preorder";
+  preorderStatus?: string | null;
+  preorderDeadlineAtMs?: number | null;
   packageCode: string;
   paymentMethod: string;
   paymentProvider?: string | null;
@@ -59,6 +62,9 @@ export type GuestOrderView = {
   createdAt: number;
   expiresAt?: number;
   paymentExpiresAt?: number | null;
+  fulfillmentMode?: "instant" | "preorder";
+  preorderStatus?: string | null;
+  preorderDeadlineAt?: number | null;
   usedGb?: number;
   usageVolumeBytes?: number;
   usageMeasuredAt?: number;
@@ -116,6 +122,11 @@ export function mapGuestOrderRecord(record: GuestOrderRecord): GuestOrderView {
     createdAt: record.createdAtMs,
     ...(record.expiresAtMs == null ? {} : { expiresAt: record.expiresAtMs }),
     ...(record.paymentExpiresAtMs == null ? {} : { paymentExpiresAt: record.paymentExpiresAtMs }),
+    ...(record.fulfillmentMode ? { fulfillmentMode: record.fulfillmentMode } : {}),
+    ...(record.preorderStatus ? { preorderStatus: record.preorderStatus } : {}),
+    ...(record.preorderDeadlineAtMs == null
+      ? {}
+      : { preorderDeadlineAt: record.preorderDeadlineAtMs }),
     priceSnapshot: {
       amountIdr: record.amount,
       capturedAt: record.createdAtMs,
