@@ -657,6 +657,7 @@ export function ExpenseEditor({
 
   return (
     <section className="space-y-3">
+      <TripGoogleCards tripId={tripId} showDrive={receiptScan.available} onChanged={onSaved} />
       {budgetMinor > 0 && (
         <div className={`${iosGroup} p-3`} data-testid="remaining-card">
           <p className="text-[11px] text-muted-foreground">Sisa anggaran</p>
@@ -676,7 +677,6 @@ export function ExpenseEditor({
           </p>
         </div>
       )}
-      <TripGoogleCards tripId={tripId} showDrive={receiptScan.available} onChanged={onSaved} />
       <div className="grid grid-cols-2 gap-3">
         <div className={`${iosGroup} p-3`}>
           <p className="text-[11px] text-muted-foreground">Total</p>
