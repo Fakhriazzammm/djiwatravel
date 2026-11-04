@@ -49,7 +49,24 @@ function dateOnly(value: string | Date, days = 0) {
 function timeValue(value: string) {
   return value.length === 5 ? `${value}:00` : value;
 }
-function eventBody(item: TripItem, trip: { name: string; destination_name: string }) {
+/**
+ * Two explicit popup reminders on every event, so travelers get notified even when their calendar
+ * has no default reminders (`useDefault: true` then notifies nobody).
+ * - With a start time: 2 hours and 30 minutes before.
+ * - All-day (no start time): 09:00 two days before and 09:00 the day before. Google counts these
+ *   from 00:00 of the event day.
+ * Bump CALENDAR_REMINDER_VERSION when this changes so existing events are re-sent.
+ */
+export const CALENDAR_REMINDER_VERSION = 1;
+export const TIMED_REMINDER_MINUTES = [120, 30] as const;
+export const ALL_DAY_REMINDER_MINUTES = [2340, 900] as const;
+export function reminderOverrides(timed: boolean) {
+  return (timed ? TIMED_REMINDER_MINUTES : ALL_DAY_REMINDER_MINUTES).map((minutes) => ({
+    method: "popup" as const,
+    minutes,
+  }));
+}
+export function eventBody(item: TripItem, trip: { name: string; destination_name: string }) {
   const timezone = item.timezone || "UTC";
   const activityDate = calendarDate(item.activity_date);
   const description = [
@@ -68,7 +85,7 @@ function eventBody(item: TripItem, trip: { name: string; destination_name: strin
     summary: `Djiwa Trip — ${item.title}`,
     description,
     location: item.location ?? undefined,
-    reminders: { useDefault: true },
+    reminders: { useDefault: false, overrides: reminderOverrides(Boolean(item.start_time)) },
     extendedProperties: { private: { djiwaTripId: item.trip_id, djiwaItineraryItemId: item.id } },
   };
   if (!item.start_time) {
@@ -138,8 +155,9 @@ export async function googleCalendarStatus(user: User) {
      from travel_itinerary_items i
      join travel_trips t on t.id=i.trip_id
      left join travel_google_calendar_events e on e.itinerary_item_id=i.id
-     where t.customer_auth_subject=$1 and e.itinerary_item_id is null`,
-    [user.id],
+     where t.customer_auth_subject=$1
+       and (e.itinerary_item_id is null or e.reminder_version < $2)`,
+    [user.id, CALENDAR_REMINDER_VERSION],
   );
   return {
     ...account,
@@ -201,6 +219,10 @@ export async function syncItineraryItem(itemId: string, subject: string) {
         );
     } else throw error;
   }
+  await pool.query(
+    "update travel_google_calendar_events set reminder_version=$1, updated_at=now() where itinerary_item_id=$2",
+    [CALENDAR_REMINDER_VERSION, itemId],
+  );
 }
 export async function syncAllForUser(subject: string) {
   const result = await pool.query(
