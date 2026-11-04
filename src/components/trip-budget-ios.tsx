@@ -390,16 +390,14 @@ export function BudgetEditor({
                         className={`block truncate text-[11px] ${over || (limit === 0 && used > 0) ? "text-warning-foreground" : "text-muted-foreground"}`}
                       >
                         {over
-                          ? `Melebihi ${money(used - limit, currency)}`
+                          ? "Melebihi batas"
                           : limit === 0 && used === 0
                             ? "Belum dibagi"
-                            : limit > 0
-                              ? `Sisa ${money(limit - used, currency)} · terpakai ${money(used, currency)}`
-                              : `Terpakai ${money(used, currency)}`}
+                            : `Terpakai ${money(used, currency)}`}
                       </span>
                     </span>
                   </button>
-                  <div className="flex shrink-0 items-center rounded-[9px] bg-secondary">
+                  <div className="flex w-[176px] shrink-0 items-center rounded-[9px] bg-secondary">
                     <button
                       type="button"
                       aria-label={`Kurangi batas ${name}`}
@@ -411,14 +409,14 @@ export function BudgetEditor({
                     </button>
                     <button
                       type="button"
-                      aria-label={`Ketik batas ${name}`}
+                      aria-label={`Ketik batas ${name}. Sisa ${money(limit - used, currency)} dari batas ${money(limit, currency)}`}
                       onClick={() => {
                         setEditing(item);
                         setDraft(limit ? String(Math.round(limit / 100)) : "");
                       }}
-                      className="tap min-w-[58px] px-1 text-center text-[12px] font-semibold tabular-nums"
+                      className={`tap min-w-0 flex-1 px-1 text-center text-[12px] font-semibold tabular-nums ${over ? "text-destructive" : ""}`}
                     >
-                      {money(limit, currency)}
+                      {money(limit - used, currency)}
                     </button>
                     <button
                       type="button"
