@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
+import { motion } from "motion/react";
 import { Camera, Check, ChevronLeft, Plus, TriangleAlert, WifiOff, X } from "lucide-react";
 import { displayBudgetCategory } from "@/lib/my-trips-home";
 import {
@@ -59,14 +60,26 @@ const Thumb = ({ item, size = "md" }: { item: ScanItem; size?: "sm" | "md" }) =>
 );
 
 const Screen = ({ children, footer }: { children: ReactNode; footer?: ReactNode }) => (
-  <div
+  <motion.div
     className="fixed inset-0 z-[70] flex flex-col bg-background text-foreground"
     role="dialog"
     aria-modal="true"
+    initial={{ opacity: 0, x: 28 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ type: "spring", stiffness: 380, damping: 36 }}
   >
     <div className="mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col">{children}</div>
-    {footer && <div className="mx-auto w-full max-w-md">{footer}</div>}
-  </div>
+    {footer && (
+      <motion.div
+        className="mx-auto w-full max-w-md"
+        initial={{ y: 24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.08, duration: 0.25, ease: "easeOut" }}
+      >
+        {footer}
+      </motion.div>
+    )}
+  </motion.div>
 );
 
 const Header = ({ left, title, right }: { left: ReactNode; title: string; right?: ReactNode }) => (
@@ -167,9 +180,11 @@ export function QueueScreen({
             aria-valuemax={100}
             aria-label="Kemajuan membaca"
           >
-            <div
-              className="h-1.5 rounded-full bg-brand-red transition-[width]"
-              style={{ width: `${pct}%` }}
+            <motion.div
+              className="h-1.5 rounded-full bg-brand-red"
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ type: "spring", stiffness: 140, damping: 22 }}
             />
           </div>
           <p className="mt-1.5 text-[11px] text-muted-foreground">
@@ -195,9 +210,18 @@ export function QueueScreen({
                 <Tag tone="warn">{item.status === "limit" ? "Batas harian" : "Gagal"}</Tag>
               );
             return (
-              <li
+              <motion.li
                 key={item.id}
-                className={`flex min-h-[68px] items-center gap-3 rounded-2xl bg-surface p-2.5 ring-1 ${item.status === "check" || item.status === "unreadable" ? "ring-[1.5px] ring-[#E8A317]" : "ring-border/50"} ${item.status === "sending" ? "opacity-80" : ""}`}
+                layout="position"
+                initial={{ opacity: 0, y: 14, scale: 0.97 }}
+                animate={{ opacity: item.status === "sending" ? 0.8 : 1, y: 0, scale: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 420,
+                  damping: 32,
+                  delay: Math.min(index, 6) * 0.05,
+                }}
+                className={`flex min-h-[68px] items-center gap-3 rounded-2xl bg-surface p-2.5 ring-1 ${item.status === "check" || item.status === "unreadable" ? "ring-[1.5px] ring-[#E8A317]" : "ring-border/50"} `}
               >
                 <Thumb item={item} />
                 <div className="min-w-0 flex-1">
@@ -213,7 +237,7 @@ export function QueueScreen({
                   </p>
                 </div>
                 {item.status === "sending" ? <Spinner /> : tag}
-              </li>
+              </motion.li>
             );
           })}
         </ul>
@@ -310,8 +334,12 @@ export function ReviewScreen({
                 role="switch"
                 checked={keepPhoto}
                 onChange={(e) => onKeepPhoto(e.target.checked)}
-                className="size-5 accent-brand-red"
+                className="peer sr-only"
                 aria-label="Simpan foto struk"
+              />
+              <span
+                aria-hidden="true"
+                className="relative h-[26px] w-11 shrink-0 rounded-full bg-border transition-colors peer-checked:bg-brand-red peer-focus-visible:ring-2 peer-focus-visible:ring-brand-red/40 after:absolute after:left-0.5 after:top-0.5 after:size-[22px] after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-[18px]"
               />
             </label>
           )}
@@ -352,10 +380,19 @@ export function ReviewScreen({
               ? false
               : v.status === "check";
           return (
-            <div
+            <motion.div
               key={item.id}
               data-testid="review-card"
-              className={`relative mt-2 overflow-hidden rounded-2xl bg-surface p-3 ring-1 ${warn ? "ring-[1.5px] ring-[#E8A317]" : "ring-border/50"} ${item.skipped ? "opacity-50" : ""}`}
+              layout="position"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: item.skipped ? 0.5 : 1, y: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 380,
+                damping: 32,
+                delay: Math.min(toRead.indexOf(item), 5) * 0.06,
+              }}
+              className={`relative mt-2 overflow-hidden rounded-2xl bg-surface p-3 ring-1 ${warn ? "ring-[1.5px] ring-[#E8A317]" : "ring-border/50"}`}
               onTouchStart={(e) => (start.current = { id: item.id, x: e.touches[0]!.clientX })}
               onTouchEnd={(e) => {
                 const s = start.current;
@@ -433,17 +470,22 @@ export function ReviewScreen({
                     onChange={(change) => onChange(item.id, change)}
                   />
                   <div className="mt-2 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
-                    {categories.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        aria-pressed={edit.categoryId === c.id}
-                        onClick={() => onCategory(item.id, edit.categoryId === c.id ? "" : c.id)}
-                        className={`tap min-h-8 shrink-0 rounded-full px-3 text-[12px] font-medium ${edit.categoryId === c.id ? "bg-brand-red text-white" : "bg-secondary"}`}
-                      >
-                        {displayBudgetCategory(c.name)}
-                      </button>
-                    ))}
+                    {[...categories]
+                      .sort(
+                        (a, b) =>
+                          Number(b.id === edit.categoryId) - Number(a.id === edit.categoryId),
+                      )
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          aria-pressed={edit.categoryId === c.id}
+                          onClick={() => onCategory(item.id, edit.categoryId === c.id ? "" : c.id)}
+                          className={`tap min-h-8 shrink-0 rounded-full px-3 text-[12px] font-medium ${edit.categoryId === c.id ? "bg-brand-red text-white" : "bg-secondary"}`}
+                        >
+                          {displayBudgetCategory(c.name)}
+                        </button>
+                      ))}
                   </div>
                 </>
               )}
@@ -454,7 +496,7 @@ export function ReviewScreen({
               >
                 {item.skipped ? "Ikutkan struk ini" : "Lewati struk ini"}
               </button>
-            </div>
+            </motion.div>
           );
         })}
         {trouble.map((item) => (
@@ -508,9 +550,12 @@ function TroubleCard({
               body: item.message ?? "Coba foto ulang atau isi manual.",
             };
   return (
-    <div
+    <motion.div
       className="mt-2 rounded-2xl bg-surface p-3 ring-1 ring-border/50"
       data-testid="trouble-card"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0, x: [0, -5, 5, -3, 0] }}
+      transition={{ duration: 0.4 }}
     >
       <div className="flex items-start gap-2.5">
         <Thumb item={item} size="sm" />
@@ -551,7 +596,7 @@ function TroubleCard({
           </button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -940,9 +985,14 @@ export function SavedScreen({
     >
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-[max(env(safe-area-inset-top),1.5rem)]">
         <div className="flex flex-col items-center text-center">
-          <span className="grid size-[60px] place-items-center rounded-full bg-brand-red text-white shadow-[0_8px_20px_rgba(196,49,58,0.35)]">
+          <motion.span
+            className="grid size-[60px] place-items-center rounded-full bg-brand-red text-white shadow-[0_8px_20px_rgba(196,49,58,0.35)]"
+            initial={{ scale: 0, rotate: -30 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 420, damping: 15, delay: 0.1 }}
+          >
             <Check className="size-7" strokeWidth={2.4} aria-hidden="true" />
-          </span>
+          </motion.span>
           <h2 className="mt-3 text-[20px] font-bold">{rows.length} pengeluaran tersimpan</h2>
           <p className="mt-1.5 text-[26px] font-bold tabular-nums">
             {rp(totalMinor, tripCurrency)}
@@ -961,7 +1011,12 @@ export function SavedScreen({
             </div>
             <p className="text-[22px] font-bold tabular-nums">{rp(after, tripCurrency)}</p>
             <div className="mt-2 h-1.5 rounded-full bg-secondary">
-              <div className="h-1.5 rounded-full bg-brand-red" style={{ width: `${pctUsed}%` }} />
+              <motion.div
+                className="h-1.5 rounded-full bg-brand-red"
+                initial={{ width: 0 }}
+                animate={{ width: `${pctUsed}%` }}
+                transition={{ type: "spring", stiffness: 90, damping: 20, delay: 0.3 }}
+              />
             </div>
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               Terpakai {rp(budget.spentBeforeMinor + totalMinor, tripCurrency)} dari{" "}
@@ -970,8 +1025,14 @@ export function SavedScreen({
           </div>
         )}
         <ul className="mt-3 divide-y divide-border/60 overflow-hidden rounded-2xl bg-surface ring-1 ring-border/50">
-          {rows.map((row) => (
-            <li key={row.id} className="flex min-h-[52px] items-center gap-2.5 bg-[#FFF8F8] px-3">
+          {rows.map((row, index) => (
+            <motion.li
+              key={row.id}
+              initial={{ opacity: 0, x: -14 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.25 + index * 0.07, duration: 0.25, ease: "easeOut" }}
+              className="flex min-h-[52px] items-center gap-2.5 bg-[#FFF8F8] px-3"
+            >
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#FBEAEB] text-brand-red">
                 <Check className="size-4" aria-hidden="true" />
               </span>
@@ -985,7 +1046,7 @@ export function SavedScreen({
               <span className="text-[14px] font-semibold tabular-nums">
                 {rp(row.minor, tripCurrency)}
               </span>
-            </li>
+            </motion.li>
           ))}
         </ul>
       </div>

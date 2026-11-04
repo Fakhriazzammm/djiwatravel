@@ -1,3 +1,4 @@
+import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FixedLayer } from "@/components/motion-primitives";
@@ -427,85 +428,89 @@ export function ReceiptScanner({
 
   return (
     <FixedLayer>
-      {screen === "camera" && (
-        <ReceiptScannerCamera
-          items={items}
-          readCount={reviewable(items).length}
-          remaining={remaining}
-          room={status.maxPhotos - items.length}
-          onCapture={(blob) => void addPhotos([blob])}
-          onPick={(files) => void addPhotos(files)}
-          onDone={() => setScreen("queue")}
-          onClose={requestClose}
-        />
-      )}
-      {screen === "queue" && (
-        <QueueScreen
-          items={items}
-          tripCurrency={tripCurrency}
-          totalMinor={queueTotal}
-          offline={offlinePending}
-          onMore={() => setScreen("camera")}
-          onReview={() => setScreen("review")}
-          onHide={requestClose}
-        />
-      )}
-      {screen === "review" && (
-        <ReviewScreen
-          items={items}
-          tripCurrency={tripCurrency}
-          categories={categories}
-          today={today}
-          keepPhoto={keepPhoto}
-          photoChoice={status.savePhoto}
-          saving={saving}
-          budget={budget ? { remainingMinor: budget.budgetMinor - budget.spentMinor } : null}
-          onKeepPhoto={setKeepPhoto}
-          onSkip={(id) => patch(id, (item) => ({ skipped: !item.skipped }))}
-          onOpen={(id) => {
-            setCheckId(id);
-            setScreen("check");
-          }}
-          onCategory={(id, categoryId) => updateEdit(id, { categoryId, edited: true })}
-          onChange={updateEdit}
-          onRetake={retake}
-          onManual={manual}
-          onDrop={discard}
-          onBack={() => setScreen("queue")}
-          onSave={() => void save()}
-        />
-      )}
-      {screen === "check" && checkItem && (
-        <CheckScreen
-          item={checkItem}
-          tripCurrency={tripCurrency}
-          categories={categories}
-          today={today}
-          onChange={(change) => updateEdit(checkItem.id, change)}
-          onDone={() => setScreen("review")}
-          onRetake={() => retake(checkItem.id)}
-          onBack={() => setScreen("review")}
-        />
-      )}
-      {screen === "saved" && saved && (
-        <SavedScreen
-          rows={saved.rows}
-          tripCurrency={tripCurrency}
-          totalMinor={saved.totalMinor}
-          budget={
-            budget ? { budgetMinor: budget.budgetMinor, spentBeforeMinor: budget.spentMinor } : null
-          }
-          keptPhotos={saved.kept}
-          onUndo={() => void undo()}
-          onMore={() => {
-            setItems([]);
-            blobs.current.clear();
-            setSaved(null);
-            setScreen("camera");
-          }}
-          onDone={onClose}
-        />
-      )}
+      <MotionConfig reducedMotion="user">
+        {screen === "camera" && (
+          <ReceiptScannerCamera
+            items={items}
+            readCount={reviewable(items).length}
+            remaining={remaining}
+            room={status.maxPhotos - items.length}
+            onCapture={(blob) => void addPhotos([blob])}
+            onPick={(files) => void addPhotos(files)}
+            onDone={() => setScreen("queue")}
+            onClose={requestClose}
+          />
+        )}
+        {screen === "queue" && (
+          <QueueScreen
+            items={items}
+            tripCurrency={tripCurrency}
+            totalMinor={queueTotal}
+            offline={offlinePending}
+            onMore={() => setScreen("camera")}
+            onReview={() => setScreen("review")}
+            onHide={requestClose}
+          />
+        )}
+        {screen === "review" && (
+          <ReviewScreen
+            items={items}
+            tripCurrency={tripCurrency}
+            categories={categories}
+            today={today}
+            keepPhoto={keepPhoto}
+            photoChoice={status.savePhoto}
+            saving={saving}
+            budget={budget ? { remainingMinor: budget.budgetMinor - budget.spentMinor } : null}
+            onKeepPhoto={setKeepPhoto}
+            onSkip={(id) => patch(id, (item) => ({ skipped: !item.skipped }))}
+            onOpen={(id) => {
+              setCheckId(id);
+              setScreen("check");
+            }}
+            onCategory={(id, categoryId) => updateEdit(id, { categoryId, edited: true })}
+            onChange={updateEdit}
+            onRetake={retake}
+            onManual={manual}
+            onDrop={discard}
+            onBack={() => setScreen("queue")}
+            onSave={() => void save()}
+          />
+        )}
+        {screen === "check" && checkItem && (
+          <CheckScreen
+            item={checkItem}
+            tripCurrency={tripCurrency}
+            categories={categories}
+            today={today}
+            onChange={(change) => updateEdit(checkItem.id, change)}
+            onDone={() => setScreen("review")}
+            onRetake={() => retake(checkItem.id)}
+            onBack={() => setScreen("review")}
+          />
+        )}
+        {screen === "saved" && saved && (
+          <SavedScreen
+            rows={saved.rows}
+            tripCurrency={tripCurrency}
+            totalMinor={saved.totalMinor}
+            budget={
+              budget
+                ? { budgetMinor: budget.budgetMinor, spentBeforeMinor: budget.spentMinor }
+                : null
+            }
+            keptPhotos={saved.kept}
+            onUndo={() => void undo()}
+            onMore={() => {
+              setItems([]);
+              blobs.current.clear();
+              setSaved(null);
+              setScreen("camera");
+            }}
+            onDone={onClose}
+          />
+        )}
+      </MotionConfig>
       <ConfirmDialog
         open={discardAsk}
         onOpenChange={setDiscardAsk}

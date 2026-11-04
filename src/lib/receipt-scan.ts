@@ -344,3 +344,27 @@ export type ReceiptScanResponse =
       remaining: number;
     }
   | { ok: false; code: ReceiptScanFailure; message: string; remaining?: number };
+
+const CATEGORY_HINTS: [string, RegExp][] = [
+  [
+    "Food & Drinks",
+    /(resto|restaurant|cafe|café|coffee|kopi|warung|ramen|sushi|bakery|bakmi|bakso|kitchen|izakaya|bar\b|pizza|burger|kfc|mcd|starbucks|makan|minum|food|nasi|ayam)/i,
+  ],
+  [
+    "Shopping",
+    /(alfamart|indomaret|alfamidi|lawson|familymart|7-?eleven|seven eleven|mart\b|minimarket|supermarket|superindo|hypermart|mall|store|shop|toko|uniqlo|don quijote|donki|daiso|apotek|pharmacy|guardian|watsons)/i,
+  ],
+  [
+    "Transportation",
+    /(grab|gojek|taxi|taksi|bluebird|mrt|krl|kereta|train|bus\b|parkir|parking|tol\b|bensin|pertamina|shell|suica|pasmo|jr\b)/i,
+  ],
+  ["Accommodation", /(hotel|hostel|resort|villa|inn\b|airbnb|penginapan|ryokan)/i],
+  ["Attractions", /(museum|tiket masuk|ticket|temple|park\b|tour|wisata|zoo|aquarium|theme)/i],
+  ["Flights", /(airline|airways|garuda|lion air|airasia|citilink|flight)/i],
+];
+
+/** Fallback when the model gave no usable category: guess from the store name and item names. */
+export function guessCategoryName(merchant: string | null, itemNames: string[]) {
+  const text = `${merchant ?? ""} ${itemNames.join(" ")}`;
+  return CATEGORY_HINTS.find(([, re]) => re.test(text))?.[0] ?? null;
+}

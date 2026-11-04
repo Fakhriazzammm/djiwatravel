@@ -128,8 +128,8 @@ export const Route = createFileRoute("/my-trips/$tripId/$section")({
   component: TripSection,
 });
 const labels: Record<string, string> = {
-  budget: "Anggaran",
-  expenses: "Pengeluaran",
+  budget: "Biaya",
+  expenses: "Biaya",
   itinerary: "Agenda",
   checklist: "Checklist",
   bookings: "Pemesanan",

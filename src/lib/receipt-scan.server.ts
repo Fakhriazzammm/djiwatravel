@@ -20,6 +20,7 @@ import {
   type ReceiptScanResponse,
   type ReceiptScanStatus,
   type ReceiptValidation,
+  guessCategoryName,
 } from "./receipt-scan";
 
 /* ------------------------------------------------------------------------------- config */
@@ -405,7 +406,16 @@ export async function scanReceipt(input: {
     status,
     read: status === "not_receipt" ? null : read,
     validation: status === "not_receipt" ? null : validation,
-    categoryId: read ? matchCategory(read.categoryGuess, categories) : null,
+    categoryId: read
+      ? (matchCategory(read.categoryGuess, categories) ??
+        matchCategory(
+          guessCategoryName(
+            read.merchant,
+            read.items.map((i) => i.name),
+          ),
+          categories,
+        ))
+      : null,
     photoStored,
     escalated,
     remaining: Math.max(0, config.dailyLimit - used - 1),

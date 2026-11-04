@@ -194,3 +194,13 @@ describe("Admin setting", () => {
     expect(() => validateAdminSetting("receiptScan", { enabled: 1 })).toThrow();
   });
 });
+
+describe("guessCategoryName", () => {
+  it("guesses from the store name when the model gave no category", async () => {
+    const { guessCategoryName } = await import("../lib/receipt-scan");
+    expect(guessCategoryName("Alfamart DR. Sukarjo 49", [])).toBe("Shopping");
+    expect(guessCategoryName("Ichiran Shibuya", ["Ramen"])).toBe("Food & Drinks");
+    expect(guessCategoryName("Grab", [])).toBe("Transportation");
+    expect(guessCategoryName("Xyz", [])).toBeNull();
+  });
+});

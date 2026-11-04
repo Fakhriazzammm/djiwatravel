@@ -571,12 +571,11 @@ export function ExpenseEditor({
   );
 
   const groups = useMemo(() => {
-    const map = new Map<string, Row[]>();
-    for (const item of visible) {
-      const key = dayKey(item["transaction_date"]);
-      map.set(key, [...(map.get(key) ?? []), item]);
-    }
-    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+    // One flat list like the prototype, newest first; the date moves into each row.
+    const rows = [...visible].sort((a, b) =>
+      dayKey(b["transaction_date"]).localeCompare(dayKey(a["transaction_date"])),
+    );
+    return rows.length ? ([["all", rows]] as [string, Row[]][]) : [];
   }, [visible]);
 
   async function submit(event: React.FormEvent) {
@@ -643,6 +642,25 @@ export function ExpenseEditor({
 
   return (
     <section className="space-y-3">
+      {budgetMinor > 0 && (
+        <div className={`${iosGroup} p-3`} data-testid="remaining-card">
+          <p className="text-[11px] text-muted-foreground">Sisa anggaran</p>
+          <p className="text-[22px] font-bold tracking-tight tabular-nums">
+            {money(Math.max(budgetMinor - total, 0), currency)}
+          </p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full rounded-full bg-brand-red"
+              style={{ width: `${Math.min(100, Math.round((total / budgetMinor) * 100))}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            {total > budgetMinor
+              ? `Melebihi ${money(total - budgetMinor, currency)}`
+              : `Terpakai ${money(total, currency)} dari ${money(budgetMinor, currency)}`}
+          </p>
+        </div>
+      )}
       {receiptScan.available && <ScanReceiptBanner onScan={() => setScanning(true)} />}
       <div className="grid grid-cols-2 gap-3">
         <div className={`${iosGroup} p-3`}>
@@ -670,15 +688,7 @@ export function ExpenseEditor({
       {groups.length ? (
         groups.map(([key, rows]) => (
           <section key={key}>
-            <h2 className={`${iosHeading} flex justify-between`}>
-              <span>{dayLabel(key)}</span>
-              <span className="normal-case tracking-normal tabular-nums">
-                {compactMoney(
-                  rows.reduce((sum, row) => sum + inTripCurrency(row, currency), 0),
-                  currency,
-                )}
-              </span>
-            </h2>
+            <h2 className={iosHeading}>Pengeluaran · {rows.length}</h2>
             <div className={iosGroup}>
               {rows.map((item) => {
                 const name = categoryName(item);
@@ -703,7 +713,8 @@ export function ExpenseEditor({
                         {String(item["description"] ?? "Pengeluaran")}
                       </span>
                       <span className="block truncate text-[11px] text-muted-foreground">
-                        {name ? displayBudgetCategory(name) : "Belum berkategori"}
+                        {name ? displayBudgetCategory(name) : "Belum berkategori"} ·{" "}
+                        {dayLabel(dayKey(item["transaction_date"]))}
                         {item["from_scan"] ? " · dari scan" : ""}
                       </span>
                     </span>
@@ -722,7 +733,9 @@ export function ExpenseEditor({
             {items.length ? "Tidak ada pengeluaran di kategori ini" : "Belum ada pengeluaran"}
           </p>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            Ketuk “Catat” untuk menambah transaksi pertamamu.
+            {receiptScan.available
+              ? "Ketuk Scan untuk foto struk, atau + untuk catat manual."
+              : "Ketuk “Catat” untuk menambah transaksi pertamamu."}
           </p>
         </div>
       )}

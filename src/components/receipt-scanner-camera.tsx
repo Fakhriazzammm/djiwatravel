@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Camera, Check, Images, Triangle, X, Zap } from "lucide-react";
 import { frameDifference, frameStats, looksLikeReceipt } from "@/lib/receipt-image";
 import type { ScanItem } from "@/lib/receipt-scan-client";
@@ -164,11 +165,24 @@ export function ReceiptScannerCamera({
             : "Arahkan ke struk";
 
   return (
-    <div
+    <motion.div
       className="fixed inset-0 z-[70] overflow-hidden bg-[#161618] text-white"
       role="dialog"
       aria-label="Kamera scan struk"
+      initial={{ opacity: 0, scale: 1.04 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
     >
+      <AnimatePresence>
+        <motion.div
+          key={items.length}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-20 bg-white"
+          initial={{ opacity: items.length ? 0.55 : 0 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+        />
+      </AnimatePresence>
       <video
         ref={video}
         playsInline
@@ -275,8 +289,11 @@ export function ReceiptScannerCamera({
           <div className="flex items-center gap-2.5 pb-3.5">
             <div className="flex min-w-0 flex-1 gap-2.5 overflow-x-auto py-1.5 pl-1 pr-1.5 [scrollbar-width:none]">
               {items.map((item) => (
-                <span
+                <motion.span
                   key={item.id}
+                  initial={{ scale: 0.4, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 24 }}
                   className="relative block h-16 w-[52px] shrink-0 rounded-[10px] ring-2 ring-white/55"
                 >
                   <img src={item.url} alt="" className="size-full rounded-[10px] object-cover" />
@@ -300,7 +317,7 @@ export function ReceiptScannerCamera({
                       <Triangle className="size-2.5" aria-label="Perlu dicek" />
                     )}
                   </span>
-                </span>
+                </motion.span>
               ))}
             </div>
             <button
@@ -372,6 +389,6 @@ export function ReceiptScannerCamera({
           event.target.value = "";
         }}
       />
-    </div>
+    </motion.div>
   );
 }
