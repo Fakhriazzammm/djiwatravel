@@ -6,6 +6,8 @@ import { multipartBody } from "@/lib/google-drive.server";
 import {
   EXPENSE_HEADER,
   expenseValues,
+  ITEM_HEADER,
+  itemValues,
   managedRanges,
   plainCell,
   summaryValues,
@@ -69,11 +71,77 @@ describe("Sheets export values", () => {
 
 describe("Cells Djiwa rewrites", () => {
   it("clears only the managed columns so the traveler's own columns survive", () => {
-    expect(managedRanges()).toEqual(["Pengeluaran!A:I", "Ringkasan!A:B"]);
+    expect(managedRanges()).toEqual(["Pengeluaran!A:I", "Rincian!A:F", "Ringkasan!A:B"]);
     expect(managedRanges().join()).not.toMatch(/:Z|:J/);
   });
 
   it("covers every column the export writes", () => {
     expect(EXPENSE_HEADER.length).toBe(9); // A..I
+  });
+});
+
+describe("Rincian tab", () => {
+  const expense = (id: string, total: number, extra = {}) => ({
+    id,
+    transaction_date: "2026-11-04",
+    description: "Notre Socielle",
+    category_name: "Makan",
+    original_amount_minor: total,
+    original_currency: "IDR",
+    exchange_rate: null,
+    converted_amount_minor: total,
+    has_receipt: true,
+    ...extra,
+  });
+
+  it("lists every item under its expense, in the original currency", () => {
+    const rows = itemValues(
+      [expense("e1", 20_350_000)],
+      [
+        { expense_id: "e1", name: "Croissant", amount_minor: 9_000_000 },
+        { expense_id: "e1", name: "Latte", amount_minor: 10_000_000 },
+      ],
+    );
+    expect(rows[0]).toEqual([...ITEM_HEADER]);
+    expect(rows[1]).toEqual(["e1", "Notre Socielle", "2026-11-04", "Croissant", 90_000, "IDR"]);
+    expect(rows[2]?.[3]).toBe("Latte");
+  });
+
+  it("adds a row for tax and service so the rows sum to the expense total", () => {
+    const rows = itemValues(
+      [expense("e1", 20_350_000)],
+      [
+        { expense_id: "e1", name: "Croissant", amount_minor: 9_000_000 },
+        { expense_id: "e1", name: "Latte", amount_minor: 10_000_000 },
+      ],
+    );
+    const last = rows.at(-1)!;
+    expect(last[3]).toBe("Pajak, layanan & lainnya");
+    const sum = rows.slice(1).reduce((total, row) => total + Number(row[4]), 0);
+    expect(sum).toBe(203_500);
+  });
+
+  it("adds no remainder row when the items match, and skips expenses without items", () => {
+    const rows = itemValues(
+      [expense("e1", 19_000_000), expense("e2", 5_000_000)],
+      [
+        { expense_id: "e1", name: "A", amount_minor: 9_000_000 },
+        { expense_id: "e1", name: "B", amount_minor: 10_000_000 },
+      ],
+    );
+    expect(rows).toHaveLength(3);
+    expect(rows.some((row) => row[0] === "e2")).toBe(false);
+  });
+
+  it("defuses item names that look like formulas", () => {
+    const rows = itemValues(
+      [expense("e1", 1_000)],
+      [{ expense_id: "e1", name: "=SUM(A1)", amount_minor: 1_000 }],
+    );
+    expect(rows[1]?.[3]).toBe("'=SUM(A1)");
+  });
+
+  it("shows an empty tab with only the header when no expense has items", () => {
+    expect(itemValues([expense("e1", 1_000)], [])).toEqual([[...ITEM_HEADER]]);
   });
 });

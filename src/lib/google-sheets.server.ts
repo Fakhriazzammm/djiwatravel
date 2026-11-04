@@ -25,6 +25,7 @@ const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const EXPENSE_TAB = "Pengeluaran";
 const SUMMARY_TAB = "Ringkasan";
+const ITEMS_TAB = "Rincian";
 export const EXPENSE_HEADER = [
   "ID",
   "Tanggal",
@@ -50,11 +51,12 @@ type ExpenseRow = {
 };
 
 /**
- * The cells Djiwa owns and rewrites on every sync: expenses in A–I, category totals in A–B.
+ * The cells Djiwa owns and rewrites on every sync: expenses in A–I, line items in A–F, category
+ * totals in A–B.
  * Everything to the right is the traveler's and is never cleared.
  */
 export function managedRanges() {
-  return [`${EXPENSE_TAB}!A:I`, `${SUMMARY_TAB}!A:B`];
+  return [`${EXPENSE_TAB}!A:I`, `${ITEMS_TAB}!A:F`, `${SUMMARY_TAB}!A:B`];
 }
 
 function dateOnly(value: Date | string) {
@@ -85,6 +87,46 @@ export function expenseValues(rows: readonly ExpenseRow[]) {
       row.has_receipt ? "Ada" : "",
     ]),
   ];
+}
+
+export const ITEM_HEADER = [
+  "ID Pengeluaran",
+  "Pengeluaran",
+  "Tanggal",
+  "Item",
+  "Harga",
+  "Mata uang",
+] as const;
+
+type ItemRow = { expense_id: string; name: string; amount_minor: string | number };
+
+/**
+ * One row per line item, grouped by expense. When the items do not add up to the expense total
+ * (tax, service, rounding) an extra row carries the difference, so the rows of an expense always
+ * sum to its total. Expenses without items have no rows here.
+ */
+export function itemValues(expenses: readonly ExpenseRow[], items: readonly ItemRow[]) {
+  const byExpense = new Map<string, ItemRow[]>();
+  for (const item of items) {
+    const list = byExpense.get(String(item.expense_id)) ?? [];
+    list.push(item);
+    byExpense.set(String(item.expense_id), list);
+  }
+  const rows: Array<Array<string | number>> = [[...ITEM_HEADER]];
+  for (const expense of expenses) {
+    const lines = byExpense.get(String(expense.id));
+    if (!lines?.length) continue;
+    const currency = String(expense.original_currency).trim();
+    const head = [expense.id, plainCell(expense.description), dateOnly(expense.transaction_date)];
+    for (const line of lines)
+      rows.push([...head, plainCell(line.name), Number(line.amount_minor) / 100, currency]);
+    const remainder =
+      Number(expense.original_amount_minor) -
+      lines.reduce((sum, line) => sum + Number(line.amount_minor), 0);
+    if (remainder !== 0)
+      rows.push([...head, "Pajak, layanan & lainnya", remainder / 100, currency]);
+  }
+  return rows;
 }
 
 export function summaryValues(categories: readonly string[]) {
@@ -130,6 +172,7 @@ async function createSpreadsheet(subject: string, label: string) {
       properties: { title: tripSheetTitle(label) },
       sheets: [
         { properties: { title: EXPENSE_TAB, gridProperties: { frozenRowCount: 1 } } },
+        { properties: { title: ITEMS_TAB, gridProperties: { frozenRowCount: 1 } } },
         { properties: { title: SUMMARY_TAB, gridProperties: { frozenRowCount: 1 } } },
       ],
     }),
@@ -139,6 +182,33 @@ async function createSpreadsheet(subject: string, label: string) {
     "buat",
   );
   return created;
+}
+
+/**
+ * Makes sure every tab Djiwa writes exists. Spreadsheets made before the "Rincian" tab was added, or
+ * a tab the traveler deleted, get it created instead of failing the sync.
+ */
+async function ensureTabs(subject: string, spreadsheetId: string) {
+  const id = encodeURIComponent(spreadsheetId);
+  const meta = await sheetsJson<{ sheets?: Array<{ properties?: { title?: string } }> }>(
+    await googleFetch(subject, `${SHEETS_API}/${id}?fields=sheets.properties.title`),
+    "baca tab",
+  );
+  const have = new Set((meta.sheets ?? []).map((sheet) => sheet.properties?.title));
+  const missing = [EXPENSE_TAB, ITEMS_TAB, SUMMARY_TAB].filter((title) => !have.has(title));
+  if (!missing.length) return;
+  await sheetsJson(
+    await googleFetch(subject, `${SHEETS_API}/${id}:batchUpdate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requests: missing.map((title) => ({
+          addSheet: { properties: { title, gridProperties: { frozenRowCount: 1 } } },
+        })),
+      }),
+    }),
+    "tambah tab",
+  );
 }
 
 /** Creates (or re-links) the export for a trip and runs the first sync. */
@@ -211,7 +281,7 @@ export async function syncTripSheet(subject: string, tripId: string) {
     | undefined;
   if (!target) return null;
   try {
-    const [expenses, categories] = await Promise.all([
+    const [expenses, categories, items] = await Promise.all([
       pool.query(
         `select e.id, e.transaction_date, e.description, c.name as category_name,
                 e.original_amount_minor, e.original_currency, e.exchange_rate, e.converted_amount_minor,
@@ -223,6 +293,12 @@ export async function syncTripSheet(subject: string, tripId: string) {
       pool.query("select name from travel_budget_categories where trip_id=$1 order by sort_order", [
         tripId,
       ]),
+      pool.query(
+        `select i.expense_id, i.name, i.amount_minor
+           from travel_expense_items i join travel_expenses e on e.id=i.expense_id
+          where e.trip_id=$1 order by i.position, i.created_at`,
+        [tripId],
+      ),
     ]);
     const names = [
       ...(categories.rows as Array<{ name: string }>).map((row) => row.name),
@@ -231,6 +307,7 @@ export async function syncTripSheet(subject: string, tripId: string) {
     const id = encodeURIComponent(target.spreadsheet_id);
     const range = (tab: string, cells: string) => encodeURIComponent(`${tab}!${cells}`);
 
+    await ensureTabs(subject, target.spreadsheet_id);
     // Only the columns Djiwa manages are cleared, so a deleted expense or category really disappears
     // while anything the traveler wrote to the right (column J onward) stays.
     await sheetsJson(
@@ -249,6 +326,10 @@ export async function syncTripSheet(subject: string, tripId: string) {
           valueInputOption: "RAW",
           data: [
             { range: `${EXPENSE_TAB}!A1`, values: expenseValues(expenses.rows as ExpenseRow[]) },
+            {
+              range: `${ITEMS_TAB}!A1`,
+              values: itemValues(expenses.rows as ExpenseRow[], items.rows as ItemRow[]),
+            },
             { range: `${SUMMARY_TAB}!A1`, values: summaryValues(names) },
           ],
         }),
