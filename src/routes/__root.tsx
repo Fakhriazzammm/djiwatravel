@@ -24,6 +24,8 @@ import { CustomerOnboardingGate } from "../components/customer-onboarding-gate";
 import { easeIos } from "../lib/motion";
 import { warmResellerCatalog } from "../lib/explore-warm";
 import { trackAnalytics, trackClick } from "../lib/analytics";
+import { trackGooglePageView } from "../lib/google-analytics";
+import { CONSENT_EVENT } from "../lib/cookie-consent";
 import { Toaster } from "../components/ui/sonner";
 import { PwaRuntime } from "../components/pwa-runtime";
 
@@ -184,6 +186,11 @@ function AnalyticsPageView() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   useEffect(() => {
     trackAnalytics("page_view", pathname);
+    trackGooglePageView(pathname);
+    // Visitors who accept cookies after landing get this page counted straight away.
+    const onConsent = () => trackGooglePageView(window.location.pathname);
+    window.addEventListener(CONSENT_EVENT, onConsent);
+    return () => window.removeEventListener(CONSENT_EVENT, onConsent);
   }, [pathname]);
   useEffect(() => {
     // One delegated listener: links report their internal path, buttons their short aria-label.
