@@ -252,6 +252,11 @@ export function sampleDeck<T>(sortedByPrice: readonly T[], max = DECK_MAX): T[] 
   return out;
 }
 
+export function packageDeckCardClass(selected: boolean): string {
+  const state = selected ? "bg-brand-red text-white" : "bg-surface ring-1 ring-border/60";
+  return `tap w-[48%] max-w-[188px] shrink-0 snap-center rounded-2xl p-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${state}`;
+}
+
 function PackageRow({
   pkg,
   stockPending,
@@ -627,7 +632,7 @@ function Destination() {
             <section className="mt-4" aria-label="Pilih paket">
               <div
                 ref={deckRef}
-                className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none]"
+                className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-2 pt-1 [scrollbar-width:none]"
               >
                 {deck.map((pkg, index) => {
                   const on = pkg.packageCode === chosen.packageCode;
@@ -638,26 +643,26 @@ function Destination() {
                       data-code={pkg.packageCode}
                       aria-pressed={on}
                       onClick={() => chooseCard(pkg)}
-                      className={`tap w-[58%] max-w-[220px] shrink-0 snap-center rounded-[24px] p-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        on
-                          ? "scale-100 bg-gradient-to-br from-[#c8102e] to-[#8f0a20] text-white shadow-[0_12px_28px_-12px_rgba(200,16,46,.55)]"
-                          : "scale-[0.97] bg-surface shadow-[0_1px_2px_rgba(0,0,0,.05)] ring-1 ring-border/60"
-                      }`}
+                      className={packageDeckCardClass(on)}
                     >
                       <span
                         className={`text-[10px] font-bold uppercase tracking-wide ${on ? "text-white/85" : "text-brand-red"}`}
                       >
                         {deckLabel(pkg, index)}
                       </span>
-                      <span className="mt-1 block text-[22px] font-extrabold leading-none tracking-tight">
+                      <span className="mt-1 block text-[20px] font-extrabold leading-none tracking-tight">
                         {shortData(pkg)}
                       </span>
-                      <span className={`text-xs ${on ? "text-white/80" : "text-muted-foreground"}`}>
-                        {pkg.durationDays} hari · {isDailyQuota(pkg) ? "harian" : "total"}
-                      </span>
-                      <span className="mt-4 block text-base font-bold">{rupiah(pkg.priceIdr)}</span>
                       <span
                         className={`text-[11px] ${on ? "text-white/80" : "text-muted-foreground"}`}
+                      >
+                        {pkg.durationDays} hari · {isDailyQuota(pkg) ? "harian" : "total"}
+                      </span>
+                      <span className="mt-3 block text-[15px] font-bold">
+                        {rupiah(pkg.priceIdr)}
+                      </span>
+                      <span
+                        className={`text-[10px] ${on ? "text-white/80" : "text-muted-foreground"}`}
                       >
                         ≈ {rupiah(Math.round(pricePerDay(pkg)))}/hari
                       </span>

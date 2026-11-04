@@ -3,6 +3,7 @@ import {
   durationFilterOf,
   isDailyQuota,
   isMultiCountry,
+  packageDeckCardClass,
   sampleDeck,
 } from "@/routes/destination.$code";
 import { pickFastPackages } from "@/lib/home-quick-packages";
@@ -17,6 +18,7 @@ const p = (code: string, days: number, price: number, sellable = true): ViewPack
   durationDays: days,
   priceIdr: price,
   sellable,
+  preorderAvailable: false,
 });
 
 describe("destination redesign helpers", () => {
@@ -53,5 +55,17 @@ describe("destination redesign helpers", () => {
     expect(deck[0]).toBe(0);
     expect(deck[5]).toBe(19);
     expect(sampleDeck([1, 2], 6)).toEqual([1, 2]);
+  });
+  it("keeps the destination package deck compact", () => {
+    const selected = packageDeckCardClass(true);
+    const unselected = packageDeckCardClass(false);
+
+    expect(selected).toContain("w-[48%] max-w-[188px]");
+    expect(selected).toContain("rounded-2xl p-3");
+    expect(selected).toContain("bg-brand-red text-white");
+    expect(unselected).toContain("bg-surface ring-1 ring-border/60");
+    expect(selected).not.toContain("bg-gradient");
+    expect(selected).not.toContain("shadow");
+    expect(unselected).not.toContain("shadow");
   });
 });
