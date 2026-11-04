@@ -252,6 +252,12 @@ export function BudgetEditor({
         )
       : {};
   const canSplit = Object.values(splitPlan).some((value) => value > 0);
+
+  // The sheet edits the money still available, so the number it opens with matches the row.
+  const editingUsed = Number(editing?.["spent_minor"] ?? 0);
+  const editingLimit = editing ? (limits[editing.id] ?? 0) : 0;
+  const typedMinor = Math.max(Math.round(Number(draft || 0) * 100), 0);
+  const nextLimit = editingUsed + typedMinor;
   function applySplit() {
     for (const [id, minor] of Object.entries(splitPlan)) if (minor > 0) setLimit(id, minor);
     toast.success("Anggaran dibagi ke kategori. Ketuk − / + untuk menyesuaikan.");
@@ -336,7 +342,7 @@ export function BudgetEditor({
 
       <section>
         <h2 className={`${iosHeading} flex justify-between`}>
-          <span>Batas per kategori</span>
+          <span>Anggaran per kategori</span>
           {canSplit ? (
             <button
               type="button"
@@ -367,66 +373,76 @@ export function BudgetEditor({
               const used = Number(item["spent_minor"] ?? 0);
               const name = displayBudgetCategory(String(item["name"] ?? "Kategori"));
               const over = limit > 0 && used > limit;
+              const hasLimit = limit > 0;
+              // The number next to the stepper is what is left to spend, so it drops with each expense.
+              const left = Math.max(limit - used, 0);
+              const meta = over
+                ? `Melebihi ${money(used - limit, currency)} · batas ${money(limit, currency)}`
+                : hasLimit
+                  ? used > 0
+                    ? `Batas ${money(limit, currency)} · terpakai ${money(used, currency)}`
+                    : `Batas ${money(limit, currency)}`
+                  : used > 0
+                    ? `Terpakai ${money(used, currency)} · belum dibagi`
+                    : "Belum dibagi";
               return (
                 <div
                   key={item.id}
-                  className="flex min-h-[52px] items-center gap-3 border-b border-border/60 px-3 last:border-b-0"
+                  className="min-h-12 border-b border-border/60 px-3 py-2 last:border-b-0"
                 >
-                  <button
-                    type="button"
-                    aria-label={`Opsi kategori ${name}`}
-                    onClick={() => setMenuFor(item)}
-                    className="tap flex min-h-[52px] min-w-0 flex-1 items-center gap-3 text-left"
-                  >
-                    <span
-                      className="grid size-8 shrink-0 place-items-center rounded-lg text-white"
-                      style={{ background: color }}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      aria-label={`Opsi kategori ${name}`}
+                      onClick={() => setMenuFor(item)}
+                      className="tap flex min-h-9 min-w-0 flex-1 items-center gap-3 text-left"
                     >
-                      <Icon className="size-[17px]" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-semibold">{name}</span>
                       <span
-                        className={`block truncate text-[11px] ${over || (limit === 0 && used > 0) ? "text-warning-foreground" : "text-muted-foreground"}`}
+                        className="grid size-8 shrink-0 place-items-center rounded-lg text-white"
+                        style={{ background: color }}
                       >
-                        {over
-                          ? "Melebihi batas"
-                          : limit === 0 && used === 0
-                            ? "Belum dibagi"
-                            : `Terpakai ${money(used, currency)}`}
+                        <Icon className="size-[17px]" aria-hidden="true" />
                       </span>
-                    </span>
-                  </button>
-                  <div className="flex w-[176px] shrink-0 items-center rounded-[9px] bg-secondary">
-                    <button
-                      type="button"
-                      aria-label={`Kurangi batas ${name}`}
-                      disabled={limit <= 0}
-                      onClick={() => setLimit(item.id, limit - step)}
-                      className="tap grid size-9 place-items-center text-brand-red disabled:opacity-30"
-                    >
-                      <Minus className="size-4" aria-hidden="true" />
+                      <span className="block min-w-0 flex-1 truncate text-[14px] font-semibold">
+                        {name}
+                      </span>
                     </button>
-                    <button
-                      type="button"
-                      aria-label={`Ketik batas ${name}. Sisa ${money(limit - used, currency)} dari batas ${money(limit, currency)}`}
-                      onClick={() => {
-                        setEditing(item);
-                        setDraft(limit ? String(Math.round(limit / 100)) : "");
-                      }}
-                      className={`tap min-w-0 flex-1 px-1 text-center text-[12px] font-semibold tabular-nums ${over ? "text-destructive" : ""}`}
-                    >
-                      {money(limit - used, currency)}
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Tambah batas ${name}`}
-                      onClick={() => setLimit(item.id, limit + step)}
-                      className="tap grid size-9 place-items-center text-brand-red"
-                    >
-                      <Plus className="size-4" aria-hidden="true" />
-                    </button>
+                    <div className="flex w-[168px] shrink-0 items-center rounded-[9px] bg-secondary">
+                      <button
+                        type="button"
+                        aria-label={`Kurangi batas ${name}`}
+                        disabled={limit <= 0}
+                        onClick={() => setLimit(item.id, limit - step)}
+                        className="tap grid size-9 shrink-0 place-items-center text-brand-red disabled:opacity-30"
+                      >
+                        <Minus className="size-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Ketik sisa ${name}: ${money(left, currency)}`}
+                        onClick={() => {
+                          setEditing(item);
+                          setDraft(left ? String(Math.round(left / 100)) : "");
+                        }}
+                        className={`tap min-w-0 flex-1 px-0.5 text-center text-[12px] font-semibold tabular-nums ${over ? "text-destructive" : ""}`}
+                      >
+                        {money(left, currency)}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Tambah batas ${name}`}
+                        onClick={() => setLimit(item.id, limit + step)}
+                        className="tap grid size-9 shrink-0 place-items-center text-brand-red"
+                      >
+                        <Plus className="size-4" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
+                  <p
+                    className={`mt-0.5 truncate pl-11 text-[11px] ${over || (!hasLimit && used > 0) ? "text-warning-foreground" : "text-muted-foreground"}`}
+                  >
+                    {meta}
+                  </p>
                 </div>
               );
             })
@@ -477,11 +493,15 @@ export function BudgetEditor({
         title={displayBudgetCategory(String(menuFor?.["name"] ?? ""))}
         actions={[
           {
-            label: "Ketik batas",
+            label: "Ketik sisa",
             onSelect: () => {
               if (!menuFor) return;
               setEditing(menuFor);
-              setDraft(limits[menuFor.id] ? String(Math.round(limits[menuFor.id]! / 100)) : "");
+              const left = Math.max(
+                (limits[menuFor.id] ?? 0) - Number(menuFor["spent_minor"] ?? 0),
+                0,
+              );
+              setDraft(left ? String(Math.round(left / 100)) : "");
             },
           },
           {
@@ -506,12 +526,12 @@ export function BudgetEditor({
       <SheetFrame
         open={Boolean(editing)}
         onOpenChange={(open) => !open && setEditing(null)}
-        title={`Batas ${displayBudgetCategory(String(editing?.["name"] ?? ""))}`}
+        title={`Sisa ${displayBudgetCategory(String(editing?.["name"] ?? ""))}`}
       >
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (editing) setLimit(editing.id, Math.round(Number(draft || 0) * 100));
+            if (editing) setLimit(editing.id, nextLimit);
             setEditing(null);
           }}
           className="space-y-3"
@@ -520,14 +540,17 @@ export function BudgetEditor({
             autoFocus
             value={draft}
             onValueChange={setDraft}
-            aria-label="Batas kategori"
+            aria-label="Sisa anggaran"
             placeholder="Rp 0"
             className="w-full rounded-xl bg-transparent py-3 text-center text-[28px] font-bold tracking-tight outline-none placeholder:text-muted-foreground/40"
           />
           <p className="text-center text-[12px] text-muted-foreground">
-            Terpakai {money(editing?.["spent_minor"], currency)}
+            {draft
+              ? `Batas menjadi ${money(nextLimit, currency)}`
+              : `Batas saat ini ${money(editingLimit, currency)}`}
+            {" · "}terpakai {money(editingUsed, currency)}
           </p>
-          <button className={`${btnRed} min-h-10 w-full rounded-xl`}>Simpan batas</button>
+          <button className={`${btnRed} min-h-10 w-full rounded-xl`}>Simpan sisa</button>
         </form>
       </SheetFrame>
     </section>

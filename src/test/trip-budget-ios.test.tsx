@@ -75,6 +75,68 @@ describe("budget iOS editor", () => {
   });
 });
 
+describe("budget rows", () => {
+  const rows = [
+    { id: "c1", name: "Flights", allocated_minor: 50_000_000, spent_minor: 20_000_000 },
+    { id: "c2", name: "Food & Drinks", allocated_minor: 50_000_000, spent_minor: 0 },
+    { id: "c3", name: "Transport", allocated_minor: 0, spent_minor: 5_000_000 },
+  ];
+
+  it("shows what is left to spend, not the limit", () => {
+    render(
+      <BudgetEditor
+        tripId="t1"
+        items={rows}
+        currency="IDR"
+        summary={{ ...summary, spentMinor: 25_000_000, uncategorizedSpentMinor: 5_000_000 }}
+        onSaved={vi.fn(async () => {})}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Ketik sisa Penerbangan/ })).toHaveTextContent(
+      "Rp 300.000",
+    );
+    expect(screen.getByText("Batas Rp 500.000 · terpakai Rp 200.000")).toBeTruthy();
+    expect(screen.getByText("Batas Rp 500.000")).toBeTruthy();
+    expect(screen.getByText("Terpakai Rp 50.000 · belum dibagi")).toBeTruthy();
+  });
+
+  it("gives every stepper the same width so rows line up", () => {
+    const { container } = render(
+      <BudgetEditor
+        tripId="t1"
+        items={rows}
+        currency="IDR"
+        summary={summary}
+        onSaved={vi.fn(async () => {})}
+      />,
+    );
+    expect(container.querySelectorAll(".w-\\[168px\\]")).toHaveLength(rows.length);
+  });
+
+  it("saves the typed remaining amount on top of what was spent", async () => {
+    vi.useRealTimers();
+    render(
+      <BudgetEditor
+        tripId="t1"
+        items={[rows[0]!]}
+        currency="IDR"
+        summary={summary}
+        onSaved={vi.fn(async () => {})}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Ketik sisa Penerbangan/ }));
+    fireEvent.change(await screen.findByLabelText("Sisa anggaran"), {
+      target: { value: "150000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan sisa" }));
+    await waitFor(() =>
+      expect(patchBudget).toHaveBeenCalledWith({
+        data: { id: "c1", allocatedMinor: 35_000_000 },
+      }),
+    );
+  });
+});
+
 describe("budget categories", () => {
   const item = { id: "c1", name: "Visa", allocated_minor: 0, spent_minor: 0 };
 
