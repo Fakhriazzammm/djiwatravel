@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { FixedLayer } from "@/components/motion-primitives";
-import { ReceiptPhotoSheet, ScanReceiptBanner } from "@/components/receipt-scan-entry";
+import { ReceiptPhotoSheet } from "@/components/receipt-scan-entry";
 import { ReceiptScanner } from "@/components/receipt-scanner";
 import { ExpenseDetailSheet } from "@/components/expense-detail-sheet";
 import { DriveChip, TripGoogleCards } from "@/components/trip-google-cards";
@@ -246,8 +246,20 @@ export function BudgetEditor({
 
   return (
     <section className="space-y-3">
-      {receiptScan.available && <ScanReceiptBanner onScan={() => setScanning(true)} />}
       <TripGoogleCards tripId={tripId} showDrive={false} onChanged={onSaved} />
+      {receiptScan.available && (
+        <FixedLayer>
+          <button
+            type="button"
+            aria-label="Scan struk"
+            onClick={() => setScanning(true)}
+            className="tap fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-brand-red px-4 text-[15px] font-semibold text-white shadow-[0_6px_16px_rgba(196,49,58,0.45)]"
+          >
+            <Camera className="size-6" aria-hidden="true" />
+            Scan
+          </button>
+        </FixedLayer>
+      )}
       {scanning && (
         <ReceiptScanner
           tripId={tripId}
@@ -664,7 +676,6 @@ export function ExpenseEditor({
           </p>
         </div>
       )}
-      {receiptScan.available && <ScanReceiptBanner onScan={() => setScanning(true)} />}
       <TripGoogleCards tripId={tripId} showDrive={receiptScan.available} onChanged={onSaved} />
       <div className="grid grid-cols-2 gap-3">
         <div className={`${iosGroup} p-3`}>

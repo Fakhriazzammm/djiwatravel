@@ -165,7 +165,7 @@ describe("Biaya entry points for scan struk", () => {
   };
   const categories = [{ id: "c1", name: "Food & Drinks", allocated_minor: 0, currency: "IDR" }];
 
-  it("shows the banner, the Scan button and a manual + button when scanning is available", () => {
+  it("shows the Scan button and a manual + button when scanning is available", () => {
     vi.useRealTimers();
     render(
       <ExpenseEditor
@@ -177,7 +177,7 @@ describe("Biaya entry points for scan struk", () => {
         receiptScan={scan}
       />,
     );
-    expect(screen.getByText("Ada banyak struk?")).toBeInTheDocument();
+    expect(screen.queryByText("Ada banyak struk?")).toBeNull();
     expect(screen.getByRole("button", { name: "Scan struk" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Catat manual" })).toBeInTheDocument();
   });
@@ -232,7 +232,7 @@ describe("Biaya entry points for scan struk", () => {
     expect(await screen.findByRole("dialog", { name: "Kamera scan struk" })).toBeInTheDocument();
   });
 
-  it("shows the banner on the Anggaran tab too", () => {
+  it("shows the floating Scan button on the Anggaran tab too", () => {
     vi.useRealTimers();
     render(
       <BudgetEditor
@@ -244,6 +244,6 @@ describe("Biaya entry points for scan struk", () => {
         receiptScan={scan}
       />,
     );
-    expect(screen.getByText("Ada banyak struk?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Scan struk" })).toBeInTheDocument();
   });
 });
