@@ -356,7 +356,7 @@ export function BudgetEditor({
           >
             {allocated > budget
               ? `Batas melebihi total ${money(allocated - budget, currency)}`
-              : `Dibagi ${money(allocated, currency)} dari ${money(budget, currency)} · sisa ${money(budget - allocated, currency)}`}
+              : `Dibagi ${money(allocated, currency)} dari ${money(budget, currency)} · terpakai ${money(spent, currency)}${allocated < budget ? ` · belum dibagi ${money(budget - allocated, currency)}` : ""}`}
           </p>
         )}
         <div className={iosGroup}>
@@ -393,7 +393,9 @@ export function BudgetEditor({
                           ? `Melebihi ${compactMoney(used - limit, currency)}`
                           : limit === 0 && used === 0
                             ? "Belum dibagi"
-                            : `Terpakai ${compactMoney(used, currency)}`}
+                            : limit > 0
+                              ? `Sisa ${compactMoney(limit - used, currency)} · terpakai ${compactMoney(used, currency)}`
+                              : `Terpakai ${compactMoney(used, currency)}`}
                       </span>
                     </span>
                   </button>
