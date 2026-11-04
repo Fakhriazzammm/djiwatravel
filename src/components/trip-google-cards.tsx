@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { GoogleConsentSheet } from "@/components/google-consent-sheet";
+import { friendlySheetError } from "@/lib/google-sheets-errors";
 import { googleConnectHref, useGoogleStatus } from "@/lib/google-status";
 
 type SheetExport = {
@@ -150,7 +151,8 @@ export function TripGoogleCards({
   };
 
   // Two-way: look at the sheet when the page opens, when the tab comes back, and every minute.
-  const hasSheet = Boolean(sheet) && sheet?.status !== "revoked";
+  // Only a spreadsheet that exists is polled; a failed first creation waits for the traveler to retry.
+  const hasSheet = Boolean(sheet?.spreadsheetUrl) && sheet?.status !== "revoked";
   useEffect(() => {
     if (!sheetsOn || !hasSheet) return;
     const stale = () =>
@@ -294,7 +296,10 @@ export function TripGoogleCards({
                 <p className="truncate text-[14px] font-semibold">
                   {sheet ? "Anggaran & pengeluaran di Sheets" : "Ekspor ke Google Sheets"}
                 </p>
-                <p className="truncate text-[11px] text-muted-foreground" role="status">
+                <p
+                  className={`text-[11px] text-muted-foreground ${sheet?.status === "failed" ? "" : "truncate"}`}
+                  role="status"
+                >
                   {!sheet
                     ? "Anggaran dan pengeluaran jadi spreadsheet dua arah di Drive-mu"
                     : sheet.status === "synced"
@@ -303,7 +308,7 @@ export function TripGoogleCards({
                         ? "Menyinkronkan…"
                         : sheet.status === "revoked"
                           ? "Menunggu Google terhubung ulang"
-                          : "Gagal sinkron · Fotonya aman, data tidak berubah"}
+                          : friendlySheetError(sheet.error)}
                 </p>
               </div>
               {!sheet ? (
@@ -349,7 +354,7 @@ export function TripGoogleCards({
                 </div>
               ) : null}
             </div>
-            {sheet && (
+            {sheet?.spreadsheetUrl && (
               <p className="mt-1.5 text-[11px] text-muted-foreground">
                 Ubah di Sheets atau di aplikasi, keduanya saling tersambung lewat rumus. Jangan ubah
                 kolom ID dan kolom hitungan. Catatanmu taruh di kolom J ke kanan.

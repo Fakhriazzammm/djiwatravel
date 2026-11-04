@@ -127,4 +127,24 @@ describe("Trip Google cards: two-way Sheets", () => {
     render(<TripGoogleCards tripId="t1" showDrive={false} />);
     expect(await screen.findByRole("button", { name: "Sinkronkan sekarang" })).toBeInTheDocument();
   });
+
+  it("tells the traveler a failed first creation is on Djiwa's side, and retrying creates the spreadsheet", async () => {
+    const calls = mockFetch({
+      get: () => ({
+        export: exportOf({
+          status: "failed",
+          spreadsheetUrl: null,
+          lastSyncedAt: null,
+          error:
+            "Google Sheets buat 403: Google Sheets API has not been used in project 1 before or it is disabled.",
+        }),
+        folderUrl: null,
+      }),
+    });
+    render(<TripGoogleCards tripId="t1" showDrive={false} />);
+    expect(await screen.findByText(/belum siap di sisi Djiwa/)).toBeInTheDocument();
+    // A spreadsheet that does not exist is never polled in the background.
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Coba lagi" })).toBeInTheDocument();
+  });
 });

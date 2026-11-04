@@ -48,8 +48,15 @@ export const Route = createFileRoute("/api/google-sheets")({
           if (action === "start")
             changed = Boolean((await sheets.startSheetExport(user.id, tripId))?.changed);
           if (action === "sync") {
-            await sheets.markSheetDirty(user.id, tripId);
-            changed = Boolean((await sheets.syncTripSheet(user.id, tripId))?.changed);
+            const current = await sheets.sheetExportStatus(user.id, tripId);
+            // An export whose spreadsheet was never created (for example Google refused the first
+            // attempt) is created now, instead of waiting for a sync that has nothing to sync.
+            if (current && !current.spreadsheetUrl)
+              changed = Boolean((await sheets.startSheetExport(user.id, tripId))?.changed);
+            else {
+              await sheets.markSheetDirty(user.id, tripId);
+              changed = Boolean((await sheets.syncTripSheet(user.id, tripId))?.changed);
+            }
           }
           if (action === "stop") await sheets.stopSheetExport(user.id, tripId);
           return Response.json(
