@@ -281,6 +281,9 @@ export async function syncTripSheet(subject: string, tripId: string) {
     | undefined;
   if (!target) return null;
   try {
+    // Older scanned expenses get their items from the note first, so Rincian covers them too.
+    const { backfillTripItems } = await import("./expense-items.server");
+    await backfillTripItems(tripId);
     const [expenses, categories, items] = await Promise.all([
       pool.query(
         `select e.id, e.transaction_date, e.description, c.name as category_name,

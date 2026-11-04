@@ -1,7 +1,12 @@
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { pool } from "@/db/client.server";
-import { totalsAfterDelta, type ExpenseDetail, type ExpenseItem } from "./expense-items";
+import {
+  parseItemsNote,
+  totalsAfterDelta,
+  type ExpenseDetail,
+  type ExpenseItem,
+} from "./expense-items";
 
 /**
  * Per-item detail of an expense: read it, edit or delete one item, change the expense's name, date
@@ -33,6 +38,39 @@ export async function insertLineItems(
   }
 }
 
+/**
+ * Expenses scanned before items were stored only carry their lines in the note. Turn those notes
+ * into real items (once, without touching the total) so each can be edited. A note that cannot be
+ * read cleanly is left as it is.
+ */
+export async function backfillTripItems(tripId: string) {
+  try {
+    const legacy = await pool.query(
+      `select e.id, e.notes, e.original_currency from travel_expenses e
+        where e.trip_id=$1 and e.notes like 'Dari scan struk: %'
+          and not exists (select 1 from travel_expense_items i where i.expense_id=e.id)`,
+      [tripId],
+    );
+    for (const row of legacy.rows) {
+      const items = parseItemsNote(String(row.notes), String(row.original_currency).trim());
+      if (!items) continue;
+      await transaction(async (client) => {
+        await client.query("select id from travel_expenses where id=$1 for update", [row.id]);
+        const again = await client.query(
+          "select 1 from travel_expense_items where expense_id=$1 limit 1",
+          [row.id],
+        );
+        if (!again.rows[0]) await insertLineItems(client, String(row.id), items);
+      });
+    }
+  } catch (error) {
+    console.error(
+      "[expense-items] backfill failed",
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
+
 const dateText = (value: unknown) =>
   value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
 
@@ -51,6 +89,7 @@ export async function readExpenseDetail(
   );
   const row = result.rows[0];
   if (!row) return null;
+  await backfillTripItems(String(row.trip_id));
   const [items, photo] = await Promise.all([
     pool.query(
       "select id, name, amount_minor, position from travel_expense_items where expense_id=$1 order by position, created_at",

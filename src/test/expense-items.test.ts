@@ -54,3 +54,44 @@ describe("What the items do not explain", () => {
     expect(itemsRemainder(1_500, [])).toBe(0);
   });
 });
+
+import { parseItemsNote } from "@/lib/expense-items";
+
+describe("Reading the items out of an older scan note", () => {
+  it("reads a real rupiah note, tax line included, and the amounts add up to the total", () => {
+    const items = parseItemsNote(
+      "Dari scan struk: Black Ice Rp25.000, Latte Ice Rp25.000, Cranberry Cheese Rp35.000, Poured Tiramisu Rp45.000, Carbonara Rp55.000, Tax (10%) Rp18.500",
+      "IDR",
+    );
+    expect(items).toHaveLength(6);
+    expect(items?.[0]).toEqual({ name: "Black Ice", amountMinor: 2_500_000 });
+    expect(items?.[5]).toEqual({ name: "Tax (10%)", amountMinor: 1_850_000 });
+    expect(items?.reduce((sum, item) => sum + item.amountMinor, 0)).toBe(20_350_000);
+  });
+
+  it("keeps digits and apostrophes inside a name", () => {
+    const items = parseItemsNote(
+      "Dari scan struk: Air Mineral 600ml Rp7.000, Tisu Wajah 200's Rp12.900",
+      "IDR",
+    );
+    expect(items?.map((item) => item.name)).toEqual(["Air Mineral 600ml", "Tisu Wajah 200's"]);
+    expect(items?.map((item) => item.amountMinor)).toEqual([700_000, 1_290_000]);
+  });
+
+  it("reads yen without decimals and euro with a decimal comma", () => {
+    expect(parseItemsNote("Dari scan struk: Cold brew ¥680, Cheesecake ¥800", "JPY")).toEqual([
+      { name: "Cold brew", amountMinor: 68_000 },
+      { name: "Cheesecake", amountMinor: 80_000 },
+    ]);
+    expect(parseItemsNote("Dari scan struk: Kaffee €3,50", "EUR")).toEqual([
+      { name: "Kaffee", amountMinor: 350 },
+    ]);
+  });
+
+  it("leaves a note alone unless every part reads cleanly", () => {
+    expect(parseItemsNote("Dari scan struk: Latte Rp25.000, ???", "IDR")).toBeNull();
+    expect(parseItemsNote("Dari scan struk", "IDR")).toBeNull();
+    expect(parseItemsNote("Beli oleh-oleh untuk ibu Rp50.000", "IDR")).toBeNull();
+    expect(parseItemsNote(null, "IDR")).toBeNull();
+  });
+});

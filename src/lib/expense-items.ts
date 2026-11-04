@@ -48,3 +48,38 @@ export type ExpenseDetail = {
   receiptScanId: string | null;
   items: ExpenseItem[];
 };
+
+const NOTE_PREFIX = "Dari scan struk: ";
+const ZERO_DECIMAL = new Set(["JPY", "KRW", "VND", "IDR", "CLP", "ISK", "HUF"]);
+
+/** "25.000" or "12,50" (id-ID grouping) to minor units; null when it is not an amount. */
+function amountToMinor(text: string, currency: string) {
+  if (!/^\d[\d.,]*$/.test(text)) return null;
+  const major = ZERO_DECIMAL.has(currency)
+    ? Number(text.replace(/[.,]/g, ""))
+    : Number(text.replace(/\./g, "").replace(",", "."));
+  const minor = Math.round(major * 100);
+  return Number.isFinite(minor) && minor > 0 ? minor : null;
+}
+
+/**
+ * Older scanned expenses only kept their lines as text ("Dari scan struk: Latte Rp25.000, Tax Rp18.500").
+ * This turns that note back into items. It returns null unless every part reads cleanly, so a
+ * note that cannot be understood is left alone instead of guessed.
+ */
+export function parseItemsNote(notes: string | null | undefined, currency: string) {
+  if (!notes?.startsWith(NOTE_PREFIX)) return null;
+  const body = notes.slice(NOTE_PREFIX.length).trim();
+  if (!body) return null;
+  // Amounts end in a digit, so a comma-space after a digit separates two items.
+  const parts = body.split(/(?<=\d), (?=\S)/);
+  const items: Array<{ name: string; amountMinor: number }> = [];
+  for (const part of parts) {
+    const match = part.trim().match(/^(.+?)\s+(?:[A-Za-z]{3}\s|[^\s\d.,]{1,3}\s?)?(\d[\d.,]*)$/);
+    const name = match?.[1]?.trim();
+    const amountMinor = match?.[2] ? amountToMinor(match[2], currency) : null;
+    if (!name || name.length > 160 || amountMinor === null) return null;
+    items.push({ name, amountMinor });
+  }
+  return items.length && items.length <= 100 ? items : null;
+}
