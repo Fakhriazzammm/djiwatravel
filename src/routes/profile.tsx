@@ -20,6 +20,7 @@ import {
 import { EsimStatusBadge } from "@/components/esim-status-badge";
 import { destinationArt } from "@/lib/destination-art";
 import { CalendarSheet } from "@/components/profile/calendar-sheet";
+import { parseGoogleStatus, type GoogleStatus } from "@/lib/google-status";
 import { ProfileAvatar } from "@/components/profile/profile-avatar";
 import {
   ProfileServiceGrid,
@@ -53,6 +54,9 @@ export const Route = createFileRoute("/profile")({
       ? (search["calendar"] as "connected" | "failed" | "denied")
       : undefined,
     calendarSync: search["sync"] === "failed" ? ("failed" as const) : undefined,
+    google: ["connected", "partial", "denied", "failed"].includes(String(search["google"]))
+      ? (search["google"] as "connected" | "partial" | "denied" | "failed")
+      : undefined,
   }),
   head: () => ({
     meta: [
@@ -67,7 +71,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 function Profile() {
-  const { admin, returnTo, calendar, calendarSync } = Route.useSearch();
+  const { admin, returnTo, calendar, calendarSync, google: googleResult } = Route.useSearch();
   const orders = useOrders() ?? [];
   const { user, setUser, loading } = useBetterAuthUser();
   const [profile, setProfile] = useState<CustomerProfileDraft>({ email: "", whatsapp: "" });
@@ -90,6 +94,7 @@ function Profile() {
     message: string;
   } | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -128,6 +133,7 @@ function Profile() {
           setCalendarConnected(Boolean(status?.connected));
           setCalendarAccount(status?.accountEmail ?? null);
           setCalendarPendingCount(Number(status?.pendingCount ?? 0));
+          setGoogleStatus(parseGoogleStatus(status));
         },
       )
       .catch(() => setCalendarStatusError(true))
@@ -221,8 +227,19 @@ function Profile() {
     !calendarSyncResolved &&
     calendarConnected &&
     (calendarPendingCount > 0 || calendarSync === "failed" || calendar === "failed");
+  const googleMessage =
+    googleResult === "connected"
+      ? "Google berhasil dihubungkan."
+      : googleResult === "partial"
+        ? "Sebagian izin tidak diberikan. Aktifkan lagi dan centang semua izin file."
+        : googleResult === "denied"
+          ? "Koneksi dibatalkan. Datamu tetap tersimpan di Djiwa Travel."
+          : googleResult === "failed"
+            ? "Koneksi Google belum berhasil. Coba lagi."
+            : null;
   const calendarMessage =
     calendarSyncFeedback?.message ??
+    googleMessage ??
     (calendarSyncIssue
       ? calendarPendingCount > 0
         ? `${calendarPendingCount} agenda belum tersinkron ke Google Calendar.`
@@ -238,11 +255,19 @@ function Profile() {
     calendarSyncFeedback?.kind ??
     (calendarSyncIssue
       ? "warning"
-      : calendar === "failed"
+      : calendar === "failed" || googleResult === "failed"
         ? "error"
-        : calendar === "connected"
+        : calendar === "connected" || googleResult === "connected"
           ? "success"
           : "warning");
+  const reloadGoogleStatus = async () => {
+    try {
+      const response = await fetch("/api/google-calendar/status", { credentials: "include" });
+      if (response.ok) setGoogleStatus(parseGoogleStatus(await response.json()));
+    } catch {
+      /* keep the last known status */
+    }
+  };
   const retryCalendarSync = async () => {
     setCalendarBusy(true);
     setCalendarSyncFeedback(null);
@@ -294,7 +319,11 @@ function Profile() {
       setCalendarConnected(false);
       setCalendarAccount(null);
       setCalendarPendingCount(0);
-      setCalendarSyncFeedback({ kind: "success", message: "Google Calendar sudah diputus." });
+      setGoogleStatus(null);
+      setCalendarSyncFeedback({
+        kind: "success",
+        message: "Google sudah diputus. File di Drive dan Sheets-mu tidak dihapus.",
+      });
     } catch (error) {
       setCalendarSyncFeedback({
         kind: "error",
@@ -329,11 +358,13 @@ function Profile() {
       ? "Masuk dulu"
       : calendarStatusError
         ? "Tidak tersedia"
-        : calendarConnected
-          ? calendarSyncIssue
-            ? "Perlu sinkron"
-            : "Terhubung"
-          : "Hubungkan";
+        : googleStatus?.needsReconnect
+          ? "Hubungkan ulang"
+          : calendarConnected || googleStatus?.googleConnected
+            ? calendarSyncIssue
+              ? "Perlu sinkron"
+              : "Terhubung"
+            : "Hubungkan";
   const tiles: ProfileTile[] = [
     {
       id: "esim",
@@ -358,7 +389,7 @@ function Profile() {
     { id: "guides", label: "Panduan", detail: "Artikel" },
     {
       id: "calendar",
-      label: "Kalender",
+      label: "Google",
       detail: calendarDetail,
       ...(calendarConnected && !calendarSyncIssue ? { tone: "ok" as const } : {}),
     },
@@ -646,6 +677,8 @@ function Profile() {
         busy={calendarBusy}
         onRetrySync={() => void retryCalendarSync()}
         onDisconnect={() => void disconnectCalendar()}
+        google={googleStatus}
+        onGoogleChanged={() => void reloadGoogleStatus()}
       />
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

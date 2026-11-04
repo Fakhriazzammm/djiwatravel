@@ -1,5 +1,7 @@
 /** Where a Google Calendar connect started from a trip page returns to. Same-site trip paths only. */
 export const CALENDAR_RETURN_COOKIE = "djiwa_cal_return";
+/** Which Google features a connect started for, so the callback can tell "granted" from "partly granted". */
+export const GOOGLE_FEATURES_COOKIE = "djiwa_google_features";
 
 export function isSafeCalendarReturn(value: unknown): value is string {
   if (typeof value !== "string" || value.length > 300) return false;

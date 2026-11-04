@@ -48,6 +48,8 @@ import { Route as ApiCustomerNotificationsRouteImport } from './routes/api.custo
 import { Route as ApiCustomerProfileRouteImport } from './routes/api.customer-profile'
 import { Route as ApiCustomerRefundRouteImport } from './routes/api.customer-refund'
 import { Route as ApiCustomerSupportRouteImport } from './routes/api.customer-support'
+import { Route as ApiGoogleDriveRouteImport } from './routes/api.google-drive'
+import { Route as ApiGoogleSheetsRouteImport } from './routes/api.google-sheets'
 import { Route as ApiHomeEsimEventsRouteImport } from './routes/api.home-esim-events'
 import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recovery'
 import { Route as ApiPwaEventsRouteImport } from './routes/api.pwa-events'
@@ -285,6 +287,16 @@ const ApiCustomerRefundRoute = ApiCustomerRefundRouteImport.update({
 const ApiCustomerSupportRoute = ApiCustomerSupportRouteImport.update({
   id: '/api/customer-support',
   path: '/api/customer-support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGoogleDriveRoute = ApiGoogleDriveRouteImport.update({
+  id: '/api/google-drive',
+  path: '/api/google-drive',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGoogleSheetsRoute = ApiGoogleSheetsRouteImport.update({
+  id: '/api/google-sheets',
+  path: '/api/google-sheets',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHomeEsimEventsRoute = ApiHomeEsimEventsRouteImport.update({
@@ -543,6 +555,8 @@ export interface FileRoutesByFullPath {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/google-drive': typeof ApiGoogleDriveRoute
+  '/api/google-sheets': typeof ApiGoogleSheetsRoute
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
@@ -626,6 +640,8 @@ export interface FileRoutesByTo {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/google-drive': typeof ApiGoogleDriveRoute
+  '/api/google-sheets': typeof ApiGoogleSheetsRoute
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
@@ -710,6 +726,8 @@ export interface FileRoutesById {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/google-drive': typeof ApiGoogleDriveRoute
+  '/api/google-sheets': typeof ApiGoogleSheetsRoute
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
@@ -795,6 +813,8 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/google-drive'
+    | '/api/google-sheets'
     | '/api/home-esim-events'
     | '/api/order-recovery'
     | '/api/pwa-events'
@@ -878,6 +898,8 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/google-drive'
+    | '/api/google-sheets'
     | '/api/home-esim-events'
     | '/api/order-recovery'
     | '/api/pwa-events'
@@ -961,6 +983,8 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/google-drive'
+    | '/api/google-sheets'
     | '/api/home-esim-events'
     | '/api/order-recovery'
     | '/api/pwa-events'
@@ -1045,6 +1069,8 @@ export interface RootRouteChildren {
   ApiCustomerProfileRoute: typeof ApiCustomerProfileRoute
   ApiCustomerRefundRoute: typeof ApiCustomerRefundRoute
   ApiCustomerSupportRoute: typeof ApiCustomerSupportRoute
+  ApiGoogleDriveRoute: typeof ApiGoogleDriveRoute
+  ApiGoogleSheetsRoute: typeof ApiGoogleSheetsRoute
   ApiHomeEsimEventsRoute: typeof ApiHomeEsimEventsRoute
   ApiOrderRecoveryRoute: typeof ApiOrderRecoveryRoute
   ApiPwaEventsRoute: typeof ApiPwaEventsRoute
@@ -1359,6 +1385,20 @@ declare module '@tanstack/react-router' {
       path: '/api/customer-support'
       fullPath: '/api/customer-support'
       preLoaderRoute: typeof ApiCustomerSupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-drive': {
+      id: '/api/google-drive'
+      path: '/api/google-drive'
+      fullPath: '/api/google-drive'
+      preLoaderRoute: typeof ApiGoogleDriveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/google-sheets': {
+      id: '/api/google-sheets'
+      path: '/api/google-sheets'
+      fullPath: '/api/google-sheets'
+      preLoaderRoute: typeof ApiGoogleSheetsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/home-esim-events': {
@@ -1734,6 +1774,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCustomerProfileRoute: ApiCustomerProfileRoute,
   ApiCustomerRefundRoute: ApiCustomerRefundRoute,
   ApiCustomerSupportRoute: ApiCustomerSupportRoute,
+  ApiGoogleDriveRoute: ApiGoogleDriveRoute,
+  ApiGoogleSheetsRoute: ApiGoogleSheetsRoute,
   ApiHomeEsimEventsRoute: ApiHomeEsimEventsRoute,
   ApiOrderRecoveryRoute: ApiOrderRecoveryRoute,
   ApiPwaEventsRoute: ApiPwaEventsRoute,

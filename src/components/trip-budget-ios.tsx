@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { FixedLayer } from "@/components/motion-primitives";
 import { ReceiptPhotoSheet, ScanReceiptBanner } from "@/components/receipt-scan-entry";
 import { ReceiptScanner } from "@/components/receipt-scanner";
+import { DriveChip, TripGoogleCards } from "@/components/trip-google-cards";
 import { MoneyInput } from "@/components/money-input";
 import { btnRed } from "@/components/shell";
 import { ConfirmDialog, TripActionSheet, iosGroup, iosHeading } from "@/components/trip-ios";
@@ -662,6 +663,7 @@ export function ExpenseEditor({
         </div>
       )}
       {receiptScan.available && <ScanReceiptBanner onScan={() => setScanning(true)} />}
+      <TripGoogleCards tripId={tripId} showDrive={receiptScan.available} />
       <div className="grid grid-cols-2 gap-3">
         <div className={`${iosGroup} p-3`}>
           <p className="text-[11px] text-muted-foreground">Total</p>
@@ -718,6 +720,7 @@ export function ExpenseEditor({
                         {item["from_scan"] ? " · dari scan" : ""}
                       </span>
                     </span>
+                    <DriveChip status={item["drive_status"]} />
                     <span className="shrink-0 text-[13px] font-semibold tabular-nums">
                       −{compactMoney(inTripCurrency(item, currency), currency)}
                     </span>

@@ -674,12 +674,32 @@ export async function getTripSectionData(tripId: string, section: string) {
         error instanceof Error ? error.message : error,
       );
     }
+    // Where each kept receipt photo lives (traveler's Drive); best effort like the receipt info above.
+    let driveStatus: Record<string, string> = {};
+    try {
+      const { driveStatusForTrip } = await import("@/lib/google-drive.server");
+      driveStatus = await driveStatusForTrip(user.id, tripId);
+    } catch (error) {
+      console.error(
+        "[my-trips] drive status unavailable",
+        error instanceof Error ? error.message : error,
+      );
+    }
     return {
       trip: tripView,
-      items: expenses.rows.map((row) => ({
-        ...normalizeSectionItem(row),
-        ...(receiptInfo.get(String(row["id"])) ?? { receipt_scan_id: null, from_scan: false }),
-      })),
+      items: expenses.rows.map((row) => {
+        const receipt = receiptInfo.get(String(row["id"])) ?? {
+          receipt_scan_id: null,
+          from_scan: false,
+        };
+        return {
+          ...normalizeSectionItem(row),
+          ...receipt,
+          drive_status: receipt.receipt_scan_id
+            ? (driveStatus[receipt.receipt_scan_id] ?? null)
+            : null,
+        };
+      }),
       categories: categories.rows.map((row) => ({
         id: String(row.id),
         name: String(row.name),
@@ -777,6 +797,19 @@ export async function deleteBudgetCategory(input: unknown) {
   return result.rows[0];
 }
 
+/** Keeps the traveler's Google Sheet in step with their expenses; never blocks or fails the change. */
+async function refreshSheetExport(subject: string, tripId: string) {
+  try {
+    const { queueSheetSync } = await import("@/lib/google-sheets.server");
+    await queueSheetSync(subject, tripId);
+  } catch (error) {
+    console.error(
+      "[my-trips] sheet sync queue failed",
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
+
 async function deleteOwned(
   table:
     "travel_expenses" | "travel_itinerary_items" | "travel_checklist_items" | "travel_bookings",
@@ -784,7 +817,7 @@ async function deleteOwned(
 ) {
   const user = await getAuthenticatedUser();
   const result = await pool.query(
-    `delete from ${table} item using travel_trips t where item.id=$1 and item.trip_id=t.id and t.customer_auth_subject=$2 returning item.id`,
+    `delete from ${table} item using travel_trips t where item.id=$1 and item.trip_id=t.id and t.customer_auth_subject=$2 returning item.id, item.trip_id`,
     [id, user.id],
   );
   if (!result.rows[0]) throw new Error("Item perjalanan tidak ditemukan");
@@ -824,7 +857,13 @@ export async function deleteTrip(input: unknown) {
 
 export async function deleteTripItem(input: unknown) {
   const data = itemIdSchema.parse(input);
-  return deleteOwned("travel_expenses", data.id);
+  const removed = (await deleteOwned("travel_expenses", data.id)) as {
+    id: string;
+    trip_id: string;
+  };
+  const user = await getAuthenticatedUser();
+  await refreshSheetExport(user.id, removed.trip_id);
+  return removed;
 }
 
 export async function deleteItineraryItem(input: unknown) {
@@ -874,6 +913,7 @@ export async function addExpense(input: unknown) {
       data.notes ?? null,
     ],
   );
+  await refreshSheetExport(user.id, data.tripId);
   return result.rows[0];
 }
 

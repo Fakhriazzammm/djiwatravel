@@ -518,6 +518,7 @@ export async function saveScannedExpenses(
   try {
     await client.query("begin");
     const ids: string[] = [];
+    const keptScanIds: string[] = [];
     for (const item of data.items) {
       const scan = await client.query(
         `select id from public.travel_receipt_scans
@@ -562,6 +563,7 @@ export async function saveScannedExpenses(
           "update public.travel_receipt_photos set expense_id=$1 where scan_id=$2 and customer_auth_subject=$3",
           [expenseId, item.scanId, userId],
         );
+        keptScanIds.push(item.scanId);
       } else {
         await client.query("delete from public.travel_receipt_photos where scan_id=$1", [
           item.scanId,
@@ -569,6 +571,7 @@ export async function saveScannedExpenses(
       }
     }
     await client.query("commit");
+    await afterExpensesSaved(userId, data.tripId, keptScanIds);
     return { expenseIds: ids };
   } catch (error) {
     await client.query("rollback").catch(() => undefined);
@@ -578,7 +581,28 @@ export async function saveScannedExpenses(
   }
 }
 
-/** The photo of an expense, only for the trip's owner. */
+/**
+ * Google follow-up of a saved batch: kept photos go to the traveler's Drive and the Sheets export
+ * is refreshed. Both are durable queues, so a Google failure never fails the save itself.
+ */
+async function afterExpensesSaved(userId: string, tripId: string, keptScanIds: readonly string[]) {
+  try {
+    const drive = await import("./google-drive.server");
+    if (keptScanIds.length && (await drive.driveActive(userId))) {
+      await drive.queueReceiptUploads(userId, tripId, keptScanIds);
+      drive.kickDriveQueue(userId);
+    }
+    const sheets = await import("./google-sheets.server");
+    await sheets.queueSheetSync(userId, tripId);
+  } catch (error) {
+    console.error(
+      "[receipt-scan] google follow-up failed",
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
+
+/** The photo of an expense, only for the trip's owner. Served from Postgres, or from the traveler's Drive once moved. */
 export async function readReceiptPhoto(userId: string, scanId: string) {
   if (!z.string().uuid().safeParse(scanId).success) return null;
   const result = await pool.query(
@@ -587,8 +611,11 @@ export async function readReceiptPhoto(userId: string, scanId: string) {
      where p.scan_id=$1 and t.customer_auth_subject=$2`,
     [scanId, userId],
   );
-  const row = result.rows[0] as { mime: string; bytes: Buffer } | undefined;
-  return row ? { mime: row.mime, bytes: row.bytes } : null;
+  const row = result.rows[0] as { mime: string; bytes: Buffer | null } | undefined;
+  if (!row) return null;
+  if (row.bytes) return { mime: row.mime, bytes: row.bytes };
+  const { readDrivePhoto } = await import("./google-drive.server");
+  return readDrivePhoto(userId, scanId, row.mime);
 }
 
 /* ------------------------------------------------------------------------------- admin */
