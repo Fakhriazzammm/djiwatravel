@@ -267,6 +267,12 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
                 </a>
               ) : null}
             </div>
+            {sheet && (
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                Kolom A–I dikelola Djiwa dan ditulis ulang tiap sinkron. Catatanmu taruh di kolom J
+                ke kanan.
+              </p>
+            )}
           </div>
         )
       ) : status.googleConnected || status.features.calendar ? (

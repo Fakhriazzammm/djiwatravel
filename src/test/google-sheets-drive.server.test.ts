@@ -6,6 +6,7 @@ import { multipartBody } from "@/lib/google-drive.server";
 import {
   EXPENSE_HEADER,
   expenseValues,
+  managedRanges,
   plainCell,
   summaryValues,
 } from "@/lib/google-sheets.server";
@@ -63,5 +64,16 @@ describe("Sheets export values", () => {
       ["Makan"],
       ["'=bad"],
     ]);
+  });
+});
+
+describe("Cells Djiwa rewrites", () => {
+  it("clears only the managed columns so the traveler's own columns survive", () => {
+    expect(managedRanges()).toEqual(["Pengeluaran!A:I", "Ringkasan!A:B"]);
+    expect(managedRanges().join()).not.toMatch(/:Z|:J/);
+  });
+
+  it("covers every column the export writes", () => {
+    expect(EXPENSE_HEADER.length).toBe(9); // A..I
   });
 });

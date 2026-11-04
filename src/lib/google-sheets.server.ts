@@ -49,6 +49,14 @@ type ExpenseRow = {
   has_receipt: boolean;
 };
 
+/**
+ * The cells Djiwa owns and rewrites on every sync: expenses in A–I, category totals in A–B.
+ * Everything to the right is the traveler's and is never cleared.
+ */
+export function managedRanges() {
+  return [`${EXPENSE_TAB}!A:I`, `${SUMMARY_TAB}!A:B`];
+}
+
 function dateOnly(value: Date | string) {
   if (typeof value === "string") return value.slice(0, 10);
   return value.toISOString().slice(0, 10);
@@ -223,11 +231,13 @@ export async function syncTripSheet(subject: string, tripId: string) {
     const id = encodeURIComponent(target.spreadsheet_id);
     const range = (tab: string, cells: string) => encodeURIComponent(`${tab}!${cells}`);
 
+    // Only the columns Djiwa manages are cleared, so a deleted expense or category really disappears
+    // while anything the traveler wrote to the right (column J onward) stays.
     await sheetsJson(
-      await googleFetch(subject, `${SHEETS_API}/${id}/values/${range(EXPENSE_TAB, "A:Z")}:clear`, {
+      await googleFetch(subject, `${SHEETS_API}/${id}/values:batchClear`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ ranges: managedRanges() }),
       }),
       "bersihkan",
     );
