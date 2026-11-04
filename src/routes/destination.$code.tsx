@@ -253,7 +253,7 @@ export function sampleDeck<T>(sortedByPrice: readonly T[], max = DECK_MAX): T[] 
 }
 
 export function packageDeckCardClass(selected: boolean): string {
-  const state = selected ? "bg-brand-red text-white" : "bg-surface ring-1 ring-border/60";
+  const state = selected ? "bg-[#a60f2a] text-white" : "bg-surface ring-1 ring-border/60";
   return `tap w-[48%] max-w-[188px] shrink-0 snap-center rounded-2xl p-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${state}`;
 }
 
@@ -646,7 +646,7 @@ function Destination() {
                       className={packageDeckCardClass(on)}
                     >
                       <span
-                        className={`text-[10px] font-bold uppercase tracking-wide ${on ? "text-white/85" : "text-brand-red"}`}
+                        className={`text-[10px] font-bold uppercase tracking-wide ${on ? "text-white" : "text-brand-red"}`}
                       >
                         {deckLabel(pkg, index)}
                       </span>
@@ -654,7 +654,7 @@ function Destination() {
                         {shortData(pkg)}
                       </span>
                       <span
-                        className={`text-[11px] ${on ? "text-white/80" : "text-muted-foreground"}`}
+                        className={`text-[11px] ${on ? "text-white" : "text-muted-foreground"}`}
                       >
                         {pkg.durationDays} hari · {isDailyQuota(pkg) ? "harian" : "total"}
                       </span>
@@ -662,7 +662,7 @@ function Destination() {
                         {rupiah(pkg.priceIdr)}
                       </span>
                       <span
-                        className={`text-[10px] ${on ? "text-white/80" : "text-muted-foreground"}`}
+                        className={`text-[10px] ${on ? "text-white" : "text-muted-foreground"}`}
                       >
                         ≈ {rupiah(Math.round(pricePerDay(pkg)))}/hari
                       </span>

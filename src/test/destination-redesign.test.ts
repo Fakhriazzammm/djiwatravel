@@ -60,12 +60,13 @@ describe("destination redesign helpers", () => {
     const selected = packageDeckCardClass(true);
     const unselected = packageDeckCardClass(false);
 
-    expect(selected).toContain("w-[48%] max-w-[188px]");
-    expect(selected).toContain("rounded-2xl p-3");
-    expect(selected).toContain("bg-brand-red text-white");
+    for (const cardClass of [selected, unselected]) {
+      expect(cardClass).toContain("w-[48%] max-w-[188px]");
+      expect(cardClass).toContain("rounded-2xl p-3");
+      expect(cardClass).not.toContain("bg-gradient");
+      expect(cardClass).not.toContain("shadow");
+    }
+    expect(selected).toContain("bg-[#a60f2a] text-white");
     expect(unselected).toContain("bg-surface ring-1 ring-border/60");
-    expect(selected).not.toContain("bg-gradient");
-    expect(selected).not.toContain("shadow");
-    expect(unselected).not.toContain("shadow");
   });
 });
