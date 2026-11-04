@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getBetterAuthSession,
+  getBetterAuthSessionWithRetry,
   signInEmail,
   signOutBetterAuth,
   signUpEmail,
@@ -60,7 +61,9 @@ describe("Better Auth email requests", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ user: { id: "u1" } }) });
     vi.stubGlobal("fetch", fetch);
 
-    await expect(getBetterAuthSessionWithRetry(2, 1)).resolves.toMatchObject({ user: { id: "u1" } });
+    await expect(getBetterAuthSessionWithRetry(2, 1)).resolves.toMatchObject({
+      user: { id: "u1" },
+    });
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
