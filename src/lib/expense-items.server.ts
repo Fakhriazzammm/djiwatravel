@@ -80,7 +80,7 @@ export async function readExpenseDetail(
 ): Promise<ExpenseDetail | null> {
   if (!uuid.safeParse(expenseId).success) return null;
   const result = await pool.query(
-    `select e.*, c.name as category_name
+    `select e.*, e.transaction_date::text as transaction_date_text, c.name as category_name
        from travel_expenses e
        join travel_trips t on t.id = e.trip_id
        left join travel_budget_categories c on c.id = e.category_id
@@ -105,7 +105,7 @@ export async function readExpenseDetail(
     id: String(row.id),
     tripId: String(row.trip_id),
     description: String(row.description),
-    transactionDate: dateText(row.transaction_date),
+    transactionDate: String(row.transaction_date_text).slice(0, 10),
     categoryId: row.category_id ? String(row.category_id) : null,
     categoryName: row.category_name ? String(row.category_name) : null,
     originalCurrency: String(row.original_currency).trim(),

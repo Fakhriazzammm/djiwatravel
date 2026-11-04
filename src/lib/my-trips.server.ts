@@ -232,6 +232,8 @@ export async function updateTrip(input: unknown) {
   );
   if (!result.rows[0]) throw new Error("Perjalanan tidak ditemukan");
   void renameGoogleFiles(user.id, data.tripId);
+  // The trip's total budget is on the Anggaran tab.
+  await refreshSheetExport(user.id, data.tripId);
   return result.rows[0];
 }
 
@@ -765,6 +767,7 @@ export async function patchBudgetCategory(input: unknown) {
     [data.allocatedMinor, data.id, user.id],
   );
   if (!result.rows[0]) throw new Error("Kategori budget tidak ditemukan");
+  await refreshSheetExport(user.id, String(result.rows[0].trip_id));
   return result.rows[0];
 }
 
@@ -784,6 +787,7 @@ export async function addBudgetCategory(input: unknown) {
     ],
   );
   if (!result.rows[0]) throw new Error("Kategori dengan nama itu sudah ada");
+  await refreshSheetExport(user.id, data.tripId);
   return result.rows[0];
 }
 
@@ -793,10 +797,11 @@ export async function deleteBudgetCategory(input: unknown) {
   const user = await getAuthenticatedUser();
   const result = await pool.query(
     `delete from travel_budget_categories c using travel_trips t
-     where c.id=$1 and c.trip_id=t.id and t.customer_auth_subject=$2 returning c.id`,
+     where c.id=$1 and c.trip_id=t.id and t.customer_auth_subject=$2 returning c.id, c.trip_id`,
     [data.id, user.id],
   );
   if (!result.rows[0]) throw new Error("Kategori budget tidak ditemukan");
+  await refreshSheetExport(user.id, String(result.rows[0].trip_id));
   return result.rows[0];
 }
 

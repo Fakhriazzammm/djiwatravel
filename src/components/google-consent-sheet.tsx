@@ -42,7 +42,7 @@ export function GoogleConsentSheet({
             <span className="text-success" aria-hidden="true">
               ✓
             </span>
-            Menulis budget trip ke spreadsheet yang dibuat Djiwa
+            Menyinkronkan anggaran dan pengeluaran dua arah dengan spreadsheet yang dibuat Djiwa
           </li>
         </ul>
         <p className="mb-1.5 mt-3 px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">

@@ -44,14 +44,18 @@ export const Route = createFileRoute("/api/google-sheets")({
           const sheets = await import("@/lib/google-sheets.server");
           if (action !== "stop" && !(await sheets.sheetsActive(user.id)))
             return Response.json({ error: "Izin Google Sheets belum diberikan" }, { status: 403 });
-          if (action === "start") await sheets.startSheetExport(user.id, tripId);
+          let changed = false;
+          if (action === "start")
+            changed = Boolean((await sheets.startSheetExport(user.id, tripId))?.changed);
           if (action === "sync") {
             await sheets.markSheetDirty(user.id, tripId);
-            await sheets.syncTripSheet(user.id, tripId);
+            changed = Boolean((await sheets.syncTripSheet(user.id, tripId))?.changed);
           }
           if (action === "stop") await sheets.stopSheetExport(user.id, tripId);
           return Response.json(
             {
+              // True when the sheet changed the app's data: the screen should reload its lists.
+              changed,
               export: await sheets.sheetExportStatus(user.id, tripId),
               folderUrl: await folderUrl(user.id, tripId),
             },

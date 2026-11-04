@@ -247,6 +247,7 @@ export function BudgetEditor({
   return (
     <section className="space-y-3">
       {receiptScan.available && <ScanReceiptBanner onScan={() => setScanning(true)} />}
+      <TripGoogleCards tripId={tripId} showDrive={false} onChanged={onSaved} />
       {scanning && (
         <ReceiptScanner
           tripId={tripId}
@@ -664,7 +665,7 @@ export function ExpenseEditor({
         </div>
       )}
       {receiptScan.available && <ScanReceiptBanner onScan={() => setScanning(true)} />}
-      <TripGoogleCards tripId={tripId} showDrive={receiptScan.available} />
+      <TripGoogleCards tripId={tripId} showDrive={receiptScan.available} onChanged={onSaved} />
       <div className="grid grid-cols-2 gap-3">
         <div className={`${iosGroup} p-3`}>
           <p className="text-[11px] text-muted-foreground">Total</p>

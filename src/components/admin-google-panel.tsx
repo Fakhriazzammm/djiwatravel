@@ -77,6 +77,12 @@ export function AdminGooglePanel({ overview }: { overview: GoogleAdminOverview }
           },
           { label: "Dicabut", value: String(overview.drive.revoked + overview.sheets.revoked) },
           { label: "Ekspor Sheets", value: String(overview.sheets.synced), tone: "good" },
+          { label: "Diambil dari Sheets", value: String(overview.sheetPulledRows) },
+          {
+            label: "Bentrok Sheets",
+            value: String(overview.sheetConflicts),
+            ...(overview.sheetConflicts > 0 ? { tone: "warn" as const } : {}),
+          },
           {
             label: "Masih di Postgres",
             value: `${overview.photosInPostgres} · ${mb(overview.bytesInPostgres)}`,

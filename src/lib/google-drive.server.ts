@@ -181,7 +181,7 @@ async function claim(subject: string, limit: number, retryFailed: boolean) {
 
 async function uploadOne(subject: string, item: Claimed) {
   const photo = await pool.query(
-    `select p.mime, p.bytes, t.name as trip_name, t.departure_date, e.description, e.transaction_date
+    `select p.mime, p.bytes, t.name as trip_name, t.departure_date::text as departure_date, e.description, e.transaction_date::text as transaction_date
        from public.travel_receipt_photos p
        join travel_trips t on t.id=p.trip_id
        left join travel_expenses e on e.id=p.expense_id

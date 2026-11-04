@@ -304,3 +304,19 @@ Use this structure for each new lesson:
 - Safe fix: systemd drop-in `/etc/systemd/system/djiwatravel.service.d/stop.conf` with `TimeoutStopSec=8`; nginx `error_page 502 503 504` serves `/var/www/djiwa-updating/updating.html` (an auto-refreshing "Sedang diperbarui" page, source `public/updating.html`, snippet `scripts/nginx/djiwatravel-updating.conf`); the root error component retries quietly up to 5 times per minute.
 - Prevention rule: batch small commits instead of pushing one every few minutes; keep the stop timeout and the friendly 502 page when rebuilding the VPS. Status codes stay 502 so webhooks and fetch callers still retry.
 - Verification boundary: the 502 page was installed and nginx reloaded cleanly, but only a real deploy proves it; the Tentram VPS disk was at 88.5% when checked and should be cleaned up separately.
+
+### 2026-11-04 — A `date` column read as a JS Date is one day early on the Travel VPS
+
+- Symptom: a date that is correct in the database shows or is sent one day earlier (an expense date,
+  a Drive folder month, an event day in Google Calendar), but only on the VPS, not in CI.
+- Evidence: the Travel VPS runs in `Asia/Shanghai` (+0800) and the Node service sets no `TZ`.
+  node-postgres parses `date` into a Date at *local* midnight, so `toISOString().slice(0, 10)` gives the
+  previous day: `TZ=Asia/Shanghai node -e "require('pg').types.getTypeParser(1082)('2026-11-04').toISOString()"`
+  prints `2026-11-03T16:00:00.000Z`.
+- Root cause: converting a date-only value through a Date and then through UTC.
+- Safe fix: read date-only columns as text in SQL (`col::text`) and keep them as `YYYY-MM-DD` strings; never
+  build a calendar day from `toISOString()` of a database Date.
+- Prevention rule: for any new query that returns a `date`, cast it to text; run date-sensitive tests with
+  `TZ=Asia/Shanghai` as well as the local zone.
+- Verification boundary: the unit test for `calendarDate` uses a UTC-midnight Date, which is not what
+  node-postgres returns on a +08:00 host; only a query result (or the `TZ=Asia/Shanghai` command above) shows it.

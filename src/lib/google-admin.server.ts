@@ -20,6 +20,9 @@ export type GoogleAdminOverview = {
   driveUsers: number;
   drive: { pending: number; uploaded: number; failed: number; revoked: number };
   sheets: { pending: number; synced: number; failed: number; revoked: number };
+  /** Rows taken from travelers' spreadsheets into the app, and edits that clashed (all time). */
+  sheetPulledRows: number;
+  sheetConflicts: number;
   photosInPostgres: number;
   bytesInPostgres: number;
   issues: Array<{
@@ -41,12 +44,14 @@ export async function readGoogleAdmin(): Promise<GoogleAdminOverview> {
     driveUsers: 0,
     drive: { pending: 0, uploaded: 0, failed: 0, revoked: 0 },
     sheets: { pending: 0, synced: 0, failed: 0, revoked: 0 },
+    sheetPulledRows: 0,
+    sheetConflicts: 0,
     photosInPostgres: 0,
     bytesInPostgres: 0,
     issues: [],
   };
   try {
-    const [connections, drive, sheets, photos, issues] = await Promise.all([
+    const [connections, drive, sheets, photos, issues, pulled] = await Promise.all([
       pool.query(
         "select granted_scopes from customer_google_calendar_connections where refresh_token_encrypted is not null",
       ),
@@ -67,6 +72,9 @@ export async function readGoogleAdmin(): Promise<GoogleAdminOverview> {
             from travel_google_sheet_exports where status in ('failed','revoked') order by updated_at desc limit 20)
          order by updated_at desc limit 20`,
       ),
+      pool.query(
+        "select coalesce(sum(pulled_rows_total),0)::int as pulled, coalesce(sum(conflicts_total),0)::int as conflicts from travel_google_sheet_exports",
+      ),
     ]);
     const out = { ...empty };
     out.connectedUsers = connections.rows.length;
@@ -81,6 +89,8 @@ export async function readGoogleAdmin(): Promise<GoogleAdminOverview> {
       const key = row.status === "syncing" ? "pending" : (row.status as keyof typeof out.sheets);
       out.sheets[key] += Number(row.n);
     }
+    out.sheetPulledRows = Number(pulled.rows[0]?.pulled ?? 0);
+    out.sheetConflicts = Number(pulled.rows[0]?.conflicts ?? 0);
     out.photosInPostgres = Number(photos.rows[0]?.n ?? 0);
     out.bytesInPostgres = Number(photos.rows[0]?.bytes ?? 0);
     out.issues = issues.rows.map((row) => ({

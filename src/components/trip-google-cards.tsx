@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, RefreshCw } from "lucide-react";
 import { GoogleConsentSheet } from "@/components/google-consent-sheet";
 import { googleConnectHref, useGoogleStatus } from "@/lib/google-status";
 
@@ -9,6 +9,13 @@ type SheetExport = {
   spreadsheetUrl: string | null;
   lastSyncedAt: string | null;
   error: string | null;
+  /** What the last sync could not use from the sheet. */
+  report: {
+    conflicts: number;
+    heldDeletions: number;
+    issueCount: number;
+    issues: Array<{ tab: string; row: number; reason: string }>;
+  } | null;
 } | null;
 
 const DISMISS_KEY = "djiwa:drive-invite-dismissed";
@@ -61,7 +68,16 @@ function useGoogleReturnToast(onDone: () => void) {
  * a retry/reconnect notice when Google work is stuck, and the per-trip Sheets export. Renders
  * nothing while the status is unknown or Google is not configured.
  */
-export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDrive: boolean }) {
+export function TripGoogleCards({
+  tripId,
+  showDrive,
+  onChanged,
+}: {
+  tripId: string;
+  showDrive: boolean;
+  /** Called when the spreadsheet changed the app's data, so the lists can reload. */
+  onChanged?: () => Promise<void> | void;
+}) {
   const { status, reload } = useGoogleStatus();
   useGoogleReturnToast(() => void reload());
   const [consent, setConsent] = useState<null | "drive" | "sheets">(null);
@@ -71,6 +87,7 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
   const [sheetLoaded, setSheetLoaded] = useState(false);
   const [folderUrl, setFolderUrl] = useState<string | null>(null);
   const returnTo = useRef("/my-trips");
+  const syncing = useRef(false);
 
   useEffect(() => {
     returnTo.current = window.location.pathname;
@@ -102,6 +119,55 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheet?.status]);
 
+  /** Pulls the traveler's edits from the sheet and pushes ours, without blocking the screen. */
+  const quietSync = async () => {
+    if (syncing.current) return;
+    syncing.current = true;
+    try {
+      const response = await fetch("/api/google-sheets", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tripId, action: "sync" }),
+      });
+      if (!response.ok) return;
+      const body = (await response.json()) as {
+        changed?: boolean;
+        export?: SheetExport;
+        folderUrl?: string | null;
+      };
+      setSheet(body.export ?? null);
+      setFolderUrl(body.folderUrl ?? null);
+      if (body.changed) {
+        toast.success("Perubahan dari Google Sheets masuk ke aplikasi.");
+        await onChanged?.();
+      }
+    } catch {
+      /* the card shows the status on the next load */
+    } finally {
+      syncing.current = false;
+    }
+  };
+
+  // Two-way: look at the sheet when the page opens, when the tab comes back, and every minute.
+  const hasSheet = Boolean(sheet) && sheet?.status !== "revoked";
+  useEffect(() => {
+    if (!sheetsOn || !hasSheet) return;
+    const stale = () =>
+      !sheet?.lastSyncedAt || Date.now() - new Date(sheet.lastSyncedAt).getTime() > 45_000;
+    if (stale()) void quietSync();
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && stale()) void quietSync();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = window.setInterval(onVisible, 60_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetsOn, hasSheet, tripId]);
+
   if (!status || !status.configured) return null;
 
   const sheetCall = async (action: "start" | "sync" | "stop") => {
@@ -114,6 +180,7 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
         body: JSON.stringify({ tripId, action }),
       });
       const body = (await response.json()) as {
+        changed?: boolean;
         export?: SheetExport;
         folderUrl?: string | null;
         error?: string;
@@ -122,6 +189,7 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
       setSheet(body.export ?? null);
       setFolderUrl(body.folderUrl ?? null);
       if (action === "start") toast.success("Spreadsheet dibuat.");
+      if (body.changed) await onChanged?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ekspor Sheets gagal");
       void loadSheet();
@@ -224,13 +292,13 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] font-semibold">
-                  {sheet ? "Budget di Google Sheets" : "Ekspor ke Google Sheets"}
+                  {sheet ? "Anggaran & pengeluaran di Sheets" : "Ekspor ke Google Sheets"}
                 </p>
                 <p className="truncate text-[11px] text-muted-foreground" role="status">
                   {!sheet
-                    ? "Budget trip jadi spreadsheet di Drive-mu"
+                    ? "Anggaran dan pengeluaran jadi spreadsheet dua arah di Drive-mu"
                     : sheet.status === "synced"
-                      ? `Tersinkron ${ago(sheet.lastSyncedAt)}`
+                      ? `Dua arah · tersinkron ${ago(sheet.lastSyncedAt)}`
                       : sheet.status === "pending"
                         ? "Menyinkronkan…"
                         : sheet.status === "revoked"
@@ -257,22 +325,68 @@ export function TripGoogleCards({ tripId, showDrive }: { tripId: string; showDri
                   Coba lagi
                 </button>
               ) : sheet.spreadsheetUrl ? (
-                <a
-                  href={sheet.spreadsheetUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={secondary}
-                >
-                  Buka <ExternalLink className="size-3.5" aria-hidden="true" />
-                </a>
+                <div className="flex shrink-0 gap-1.5">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void sheetCall("sync")}
+                    aria-label="Sinkronkan sekarang"
+                    className={secondary}
+                  >
+                    <RefreshCw
+                      className={`size-3.5 ${busy ? "animate-spin" : ""}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                  <a
+                    href={sheet.spreadsheetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={secondary}
+                  >
+                    Buka <ExternalLink className="size-3.5" aria-hidden="true" />
+                  </a>
+                </div>
               ) : null}
             </div>
             {sheet && (
               <p className="mt-1.5 text-[11px] text-muted-foreground">
-                Tab Pengeluaran, Rincian, dan Ringkasan ditulis ulang tiap sinkron. Catatanmu taruh
-                di kolom J ke kanan.
+                Ubah di Sheets atau di aplikasi, keduanya saling tersambung lewat rumus. Jangan ubah
+                kolom ID dan kolom hitungan. Catatanmu taruh di kolom J ke kanan.
               </p>
             )}
+            {sheet?.report &&
+              (sheet.report.issueCount > 0 ||
+                sheet.report.conflicts > 0 ||
+                sheet.report.heldDeletions > 0) && (
+                <div
+                  role="status"
+                  className="mt-1.5 space-y-0.5 rounded-xl bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800"
+                  data-testid="sheet-report"
+                >
+                  {sheet.report.issues.map((issue) => (
+                    <p key={`${issue.tab}-${issue.row}-${issue.reason}`}>
+                      {issue.row > 0 ? `Baris ${issue.row} di ${issue.tab}: ` : `${issue.tab}: `}
+                      {issue.reason}
+                    </p>
+                  ))}
+                  {sheet.report.issueCount > sheet.report.issues.length && (
+                    <p>+{sheet.report.issueCount - sheet.report.issues.length} masalah lain</p>
+                  )}
+                  {sheet.report.conflicts > 0 && (
+                    <p>
+                      {sheet.report.conflicts} perubahan bentrok dengan aplikasi; versi aplikasi
+                      dipakai.
+                    </p>
+                  )}
+                  {sheet.report.heldDeletions > 0 && (
+                    <p>
+                      {sheet.report.heldDeletions} penghapusan baris ditahan. Hapus lewat aplikasi
+                      bila memang disengaja.
+                    </p>
+                  )}
+                </div>
+              )}
           </div>
         )
       ) : status.googleConnected || status.features.calendar ? (

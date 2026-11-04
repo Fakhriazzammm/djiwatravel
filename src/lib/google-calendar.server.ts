@@ -172,7 +172,7 @@ export async function syncItineraryItem(itemId: string, subject: string) {
   const connection = await connectionFor(subject);
   if (!connection?.refresh_token_encrypted || !hasFeature(connection, "calendar")) return;
   const result = await pool.query(
-    "select i.*,t.name,t.destination_name from travel_itinerary_items i join travel_trips t on t.id=i.trip_id where i.id=$1 and t.customer_auth_subject=$2 limit 1",
+    "select i.*, i.activity_date::text as activity_date, t.name, t.destination_name from travel_itinerary_items i join travel_trips t on t.id=i.trip_id where i.id=$1 and t.customer_auth_subject=$2 limit 1",
     [itemId, subject],
   );
   const row = result.rows[0] as (TripItem & { name: string; destination_name: string }) | undefined;
