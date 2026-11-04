@@ -39,7 +39,7 @@ import {
 } from "@/lib/my-trips.fn";
 import { displayBudgetCategory } from "@/lib/my-trips-home";
 import { isTripAuthenticationError, runTripMutation } from "@/lib/trip-actions";
-import { compactMoney, stepFor } from "@/lib/trip-budget-format";
+import { stepFor } from "@/lib/trip-budget-format";
 import { formatTripMoney } from "@/lib/trip-money";
 import { UNAVAILABLE_RECEIPT_SCAN, type ReceiptScanStatus } from "@/lib/receipt-scan";
 
@@ -390,12 +390,12 @@ export function BudgetEditor({
                         className={`block truncate text-[11px] ${over || (limit === 0 && used > 0) ? "text-warning-foreground" : "text-muted-foreground"}`}
                       >
                         {over
-                          ? `Melebihi ${compactMoney(used - limit, currency)}`
+                          ? `Melebihi ${money(used - limit, currency)}`
                           : limit === 0 && used === 0
                             ? "Belum dibagi"
                             : limit > 0
-                              ? `Sisa ${compactMoney(limit - used, currency)} · terpakai ${compactMoney(used, currency)}`
-                              : `Terpakai ${compactMoney(used, currency)}`}
+                              ? `Sisa ${money(limit - used, currency)} · terpakai ${money(used, currency)}`
+                              : `Terpakai ${money(used, currency)}`}
                       </span>
                     </span>
                   </button>
@@ -418,7 +418,7 @@ export function BudgetEditor({
                       }}
                       className="tap min-w-[58px] px-1 text-center text-[12px] font-semibold tabular-nums"
                     >
-                      {compactMoney(limit, currency)}
+                      {money(limit, currency)}
                     </button>
                     <button
                       type="button"
@@ -776,7 +776,7 @@ export function ExpenseEditor({
                     </span>
                     <DriveChip status={item["drive_status"]} />
                     <span className="shrink-0 text-[13px] font-semibold tabular-nums">
-                      −{compactMoney(inTripCurrency(item, currency), currency)}
+                      −{money(inTripCurrency(item, currency), currency)}
                     </span>
                   </button>
                 );
