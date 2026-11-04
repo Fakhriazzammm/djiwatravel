@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { expenseItemStats, insertLineItems, lineItemsSchema } from "./expense-items.server";
 import { z } from "zod";
 import { pool } from "../db/client.server";
 import { requireAdmin } from "./admin-guard";
@@ -498,6 +499,7 @@ const saveItem = z.object({
   convertedCurrency: currency,
   categoryId: z.string().uuid().optional(),
   notes: z.string().trim().max(2000).optional(),
+  lineItems: lineItemsSchema,
   edited: z.boolean().default(false),
   keepPhoto: z.boolean().default(false),
 });
@@ -554,6 +556,7 @@ export async function saveScannedExpenses(
       );
       const expenseId = String(expense.rows[0].id);
       ids.push(expenseId);
+      if (item.lineItems.length) await insertLineItems(client, expenseId, item.lineItems);
       await client.query(
         "update public.travel_receipt_scans set saved_expense_id=$1, edited=$2 where id=$3",
         [expenseId, item.edited, item.scanId],
@@ -626,6 +629,9 @@ export type ReceiptScanStats = {
   editedPercent: number;
   costIdr: number;
   saved: number;
+  /** All time: expenses that carry editable line items, and how many items. */
+  expensesWithItems?: number;
+  itemsStored?: number;
 };
 
 async function readStats(): Promise<ReceiptScanStats> {
@@ -647,6 +653,7 @@ async function readStats(): Promise<ReceiptScanStats> {
       editedPercent: saved ? Math.round((Number(row["edited"]) / saved) * 100) : 0,
       costIdr: Math.round(Number(row["cost"]) || 0),
       saved,
+      ...(await expenseItemStats()),
     };
   } catch {
     return { scans: 0, needsCheckPercent: 0, editedPercent: 0, costIdr: 0, saved: 0 };

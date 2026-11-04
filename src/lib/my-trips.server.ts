@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { insertLineItems, lineItemsSchema } from "@/lib/expense-items.server";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { pool } from "@/db/client.server";
@@ -78,6 +79,7 @@ const expenseSchema = z.object({
   categoryId: z.string().uuid().optional(),
   paymentMethod: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(2000).optional(),
+  lineItems: lineItemsSchema,
 });
 
 const itinerarySchema = z.object({
@@ -927,6 +929,16 @@ export async function addExpense(input: unknown) {
       data.notes ?? null,
     ],
   );
+  if (data.lineItems.length) {
+    try {
+      await insertLineItems(pool, String(result.rows[0].id), data.lineItems);
+    } catch (error) {
+      console.error(
+        "[my-trips] line items not saved",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
   await refreshSheetExport(user.id, data.tripId);
   return result.rows[0];
 }

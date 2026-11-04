@@ -13,6 +13,8 @@ type Stats = {
   editedPercent: number;
   costIdr: number;
   saved: number;
+  expensesWithItems?: number;
+  itemsStored?: number;
 };
 
 const toggleRow = "flex min-h-11 items-center gap-3 text-sm font-semibold";
@@ -227,6 +229,8 @@ export function AdminReceiptScanPanel({
               ["Perlu dicek", `${String(stats.needsCheckPercent).replace(".", ",")}%`],
               ["Diubah pelanggan", `${stats.editedPercent}%`],
               ["Biaya AI", `Rp ${stats.costIdr.toLocaleString("id-ID")}`],
+              ["Pengeluaran dgn rincian", (stats.expensesWithItems ?? 0).toLocaleString("id-ID")],
+              ["Item tersimpan", (stats.itemsStored ?? 0).toLocaleString("id-ID")],
             ].map(([label, value]) => (
               <div key={label} className="rounded-xl bg-secondary px-3 py-2">
                 <p className="text-[11px] text-muted-foreground">{label}</p>

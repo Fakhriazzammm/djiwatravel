@@ -16,6 +16,13 @@ vi.mock("@/lib/my-trips.fn", () => ({
   deleteExpense: vi.fn(async () => ({})),
 }));
 
+vi.mock("@/lib/expense-items.fn", () => ({
+  getExpenseDetail: vi.fn(async () => null),
+  saveExpenseItem: vi.fn(),
+  removeExpenseItem: vi.fn(),
+  updateExpenseInfo: vi.fn(),
+}));
+
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
   cleanup();
@@ -220,7 +227,7 @@ describe("Biaya entry points for scan struk", () => {
     expect(screen.getByText(/dari scan/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Fuglen Tokyo/ }));
     expect(await screen.findByRole("button", { name: "Lihat foto struk" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Batal" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tutup" }));
     fireEvent.click(screen.getByRole("button", { name: "Scan struk" }));
     expect(await screen.findByRole("dialog", { name: "Kamera scan struk" })).toBeInTheDocument();
   });

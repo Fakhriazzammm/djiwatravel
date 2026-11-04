@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { FixedLayer } from "@/components/motion-primitives";
 import { ReceiptPhotoSheet, ScanReceiptBanner } from "@/components/receipt-scan-entry";
 import { ReceiptScanner } from "@/components/receipt-scanner";
+import { ExpenseDetailSheet } from "@/components/expense-detail-sheet";
 import { DriveChip, TripGoogleCards } from "@/components/trip-google-cards";
 import { MoneyInput } from "@/components/money-input";
 import { btnRed } from "@/components/shell";
@@ -840,27 +841,17 @@ export function ExpenseEditor({
         </form>
       </SheetFrame>
 
-      <TripActionSheet
-        open={Boolean(selected)}
-        onOpenChange={(open) => !open && setSelected(null)}
-        title={String(selected?.["description"] ?? "Pengeluaran")}
-        actions={[
-          ...(selected?.["receipt_scan_id"]
-            ? [
-                {
-                  label: "Lihat foto struk",
-                  icon: ImageIcon,
-                  onSelect: () => setPhotoOf(selected),
-                },
-              ]
-            : []),
-          {
-            label: "Hapus pengeluaran",
-            icon: Trash2,
-            destructive: true,
-            onSelect: () => setConfirmDelete(selected),
-          },
-        ]}
+      <ExpenseDetailSheet
+        row={selected}
+        tripCurrency={currency}
+        categories={categories.map((category) => ({ id: category.id, name: category.name }))}
+        onClose={() => setSelected(null)}
+        onChanged={onSaved}
+        onShowPhoto={(row) => setPhotoOf(row)}
+        onDelete={(row) => {
+          setSelected(null);
+          setConfirmDelete(row);
+        }}
       />
       <ReceiptPhotoSheet
         scanId={photoOf ? String(photoOf["receipt_scan_id"] ?? "") || null : null}

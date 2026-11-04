@@ -134,6 +134,13 @@ export function saveBlocker(edit: ScanEdit, tripCurrency: string, today: string)
   return null;
 }
 
+/** The receipt's lines as structured items (original currency, minor units), kept so each can be edited later. */
+export const editLineItems = (edit: ScanEdit) =>
+  editToRead(edit)
+    .items.filter((item) => item.amount > 0)
+    .slice(0, 100)
+    .map((item) => ({ name: item.name.slice(0, 160), amountMinor: toMinor(item.amount) }));
+
 export const itemsNote = (edit: ScanEdit) => {
   const lines = editToRead(edit)
     .items.map((item) => `${item.name} ${formatReceiptAmount(item.amount, edit.currency)}`)

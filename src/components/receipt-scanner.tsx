@@ -22,6 +22,7 @@ import {
   batchTotalMinor,
   convertedMinor,
   includedForSave,
+  editLineItems,
   itemsNote,
   makeEdit,
   parseAmount,
@@ -356,6 +357,7 @@ export function ReceiptScanner({
                 convertedCurrency: tripCurrency,
                 ...(edit.categoryId ? { categoryId: edit.categoryId } : {}),
                 notes: itemsNote(edit),
+                lineItems: editLineItems(edit),
                 edited: edit.edited || item.status === "check",
                 keepPhoto: keepPhoto && Boolean(item.photoStored),
               };
@@ -379,6 +381,7 @@ export function ReceiptScanner({
             ...(edit.rate && edit.currency !== tripCurrency ? { exchangeRate: edit.rate } : {}),
             ...(edit.categoryId ? { categoryId: edit.categoryId } : {}),
             notes: itemsNote(edit),
+            lineItems: editLineItems(edit),
           },
         })) as { id: string };
         ids.push(String(created.id));
