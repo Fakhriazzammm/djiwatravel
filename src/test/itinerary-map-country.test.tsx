@@ -14,6 +14,14 @@ const fake = vi.hoisted(() => {
     handlers = new Map<string, Handler[]>();
     fitBounds = vi.fn();
     easeTo = vi.fn();
+    jumpTo = vi.fn();
+    layout = new Map<string, string>();
+    dragRotate = { enable: vi.fn(), disable: vi.fn() };
+    touchPitch = { enable: vi.fn(), disable: vi.fn() };
+    touchZoomRotate = { enableRotation: vi.fn(), disableRotation: vi.fn() };
+    setLayoutProperty(layer: string, prop: string, value: string) {
+      this.layout.set(`${layer}.${prop}`, value);
+    }
     constructor(options: Record<string, unknown>) {
       this.options = options;
       maps.push(this);
@@ -37,8 +45,8 @@ const fake = vi.hoisted(() => {
     getSource() {
       return undefined;
     }
-    getLayer() {
-      return undefined;
+    getLayer(id?: string) {
+      return id === "building-3d" ? { id } : undefined;
     }
     getStyle() {
       return { layers: [] };
@@ -49,7 +57,6 @@ const fake = vi.hoisted(() => {
     getCanvas() {
       return { style: {} };
     }
-    setLayoutProperty() {}
     loaded() {
       return true;
     }
@@ -89,6 +96,7 @@ const pin = (overrides: Partial<MapPin> = {}): MapPin => ({
 });
 
 async function mountMap(props: {
+  tilt?: boolean;
   pins: MapPin[];
   focusBounds?: ReturnType<typeof countryBoundsFor>;
 }) {
@@ -100,6 +108,7 @@ async function mountMap(props: {
       onSelect={() => {}}
       styleUrl={STYLE}
       focusBounds={props.focusBounds ?? null}
+      tilt={props.tilt ?? false}
     />,
   );
   await waitFor(() => expect(fake.maps).toHaveLength(1));
@@ -151,5 +160,42 @@ describe("agenda map framing", () => {
     expect(map.options["center"]).toEqual([139.7454, 35.6586]);
     await waitFor(() => expect(map.easeTo).toHaveBeenCalled());
     expect(map.fitBounds).not.toHaveBeenCalledWith(japan, expect.anything());
+  });
+});
+
+describe("2D / 3D view", () => {
+  it("stays flat and hides the 3D buildings by default", async () => {
+    const { map } = await mountMap({ pins: [pin()] });
+    expect(map.layout.get("building-3d.visibility")).toBe("none");
+    expect(map.dragRotate.disable).toHaveBeenCalled();
+    expect(map.easeTo).not.toHaveBeenCalledWith(expect.objectContaining({ pitch: 60 }));
+  });
+
+  it("tilts the camera, shows the buildings and allows rotating in 3D", async () => {
+    const { map } = await mountMap({ pins: [pin()], tilt: true });
+    expect(map.layout.get("building-3d.visibility")).toBe("visible");
+    expect(map.dragRotate.enable).toHaveBeenCalled();
+    expect(map.touchPitch.enable).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(map.easeTo).toHaveBeenCalledWith(expect.objectContaining({ pitch: 60 })),
+    );
+  });
+
+  it("returns to flat and north-up when 3D is switched off", async () => {
+    const { map, view } = await mountMap({ pins: [pin()], tilt: true });
+    view.rerender(
+      <ItineraryMap
+        pins={[pin()]}
+        routes={[]}
+        activeId={null}
+        onSelect={() => {}}
+        styleUrl={STYLE}
+        tilt={false}
+      />,
+    );
+    await waitFor(() =>
+      expect(map.easeTo).toHaveBeenCalledWith(expect.objectContaining({ pitch: 0, bearing: 0 })),
+    );
+    expect(map.layout.get("building-3d.visibility")).toBe("none");
   });
 });

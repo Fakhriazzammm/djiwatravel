@@ -149,6 +149,7 @@ export function TripOverview(props: Props) {
   const [mapBroken, setMapBroken] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [focus, setFocus] = useState(false);
+  const [tilt, setTilt] = useState(false);
   const [forecast, setForecast] = useState<DayWeather[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const cities = props.cities ?? [];
@@ -314,6 +315,7 @@ export function TripOverview(props: Props) {
             styleUrl={mapConfig!.styleUrl}
             framePadding={{ top: 120, bottom: 48 }}
             focusBounds={countryBounds}
+            tilt={tilt}
             onUnavailable={() => setMapBroken(true)}
           />
         )}
@@ -367,6 +369,15 @@ export function TripOverview(props: Props) {
               className={toggleGlass(focus, "bg-brand-red text-white")}
             >
               <Focus className="size-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setTilt((value) => !value)}
+              aria-pressed={tilt}
+              aria-label={tilt ? "Kembali ke peta 2D" : "Tampilan 3D"}
+              className={`${toggleGlass(tilt, "bg-brand-red text-white")} text-[11px] font-bold`}
+            >
+              3D
             </button>
             {mapConfig?.locateMe && (
               <button

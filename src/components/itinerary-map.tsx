@@ -61,7 +61,29 @@ type Props = {
    * so the map opens on that country instead of an unrelated default city.
    */
   focusBounds?: CountryBounds | null;
+  /** 3D view: the camera is tilted, buildings rise and two fingers rotate. Off = flat map. */
+  tilt?: boolean;
 };
+
+/** Flat (2D) or tilted (3D). The basemap's building layer is shown only when tilted. */
+function applyTilt(map: MapLibreMap, tilt: boolean, instant = false) {
+  if (map.getLayer("building-3d")) {
+    map.setLayoutProperty("building-3d", "visibility", tilt ? "visible" : "none");
+  }
+  if (tilt) {
+    map.dragRotate.enable();
+    map.touchZoomRotate.enableRotation();
+    map.touchPitch.enable();
+  } else {
+    map.dragRotate.disable();
+    map.touchZoomRotate.disableRotation();
+    map.touchPitch.disable();
+  }
+  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const to = { pitch: tilt ? 60 : 0, ...(tilt ? {} : { bearing: 0 }) };
+  if (instant && !tilt) map.jumpTo(to);
+  else map.easeTo({ ...to, duration: reduce ? 0 : 600 });
+}
 
 const STYLE_ID = "djiwa-pin-style";
 function ensurePinStyle() {
@@ -227,6 +249,7 @@ export default function ItineraryMap({
   framePadding,
   onUnavailable,
   focusBounds = null,
+  tilt = false,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -243,6 +266,7 @@ export default function ItineraryMap({
     focusBounds,
     focus,
     framePadding,
+    tilt,
   });
   latest.current = {
     pins,
@@ -254,6 +278,7 @@ export default function ItineraryMap({
     focusBounds,
     focus,
     framePadding,
+    tilt,
   };
   // A string key lets the framing effect follow the country without refitting on every render.
   const focusKey = focusBounds ? focusBounds.join(",") : "";
@@ -400,6 +425,7 @@ export default function ItineraryMap({
                 duration: 600,
               }),
           });
+          applyTilt(map, latest.current.tilt, true);
           setReady(true);
         });
         observer = new ResizeObserver(() => map.resize());
@@ -506,6 +532,13 @@ export default function ItineraryMap({
       });
     }
   }, [pins, routes, ready, focus, framePadding?.top, framePadding?.bottom, focusKey]);
+
+  // 2D / 3D follows the toggle.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    applyTilt(map, tilt);
+  }, [tilt, ready]);
 
   // "Zoom to explore": close enough for category markers to appear.
   useEffect(() => {

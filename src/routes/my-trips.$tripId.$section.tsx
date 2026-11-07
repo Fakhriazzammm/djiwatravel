@@ -369,6 +369,7 @@ export function ItineraryEditor({
   const [conflicts, setConflicts] = useState<TimedItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [focus, setFocus] = useState(false);
+  const [tilt, setTilt] = useState(false);
   const [me, setMe] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [zoomTick, setZoomTick] = useState(0);
@@ -950,6 +951,7 @@ export function ItineraryEditor({
                       setPoi(picked);
                     }}
                     focusBounds={countryBounds}
+                    tilt={tilt}
                     onUnavailable={() => setMapBroken(true)}
                   />
                   <AnimatePresence>
@@ -1078,6 +1080,17 @@ export function ItineraryEditor({
                       className={`tap flex size-9 items-center justify-center rounded-full shadow ${focus ? "bg-brand-red text-white" : "bg-surface/95"}`}
                     >
                       <Focus className="size-4" />
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      onClick={() => setTilt((value) => !value)}
+                      aria-pressed={tilt}
+                      aria-label={tilt ? "Kembali ke peta 2D" : "Tampilan 3D"}
+                      whileTap={{ scale: 0.9 }}
+                      transition={springSnappy}
+                      className={`tap flex size-9 items-center justify-center rounded-full text-[11px] font-bold shadow ${tilt ? "bg-brand-red text-white" : "bg-surface/95"}`}
+                    >
+                      3D
                     </motion.button>
                     {mapConfig?.locateMe && (
                       <motion.button
