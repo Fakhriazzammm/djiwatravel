@@ -33,6 +33,9 @@ import {
 import { CONSENT_EVENT } from "../lib/cookie-consent";
 import { Toaster } from "../components/ui/sonner";
 import { PwaRuntime } from "../components/pwa-runtime";
+import { getFlightsConfig } from "../lib/flights.fn";
+import { DEFAULT_FLIGHTS_CONFIG, travelpayoutsScriptSrc } from "../lib/flights";
+import { TravelpayoutsLoader } from "../components/travelpayouts-loader";
 
 function NotFoundComponent() {
   return (
@@ -104,8 +107,26 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    scripts: [{ src: GA_SCRIPT_SRC, async: true }, { children: GA_INLINE_SCRIPT }],
+  loader: async ({ location }) => {
+    // Admin never carries partner scripts; a failed read keeps the default (consent-gated) script.
+    if (location.pathname === "/admin" || location.pathname.startsWith("/admin/")) {
+      return { flightsScript: null as string | null, flightsWaitForConsent: true };
+    }
+    const flights = await getFlightsConfig().catch(() => DEFAULT_FLIGHTS_CONFIG);
+    return {
+      flightsScript: travelpayoutsScriptSrc(flights),
+      flightsWaitForConsent: flights.waitForConsent,
+    };
+  },
+  head: ({ loaderData }) => ({
+    scripts: [
+      { src: GA_SCRIPT_SRC, async: true },
+      { children: GA_INLINE_SCRIPT },
+      // Without the consent wait (site verification), the partner script is in the server HTML.
+      ...(loaderData?.flightsScript && !loaderData.flightsWaitForConsent
+        ? [{ src: loaderData.flightsScript, async: true }]
+        : []),
+    ],
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
@@ -156,6 +177,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { flightsScript, flightsWaitForConsent } = Route.useLoaderData();
   return (
     <QueryClientProvider client={queryClient}>
       <MotionConfig transition={{ duration: 0.34, ease: easeIos }} reducedMotion="user">
@@ -165,6 +187,7 @@ function RootComponent() {
         <CatalogWarmup />
         <PwaRuntime />
         <AnalyticsPageView />
+        {flightsScript && flightsWaitForConsent && <TravelpayoutsLoader src={flightsScript} />}
         <AnimatedOutlet />
         <CustomerOnboardingGate />
         <AffiliateReferralCapture />

@@ -180,4 +180,15 @@ describe("TripOverview (Ringkas)", () => {
     const nextCard = screen.getAllByText("Berikutnya")[0]!;
     expect(row.compareDocumentPosition(nextCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it("links to Google Flights only when Admin leaves flight tickets on", () => {
+    const url = "https://www.google.com/travel/flights?q=Flights%20to%20Jepang";
+    const { rerender } = render(<TripOverview {...base} flightsUrl={url} />);
+    const link = screen.getByRole("link", { name: /Cari tiket pesawat/ });
+    expect(link.getAttribute("href")).toBe(url);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toContain("noopener");
+    rerender(<TripOverview {...base} flightsUrl={null} />);
+    expect(screen.queryByText("Cari tiket pesawat")).toBeNull();
+  });
 });

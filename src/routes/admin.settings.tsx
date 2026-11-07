@@ -21,6 +21,8 @@ import { AdminItineraryMapPanel } from "@/components/admin-itinerary-map-panel";
 import { AdminReceiptScanPanel } from "@/components/admin-receipt-scan-panel";
 import { getAdminReceiptScan } from "@/lib/receipt-scan.fn";
 import { AdminPlaceIdeasPanel } from "@/components/admin-place-ideas-panel";
+import { AdminFlightsPanel } from "@/components/admin-flights-panel";
+import { getAdminFlights } from "@/lib/flights.fn";
 import { AdminGuestTripsPanel } from "@/components/admin-guest-trips-panel";
 import { getAdminGuestTrips } from "@/lib/guest-trips.fn";
 import { getAdminPlaceIdeas } from "@/lib/place-ideas.fn";
@@ -41,6 +43,7 @@ export const Route = createFileRoute("/admin/settings")({
     receiptScan: await getAdminReceiptScan(),
     placeIdeas: await getAdminPlaceIdeas(),
     guestTrips: await getAdminGuestTrips(),
+    flights: await getAdminFlights(),
     google: await getAdminGoogle(),
     rail: (await getHomeDestinationFeed().catch(() => ({ popular: [] }))).popular,
   }),
@@ -57,6 +60,7 @@ function AdminSettings() {
     receiptScan,
     placeIdeas,
     guestTrips,
+    flights,
     google,
     rail,
   } = Route.useLoaderData();
@@ -91,6 +95,7 @@ function AdminSettings() {
         version={guestTrips.version}
         stats={guestTrips.stats}
       />
+      <AdminFlightsPanel initial={flights.config} version={flights.version} />
       <AdminGooglePanel overview={google} />
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">

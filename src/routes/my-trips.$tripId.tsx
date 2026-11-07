@@ -25,17 +25,21 @@ import { TripOverview } from "@/components/trip-overview";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG, type ItineraryMapConfig } from "@/lib/itinerary-map";
 import { deleteTripRecord, duplicateTrip, getTrip, patchTrip } from "@/lib/my-trips.fn";
+import { getFlightsConfig } from "@/lib/flights.fn";
+import { DEFAULT_FLIGHTS_CONFIG, googleFlightsUrl, showGoogleFlights } from "@/lib/flights";
 import { isTripAuthenticationError } from "@/lib/trip-actions";
 
 export const Route = createFileRoute("/my-trips/$tripId")({
   loader: async ({ params, location }) => {
     try {
-      const [trip, mapConfig] = await Promise.all([
+      const [trip, mapConfig, flights] = await Promise.all([
         getTrip({ data: { tripId: params.tripId } }),
         // The map is an enhancement: if its setting cannot be read the overview still loads.
         getItineraryMapConfig().catch(() => DEFAULT_ITINERARY_MAP_CONFIG),
+        // Flight tickets are an extra: a failed read keeps the default (link on).
+        getFlightsConfig().catch(() => DEFAULT_FLIGHTS_CONFIG),
       ]);
-      return { ...trip, mapConfig };
+      return { ...trip, mapConfig, flights };
     } catch (error) {
       if (isTripAuthenticationError(error)) {
         throw redirect({
@@ -191,6 +195,15 @@ function TripDetail() {
         remainingLabel={money(remaining, currency)}
         remainingMinor={remaining}
         mapConfig={(data.mapConfig as ItineraryMapConfig | null) ?? null}
+        flightsUrl={
+          showGoogleFlights(data.flights)
+            ? googleFlightsUrl({
+                destination: trip.destination_name,
+                departureDate: trip.departure_date,
+                returnDate: trip.return_date,
+              })
+            : null
+        }
         onMenu={() => setMenuOpen(true)}
         onChanged={() => router.invalidate()}
       />
