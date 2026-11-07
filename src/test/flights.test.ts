@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { validateAdminSetting } from "@/lib/admin-settings";
 import {
   DEFAULT_FLIGHTS_CONFIG,
+  KNOWN_AIRLINES,
+  airlineNameFor,
   aviasalesBookingUrl,
   compactFlightPrice,
   durationLabel,
@@ -9,6 +11,7 @@ import {
   flightSearchKey,
   flightsPathFor,
   isIataCode,
+  normalizeAirlineNames,
   normalizeFlightOffers,
   normalizeFlightPlaces,
   normalizeFlightsConfig,
@@ -249,6 +252,44 @@ describe("normalizing provider rows", () => {
       { type: "city", code: "XYZ", name: "" },
     ]);
     expect(places.map((p) => p.code)).toEqual(["DPS", "CGK"]);
+  });
+});
+
+describe("airline names", () => {
+  it("reads the provider list, preferring name and falling back to the English translation", () => {
+    expect(
+      normalizeAirlineNames([
+        { code: "JT", name: "Lion Air" },
+        { code: "OD", name: null, name_translations: { en: "Batik Air Malaysia" } },
+        { code: "X", name: "too short code" },
+        { code: "ZZ", name: "" },
+        null,
+      ]),
+    ).toEqual({ JT: "Lion Air", OD: "Batik Air Malaysia" });
+    expect(normalizeAirlineNames({ not: "a list" })).toEqual({});
+  });
+
+  it("names by provider list, then the built-in list, then the code", () => {
+    expect(airlineNameFor("JT", { JT: "Lion Air Group" })).toBe("Lion Air Group");
+    expect(airlineNameFor("GA")).toBe("Garuda Indonesia");
+    expect(airlineNameFor("ZZ")).toBe("ZZ");
+    expect(KNOWN_AIRLINES["OD"]).toBe("Batik Air Malaysia");
+  });
+
+  it("puts the name on each offer", () => {
+    const row = {
+      link: "/search/CGK0112DPS1",
+      origin_airport: "CGK",
+      destination_airport: "DPS",
+      departure_at: "2026-12-01T08:35:00+07:00",
+      airline: "OD",
+      flight_number: "393",
+      price: 1000000,
+    };
+    expect(normalizeFlightOffers([row], "597030")[0]!.airlineName).toBe("Batik Air Malaysia");
+    expect(normalizeFlightOffers([row], "597030", 12, { OD: "Batik" })[0]!.airlineName).toBe(
+      "Batik",
+    );
   });
 });
 

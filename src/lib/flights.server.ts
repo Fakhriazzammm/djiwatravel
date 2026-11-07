@@ -10,6 +10,7 @@ import {
   DEFAULT_FLIGHTS_CONFIG,
   FLIGHTS_SETTING_KEY,
   flightSearchKey,
+  normalizeAirlineNames,
   normalizeFlightOffers,
   normalizeFlightPlaces,
   normalizeFlightsConfig,
@@ -54,6 +55,8 @@ export const AVIASALES_CLICK_TARGET = "flights_aviasales";
 
 const PRICES_URL = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
 const PLACES_URL = "https://autocomplete.travelpayouts.com/places2";
+const AIRLINES_URL = "https://api.travelpayouts.com/data/en/airlines.json";
+const AIRLINE_CACHE_MS = 24 * 60 * 60_000;
 const OFFER_CACHE_MS = 30 * 60_000;
 const PLACE_CACHE_MS = 10 * 60_000;
 const HOUR_MS = 60 * 60_000;
@@ -66,6 +69,7 @@ export const searchStats = { searches: 0, cacheHits: 0, empty: 0, rateLimited: 0
 export const flightsToken = () => process.env["TRAVELPAYOUTS_TOKEN"]?.trim() || null;
 
 const offerCache = new Map<string, { at: number; offers: FlightOffer[] }>();
+let airlineCache: { at: number; names: Record<string, string> } | null = null;
 const placeCache = new Map<string, { at: number; places: FlightPlace[] }>();
 const hits = new Map<string, number[]>();
 
@@ -113,6 +117,27 @@ async function fetchJson(url: string, token?: string): Promise<unknown> {
   });
   if (!response.ok) throw new Error(`provider ${response.status}`);
   return response.json();
+}
+
+/**
+ * Airline code to name, from the provider's public list, held for a day. A failed read keeps the
+ * last list (or none): offers then fall back to the built-in names and finally to the code.
+ */
+async function airlineNames(): Promise<Record<string, string>> {
+  if (airlineCache && Date.now() - airlineCache.at < AIRLINE_CACHE_MS) return airlineCache.names;
+  try {
+    const names = normalizeAirlineNames(await fetchJson(AIRLINES_URL));
+    if (Object.keys(names).length > 0) {
+      airlineCache = { at: Date.now(), names };
+      return names;
+    }
+  } catch {
+    // Names are a nicety: a flight search never fails because the list is unreachable.
+  }
+  // Retry sooner than a full day when the list could not be read.
+  if (airlineCache)
+    airlineCache = { ...airlineCache, at: Date.now() - AIRLINE_CACHE_MS + 5 * 60_000 };
+  return airlineCache?.names ?? {};
 }
 
 const placeInput = z.object({ term: z.string().trim().min(2).max(60) });
@@ -190,7 +215,7 @@ export async function searchFlightsHandler({
     url.searchParams.set("limit", "30");
     const body = (await fetchJson(url.toString(), token)) as { success?: unknown; data?: unknown };
     if (body.success === false) throw new Error("provider rejected");
-    const offers = normalizeFlightOffers(body.data, config.partnerId);
+    const offers = normalizeFlightOffers(body.data, config.partnerId, 12, await airlineNames());
     searchStats.searches += 1;
     if (!offers.length) searchStats.empty += 1;
     offerCache.set(key, { at: Date.now(), offers });

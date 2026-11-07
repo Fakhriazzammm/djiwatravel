@@ -309,7 +309,8 @@ export function FlightSearch({ prefill }: { prefill: FlightPrefill }) {
                         {flightClock(offer.departureAt)} · {dayLabel(flightDay(offer.departureAt))}
                       </span>
                       <span className="block truncate text-[11px] text-muted-foreground">
-                        {offer.airline} {offer.flightNumber} · {transfersLabel(offer.transfers)}
+                        {offer.airlineName} · {offer.airline} {offer.flightNumber} ·{" "}
+                        {transfersLabel(offer.transfers)}
                         {offer.durationMinutes ? ` · ${durationLabel(offer.durationMinutes)}` : ""}
                       </span>
                     </span>
@@ -342,14 +343,12 @@ export function FlightSearch({ prefill }: { prefill: FlightPrefill }) {
           {chosen && (
             <>
               <SheetHeader className="mb-3 text-left">
-                <SheetTitle>
-                  {chosen.airline} {chosen.flightNumber} · {chosen.origin}
-                  <ArrowRight className="mx-1 inline size-4" aria-hidden="true" />
-                  {chosen.destination}
-                </SheetTitle>
+                <SheetTitle>{chosen.airlineName}</SheetTitle>
                 <SheetDescription>
-                  {dayLabel(flightDay(chosen.departureAt))} · {flightClock(chosen.departureAt)} ·{" "}
-                  {transfersLabel(chosen.transfers)}
+                  {chosen.airline} {chosen.flightNumber} · {chosen.origin}
+                  <ArrowRight className="mx-1 inline size-3.5" aria-hidden="true" />
+                  {chosen.destination} · {dayLabel(flightDay(chosen.departureAt))} ·{" "}
+                  {flightClock(chosen.departureAt)} · {transfersLabel(chosen.transfers)}
                   {chosen.durationMinutes ? ` · ${durationLabel(chosen.durationMinutes)}` : ""}
                   {chosen.returnAt ? ` · pulang ${dayLabel(flightDay(chosen.returnAt))}` : ""}
                 </SheetDescription>
@@ -374,7 +373,7 @@ export function FlightSearch({ prefill }: { prefill: FlightPrefill }) {
                 </p>
               )}
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Pembayaran dilakukan di Aviasales. Djiwa dapat komisi tanpa biaya tambahan untukmu.
+                Pembayaran dilakukan di Aviasales.
               </p>
               <button
                 type="button"

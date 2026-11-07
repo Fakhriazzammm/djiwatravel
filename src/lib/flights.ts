@@ -138,7 +138,10 @@ export type FlightOffer = {
   id: string;
   origin: string;
   destination: string;
+  /** IATA airline code, e.g. "OD". */
   airline: string;
+  /** Name shown to travelers, e.g. "Batik Air Malaysia"; the code when the name is unknown. */
+  airlineName: string;
   flightNumber: string;
   departureAt: string;
   returnAt: string | null;
@@ -218,8 +221,72 @@ export function aviasalesBookingUrl(link: unknown, marker: string): string | nul
 const text = (value: unknown, max: number) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
+/** Airlines seen most on Indonesian routes; used when the provider's airline list is unreachable. */
+export const KNOWN_AIRLINES: Readonly<Record<string, string>> = {
+  GA: "Garuda Indonesia",
+  JT: "Lion Air",
+  ID: "Batik Air",
+  OD: "Batik Air Malaysia",
+  QZ: "Indonesia AirAsia",
+  QG: "Citilink",
+  IU: "Super Air Jet",
+  IW: "Wings Air",
+  SJ: "Sriwijaya Air",
+  IN: "NAM Air",
+  AK: "AirAsia",
+  FD: "Thai AirAsia",
+  D7: "AirAsia X",
+  SQ: "Singapore Airlines",
+  TR: "Scoot",
+  MH: "Malaysia Airlines",
+  TG: "Thai Airways",
+  VN: "Vietnam Airlines",
+  VJ: "VietJet Air",
+  PR: "Philippine Airlines",
+  CX: "Cathay Pacific",
+  JL: "Japan Airlines",
+  NH: "All Nippon Airways",
+  KE: "Korean Air",
+  OZ: "Asiana Airlines",
+  EK: "Emirates",
+  QR: "Qatar Airways",
+  EY: "Etihad Airways",
+  TK: "Turkish Airlines",
+  QF: "Qantas",
+  CZ: "China Southern",
+  MU: "China Eastern",
+  CA: "Air China",
+  SV: "Saudia",
+};
+
+/** The provider's airline list (`[{ code, name }]`) as a code to name map. */
+export function normalizeAirlineNames(rows: unknown): Record<string, string> {
+  const names: Record<string, string> = {};
+  if (!Array.isArray(rows)) return names;
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
+    const code = text(r["code"], 4).toUpperCase();
+    const translations = r["name_translations"];
+    const english =
+      translations && typeof translations === "object"
+        ? text((translations as Record<string, unknown>)["en"], 60)
+        : "";
+    const name = text(r["name"], 60) || english;
+    if (/^[A-Z0-9]{2,3}$/.test(code) && name) names[code] = name;
+  }
+  return names;
+}
+
+export const airlineNameFor = (code: string, names?: Record<string, string>) =>
+  names?.[code] ?? KNOWN_AIRLINES[code] ?? code;
+
 /** One API row to an offer; rows without a usable price, route or time are skipped. */
-export function normalizeFlightOffer(row: unknown, marker: string): FlightOffer | null {
+export function normalizeFlightOffer(
+  row: unknown,
+  marker: string,
+  names?: Record<string, string>,
+): FlightOffer | null {
   if (!row || typeof row !== "object") return null;
   const r = row as Record<string, unknown>;
   const origin = text(r["origin_airport"] ?? r["origin"], 12).toUpperCase();
@@ -238,6 +305,7 @@ export function normalizeFlightOffer(row: unknown, marker: string): FlightOffer 
     origin,
     destination,
     airline,
+    airlineName: airlineNameFor(airline, names),
     flightNumber,
     departureAt,
     returnAt: Number.isNaN(Date.parse(returnAt)) ? null : returnAt,
@@ -249,12 +317,17 @@ export function normalizeFlightOffer(row: unknown, marker: string): FlightOffer 
 }
 
 /** Cheapest first, one row per flight, at most `limit`. */
-export function normalizeFlightOffers(rows: unknown, marker: string, limit = 12): FlightOffer[] {
+export function normalizeFlightOffers(
+  rows: unknown,
+  marker: string,
+  limit = 12,
+  names?: Record<string, string>,
+): FlightOffer[] {
   if (!Array.isArray(rows)) return [];
   const seen = new Set<string>();
   const offers: FlightOffer[] = [];
   for (const row of rows) {
-    const offer = normalizeFlightOffer(row, marker);
+    const offer = normalizeFlightOffer(row, marker, names);
     if (!offer || seen.has(offer.id)) continue;
     seen.add(offer.id);
     offers.push(offer);

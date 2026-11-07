@@ -34,6 +34,17 @@ const prices = {
 
 const fetchMock = vi.fn();
 const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
+const airlines = [
+  { code: "JT", name: "Lion Air" },
+  { code: "OD", name: null, name_translations: { en: "Batik Air Malaysia" } },
+];
+/** Answers the airline list itself and hands every other call to the test's own mock. */
+const route = (handler: (url: string) => unknown) =>
+  fetchMock.mockImplementation(async (url: string) =>
+    String(url).includes("airlines.json") ? ok(airlines) : handler(String(url)),
+  );
+const priceCalls = () =>
+  fetchMock.mock.calls.filter(([url]) => String(url).includes("prices_for_dates"));
 
 async function load() {
   vi.resetModules();
@@ -67,24 +78,54 @@ afterEach(() => {
 
 describe("searchFlightsHandler", () => {
   it("returns cheapest offers with the marker and sends the token as a header, not in the URL", async () => {
-    fetchMock.mockResolvedValue(ok(prices));
+    route(() => ok(prices));
     const { searchFlightsHandler } = await load();
     const result = await searchFlightsHandler({ data: search });
     expect(result.status).toBe("ok");
-    expect(result.offers[0]).toMatchObject({ priceIdr: 1265394, airline: "JT" });
+    expect(result.offers[0]).toMatchObject({
+      priceIdr: 1265394,
+      airline: "JT",
+      airlineName: "Lion Air",
+    });
     expect(result.offers[0]!.bookingUrl).toContain("marker=597030");
-    const [url, init] = fetchMock.mock.calls[0]!;
+    const [url, init] = priceCalls()[0]!;
     expect(String(url)).toContain("origin=CGK");
     expect(String(url)).toContain("one_way=true");
     expect(String(url)).not.toContain("test-token");
     expect((init as RequestInit).headers).toMatchObject({ "X-Access-Token": "test-token" });
   });
 
+  it("names airlines from the provider list, then the built-in list, then the code", async () => {
+    route(() =>
+      ok({
+        success: true,
+        data: [
+          { ...prices.data[0], airline: "OD", flight_number: "393" },
+          { ...prices.data[0], airline: "GA", flight_number: "874", price: 4_100_000 },
+          { ...prices.data[0], airline: "ZZ", flight_number: "1", price: 5_000_000 },
+        ],
+      }),
+    );
+    const { searchFlightsHandler } = await load();
+    const names = (await searchFlightsHandler({ data: search })).offers.map((o) => o.airlineName);
+    expect(names).toEqual(["Batik Air Malaysia", "Garuda Indonesia", "ZZ"]);
+  });
+
+  it("still returns fares when the airline list cannot be read", async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      String(url).includes("airlines.json") ? Promise.reject(new Error("down")) : ok(prices),
+    );
+    const { searchFlightsHandler } = await load();
+    const result = await searchFlightsHandler({ data: search });
+    expect(result.status).toBe("ok");
+    expect(result.offers[0]!.airlineName).toBe("Lion Air");
+  });
+
   it("sends a return date as a round trip", async () => {
-    fetchMock.mockResolvedValue(ok(prices));
+    route(() => ok(prices));
     const { searchFlightsHandler } = await load();
     await searchFlightsHandler({ data: { ...search, returnDate: "2999-12-27" } });
-    const url = String(fetchMock.mock.calls[0]![0]);
+    const url = String(priceCalls()[0]![0]);
     expect(url).toContain("return_at=2999-12-27");
     expect(url).toContain("one_way=false");
   });
@@ -105,7 +146,7 @@ describe("searchFlightsHandler", () => {
     let mod = await load();
     expect((await mod.searchFlightsHandler({ data: search })).status).toBe("login_required");
     authenticate.mockResolvedValue({ id: "user-1", email: "a@b.c" } as never);
-    fetchMock.mockResolvedValue(ok(prices));
+    route(() => ok(prices));
     mod = await load();
     expect((await mod.searchFlightsHandler({ data: search })).status).toBe("ok");
   });
@@ -120,10 +161,10 @@ describe("searchFlightsHandler", () => {
   });
 
   it("reports empty results and provider failures without leaking details", async () => {
-    fetchMock.mockResolvedValueOnce(ok({ success: true, data: [] }));
+    route(() => ok({ success: true, data: [] }));
     const { searchFlightsHandler } = await load();
     expect((await searchFlightsHandler({ data: search })).status).toBe("empty");
-    fetchMock.mockRejectedValueOnce(new Error("boom"));
+    route(() => Promise.reject(new Error("boom")));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const failed = await searchFlightsHandler({
       data: { ...search, departureDate: "2999-11-20" },
@@ -133,17 +174,17 @@ describe("searchFlightsHandler", () => {
 
   it("serves a repeat search from cache without spending the allowance", async () => {
     config({ searchesPerHour: 5 });
-    fetchMock.mockResolvedValue(ok(prices));
+    route(() => ok(prices));
     const { searchFlightsHandler } = await load();
     for (let i = 0; i < 8; i += 1) {
       expect((await searchFlightsHandler({ data: search })).status).toBe("ok");
     }
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(priceCalls()).toHaveLength(1);
   });
 
   it("rate limits one address on distinct searches and keeps other addresses working", async () => {
     config({ searchesPerHour: 5 });
-    fetchMock.mockResolvedValue(ok(prices));
+    route(() => ok(prices));
     const { searchFlightsHandler } = await load();
     const day = (n: number) => ({
       ...search,

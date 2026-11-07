@@ -34,6 +34,7 @@ const offer = (over: Partial<FlightOffer> = {}): FlightOffer => ({
   origin: "CGK",
   destination: "DPS",
   airline: "JT",
+  airlineName: "Lion Air",
   flightNumber: "030",
   departureAt: "2999-12-20T08:35:00+07:00",
   returnAt: null,
@@ -72,6 +73,7 @@ describe("FlightSearch", () => {
       data: { origin: "CGK", destination: "DPS", departureDate: "2999-12-20" },
     });
     const rows = screen.getAllByRole("button", { name: /Rp/ });
+    expect(rows[0]!.textContent).toContain("Lion Air");
     expect(rows[0]!.textContent).toContain("Rp 1,3jt");
     expect(rows[0]!.textContent).toContain("Termurah");
     expect(rows[1]!.textContent).toContain("1 transit");
@@ -82,10 +84,15 @@ describe("FlightSearch", () => {
     flights.mockResolvedValue({ status: "ok", offers: [offer()] });
     render(<FlightSearch prefill={{ toText: "Bali", depart: "2999-12-20" }} />);
     fireEvent.click((await screen.findAllByRole("button", { name: /Rp/ }))[0]!);
+    // The sheet leads with the airline's name, not its two-letter code.
+    expect((await screen.findAllByText("Lion Air")).length).toBeGreaterThan(0);
     const link = await screen.findByRole("link", { name: /Lihat & pesan di Aviasales/ });
     expect(link.getAttribute("href")).toContain("marker=597030");
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toContain("noopener");
+    // The traveler is told where they pay, never how Djiwa earns from the booking.
+    expect(screen.getByText("Pembayaran dilakukan di Aviasales.")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/komisi|commission|afiliasi/i);
     fireEvent.click(link);
     expect(trackClick).toHaveBeenCalledWith("/tiket", "flights_aviasales");
   });
