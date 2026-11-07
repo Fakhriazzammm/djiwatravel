@@ -176,10 +176,31 @@ export function placeIdeaKey(name: string, lat: number | null, lng: number | nul
   return `${fold(name)}@${lat.toFixed(3)},${lng.toFixed(3)}`.slice(0, 160);
 }
 
-export type RawIdea = { name: string; category: PlaceIdeaCategoryId; why: string; source: number };
+export type RawIdea = {
+  name: string;
+  category: PlaceIdeaCategoryId;
+  why: string;
+  source: number;
+  /** City or ward the source places it in; used to keep ideas inside the trip's cities. */
+  city: string;
+};
 
 const text = (value: unknown, max: number) =>
   typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
+
+/**
+ * True when the city the model named is one of the trip's cities (or a ward inside it, "Shibuya,
+ * Tokyo"). With no trip cities nothing is filtered. A missing city cannot be confirmed, so it fails.
+ */
+export function ideaInTripCities(city: string, tripCities: string[]) {
+  if (!tripCities.length) return true;
+  const c = fold(city);
+  if (!c) return false;
+  return tripCities.some((t) => {
+    const name = fold(t);
+    return name !== "" && (c.includes(name) || name.includes(c));
+  });
+}
 
 /**
  * Checks what the model returned. An idea is kept only with a name, a known category and a
@@ -206,7 +227,7 @@ export function cleanRawIdeas(parsed: unknown, sourceCount: number, max: number)
     const dedupe = fold(name);
     if (!dedupe || seen.has(dedupe)) continue;
     seen.add(dedupe);
-    out.push({ name, category, why, source });
+    out.push({ name, category, why, source, city: text(row["city"], 80) });
     if (out.length >= max) break;
   }
   return out;

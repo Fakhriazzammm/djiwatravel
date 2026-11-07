@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PLACE_IDEAS_CONFIG,
   cleanRawIdeas,
+  ideaInTripCities,
   normalizePlaceIdeasConfig,
   parsePlaceIdeasConfig,
   placeIdeaKey,
@@ -106,5 +107,26 @@ describe("sourceHost and the TinyFish rate guard", () => {
     const taken = [0, 1, 2, 3, 4, 5].map((n) => reserveSearchSlot(t + n));
     expect(taken).toEqual([true, true, true, true, false, false]);
     expect(reserveSearchSlot(t + 61_000)).toBe(true);
+  });
+});
+
+describe("ideaInTripCities", () => {
+  it("keeps places in the trip's cities or their wards and drops the rest", () => {
+    expect(ideaInTripCities("Tokyo", ["Tokyo"])).toBe(true);
+    expect(ideaInTripCities("Shibuya, Tokyo", ["Tōkyō"])).toBe(true);
+    expect(ideaInTripCities("Hakodate", ["Tokyo"])).toBe(false);
+    expect(ideaInTripCities("", ["Tokyo"])).toBe(false);
+  });
+  it("filters nothing when the trip has no cities", () => {
+    expect(ideaInTripCities("Hakodate", [])).toBe(true);
+    expect(ideaInTripCities("", [])).toBe(true);
+  });
+  it("carries the city the model named", () => {
+    const parsed = {
+      places: [
+        { name: "Fuglen", category: "cafe", why: "Kopi.", source: 1, city: "Shibuya, Tokyo" },
+      ],
+    };
+    expect(cleanRawIdeas(parsed, 1, 4)[0]?.city).toBe("Shibuya, Tokyo");
   });
 });

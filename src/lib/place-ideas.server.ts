@@ -12,6 +12,7 @@ import {
   PLACE_IDEAS_SETTING_KEY,
   UNAVAILABLE_PLACE_IDEAS,
   cleanRawIdeas,
+  ideaInTripCities,
   normalizePlaceIdeasConfig,
   parsePlaceIdeasConfig,
   placeIdeaCategory,
@@ -150,12 +151,13 @@ const IDEAS_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["name", "category", "why", "source"],
+        required: ["name", "category", "why", "source", "city"],
         properties: {
           name: { type: "string" },
           category: { type: "string", enum: ["food", "cafe", "sight", "nature", "shop"] },
           why: { type: "string" },
           source: { type: "integer" },
+          city: { type: "string" },
         },
       },
     },
@@ -169,6 +171,8 @@ export const PLACE_IDEAS_SYSTEM_PROMPT = [
   "`name` is the place's own name as written in the source, in Latin letters when the source gives them.",
   "`why` is ONE short sentence in casual Indonesian (max 110 characters) saying why it is worth a visit, based on the source.",
   "`source` is the number of the source that names the place. `category` is one of the allowed values.",
+  "`category` must describe what the place IS: castles, temples, museums and landmarks are `sight`, never `cafe`.",
+  "`city` is the city or ward where the source says the place is. When trip cities are given, return only places in those cities, never places from other cities or regions.",
   "Prefer places that fit the requested kind and are well recommended; skip duplicates, chains and closed places.",
 ].join("\n");
 
@@ -336,9 +340,18 @@ export async function getPlaceIdeas(
       message: "Isi tujuan perjalanan dulu agar ide tempat bisa dicari.",
       remaining: 0,
     };
+  // The trip's cities keep ideas inside them ("Tokyo"), not anywhere in the country.
+  const cityRows = await pool
+    .query(
+      "select name from public.travel_trip_cities where trip_id=$1 order by sort_order, created_at",
+      [input.tripId],
+    )
+    .catch(() => null);
+  const tripCities = (cityRows?.rows ?? []).map((r) => String(r.name)).filter(Boolean);
+  const scope = tripCities.length ? `${tripCities.join(", ")}, ${destination}` : destination;
   const used = await usedToday(userId, now);
   const remaining = Math.max(0, config.dailyLimit - used);
-  const cacheKey = placeIdeasCacheKey(destination, input.category, input.query);
+  const cacheKey = placeIdeasCacheKey(scope, input.category, input.query);
   const hidden = await hiddenKeys();
   const visible = (ideas: PlaceIdea[]) =>
     ideas.filter((idea) => !hidden.has(idea.key)).slice(0, config.maxIdeas);
@@ -371,18 +384,23 @@ export async function getPlaceIdeas(
     const phrase = input.query ? `${input.query}` : kind.search;
     let usage = { input: 0, output: 0 };
     try {
-      const found = await searchWeb(`${phrase} in ${destination} travel guide`);
+      const found = await searchWeb(`${phrase} in ${scope} travel guide`);
       const sources = await fetchPages(found);
       if (!sources.length) throw new Error("no_sources");
       const prompt = [
         `Destination: ${destination}`,
+        ...(tripCities.length
+          ? [`Trip cities: ${tripCities.join(", ")} (only places in these cities)`]
+          : []),
         `Wanted: ${input.query || kind.label}`,
         `Return up to ${config.maxIdeas + 2} places.`,
         ...sources.map((s, i) => `\n[${i + 1}] ${s.title} (${s.url})\n${s.text}`),
       ].join("\n");
       const answer = await askModel(config.model, prompt);
       usage = answer.usage;
-      const raw = cleanRawIdeas(answer.parsed, sources.length, config.maxIdeas + 2);
+      const raw = cleanRawIdeas(answer.parsed, sources.length, config.maxIdeas + 6).filter((idea) =>
+        ideaInTripCities(idea.city, tripCities),
+      );
       const ideas = await verifyIdeas(raw, sources, destination);
       await pool
         .query(
