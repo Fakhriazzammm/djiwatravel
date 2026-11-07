@@ -320,3 +320,25 @@ Use this structure for each new lesson:
   `TZ=Asia/Shanghai` as well as the local zone.
 - Verification boundary: the unit test for `calendarDate` uses a UTC-midnight Date, which is not what
   node-postgres returns on a +08:00 host; only a query result (or the `TZ=Asia/Shanghai` command above) shows it.
+
+### 2026-11-07 — A public geocoder can refuse one VPS and work from every other host
+
+- Symptom: Agenda place search showed "Pencarian lokasi sedang tidak tersedia" on production; the
+  Ide tempat map check dropped every idea.
+- Evidence: `scripts/djiwa logs travel --grep "itinerary-map"` showed `place search failed fetch
+  failed` and `aborted due to timeout`. From the Travel VPS, `photon.komoot.io` returned
+  `ECONNREFUSED` (Node and curl, IPv4 and IPv6). The same URL worked from the Tentram VPS and from a
+  developer Mac. The Travel VPS had no local block (`ufw` inactive, OUTPUT ACCEPT, no hosts entry).
+  `komoot.com`, Nominatim, Wikipedia and OpenFreeMap were reachable from the same VPS.
+- Root cause: the public Photon instance refused this VPS's address, most likely an IP-level block
+  on the provider side. This is inferred; the provider gave no reason.
+- Safe fix: `place-search.ts` maps MapTiler and self-hosted Photon responses; `placeSearchTarget()`
+  uses MapTiler when `MAPTILER_API_KEY` is set, Photon only when `PLACE_SEARCH_URL` is set, and
+  otherwise reports unavailable. The public Photon instance is no longer a default.
+- Prevention rule: before choosing a geocoder, run `curl` against its host from the production VPS
+  that will call it, not from a developer machine. Check the provider's usage policy before the
+  design: Nominatim's public server forbids search-as-you-type and bulk geocoding; Mapbox temporary
+  geocoding forbids storing results; MapTiler's free plan is non-commercial.
+- Verification boundary: the reachability tests and the handler tests (stubbed `fetch`) prove the
+  code path. Whether a keyed provider answers correctly in production is unproven until a key is set
+  and one live request is checked on the Travel VPS.

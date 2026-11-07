@@ -22,7 +22,8 @@ import {
 } from "@/lib/itinerary-map";
 import { validateAdminSetting } from "@/lib/admin-settings";
 import { isAllowedImageUrl, pickPlaceImage } from "@/lib/place-image";
-import { allowPlaceSearch, mapPhotonFeatures } from "@/lib/itinerary-map.server";
+import { allowPlaceSearch } from "@/lib/itinerary-map.server";
+import { mapPhotonFeatures } from "@/lib/place-search";
 
 const shibuya = { id: "a", title: "Makan", latitude: 35.659, longitude: 139.7006 };
 const sensoji = { id: "b", title: "Sensō-ji", latitude: "35.7148", longitude: "139.7967" };

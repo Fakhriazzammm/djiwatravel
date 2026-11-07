@@ -76,6 +76,7 @@ function AdminSettings() {
         initial={itineraryMap.config}
         version={itineraryMap.version}
         stats={itineraryMap.stats}
+        geocoder={itineraryMap.geocoder}
       />
       <AdminReceiptScanPanel
         initial={receiptScan.config}

@@ -7,9 +7,14 @@ import { buildSettingAudit } from "./admin-settings";
 import { requireTripOwner } from "./guest-trips.server";
 import { isAllowedImageUrl, pickPlaceImage, type WikiPage } from "./place-image";
 import {
+  forwardSearchUrl,
+  mapPlaceFeatures,
+  reverseSearchUrl,
+  type PlaceSearchTarget,
+} from "./place-search";
+import {
   DEFAULT_ITINERARY_MAP_CONFIG,
   ITINERARY_MAP_SETTING_KEY,
-  isValidLatLng,
   normalizeItineraryMapConfig,
   parseItineraryMapConfig,
   type ItineraryMapConfig,
@@ -46,8 +51,40 @@ export const getItineraryMapConfigHandler = async () => {
 const searchSchema = z.object({ query: z.string().trim().min(2).max(120) });
 export const searchPlacesInput = (data: unknown) => searchSchema.parse(data);
 
-export const PLACE_SEARCH_URL = () =>
-  process.env["PLACE_SEARCH_URL"] || "https://photon.komoot.io/api/";
+/**
+ * Which geocoder answers place search, reverse lookup and the place-ideas map check. MapTiler is
+ * used when `MAPTILER_API_KEY` is set; the key never leaves the server. A self-hosted Photon is
+ * used only when `PLACE_SEARCH_URL` is set. With neither, search is unavailable and the customer
+ * keeps free-text locations. `PLACE_SEARCH_PROVIDER` (maptiler | photon) forces one of them.
+ */
+export function placeSearchTarget(env: NodeJS.ProcessEnv = process.env): PlaceSearchTarget | null {
+  const key = (env["MAPTILER_API_KEY"] ?? "").trim();
+  const photonUrl = (env["PLACE_SEARCH_URL"] ?? "").trim();
+  const forced = (env["PLACE_SEARCH_PROVIDER"] ?? "").trim().toLowerCase();
+  const provider =
+    forced === "photon" || forced === "maptiler"
+      ? forced
+      : key
+        ? "maptiler"
+        : photonUrl
+          ? "photon"
+          : null;
+  if (provider === "maptiler") return key ? { provider, key } : null;
+  if (provider === "photon") return photonUrl ? { provider, baseUrl: photonUrl } : null;
+  return null;
+}
+
+/** One geocoder request with a short timeout. Callers log status codes, never the URL (it has a key). */
+export function geocoderFetch(url: URL) {
+  return fetch(url, {
+    headers: {
+      "User-Agent": "DjiwaTravel/1.0 (https://djiwatravel.com)",
+      Accept: "application/json",
+    },
+    signal: AbortSignal.timeout(4000),
+  });
+}
+
 const SEARCH_WINDOW_MS = 60_000;
 const SEARCH_MAX_PER_WINDOW = 20;
 const searchHits = new Map<string, number[]>();
@@ -69,47 +106,6 @@ export function allowPlaceSearch(subject: string, now = Date.now()) {
   return true;
 }
 
-type PhotonFeature = {
-  geometry?: { coordinates?: unknown };
-  properties?: Record<string, unknown>;
-};
-
-export function mapPhotonFeatures(payload: unknown): PlaceResult[] {
-  const features = (payload as { features?: PhotonFeature[] } | null)?.features;
-  if (!Array.isArray(features)) return [];
-  const seen = new Set<string>();
-  const results: PlaceResult[] = [];
-  for (const feature of features) {
-    const coords = feature.geometry?.coordinates;
-    if (!Array.isArray(coords)) continue;
-    const lng = Number(coords[0]);
-    const lat = Number(coords[1]);
-    if (!isValidLatLng(lat, lng)) continue;
-    const props = feature.properties ?? {};
-    const str = (key: string) =>
-      typeof props[key] === "string" ? (props[key] as string).trim() : "";
-    const street = [str("street"), str("housenumber")].filter(Boolean).join(" ");
-    const label = (str("name") || street || str("city")).slice(0, 120);
-    if (!label) continue;
-    const subtitle = [
-      street && str("name") ? street : "",
-      str("district"),
-      str("city"),
-      str("state"),
-      str("country"),
-    ]
-      .filter((part, i, all) => part && part !== label && all.indexOf(part) === i)
-      .join(", ")
-      .slice(0, 160);
-    const key = `${label}|${lat.toFixed(4)}|${lng.toFixed(4)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    results.push({ label, subtitle, lat, lng });
-    if (results.length >= 6) break;
-  }
-  return results;
-}
-
 export async function searchPlacesHandler({
   data,
 }: {
@@ -121,20 +117,27 @@ export async function searchPlacesHandler({
     return { places: [] as PlaceResult[], status: "disabled" as const };
   if (!allowPlaceSearch(user.id))
     return { places: [] as PlaceResult[], status: "rate_limited" as const };
-  const url = new URL(PLACE_SEARCH_URL());
-  url.searchParams.set("q", data.query);
-  url.searchParams.set("limit", "8");
-  url.searchParams.set("lang", "en");
+  const target = placeSearchTarget();
+  if (!target) {
+    console.error("[itinerary-map] place search has no geocoder key (MAPTILER_API_KEY)");
+    return { places: [] as PlaceResult[], status: "unavailable" as const };
+  }
+  const url = forwardSearchUrl(target, {
+    query: data.query,
+    limit: 8,
+    lang: "en",
+    autocomplete: true,
+  });
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "DjiwaTravel/1.0 (https://djiwatravel.com)",
-        Accept: "application/json",
-      },
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!response.ok) return { places: [] as PlaceResult[], status: "unavailable" as const };
-    return { places: mapPhotonFeatures(await response.json()), status: "ok" as const };
+    const response = await geocoderFetch(url);
+    if (!response.ok) {
+      console.error("[itinerary-map] place search HTTP", response.status, target.provider);
+      return { places: [] as PlaceResult[], status: "unavailable" as const };
+    }
+    return {
+      places: mapPlaceFeatures(target.provider, await response.json()),
+      status: "ok" as const,
+    };
   } catch (error) {
     console.error(
       "[itinerary-map] place search failed",
@@ -176,7 +179,10 @@ async function readStats(): Promise<ItineraryMapStats> {
 export const getAdminItineraryMapHandler = async () => {
   await requireAdmin();
   const [record, stats] = await Promise.all([readItineraryMapConfig(), readStats()]);
-  return { ...record, stats };
+  // Provider name and whether a key is set. The key itself is never returned.
+  const target = placeSearchTarget();
+  const geocoder = { provider: target?.provider ?? null, configured: target !== null };
+  return { ...record, stats, geocoder };
 };
 
 export const saveItineraryMapConfigInput = (data: unknown) => saveSchema.parse(data);
@@ -258,20 +264,16 @@ export async function reversePlaceHandler({
   const { config } = await readItineraryMapConfig();
   if (!config.enabled || !config.locateMe) return { place: null, status: "disabled" as const };
   if (!allowPlaceSearch(`rev:${user.id}`)) return { place: null, status: "rate_limited" as const };
-  const url = new URL(PLACE_SEARCH_URL().replace(/\/api\/?$/, "/reverse"));
-  url.searchParams.set("lat", String(data.lat));
-  url.searchParams.set("lon", String(data.lng));
-  url.searchParams.set("lang", "en");
+  const target = placeSearchTarget();
+  if (!target) return { place: null, status: "unavailable" as const };
+  const url = reverseSearchUrl(target, { lat: data.lat, lng: data.lng }, "en");
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "DjiwaTravel/1.0 (https://djiwatravel.com)",
-        Accept: "application/json",
-      },
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!response.ok) return { place: null, status: "unavailable" as const };
-    const [first] = mapPhotonFeatures(await response.json());
+    const response = await geocoderFetch(url);
+    if (!response.ok) {
+      console.error("[itinerary-map] reverse lookup HTTP", response.status, target.provider);
+      return { place: null, status: "unavailable" as const };
+    }
+    const [first] = mapPlaceFeatures(target.provider, await response.json());
     return {
       place: first ? { ...first, lat: data.lat, lng: data.lng } : null,
       status: "ok" as const,

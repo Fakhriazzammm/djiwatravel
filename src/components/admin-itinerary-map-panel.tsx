@@ -17,10 +17,13 @@ export function AdminItineraryMapPanel({
   initial,
   version: initialVersion,
   stats,
+  geocoder,
 }: {
   initial: ItineraryMapConfig;
   version: number;
   stats: { totalItems: number; pinnedItems: number; tripsWithPins: number };
+  /** Which geocoder answers place search. Only the provider name and whether it is set. */
+  geocoder: { provider: "maptiler" | "photon" | null; configured: boolean };
 }) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [placeSearch, setPlaceSearch] = useState(initial.placeSearch);
@@ -123,6 +126,19 @@ export function AdminItineraryMapPanel({
           />
           Pencarian tempat saat menambah aktivitas
         </label>
+        <p className="flex flex-wrap items-center gap-2 text-xs leading-5 text-muted-foreground">
+          <StatusPill tone={geocoder.configured ? "good" : "warn"}>
+            {geocoder.configured ? "Terhubung" : "Belum terhubung"}
+          </StatusPill>
+          Penyedia pencarian lokasi:{" "}
+          {geocoder.provider === "maptiler"
+            ? "MapTiler"
+            : geocoder.provider === "photon"
+              ? "Photon (server sendiri)"
+              : "belum diatur"}
+          {!geocoder.configured &&
+            ". Pencarian gagal sampai MAPTILER_API_KEY diisi di server; lokasi tetap bisa diketik."}
+        </p>
         <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
           <input
             type="checkbox"

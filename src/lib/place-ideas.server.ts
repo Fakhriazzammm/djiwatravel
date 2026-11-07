@@ -6,7 +6,8 @@ import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import { distanceKm } from "./itinerary-map";
-import { PLACE_SEARCH_URL, lookupPlaceImage, mapPhotonFeatures } from "./itinerary-map.server";
+import { geocoderFetch, lookupPlaceImage, placeSearchTarget } from "./itinerary-map.server";
+import { forwardSearchUrl, mapPlaceFeatures } from "./place-search";
 import {
   DEFAULT_PLACE_IDEAS_CONFIG,
   PLACE_IDEAS_SETTING_KEY,
@@ -248,24 +249,20 @@ async function askModel(model: string, userContent: string) {
 /* ------------------------------------------------------------------------- map checking */
 
 async function geocode(query: string, bias?: { lat: number; lng: number }) {
-  const url = new URL(PLACE_SEARCH_URL());
-  url.searchParams.set("q", query);
-  url.searchParams.set("limit", "3");
-  url.searchParams.set("lang", "en");
-  if (bias) {
-    url.searchParams.set("lat", String(bias.lat));
-    url.searchParams.set("lon", String(bias.lng));
-  }
+  const target = placeSearchTarget();
+  if (!target) return null;
+  // Batch lookups of named places: no typeahead, a few candidates, biased to the destination.
+  const url = forwardSearchUrl(target, {
+    query,
+    limit: 3,
+    lang: "en",
+    autocomplete: false,
+    ...(bias ? { proximity: bias } : {}),
+  });
   try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "DjiwaTravel/1.0 (https://djiwatravel.com)",
-        Accept: "application/json",
-      },
-      signal: AbortSignal.timeout(4000),
-    });
+    const response = await geocoderFetch(url);
     if (!response.ok) return null;
-    return mapPhotonFeatures(await response.json())[0] ?? null;
+    return mapPlaceFeatures(target.provider, await response.json())[0] ?? null;
   } catch {
     return null;
   }
