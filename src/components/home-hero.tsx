@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Plane, Search } from "lucide-react";
+import { CardSim, Plane, Search } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -225,7 +225,11 @@ export function HomeHero({
                   tab === id ? "bg-brand-red text-white shadow-sm" : ""
                 }`}
               >
-                {id === "tiket" && <Plane className="size-3.5" aria-hidden="true" />}
+                {id === "tiket" ? (
+                  <Plane className="size-3.5" aria-hidden="true" />
+                ) : (
+                  <CardSim className="size-3.5" aria-hidden="true" />
+                )}
                 {label}
               </button>
             ))}
