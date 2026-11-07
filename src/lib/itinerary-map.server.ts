@@ -4,7 +4,7 @@ import { pool } from "../db/client.server";
 import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
-import { getAuthenticatedUser } from "./customer-session.fn";
+import { requireTripOwner } from "./guest-trips.server";
 import { isAllowedImageUrl, pickPlaceImage, type WikiPage } from "./place-image";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
@@ -37,7 +37,7 @@ export async function readItineraryMapConfig(): Promise<ItineraryMapConfigRecord
 }
 
 export const getItineraryMapConfigHandler = async () => {
-  await getAuthenticatedUser();
+  await requireTripOwner();
   return (await readItineraryMapConfig()).config;
 };
 
@@ -115,7 +115,7 @@ export async function searchPlacesHandler({
 }: {
   data: ReturnType<typeof searchPlacesInput>;
 }) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const { config } = await readItineraryMapConfig();
   if (!config.enabled || !config.placeSearch)
     return { places: [] as PlaceResult[], status: "disabled" as const };
@@ -254,7 +254,7 @@ export async function reversePlaceHandler({
 }: {
   data: ReturnType<typeof reversePlaceInput>;
 }) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const { config } = await readItineraryMapConfig();
   if (!config.enabled || !config.locateMe) return { place: null, status: "disabled" as const };
   if (!allowPlaceSearch(`rev:${user.id}`)) return { place: null, status: "rate_limited" as const };
@@ -344,7 +344,7 @@ export const placeImageInput = (data: unknown) => placeImageSchema.parse(data);
 
 /** Photo for a place the traveler tapped on the map. Nothing is stored. */
 export async function placeImageHandler({ data }: { data: ReturnType<typeof placeImageInput> }) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const { config } = await readItineraryMapConfig();
   if (!config.enabled || !config.placeImages) return { image: null };
   if (!allowPlaceSearch(`img:${user.id}`)) return { image: null };
@@ -360,7 +360,7 @@ export async function resolveItemImageHandler({
 }: {
   data: ReturnType<typeof itemImageInput>;
 }) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const { config } = await readItineraryMapConfig();
   if (!config.enabled || !config.placeImages) return { url: null as string | null, checked: false };
   const row = (

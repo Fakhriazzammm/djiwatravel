@@ -1,5 +1,5 @@
 import { glassIconButtonClass } from "@/components/shell";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import {
   CalendarDays,
   CheckCircle2,
@@ -11,10 +11,11 @@ import {
   WalletCards,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FixedLayer } from "@/components/motion-primitives";
 import { Page } from "@/components/shell";
+import { claimGuestTrips } from "@/lib/guest-trips.fn";
 import { TripShareDialog, type ShareTripInfo } from "@/components/trip-share-sheet";
 import { TripTicket } from "@/components/trip-ticket";
 import { getMyTripsActions } from "@/lib/my-trips-home";
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/my-trips/")({
 type HomeData = Awaited<ReturnType<typeof getMyTripsHome>>;
 type Trip = HomeData["trips"][number];
 type AgendaItem = HomeData["agenda"][number];
+type GuestStatus = HomeData["guest"];
 
 const formatDate = (value: string | null | undefined, options?: Intl.DateTimeFormatOptions) => {
   if (!value) return "Tanggal belum diatur";
@@ -63,6 +65,21 @@ const tripTitle = (trip: Trip) =>
 function MyTrips() {
   const data = Route.useLoaderData();
   const { user, loading: authLoading } = useBetterAuthUser();
+  const router = useRouter();
+  const userId = user?.id;
+  // A member who made trips as a guest in this browser gets them moved to the account once.
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    claimGuestTrips()
+      .then((result) => {
+        if (active && result.claimed > 0) void router.invalidate();
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [userId, router]);
   const [view, setView] = useState<"today" | "logbook">("today");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [shareTrip, setShareTrip] = useState<ShareTripInfo | null>(null);
@@ -73,13 +90,16 @@ function MyTrips() {
       destination_name: trip.destination_name,
     });
 
-  if (!user && !authLoading) return <Unauthenticated />;
+  const guestMode = !user && !authLoading;
+  if (guestMode && !data.guest.enabled) return <Unauthenticated />;
 
   return (
     <Page>
       <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
         Perjalanan
       </h1>
+
+      {guestMode && <GuestBanner guest={data.guest} />}
 
       <nav
         className="flex rounded-[10px] bg-secondary p-0.5"
@@ -286,7 +306,12 @@ function TodayView({
           ))}
         </section>
       ) : (
-        <EmptyTrips trips={data.trips} user={user} loading={authLoading} />
+        <EmptyTrips
+          trips={data.trips}
+          user={user}
+          loading={authLoading}
+          guestRemaining={data.guest.remaining}
+        />
       )}
 
       {focusTrip && (
@@ -409,15 +434,53 @@ function LogbookView({
   );
 }
 
+function GuestBanner({ guest }: { guest: GuestStatus }) {
+  if (guest.remaining > 0) {
+    return (
+      <section className="mt-3 flex items-center gap-3 rounded-2xl bg-surface px-3 py-2.5 ring-1 ring-border/50">
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold">Coba gratis tanpa login</p>
+          <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">
+            {guest.used === 0
+              ? `Buat ${guest.limit === 1 ? "1 perjalanan" : `${guest.limit} perjalanan`} sekarang. Masuk nanti untuk menyimpannya ke akunmu.`
+              : `Kamu masih bisa membuat ${guest.remaining} perjalanan gratis.`}
+          </p>
+        </div>
+        <Link
+          to="/my-trips/new"
+          className="tap flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-brand-red px-3 text-[13px] font-semibold text-white"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          Buat
+        </Link>
+      </section>
+    );
+  }
+  return (
+    <section className="mt-3 rounded-2xl bg-surface px-3 py-2.5 ring-1 ring-border/50">
+      <p className="text-[14px] font-semibold">Perjalanan gratis sudah terpakai</p>
+      <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">
+        Masuk atau daftar untuk membuat perjalanan lagi. Perjalananmu ikut tersimpan.
+      </p>
+      <div className="mt-2">
+        <CustomerAuth size="compact" />
+      </div>
+    </section>
+  );
+}
+
 function EmptyTrips({
   trips,
   user,
   loading,
+  guestRemaining,
 }: {
   trips: Trip[];
   user: { id: string; email?: string | null } | null | undefined;
   loading: boolean;
+  guestRemaining: number;
 }) {
+  const canCreate = Boolean(user) || guestRemaining > 0;
   return (
     <section className="rounded-[14px] bg-surface px-4 py-3 text-center ring-1 ring-border/50">
       <h2 className="text-[16px] font-semibold">
@@ -433,7 +496,7 @@ function EmptyTrips({
           : "Simpan agenda, checklist, budget, dan booking di satu tempat."}
       </p>
       {!loading &&
-        (user ? (
+        (canCreate ? (
           <Link
             to="/my-trips/new"
             className="tap mx-auto mt-3 flex h-11 max-w-xs items-center justify-center gap-2 rounded-xl bg-brand-red text-[14px] font-semibold text-white"

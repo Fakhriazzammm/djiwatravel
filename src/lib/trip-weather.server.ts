@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getAuthenticatedUser } from "./customer-session.fn";
+import { requireTripOwner } from "./guest-trips.server";
 import { allowPlaceSearch, readItineraryMapConfig } from "./itinerary-map.server";
 import { isValidLatLng } from "./itinerary-map";
 import {
@@ -69,7 +69,7 @@ export async function tripWeatherHandler({
 }: {
   data: ReturnType<typeof tripWeatherInput>;
 }): Promise<TripWeatherResult> {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const { config } = await readItineraryMapConfig();
   if (!config.weather) return { status: "disabled", days: [] };
   if (!allowPlaceSearch(`weather:${user.id}`)) return { status: "rate_limited", days: [] };

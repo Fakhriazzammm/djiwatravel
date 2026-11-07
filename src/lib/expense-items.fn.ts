@@ -5,9 +5,9 @@ import { createServerFn } from "@tanstack/react-start";
 export const getExpenseDetail = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    const { getAuthenticatedUser } = await import("./customer-session.fn");
+    const { requireTripOwner } = await import("./guest-trips.server");
     const { readExpenseDetail } = await import("./expense-items.server");
-    const user = await getAuthenticatedUser();
+    const user = await requireTripOwner();
     return readExpenseDetail(user.id, data.id);
   });
 
@@ -17,9 +17,9 @@ export const saveExpenseItem = createServerFn({ method: "POST" })
     return saveExpenseItemInput(data);
   })
   .handler(async ({ data }) => {
-    const { getAuthenticatedUser } = await import("./customer-session.fn");
+    const { requireTripOwner } = await import("./guest-trips.server");
     const { saveExpenseItem: save } = await import("./expense-items.server");
-    const user = await getAuthenticatedUser();
+    const user = await requireTripOwner();
     return save(user.id, data);
   });
 
@@ -29,9 +29,9 @@ export const removeExpenseItem = createServerFn({ method: "POST" })
     return removeExpenseItemInput(data);
   })
   .handler(async ({ data }) => {
-    const { getAuthenticatedUser } = await import("./customer-session.fn");
+    const { requireTripOwner } = await import("./guest-trips.server");
     const { removeExpenseItem: remove } = await import("./expense-items.server");
-    const user = await getAuthenticatedUser();
+    const user = await requireTripOwner();
     return remove(user.id, data);
   });
 
@@ -41,8 +41,8 @@ export const updateExpenseInfo = createServerFn({ method: "POST" })
     return updateExpenseInfoInput(data);
   })
   .handler(async ({ data }) => {
-    const { getAuthenticatedUser } = await import("./customer-session.fn");
+    const { requireTripOwner } = await import("./guest-trips.server");
     const { updateExpenseInfo: update } = await import("./expense-items.server");
-    const user = await getAuthenticatedUser();
+    const user = await requireTripOwner();
     return update(user.id, data);
   });

@@ -21,6 +21,8 @@ import { AdminItineraryMapPanel } from "@/components/admin-itinerary-map-panel";
 import { AdminReceiptScanPanel } from "@/components/admin-receipt-scan-panel";
 import { getAdminReceiptScan } from "@/lib/receipt-scan.fn";
 import { AdminPlaceIdeasPanel } from "@/components/admin-place-ideas-panel";
+import { AdminGuestTripsPanel } from "@/components/admin-guest-trips-panel";
+import { getAdminGuestTrips } from "@/lib/guest-trips.fn";
 import { getAdminPlaceIdeas } from "@/lib/place-ideas.fn";
 import { AdminGooglePanel } from "@/components/admin-google-panel";
 import { getAdminGoogle } from "@/lib/google-admin.fn";
@@ -38,6 +40,7 @@ export const Route = createFileRoute("/admin/settings")({
     itineraryMap: await getAdminItineraryMap(),
     receiptScan: await getAdminReceiptScan(),
     placeIdeas: await getAdminPlaceIdeas(),
+    guestTrips: await getAdminGuestTrips(),
     google: await getAdminGoogle(),
     rail: (await getHomeDestinationFeed().catch(() => ({ popular: [] }))).popular,
   }),
@@ -53,6 +56,7 @@ function AdminSettings() {
     itineraryMap,
     receiptScan,
     placeIdeas,
+    guestTrips,
     google,
     rail,
   } = Route.useLoaderData();
@@ -81,6 +85,11 @@ function AdminSettings() {
         stats={placeIdeas.stats}
         recent={placeIdeas.recent}
         keys={placeIdeas.keys}
+      />
+      <AdminGuestTripsPanel
+        initial={guestTrips.config}
+        version={guestTrips.version}
+        stats={guestTrips.stats}
       />
       <AdminGooglePanel overview={google} />
       <div className="space-y-2">

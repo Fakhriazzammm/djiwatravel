@@ -186,6 +186,14 @@ ownership queries broader to accommodate a UI shortcut. Trip, activity,
 checklist, booking, budget, and expense records must remain scoped through the
 authenticated trip owner; see [`src/lib/my-trips.server.ts`](src/lib/my-trips.server.ts).
 
+Freemium My Trips without login (`src/lib/guest-trips*.ts`, Admin `guestTrips` setting in `/admin/settings`):
+a guest without a session owns trips through an HttpOnly `djiwa_guest_trips` cookie, stored as
+`customer_auth_subject = guest:<sha256(token)>` (no new table). The default allows one trip per guest
+browser; the create transaction checks the limit under an advisory lock. Member-only functions stay
+on `getAuthenticatedUser` (share links, duplicate, Google Calendar/Sheets, receipt scan, place ideas).
+On login, `claimGuestTrips` moves the guest's trips to the member id and clears the cookie.
+Limitation: clearing cookies gives a new guest browser a new allowance.
+
 ## Local development and verification
 
 The commands are defined in [`package.json`](package.json):

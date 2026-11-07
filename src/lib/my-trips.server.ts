@@ -4,6 +4,12 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { pool } from "@/db/client.server";
 import { getAuthenticatedUser } from "@/lib/customer-session.fn";
+import {
+  getGuestTripStatusHandler,
+  requireTripOwner,
+  resolveTripOwnerForCreate,
+} from "@/lib/guest-trips.server";
+import { canCreateGuestTrip, guestLimitMessage } from "@/lib/guest-trips";
 import { syncItineraryItem } from "@/lib/google-calendar.server";
 import { autoSplit } from "@/lib/budget-split";
 import { stepFor } from "@/lib/trip-budget-format";
@@ -184,7 +190,7 @@ async function ownedTrip(tripId: string, subject: string) {
 }
 
 export async function listTrips() {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const result = await pool.query(
     `select t.*, coalesce(sum(e.converted_amount_minor), 0) as spent_minor,
       (select count(*) from travel_checklist_items c where c.trip_id=t.id) as checklist_total,
@@ -214,7 +220,7 @@ export async function listTrips() {
 
 export async function updateTrip(input: unknown) {
   const data = tripPatchSchema.parse(input);
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const result = await pool.query(
     `update travel_trips set name=$1,destination_code=$2,destination_name=$3,departure_date=$4,return_date=$5,travelers_count=$6,primary_currency=$7,total_budget_minor=$8,timezone=$9,updated_at=now()
      where id=$10 and customer_auth_subject=$11 returning *`,
@@ -241,15 +247,26 @@ export async function updateTrip(input: unknown) {
 
 export async function createTrip(input: unknown) {
   const data = tripSchema.parse(input);
-  const user = await getAuthenticatedUser();
+  const owner = await resolveTripOwnerForCreate();
   const client = await pool.connect();
   try {
     await client.query("begin");
+    if (owner.guest) {
+      // Guest trips are free up to a small limit. The advisory lock makes two quick taps count once.
+      await client.query("select pg_advisory_xact_lock(hashtext($1))", [owner.id]);
+      const used = await client.query(
+        "select count(*)::int as n from travel_trips where customer_auth_subject = $1",
+        [owner.id],
+      );
+      const limit = owner.limit ?? 1;
+      if (!canCreateGuestTrip(Number((used.rows[0] as { n?: unknown }).n) || 0, limit))
+        throw new Error(guestLimitMessage(limit));
+    }
     const trip = await client.query(
       `insert into travel_trips (customer_auth_subject,name,destination_code,destination_name,departure_date,return_date,travelers_count,primary_currency,total_budget_minor,timezone)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *`,
       [
-        user.id,
+        owner.id,
         data.name,
         data.destinationCode.toUpperCase(),
         data.destinationName,
@@ -478,7 +495,7 @@ export async function loadSharedTrip(token: string) {
 }
 
 export async function getTripDashboard(tripId: string) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const trip = await ownedTrip(tripId, user.id);
   const [budget, expenses, itinerary, checklist, bookings, places, documents, share] =
     await Promise.all([
@@ -592,7 +609,7 @@ function normalizeSectionItem(row: Record<string, unknown>) {
 
 /** Load only the selected section so navigation is responsive on mobile. */
 export async function getTripSectionData(tripId: string, section: string) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const trip = await ownedTrip(tripId, user.id);
   const budgetMinor = money(trip["total_budget_minor"]);
   const departureDate = dateText(trip["departure_date"]);
@@ -764,7 +781,7 @@ export async function getTripSectionData(tripId: string, section: string) {
 
 export async function patchBudgetCategory(input: unknown) {
   const data = budgetPatchSchema.parse(input);
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const result = await pool.query(
     `update travel_budget_categories c set allocated_minor=$1, updated_at=now()
      from travel_trips t where c.id=$2 and c.trip_id=t.id and t.customer_auth_subject=$3 returning c.*`,
@@ -777,7 +794,7 @@ export async function patchBudgetCategory(input: unknown) {
 
 export async function addBudgetCategory(input: unknown) {
   const data = budgetCategoryCreateSchema.parse(input);
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const trip = await ownedTrip(data.tripId, user.id);
   const result = await pool.query(
     `insert into travel_budget_categories (trip_id,name,category_key,allocated_minor,currency,sort_order)
@@ -798,7 +815,7 @@ export async function addBudgetCategory(input: unknown) {
 /** Expenses keep their row: the FK is `on delete set null`, so they become uncategorized. */
 export async function deleteBudgetCategory(input: unknown) {
   const data = itemIdSchema.parse(input);
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const result = await pool.query(
     `delete from travel_budget_categories c using travel_trips t
      where c.id=$1 and c.trip_id=t.id and t.customer_auth_subject=$2 returning c.id, c.trip_id`,
@@ -840,7 +857,7 @@ async function deleteOwned(
     "travel_expenses" | "travel_itinerary_items" | "travel_checklist_items" | "travel_bookings",
   id: string,
 ) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const result = await pool.query(
     `delete from ${table} item using travel_trips t where item.id=$1 and item.trip_id=t.id and t.customer_auth_subject=$2 returning item.id, item.trip_id`,
     [id, user.id],
@@ -851,7 +868,7 @@ async function deleteOwned(
 
 export async function addBooking(input: unknown) {
   const data = bookingSchema.parse(input);
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   await ownedTrip(data.tripId, user.id);
   const result = await pool.query(
     `insert into travel_bookings (trip_id,category,title,booking_date,provider,reference_number,notes)
@@ -871,7 +888,7 @@ export async function addBooking(input: unknown) {
 
 export async function deleteTrip(input: unknown) {
   const data = itemIdSchema.parse(input);
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const result = await pool.query(
     "delete from travel_trips where id=$1 and customer_auth_subject=$2 returning id",
     [data.id, user.id],
@@ -886,7 +903,7 @@ export async function deleteTripItem(input: unknown) {
     id: string;
     trip_id: string;
   };
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   await refreshSheetExport(user.id, removed.trip_id);
   return removed;
 }
@@ -908,7 +925,7 @@ export async function deleteBooking(input: unknown) {
 
 export async function addExpense(input: unknown) {
   const data = expenseSchema.parse(input);
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   await ownedTrip(data.tripId, user.id);
   if (data.categoryId) {
     const category = await pool.query(
@@ -963,7 +980,7 @@ export async function updateItineraryItem(input: unknown) {
     data.latitude !== undefined && data.longitude !== undefined
       ? { lat: data.latitude, lng: data.longitude }
       : null;
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const result = await pool.query(
     `update travel_itinerary_items i set
        activity_date=$3, start_time=$4, end_time=$5, title=$6, location=$7,
@@ -1005,7 +1022,7 @@ export async function addItineraryItem(input: unknown) {
     data.latitude !== undefined && data.longitude !== undefined
       ? { lat: data.latitude, lng: data.longitude }
       : null;
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   await ownedTrip(data.tripId, user.id);
   const result = await pool.query(
     `insert into travel_itinerary_items (trip_id,activity_date,start_time,end_time,timezone,title,location,latitude,longitude,place_label,notes,estimated_cost_minor,currency,booking_reference,activity_category)
@@ -1039,7 +1056,7 @@ export async function addItineraryItem(input: unknown) {
 
 export async function toggleChecklist(input: unknown) {
   const data = z.object({ id: z.string().uuid(), completed: z.boolean() }).parse(input);
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const result = await pool.query(
     `update travel_checklist_items c set is_completed=$1, updated_at=now() from travel_trips t where c.id=$2 and c.trip_id=t.id and t.customer_auth_subject=$3 returning c.*`,
     [data.completed, data.id, user.id],
@@ -1050,7 +1067,7 @@ export async function toggleChecklist(input: unknown) {
 
 export async function addChecklistItem(input: unknown) {
   const data = checklistSchema.parse(input);
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   await ownedTrip(data.tripId, user.id);
   const result = await pool.query(
     `insert into travel_checklist_items (trip_id,title,due_date,sort_order) values ($1,$2,$3,coalesce((select max(sort_order)+1 from travel_checklist_items where trip_id=$1),0)) returning *`,
@@ -1072,7 +1089,7 @@ export const getMyTripsHandler = async () => {
 };
 
 export const getMyTrips = createServerFn({ method: "GET" }).handler(getMyTripsHandler);
-export const getMyTripsHomeHandler = async () => {
+async function loadMyTripsHome() {
   try {
     const trips = await listTrips();
     const focusId = buildMyTripsHome(trips, [], []).focusTrip?.id;
@@ -1101,7 +1118,13 @@ export const getMyTripsHomeHandler = async () => {
     console.error("[my-trips] failed to load home", error);
     return buildMyTripsHome([], [], []);
   }
-};
+}
+
+/** The home payload also says whether a guest may still create a trip, so the page never guesses. */
+export const getMyTripsHomeHandler = async () => ({
+  ...(await loadMyTripsHome()),
+  guest: await getGuestTripStatusHandler(),
+});
 
 export const getMyTripsHome = createServerFn({ method: "GET" }).handler(getMyTripsHomeHandler);
 export const postTripInput = (data: z.input<typeof tripSchema>) => tripSchema.parse(data);

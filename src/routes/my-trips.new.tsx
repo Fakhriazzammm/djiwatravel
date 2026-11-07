@@ -3,12 +3,23 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { BackBar, Page, btnRed, group, label, row } from "@/components/shell";
 import { postTrip } from "@/lib/my-trips.fn";
+import { getGuestTripStatus } from "@/lib/guest-trips.fn";
+import { useBetterAuthUser } from "@/lib/use-better-auth-user";
+import { CustomerAuth } from "@/components/customer-auth";
 import { TripCountryPicker } from "@/components/trip-country-picker";
 import { tripCurrencyFor } from "@/lib/trip-countries";
 
-export const Route = createFileRoute("/my-trips/new")({ component: NewTrip });
+export const Route = createFileRoute("/my-trips/new")({
+  loader: () => getGuestTripStatus(),
+  component: NewTrip,
+});
+
 function NewTrip() {
   const navigate = useNavigate();
+  const guest = Route.useLoaderData();
+  const { user, loading: authLoading } = useBetterAuthUser();
+  // A guest without a remaining free trip sees the login CTA here, not a failed save.
+  const guestBlocked = !user && !authLoading && guest.remaining <= 0;
   const [form, setForm] = useState({
     name: "",
     destinationName: "Jepang",
@@ -47,6 +58,26 @@ function NewTrip() {
             Simpan rencana perjalananmu di satu tempat.
           </p>
         </div>
+        {!user && !authLoading && (
+          <section className="rounded-2xl bg-surface px-3 py-2.5 ring-1 ring-border/50">
+            {guestBlocked ? (
+              <>
+                <p className="text-[14px] font-semibold">Perjalanan gratis sudah terpakai</p>
+                <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">
+                  Masuk atau daftar untuk membuat perjalanan lagi.
+                </p>
+                <div className="mt-2">
+                  <CustomerAuth size="compact" />
+                </div>
+              </>
+            ) : (
+              <p className="text-[12px] leading-4 text-muted-foreground">
+                Tanpa login kamu bisa membuat {guest.remaining} perjalanan gratis. Masuk nanti untuk
+                menyimpannya ke akunmu.
+              </p>
+            )}
+          </section>
+        )}
         <div>
           <p className={label}>Detail perjalanan</p>
           <div className={group}>
@@ -122,7 +153,7 @@ function NewTrip() {
             {error}
           </p>
         )}
-        <button disabled={saving} className={btnRed}>
+        <button disabled={saving || guestBlocked} className={btnRed}>
           {saving ? "Menyimpan…" : "Buat Perjalanan"}
         </button>
       </form>
