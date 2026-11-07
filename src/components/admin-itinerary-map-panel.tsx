@@ -23,7 +23,12 @@ export function AdminItineraryMapPanel({
   version: number;
   stats: { totalItems: number; pinnedItems: number; tripsWithPins: number };
   /** Which geocoder answers place search. Only the provider name and whether it is set. */
-  geocoder: { provider: "maptiler" | "photon" | null; configured: boolean };
+  geocoder: {
+    provider: "maptiler" | "photon" | "gazetteer" | null;
+    configured: boolean;
+    /** Towns loaded for the GeoNames gazetteer; null for the other providers. */
+    places: number | null;
+  };
 }) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [placeSearch, setPlaceSearch] = useState(initial.placeSearch);
@@ -135,9 +140,13 @@ export function AdminItineraryMapPanel({
             ? "MapTiler"
             : geocoder.provider === "photon"
               ? "Photon (server sendiri)"
-              : "belum diatur"}
+              : geocoder.provider === "gazetteer"
+                ? `GeoNames, data kota offline${geocoder.places ? ` (${geocoder.places.toLocaleString("id-ID")} tempat)` : ""}`
+                : "belum diatur"}
           {!geocoder.configured &&
-            ". Pencarian gagal sampai MAPTILER_API_KEY diisi di server; lokasi tetap bisa diketik."}
+            (geocoder.provider === "gazetteer"
+              ? ". Data kota belum dimuat: jalankan scripts/import-geonames.mjs di server."
+              : ". Pencarian tidak tersedia sampai penyedia diatur di server; lokasi tetap bisa diketik.")}
         </p>
         <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
           <input

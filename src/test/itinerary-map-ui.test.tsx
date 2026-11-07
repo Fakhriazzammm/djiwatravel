@@ -164,6 +164,27 @@ describe("agenda map", () => {
     expect(screen.queryByTestId("map")).not.toBeInTheDocument();
   });
 
+  it("shows the GeoNames attribution under the suggestions it came from", async () => {
+    vi.mocked(searchPlaces).mockResolvedValue({
+      status: "ok",
+      places: [{ label: "Ueno", subtitle: "Tokyo, Jepang", lat: 35.7148, lng: 139.77 }],
+      attribution: "Data kota: GeoNames (CC BY 4.0)",
+    } as never);
+    render(
+      <ItineraryEditor
+        tripId="t"
+        items={[]}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
+    fireEvent.change(screen.getByLabelText(/Lokasi/), { target: { value: "ueno" } });
+    expect(
+      await screen.findByText("Data kota: GeoNames (CC BY 4.0)", {}, { timeout: 2000 }),
+    ).toBeInTheDocument();
+  });
+
   it("saves coordinates when a place suggestion is chosen, and none for typed text", async () => {
     vi.mocked(searchPlaces).mockResolvedValue({
       status: "ok",

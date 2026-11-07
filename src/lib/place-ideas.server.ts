@@ -6,8 +6,7 @@ import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import { distanceKm } from "./itinerary-map";
-import { geocoderFetch, lookupPlaceImage, placeSearchTarget } from "./itinerary-map.server";
-import { forwardSearchUrl, mapPlaceFeatures } from "./place-search";
+import { forwardGeocode, lookupPlaceImage, placeSearchTarget } from "./itinerary-map.server";
 import {
   DEFAULT_PLACE_IDEAS_CONFIG,
   PLACE_IDEAS_SETTING_KEY,
@@ -252,20 +251,14 @@ async function geocode(query: string, bias?: { lat: number; lng: number }) {
   const target = placeSearchTarget();
   if (!target) return null;
   // Batch lookups of named places: no typeahead, a few candidates, biased to the destination.
-  const url = forwardSearchUrl(target, {
+  const outcome = await forwardGeocode(target, {
     query,
     limit: 3,
     lang: "en",
     autocomplete: false,
     ...(bias ? { proximity: bias } : {}),
   });
-  try {
-    const response = await geocoderFetch(url);
-    if (!response.ok) return null;
-    return mapPlaceFeatures(target.provider, await response.json())[0] ?? null;
-  } catch {
-    return null;
-  }
+  return outcome.ok ? (outcome.places[0] ?? null) : null;
 }
 
 /** A place farther than this from the trip's destination is treated as a wrong match. */

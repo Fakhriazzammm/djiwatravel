@@ -27,6 +27,8 @@ export function PlaceSearchField({
   onChange: (value: string, point: PickedPlace) => void;
 }) {
   const [results, setResults] = useState<PlaceResult[]>([]);
+  // Data credit the server attaches to its answer (GeoNames requires one).
+  const [attribution, setAttribution] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "empty" | "unavailable">("idle");
   const seq = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -49,6 +51,7 @@ export function PlaceSearchField({
         const response = await searchPlaces({ data: { query } });
         if (mine !== seq.current) return;
         setResults(response.places);
+        setAttribution(response.attribution ?? null);
         setState(
           response.status !== "ok" && response.status !== "disabled"
             ? "unavailable"
@@ -59,6 +62,7 @@ export function PlaceSearchField({
       } catch {
         if (mine === seq.current) {
           setResults([]);
+          setAttribution(null);
           setState("unavailable");
         }
       }
@@ -68,6 +72,7 @@ export function PlaceSearchField({
   function pick(place: PlaceResult) {
     seq.current += 1;
     setResults([]);
+    setAttribution(null);
     setState("idle");
     onChange(place.label, { lat: place.lat, lng: place.lng });
   }
@@ -121,6 +126,9 @@ export function PlaceSearchField({
             </li>
           ))}
         </ul>
+      )}
+      {results.length > 0 && attribution && (
+        <p className="px-1 text-[11px] text-muted-foreground">{attribution}</p>
       )}
       <p id={`${id}-hint`} className="text-[11px] text-muted-foreground" aria-live="polite">
         {picked ? (

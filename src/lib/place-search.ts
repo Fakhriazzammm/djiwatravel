@@ -5,15 +5,21 @@ import { isValidLatLng, type PlaceResult } from "./itinerary-map";
  * provider and the mapping from their GeoJSON responses to the Agenda's `PlaceResult`. No key is
  * read here; the server adds it, and nothing in this file is sent to the browser.
  *
- * Providers: MapTiler Cloud (when `MAPTILER_API_KEY` is set) and a self-hosted Photon
- * (`PLACE_SEARCH_URL`). The public Photon instance is not used: it refuses connections from the
- * Travel VPS.
+ * Providers: MapTiler Cloud (when `MAPTILER_API_KEY` is set), a self-hosted Photon
+ * (`PLACE_SEARCH_URL`), and the offline GeoNames gazetteer (no key; its lookups run in the database,
+ * see place-gazetteer.server.ts). The public Photon instance is not used: it refuses connections
+ * from the Travel VPS.
  */
 
 export const MAPTILER_GEOCODING_URL = "https://api.maptiler.com/geocoding";
 
 export type PlaceSearchTarget =
-  { provider: "maptiler"; key: string } | { provider: "photon"; baseUrl: string };
+  | { provider: "maptiler"; key: string }
+  | { provider: "photon"; baseUrl: string }
+  | { provider: "gazetteer" };
+
+/** Providers that answer over HTTP. The gazetteer is queried in the database instead. */
+export type HttpPlaceTarget = Exclude<PlaceSearchTarget, { provider: "gazetteer" }>;
 
 export type ForwardSearch = {
   query: string;
@@ -27,7 +33,7 @@ export type ForwardSearch = {
 };
 
 /** Forward search URL. The key is added here, so callers must not log the returned URL. */
-export function forwardSearchUrl(target: PlaceSearchTarget, search: ForwardSearch): URL {
+export function forwardSearchUrl(target: HttpPlaceTarget, search: ForwardSearch): URL {
   if (target.provider === "maptiler") {
     // MapTiler takes the query in the path and the options as query parameters.
     const url = new URL(`${MAPTILER_GEOCODING_URL}/${encodeURIComponent(search.query)}.json`);
@@ -54,7 +60,7 @@ export function forwardSearchUrl(target: PlaceSearchTarget, search: ForwardSearc
 
 /** Reverse lookup URL for the nearest named place to a point. */
 export function reverseSearchUrl(
-  target: PlaceSearchTarget,
+  target: HttpPlaceTarget,
   point: { lat: number; lng: number },
   lang: string,
 ): URL {
@@ -73,7 +79,7 @@ export function reverseSearchUrl(
 }
 
 /** Maps a provider response to Agenda places. Unknown or malformed input gives an empty list. */
-export function mapPlaceFeatures(provider: PlaceSearchTarget["provider"], payload: unknown) {
+export function mapPlaceFeatures(provider: HttpPlaceTarget["provider"], payload: unknown) {
   return provider === "maptiler" ? mapMapTilerFeatures(payload) : mapPhotonFeatures(payload);
 }
 

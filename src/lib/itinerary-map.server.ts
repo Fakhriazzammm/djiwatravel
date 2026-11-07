@@ -10,8 +10,12 @@ import {
   forwardSearchUrl,
   mapPlaceFeatures,
   reverseSearchUrl,
+  type ForwardSearch,
+  type HttpPlaceTarget,
   type PlaceSearchTarget,
 } from "./place-search";
+import { GEONAMES_ATTRIBUTION } from "./place-gazetteer";
+import { countGazetteerPlaces, gazetteerNearest, gazetteerSearch } from "./place-gazetteer.server";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
   ITINERARY_MAP_SETTING_KEY,
@@ -52,26 +56,82 @@ const searchSchema = z.object({ query: z.string().trim().min(2).max(120) });
 export const searchPlacesInput = (data: unknown) => searchSchema.parse(data);
 
 /**
- * Which geocoder answers place search, reverse lookup and the place-ideas map check. MapTiler is
- * used when `MAPTILER_API_KEY` is set; the key never leaves the server. A self-hosted Photon is
- * used only when `PLACE_SEARCH_URL` is set. With neither, search is unavailable and the customer
- * keeps free-text locations. `PLACE_SEARCH_PROVIDER` (maptiler | photon) forces one of them.
+ * Which geocoder answers place search, reverse lookup and the place-ideas map check, in this order:
+ * MapTiler when `MAPTILER_API_KEY` is set (the key never leaves the server); a self-hosted Photon
+ * when `PLACE_SEARCH_URL` is set; otherwise the offline GeoNames gazetteer, which needs no key and
+ * answers towns and districts only. `PLACE_SEARCH_PROVIDER` (maptiler | photon | gazetteer) forces one.
  */
 export function placeSearchTarget(env: NodeJS.ProcessEnv = process.env): PlaceSearchTarget | null {
   const key = (env["MAPTILER_API_KEY"] ?? "").trim();
   const photonUrl = (env["PLACE_SEARCH_URL"] ?? "").trim();
   const forced = (env["PLACE_SEARCH_PROVIDER"] ?? "").trim().toLowerCase();
-  const provider =
-    forced === "photon" || forced === "maptiler"
+  const provider: PlaceSearchTarget["provider"] =
+    forced === "photon" || forced === "maptiler" || forced === "gazetteer"
       ? forced
       : key
         ? "maptiler"
         : photonUrl
           ? "photon"
-          : null;
+          : "gazetteer";
   if (provider === "maptiler") return key ? { provider, key } : null;
   if (provider === "photon") return photonUrl ? { provider, baseUrl: photonUrl } : null;
-  return null;
+  return { provider: "gazetteer" };
+}
+
+export type GeocodeOutcome =
+  { ok: true; places: PlaceResult[]; attribution: string | null } | { ok: false; detail: string };
+
+export type ReverseOutcome =
+  { ok: true; place: PlaceResult | null } | { ok: false; detail: string };
+
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+/**
+ * Forward search through the selected provider. Failures come back as `ok: false` with a short,
+ * URL-free detail for the log, so a key in a request URL is never printed.
+ */
+export async function forwardGeocode(
+  target: PlaceSearchTarget,
+  search: ForwardSearch,
+): Promise<GeocodeOutcome> {
+  if (target.provider === "gazetteer") {
+    try {
+      const places = await gazetteerSearch(search.query, search.limit);
+      return { ok: true, places, attribution: GEONAMES_ATTRIBUTION };
+    } catch (error) {
+      return { ok: false, detail: `gazetteer: ${errorText(error)}` };
+    }
+  }
+  try {
+    const response = await geocoderFetch(forwardSearchUrl(target, search));
+    if (!response.ok) return { ok: false, detail: `HTTP ${response.status} ${target.provider}` };
+    const places = mapPlaceFeatures(target.provider, await response.json());
+    return { ok: true, places, attribution: null };
+  } catch (error) {
+    return { ok: false, detail: `${target.provider}: ${errorText(error)}` };
+  }
+}
+
+/** Nearest named place to a point through the selected provider. Failures come back as `ok: false`. */
+export async function reverseGeocode(
+  target: PlaceSearchTarget,
+  point: { lat: number; lng: number },
+): Promise<ReverseOutcome> {
+  if (target.provider === "gazetteer") {
+    try {
+      return { ok: true, place: await gazetteerNearest(point) };
+    } catch (error) {
+      return { ok: false, detail: `gazetteer: ${errorText(error)}` };
+    }
+  }
+  try {
+    const response = await geocoderFetch(reverseSearchUrl(target as HttpPlaceTarget, point, "en"));
+    if (!response.ok) return { ok: false, detail: `HTTP ${response.status} ${target.provider}` };
+    const [first] = mapPlaceFeatures(target.provider, await response.json());
+    return { ok: true, place: first ?? null };
+  } catch (error) {
+    return { ok: false, detail: `${target.provider}: ${errorText(error)}` };
+  }
 }
 
 /** One geocoder request with a short timeout. Callers log status codes, never the URL (it has a key). */
@@ -114,37 +174,29 @@ export async function searchPlacesHandler({
   const user = await requireTripOwner();
   const { config } = await readItineraryMapConfig();
   if (!config.enabled || !config.placeSearch)
-    return { places: [] as PlaceResult[], status: "disabled" as const };
+    return { places: [] as PlaceResult[], status: "disabled" as const, attribution: null };
   if (!allowPlaceSearch(user.id))
-    return { places: [] as PlaceResult[], status: "rate_limited" as const };
+    return { places: [] as PlaceResult[], status: "rate_limited" as const, attribution: null };
   const target = placeSearchTarget();
   if (!target) {
-    console.error("[itinerary-map] place search has no geocoder key (MAPTILER_API_KEY)");
-    return { places: [] as PlaceResult[], status: "unavailable" as const };
+    console.error("[itinerary-map] place search has no provider configured");
+    return { places: [] as PlaceResult[], status: "unavailable" as const, attribution: null };
   }
-  const url = forwardSearchUrl(target, {
+  const outcome = await forwardGeocode(target, {
     query: data.query,
     limit: 8,
     lang: "en",
     autocomplete: true,
   });
-  try {
-    const response = await geocoderFetch(url);
-    if (!response.ok) {
-      console.error("[itinerary-map] place search HTTP", response.status, target.provider);
-      return { places: [] as PlaceResult[], status: "unavailable" as const };
-    }
-    return {
-      places: mapPlaceFeatures(target.provider, await response.json()),
-      status: "ok" as const,
-    };
-  } catch (error) {
-    console.error(
-      "[itinerary-map] place search failed",
-      error instanceof Error ? error.message : error,
-    );
-    return { places: [] as PlaceResult[], status: "unavailable" as const };
+  if (!outcome.ok) {
+    console.error("[itinerary-map] place search failed", outcome.detail);
+    return { places: [] as PlaceResult[], status: "unavailable" as const, attribution: null };
   }
+  return {
+    places: outcome.places,
+    status: "ok" as const,
+    attribution: outcome.attribution,
+  };
 }
 
 /* ------------------------------------------------------------------ admin */
@@ -179,9 +231,12 @@ async function readStats(): Promise<ItineraryMapStats> {
 export const getAdminItineraryMapHandler = async () => {
   await requireAdmin();
   const [record, stats] = await Promise.all([readItineraryMapConfig(), readStats()]);
-  // Provider name and whether a key is set. The key itself is never returned.
+  // Provider name and whether search can answer. Keys and URLs are never returned.
   const target = placeSearchTarget();
-  const geocoder = { provider: target?.provider ?? null, configured: target !== null };
+  const gazetteerPlaces = target?.provider === "gazetteer" ? await countGazetteerPlaces() : null;
+  const configured =
+    target === null ? false : target.provider === "gazetteer" ? (gazetteerPlaces ?? 0) > 0 : true;
+  const geocoder = { provider: target?.provider ?? null, configured, places: gazetteerPlaces };
   return { ...record, stats, geocoder };
 };
 
@@ -266,21 +321,15 @@ export async function reversePlaceHandler({
   if (!allowPlaceSearch(`rev:${user.id}`)) return { place: null, status: "rate_limited" as const };
   const target = placeSearchTarget();
   if (!target) return { place: null, status: "unavailable" as const };
-  const url = reverseSearchUrl(target, { lat: data.lat, lng: data.lng }, "en");
-  try {
-    const response = await geocoderFetch(url);
-    if (!response.ok) {
-      console.error("[itinerary-map] reverse lookup HTTP", response.status, target.provider);
-      return { place: null, status: "unavailable" as const };
-    }
-    const [first] = mapPlaceFeatures(target.provider, await response.json());
-    return {
-      place: first ? { ...first, lat: data.lat, lng: data.lng } : null,
-      status: "ok" as const,
-    };
-  } catch {
+  const outcome = await reverseGeocode(target, { lat: data.lat, lng: data.lng });
+  if (!outcome.ok) {
+    console.error("[itinerary-map] reverse lookup failed", outcome.detail);
     return { place: null, status: "unavailable" as const };
   }
+  return {
+    place: outcome.place ? { ...outcome.place, lat: data.lat, lng: data.lng } : null,
+    status: "ok" as const,
+  };
 }
 
 const imageCache = new Map<string, { at: number; value: { url: string; title: string } | null }>();
