@@ -8,11 +8,28 @@ import {
   type MapRoute,
   type PoiCategoryId,
 } from "@/lib/itinerary-map";
+import type { CountryBounds } from "@/lib/trip-country-bounds";
 
 export type PickedPoi = { category: PoiCategoryId; label: string; lat: number; lng: number };
 
 const ROUTE_SOURCE = "agenda-route";
 const RED = "#c4353b";
+/** Default view before any pin exists: the trip's country, never closer than this. */
+const COUNTRY_MAX_ZOOM = 10;
+
+/** Room kept clear of the chips drawn over the map, so framed content is never hidden under them. */
+function framingPadding(focus: boolean, top?: number, bottom?: number) {
+  return {
+    top: top ?? (focus ? 60 : 96),
+    bottom: bottom ?? 56,
+    left: 44,
+    right: 44,
+  };
+}
+
+function countryFit(focus: boolean, top?: number, bottom?: number) {
+  return { padding: framingPadding(focus, top, bottom), maxZoom: COUNTRY_MAX_ZOOM };
+}
 
 type Props = {
   pins: MapPin[];
@@ -33,6 +50,11 @@ type Props = {
   /** Room kept free at the top and bottom when framing pins (for controls drawn over the map). */
   framePadding?: { top: number; bottom: number };
   onUnavailable?: () => void;
+  /**
+   * The trip's destination country. Shown whenever no pin is framed (no activity has a point yet),
+   * so the map opens on that country instead of an unrelated default city.
+   */
+  focusBounds?: CountryBounds | null;
 };
 
 const STYLE_ID = "djiwa-pin-style";
@@ -198,14 +220,37 @@ export default function ItineraryMap({
   className,
   framePadding,
   onUnavailable,
+  focusBounds = null,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markers = useRef<Map<string, MarkerEntry>>(new Map());
   const lib = useRef<typeof import("maplibre-gl") | null>(null);
   const [ready, setReady] = useState(false);
-  const latest = useRef({ pins, routes, activeId, onSelect, onUnavailable, onPoiSelect });
-  latest.current = { pins, routes, activeId, onSelect, onUnavailable, onPoiSelect };
+  const latest = useRef({
+    pins,
+    routes,
+    activeId,
+    onSelect,
+    onUnavailable,
+    onPoiSelect,
+    focusBounds,
+    focus,
+    framePadding,
+  });
+  latest.current = {
+    pins,
+    routes,
+    activeId,
+    onSelect,
+    onUnavailable,
+    onPoiSelect,
+    focusBounds,
+    focus,
+    framePadding,
+  };
+  // A string key lets the framing effect follow the country without refitting on every render.
+  const focusKey = focusBounds ? focusBounds.join(",") : "";
   const poiRef = useRef(poiCategories);
   poiRef.current = poiCategories;
 
@@ -227,11 +272,24 @@ export default function ItineraryMap({
         if (disposed || !host.current) return;
         ensurePinStyle();
         lib.current = maplibre;
+        // With no pin yet, open directly on the trip's country (no jump from a default city).
+        const startBounds = latest.current.pins.length ? null : latest.current.focusBounds;
         const map = new maplibre.Map({
           container: host.current,
           style: styleUrl,
-          center: [latest.current.pins[0]?.lng ?? 106.8, latest.current.pins[0]?.lat ?? -6.2],
-          zoom: 11,
+          ...(startBounds
+            ? {
+                bounds: startBounds,
+                fitBoundsOptions: countryFit(
+                  latest.current.focus,
+                  latest.current.framePadding?.top,
+                  latest.current.framePadding?.bottom,
+                ),
+              }
+            : {
+                center: [latest.current.pins[0]?.lng ?? 106.8, latest.current.pins[0]?.lat ?? -6.2],
+                zoom: 11,
+              }),
           attributionControl: { compact: true },
           cooperativeGestures: false,
         });
@@ -389,20 +447,20 @@ export default function ItineraryMap({
     const fitPins = framed.length ? framed : pins;
     const bounds = boundsOf(fitPins);
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const duration = reduce ? 0 : 450;
+    const padding = framingPadding(focus, framePadding?.top, framePadding?.bottom);
     if (bounds) {
-      const duration = reduce ? 0 : 450;
-      // Leave room for the chips drawn over the top of the map.
-      const padding = {
-        top: framePadding?.top ?? (focus ? 60 : 96),
-        bottom: framePadding?.bottom ?? 56,
-        left: 44,
-        right: 44,
-      };
       if (fitPins.length === 1)
         map.easeTo({ center: [fitPins[0]!.lng, fitPins[0]!.lat], zoom: 14, duration });
       else map.fitBounds(bounds, { padding, maxZoom: 15, duration });
+    } else if (latest.current.focusBounds) {
+      // No pin to frame yet: show the trip's country instead of leaving the default view.
+      map.fitBounds(latest.current.focusBounds, {
+        ...countryFit(focus, framePadding?.top, framePadding?.bottom),
+        duration,
+      });
     }
-  }, [pins, routes, ready, focus, framePadding?.top, framePadding?.bottom]);
+  }, [pins, routes, ready, focus, framePadding?.top, framePadding?.bottom, focusKey]);
 
   // "Zoom to explore": close enough for category markers to appear.
   useEffect(() => {

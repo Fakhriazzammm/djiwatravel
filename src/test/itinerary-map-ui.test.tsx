@@ -4,6 +4,7 @@ import { ItineraryEditor } from "@/routes/my-trips.$tripId.$section";
 import { patchItinerary, postItinerary } from "@/lib/my-trips.fn";
 import { searchPlaces } from "@/lib/itinerary-map.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG } from "@/lib/itinerary-map";
+import { countryBoundsFor } from "@/lib/trip-country-bounds";
 
 vi.mock("@/lib/my-trips.fn", () => ({
   deleteBookingRecord: vi.fn(),
@@ -29,11 +30,20 @@ vi.mock("@/lib/itinerary-map.fn", () => ({
   reversePlace: vi.fn(async () => ({ place: null, status: "ok" })),
 }));
 vi.mock("@/components/itinerary-map", () => ({
-  default: ({ pins, activeId }: { pins: { id: string; n: number }[]; activeId: string | null }) => (
+  default: ({
+    pins,
+    activeId,
+    focusBounds,
+  }: {
+    pins: { id: string; n: number }[];
+    activeId: string | null;
+    focusBounds?: number[] | null;
+  }) => (
     <div
       data-testid="map"
       data-pins={pins.map((p) => `${p.n}:${p.id}`).join(",")}
       data-active={activeId ?? ""}
+      data-focus={focusBounds ? focusBounds.join(",") : ""}
     />
   ),
 }));
@@ -119,6 +129,39 @@ describe("agenda map", () => {
       />,
     );
     expect(screen.getByText(/Cari tempat saat menambah aktivitas/)).toBeInTheDocument();
+  });
+
+  it("opens on the destination country before any activity has a pin", () => {
+    render(
+      <ItineraryEditor
+        tripId="t"
+        trip={{
+          name: "Spring",
+          destination_name: "Jepang",
+          destination_code: "JP",
+          departure_date: "2026-11-03",
+          return_date: "2026-11-04",
+        }}
+        items={[{ ...items[1]!, id: "z" }]}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    expect(screen.getByTestId("map").dataset["pins"]).toBe("");
+    expect(screen.getByTestId("map").dataset["focus"]).toBe(countryBoundsFor("JP")!.join(","));
+    expect(screen.getByText(/Cari tempat saat menambah aktivitas/)).toBeInTheDocument();
+  });
+
+  it("shows no map for a trip without a country and without points", () => {
+    render(
+      <ItineraryEditor
+        tripId="t"
+        items={[{ ...items[1]!, id: "z" }]}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    expect(screen.queryByTestId("map")).not.toBeInTheDocument();
   });
 
   it("saves coordinates when a place suggestion is chosen, and none for typed text", async () => {

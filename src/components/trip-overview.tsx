@@ -38,6 +38,7 @@ import {
 } from "@/lib/itinerary-map";
 import { deleteItinerary, patchChecklist } from "@/lib/my-trips.fn";
 import { displayChecklistTitle } from "@/lib/my-trips-home";
+import { countryBoundsFor } from "@/lib/trip-country-bounds";
 import { runTripMutation } from "@/lib/trip-actions";
 import { getTripWeather } from "@/lib/trip-weather.fn";
 import {
@@ -62,6 +63,8 @@ type Props = {
   tripId: string;
   name: string;
   destination: string;
+  /** ISO country code of the destination; frames the map before any activity has a point. */
+  destinationCode?: string | null;
   /** "Hari ke-2", "Berangkat dalam 3 hari", ... from the trip dates. */
   dayLabel: string;
   datesLabel: string;
@@ -174,8 +177,12 @@ export function TripOverview(props: Props) {
 
   const model = useMemo(() => buildMapModel(days, scope || "all"), [days, scope]);
   const pinInfo = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin])), [model]);
+  // The map shows once a point exists or the trip has a destination country to frame.
+  const countryBounds = countryBoundsFor(props.destinationCode);
   const mapOn =
-    Boolean(mapConfig?.enabled && mapConfig.summaryMap) && model.pins.length > 0 && !mapBroken;
+    Boolean(mapConfig?.enabled && mapConfig.summaryMap) &&
+    (model.pins.length > 0 || countryBounds !== null) &&
+    !mapBroken;
   const dayItems =
     scope === "all" ? props.itinerary : (days.find((d) => d.date === scope)?.items ?? []);
   const shown = dayItems.slice(0, AGENDA_PREVIEW) as Row[];
@@ -284,8 +291,14 @@ export function TripOverview(props: Props) {
             onSelect={setActiveId}
             styleUrl={mapConfig!.styleUrl}
             framePadding={{ top: 120, bottom: 48 }}
+            focusBounds={countryBounds}
             onUnavailable={() => setMapBroken(true)}
           />
+        )}
+        {mapOn && model.pins.length === 0 && (
+          <p className="pointer-events-none absolute inset-x-4 bottom-8 z-10 rounded-xl bg-surface/95 px-3 py-2 text-center text-[12px] text-muted-foreground shadow">
+            Beri titik lokasi pada agenda untuk melihat rute di peta.
+          </p>
         )}
         <div className="pointer-events-none absolute inset-x-0 top-0 safe-top px-4">
           <div className="pointer-events-auto flex items-center gap-2">

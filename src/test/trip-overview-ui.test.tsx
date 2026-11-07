@@ -4,6 +4,7 @@ import { TripOverview } from "@/components/trip-overview";
 import { deleteItinerary, patchChecklist } from "@/lib/my-trips.fn";
 import { getTripWeather } from "@/lib/trip-weather.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG } from "@/lib/itinerary-map";
+import { countryBoundsFor } from "@/lib/trip-country-bounds";
 
 const navigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -17,11 +18,20 @@ vi.mock("@/lib/my-trips.fn", () => ({
   patchChecklist: vi.fn(async () => ({})),
 }));
 vi.mock("@/components/itinerary-map", () => ({
-  default: ({ pins, activeId }: { pins: { id: string }[]; activeId: string | null }) => (
+  default: ({
+    pins,
+    activeId,
+    focusBounds,
+  }: {
+    pins: { id: string }[];
+    activeId: string | null;
+    focusBounds?: number[] | null;
+  }) => (
     <div
       data-testid="map"
       data-pins={pins.map((p) => p.id).join(",")}
       data-active={activeId ?? ""}
+      data-focus={focusBounds ? focusBounds.join(",") : ""}
     />
   ),
 }));
@@ -87,6 +97,32 @@ describe("TripOverview (Ringkas)", () => {
     render(<TripOverview {...base} />);
     fireEvent.click(screen.getAllByText("ngopi").at(-1)!);
     expect(screen.getByTestId("map").dataset["active"]).toBe("a1");
+  });
+
+  it("opens on the destination country when no activity has a point yet", () => {
+    render(
+      <TripOverview
+        {...base}
+        destinationCode="JP"
+        itinerary={[{ id: "a2", title: "Makan siang", activity_date: key, start_time: "13:00" }]}
+      />,
+    );
+    expect(screen.getByTestId("map").dataset["pins"]).toBe("");
+    expect(screen.getByTestId("map").dataset["focus"]).toBe(countryBoundsFor("JP")!.join(","));
+    expect(
+      screen.getByText("Beri titik lokasi pada agenda untuk melihat rute di peta."),
+    ).toBeTruthy();
+  });
+
+  it("shows no map for a trip without a country and without points", () => {
+    render(
+      <TripOverview
+        {...base}
+        destinationCode={null}
+        itinerary={[{ id: "a2", title: "Makan siang", activity_date: key, start_time: "13:00" }]}
+      />,
+    );
+    expect(screen.queryByTestId("map")).toBeNull();
   });
 
   it("drops the map when Admin turns the Ringkas map off, keeping the lists", () => {

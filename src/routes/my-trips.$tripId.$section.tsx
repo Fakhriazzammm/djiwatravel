@@ -75,6 +75,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { displayBudgetCategory, displayChecklistTitle } from "@/lib/my-trips-home";
+import { countryBoundsFor } from "@/lib/trip-country-bounds";
 import { isTripAuthenticationError, runTripMutation } from "@/lib/trip-actions";
 import {
   deleteBookingRecord,
@@ -205,6 +206,7 @@ function TripSection() {
     id: string;
     name: string;
     destination_name: string;
+    destination_code: string;
     departure_date: string | null;
     return_date: string | null;
     primary_currency: string;
@@ -326,6 +328,8 @@ export function ItineraryEditor({
   trip?: {
     name: string;
     destination_name: string;
+    /** ISO country code; frames the map before any activity has a point. */
+    destination_code?: string | null;
     departure_date: string | null;
     return_date: string | null;
   };
@@ -577,6 +581,8 @@ export function ItineraryEditor({
   const days = useMemo(() => groupItineraryByDay(items), [items]);
   const overlapIds = useMemo(() => conflictingIds(items.map(toTimedItem)), [items]);
   const mapOn = Boolean(mapConfig?.enabled);
+  // Before any activity has a point, the map still opens on the trip's destination country.
+  const countryBounds = countryBoundsFor(trip?.destination_code);
   const defaultDay = days.find((day) => day.date === today())?.date ?? days[0]?.date ?? "";
   const scope =
     selectedDay === "all" || days.some((day) => day.date === selectedDay)
@@ -841,7 +847,7 @@ export function ItineraryEditor({
             </SheetContent>
           </Sheet>
           <CalendarConnectBanner />
-          {mapOn && model.pinnedCount > 0 ? (
+          {mapOn && (model.pinnedCount > 0 || countryBounds !== null) ? (
             <motion.div
               initial={{ y: 10, scale: 0.98 }}
               animate={{ y: 0, scale: 1 }}
@@ -919,6 +925,7 @@ export function ItineraryEditor({
                       setMe(null);
                       setPoi(picked);
                     }}
+                    focusBounds={countryBounds}
                     onUnavailable={() => setMapBroken(true)}
                   />
                   <AnimatePresence>
@@ -1141,12 +1148,13 @@ export function ItineraryEditor({
                 </div>
               )}
             </motion.div>
-          ) : mapOn && days.length > 0 && pinnedTotal === 0 ? (
+          ) : null}
+          {mapOn && days.length > 0 && pinnedTotal === 0 && (
             <p className="flex items-center gap-2 rounded-2xl bg-secondary px-3 py-2.5 text-xs text-muted-foreground">
               <MapPin className="size-4 shrink-0 text-brand-red" />
               Cari tempat saat menambah aktivitas agar muncul di peta.
             </p>
-          ) : null}
+          )}
           <PlaceIdeasFeature
             tripId={tripId}
             destination={trip?.destination_name ?? "tujuanmu"}

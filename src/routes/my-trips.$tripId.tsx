@@ -22,6 +22,7 @@ import {
 import { ConfirmDialog, TripActionSheet, TripTabBar } from "@/components/trip-ios";
 import { ShareTripSheet } from "@/components/trip-share-sheet";
 import { TripOverview } from "@/components/trip-overview";
+import { TripCountryPicker } from "@/components/trip-country-picker";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG, type ItineraryMapConfig } from "@/lib/itinerary-map";
 import { deleteTripRecord, duplicateTrip, getTrip, patchTrip } from "@/lib/my-trips.fn";
@@ -186,6 +187,7 @@ function TripDetail() {
         tripId={trip.id}
         name={trip.name}
         destination={trip.destination_name}
+        destinationCode={trip.destination_code}
         dayLabel={countdown.value}
         datesLabel={`${trip.destination_name} · ${dates}`}
         itinerary={data.itinerary as never}
@@ -306,11 +308,7 @@ function EditTripSheet({
 
   const input =
     "min-h-11 w-full min-w-0 rounded-xl bg-secondary px-3 text-[16px] outline-none focus:ring-2 focus:ring-brand-red/25";
-  const text = (
-    key: "name" | "destinationName" | "departureDate" | "returnDate",
-    label: string,
-    type = "text",
-  ) => (
+  const text = (key: "name" | "departureDate" | "returnDate", label: string, type = "text") => (
     <label className="block">
       <span className="mb-1 block px-1 text-[12px] font-medium text-muted-foreground">{label}</span>
       <input
@@ -335,7 +333,24 @@ function EditTripSheet({
         </SheetHeader>
         <form onSubmit={save} className="space-y-3">
           {text("name", "Nama perjalanan")}
-          {text("destinationName", "Destinasi")}
+          {/* The country is the map's source, so it is picked from the list, not typed. */}
+          <div className="block">
+            <span className="mb-1 block px-1 text-[12px] font-medium text-muted-foreground">
+              Negara
+            </span>
+            <div className={`${input} flex items-center`}>
+              <TripCountryPicker
+                value={form.destinationCode}
+                onChange={(country) =>
+                  setForm({
+                    ...form,
+                    destinationCode: country.code,
+                    destinationName: country.name,
+                  })
+                }
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             {text("departureDate", "Berangkat", "date")}
             {text("returnDate", "Pulang", "date")}
