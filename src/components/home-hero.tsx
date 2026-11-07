@@ -1,4 +1,5 @@
-import { Search } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Plane, Search } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -31,6 +32,7 @@ export function HomeHero({
   firstName,
   headerAction,
   searchHint,
+  flightsTab = false,
   searchOpen,
   onOpenSearch,
 }: {
@@ -38,6 +40,8 @@ export function HomeHero({
   firstName?: string | null;
   headerAction: ReactNode;
   searchHint: string;
+  /** Show the eSIM | Tiket switch (Admin `flights.heroTab` and a working search). */
+  flightsTab?: boolean;
   searchOpen: boolean;
   onOpenSearch: () => void;
 }) {
@@ -57,6 +61,9 @@ export function HomeHero({
   const mascotRef = useRef<HTMLImageElement>(null);
   const flightRef = useRef<HTMLImageElement>(null);
   const [fly, setFly] = useState<"idle" | "launch" | "away">("idle");
+  // The Tiket tab only changes what the pill does (it opens the flight search page).
+  const [tab, setTab] = useState<"esim" | "tiket">("esim");
+  const flightsMode = flightsTab && tab === "tiket";
   const [flight, setFlight] = useState<Flight | null>(null);
 
   useEffect(() => {
@@ -194,21 +201,66 @@ export function HomeHero({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={launch}
-          aria-haspopup="dialog"
-          aria-expanded={searchOpen}
-          className={`tap relative mt-4 flex h-[3.25rem] w-full items-center gap-3 rounded-full border px-5 text-left text-[17px] [text-shadow:none] shadow-[0_8px_24px_rgb(40_30_90/0.16)] backdrop-blur-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-            dark
-              ? "border-white/30 bg-white/15 text-white/90"
-              : "border-white/55 bg-white/75 text-[#5b5f6b]"
-          }`}
-        >
-          <Search className="size-5 shrink-0" strokeWidth={2} />
-          <span className="min-w-0 flex-1 truncate">{searchHint}</span>
-        </button>
+        {flightsTab && (
+          <div
+            role="tablist"
+            aria-label="Jenis pencarian"
+            className={`mt-4 inline-flex rounded-full p-0.5 text-[13px] font-semibold backdrop-blur-xl ${
+              dark ? "bg-white/15 text-white/90" : "bg-white/60 text-[#5b5f6b]"
+            }`}
+          >
+            {(
+              [
+                ["esim", "eSIM"],
+                ["tiket", "Tiket"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
+                className={`tap inline-flex min-h-8 items-center gap-1 rounded-full px-3.5 ${
+                  tab === id ? "bg-brand-red text-white shadow-sm" : ""
+                }`}
+              >
+                {id === "tiket" && <Plane className="size-3.5" aria-hidden="true" />}
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
+        {flightsMode ? (
+          <Link
+            to="/tiket"
+            data-track="home_flights_tab"
+            className={`tap relative mt-2.5 flex h-[3.25rem] w-full items-center gap-3 rounded-full border px-5 text-left text-[17px] [text-shadow:none] shadow-[0_8px_24px_rgb(40_30_90/0.16)] backdrop-blur-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              dark
+                ? "border-white/30 bg-white/15 text-white/90"
+                : "border-white/55 bg-white/75 text-[#5b5f6b]"
+            }`}
+          >
+            <Plane className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">Cari tiket pesawat</span>
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={launch}
+            aria-haspopup="dialog"
+            aria-expanded={searchOpen}
+            className={`tap relative ${flightsTab ? "mt-2.5" : "mt-4"} flex h-[3.25rem] w-full items-center gap-3 rounded-full border px-5 text-left text-[17px] [text-shadow:none] shadow-[0_8px_24px_rgb(40_30_90/0.16)] backdrop-blur-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              dark
+                ? "border-white/30 bg-white/15 text-white/90"
+                : "border-white/55 bg-white/75 text-[#5b5f6b]"
+            }`}
+          >
+            <Search className="size-5 shrink-0" strokeWidth={2} />
+            <span className="min-w-0 flex-1 truncate">{searchHint}</span>
+          </button>
+        )}
       </div>
 
       {flight &&

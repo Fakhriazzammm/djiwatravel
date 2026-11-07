@@ -27,6 +27,8 @@ import { EsimDestinationSheet, type SheetDestination } from "@/components/esim-d
 import { trackAnalytics } from "@/lib/analytics";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
+import { useFlightsStatus } from "@/hooks/use-flights-config";
+import { showFlightsHeroTab } from "@/lib/flights";
 import { activeHomePromo, orderHomeDestinations } from "@/lib/home-esim-config";
 
 import { GeoAnswer } from "@/components/geo-answer";
@@ -102,6 +104,7 @@ function Home() {
   const nav = useNavigate();
   const orders = useOrders();
   const homeConfig = useHomeEsimConfig();
+  const flights = useFlightsStatus();
   const [sheetDestination, setSheetDestination] = useState<SheetDestination | null>(null);
   const { user, loading } = useBetterAuthUser();
   const unread = useUnreadNotifications(Boolean(user));
@@ -196,6 +199,7 @@ function Home() {
         mode={homeConfig.heroSky}
         firstName={user ? accountLabel : null}
         searchHint={searchHint}
+        flightsTab={flights.available && showFlightsHeroTab(flights.config)}
         searchOpen={searchOpen}
         onOpenSearch={() => setSearchOpen(true)}
         headerAction={

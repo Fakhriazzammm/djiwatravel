@@ -25,6 +25,7 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as TiketRouteImport } from './routes/tiket'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAffiliatesRouteImport } from './routes/admin.affiliates'
@@ -172,6 +173,11 @@ const SupportRoute = SupportRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TiketRoute = TiketRouteImport.update({
+  id: '/tiket',
+  path: '/tiket',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WalletRoute = WalletRouteImport.update({
@@ -539,6 +545,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/tiket': typeof TiketRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/affiliates': typeof AdminAffiliatesRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -625,6 +632,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/tiket': typeof TiketRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/affiliates': typeof AdminAffiliatesRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -712,6 +720,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
+  '/tiket': typeof TiketRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/affiliates': typeof AdminAffiliatesRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -800,6 +809,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/support'
     | '/terms'
+    | '/tiket'
     | '/wallet'
     | '/admin/affiliates'
     | '/admin/analytics'
@@ -886,6 +896,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/support'
     | '/terms'
+    | '/tiket'
     | '/wallet'
     | '/admin/affiliates'
     | '/admin/analytics'
@@ -972,6 +983,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/support'
     | '/terms'
+    | '/tiket'
     | '/wallet'
     | '/admin/affiliates'
     | '/admin/analytics'
@@ -1059,6 +1071,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
+  TiketRoute: typeof TiketRoute
   WalletRoute: typeof WalletRouteWithChildren
   AdminAffiliatesRoute: typeof AdminAffiliatesRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
@@ -1237,6 +1250,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tiket': {
+      id: '/tiket'
+      path: '/tiket'
+      fullPath: '/tiket'
+      preLoaderRoute: typeof TiketRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wallet': {
@@ -1772,6 +1792,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
+  TiketRoute: TiketRoute,
   WalletRoute: WalletRouteWithChildren,
   AdminAffiliatesRoute: AdminAffiliatesRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,

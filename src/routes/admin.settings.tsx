@@ -96,7 +96,12 @@ function AdminSettings() {
         version={guestTrips.version}
         stats={guestTrips.stats}
       />
-      <AdminFlightsPanel initial={flights.config} version={flights.version} />
+      <AdminFlightsPanel
+        initial={flights.config}
+        version={flights.version}
+        tokenConfigured={flights.tokenConfigured}
+        stats={flights.stats}
+      />
       <AdminGooglePanel overview={google} />
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">

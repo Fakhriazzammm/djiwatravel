@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
+import { useFlightsStatus } from "@/hooks/use-flights-config";
+import { showFlightsTile } from "@/lib/flights";
 import { assetForService } from "@/lib/explore-assets";
 import { serviceHref, serviceStatusLabel, visibleTravelServices } from "@/lib/travel-services";
 
@@ -39,7 +41,12 @@ const WAITLIST_FEATURE: Record<string, "bagasi" | "shopper"> = {
 export function ServiceCategoryGrid({ waitlist = false }: { waitlist?: boolean } = {}) {
   const reduceMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);
-  const services = useMemo(() => visibleTravelServices(), []);
+  const flights = useFlightsStatus();
+  const flightsTile = flights.available && showFlightsTile(flights.config);
+  const services = useMemo(
+    () => visibleTravelServices().filter((service) => service.id !== "flights" || flightsTile),
+    [flightsTile],
+  );
 
   useEffect(() => setMounted(true), []);
 

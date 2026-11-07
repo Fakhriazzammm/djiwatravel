@@ -8,8 +8,10 @@ import { countryBoundsFor } from "@/lib/trip-country-bounds";
 
 const navigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, ...rest }: { children: React.ReactNode }) => (
-    <a {...(rest as object)}>{children}</a>
+  Link: ({ children, to, ...rest }: { children: React.ReactNode; to?: string }) => (
+    <a href={to} {...(rest as object)}>
+      {children}
+    </a>
   ),
   useNavigate: () => navigate,
 }));
@@ -217,14 +219,14 @@ describe("TripOverview (Ringkas)", () => {
     expect(row.compareDocumentPosition(nextCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("links to Google Flights only when Admin leaves flight tickets on", () => {
-    const url = "https://www.google.com/travel/flights?q=Flights%20to%20Jepang";
-    const { rerender } = render(<TripOverview {...base} flightsUrl={url} />);
+  it("links to the flight search with the trip only when Admin leaves flight tickets on", () => {
+    const search = { tujuan: "Jepang", berangkat: "2026-12-20", pulang: "2026-12-27" };
+    const { rerender } = render(
+      <TripOverview {...base} flightsSearch={{ to: "/tiket", search }} />,
+    );
     const link = screen.getByRole("link", { name: /Cari tiket pesawat/ });
-    expect(link.getAttribute("href")).toBe(url);
-    expect(link.getAttribute("target")).toBe("_blank");
-    expect(link.getAttribute("rel")).toContain("noopener");
-    rerender(<TripOverview {...base} flightsUrl={null} />);
+    expect(link.getAttribute("href")).toBe("/tiket");
+    rerender(<TripOverview {...base} flightsSearch={null} />);
     expect(screen.queryByText("Cari tiket pesawat")).toBeNull();
   });
 });

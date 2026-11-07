@@ -75,8 +75,11 @@ type Props = {
   remainingLabel: string;
   remainingMinor: number;
   mapConfig: ItineraryMapConfig | null;
-  /** Google Flights search for this trip; null when Admin turned flight tickets off. */
-  flightsUrl?: string | null;
+  /** Flight search for this trip (`/tiket` with its destination and dates); null when Admin turned it off. */
+  flightsSearch?: {
+    to: "/tiket";
+    search: { tujuan?: string; berangkat?: string; pulang?: string };
+  } | null;
   onMenu: () => void;
   onChanged: () => Promise<unknown>;
 };
@@ -674,12 +677,11 @@ export function TripOverview(props: Props) {
             Catat biaya
           </button>
         </div>
-        {props.flightsUrl && (
-          <a
-            href={props.flightsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-track="flights_google"
+        {props.flightsSearch && (
+          <Link
+            to={props.flightsSearch.to}
+            search={props.flightsSearch.search}
+            data-track="ringkas_flights"
             className={`${iosGroup} tap mt-2 flex min-h-14 items-center gap-2.5 p-3`}
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-red-soft text-brand-red">
@@ -688,11 +690,11 @@ export function TripOverview(props: Props) {
             <span className="min-w-0 flex-1">
               <span className="block text-[14px] font-semibold">Cari tiket pesawat</span>
               <span className="block truncate text-[11px] text-muted-foreground">
-                Buka Google Flights ke {props.destination}
+                Bandingkan harga ke {props.destination}
               </span>
             </span>
             <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden="true" />
-          </a>
+          </Link>
         )}
       </div>
 

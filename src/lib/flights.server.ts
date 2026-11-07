@@ -4,11 +4,21 @@ import { pool } from "../db/client.server";
 import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
+import { getRequestHeader } from "@tanstack/react-start/server";
+import { getAuthenticatedUser } from "./customer-session.fn";
 import {
   DEFAULT_FLIGHTS_CONFIG,
   FLIGHTS_SETTING_KEY,
+  flightSearchKey,
+  normalizeFlightOffers,
+  normalizeFlightPlaces,
   normalizeFlightsConfig,
+  parseFlightSearch,
   parseFlightsConfig,
+  withinSearchAllowance,
+  type FlightOffer,
+  type FlightPlace,
+  type FlightSearchResult,
   type FlightsConfig,
 } from "./flights";
 
@@ -37,6 +47,182 @@ export async function getFlightsConfigHandler(): Promise<FlightsConfig> {
   return config;
 }
 
+/* ----------------------------------------------------------------- search */
+
+/** Click target the customer pages report when a traveler opens Aviasales (Admin counts it). */
+export const AVIASALES_CLICK_TARGET = "flights_aviasales";
+
+const PRICES_URL = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
+const PLACES_URL = "https://autocomplete.travelpayouts.com/places2";
+const OFFER_CACHE_MS = 30 * 60_000;
+const PLACE_CACHE_MS = 10 * 60_000;
+const HOUR_MS = 60 * 60_000;
+const PLACE_BURST = { windowMs: 60_000, max: 60 };
+const REQUEST_TIMEOUT_MS = 8_000;
+
+/** In-process counters since the last restart; the durable number is the Aviasales click count. */
+export const searchStats = { searches: 0, cacheHits: 0, empty: 0, rateLimited: 0, failed: 0 };
+
+export const flightsToken = () => process.env["TRAVELPAYOUTS_TOKEN"]?.trim() || null;
+
+const offerCache = new Map<string, { at: number; offers: FlightOffer[] }>();
+const placeCache = new Map<string, { at: number; places: FlightPlace[] }>();
+const hits = new Map<string, number[]>();
+
+function takeHit(key: string, windowMs: number, max: number, now = Date.now()) {
+  const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+  if (recent.length >= max) {
+    hits.set(key, recent);
+    return false;
+  }
+  recent.push(now);
+  hits.set(key, recent);
+  if (hits.size > 5000) {
+    for (const [k, v] of hits) if (!v.some((t) => now - t < HOUR_MS)) hits.delete(k);
+  }
+  return true;
+}
+
+function trim(map: Map<string, unknown>) {
+  if (map.size > 500) map.delete(map.keys().next().value as string);
+}
+
+/** Who is asking: a signed-in member, or a guest identified by the proxy's real client address. */
+async function searcher(): Promise<{ key: string; member: boolean }> {
+  try {
+    const user = await getAuthenticatedUser();
+    return { key: `m:${user.id}`, member: true };
+  } catch {
+    let ip = "unknown";
+    try {
+      ip =
+        getRequestHeader("x-real-ip")?.trim() ||
+        getRequestHeader("x-forwarded-for")?.split(",").pop()?.trim() ||
+        "unknown";
+    } catch {
+      // Outside a request (tests, scripts) there is no address to read.
+    }
+    return { key: `ip:${ip.slice(0, 64)}`, member: false };
+  }
+}
+
+async function fetchJson(url: string, token?: string): Promise<unknown> {
+  const response = await fetch(url, {
+    headers: { Accept: "application/json", ...(token ? { "X-Access-Token": token } : {}) },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`provider ${response.status}`);
+  return response.json();
+}
+
+const placeInput = z.object({ term: z.string().trim().min(2).max(60) });
+export const searchFlightPlacesInput = (data: unknown) => placeInput.parse(data);
+
+export async function searchFlightPlacesHandler({
+  data,
+}: {
+  data: ReturnType<typeof searchFlightPlacesInput>;
+}): Promise<{ places: FlightPlace[] }> {
+  const config = await getFlightsConfigHandler();
+  if (!config.enabled) return { places: [] };
+  const who = await searcher();
+  if (!who.member && !config.guestSearch) return { places: [] };
+  const key = data.term.toLowerCase();
+  const hit = placeCache.get(key);
+  if (hit && Date.now() - hit.at < PLACE_CACHE_MS) return { places: hit.places };
+  if (!takeHit(`places:${who.key}`, PLACE_BURST.windowMs, PLACE_BURST.max)) return { places: [] };
+  try {
+    const url = new URL(PLACES_URL);
+    url.searchParams.set("term", data.term);
+    url.searchParams.set("locale", "id");
+    url.searchParams.append("types[]", "city");
+    url.searchParams.append("types[]", "airport");
+    const places = normalizeFlightPlaces(await fetchJson(url.toString()));
+    placeCache.set(key, { at: Date.now(), places });
+    trim(placeCache);
+    return { places };
+  } catch {
+    return { places: [] };
+  }
+}
+
+const searchInput = z.object({
+  origin: z.string().trim().max(3),
+  destination: z.string().trim().max(3),
+  departureDate: z.string().trim().max(10),
+  returnDate: z.string().trim().max(10).optional(),
+});
+export const searchFlightsInput = (data: unknown) => searchInput.parse(data);
+
+export async function searchFlightsHandler({
+  data,
+}: {
+  data: ReturnType<typeof searchFlightsInput>;
+}): Promise<FlightSearchResult> {
+  const config = await getFlightsConfigHandler();
+  const token = flightsToken();
+  if (!config.enabled || !token) return { status: "unavailable", offers: [] };
+  const who = await searcher();
+  if (!who.member && !config.guestSearch) return { status: "login_required", offers: [] };
+  const search = parseFlightSearch(data);
+  if (!search) return { status: "invalid", offers: [] };
+
+  const key = flightSearchKey(search);
+  const hit = offerCache.get(key);
+  if (hit && Date.now() - hit.at < OFFER_CACHE_MS) {
+    searchStats.cacheHits += 1;
+    return { status: hit.offers.length ? "ok" : "empty", offers: reMarker(hit.offers, config) };
+  }
+  if (!takeHit(`search:${who.key}`, HOUR_MS, config.searchesPerHour)) {
+    searchStats.rateLimited += 1;
+    return { status: "rate_limited", offers: [] };
+  }
+  try {
+    const url = new URL(PRICES_URL);
+    url.searchParams.set("origin", search.origin);
+    url.searchParams.set("destination", search.destination);
+    url.searchParams.set("departure_at", search.departureDate);
+    if (search.returnDate) url.searchParams.set("return_at", search.returnDate);
+    url.searchParams.set("one_way", search.returnDate ? "false" : "true");
+    url.searchParams.set("currency", "idr");
+    url.searchParams.set("sorting", "price");
+    url.searchParams.set("unique", "false");
+    url.searchParams.set("limit", "30");
+    const body = (await fetchJson(url.toString(), token)) as { success?: unknown; data?: unknown };
+    if (body.success === false) throw new Error("provider rejected");
+    const offers = normalizeFlightOffers(body.data, config.partnerId);
+    searchStats.searches += 1;
+    if (!offers.length) searchStats.empty += 1;
+    offerCache.set(key, { at: Date.now(), offers });
+    trim(offerCache);
+    return { status: offers.length ? "ok" : "empty", offers };
+  } catch (error) {
+    searchStats.failed += 1;
+    console.error("[flights] search failed", error instanceof Error ? error.message : error);
+    return { status: "failed", offers: [] };
+  }
+}
+
+/** Cached offers carry the marker of the moment they were fetched; refresh it on every read. */
+function reMarker(offers: FlightOffer[], config: FlightsConfig): FlightOffer[] {
+  return offers.map((offer) => {
+    if (!offer.bookingUrl) return offer;
+    try {
+      const url = new URL(offer.bookingUrl);
+      url.searchParams.set("marker", config.partnerId);
+      return { ...offer, bookingUrl: url.toString() };
+    } catch {
+      return { ...offer, bookingUrl: null };
+    }
+  });
+}
+
+/** Whether the search can run at all, for the pages that decide to show an entry point. */
+export async function getFlightsStatusHandler() {
+  const config = await getFlightsConfigHandler();
+  return { config, available: config.enabled && Boolean(flightsToken()) };
+}
+
 /* ------------------------------------------------------------------ admin */
 
 const saveSchema = z.object({
@@ -49,8 +235,26 @@ export const saveFlightsConfigInput = (data: unknown) => saveSchema.parse(data);
 
 export const getAdminFlightsHandler = async () => {
   await requireAdmin();
-  return readFlightsRecord();
+  const record = await readFlightsRecord();
+  return {
+    ...record,
+    tokenConfigured: Boolean(flightsToken()),
+    stats: { ...searchStats, clicks7d: await countAviasalesClicks() },
+  };
 };
+
+async function countAviasalesClicks() {
+  try {
+    const result = await pool.query(
+      `select count(*)::int as n from site_events
+       where event_name = 'click' and target = $1 and created_at > now() - interval '7 days'`,
+      [AVIASALES_CLICK_TARGET],
+    );
+    return Number((result.rows[0] as { n?: unknown } | undefined)?.n) || 0;
+  } catch {
+    return 0;
+  }
+}
 
 export async function saveFlightsConfigHandler({
   data,

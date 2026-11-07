@@ -1,20 +1,37 @@
 import { useState } from "react";
 import { AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { saveAdminFlights } from "@/lib/flights.fn";
-import { parseFlightsConfig, travelpayoutsScriptSrc, type FlightsConfig } from "@/lib/flights";
+import {
+  SEARCHES_PER_HOUR_MAX,
+  SEARCHES_PER_HOUR_MIN,
+  parseFlightsConfig,
+  travelpayoutsScriptSrc,
+  type FlightsConfig,
+} from "@/lib/flights";
 
 /**
- * Admin control for flight tickets. It edits the `flights` record the customer trip page and the
- * root layout read: the master switch hides the ticket card and the partner script, the Google
- * Flights link and the Travelpayouts script can each be turned off, and the script can wait for
- * the cookie notice. Ids are public values from the Travelpayouts dashboard, never secrets.
+ * Admin control for flight tickets. It edits the `flights` record that Home (hero tab, tile), the
+ * /tiket search and Ringkas read: the master switch, each entry point on its own, whether guests
+ * may search, the hourly search allowance, and the Travelpayouts partner script. The provider
+ * token is a server secret and is only reported here as present or missing, never shown.
  */
 export function AdminFlightsPanel({
   initial,
   version: initialVersion,
+  tokenConfigured,
+  stats,
 }: {
   initial: FlightsConfig;
   version: number;
+  tokenConfigured: boolean;
+  stats: {
+    searches: number;
+    cacheHits: number;
+    empty: number;
+    rateLimited: number;
+    failed: number;
+    clicks7d: number;
+  };
 }) {
   const [config, setConfig] = useState(initial);
   const [version, setVersion] = useState(initialVersion);
@@ -53,7 +70,7 @@ export function AdminFlightsPanel({
   };
 
   const toggle = (
-    key: "enabled" | "googleFlights" | "travelpayouts" | "waitForConsent",
+    key: "enabled" | "heroTab" | "homeTile" | "guestSearch" | "travelpayouts" | "waitForConsent",
     label: string,
   ) => (
     <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
@@ -74,15 +91,51 @@ export function AdminFlightsPanel({
       <div className="flex items-center justify-between gap-2">
         <SectionHeading
           title="Tiket pesawat"
-          detail="Kartu cari tiket di Ringkas perjalanan dan skrip Travelpayouts."
+          detail="Pencarian tiket di /tiket, pintu masuknya, dan skrip Travelpayouts."
         />
         <StatusPill tone={config.enabled ? "good" : "warn"}>
           {config.enabled ? "Aktif" : "Nonaktif"}
         </StatusPill>
       </div>
       <AdminSurface className="space-y-3 p-3">
-        {toggle("enabled", "Tampilkan tiket pesawat")}
-        {toggle("googleFlights", "Tombol Cari di Google Flights")}
+        <div className="grid grid-cols-3 gap-2" data-testid="flights-stats">
+          <Stat
+            label="Token"
+            value={tokenConfigured ? "Terpasang" : "Belum ada"}
+            bad={!tokenConfigured}
+          />
+          <Stat label="Klik Aviasales (7 hari)" value={String(stats.clicks7d)} />
+          <Stat label="Pencarian (sejak restart)" value={String(stats.searches)} />
+        </div>
+        {!tokenConfigured && (
+          <p role="alert" className="text-xs font-medium text-brand-red">
+            TRAVELPAYOUTS_TOKEN belum ada di server. Tanpa itu pencarian tidak jalan dan pintu
+            masuknya disembunyikan dari pelanggan.
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Sejak restart: {stats.cacheHits} dari cache, {stats.empty} tanpa hasil,{" "}
+          {stats.rateLimited} dibatasi, {stats.failed} gagal.
+        </p>
+        {toggle("enabled", "Aktifkan tiket pesawat")}
+        {toggle("heroTab", "Tab Tiket di hero Beranda")}
+        {toggle("homeTile", "Tile Tiket di Kebutuhan perjalanan")}
+        {toggle("guestSearch", "Tamu (belum login) boleh mencari")}
+        <label className="block text-sm font-semibold">
+          Batas pencarian per jam (per akun atau alamat)
+          <input
+            type="number"
+            min={SEARCHES_PER_HOUR_MIN}
+            max={SEARCHES_PER_HOUR_MAX}
+            value={config.searchesPerHour}
+            onChange={(event) => set("searchesPerHour", Number(event.target.value))}
+            className={field}
+          />
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">
+            {SEARCHES_PER_HOUR_MIN}-{SEARCHES_PER_HOUR_MAX}. Pencarian yang sama dalam 30 menit
+            diambil dari cache dan tidak dihitung.
+          </span>
+        </label>
         {toggle("travelpayouts", "Muat skrip Travelpayouts")}
         {toggle("waitForConsent", "Skrip menunggu pelanggan menekan Setuju")}
         <p className="text-xs text-muted-foreground">
@@ -137,6 +190,15 @@ export function AdminFlightsPanel({
           </p>
         )}
       </AdminSurface>
+    </div>
+  );
+}
+
+function Stat({ label, value, bad }: { label: string; value: string; bad?: boolean }) {
+  return (
+    <div className="rounded-xl bg-secondary p-2">
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p className={`text-sm font-bold ${bad ? "text-brand-red" : ""}`}>{value}</p>
     </div>
   );
 }

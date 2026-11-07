@@ -6,7 +6,7 @@ export type TravelServiceCategory = {
   description: string;
   icon: string;
   status: TravelServiceStatus;
-  href?: "/explore" | "/esim/finder";
+  href?: "/explore" | "/esim/finder" | "/tiket";
   displayOrder: number;
 };
 
@@ -21,18 +21,19 @@ export const travelServices: TravelServiceCategory[] = [
     displayOrder: 1,
   },
   {
+    id: "flights",
+    label: "Tiket",
+    description: "Cari tiket pesawat",
+    icon: "transportation",
+    status: "ACTIVE",
+    href: "/tiket",
+    displayOrder: 2,
+  },
+  {
     id: "attractions",
     label: "Aktivitas",
     description: "Atraksi & wisata",
     icon: "attractions",
-    status: "COMING_SOON",
-    displayOrder: 2,
-  },
-  {
-    id: "transportation",
-    label: "Transportasi",
-    description: "Tiket & transfer",
-    icon: "transportation",
     status: "COMING_SOON",
     displayOrder: 3,
   },
@@ -90,6 +91,8 @@ export const visibleTravelServices = () =>
     .filter((service) => service.status !== "DISABLED")
     .sort((a, b) => a.displayOrder - b.displayOrder);
 
-export function serviceHref(service: TravelServiceCategory): "/explore" | "/esim/finder" | null {
+export function serviceHref(
+  service: TravelServiceCategory,
+): "/explore" | "/esim/finder" | "/tiket" | null {
   return service.status === "ACTIVE" ? (service.href ?? null) : null;
 }

@@ -26,8 +26,8 @@ import { TripCountryPicker } from "@/components/trip-country-picker";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG, type ItineraryMapConfig } from "@/lib/itinerary-map";
 import { deleteTripRecord, duplicateTrip, getTrip, patchTrip } from "@/lib/my-trips.fn";
-import { getFlightsConfig } from "@/lib/flights.fn";
-import { DEFAULT_FLIGHTS_CONFIG, googleFlightsUrl, showGoogleFlights } from "@/lib/flights";
+import { getFlightsStatus } from "@/lib/flights.fn";
+import { flightsPathFor, showFlightsTile } from "@/lib/flights";
 import { isTripAuthenticationError } from "@/lib/trip-actions";
 
 export const Route = createFileRoute("/my-trips/$tripId")({
@@ -37,8 +37,8 @@ export const Route = createFileRoute("/my-trips/$tripId")({
         getTrip({ data: { tripId: params.tripId } }),
         // The map is an enhancement: if its setting cannot be read the overview still loads.
         getItineraryMapConfig().catch(() => DEFAULT_ITINERARY_MAP_CONFIG),
-        // Flight tickets are an extra: a failed read keeps the default (link on).
-        getFlightsConfig().catch(() => DEFAULT_FLIGHTS_CONFIG),
+        // Flight tickets are an extra: if the status cannot be read the card is simply hidden.
+        getFlightsStatus().catch(() => null),
       ]);
       return { ...trip, mapConfig, flights };
     } catch (error) {
@@ -197,9 +197,9 @@ function TripDetail() {
         remainingLabel={money(remaining, currency)}
         remainingMinor={remaining}
         mapConfig={(data.mapConfig as ItineraryMapConfig | null) ?? null}
-        flightsUrl={
-          showGoogleFlights(data.flights)
-            ? googleFlightsUrl({
+        flightsSearch={
+          data.flights?.available && showFlightsTile(data.flights.config)
+            ? flightsPathFor({
                 destination: trip.destination_name,
                 departureDate: trip.departure_date,
                 returnDate: trip.return_date,

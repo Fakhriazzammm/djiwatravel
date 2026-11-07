@@ -12,8 +12,8 @@ describe("travel service configuration", () => {
     expect(services).toHaveLength(8);
     expect(services.map((item) => item.id)).toEqual([
       "esim",
+      "flights",
       "attractions",
-      "transportation",
       "open-trip",
       "baggage",
       "personal-shopper",
@@ -23,9 +23,11 @@ describe("travel service configuration", () => {
     expect(serviceStatusLabel.COMING_SOON).toBe("Segera hadir");
   });
 
-  it("only active services can navigate", () => {
+  it("only active services can navigate, and Tiket opens the flight search", () => {
     for (const service of travelServices) {
-      expect(serviceHref(service)).toBe(service.status === "ACTIVE" ? "/esim/finder" : null);
+      const expected =
+        service.status !== "ACTIVE" ? null : service.id === "flights" ? "/tiket" : "/esim/finder";
+      expect(serviceHref(service)).toBe(expected);
     }
   });
 });
