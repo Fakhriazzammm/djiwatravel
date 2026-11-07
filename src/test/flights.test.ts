@@ -8,6 +8,7 @@ import {
   compactFlightPrice,
   durationLabel,
   flightClock,
+  flightPriceStrip,
   flightSearchKey,
   flightsPathFor,
   isIataCode,
@@ -21,6 +22,9 @@ import {
   showFlightsTile,
   transfersLabel,
   travelpayoutsScriptSrc,
+  whiteLabelOn,
+  whiteLabelSearchCode,
+  whiteLabelSearchUrl,
   withinSearchAllowance,
 } from "@/lib/flights";
 
@@ -330,5 +334,122 @@ describe("flightsPathFor (Ringkas to /tiket)", () => {
       })?.search.pulang,
     ).toBeUndefined();
     expect(flightsPathFor({ destination: "  " })).toBeNull();
+  });
+});
+
+describe("White Label host", () => {
+  const base = DEFAULT_FLIGHTS_CONFIG;
+
+  it("is off by default and accepts a bare hostname (lower-cased)", () => {
+    expect(base.whiteLabelHost).toBe("");
+    expect(whiteLabelOn(base)).toBe(false);
+    expect(
+      parseFlightsConfig({ ...base, whiteLabelHost: " Tiket.DjiwaTravel.com " }).whiteLabelHost,
+    ).toBe("tiket.djiwatravel.com");
+    expect(parseFlightsConfig({ ...base, whiteLabelHost: "" }).whiteLabelHost).toBe("");
+  });
+
+  it.each([
+    "https://tiket.djiwatravel.com",
+    "tiket.djiwatravel.com/path",
+    "tiket.djiwatravel.com:8080",
+    "user@tiket.djiwatravel.com",
+    "tiket djiwatravel.com",
+    "localhost",
+    "-bad.example.com",
+    "a..b.com",
+    "x".repeat(300) + ".com",
+  ])("rejects %s", (host) => {
+    expect(() => parseFlightsConfig({ ...base, whiteLabelHost: host })).toThrow(/whiteLabelHost/);
+  });
+
+  it("is only on with the master switch and a host", () => {
+    const on = { ...base, whiteLabelHost: "tiket.djiwatravel.com" };
+    expect(whiteLabelOn(on)).toBe(true);
+    expect(whiteLabelOn({ ...on, enabled: false })).toBe(false);
+  });
+});
+
+describe("White Label search link", () => {
+  const config = { ...DEFAULT_FLIGHTS_CONFIG, whiteLabelHost: "tiket.djiwatravel.com" };
+  const search = { origin: "CGK", destination: "TYO", departureDate: "2999-12-20" };
+
+  it("builds the flightSearch code: origin, DDMM, destination, [return DDMM], adults", () => {
+    expect(whiteLabelSearchCode(search)).toBe("CGK2012TYO1");
+    expect(whiteLabelSearchCode({ ...search, returnDate: "2999-12-27" })).toBe("CGK2012TYO27121");
+    expect(whiteLabelSearchCode(search, 3)).toBe("CGK2012TYO3");
+  });
+
+  it("needs an exact day and a sensible passenger count", () => {
+    expect(whiteLabelSearchCode({ ...search, departureDate: "2999-12" })).toBeNull();
+    expect(whiteLabelSearchCode(search, 0)).toBeNull();
+    expect(whiteLabelSearchCode(search, 10)).toBeNull();
+  });
+
+  it("opens the White Label on the configured host with the form filled", () => {
+    expect(whiteLabelSearchUrl(config, search)).toBe(
+      "https://tiket.djiwatravel.com/?flightSearch=CGK2012TYO1",
+    );
+  });
+
+  it("gives nothing when the White Label is off or the host is unusable", () => {
+    expect(whiteLabelSearchUrl(DEFAULT_FLIGHTS_CONFIG, search)).toBeNull();
+    expect(whiteLabelSearchUrl({ ...config, enabled: false }, search)).toBeNull();
+    expect(
+      whiteLabelSearchUrl({ ...config, whiteLabelHost: "https://evil.example" }, search),
+    ).toBeNull();
+  });
+});
+
+describe("flightPriceStrip", () => {
+  const offer = (day: string, price: number) =>
+    normalizeFlightOffers(
+      [
+        {
+          link: "/search/CGK0112DPS1",
+          origin_airport: "CGK",
+          destination_airport: "DPS",
+          departure_at: `${day}T08:35:00+07:00`,
+          airline: "JT",
+          flight_number: String(price),
+          price,
+        },
+      ],
+      "597030",
+    )[0]!;
+
+  it("maps the cheapest fare of each day around the chosen day", () => {
+    const strip = flightPriceStrip(
+      [
+        offer("2026-12-19", 900_000),
+        offer("2026-12-20", 1_200_000),
+        offer("2026-12-20", 1_000_000),
+      ],
+      "2026-12-20",
+      "2026-11-07",
+    );
+    expect(strip.map((d) => d.date)).toEqual([
+      "2026-12-17",
+      "2026-12-18",
+      "2026-12-19",
+      "2026-12-20",
+      "2026-12-21",
+      "2026-12-22",
+      "2026-12-23",
+    ]);
+    expect(strip.find((d) => d.date === "2026-12-20")!.offer!.priceIdr).toBe(1_000_000);
+    expect(strip.find((d) => d.date === "2026-12-19")!.offer!.priceIdr).toBe(900_000);
+    expect(strip.find((d) => d.date === "2026-12-21")!.offer).toBeNull();
+  });
+
+  it("never shows days in the past and crosses month ends", () => {
+    const early = flightPriceStrip([], "2026-11-08", "2026-11-07").map((d) => d.date);
+    expect(early[0]).toBe("2026-11-07");
+    const end = flightPriceStrip([], "2026-12-31", "2026-11-07").map((d) => d.date);
+    expect(end.at(-1)).toBe("2027-01-03");
+  });
+
+  it("has no strip for an invalid center", () => {
+    expect(flightPriceStrip([], "2026-12", "2026-11-07")).toEqual([]);
   });
 });

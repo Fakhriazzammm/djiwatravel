@@ -90,7 +90,7 @@ function FlightsPage() {
     <Page>
       <BackBar title="Tiket pesawat" fallbackTo="/" />
       {status.available ? (
-        <FlightSearch prefill={prefill} />
+        <FlightSearch prefill={prefill} config={status.config} />
       ) : (
         <div role="status" className="rounded-2xl bg-surface p-6 text-center ring-1 ring-border/40">
           <p className="text-[15px] font-semibold">Pencarian tiket belum tersedia</p>

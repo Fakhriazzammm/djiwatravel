@@ -7,7 +7,9 @@ import { buildSettingAudit } from "./admin-settings";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import {
+  AVIASALES_CLICK_TARGET,
   DEFAULT_FLIGHTS_CONFIG,
+  EMBED_OPEN_TARGET,
   FLIGHTS_SETTING_KEY,
   flightSearchKey,
   normalizeAirlineNames,
@@ -49,9 +51,6 @@ export async function getFlightsConfigHandler(): Promise<FlightsConfig> {
 }
 
 /* ----------------------------------------------------------------- search */
-
-/** Click target the customer pages report when a traveler opens Aviasales (Admin counts it). */
-export const AVIASALES_CLICK_TARGET = "flights_aviasales";
 
 const PRICES_URL = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
 const PLACES_URL = "https://autocomplete.travelpayouts.com/places2";
@@ -215,7 +214,9 @@ export async function searchFlightsHandler({
     url.searchParams.set("limit", "30");
     const body = (await fetchJson(url.toString(), token)) as { success?: unknown; data?: unknown };
     if (body.success === false) throw new Error("provider rejected");
-    const offers = normalizeFlightOffers(body.data, config.partnerId, 12, await airlineNames());
+    // A month search feeds the price calendar (one fare per day); a day search shows the best few.
+    const cap = /^\d{4}-\d{2}$/.test(search.departureDate) ? 31 : 12;
+    const offers = normalizeFlightOffers(body.data, config.partnerId, cap, await airlineNames());
     searchStats.searches += 1;
     if (!offers.length) searchStats.empty += 1;
     offerCache.set(key, { at: Date.now(), offers });
@@ -261,24 +262,31 @@ export const saveFlightsConfigInput = (data: unknown) => saveSchema.parse(data);
 export const getAdminFlightsHandler = async () => {
   await requireAdmin();
   const record = await readFlightsRecord();
+  const clicks = await countFlightClicks();
   return {
     ...record,
     tokenConfigured: Boolean(flightsToken()),
-    stats: { ...searchStats, clicks7d: await countAviasalesClicks() },
+    stats: { ...searchStats, clicks7d: clicks.aviasales, embedOpens7d: clicks.embed },
   };
 };
 
-async function countAviasalesClicks() {
+async function countFlightClicks() {
+  const counts = { aviasales: 0, embed: 0 };
   try {
     const result = await pool.query(
-      `select count(*)::int as n from site_events
-       where event_name = 'click' and target = $1 and created_at > now() - interval '7 days'`,
-      [AVIASALES_CLICK_TARGET],
+      `select target, count(*)::int as n from site_events
+       where event_name = 'click' and target = any($1) and created_at > now() - interval '7 days'
+       group by target`,
+      [[AVIASALES_CLICK_TARGET, EMBED_OPEN_TARGET]],
     );
-    return Number((result.rows[0] as { n?: unknown } | undefined)?.n) || 0;
+    for (const row of result.rows as { target?: unknown; n?: unknown }[]) {
+      if (row.target === AVIASALES_CLICK_TARGET) counts.aviasales = Number(row.n) || 0;
+      if (row.target === EMBED_OPEN_TARGET) counts.embed = Number(row.n) || 0;
+    }
   } catch {
-    return 0;
+    // Counters are a monitoring nicety; the settings still load.
   }
+  return counts;
 }
 
 export async function saveFlightsConfigHandler({

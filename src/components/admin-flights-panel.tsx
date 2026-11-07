@@ -31,6 +31,7 @@ export function AdminFlightsPanel({
     rateLimited: number;
     failed: number;
     clicks7d: number;
+    embedOpens7d: number;
   };
 }) {
   const [config, setConfig] = useState(initial);
@@ -98,14 +99,15 @@ export function AdminFlightsPanel({
         </StatusPill>
       </div>
       <AdminSurface className="space-y-3 p-3">
-        <div className="grid grid-cols-3 gap-2" data-testid="flights-stats">
+        <div className="grid grid-cols-2 gap-2" data-testid="flights-stats">
           <Stat
             label="Token"
             value={tokenConfigured ? "Terpasang" : "Belum ada"}
             bad={!tokenConfigured}
           />
-          <Stat label="Klik Aviasales (7 hari)" value={String(stats.clicks7d)} />
-          <Stat label="Pencarian (sejak restart)" value={String(stats.searches)} />
+          <Stat label="Klik ke mitra (7 hari)" value={String(stats.clicks7d)} />
+          <Stat label="Buka hasil lengkap (7 hari)" value={String(stats.embedOpens7d)} />
+          <Stat label="Pencarian harga (sejak restart)" value={String(stats.searches)} />
         </div>
         {!tokenConfigured && (
           <p role="alert" className="text-xs font-medium text-brand-red">
@@ -136,6 +138,26 @@ export function AdminFlightsPanel({
             diambil dari cache dan tidak dihitung.
           </span>
         </label>
+        <label className="block text-sm font-semibold">
+          Alamat White Label (hasil lengkap di dalam halaman)
+          <input
+            value={config.whiteLabelHost}
+            onChange={(event) => set("whiteLabelHost", event.target.value)}
+            placeholder="tiket.djiwatravel.com"
+            autoCapitalize="none"
+            spellCheck={false}
+            className={field}
+          />
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">
+            Nama host saja dari Travelpayouts › White Label (tanpa https://). Kosong = hanya harga
+            termurah per hari dari data tersimpan.
+          </span>
+        </label>
+        <p className="text-xs text-muted-foreground" data-testid="flights-wl-status">
+          {config.whiteLabelHost
+            ? `Hasil lengkap aktif dari ${config.whiteLabelHost}.`
+            : "Hasil lengkap belum aktif: belum ada White Label."}
+        </p>
         {toggle("travelpayouts", "Muat skrip Travelpayouts")}
         {toggle("waitForConsent", "Skrip menunggu pelanggan menekan Setuju")}
         <p className="text-xs text-muted-foreground">

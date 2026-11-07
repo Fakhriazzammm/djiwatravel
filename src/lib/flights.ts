@@ -18,6 +18,12 @@ export type FlightsConfig = {
   guestSearch: boolean;
   /** Searches one traveler (or one address) may run per hour. */
   searchesPerHour: number;
+  /**
+   * Host of the Travelpayouts White Label (e.g. "tiket.djiwatravel.com"), a bare hostname. When
+   * set, /tiket shows its full real-time results inside the page; empty keeps only the cached
+   * cheapest-per-day prices.
+   */
+  whiteLabelHost: string;
   /** Load the Travelpayouts partner script on customer pages. */
   travelpayouts: boolean;
   /** Public script id from the Travelpayouts dashboard, the `<id>` in `emrldtp.cc/<id>.js`. */
@@ -28,6 +34,10 @@ export type FlightsConfig = {
   waitForConsent: boolean;
 };
 
+/** Click targets the customer pages report (Admin counts them in the last 7 days). */
+export const AVIASALES_CLICK_TARGET = "flights_aviasales";
+export const EMBED_OPEN_TARGET = "flights_embed_open";
+
 export const SEARCHES_PER_HOUR_MIN = 5;
 export const SEARCHES_PER_HOUR_MAX = 200;
 
@@ -37,6 +47,7 @@ export const DEFAULT_FLIGHTS_CONFIG: FlightsConfig = {
   homeTile: true,
   guestSearch: true,
   searchesPerHour: 20,
+  whiteLabelHost: "",
   travelpayouts: true,
   scriptId: "NTk3MDMw",
   partnerId: "597030",
@@ -45,6 +56,8 @@ export const DEFAULT_FLIGHTS_CONFIG: FlightsConfig = {
 
 const SCRIPT_ID_PATTERN = /^[A-Za-z0-9]{4,40}$/;
 const PARTNER_ID_PATTERN = /^[0-9]{3,12}$/;
+/** A bare hostname with at least one dot: no scheme, port, path, credentials or spaces. */
+const HOST_PATTERN = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/;
 
 const BOOLEAN_KEYS = [
   "enabled",
@@ -83,6 +96,17 @@ export function parseFlightsConfig(value: unknown): FlightsConfig {
     }
     out.searchesPerHour = perHour;
   }
+  const host = record["whiteLabelHost"];
+  if (host !== undefined) {
+    if (typeof host !== "string") throw new Error("flights.whiteLabelHost harus teks");
+    const clean = host.trim().toLowerCase();
+    if (clean !== "" && !HOST_PATTERN.test(clean)) {
+      throw new Error(
+        "flights.whiteLabelHost harus nama host saja, tanpa https:// atau garis miring (contoh: tiket.djiwatravel.com)",
+      );
+    }
+    out.whiteLabelHost = clean;
+  }
   for (const key of ["scriptId", "partnerId"] as const) {
     const raw = record[key];
     if (raw === undefined) continue;
@@ -112,6 +136,10 @@ export function travelpayoutsScriptSrc(config: FlightsConfig): string | null {
   if (!config.enabled || !config.travelpayouts) return null;
   return `https://emrldtp.cc/${config.scriptId}.js?t=${config.partnerId}`;
 }
+
+/** The full real-time results are on only with the switch, a host, and the same switch for guests. */
+export const whiteLabelOn = (config: FlightsConfig) =>
+  config.enabled && config.whiteLabelHost !== "";
 
 export const showFlightsHeroTab = (config: FlightsConfig) => config.enabled && config.heroTab;
 export const showFlightsTile = (config: FlightsConfig) => config.enabled && config.homeTile;
@@ -416,4 +444,69 @@ export function flightsPathFor(trip: {
     }
   }
   return { to: "/tiket", search };
+}
+
+/* ------------------------------------------------------------ White Label */
+
+const ddmm = (iso: string) => `${iso.slice(8, 10)}${iso.slice(5, 7)}`;
+
+/**
+ * The White Label's own search code, appended as `?flightSearch=`: origin, departure DDMM,
+ * destination, optional return DDMM, then the passenger digit(s). Adults are required by the
+ * White Label; the code is case sensitive. Needs an exact departure day, not a month.
+ */
+export function whiteLabelSearchCode(search: FlightSearchInput, adults = 1): string | null {
+  if (!ISO_DATE.test(search.departureDate)) return null;
+  if (!Number.isInteger(adults) || adults < 1 || adults > 9) return null;
+  const back = search.returnDate && ISO_DATE.test(search.returnDate) ? ddmm(search.returnDate) : "";
+  return `${search.origin}${ddmm(search.departureDate)}${search.destination}${back}${adults}`;
+}
+
+/** Link to the White Label with the form already filled in, or null when it is off or unusable. */
+export function whiteLabelSearchUrl(
+  config: FlightsConfig,
+  search: FlightSearchInput,
+  adults = 1,
+): string | null {
+  if (!whiteLabelOn(config) || !HOST_PATTERN.test(config.whiteLabelHost)) return null;
+  const code = whiteLabelSearchCode(search, adults);
+  if (!code) return null;
+  return `https://${config.whiteLabelHost}/?flightSearch=${code}`;
+}
+
+/* ----------------------------------------------------------- price calendar */
+
+export type FlightDayPrice = { date: string; offer: FlightOffer | null };
+
+const addDays = (iso: string, days: number) => {
+  const date = new Date(`${iso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+export const shiftFlightDay = addDays;
+
+/**
+ * The days around the chosen day with the cheapest recorded fare of each (or none). The provider
+ * keeps one cheapest fare per departure day, so offers from a month map onto its days.
+ */
+export function flightPriceStrip(
+  offers: FlightOffer[],
+  center: string,
+  today: string,
+  radius = 3,
+): FlightDayPrice[] {
+  if (!ISO_DATE.test(center)) return [];
+  const cheapest = new Map<string, FlightOffer>();
+  for (const offer of offers) {
+    const day = offer.departureAt.slice(0, 10);
+    const best = cheapest.get(day);
+    if (!best || offer.priceIdr < best.priceIdr) cheapest.set(day, offer);
+  }
+  const days: FlightDayPrice[] = [];
+  for (let n = -radius; n <= radius; n += 1) {
+    const date = addDays(center, n);
+    if (date < today) continue;
+    days.push({ date, offer: cheapest.get(date) ?? null });
+  }
+  return days;
 }

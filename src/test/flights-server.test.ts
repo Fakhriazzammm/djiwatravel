@@ -225,16 +225,50 @@ describe("searchFlightPlacesHandler", () => {
   });
 });
 
+describe("month search for the price calendar", () => {
+  it("returns up to one fare per day for a whole month, not just the best twelve", async () => {
+    const days = Array.from({ length: 28 }, (_, i) => ({
+      ...prices.data[0],
+      departure_at: `2999-12-${String(i + 1).padStart(2, "0")}T08:35:00+07:00`,
+      flight_number: String(100 + i),
+      price: 1_000_000 + i * 1000,
+    }));
+    route(() => ok({ success: true, data: days }));
+    const { searchFlightsHandler } = await load();
+    const month = await searchFlightsHandler({ data: { ...search, departureDate: "2999-12" } });
+    expect(month.offers).toHaveLength(28);
+    const day = await searchFlightsHandler({ data: { ...search, departureDate: "2999-12-20" } });
+    expect(day.offers).toHaveLength(12);
+  });
+});
+
 describe("Admin view", () => {
-  it("reports whether the token exists but never the token", async () => {
+  it("reports whether the token exists but never the token, with both click counters", async () => {
     query.mockResolvedValueOnce({
       rows: [{ value_json: DEFAULT_FLIGHTS_CONFIG, version: 2 }],
     } as never);
-    query.mockResolvedValueOnce({ rows: [{ n: 7 }] } as never);
+    query.mockResolvedValueOnce({
+      rows: [
+        { target: "flights_aviasales", n: 7 },
+        { target: "flights_embed_open", n: 3 },
+      ],
+    } as never);
     const { getAdminFlightsHandler } = await load();
     const view = await getAdminFlightsHandler();
     expect(view.tokenConfigured).toBe(true);
     expect(view.stats.clicks7d).toBe(7);
+    expect(view.stats.embedOpens7d).toBe(3);
     expect(JSON.stringify(view)).not.toContain("test-token");
+  });
+
+  it("still loads the settings when the counters cannot be read", async () => {
+    query.mockResolvedValueOnce({
+      rows: [{ value_json: DEFAULT_FLIGHTS_CONFIG, version: 2 }],
+    } as never);
+    query.mockRejectedValueOnce(new Error("db down"));
+    const { getAdminFlightsHandler } = await load();
+    const view = await getAdminFlightsHandler();
+    expect(view.stats.clicks7d).toBe(0);
+    expect(view.stats.embedOpens7d).toBe(0);
   });
 });
