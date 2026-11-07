@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin, Search, X } from "lucide-react";
 import { searchPlaces } from "@/lib/itinerary-map.fn";
 import type { PlaceResult } from "@/lib/itinerary-map";
+import { focusMapOn, searchMapPlaces } from "@/lib/map-place-search";
 
 export type PickedPlace = { lat: number; lng: number } | null;
 
@@ -29,7 +30,7 @@ export function PlaceSearchField({
   const [results, setResults] = useState<PlaceResult[]>([]);
   // Data credit the server attaches to its answer (GeoNames requires one).
   const [attribution, setAttribution] = useState<string | null>(null);
-  const [state, setState] = useState<"idle" | "loading" | "empty" | "unavailable">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "empty" | "unavailable" | "zoom">("idle");
   const seq = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -44,26 +45,43 @@ export function PlaceSearchField({
       setState("idle");
       return;
     }
-    setState("loading");
+    // Places on the map answer at once; towns from the server are merged in a moment later.
+    const onMap = searchMapPlaces(query);
+    setResults(onMap.places);
+    setAttribution(null);
+    setState(onMap.places.length ? "idle" : "loading");
     const mine = ++seq.current;
+    const merge = (server: PlaceResult[]) => {
+      const seen = new Set<string>();
+      return [...onMap.places, ...server]
+        .filter((p) => {
+          const key = `${p.label.toLowerCase()}|${p.lat.toFixed(3)}|${p.lng.toFixed(3)}`;
+          return seen.has(key) ? false : (seen.add(key), true);
+        })
+        .slice(0, 8);
+    };
+    const emptyState = onMap.available && onMap.zoomedOut ? "zoom" : "empty";
     timer.current = setTimeout(async () => {
       try {
         const response = await searchPlaces({ data: { query } });
         if (mine !== seq.current) return;
-        setResults(response.places);
-        setAttribution(response.attribution ?? null);
+        const merged = merge(response.places);
+        setResults(merged);
+        setAttribution(response.places.length ? (response.attribution ?? null) : null);
         setState(
-          response.status !== "ok" && response.status !== "disabled"
-            ? "unavailable"
-            : response.places.length
-              ? "idle"
-              : "empty",
+          merged.length
+            ? "idle"
+            : response.status !== "ok" && response.status !== "disabled"
+              ? onMap.available && onMap.zoomedOut
+                ? "zoom"
+                : "unavailable"
+              : emptyState,
         );
       } catch {
         if (mine === seq.current) {
-          setResults([]);
+          setResults(onMap.places);
           setAttribution(null);
-          setState("unavailable");
+          setState(onMap.places.length ? "idle" : onMap.zoomedOut ? "zoom" : "unavailable");
         }
       }
     }, 350);
@@ -75,6 +93,8 @@ export function PlaceSearchField({
     setAttribution(null);
     setState("idle");
     onChange(place.label, { lat: place.lat, lng: place.lng });
+    // Move the map there so the places around it load and can be searched next.
+    focusMapOn({ lat: place.lat, lng: place.lng });
   }
 
   return (
@@ -146,6 +166,8 @@ export function PlaceSearchField({
           "Mencari…"
         ) : state === "empty" ? (
           "Tempat tidak ditemukan. Lokasi tetap bisa disimpan sebagai teks."
+        ) : state === "zoom" ? (
+          "Perbesar peta ke area tujuan agar tempat makan dan atraksi bisa dicari, atau pilih kota dulu."
         ) : state === "unavailable" ? (
           "Pencarian lokasi sedang tidak tersedia. Lokasi tetap bisa disimpan sebagai teks."
         ) : searchEnabled ? (

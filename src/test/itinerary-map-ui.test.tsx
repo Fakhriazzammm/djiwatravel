@@ -4,6 +4,7 @@ import { ItineraryEditor } from "@/routes/my-trips.$tripId.$section";
 import { patchItinerary, postItinerary } from "@/lib/my-trips.fn";
 import { searchPlaces } from "@/lib/itinerary-map.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG } from "@/lib/itinerary-map";
+import { registerMapSearch } from "@/lib/map-place-search";
 import { countryBoundsFor } from "@/lib/trip-country-bounds";
 
 vi.mock("@/lib/my-trips.fn", () => ({
@@ -162,6 +163,32 @@ describe("agenda map", () => {
       />,
     );
     expect(screen.queryByTestId("map")).not.toBeInTheDocument();
+  });
+
+  it("suggests places from the map even when the server search is unavailable", async () => {
+    vi.mocked(searchPlaces).mockResolvedValue({ status: "unavailable", places: [] } as never);
+    const off = registerMapSearch({
+      search: () => ({
+        places: [{ label: "Seizeriya Ueno", subtitle: "Makan", lat: 35.71, lng: 139.77 }],
+        zoomedOut: false,
+      }),
+      focusOn: vi.fn(),
+    });
+    render(
+      <ItineraryEditor
+        tripId="t"
+        items={[]}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
+    fireEvent.change(screen.getByLabelText(/Lokasi/), { target: { value: "seizeriya" } });
+    expect(await screen.findByRole("button", { name: /Seizeriya Ueno/ })).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 500));
+    expect(screen.getByRole("button", { name: /Seizeriya Ueno/ })).toBeInTheDocument();
+    expect(screen.queryByText(/sedang tidak tersedia/)).not.toBeInTheDocument();
+    off();
   });
 
   it("shows the GeoNames attribution under the suggestions it came from", async () => {

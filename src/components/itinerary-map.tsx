@@ -9,6 +9,12 @@ import {
   type PoiCategoryId,
 } from "@/lib/itinerary-map";
 import type { CountryBounds } from "@/lib/trip-country-bounds";
+import {
+  MAP_SEARCH_MIN_ZOOM,
+  rankMapFeatures,
+  registerMapSearch,
+  type MapFeature,
+} from "@/lib/map-place-search";
 
 export type PickedPoi = { category: PoiCategoryId; label: string; lat: number; lng: number };
 
@@ -258,6 +264,7 @@ export default function ItineraryMap({
     let disposed = false;
     let observer: ResizeObserver | null = null;
     let loadTimer: ReturnType<typeof setTimeout> | undefined;
+    let unregisterSearch: (() => void) | undefined;
     const markerStore = markers.current;
     void (async () => {
       try {
@@ -356,6 +363,43 @@ export default function ItineraryMap({
               map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
             });
           }
+          // The location field searches the places this map has loaded (OpenStreetMap in the tiles).
+          unregisterSearch = registerMapSearch({
+            search: (query) => {
+              const zoomedOut = map.getZoom() < MAP_SEARCH_MIN_ZOOM;
+              if (zoomedOut || !map.getSource("openmaptiles")) return { places: [], zoomedOut };
+              const features: MapFeature[] = [];
+              for (const sourceLayer of ["poi", "aerodrome_label"]) {
+                for (const f of map.querySourceFeatures("openmaptiles", { sourceLayer })) {
+                  if (f.geometry.type !== "Point") continue;
+                  const props = (f.properties ?? {}) as Record<string, unknown>;
+                  const names = [props["name:latin"], props["name_en"], props["name"]].filter(
+                    (n): n is string => typeof n === "string" && n.trim() !== "",
+                  );
+                  const [lng, lat] = f.geometry.coordinates as [number, number];
+                  features.push({
+                    names,
+                    lat,
+                    lng,
+                    cls: String(
+                      props["class"] ?? (sourceLayer === "aerodrome_label" ? "airport" : ""),
+                    ),
+                  });
+                }
+              }
+              const c = map.getCenter();
+              return {
+                places: rankMapFeatures(features, query, { lat: c.lat, lng: c.lng }),
+                zoomedOut,
+              };
+            },
+            focusOn: (point) =>
+              map.easeTo({
+                center: [point.lng, point.lat],
+                zoom: Math.max(map.getZoom(), 14.6),
+                duration: 600,
+              }),
+          });
           setReady(true);
         });
         observer = new ResizeObserver(() => map.resize());
@@ -368,6 +412,7 @@ export default function ItineraryMap({
     return () => {
       disposed = true;
       clearTimeout(loadTimer);
+      unregisterSearch?.();
       observer?.disconnect();
       markerStore.forEach(({ marker }) => marker.remove());
       markerStore.clear();
