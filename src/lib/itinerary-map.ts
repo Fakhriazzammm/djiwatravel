@@ -29,6 +29,8 @@ export type ItineraryMapConfig = {
   summaryMap: boolean;
   /** Day-by-day weather on the trip's Ringkas page (forecast for days that have a map point). */
   weather: boolean;
+  /** Ask for the cities of a new trip ("Mau ke kota mana saja?") and scope place search to them. */
+  cityOnboarding: boolean;
   /** MapLibre style JSON URL for the basemap. */
   styleUrl: string;
 };
@@ -41,6 +43,7 @@ export const DEFAULT_ITINERARY_MAP_CONFIG: ItineraryMapConfig = {
   placeImages: true,
   summaryMap: true,
   weather: true,
+  cityOnboarding: true,
   styleUrl: DEFAULT_MAP_STYLE_URL,
 };
 
@@ -69,6 +72,7 @@ export function parseItineraryMapConfig(value: unknown): ItineraryMapConfig {
     "placeImages",
     "summaryMap",
     "weather",
+    "cityOnboarding",
   ] as const) {
     if (raw[key] !== undefined && typeof raw[key] !== "boolean") {
       throw new Error(`itineraryMap.${key} harus boolean`);
@@ -91,6 +95,8 @@ export function parseItineraryMapConfig(value: unknown): ItineraryMapConfig {
     summaryMap:
       (raw["summaryMap"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.summaryMap,
     weather: (raw["weather"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.weather,
+    cityOnboarding:
+      (raw["cityOnboarding"] as boolean | undefined) ?? DEFAULT_ITINERARY_MAP_CONFIG.cityOnboarding,
     styleUrl: styleUrl.trim(),
   };
 }

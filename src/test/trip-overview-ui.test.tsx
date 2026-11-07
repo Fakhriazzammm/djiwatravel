@@ -4,6 +4,7 @@ import { TripOverview } from "@/components/trip-overview";
 import { deleteItinerary, patchChecklist } from "@/lib/my-trips.fn";
 import { getTripWeather } from "@/lib/trip-weather.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG } from "@/lib/itinerary-map";
+import { citiesBounds } from "@/lib/trip-cities";
 import { countryBoundsFor } from "@/lib/trip-country-bounds";
 
 const navigate = vi.fn();
@@ -47,6 +48,7 @@ const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}
 
 const base = {
   tripId: "t1",
+  cities: [{ name: "Tokyo", lat: 35.6762, lng: 139.6503 }],
   name: "spring",
   destination: "Jepang",
   dayLabel: "Hari ke-2",
@@ -105,6 +107,8 @@ describe("TripOverview (Ringkas)", () => {
     render(
       <TripOverview
         {...base}
+        cities={[]}
+        mapConfig={{ ...DEFAULT_ITINERARY_MAP_CONFIG, cityOnboarding: false }}
         destinationCode="JP"
         itinerary={[{ id: "a2", title: "Makan siang", activity_date: key, start_time: "13:00" }]}
       />,
@@ -120,6 +124,8 @@ describe("TripOverview (Ringkas)", () => {
     render(
       <TripOverview
         {...base}
+        cities={[]}
+        mapConfig={{ ...DEFAULT_ITINERARY_MAP_CONFIG, cityOnboarding: false }}
         destinationCode={null}
         itinerary={[{ id: "a2", title: "Makan siang", activity_date: key, start_time: "13:00" }]}
       />,
@@ -228,5 +234,34 @@ describe("TripOverview (Ringkas)", () => {
     expect(link.getAttribute("href")).toBe("/tiket");
     rerender(<TripOverview {...base} flightsSearch={null} />);
     expect(screen.queryByText("Cari tiket pesawat")).toBeNull();
+  });
+
+  it("asks for the cities of a trip that has none, and shows them once chosen", () => {
+    render(<TripOverview {...base} cities={[]} destinationCode="JP" />);
+    expect(screen.getByText("Mau ke kota mana saja di Jepang?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Tokyo/ })).toBeInTheDocument();
+  });
+
+  it("frames the map on the chosen cities", () => {
+    render(
+      <TripOverview
+        {...base}
+        destinationCode="JP"
+        itinerary={[{ id: "a2", title: "Makan siang", activity_date: key, start_time: "13:00" }]}
+      />,
+    );
+    expect(screen.getByTestId("map").dataset["focus"]).toBe(citiesBounds(base.cities)!.join(","));
+  });
+
+  it("stays out of the way when Admin turns the city question off", () => {
+    render(
+      <TripOverview
+        {...base}
+        cities={[]}
+        mapConfig={{ ...DEFAULT_ITINERARY_MAP_CONFIG, cityOnboarding: false }}
+      />,
+    );
+    expect(screen.queryByText(/Mau ke kota mana saja/)).toBeNull();
+    expect(screen.queryByText("Pilih kota tujuan")).toBeNull();
   });
 });

@@ -183,7 +183,7 @@ describe("agenda map", () => {
       />,
     );
     fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
-    fireEvent.change(screen.getByLabelText(/Lokasi/), { target: { value: "seizeriya" } });
+    fireEvent.change(screen.getByLabelText(/Cari tempat/), { target: { value: "seizeriya" } });
     expect(await screen.findByRole("button", { name: /Seizeriya Ueno/ })).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 500));
     expect(screen.getByRole("button", { name: /Seizeriya Ueno/ })).toBeInTheDocument();
@@ -206,7 +206,7 @@ describe("agenda map", () => {
       />,
     );
     fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
-    fireEvent.change(screen.getByLabelText(/Lokasi/), { target: { value: "ueno" } });
+    fireEvent.change(screen.getByLabelText(/Cari tempat/), { target: { value: "ueno" } });
     expect(
       await screen.findByText("Data kota: GeoNames (CC BY 4.0)", {}, { timeout: 2000 }),
     ).toBeInTheDocument();
@@ -228,7 +228,7 @@ describe("agenda map", () => {
     );
     fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
     fireEvent.change(screen.getByLabelText("Nama aktivitas"), { target: { value: "Makan" } });
-    fireEvent.change(screen.getByLabelText(/Lokasi/), { target: { value: "Shibuya" } });
+    fireEvent.change(screen.getByLabelText(/Cari tempat/), { target: { value: "Shibuya" } });
     fireEvent.click(
       await screen.findByRole("button", { name: /Shibuya Crossing/ }, { timeout: 2000 }),
     );
@@ -245,6 +245,42 @@ describe("agenda map", () => {
     );
   });
 
+  it("puts the place first: a picked restaurant fills the title and category, and search is scoped to the city", async () => {
+    vi.mocked(searchPlaces).mockResolvedValueOnce({
+      places: [{ label: "Saizeriya Shinjuku", subtitle: "Makan · Tokyo", lat: 35.69, lng: 139.7 }],
+      status: "ok",
+      attribution: null,
+    } as never);
+    render(
+      <ItineraryEditor
+        tripId="t"
+        trip={{
+          name: "Jepang",
+          destination_name: "Jepang",
+          cities: [
+            { name: "Tokyo", lat: 35.6762, lng: 139.6503 },
+            { name: "Osaka", lat: 34.6937, lng: 135.5023 },
+          ],
+          departure_date: null,
+          return_date: null,
+        }}
+        items={[]}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
+    fireEvent.change(screen.getByLabelText(/Cari tempat/), { target: { value: "saizeriya" } });
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Saizeriya Shinjuku/ }, { timeout: 2000 }),
+    );
+    expect(screen.getByLabelText("Nama aktivitas")).toHaveValue("Makan di Saizeriya Shinjuku");
+    expect(screen.getByLabelText("Kategori (opsional)")).toHaveValue("food");
+    expect(searchPlaces).toHaveBeenCalledWith({
+      data: { query: "saizeriya", near: { lat: 35.6762, lng: 139.6503 } },
+    });
+  });
+
   it("does not search when Admin disabled place search", () => {
     render(
       <ItineraryEditor
@@ -255,7 +291,7 @@ describe("agenda map", () => {
       />,
     );
     fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
-    fireEvent.change(screen.getByLabelText(/Lokasi/), { target: { value: "Shibuya" } });
+    fireEvent.change(screen.getByLabelText(/Cari tempat/), { target: { value: "Shibuya" } });
     expect(searchPlaces).not.toHaveBeenCalled();
   });
 
@@ -488,7 +524,7 @@ describe("agenda map", () => {
     expect(screen.getByText(/±18 m/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Tambah di sini" }));
     expect(await screen.findByRole("dialog", { name: "Tambah aktivitas" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /Lokasi/ })).toHaveValue("Lokasi saya");
+    expect(screen.getByRole("textbox", { name: /Cari tempat/ })).toHaveValue("Lokasi saya");
     expect(screen.getByText("Titik peta tersimpan.")).toBeInTheDocument();
   });
 

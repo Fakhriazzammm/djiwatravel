@@ -28,6 +28,7 @@ import { DEFAULT_ITINERARY_MAP_CONFIG, type ItineraryMapConfig } from "@/lib/iti
 import { deleteTripRecord, duplicateTrip, getTrip, patchTrip } from "@/lib/my-trips.fn";
 import { getFlightsStatus } from "@/lib/flights.fn";
 import { flightsPathFor, showFlightsTile } from "@/lib/flights";
+import type { TripCity } from "@/lib/trip-cities";
 import { isTripAuthenticationError } from "@/lib/trip-actions";
 
 export const Route = createFileRoute("/my-trips/$tripId")({
@@ -188,6 +189,7 @@ function TripDetail() {
         name={trip.name}
         destination={trip.destination_name}
         destinationCode={trip.destination_code}
+        cities={(trip as { cities?: TripCity[] }).cities ?? []}
         dayLabel={countdown.value}
         datesLabel={`${trip.destination_name} · ${dates}`}
         itinerary={data.itinerary as never}

@@ -21,7 +21,13 @@ export function AdminItineraryMapPanel({
 }: {
   initial: ItineraryMapConfig;
   version: number;
-  stats: { totalItems: number; pinnedItems: number; tripsWithPins: number };
+  stats: {
+    totalItems: number;
+    pinnedItems: number;
+    tripsWithPins: number;
+    tripsWithCities: number;
+    totalTrips: number;
+  };
   /** Which geocoder answers place search. Only the provider name and whether it is set. */
   geocoder: {
     provider: "maptiler" | "photon" | "gazetteer" | null;
@@ -37,6 +43,7 @@ export function AdminItineraryMapPanel({
   const [placeImages, setPlaceImages] = useState(initial.placeImages);
   const [summaryMap, setSummaryMap] = useState(initial.summaryMap);
   const [weather, setWeather] = useState(initial.weather);
+  const [cityOnboarding, setCityOnboarding] = useState(initial.cityOnboarding);
   const [styleUrl, setStyleUrl] = useState(initial.styleUrl);
   const [version, setVersion] = useState(initialVersion);
   const [reason, setReason] = useState("");
@@ -55,6 +62,7 @@ export function AdminItineraryMapPanel({
         placeImages,
         summaryMap,
         weather,
+        cityOnboarding,
         styleUrl,
       });
       const result = await saveAdminItineraryMap({
@@ -93,7 +101,8 @@ export function AdminItineraryMapPanel({
       <AdminSurface className="space-y-3 p-3">
         <p className="text-xs text-muted-foreground" data-testid="itinerary-map-stats">
           {stats.pinnedItems} dari {stats.totalItems} aktivitas punya titik peta ({percent}%) di{" "}
-          {stats.tripsWithPins} trip.
+          {stats.tripsWithPins} trip. {stats.tripsWithCities} dari {stats.totalTrips} trip sudah
+          memilih kota tujuan.
         </p>
         <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
           <input
@@ -121,6 +130,15 @@ export function AdminItineraryMapPanel({
             className="size-5 accent-primary"
           />
           Prakiraan cuaca per hari di halaman Ringkas trip
+        </label>
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={cityOnboarding}
+            onChange={(event) => setCityOnboarding(event.target.checked)}
+            className="size-5 accent-primary"
+          />
+          Tanya kota tujuan di trip baru dan batasi pencarian tempat ke kota itu
         </label>
         <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
           <input

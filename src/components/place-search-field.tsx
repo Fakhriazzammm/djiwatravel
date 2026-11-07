@@ -3,6 +3,7 @@ import { MapPin, Search, X } from "lucide-react";
 import { searchPlaces } from "@/lib/itinerary-map.fn";
 import type { PlaceResult } from "@/lib/itinerary-map";
 import { focusMapOn, searchMapPlaces } from "@/lib/map-place-search";
+import { placesNearCity, type TripCity } from "@/lib/trip-cities";
 
 export type PickedPlace = { lat: number; lng: number } | null;
 
@@ -20,17 +21,30 @@ export function PlaceSearchField({
   picked,
   searchEnabled,
   onChange,
+  cities = [],
+  onPick,
+  autoFocus = false,
 }: {
   id: string;
   value: string;
   picked: PickedPlace;
   searchEnabled: boolean;
   onChange: (value: string, point: PickedPlace) => void;
+  /** Cities of the trip. With any, search is scoped to the chosen one (or all of them). */
+  cities?: TripCity[];
+  /** Called with the full result when the traveler picks a suggestion (title, category, ...). */
+  onPick?: ((place: PlaceResult) => void) | undefined;
+  autoFocus?: boolean | undefined;
 }) {
+  const [cityName, setCityName] = useState<string>(cities[0]?.name ?? "");
+  // Keep the chosen city valid when the trip's cities change.
+  const scopedCity =
+    cities.find((c) => c.name === cityName) ?? (cities.length === 1 ? cities[0] : null);
+  const scopedTo = scopedCity ?? null;
   const [results, setResults] = useState<PlaceResult[]>([]);
   // Data credit the server attaches to its answer (GeoNames requires one).
   const [attribution, setAttribution] = useState<string | null>(null);
-  const [state, setState] = useState<"idle" | "loading" | "empty" | "unavailable" | "zoom">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "empty" | "unavailable">("idle");
   const seq = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -46,7 +60,10 @@ export function PlaceSearchField({
       return;
     }
     // Places on the map answer at once; towns from the server are merged in a moment later.
-    const onMap = searchMapPlaces(query);
+    const rawOnMap = searchMapPlaces(query);
+    const onMap = scopedTo
+      ? { ...rawOnMap, places: placesNearCity(rawOnMap.places, scopedTo) }
+      : rawOnMap;
     setResults(onMap.places);
     setAttribution(null);
     setState(onMap.places.length ? "idle" : "loading");
@@ -60,10 +77,12 @@ export function PlaceSearchField({
         })
         .slice(0, 8);
     };
-    const emptyState = onMap.available && onMap.zoomedOut ? "zoom" : "empty";
+    const emptyState = "empty" as const;
     timer.current = setTimeout(async () => {
       try {
-        const response = await searchPlaces({ data: { query } });
+        const response = await searchPlaces({
+          data: { query, ...(scopedTo ? { near: { lat: scopedTo.lat, lng: scopedTo.lng } } : {}) },
+        });
         if (mine !== seq.current) return;
         const merged = merge(response.places);
         setResults(merged);
@@ -72,16 +91,14 @@ export function PlaceSearchField({
           merged.length
             ? "idle"
             : response.status !== "ok" && response.status !== "disabled"
-              ? onMap.available && onMap.zoomedOut
-                ? "zoom"
-                : "unavailable"
+              ? "unavailable"
               : emptyState,
         );
       } catch {
         if (mine === seq.current) {
           setResults(onMap.places);
           setAttribution(null);
-          setState(onMap.places.length ? "idle" : onMap.zoomedOut ? "zoom" : "unavailable");
+          setState(onMap.places.length ? "idle" : "unavailable");
         }
       }
     }, 350);
@@ -93,18 +110,46 @@ export function PlaceSearchField({
     setAttribution(null);
     setState("idle");
     onChange(place.label, { lat: place.lat, lng: place.lng });
+    onPick?.(place);
     // Move the map there so the places around it load and can be searched next.
     focusMapOn({ lat: place.lat, lng: place.lng });
   }
 
   return (
     <div className="space-y-1.5">
+      {cities.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Cari di kota">
+          <span className="text-[11px] text-muted-foreground">Di kota</span>
+          {cities.map((city) => (
+            <button
+              key={city.name}
+              type="button"
+              aria-pressed={scopedCity?.name === city.name}
+              onClick={() => setCityName(city.name)}
+              className={`tap inline-flex min-h-8 items-center rounded-full px-3 text-xs ${
+                scopedCity?.name === city.name
+                  ? "bg-brand-red font-semibold text-white"
+                  : "border border-border/70 bg-surface"
+              }`}
+            >
+              {city.name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="relative">
         <input
           id={id}
           value={value}
           onChange={(event) => type(event.target.value)}
-          placeholder={searchEnabled ? "Cari tempat atau alamat" : "Tambahkan lokasi"}
+          autoFocus={autoFocus}
+          placeholder={
+            !searchEnabled
+              ? "Tambahkan lokasi"
+              : scopedTo
+                ? `Cari tempat di ${scopedTo.name}`
+                : "Cari tempat atau alamat"
+          }
           autoComplete="off"
           className={`${inputClass} ${searchEnabled ? "pr-9" : ""}`}
           aria-describedby={`${id}-hint`}
@@ -165,9 +210,11 @@ export function PlaceSearchField({
         ) : state === "loading" ? (
           "Mencari…"
         ) : state === "empty" ? (
-          "Tempat tidak ditemukan. Lokasi tetap bisa disimpan sebagai teks."
-        ) : state === "zoom" ? (
-          "Perbesar peta ke area tujuan agar tempat makan dan atraksi bisa dicari, atau pilih kota dulu."
+          scopedTo ? (
+            `Belum ketemu di ${scopedTo.name}. Coba nama lain, pilih kota lain, atau tulis manual tanpa pin.`
+          ) : (
+            "Tempat tidak ditemukan. Lokasi tetap bisa disimpan sebagai teks."
+          )
         ) : state === "unavailable" ? (
           "Pencarian lokasi sedang tidak tersedia. Lokasi tetap bisa disimpan sebagai teks."
         ) : searchEnabled ? (

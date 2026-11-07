@@ -76,6 +76,7 @@ import {
 } from "@/components/ui/sheet";
 import { displayBudgetCategory, displayChecklistTitle } from "@/lib/my-trips-home";
 import { countryBoundsFor } from "@/lib/trip-country-bounds";
+import { guessActivityCategory, titleForPlace, type TripCity } from "@/lib/trip-cities";
 import { isTripAuthenticationError, runTripMutation } from "@/lib/trip-actions";
 import {
   deleteBookingRecord,
@@ -330,6 +331,8 @@ export function ItineraryEditor({
     destination_name: string;
     /** ISO country code; frames the map before any activity has a point. */
     destination_code?: string | null;
+    /** Cities chosen for the trip; they scope place search in the form. */
+    cities?: TripCity[];
     departure_date: string | null;
     return_date: string | null;
   };
@@ -352,6 +355,9 @@ export function ItineraryEditor({
     category: "",
   });
   const [point, setPoint] = useState<PickedPlace>(null);
+  // Set once the traveler types a name; a picked place then stops overwriting it.
+  const titleTouched = useRef(false);
+  const tripCities = trip?.cities ?? [];
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -432,6 +438,7 @@ export function ItineraryEditor({
   }
 
   function openNew() {
+    titleTouched.current = false;
     setEditingId(null);
     setConflicts([]);
     setForm((current) => ({
@@ -448,6 +455,7 @@ export function ItineraryEditor({
 
   function openEdit(item: Item) {
     const p = itemPoint(item);
+    titleTouched.current = true;
     setEditingId(item.id);
     setConflicts([]);
     setForm({
@@ -682,10 +690,39 @@ export function ItineraryEditor({
                   {editingId ? "Ubah aktivitas" : "Tambah aktivitas"}
                 </SheetTitle>
                 <SheetDescription>
-                  Susun rencana perjalananmu. Semua waktu mengikuti zona lokal.
+                  Mulai dari tempatnya. Nama dan kategori terisi sendiri. Semua waktu mengikuti zona
+                  lokal.
                 </SheetDescription>
               </SheetHeader>
               <form onSubmit={(event) => void submit(event)} className="space-y-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="agenda-location" className="text-[13px] font-semibold">
+                    Cari tempat{" "}
+                    <span className="font-normal text-muted-foreground">(opsional)</span>
+                  </label>
+                  <PlaceSearchField
+                    id="agenda-location"
+                    value={form.location}
+                    picked={point}
+                    searchEnabled={searchEnabled}
+                    cities={tripCities}
+                    autoFocus={!editingId}
+                    onChange={(location, picked) => {
+                      setForm((current) => ({ ...current, location }));
+                      setPoint(picked);
+                    }}
+                    onPick={(place) => {
+                      const category = guessActivityCategory(place.subtitle);
+                      setForm((current) => ({
+                        ...current,
+                        title: titleTouched.current
+                          ? current.title
+                          : titleForPlace(place.label, category || current.category),
+                        category: current.category || category,
+                      }));
+                    }}
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <label htmlFor="agenda-title" className="text-[13px] font-semibold">
                     Nama aktivitas
@@ -693,9 +730,11 @@ export function ItineraryEditor({
                   <input
                     id="agenda-title"
                     required
-                    autoFocus
                     value={form.title}
-                    onChange={(event) => setForm({ ...form, title: event.target.value })}
+                    onChange={(event) => {
+                      titleTouched.current = true;
+                      setForm({ ...form, title: event.target.value });
+                    }}
                     placeholder="Contoh: Makan malam"
                     className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3.5 text-[14px] outline-none transition focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
                   />
@@ -711,21 +750,6 @@ export function ItineraryEditor({
                     value={form.date}
                     onChange={(event) => setForm({ ...form, date: event.target.value })}
                     className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="agenda-location" className="text-[13px] font-semibold">
-                    Lokasi <span className="font-normal text-muted-foreground">(opsional)</span>
-                  </label>
-                  <PlaceSearchField
-                    id="agenda-location"
-                    value={form.location}
-                    picked={point}
-                    searchEnabled={searchEnabled}
-                    onChange={(location, picked) => {
-                      setForm((current) => ({ ...current, location }));
-                      setPoint(picked);
-                    }}
                   />
                 </div>
                 <div>

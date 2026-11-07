@@ -14,6 +14,7 @@ import { syncItineraryItem } from "@/lib/google-calendar.server";
 import { autoSplit } from "@/lib/budget-split";
 import { stepFor } from "@/lib/trip-budget-format";
 import { buildMyTripsHome } from "./my-trips-home";
+import { tripCitiesSchema, type TripCity } from "./trip-cities";
 
 const currencies = ["IDR", "JPY", "USD", "SGD", "KRW"] as const;
 const defaultCategories = [
@@ -188,6 +189,53 @@ async function ownedTrip(tripId: string, subject: string) {
   if (!result.rows[0]) throw new Error("Perjalanan tidak ditemukan");
   return result.rows[0] as Record<string, unknown>;
 }
+
+async function loadTripCities(tripId: string): Promise<TripCity[]> {
+  const result = await pool.query(
+    "select name, latitude, longitude from travel_trip_cities where trip_id=$1 order by sort_order, created_at",
+    [tripId],
+  );
+  return result.rows.map((row) => ({
+    name: String(row.name),
+    lat: Number(row.latitude),
+    lng: Number(row.longitude),
+  }));
+}
+
+/** Replaces the cities of an owned trip. An empty list clears them. */
+export async function setTripCities(input: unknown) {
+  const data = tripCitiesSchema.parse(input);
+  const user = await requireTripOwner();
+  await ownedTrip(data.tripId, user.id);
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query("delete from travel_trip_cities where trip_id=$1", [data.tripId]);
+    const seen = new Set<string>();
+    let order = 0;
+    for (const city of data.cities) {
+      const key = city.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      await client.query(
+        "insert into travel_trip_cities (trip_id,name,latitude,longitude,sort_order) values ($1,$2,$3,$4,$5)",
+        [data.tripId, city.name, city.lat, city.lng, order],
+      );
+      order += 1;
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+  return { cities: await loadTripCities(data.tripId) };
+}
+
+export const postTripCitiesInput = (data: unknown) => tripCitiesSchema.parse(data);
+export const postTripCitiesHandler = ({ data }: { data: ReturnType<typeof postTripCitiesInput> }) =>
+  setTripCities(data);
 
 export async function listTrips() {
   const user = await requireTripOwner();
@@ -531,9 +579,11 @@ export async function getTripDashboard(tripId: string) {
   const totalSpent = expenses.rows.reduce((sum, row) => sum + money(row.converted_amount_minor), 0);
   const departureDate = dateText(trip["departure_date"]);
   const returnDate = dateText(trip["return_date"]);
+  const cities = await loadTripCities(tripId);
   return {
     trip: {
       ...trip,
+      cities,
       departure_date: departureDate,
       return_date: returnDate,
       total_budget_minor: money(trip["total_budget_minor"]),
@@ -616,6 +666,7 @@ export async function getTripSectionData(tripId: string, section: string) {
   const returnDate = dateText(trip["return_date"]);
   const tripView = {
     ...trip,
+    cities: await loadTripCities(tripId),
     departure_date: departureDate,
     return_date: returnDate,
     total_budget_minor: budgetMinor,

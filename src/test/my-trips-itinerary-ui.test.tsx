@@ -44,7 +44,7 @@ describe("agenda perjalanan", () => {
     fireEvent.change(screen.getByLabelText("Nama aktivitas"), {
       target: { value: "Makan malam" },
     });
-    fireEvent.change(screen.getByLabelText(/Lokasi/), { target: { value: "Shibuya" } });
+    fireEvent.change(screen.getByLabelText(/Cari tempat/), { target: { value: "Shibuya" } });
     fireEvent.click(screen.getByRole("button", { name: "Simpan aktivitas" }));
 
     await waitFor(() =>

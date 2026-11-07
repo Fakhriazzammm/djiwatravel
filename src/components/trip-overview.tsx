@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LocateFixed,
+  MapPin,
   MoreHorizontal,
   Navigation,
   Pencil,
@@ -39,6 +40,8 @@ import {
 import { deleteItinerary, patchChecklist } from "@/lib/my-trips.fn";
 import { displayChecklistTitle } from "@/lib/my-trips-home";
 import { countryBoundsFor } from "@/lib/trip-country-bounds";
+import { citiesBounds, type TripCity } from "@/lib/trip-cities";
+import { TripCitiesSheet } from "@/components/trip-cities-sheet";
 import { runTripMutation } from "@/lib/trip-actions";
 import { getTripWeather } from "@/lib/trip-weather.fn";
 import {
@@ -65,6 +68,8 @@ type Props = {
   destination: string;
   /** ISO country code of the destination; frames the map before any activity has a point. */
   destinationCode?: string | null;
+  /** Cities the traveler chose for this trip; they frame the map and scope place search. */
+  cities?: TripCity[];
   /** "Hari ke-2", "Berangkat dalam 3 hari", ... from the trip dates. */
   dayLabel: string;
   datesLabel: string;
@@ -146,6 +151,20 @@ export function TripOverview(props: Props) {
   const [focus, setFocus] = useState(false);
   const [forecast, setForecast] = useState<DayWeather[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const cities = props.cities ?? [];
+  const cityFlow = Boolean(mapConfig?.cityOnboarding);
+  const [citiesOpen, setCitiesOpen] = useState(false);
+  // A trip without cities asks once on arrival; "Lewati dulu" is remembered on this device.
+  useEffect(() => {
+    if (!cityFlow || cities.length > 0) return;
+    try {
+      if (window.localStorage.getItem(`djiwa-cities-skip-${tripId}`) !== "1") setCitiesOpen(true);
+    } catch {
+      setCitiesOpen(true);
+    }
+    // Decide once per trip, not on every refresh of the cities list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripId, cityFlow]);
   const [rowMenu, setRowMenu] = useState<Row | null>(null);
   const [toDelete, setToDelete] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
@@ -181,7 +200,7 @@ export function TripOverview(props: Props) {
   const model = useMemo(() => buildMapModel(days, scope || "all"), [days, scope]);
   const pinInfo = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin])), [model]);
   // The map shows once a point exists or the trip has a destination country to frame.
-  const countryBounds = countryBoundsFor(props.destinationCode);
+  const countryBounds = citiesBounds(cities) ?? countryBoundsFor(props.destinationCode);
   const mapOn =
     Boolean(mapConfig?.enabled && mapConfig.summaryMap) &&
     (model.pins.length > 0 || countryBounds !== null) &&
@@ -596,6 +615,30 @@ export function TripOverview(props: Props) {
           )}
         </div>
 
+        {cityFlow && (
+          <div className={`${iosGroup} mt-4`}>
+            <button
+              type="button"
+              onClick={() => setCitiesOpen(true)}
+              className="tap flex min-h-12 w-full items-center gap-2.5 px-3 text-left"
+            >
+              <MapPin className="size-4 shrink-0 text-brand-red" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14px] font-semibold">
+                  {cities.length ? cities.map((c) => c.name).join(", ") : "Pilih kota tujuan"}
+                </span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {cities.length
+                    ? "Peta dan pencarian tempat mengikuti kota ini"
+                    : "Agar peta dan pencarian tempat langsung tepat"}
+                </span>
+              </span>
+              <span className="text-xs font-semibold text-brand-red">
+                {cities.length ? "Atur kota" : "Pilih"}
+              </span>
+            </button>
+          </div>
+        )}
         {attention.length > 0 && (
           <>
             <h2 className={`${iosHeading} mt-4 px-1`}>Perlu perhatian</h2>
@@ -682,7 +725,7 @@ export function TripOverview(props: Props) {
             to={props.flightsSearch.to}
             search={props.flightsSearch.search}
             data-track="ringkas_flights"
-            className={`${iosGroup} tap mt-2 flex min-h-14 items-center gap-2.5 p-3`}
+            className={`${iosGroup} tap mt-2 flex min-h-12 items-center gap-2.5 p-3`}
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-red-soft text-brand-red">
               <Plane className="size-4" aria-hidden="true" />
@@ -709,6 +752,23 @@ export function TripOverview(props: Props) {
         </button>
       </FixedLayer>
 
+      <TripCitiesSheet
+        open={citiesOpen}
+        onOpenChange={setCitiesOpen}
+        tripId={tripId}
+        destinationName={props.destination}
+        destinationCode={props.destinationCode}
+        initial={cities}
+        searchEnabled={Boolean(mapConfig?.enabled && mapConfig.placeSearch)}
+        onSaved={props.onChanged}
+        onSkip={() => {
+          try {
+            window.localStorage.setItem(`djiwa-cities-skip-${tripId}`, "1");
+          } catch {
+            /* remembered only when storage is available */
+          }
+        }}
+      />
       <TripActionSheet
         open={addOpen}
         onOpenChange={setAddOpen}

@@ -260,3 +260,15 @@ export const getSharedTrip = createServerFn({ method: "GET" })
     const { getSharedTripHandler } = await import("./my-trips.server");
     return getSharedTripHandler({ data });
   });
+
+export const postTripCities = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./my-trips.server").postTripCitiesInput>[0]) => {
+      const { postTripCitiesInput } = await import("./my-trips.server");
+      return postTripCitiesInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { postTripCitiesHandler } = await import("./my-trips.server");
+    return postTripCitiesHandler({ data });
+  });

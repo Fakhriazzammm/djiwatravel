@@ -15,6 +15,7 @@ import {
   type PlaceSearchTarget,
 } from "./place-search";
 import { GEONAMES_ATTRIBUTION } from "./place-gazetteer";
+import { placesNearCity } from "./trip-cities";
 import { countGazetteerPlaces, gazetteerNearest, gazetteerSearch } from "./place-gazetteer.server";
 import {
   DEFAULT_ITINERARY_MAP_CONFIG,
@@ -52,7 +53,13 @@ export const getItineraryMapConfigHandler = async () => {
 
 /* ------------------------------------------------------------ place search */
 
-const searchSchema = z.object({ query: z.string().trim().min(2).max(120) });
+const searchSchema = z.object({
+  query: z.string().trim().min(2).max(120),
+  /** City centre the search is scoped to; results outside the city radius are dropped. */
+  near: z
+    .object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })
+    .optional(),
+});
 export const searchPlacesInput = (data: unknown) => searchSchema.parse(data);
 
 /**
@@ -184,16 +191,17 @@ export async function searchPlacesHandler({
   }
   const outcome = await forwardGeocode(target, {
     query: data.query,
-    limit: 8,
+    limit: data.near ? 20 : 8,
     lang: "en",
     autocomplete: true,
+    ...(data.near ? { proximity: data.near } : {}),
   });
   if (!outcome.ok) {
     console.error("[itinerary-map] place search failed", outcome.detail);
     return { places: [] as PlaceResult[], status: "unavailable" as const, attribution: null };
   }
   return {
-    places: outcome.places,
+    places: data.near ? placesNearCity(outcome.places, data.near).slice(0, 8) : outcome.places,
     status: "ok" as const,
     attribution: outcome.attribution,
   };
@@ -207,24 +215,36 @@ const saveSchema = z.object({
   expectedVersion: z.number().int().min(0),
 });
 
-export type ItineraryMapStats = { totalItems: number; pinnedItems: number; tripsWithPins: number };
+export type ItineraryMapStats = {
+  totalItems: number;
+  pinnedItems: number;
+  tripsWithPins: number;
+  tripsWithCities: number;
+  totalTrips: number;
+};
 
 async function readStats(): Promise<ItineraryMapStats> {
   try {
     const result = await pool.query(
       `select count(*)::int as total,
               count(*) filter (where latitude is not null and longitude is not null)::int as pinned,
-              count(distinct trip_id) filter (where latitude is not null and longitude is not null)::int as trips
+              count(distinct trip_id) filter (where latitude is not null and longitude is not null)::int as trips,
+              (select count(distinct trip_id)::int from public.travel_trip_cities) as city_trips,
+              (select count(*)::int from public.travel_trips) as all_trips
        from public.travel_itinerary_items`,
     );
-    const row = result.rows[0] as { total?: number; pinned?: number; trips?: number } | undefined;
+    const row = result.rows[0] as
+      | { total?: number; pinned?: number; trips?: number; city_trips?: number; all_trips?: number }
+      | undefined;
     return {
       totalItems: Number(row?.total) || 0,
       pinnedItems: Number(row?.pinned) || 0,
       tripsWithPins: Number(row?.trips) || 0,
+      tripsWithCities: Number(row?.city_trips) || 0,
+      totalTrips: Number(row?.all_trips) || 0,
     };
   } catch {
-    return { totalItems: 0, pinnedItems: 0, tripsWithPins: 0 };
+    return { totalItems: 0, pinnedItems: 0, tripsWithPins: 0, tripsWithCities: 0, totalTrips: 0 };
   }
 }
 

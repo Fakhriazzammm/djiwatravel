@@ -193,6 +193,8 @@ describe("My Trips budget per category", () => {
           },
         ],
       } as never)
+      // Trip cities are read right after the trip itself.
+      .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({
         rows: [
           {
@@ -222,6 +224,6 @@ describe("My Trips budget per category", () => {
       uncategorizedCount: 1,
       budgetMinor: 1_000_000,
     });
-    expect(query.mock.calls[1]?.[0]).toContain("left join travel_expenses");
+    expect(query.mock.calls[2]?.[0]).toContain("left join travel_expenses");
   });
 });
