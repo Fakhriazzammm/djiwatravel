@@ -261,7 +261,11 @@ export function HomeHero({
                 : "border-white/55 bg-white/75 text-[#5b5f6b]"
             }`}
           >
+            {flightsTab ? (
+            <CardSim className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
+          ) : (
             <Search className="size-5 shrink-0" strokeWidth={2} />
+          )}
             <span className="min-w-0 flex-1 truncate">{searchHint}</span>
           </button>
         )}

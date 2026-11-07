@@ -24,12 +24,17 @@ describe("Home hero Tiket tab", () => {
   it("has no tabs when Admin turned the tab off (the pill stays the eSIM search)", () => {
     render(<HomeHero {...props} flightsTab={false} />);
     expect(screen.queryByRole("tablist")).toBeNull();
-    expect(screen.getByText("Cari Singapura")).toBeTruthy();
+    const pill = screen.getByText("Cari Singapura").closest("button")!;
+    expect(pill.querySelector(".lucide-search")).not.toBeNull();
   });
 
   it("keeps eSIM as the default and switches the pill to the flight search", () => {
     render(<HomeHero {...props} flightsTab />);
     expect(screen.getByRole("tab", { name: "eSIM" }).getAttribute("aria-selected")).toBe("true");
+    // In the eSIM tab the pill carries the SIM icon, not the generic magnifier.
+    const pill = screen.getByText("Cari Singapura").closest("button")!;
+    expect(pill.querySelector(".lucide-card-sim")).not.toBeNull();
+    expect(pill.querySelector(".lucide-search")).toBeNull();
     expect(screen.getByText("Cari Singapura")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: /Tiket/ }));
     const link = screen.getByRole("link", { name: /Cari tiket pesawat/ });
