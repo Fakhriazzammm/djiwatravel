@@ -4,6 +4,7 @@ import { searchPlaces } from "@/lib/itinerary-map.fn";
 import type { PlaceResult } from "@/lib/itinerary-map";
 import { focusMapOn, searchMapPlaces } from "@/lib/map-place-search";
 import { placesNearCity, type TripCity } from "@/lib/trip-cities";
+import { PHOTON_ATTRIBUTION, searchPhotonInBrowser } from "@/lib/browser-photon";
 
 export type PickedPlace = { lat: number; lng: number } | null;
 
@@ -77,6 +78,26 @@ export function PlaceSearchField({
         })
         .slice(0, 8);
     };
+    // Venues (restaurants, cafes...) come from Photon in the browser, unless a keyed server
+    // geocoder already answered them. They join the list a moment later.
+    const addVenues = (serverPlaces: PlaceResult[], serverAttribution: string | null) => {
+      const near = scopedTo ? { lat: scopedTo.lat, lng: scopedTo.lng } : undefined;
+      void searchPhotonInBrowser(query, near).then((found) => {
+        if (mine !== seq.current) return;
+        const venues = scopedTo ? placesNearCity(found, scopedTo) : found;
+        if (!venues.length) return;
+        const seen = new Set<string>();
+        const all = [...onMap.places, ...venues, ...serverPlaces]
+          .filter((p) => {
+            const key = `${p.label.toLowerCase()}|${p.lat.toFixed(3)}|${p.lng.toFixed(3)}`;
+            return seen.has(key) ? false : (seen.add(key), true);
+          })
+          .slice(0, 8);
+        setResults(all);
+        setState("idle");
+        setAttribution([serverAttribution, PHOTON_ATTRIBUTION].filter(Boolean).join(" · "));
+      });
+    };
     const emptyState = "empty" as const;
     timer.current = setTimeout(async () => {
       try {
@@ -87,6 +108,12 @@ export function PlaceSearchField({
         const merged = merge(response.places);
         setResults(merged);
         setAttribution(response.places.length ? (response.attribution ?? null) : null);
+        if (response.status !== "ok" || response.attribution) {
+          addVenues(
+            response.places,
+            response.places.length ? (response.attribution ?? null) : null,
+          );
+        }
         setState(
           merged.length
             ? "idle"
@@ -99,6 +126,7 @@ export function PlaceSearchField({
           setResults(onMap.places);
           setAttribution(null);
           setState(onMap.places.length ? "idle" : "unavailable");
+          addVenues([], null);
         }
       }
     }, 350);

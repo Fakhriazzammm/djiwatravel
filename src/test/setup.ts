@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { vi } from "vitest";
 
 // Route-tree tests import server modules; keep their DB client construction test-only.
 process.env["DATABASE_URL"] ??= "postgresql://test.invalid/djiwatravel_test";
@@ -40,3 +41,9 @@ if (typeof window !== "undefined") {
     }),
   });
 }
+
+// Venue search from the browser would call the public Photon host. Tests never use the network.
+vi.mock("@/lib/browser-photon", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/browser-photon")>()),
+  searchPhotonInBrowser: vi.fn(async () => []),
+}));

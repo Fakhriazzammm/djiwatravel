@@ -293,7 +293,7 @@ Use this structure for each new lesson:
 ## Agenda map: keep the map optional (2026-11-04)
 
 - The map is an enhancement on top of the Agenda list. The route loader reads `itineraryMap` with a catch, the component loads MapLibre only in the browser, and a basemap or style error switches the map off while the list keeps working. Never make the Agenda depend on tile availability.
-- Coordinates are stored only as a pair and only from a server-proxied place search; a typed location stays plain text. Do not put a geocoder or Google key in the browser.
+- Coordinates are stored only as a pair and only from a server-proxied place search; a typed location stays plain text. Do not put a geocoder or Google key in the browser. Exception (2026-11-08): the public Photon instance, which has no key, is called from the traveler's browser for venue suggestions because it refuses the Travel VPS address (`src/lib/browser-photon.ts`). It only adds suggestions, never blocks saving, and stays behind the Admin `placeSearch` switch. Never put a keyed provider there.
 - Local `npm run build` can fail on `Rolldown failed to resolve import "canvg"` when the optional `canvg` dependency of `jspdf` is not installed; install it with `npm install --no-save canvg` before judging a build.
 
 ## Every deploy briefly showed "Halaman gagal dimuat" (2026-11-04)

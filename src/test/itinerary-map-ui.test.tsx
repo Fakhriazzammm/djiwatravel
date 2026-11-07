@@ -5,6 +5,7 @@ import { patchItinerary, postItinerary } from "@/lib/my-trips.fn";
 import { searchPlaces } from "@/lib/itinerary-map.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG } from "@/lib/itinerary-map";
 import { registerMapSearch } from "@/lib/map-place-search";
+import { searchPhotonInBrowser } from "@/lib/browser-photon";
 import { countryBoundsFor } from "@/lib/trip-country-bounds";
 
 vi.mock("@/lib/my-trips.fn", () => ({
@@ -189,6 +190,31 @@ describe("agenda map", () => {
     expect(screen.getByRole("button", { name: /Seizeriya Ueno/ })).toBeInTheDocument();
     expect(screen.queryByText(/sedang tidak tersedia/)).not.toBeInTheDocument();
     off();
+  });
+
+  it("adds venues from the browser's Photon search to the town suggestions", async () => {
+    vi.mocked(searchPlaces).mockResolvedValue({
+      status: "ok",
+      places: [{ label: "Fuglen", subtitle: "Kota", lat: 35.7, lng: 139.7 }],
+      attribution: "Data kota: GeoNames (CC BY 4.0)",
+    } as never);
+    vi.mocked(searchPhotonInBrowser).mockResolvedValue([
+      { label: "Fuglen Tokyo", subtitle: "Shibuya, Tokyo", lat: 35.6658, lng: 139.6908 },
+    ]);
+    render(
+      <ItineraryEditor
+        tripId="t"
+        items={[]}
+        onSaved={vi.fn(async () => {})}
+        mapConfig={DEFAULT_ITINERARY_MAP_CONFIG}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
+    fireEvent.change(screen.getByLabelText(/Lokasi|Cari tempat/), { target: { value: "fuglen" } });
+    expect(
+      await screen.findByRole("button", { name: /Fuglen Tokyo/ }, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/© OpenStreetMap via Photon/)).toBeInTheDocument();
   });
 
   it("shows the GeoNames attribution under the suggestions it came from", async () => {
