@@ -85,7 +85,7 @@ function reference(day: IdeaDay | undefined) {
 }
 
 function nearLabel(idea: PlaceIdea, from: { lat: number; lng: number } | null) {
-  if (!from) return null;
+  if (!from || idea.lat === null || idea.lng === null) return null;
   const km = distanceKm(from, { lat: idea.lat, lng: idea.lng });
   const leg = estimateLeg(km);
   return leg.mode === "walk"
@@ -476,8 +476,9 @@ function IdeaDetail({
           startTime: start,
           endTime: end > start ? end : undefined,
           location: idea.area ? `${idea.name}, ${idea.area}` : idea.name,
-          latitude: idea.lat,
-          longitude: idea.lng,
+          ...(idea.lat !== null && idea.lng !== null
+            ? { latitude: idea.lat, longitude: idea.lng }
+            : {}),
           notes: `${idea.why} (Sumber: ${idea.sourceHost})`.slice(0, 2000),
           activityCategory: placeIdeaCategory(idea.category).activityCategory || undefined,
         },

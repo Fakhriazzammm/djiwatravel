@@ -126,8 +126,9 @@ export type PlaceIdea = {
   /** One short Indonesian sentence on why it is worth a visit. */
   why: string;
   area: string;
-  lat: number;
-  lng: number;
+  /** Null when the place could not be checked on a map (no venue geocoder): it is shown without a pin. */
+  lat: number | null;
+  lng: number | null;
   /** Where the recommendation came from: shown as a credit and a link. */
   sourceHost: string;
   sourceUrl: string;
@@ -170,7 +171,8 @@ export function placeIdeasCacheKey(destination: string, category: string, query 
   return [fold(destination), category, fold(query)].join("|").slice(0, 240);
 }
 
-export function placeIdeaKey(name: string, lat: number, lng: number) {
+export function placeIdeaKey(name: string, lat: number | null, lng: number | null) {
+  if (lat === null || lng === null) return fold(name).slice(0, 160);
   return `${fold(name)}@${lat.toFixed(3)},${lng.toFixed(3)}`.slice(0, 160);
 }
 

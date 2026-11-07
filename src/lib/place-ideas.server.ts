@@ -269,26 +269,29 @@ async function verifyIdeas(
   sources: Source[],
   destination: string,
 ): Promise<PlaceIdea[]> {
+  // The town gazetteer cannot find venues. Then ideas stay grounded in the pages we fetched
+  // (each cites one) and are shown without a pin, instead of every idea being dropped.
+  const venueCheck = placeSearchTarget()?.provider !== "gazetteer";
   const anchor = await geocode(destination);
   const bias = anchor ? { lat: anchor.lat, lng: anchor.lng } : undefined;
   const checked = await Promise.all(
     raw.map(async (idea): Promise<PlaceIdea | null> => {
       const hit = await geocode(`${idea.name} ${destination}`, bias);
-      if (!hit) return null;
-      if (anchor && distanceKm(bias!, { lat: hit.lat, lng: hit.lng }) > MAX_DISTANCE_KM)
+      if (!hit && venueCheck) return null;
+      if (hit && anchor && distanceKm(bias!, { lat: hit.lat, lng: hit.lng }) > MAX_DISTANCE_KM)
         return null;
-      const image = await lookupPlaceImage({ lat: hit.lat, lng: hit.lng }, [idea.name]).catch(
-        () => null,
-      );
+      const image = hit
+        ? await lookupPlaceImage({ lat: hit.lat, lng: hit.lng }, [idea.name]).catch(() => null)
+        : null;
       const source = sources[idea.source - 1]!;
       return {
-        key: placeIdeaKey(idea.name, hit.lat, hit.lng),
+        key: placeIdeaKey(idea.name, hit?.lat ?? null, hit?.lng ?? null),
         name: idea.name,
         category: idea.category,
         why: idea.why,
-        area: hit.subtitle || hit.label,
-        lat: hit.lat,
-        lng: hit.lng,
+        area: hit ? hit.subtitle || hit.label : destination,
+        lat: hit?.lat ?? null,
+        lng: hit?.lng ?? null,
         sourceHost: sourceHost(source.url),
         sourceUrl: source.url,
         imageUrl: image?.url ?? null,
