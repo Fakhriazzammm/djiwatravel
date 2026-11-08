@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import { ReceiptText, Search, ShoppingBag, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { BackBar, Page } from "@/components/shell";
+import { FixedLayer } from "@/components/motion-primitives";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
 import { MascotLoader } from "@/components/mascot-loader";
 import { getShopperCatalog } from "@/lib/personal-shopper.fn";
@@ -426,33 +427,37 @@ export function ShopperHome({ data }: { data: ShopperHomeData }) {
       )}
 
       {/* Cart bar */}
-      <AnimatePresence>
-        {cart.length > 0 && (
-          <motion.div
-            ref={cartBar}
-            key="cart"
-            initial={{ y: 90, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 90, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 360, damping: 28 }}
-            className="fixed inset-x-0 bottom-[calc(3rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md px-4"
-          >
-            <div className="flex items-center gap-2 rounded-2xl bg-foreground p-2 pl-3 text-background shadow-lg">
-              <span className="flex min-w-5 items-center justify-center rounded-full bg-brand-red px-1.5 text-[11px] font-bold text-white">
-                {cartCount(cart)}
-              </span>
-              <span className="flex-1 text-[13px] font-semibold">{formatIdr(quote.totalIdr)}</span>
-              <button
-                type="button"
-                onClick={() => setSheet("cart")}
-                className="tap ios-btn min-h-8 bg-background text-foreground"
-              >
-                Tinjau
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <FixedLayer>
+        <AnimatePresence>
+          {cart.length > 0 && (
+            <motion.div
+              ref={cartBar}
+              key="cart"
+              initial={{ y: 90, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 90, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 360, damping: 28 }}
+              className="fixed inset-x-0 bottom-[calc(3rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md px-4"
+            >
+              <div className="flex items-center gap-2 rounded-2xl bg-foreground p-2 pl-3 text-background shadow-lg">
+                <span className="flex min-w-5 items-center justify-center rounded-full bg-brand-red px-1.5 text-[11px] font-bold text-white">
+                  {cartCount(cart)}
+                </span>
+                <span className="flex-1 text-[13px] font-semibold">
+                  {formatIdr(quote.totalIdr)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSheet("cart")}
+                  className="tap ios-btn min-h-8 bg-background text-foreground"
+                >
+                  Tinjau
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </FixedLayer>
 
       <ProductSheet
         product={openProduct}
