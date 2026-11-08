@@ -59,9 +59,10 @@ export const placeIdeasConfigured = () =>
 const aiBase = () =>
   (process.env["HELIPOD_AI_BASE_URL"] || "https://ai.helipod.io/v1").replace(/\/$/, "");
 
+/** Searches that cost a paid web search. Ideas from the map are free and do not count. */
 async function usedToday(userId: string, now = new Date()) {
   const result = await pool.query(
-    "select count(*)::int as n from public.travel_place_idea_runs where customer_auth_subject=$1 and created_at >= $2",
+    "select count(*)::int as n from public.travel_place_idea_runs where customer_auth_subject=$1 and created_at >= $2 and cache_key not like 'map%'",
     [userId, jakartaDayStart(now)],
   );
   return Number(result.rows[0]?.n) || 0;
