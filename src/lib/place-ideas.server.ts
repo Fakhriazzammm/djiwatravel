@@ -271,6 +271,15 @@ async function geocode(query: string, bias?: { lat: number; lng: number }) {
   return outcome.ok ? (outcome.places[0] ?? null) : null;
 }
 
+/** Centre of the trip's first findable city (else the destination) to bias and bound venue lookups. */
+async function tripAnchor(cities: string[], destination: string) {
+  for (const name of [...cities, destination]) {
+    const hit = await geocode(name).catch(() => null);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 /** A place farther than this from the trip's destination is treated as a wrong match. */
 const MAX_DISTANCE_KM = 60;
 
@@ -278,11 +287,12 @@ async function verifyIdeas(
   raw: ReturnType<typeof cleanRawIdeas>,
   sources: Source[],
   destination: string,
+  cities: string[] = [],
 ): Promise<PlaceIdea[]> {
   // The town gazetteer cannot find venues. Then ideas stay grounded in the pages we fetched
   // (each cites one) and are shown without a pin, instead of every idea being dropped.
   const venueCheck = placeSearchTarget()?.provider !== "gazetteer";
-  const anchor = await geocode(destination);
+  const anchor = await tripAnchor(cities, destination);
   const bias = anchor ? { lat: anchor.lat, lng: anchor.lng } : undefined;
   const checked = await Promise.all(
     raw.map(async (idea): Promise<PlaceIdea | null> => {
@@ -381,7 +391,7 @@ export async function getPlaceIdeas(
     // Older cached answers may lack a map point or a photo: find them by name and save for everyone.
     const missing = shown.filter((idea) => !idea.imageUrl || idea.lat === null);
     if (missing.length) {
-      const anchor = await geocode(destination).catch(() => null);
+      const anchor = await tripAnchor(tripCities, destination);
       let changed = false;
       for (const idea of missing) {
         if (idea.lat === null && anchor) {
@@ -446,7 +456,7 @@ export async function getPlaceIdeas(
       const raw = cleanRawIdeas(answer.parsed, sources.length, config.maxIdeas + 6).filter((idea) =>
         ideaInTripCities(idea.city, tripCities),
       );
-      const ideas = await verifyIdeas(raw, sources, destination);
+      const ideas = await verifyIdeas(raw, sources, destination, tripCities);
       await pool
         .query(
           `insert into public.travel_place_idea_runs

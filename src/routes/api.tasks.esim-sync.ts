@@ -12,6 +12,7 @@ import {
   drainTravelEmailOutbox,
   repairPreorderNotifications,
 } from "@/lib/preorder-notifications.server";
+import { sweepFlightAlerts } from "@/lib/flight-features.server";
 import { TRAVEL_TASK_WORKER, recordFailure, recordSuccess } from "@/lib/worker-heartbeat.server";
 
 /**
@@ -116,6 +117,14 @@ async function run(request: Request) {
     return { sent: 0, failed: 1, configured: true };
   });
 
+  // Price alerts ride on this timer: each alert is looked at every few hours, not every minute.
+  const flightAlerts = await sweepFlightAlerts().catch((error) => {
+    console.error("[travel] flight alert sweep failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+    return { checked: 0, notified: 0, closed: 0, failed: 0 };
+  });
+
   const workerFailures = failed.length + preorders.failed.length + email.failed;
 
   // Liveness last, and only on a clean run: a heartbeat written by a failing worker would claim
@@ -138,6 +147,7 @@ async function run(request: Request) {
     finance,
     expiry,
     email,
+    flightAlerts,
   });
 }
 

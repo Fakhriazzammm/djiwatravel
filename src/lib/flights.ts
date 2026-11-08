@@ -32,11 +32,30 @@ export type FlightsConfig = {
   partnerId: string;
   /** Load the partner script only after the visitor presses "Setuju" on the cookie notice. */
   waitForConsent: boolean;
+  /** Price alerts: a member asks to be told when a route drops to a target price. */
+  priceAlerts: boolean;
+  /** Active alerts one member may keep. */
+  alertsPerMember: number;
+  /** "Simpan ke perjalanan": a recorded fare becomes Agenda items of a trip. */
+  saveToTrip: boolean;
+  /** Banner on the results that points at a cheaper day. */
+  dateInsight: boolean;
+  /** Smallest saving (percent of the chosen day's fare) that earns the banner. */
+  insightMinPercent: number;
+  /** Offer an eSIM for the destination country next to a chosen fare. */
+  esimOffer: boolean;
+  /** Share a few fares as a link friends can vote on. */
+  share: boolean;
+  /** Days a shared link stays open. */
+  shareDays: number;
 };
 
 /** Click targets the customer pages report (Admin counts them in the last 7 days). */
 export const AVIASALES_CLICK_TARGET = "flights_aviasales";
 export const EMBED_OPEN_TARGET = "flights_embed_open";
+export const SAVE_TRIP_TARGET = "flights_save_trip";
+export const INSIGHT_TARGET = "flights_insight_pick";
+export const ESIM_OFFER_TARGET = "flights_esim_offer";
 
 export const SEARCHES_PER_HOUR_MIN = 5;
 export const SEARCHES_PER_HOUR_MAX = 200;
@@ -52,7 +71,22 @@ export const DEFAULT_FLIGHTS_CONFIG: FlightsConfig = {
   scriptId: "NTk3MDMw",
   partnerId: "597030",
   waitForConsent: true,
+  priceAlerts: true,
+  alertsPerMember: 5,
+  saveToTrip: true,
+  dateInsight: true,
+  insightMinPercent: 5,
+  esimOffer: true,
+  share: true,
+  shareDays: 7,
 };
+
+/** Integer settings: key, smallest and largest accepted value (also the Admin form limits). */
+export const FLIGHT_NUMBER_LIMITS = {
+  alertsPerMember: [1, 20],
+  insightMinPercent: [1, 50],
+  shareDays: [1, 30],
+} as const;
 
 const SCRIPT_ID_PATTERN = /^[A-Za-z0-9]{4,40}$/;
 const PARTNER_ID_PATTERN = /^[0-9]{3,12}$/;
@@ -65,6 +99,11 @@ const BOOLEAN_KEYS = [
   "guestSearch",
   "travelpayouts",
   "waitForConsent",
+  "priceAlerts",
+  "saveToTrip",
+  "dateInsight",
+  "esimOffer",
+  "share",
 ] as const;
 
 /**
@@ -94,6 +133,15 @@ export function parseFlightsConfig(value: unknown): FlightsConfig {
       );
     }
     out.searchesPerHour = perHour;
+  }
+  for (const key of Object.keys(FLIGHT_NUMBER_LIMITS) as (keyof typeof FLIGHT_NUMBER_LIMITS)[]) {
+    const raw = record[key];
+    if (raw === undefined) continue;
+    const [min, max] = FLIGHT_NUMBER_LIMITS[key];
+    if (typeof raw !== "number" || !Number.isInteger(raw) || raw < min || raw > max) {
+      throw new Error(`flights.${key} harus ${min}-${max}`);
+    }
+    out[key] = raw;
   }
   const wl = record["whiteLabelId"];
   if (wl !== undefined && wl !== null) {
@@ -146,6 +194,8 @@ export type FlightPlace = {
   code: string;
   name: string;
   countryName: string;
+  /** ISO 3166 alpha-2 code when the provider gave one. */
+  countryCode?: string | undefined;
   type: "city" | "airport";
 };
 
@@ -372,7 +422,14 @@ export function normalizeFlightPlaces(rows: unknown, limit = 6): FlightPlace[] {
     const name = text(r["name"], 80);
     if (!name) continue;
     seen.add(code);
-    places.push({ code, name, countryName: text(r["country_name"], 60), type });
+    const countryCode = text(r["country_code"], 2).toUpperCase();
+    places.push({
+      code,
+      name,
+      countryName: text(r["country_name"], 60),
+      ...(/^[A-Z]{2}$/.test(countryCode) ? { countryCode } : {}),
+      type,
+    });
     if (places.length >= limit) break;
   }
   return places;
@@ -509,4 +566,129 @@ export function flightPriceStrip(
     days.push({ date, offer: cheapest.get(date) ?? null });
   }
   return days;
+}
+
+
+/* ------------------------------------------------- insight, trip and share helpers */
+
+/** A cheaper day than the chosen one, when it saves enough to be worth a banner. */
+export function cheaperDayInsight(
+  strip: FlightDayPrice[],
+  chosenDay: string,
+  minPercent: number,
+): { date: string; savingIdr: number; priceIdr: number } | null {
+  const chosen = strip.find((day) => day.date === chosenDay)?.offer;
+  if (!chosen) return null;
+  let best: { date: string; savingIdr: number; priceIdr: number } | null = null;
+  for (const day of strip) {
+    if (day.date === chosenDay || !day.offer) continue;
+    const saving = chosen.priceIdr - day.offer.priceIdr;
+    if (saving <= 0 || (saving / chosen.priceIdr) * 100 < minPercent) continue;
+    if (!best || saving > best.savingIdr) {
+      best = { date: day.date, savingIdr: saving, priceIdr: day.offer.priceIdr };
+    }
+  }
+  return best;
+}
+
+/** Local `YYYY-MM-DD` and `HH:MM` of a provider timestamp, read from the text so no zone shifts it. */
+export function offerLocalParts(timestamp: string): { date: string; time: string } | null {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(timestamp);
+  return match ? { date: match[1]!, time: match[2]! } : null;
+}
+
+/** The part of an offer that is safe to store and share (no booking link, no marker). */
+export type FlightOfferSnapshot = {
+  id: string;
+  origin: string;
+  destination: string;
+  originName: string;
+  destinationName: string;
+  airlineName: string;
+  airline: string;
+  flightNumber: string;
+  departureAt: string;
+  returnAt: string | null;
+  transfers: number;
+  durationMinutes: number | null;
+  priceIdr: number;
+};
+
+export function snapshotOffer(
+  offer: FlightOffer,
+  originName: string,
+  destinationName: string,
+): FlightOfferSnapshot {
+  return {
+    id: offer.id,
+    origin: offer.origin,
+    destination: offer.destination,
+    originName,
+    destinationName,
+    airlineName: offer.airlineName,
+    airline: offer.airline,
+    flightNumber: offer.flightNumber,
+    departureAt: offer.departureAt,
+    returnAt: offer.returnAt,
+    transfers: offer.transfers,
+    durationMinutes: offer.durationMinutes,
+    priceIdr: offer.priceIdr,
+  };
+}
+
+/** Strict parse of a snapshot arriving from the browser; anything off drops the whole snapshot. */
+export function parseOfferSnapshot(value: unknown): FlightOfferSnapshot | null {
+  if (!value || typeof value !== "object") return null;
+  const r = value as Record<string, unknown>;
+  const str = (key: string, max: number) =>
+    typeof r[key] === "string" ? (r[key] as string).trim().slice(0, max) : "";
+  const origin = str("origin", 3).toUpperCase();
+  const destination = str("destination", 3).toUpperCase();
+  const departureAt = str("departureAt", 40);
+  const price = Number(r["priceIdr"]);
+  if (!isIataCode(origin) || !isIataCode(destination)) return null;
+  if (!offerLocalParts(departureAt)) return null;
+  if (!Number.isFinite(price) || price <= 0 || price > 1e9) return null;
+  const returnAt = str("returnAt", 40);
+  const duration = Number(r["durationMinutes"]);
+  const transfers = Number(r["transfers"]);
+  return {
+    id: str("id", 80),
+    origin,
+    destination,
+    originName: str("originName", 80) || origin,
+    destinationName: str("destinationName", 80) || destination,
+    airlineName: str("airlineName", 60),
+    airline: str("airline", 3).toUpperCase(),
+    flightNumber: str("flightNumber", 8),
+    departureAt,
+    returnAt: offerLocalParts(returnAt) ? returnAt : null,
+    transfers: Number.isInteger(transfers) && transfers >= 0 && transfers < 10 ? transfers : 0,
+    durationMinutes: Number.isFinite(duration) && duration > 0 ? Math.round(duration) : null,
+    priceIdr: Math.round(price),
+  };
+}
+
+/** Agenda items for the outbound leg and, when there is one, the return leg. */
+export function tripItemsForOffer(offer: FlightOfferSnapshot) {
+  const legs = [
+    { at: offer.departureAt, from: offer.originName, to: offer.destinationName, tag: "berangkat" },
+    ...(offer.returnAt
+      ? [{ at: offer.returnAt, from: offer.destinationName, to: offer.originName, tag: "pulang" }]
+      : []),
+  ];
+  return legs.flatMap((leg) => {
+    const parts = offerLocalParts(leg.at);
+    if (!parts) return [];
+    return [
+      {
+        activityDate: parts.date,
+        startTime: parts.time,
+        title: `Penerbangan ${leg.tag}: ${offer.airlineName || offer.airline} ${offer.airline}${offer.flightNumber}`.trim(),
+        location: leg.from,
+        notes: `${leg.from} ke ${leg.to}. Harga tercatat ${formatFlightPrice(offer.priceIdr)}; pesan di situs mitra.`,
+        activityCategory: "flight",
+      },
+    ];
+  });
 }

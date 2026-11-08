@@ -6,11 +6,15 @@ import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { getAuthenticatedUser } from "./customer-session.fn";
+import { flightFeatureStats } from "./flight-features.server";
 import {
   AVIASALES_CLICK_TARGET,
   DEFAULT_FLIGHTS_CONFIG,
   EMBED_OPEN_TARGET,
+  ESIM_OFFER_TARGET,
   FLIGHTS_SETTING_KEY,
+  INSIGHT_TARGET,
+  SAVE_TRIP_TARGET,
   flightSearchKey,
   normalizeAirlineNames,
   normalizeFlightOffers,
@@ -229,6 +233,40 @@ export async function searchFlightsHandler({
   }
 }
 
+/**
+ * One month of cheapest-per-day fares for a route, for background jobs (price alerts). It shares
+ * the search cache but never counts against a member's hourly allowance. Throws on a provider error.
+ */
+export async function fetchMonthOffers(
+  origin: string,
+  destination: string,
+  month: string,
+): Promise<FlightOffer[]> {
+  const config = await getFlightsConfigHandler();
+  const token = flightsToken();
+  if (!config.enabled || !token) return [];
+  const search = parseFlightSearch({ origin, destination, departureDate: month });
+  if (!search) return [];
+  const key = flightSearchKey(search);
+  const hit = offerCache.get(key);
+  if (hit && Date.now() - hit.at < OFFER_CACHE_MS) return hit.offers;
+  const url = new URL(PRICES_URL);
+  url.searchParams.set("origin", search.origin);
+  url.searchParams.set("destination", search.destination);
+  url.searchParams.set("departure_at", search.departureDate);
+  url.searchParams.set("one_way", "true");
+  url.searchParams.set("currency", "idr");
+  url.searchParams.set("sorting", "price");
+  url.searchParams.set("unique", "false");
+  url.searchParams.set("limit", "30");
+  const body = (await fetchJson(url.toString(), token)) as { success?: unknown; data?: unknown };
+  if (body.success === false) throw new Error("provider rejected");
+  const offers = normalizeFlightOffers(body.data, config.partnerId, 31, await airlineNames());
+  offerCache.set(key, { at: Date.now(), offers });
+  trim(offerCache);
+  return offers;
+}
+
 /** Cached offers carry the marker of the moment they were fetched; refresh it on every read. */
 function reMarker(offers: FlightOffer[], config: FlightsConfig): FlightOffer[] {
   return offers.map((offer) => {
@@ -266,22 +304,33 @@ export const getAdminFlightsHandler = async () => {
   return {
     ...record,
     tokenConfigured: Boolean(flightsToken()),
-    stats: { ...searchStats, clicks7d: clicks.aviasales, embedOpens7d: clicks.embed },
+    stats: {
+      ...searchStats,
+      clicks7d: clicks.aviasales,
+      embedOpens7d: clicks.embed,
+      saves7d: clicks.saves,
+      insightPicks7d: clicks.insight,
+      esimOffers7d: clicks.esim,
+      ...(await flightFeatureStats()),
+    },
   };
 };
 
 async function countFlightClicks() {
-  const counts = { aviasales: 0, embed: 0 };
+  const counts = { aviasales: 0, embed: 0, saves: 0, insight: 0, esim: 0 };
   try {
     const result = await pool.query(
       `select target, count(*)::int as n from site_events
        where event_name = 'click' and target = any($1) and created_at > now() - interval '7 days'
        group by target`,
-      [[AVIASALES_CLICK_TARGET, EMBED_OPEN_TARGET]],
+      [[AVIASALES_CLICK_TARGET, EMBED_OPEN_TARGET, SAVE_TRIP_TARGET, INSIGHT_TARGET, ESIM_OFFER_TARGET]],
     );
     for (const row of result.rows as { target?: unknown; n?: unknown }[]) {
       if (row.target === AVIASALES_CLICK_TARGET) counts.aviasales = Number(row.n) || 0;
       if (row.target === EMBED_OPEN_TARGET) counts.embed = Number(row.n) || 0;
+      if (row.target === SAVE_TRIP_TARGET) counts.saves = Number(row.n) || 0;
+      if (row.target === INSIGHT_TARGET) counts.insight = Number(row.n) || 0;
+      if (row.target === ESIM_OFFER_TARGET) counts.esim = Number(row.n) || 0;
     }
   } catch {
     // Counters are a monitoring nicety; the settings still load.
