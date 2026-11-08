@@ -315,6 +315,18 @@ async function tripAnchor(cities: string[], destination: string) {
   return null;
 }
 
+/** One map centre per trip city (up to 3), so ideas cover every city; the destination if none. */
+async function tripAnchors(cities: string[], destination: string) {
+  const list: { lat: number; lng: number; name: string }[] = [];
+  for (const name of cities.slice(0, 3)) {
+    const hit = await geocode(name).catch(() => null);
+    if (hit) list.push({ lat: hit.lat, lng: hit.lng, name });
+  }
+  if (list.length) return list;
+  const fallback = await tripAnchor([], destination);
+  return fallback ? [{ lat: fallback.lat, lng: fallback.lng, name: destination }] : [];
+}
+
 /** A place farther than this from the trip's destination is treated as a wrong match. */
 const MAX_DISTANCE_KM = 60;
 
@@ -376,13 +388,23 @@ const CATEGORY_WORD: Record<string, string> = {
  * the AI only phrases one sentence from those facts.
  */
 async function ideasFromMap(
-  anchor: { lat: number; lng: number },
+  anchors: { lat: number; lng: number; name: string }[],
   category: PlaceIdeaCategoryId,
   limit: number,
   destination: string,
   model: string,
 ) {
-  const found = await discoverPlaces(anchor, category, limit + 4);
+  // Each city gets its share of the list, taken in turns so no city crowds the others out.
+  const perCity = await Promise.all(
+    anchors.map((anchor) => discoverPlaces(anchor, category, limit + 4)),
+  );
+  const found: Awaited<ReturnType<typeof discoverPlaces>> = [];
+  for (let round = 0; found.length < limit + 4 && round < limit + 4; round += 1) {
+    for (const list of perCity) {
+      const next = list[round];
+      if (next && found.length < limit + 4) found.push(next);
+    }
+  }
   const withFacts = await Promise.all(
     found.map(async (candidate) => ({ candidate, wiki: await wikipediaFacts(candidate) })),
   );
@@ -550,13 +572,13 @@ export async function getPlaceIdeas(
     const phrase = input.query ? `${input.query}` : kind.search;
     let usage = { input: 0, output: 0 };
     try {
-      const mapAnchor = input.query ? null : await tripAnchor(tripCities, destination);
-      if (mapAnchor) {
+      const mapAnchors = input.query ? [] : await tripAnchors(tripCities, destination);
+      if (mapAnchors.length) {
         const result = await ideasFromMap(
-          mapAnchor,
+          mapAnchors,
           input.category,
           config.maxIdeas,
-          tripCities[0] ?? destination,
+          tripCities.join(", ") || destination,
           config.model,
         );
         if (result.ideas.length) {
