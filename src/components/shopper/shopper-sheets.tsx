@@ -24,6 +24,7 @@ import {
   type ShopperFilters,
   type ShopperProduct,
 } from "@/lib/personal-shopper";
+import { marketBlocker, type MarketItemView } from "@/lib/shopper-market";
 import { cartActions, cartCount, cartQuote, type CartLine } from "./shopper-cart";
 import { Chip, ProductImage, ShopperSheet, Stepper } from "./shopper-ui";
 
@@ -337,6 +338,127 @@ export function SortSheet({
   );
 }
 
+/* ------------------------------------------------------------------ marketplace */
+
+const SITE_NAME = { mercari: "Mercari", rakuten: "Rakuten" } as const;
+
+/** A Mercari or Rakuten item priced from its own page: confirm the choice, then add to the cart. */
+export function MarketSheet({
+  item,
+  money,
+  config,
+  onClose,
+  onAdded,
+}: {
+  item: MarketItemView | null;
+  money: Money;
+  config: ShopperConfig;
+  onClose: () => void;
+  onAdded: (origin: HTMLElement | null) => void;
+}) {
+  const [variant, setVariant] = useState("");
+  const [qty, setQty] = useState(1);
+  useEffect(() => {
+    setVariant("");
+    setQty(1);
+  }, [item]);
+  if (!item)
+    return (
+      <ShopperSheet open={false} onOpenChange={onClose} title="Barang">
+        {null}
+      </ShopperSheet>
+    );
+  const blocker = marketBlocker(item);
+  const unitIdr = toIdr(item.priceJpy, money.rate);
+  const needsVariant = item.needsVariant && variant.trim().length < 1;
+  return (
+    <ShopperSheet open onOpenChange={(o) => !o && onClose()} title={item.name}>
+      <div className="flex gap-3">
+        <ProductImage src={item.imageUrl} alt={item.name} className="size-24 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] text-muted-foreground">
+            {SITE_NAME[item.site]}
+            {item.conditionText ? ` · ${item.conditionText}` : ""}
+          </p>
+          <p className="mt-0.5 text-[16px] font-bold">{formatMinor(item.priceJpy, money.symbol)}</p>
+          <p className="text-[11px] text-muted-foreground">≈ {formatIdr(unitIdr)}</p>
+          {item.sizeText && <p className="text-[11px]">Ukuran: {item.sizeText}</p>}
+          <a
+            href={item.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-brand-red"
+          >
+            Lihat di {SITE_NAME[item.site]}
+            <ExternalLink className="size-3" aria-hidden="true" />
+          </a>
+        </div>
+      </div>
+      {blocker ? (
+        <p role="alert" className="mt-3 rounded-xl bg-secondary p-3 text-[12px] text-brand-red">
+          {blocker}
+        </p>
+      ) : (
+        <>
+          {item.needsVariant && (
+            <label className="mt-3 block text-[12px]">
+              <span className="mb-0.5 block font-medium text-muted-foreground">
+                Ukuran / warna yang dipilih (wajib)
+              </span>
+              <input
+                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-[14px] outline-none focus:border-brand-red"
+                value={variant}
+                maxLength={200}
+                placeholder="Contoh: M, hitam"
+                onChange={(e) => setVariant(e.target.value)}
+              />
+            </label>
+          )}
+          {item.maxQuantity > 1 && (
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-[13px] font-semibold">Jumlah</p>
+              <Stepper value={qty} onChange={setQty} max={item.maxQuantity} />
+            </div>
+          )}
+          <p className="mt-3 text-[10px] text-muted-foreground">
+            {item.site === "mercari"
+              ? "Barang bekas dari penjual perorangan, hanya 1 buah. Stok dicek lagi saat kamu membayar dan saat dibeli; bila sudah terjual, dana dikembalikan."
+              : "Stok dan harga dicek lagi saat kamu membayar dan saat dibeli; bila berubah atau habis, dana dikembalikan."}{" "}
+            Ongkir kirim dalam Jepang dihitung di keranjang.
+          </p>
+          <button
+            type="button"
+            disabled={needsVariant}
+            className={`${primaryBtn} mt-3`}
+            onClick={(event) => {
+              cartActions.add(
+                {
+                  productId: item.id,
+                  marketItemId: item.id,
+                  size: "-",
+                  color: null,
+                  variant: item.needsVariant ? variant.trim() : item.sizeText,
+                  quantity: qty,
+                  name: item.name,
+                  brand: item.site,
+                  image: item.imageUrl,
+                  unitMinor: item.priceJpy,
+                  sourceUrl: item.sourceUrl,
+                },
+                item.maxQuantity,
+              );
+              onAdded(event.currentTarget);
+              onClose();
+            }}
+          >
+            Tambah · {formatIdr(unitIdr * qty)}
+          </button>
+        </>
+      )}
+    </ShopperSheet>
+  );
+}
+
 /* -------------------------------------------------------------------- cart */
 
 const EMPTY_ADDRESS: ShopperAddress = {
@@ -411,12 +533,17 @@ export function CartSheet({
       const result = await createShoppingOrder({
         data: {
           country,
-          items: cart.map((l) => ({
-            productId: l.productId,
-            size: l.size,
-            color: l.color,
-            quantity: l.quantity,
-          })),
+          items: cart.map((l) =>
+            l.marketItemId
+              ? {
+                  marketItemId: l.marketItemId,
+                  size: "-",
+                  variant: l.variant ?? null,
+                  quantity: l.quantity,
+                  expectedUnitMinor: l.unitMinor,
+                }
+              : { productId: l.productId, size: l.size, color: l.color, quantity: l.quantity },
+          ),
           address,
           note: note.trim() || null,
         },
@@ -461,16 +588,22 @@ export function CartSheet({
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-1 text-[13px] font-semibold">{l.name}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {brandById(l.brand)?.name} · {l.size}
-                    {l.color ? ` · ${l.color}` : ""} · {formatIdr(toIdr(l.unitMinor, money.rate))}
+                    {l.marketItemId
+                      ? `${l.brand === "rakuten" ? "Rakuten" : "Mercari"}${l.variant ? ` · ${l.variant}` : ""}`
+                      : `${brandById(l.brand)?.name} · ${l.size}${l.color ? ` · ${l.color}` : ""}`}{" "}
+                    · {formatIdr(toIdr(l.unitMinor, money.rate))}
                   </p>
                 </div>
                 <Stepper
                   value={l.quantity}
                   min={0}
-                  max={config.maxQtyPerItem}
+                  max={l.marketItemId && l.brand === "mercari" ? 1 : config.maxQtyPerItem}
                   onChange={(next) =>
-                    cartActions.change(l.key, next - l.quantity, config.maxQtyPerItem)
+                    cartActions.change(
+                      l.key,
+                      next - l.quantity,
+                      l.marketItemId && l.brand === "mercari" ? 1 : config.maxQtyPerItem,
+                    )
                   }
                 />
               </div>
@@ -478,6 +611,9 @@ export function CartSheet({
           </div>
           <dl className="mt-2 space-y-1 text-[12px]">
             <Row label="Barang" value={formatIdr(quote.subtotalIdr)} />
+            {quote.domesticIdr > 0 && (
+              <Row label="Kirim dalam Jepang (estimasi)" value={formatIdr(quote.domesticIdr)} />
+            )}
             <Row label={`Jasa titip ${config.feePercent}%`} value={formatIdr(quote.feeIdr)} />
             <Row label="Ongkir ke Indonesia" value={formatIdr(quote.shippingIdr)} />
             <Row label="Total" value={formatIdr(quote.totalIdr)} strong />
@@ -485,7 +621,7 @@ export function CartSheet({
           <p className="mt-1 text-[10px] text-muted-foreground">
             Kurs {money.currency} 1 = Rp {money.rate.toLocaleString("id-ID")}, dikunci saat pesanan
             dibuat. Harga toko dicek saat barang dibeli; bila berubah atau habis, tim kami
-            menghubungimu.
+            menghubungimu dan dana dikembalikan.
           </p>
           <button type="button" className={`${primaryBtn} mt-3`} onClick={() => setStep("address")}>
             Lanjut ke alamat

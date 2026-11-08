@@ -189,6 +189,8 @@ type OrderLine = {
   product_url: string;
   product_code: string;
   brand: string;
+  variant: string | null;
+  market_item_id: string | null;
 };
 
 function OrderCard({
@@ -208,13 +210,13 @@ function OrderCard({
   const items = order.items as OrderLine[];
 
   async function act(
-    action: "advance" | "cancel" | "note" | "check_payment" | "resend_finance",
+    action: "advance" | "cancel" | "note" | "check_payment" | "resend_finance" | "recheck_market",
     extra: { note?: string } = {},
   ) {
     setBusy(true);
     setNotice(null);
     try {
-      await runAdminShoppingAction({
+      const result = await runAdminShoppingAction({
         data: {
           orderId: order.id,
           action,
@@ -224,7 +226,29 @@ function OrderCard({
             : {}),
         },
       });
-      setNotice({ error: false, text: `${order.code}: tindakan berhasil.` });
+      if (action === "recheck_market" && "market" in result) {
+        const checks = result.market as {
+          name: string;
+          status: "OK" | "SOLD" | "PRICE_CHANGED" | "ERROR";
+          priceJpy: number | null;
+          orderedJpy: number;
+        }[];
+        const label = {
+          OK: "masih tersedia",
+          SOLD: "SUDAH TERJUAL",
+          PRICE_CHANGED: "HARGA BERUBAH",
+          ERROR: "gagal dibaca",
+        } as const;
+        setNotice({
+          error: checks.some((m) => m.status !== "OK"),
+          text: `${order.code}: ${checks
+            .map(
+              (m) =>
+                `${m.name.slice(0, 40)} ${label[m.status]}${m.status === "PRICE_CHANGED" ? ` (¥${m.orderedJpy} → ¥${m.priceJpy})` : ""}`,
+            )
+            .join("; ")}`,
+        });
+      } else setNotice({ error: false, text: `${order.code}: tindakan berhasil.` });
       await refresh();
     } catch (error) {
       setNotice({ error: true, text: error instanceof Error ? error.message : "Tindakan gagal." });
@@ -257,7 +281,8 @@ function OrderCard({
             <span className="min-w-0">
               <span className="block font-semibold">{l.name}</span>
               <span className="text-muted-foreground">
-                {l.brand} · {l.product_code} · ukuran {l.size}
+                {l.brand} · {l.product_code} ·{" "}
+                {l.market_item_id ? `pilihan: ${l.variant ?? "-"}` : `ukuran ${l.size}`}
                 {l.color ? ` · ${l.color}` : ""} · {l.quantity} × ¥
                 {l.unit_minor.toLocaleString("id-ID")}
               </span>
@@ -348,6 +373,18 @@ function OrderCard({
             {ADMIN_NEXT_LABEL[order.status]}
           </button>
         )}
+        {items.some((l) => l.market_item_id) &&
+          order.status !== "CANCELLED" &&
+          order.status !== "EXPIRED" && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void act("recheck_market")}
+              className={btn}
+            >
+              <RefreshCw className="size-4" /> Cek ulang harga &amp; stok
+            </button>
+          )}
         {order.status === "PAYMENT_PENDING" && (
           <button
             type="button"
@@ -703,6 +740,57 @@ function Settings({
       <div className="grid gap-2 sm:grid-cols-2">
         {flag("Tampilkan rail Trending", config.showTrending, (v) => set("showTrending", v))}
         {flag("Tampilkan rail Terlaris", config.showBestSellers, (v) => set("showBestSellers", v))}
+      </div>
+      <div>
+        <p className="mb-1 text-xs font-semibold text-muted-foreground">
+          Mercari dan Rakuten (tempel link, harga dibaca dari halaman)
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {flag("Aktifkan link marketplace", config.market.enabled, (v) =>
+            set("market", { ...config.market, enabled: v }),
+          )}
+          {flag("Mercari", config.market.sites.mercari, (v) =>
+            set("market", { ...config.market, sites: { ...config.market.sites, mercari: v } }),
+          )}
+          {flag("Rakuten", config.market.sites.rakuten, (v) =>
+            set("market", { ...config.market, sites: { ...config.market.sites, rakuten: v } }),
+          )}
+        </div>
+        <div className="mt-2 grid gap-3 sm:grid-cols-3">
+          <label className="text-xs font-semibold">
+            Ongkir dalam Jepang per barang (Rp)
+            <input
+              type="number"
+              className={`${input} mt-1`}
+              value={config.market.domesticIdr}
+              onChange={(e) =>
+                set("market", { ...config.market, domesticIdr: Number(e.target.value) })
+              }
+            />
+          </label>
+          <label className="text-xs font-semibold">
+            Baca link per pelanggan / hari
+            <input
+              type="number"
+              className={`${input} mt-1`}
+              value={config.market.lookupsPerDay}
+              onChange={(e) =>
+                set("market", { ...config.market, lookupsPerDay: Number(e.target.value) })
+              }
+            />
+          </label>
+          <label className="text-xs font-semibold">
+            Simpan hasil baca (menit)
+            <input
+              type="number"
+              className={`${input} mt-1`}
+              value={config.market.cacheMinutes}
+              onChange={(e) =>
+                set("market", { ...config.market, cacheMinutes: Number(e.target.value) })
+              }
+            />
+          </label>
+        </div>
       </div>
       <input
         className={input}

@@ -53,9 +53,10 @@ describe("design A discovery", () => {
         analysis: null,
         message: "Tim akan membantu",
         exact: false,
+        market: null,
       }),
     });
-    render(<ShopperDiscovery onProduct={vi.fn()} />);
+    render(<ShopperDiscovery onProduct={vi.fn()} onMarket={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Tempel link" }));
     fireEvent.change(screen.getByLabelText("Link produk"), {
       target: { value: "https://jp.mercari.com/item/m123" },
@@ -78,7 +79,7 @@ describe("design A discovery", () => {
       status: 401,
       json: async () => ({ error: "Masuk terlebih dahulu" }),
     });
-    render(<ShopperDiscovery onProduct={vi.fn()} />);
+    render(<ShopperDiscovery onProduct={vi.fn()} onMarket={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Tempel link" }));
     fireEvent.change(screen.getByLabelText("Link produk"), {
       target: { value: "https://jp.mercari.com/item/m123" },
@@ -88,10 +89,48 @@ describe("design A discovery", () => {
     expect(mock.submit).not.toHaveBeenCalled();
   });
   it("does not send a photo search without a selected photo", async () => {
-    render(<ShopperDiscovery onProduct={vi.fn()} />);
+    render(<ShopperDiscovery onProduct={vi.fn()} onMarket={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Cari dari foto" }));
     fireEvent.click(screen.getByRole("button", { name: "Cari barang" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Pilih foto"));
     expect(mock.fetch).not.toHaveBeenCalled();
+  });
+  it("shows a priced marketplace card and hands it to the market sheet", async () => {
+    const market = {
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      site: "mercari",
+      sourceUrl: "https://jp.mercari.com/item/m99035619244",
+      name: "ユニクロ ダウン",
+      priceJpy: 2999,
+      imageUrl: null,
+      conditionText: "目立った傷や汚れなし",
+      sizeText: "XL(LL)",
+      sold: false,
+      needsVariant: false,
+      maxQuantity: 1,
+    };
+    mock.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        requestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        products: [],
+        analysis: null,
+        message: "Harga dihitung otomatis",
+        exact: false,
+        market,
+      }),
+    });
+    const onMarket = vi.fn();
+    render(<ShopperDiscovery onProduct={vi.fn()} onMarket={onMarket} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Tempel link" }));
+    fireEvent.change(screen.getByLabelText("Link produk"), {
+      target: { value: "https://jp.mercari.com/item/m99035619244" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cari barang" }));
+    const card = await screen.findByRole("button", { name: /ユニクロ ダウン/ });
+    expect(card.textContent).toContain("¥2.999");
+    fireEvent.click(card);
+    expect(onMarket).toHaveBeenCalledWith(market);
   });
 });

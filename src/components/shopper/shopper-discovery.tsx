@@ -7,9 +7,16 @@ import { compressReceiptPhoto } from "@/lib/receipt-image";
 import { getDiscoveryStatus, runCustomerDiscoveryAction } from "@/lib/shopper-discovery.fn";
 import { formatMinor, productTitle, type ShopperProduct } from "@/lib/personal-shopper";
 import type { DiscoverySearchResult } from "@/lib/shopper-discovery";
+import type { MarketItemView } from "@/lib/shopper-market";
 import { ProductImage, ShopperSheet } from "./shopper-ui";
 const field = "min-h-10 w-full rounded-xl border border-border bg-secondary px-3 text-[13px]";
-export function ShopperDiscovery({ onProduct }: { onProduct: (p: ShopperProduct) => void }) {
+export function ShopperDiscovery({
+  onProduct,
+  onMarket,
+}: {
+  onProduct: (p: ShopperProduct) => void;
+  onMarket: (item: MarketItemView) => void;
+}) {
   const [enabled, setEnabled] = useState(false),
     [open, setOpen] = useState<"link" | "photo" | null>(null),
     [url, setUrl] = useState(""),
@@ -214,8 +221,8 @@ export function ShopperDiscovery({ onProduct }: { onProduct: (p: ShopperProduct)
                   </button>
                 )}
                 <p className="text-[11px] text-muted-foreground">
-                  Uniqlo/GU dicocokkan otomatis. Link toko lain diperiksa tim. Foto menghasilkan
-                  kandidat; periksa produknya sebelum membeli.
+                  Link Uniqlo, GU, Mercari, dan Rakuten dihitung otomatis. Link toko lain diperiksa
+                  tim. Foto menghasilkan kandidat; periksa produknya sebelum membeli.
                 </p>
               </>
             )}
@@ -224,6 +231,36 @@ export function ShopperDiscovery({ onProduct }: { onProduct: (p: ShopperProduct)
                 <p className="text-[12px]">{result.message}</p>
                 {result.analysis && (
                   <p className="text-[12px] text-muted-foreground">{result.analysis}</p>
+                )}
+                {result.market && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMarket(result.market!);
+                      setOpen(null);
+                    }}
+                    className="tap flex w-full items-center gap-2 rounded-xl border border-brand-red/40 bg-brand-red-soft p-2 text-left"
+                  >
+                    <ProductImage
+                      src={result.market.imageUrl}
+                      alt={result.market.name}
+                      className="size-14 shrink-0"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-[10px] text-muted-foreground">
+                        {result.market.site === "mercari" ? "Mercari" : "Rakuten"}
+                        {result.market.conditionText ? ` · ${result.market.conditionText}` : ""}
+                      </span>
+                      <span className="line-clamp-2 text-[13px] font-semibold">
+                        {result.market.name}
+                      </span>
+                      <span className="block text-[12px]">
+                        {result.market.sold
+                          ? "Sudah terjual"
+                          : `${formatMinor(result.market.priceJpy, "¥")} · harga halaman`}
+                      </span>
+                    </span>
+                  </button>
                 )}
                 <div className="space-y-2">
                   {result.products.map((p) => (

@@ -18,6 +18,7 @@ import {
   buildTravelFinanceGatewayPayload,
   postTravelFinanceSettlement,
 } from "./mayar-settlement.server";
+import { marketItemRow, marketRefOf, refreshMarketItem } from "./shopper-market.server";
 import {
   ADMIN_NEXT,
   ORDER_STATUS_LABEL,
@@ -31,6 +32,7 @@ import {
   countryByCode,
   countryEnabled,
   mapStoreItem,
+  marketEnabled,
   normalizeShopperConfig,
   orderIsPaid,
   parseShopperConfig,
@@ -417,12 +419,20 @@ const createOrderSchema = z.object({
   country: z.enum(["JP", "KR", "TH", "SG"]),
   items: z
     .array(
-      z.object({
-        productId: z.string().uuid(),
-        size: z.string().trim().min(1).max(20),
-        color: z.string().trim().max(40).nullable().optional(),
-        quantity: z.number().int().min(1).max(20),
-      }),
+      z
+        .object({
+          productId: z.string().uuid().optional(),
+          marketItemId: z.string().uuid().optional(),
+          variant: z.string().trim().max(200).nullable().optional(),
+          /** Marketplace price the customer saw (JPY): the order is refused if the page now says otherwise. */
+          expectedUnitMinor: z.number().int().positive().optional(),
+          size: z.string().trim().min(1).max(20),
+          color: z.string().trim().max(40).nullable().optional(),
+          quantity: z.number().int().min(1).max(20),
+        })
+        .refine((i) => Boolean(i.productId) !== Boolean(i.marketItemId), {
+          message: "Barang tidak valid",
+        }),
     )
     .min(1)
     .max(50),
@@ -610,11 +620,13 @@ export async function createShoppingOrderHandler({
   if (Number((pending.rows[0] as { n: number }).n) >= 3)
     throw new Error("Selesaikan atau tunggu pesanan yang belum dibayar dulu");
 
-  const ids = [...new Set(data.items.map((i) => i.productId))];
-  const found = await pool.query(
-    "select * from shopping_catalog_items where id = any($1::uuid[]) and hidden = false and country = $2",
-    [ids, country],
-  );
+  const ids = [...new Set(data.items.flatMap((i) => (i.productId ? [i.productId] : [])))];
+  const found = ids.length
+    ? await pool.query(
+        "select * from shopping_catalog_items where id = any($1::uuid[]) and hidden = false and country = $2",
+        [ids, country],
+      )
+    : { rows: [] };
   const byId = new Map(
     (found.rows as (CatalogRowDb & { country: string })[]).map((r) => [r.id, r]),
   );
@@ -622,25 +634,86 @@ export async function createShoppingOrderHandler({
   const rate = config.rates[currency];
   if (!rate) throw new Error("Kurs belum diatur");
 
-  const lines = data.items.map((item) => {
-    const row = byId.get(item.productId);
-    if (!row) throw new Error("Ada produk yang sudah tidak tersedia");
-    if (!brandEnabled(config, row.brand)) throw new Error("Brand belum tersedia");
+  type Line = {
+    catalogId: string | null;
+    marketId: string | null;
+    brand: string;
+    code: string;
+    name: string;
+    size: string;
+    color: string | null;
+    variant: string | null;
+    quantity: number;
+    unitMinor: number;
+    image: string | null;
+    url: string;
+  };
+  const lines: Line[] = [];
+  for (const item of data.items) {
     if (item.quantity > config.maxQtyPerItem)
       throw new Error(`Maksimal ${config.maxQtyPerItem} per barang`);
-    const sizes = Array.isArray(row.sizes) ? row.sizes : [];
-    if (sizes.length > 0 && !sizes.includes(item.size)) throw new Error("Ukuran tidak tersedia");
-    const colors = Array.isArray(row.colors) ? row.colors : [];
-    const color = item.color
-      ? colors.find((c) => c.code === item.color || c.name === item.color)
-      : undefined;
-    if (item.color && !color) throw new Error("Warna tidak tersedia");
-    return { row, item, colorName: color?.name ?? null, image: color?.image ?? row.image_url };
-  });
+    if (item.productId) {
+      const row = byId.get(item.productId);
+      if (!row) throw new Error("Ada produk yang sudah tidak tersedia");
+      if (!brandEnabled(config, row.brand)) throw new Error("Brand belum tersedia");
+      const sizes = Array.isArray(row.sizes) ? row.sizes : [];
+      if (sizes.length > 0 && !sizes.includes(item.size)) throw new Error("Ukuran tidak tersedia");
+      const colors = Array.isArray(row.colors) ? row.colors : [];
+      const color = item.color
+        ? colors.find((c) => c.code === item.color || c.name === item.color)
+        : undefined;
+      if (item.color && !color) throw new Error("Warna tidak tersedia");
+      lines.push({
+        catalogId: row.id,
+        marketId: null,
+        brand: row.brand,
+        code: row.product_code,
+        name: row.name_id || row.name,
+        size: item.size,
+        color: color?.name ?? null,
+        variant: null,
+        quantity: item.quantity,
+        unitMinor: row.price_minor,
+        image: color?.image ?? row.image_url,
+        url: row.product_url,
+      });
+      continue;
+    }
+    // Marketplace item: read the page again now, so the price and stock are what we bill for.
+    const stored = await marketItemRow(item.marketItemId!);
+    if (!stored) throw new Error("Barang tidak ditemukan. Tempel linknya lagi.");
+    const site = stored.site;
+    if (!marketEnabled(config, site)) throw new Error("Marketplace ini belum tersedia");
+    const live = await refreshMarketItem(marketRefOf(stored));
+    if (live.sold) throw new Error("Barang ini sudah terjual atau stoknya habis.");
+    if (item.expectedUnitMinor !== undefined && item.expectedUnitMinor !== live.price_jpy)
+      throw new Error(
+        `Harga barang berubah menjadi ¥${live.price_jpy.toLocaleString("id-ID")}. Tempel linknya lagi untuk melihat harga terbaru.`,
+      );
+    if (site === "mercari" && item.quantity !== 1) throw new Error("Barang Mercari hanya 1 buah");
+    const variant = item.variant?.trim() || null;
+    if (site === "rakuten" && !variant) throw new Error("Tulis ukuran atau warna yang kamu mau");
+    lines.push({
+      catalogId: null,
+      marketId: live.id,
+      brand: site,
+      code: live.external_id,
+      name: live.name,
+      size: (variant ?? live.size_text ?? "-").slice(0, 20),
+      color: null,
+      variant: variant ?? live.size_text,
+      quantity: item.quantity,
+      unitMinor: live.price_jpy,
+      image: live.image_url,
+      url: live.source_url,
+    });
+  }
+  const domesticIdr = lines.filter((l) => l.marketId).length * config.market.domesticIdr;
   const quote = quoteShopperOrder(
-    lines.map((l) => ({ unitMinor: l.row.price_minor, quantity: l.item.quantity })),
+    lines.map((l) => ({ unitMinor: l.unitMinor, quantity: l.quantity })),
     rate,
     config,
+    domesticIdr,
   );
   if (quote.totalIdr <= 0) throw new Error("Pesanan kosong");
 
@@ -654,8 +727,9 @@ export async function createShoppingOrderHandler({
       const inserted = await client.query(
         `insert into shopping_orders
            (public_code, customer_auth_subject, country, currency, rate_idr, subtotal_idr, fee_idr, shipping_idr, total_idr,
-            payment_expires_at, recipient_name, recipient_whatsapp, address_line, city, postal_code, customer_note)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9, now() + ($10 || ' minutes')::interval, $11,$12,$13,$14,$15,$16)
+            payment_expires_at, recipient_name, recipient_whatsapp, address_line, city, postal_code, customer_note,
+            domestic_shipping_idr)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9, now() + ($10 || ' minutes')::interval, $11,$12,$13,$14,$15,$16,$17)
          on conflict (public_code) do nothing returning id`,
         [
           code,
@@ -674,6 +748,7 @@ export async function createShoppingOrderHandler({
           data.address.city,
           data.address.postalCode,
           data.note || null,
+          quote.domesticIdr,
         ],
       );
       orderId = (inserted.rows[0] as { id: string } | undefined)?.id ?? "";
@@ -682,21 +757,24 @@ export async function createShoppingOrderHandler({
     for (const l of lines) {
       await client.query(
         `insert into shopping_order_items
-           (order_id, catalog_item_id, brand, product_code, name, size, color, quantity, unit_minor, unit_idr, image_url, product_url)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+           (order_id, catalog_item_id, market_item_id, brand, product_code, name, size, color, variant,
+            quantity, unit_minor, unit_idr, image_url, product_url)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
         [
           orderId,
-          l.row.id,
-          l.row.brand,
-          l.row.product_code,
-          l.row.name_id || l.row.name,
-          l.item.size,
-          l.colorName,
-          l.item.quantity,
-          l.row.price_minor,
-          toIdr(l.row.price_minor, rate),
+          l.catalogId,
+          l.marketId,
+          l.brand,
+          l.code,
+          l.name,
+          l.size,
+          l.color,
+          l.variant,
+          l.quantity,
+          l.unitMinor,
+          toIdr(l.unitMinor, rate),
           l.image,
-          l.row.product_url,
+          l.url,
         ],
       );
     }
@@ -901,6 +979,8 @@ export type OrderItemView = {
   name: string;
   size: string;
   color: string | null;
+  variant: string | null;
+  market_item_id: string | null;
   quantity: number;
   unit_minor: number;
   unit_idr: number;
@@ -912,7 +992,7 @@ export type OrderEventView = { status: string; at: string; actor?: string; note?
 async function itemsFor(orderIds: string[]) {
   if (orderIds.length === 0) return new Map<string, OrderItemView[]>();
   const rows = await pool.query(
-    `select order_id, brand, product_code, name, size, color, quantity, unit_minor, unit_idr, image_url, product_url
+    `select order_id, brand, product_code, name, size, color, variant, market_item_id, quantity, unit_minor, unit_idr, image_url, product_url
        from shopping_order_items where order_id = any($1::uuid[]) order by id`,
     [orderIds],
   );
@@ -1162,7 +1242,14 @@ export async function saveShopperConfigHandler({
 
 const actionSchema = z.object({
   orderId: z.string().uuid(),
-  action: z.enum(["advance", "cancel", "note", "check_payment", "resend_finance"]),
+  action: z.enum([
+    "advance",
+    "cancel",
+    "note",
+    "check_payment",
+    "resend_finance",
+    "recheck_market",
+  ]),
   note: z.string().trim().max(800).optional(),
   courier: z.string().trim().max(60).optional(),
   trackingNumber: z.string().trim().max(80).optional(),
@@ -1182,6 +1269,41 @@ export async function adminShoppingActionHandler({
 
   if (data.action === "check_payment")
     return { ok: true, result: await settleShoppingOrder(order.id) };
+  if (data.action === "recheck_market") {
+    // Read each marketplace page again before the buyer spends money on it.
+    const rows = await pool.query(
+      `select i.name, i.unit_minor, m.site, m.external_id, m.source_url
+         from shopping_order_items i join shopping_market_items m on m.id = i.market_item_id
+        where i.order_id = $1`,
+      [order.id],
+    );
+    const market: {
+      name: string;
+      status: "OK" | "SOLD" | "PRICE_CHANGED" | "ERROR";
+      priceJpy: number | null;
+      orderedJpy: number;
+    }[] = [];
+    for (const r of rows.rows as {
+      name: string;
+      unit_minor: number;
+      site: "mercari" | "rakuten";
+      external_id: string;
+      source_url: string;
+    }[]) {
+      try {
+        const live = await refreshMarketItem(marketRefOf(r));
+        market.push({
+          name: r.name,
+          orderedJpy: r.unit_minor,
+          priceJpy: live.price_jpy,
+          status: live.sold ? "SOLD" : live.price_jpy !== r.unit_minor ? "PRICE_CHANGED" : "OK",
+        });
+      } catch {
+        market.push({ name: r.name, orderedJpy: r.unit_minor, priceJpy: null, status: "ERROR" });
+      }
+    }
+    return { ok: true, market };
+  }
   if (data.action === "resend_finance") {
     if (!orderIsPaid(order.status) || !order.paid_at) throw new Error("Pesanan belum dibayar");
     await postFinance(order, new Date(order.paid_at).getTime());

@@ -65,6 +65,19 @@ export const brandById = (id: string) => SHOPPER_BRANDS.find((b) => b.id === id)
 
 /* ------------------------------------------------------------------ config */
 
+export type MarketSite = "mercari" | "rakuten";
+export const MARKET_SITES: readonly MarketSite[] = ["mercari", "rakuten"];
+export type MarketConfig = {
+  enabled: boolean;
+  sites: Record<MarketSite, boolean>;
+  /** Estimated delivery inside Japan, charged once per marketplace item, in IDR. */
+  domesticIdr: number;
+  /** Link lookups one member may make per day. */
+  lookupsPerDay: number;
+  /** A fetched listing younger than this is reused. */
+  cacheMinutes: number;
+};
+
 export type ShopperConfig = {
   /** Master switch: off hides the Home tile and the whole customer flow. */
   enabled: boolean;
@@ -85,6 +98,8 @@ export type ShopperConfig = {
   catalogRefreshHours: number;
   showTrending: boolean;
   showBestSellers: boolean;
+  /** Mercari and Rakuten links priced from the item page (Japan only). */
+  market: MarketConfig;
 };
 
 export const DEFAULT_SHOPPER_CONFIG: ShopperConfig = {
@@ -100,6 +115,13 @@ export const DEFAULT_SHOPPER_CONFIG: ShopperConfig = {
   catalogRefreshHours: 12,
   showTrending: true,
   showBestSellers: true,
+  market: {
+    enabled: false,
+    sites: { mercari: true, rakuten: true },
+    domesticIdr: 35_000,
+    lookupsPerDay: 30,
+    cacheMinutes: 10,
+  },
 };
 
 const bool = (value: unknown, label: string) => {
@@ -111,6 +133,40 @@ const intIn = (value: unknown, min: number, max: number, label: string) => {
     throw new Error(`personalShopper.${label} harus bilangan bulat ${min}-${max}`);
   return value as number;
 };
+
+function parseMarketConfig(value: unknown): MarketConfig {
+  const d = DEFAULT_SHOPPER_CONFIG.market;
+  if (value === undefined) return d;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("personalShopper.market harus berupa objek");
+  const raw = value as Record<string, unknown>;
+  const sites = { ...d.sites };
+  if (raw["sites"] !== undefined) {
+    const source = raw["sites"];
+    if (!source || typeof source !== "object" || Array.isArray(source))
+      throw new Error("personalShopper.market.sites harus berupa objek");
+    for (const site of MARKET_SITES) {
+      const v = (source as Record<string, unknown>)[site];
+      if (v !== undefined) sites[site] = bool(v, `market.sites.${site}`);
+    }
+  }
+  return {
+    enabled: raw["enabled"] === undefined ? d.enabled : bool(raw["enabled"], "market.enabled"),
+    sites,
+    domesticIdr:
+      raw["domesticIdr"] === undefined
+        ? d.domesticIdr
+        : intIn(raw["domesticIdr"], 0, 1_000_000, "market.domesticIdr"),
+    lookupsPerDay:
+      raw["lookupsPerDay"] === undefined
+        ? d.lookupsPerDay
+        : intIn(raw["lookupsPerDay"], 1, 200, "market.lookupsPerDay"),
+    cacheMinutes:
+      raw["cacheMinutes"] === undefined
+        ? d.cacheMinutes
+        : intIn(raw["cacheMinutes"], 1, 120, "market.cacheMinutes"),
+  };
+}
 
 export function parseShopperConfig(value: unknown): ShopperConfig {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -190,6 +246,7 @@ export function parseShopperConfig(value: unknown): ShopperConfig {
       raw["showBestSellers"] === undefined
         ? d.showBestSellers
         : bool(raw["showBestSellers"], "showBestSellers"),
+    market: parseMarketConfig(raw["market"]),
   };
 }
 
@@ -209,6 +266,9 @@ export const brandEnabled = (config: ShopperConfig, id: ShopperBrandId) => {
   return Boolean(brand?.adapter && config.brands[id] && countryEnabled(config, brand.country));
 };
 
+export const marketEnabled = (config: ShopperConfig, site: MarketSite) =>
+  countryEnabled(config, "JP") && config.market.enabled && config.market.sites[site];
+
 /* ------------------------------------------------------------------ pricing */
 
 /** IDR for an amount in the store's minor units (whole yen for Japan). */
@@ -217,6 +277,8 @@ export const toIdr = (minor: number, rate: number) => Math.round(minor * rate);
 export type QuoteLine = { unitMinor: number; quantity: number };
 export type OrderQuote = {
   subtotalIdr: number;
+  /** Delivery inside Japan for marketplace items. Zero for store catalog orders. */
+  domesticIdr: number;
   feeIdr: number;
   shippingIdr: number;
   totalIdr: number;
@@ -232,12 +294,21 @@ export function quoteShopperOrder(
   lines: readonly QuoteLine[],
   rate: number,
   config: Pick<ShopperConfig, "feePercent" | "shippingIdr">,
+  domesticIdr = 0,
 ): OrderQuote {
   const subtotalIdr = lines.reduce((sum, l) => sum + toIdr(l.unitMinor, rate) * l.quantity, 0);
   const feeIdr =
     subtotalIdr === 0 ? 0 : Math.ceil((subtotalIdr * config.feePercent) / 100 / 100) * 100;
   const shippingIdr = subtotalIdr === 0 ? 0 : config.shippingIdr;
-  return { subtotalIdr, feeIdr, shippingIdr, totalIdr: subtotalIdr + feeIdr + shippingIdr, rate };
+  const domestic = subtotalIdr === 0 ? 0 : domesticIdr;
+  return {
+    subtotalIdr,
+    domesticIdr: domestic,
+    feeIdr,
+    shippingIdr,
+    totalIdr: subtotalIdr + domestic + feeIdr + shippingIdr,
+    rate,
+  };
 }
 
 export const formatIdr = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;

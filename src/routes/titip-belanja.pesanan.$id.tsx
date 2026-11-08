@@ -40,6 +40,8 @@ type Line = {
   unit_idr: number;
   image_url: string | null;
   product_url: string;
+  variant: string | null;
+  market_item_id: string | null;
 };
 
 function ShopperOrder() {
@@ -164,7 +166,7 @@ function ShopperOrder() {
             <span className="min-w-0 flex-1">
               <span className="line-clamp-1 block text-[13px] font-semibold">{l.name}</span>
               <span className="block text-[11px] text-muted-foreground">
-                {l.size}
+                {l.market_item_id ? (l.variant ?? "") : l.size}
                 {l.color ? ` · ${l.color}` : ""} · {l.quantity} × {formatIdr(l.unit_idr)}
               </span>
             </span>

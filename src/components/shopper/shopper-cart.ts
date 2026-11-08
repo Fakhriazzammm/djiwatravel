@@ -9,9 +9,14 @@ export type CartLine = {
   color: string | null;
   quantity: number;
   name: string;
-  brand: ShopperProduct["brand"];
+  brand: ShopperProduct["brand"] | string;
   image: string | null;
   unitMinor: number;
+  /** Set for a Mercari / Rakuten item: `productId` then holds the market item id. */
+  marketItemId?: string;
+  /** What the customer chose in a marketplace shop (size, color), shown to the buyer. */
+  variant?: string | null;
+  sourceUrl?: string;
 };
 
 const STORAGE_KEY = "djiwa.shopper.cart.v1";
@@ -54,7 +59,9 @@ export const lineKey = (productId: string, size: string, color: string | null) =
 export const cartActions = {
   add(line: Omit<CartLine, "key">, max: number) {
     load();
-    const key = lineKey(line.productId, line.size, line.color);
+    const key = line.marketItemId
+      ? `m:${line.productId}|${line.variant ?? ""}`
+      : lineKey(line.productId, line.size, line.color);
     const existing = lines.find((l) => l.key === key);
     if (existing)
       commit(
@@ -118,11 +125,15 @@ export function cartCount(cart: readonly CartLine[]) {
 export function cartQuote(
   cart: readonly CartLine[],
   rate: number,
-  config: Pick<ShopperConfig, "feePercent" | "shippingIdr">,
+  config: Pick<ShopperConfig, "feePercent" | "shippingIdr"> & {
+    market?: Pick<ShopperConfig["market"], "domesticIdr">;
+  },
 ) {
+  const marketLines = cart.filter((l) => l.marketItemId).length;
   return quoteShopperOrder(
     cart.map((l) => ({ unitMinor: l.unitMinor, quantity: l.quantity })),
     rate,
     config,
+    marketLines * (config.market?.domesticIdr ?? 0),
   );
 }

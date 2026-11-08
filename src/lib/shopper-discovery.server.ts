@@ -11,6 +11,8 @@ import {
   payShoppingOrderHandler,
 } from "./personal-shopper.server";
 import { validateShopperAddress, type ShopperAddress } from "./personal-shopper";
+import { lookupMarketForMember } from "./shopper-market.server";
+import { parseMarketUrl, type MarketItemView } from "./shopper-market";
 import {
   DISCOVERY_KEY,
   DEFAULT_DISCOVERY_CONFIG,
@@ -251,6 +253,7 @@ export async function searchDiscovery(input: {
       analysis: r.rows[0]?.analysis ?? null,
       message: "Pencarian ini sudah tersimpan. Kamu bisa mengajukannya ke tim.",
       exact: false,
+      market: null,
     };
   }
   let analysis: string | null = null;
@@ -270,6 +273,19 @@ export async function searchDiscovery(input: {
     }
   } else if (input.photo)
     error = "Pencarian foto otomatis belum tersedia. Kamu tetap bisa meminta bantuan tim.";
+  // A Mercari or Rakuten item page: read it now and price it, so the customer can pay directly.
+  let market: MarketItemView | null = null;
+  if (reference && parseMarketUrl(reference.url)) {
+    try {
+      market = await lookupMarketForMember({
+        subject: input.subject,
+        url: reference.url,
+        config: await getShopperConfig(),
+      });
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Link belum bisa dibaca. Tim tetap bisa membantu.";
+    }
+  }
   let products: DiscoverySearchResult["products"] = [];
   if (query) {
     try {
@@ -291,13 +307,18 @@ export async function searchDiscovery(input: {
     requestId: id,
     products,
     analysis,
+    market,
     message:
       error ||
-      (products.length
-        ? exact
-          ? "Kode produk cocok dengan toko Jepang."
-          : "Periksa kandidat dan variannya. Foto belum memastikan model yang sama."
-        : "Belum ada kecocokan otomatis. Kirim ke tim untuk dicari dan dikonfirmasi harganya."),
+      (market
+        ? market.sold
+          ? "Barang ini sudah terjual. Kamu bisa meminta tim mencarikan yang serupa."
+          : "Harga dihitung otomatis dari halaman barangnya. Periksa lalu titip."
+        : products.length
+          ? exact
+            ? "Kode produk cocok dengan toko Jepang."
+            : "Periksa kandidat dan variannya. Foto belum memastikan model yang sama."
+          : "Belum ada kecocokan otomatis. Kirim ke tim untuk dicari dan dikonfirmasi harganya."),
     exact,
   };
 }

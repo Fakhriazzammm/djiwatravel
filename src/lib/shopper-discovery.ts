@@ -119,6 +119,8 @@ export type DiscoverySearchResult = {
   analysis: string | null;
   message: string;
   exact: boolean;
+  /** Set when the pasted link is a supported marketplace item page. */
+  market: import("./shopper-market").MarketItemView | null;
 };
 
 /** Audit note shown to customer and admin when an action has no message of its own. */

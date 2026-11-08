@@ -33,7 +33,8 @@ import {
   type ShopperProduct,
 } from "@/lib/personal-shopper";
 import { cartCount, cartQuote, readShopperCart, useShopperCart } from "./shopper-cart";
-import { CartSheet, FilterSheet, ProductSheet, SortSheet } from "./shopper-sheets";
+import { CartSheet, FilterSheet, MarketSheet, ProductSheet, SortSheet } from "./shopper-sheets";
+import type { MarketItemView } from "@/lib/shopper-market";
 import { ShopperNav } from "./shopper-nav";
 import { BrandBubble, ProductImage, SaleTag } from "./shopper-ui";
 
@@ -66,6 +67,7 @@ export function ShopperHome({
   const [filters, setFilters] = useState<ShopperFilters>(DEFAULT_SHOPPER_FILTERS);
   const [busy, setBusy] = useState(false);
   const [openProduct, setOpenProduct] = useState<ShopperProduct | null>(null);
+  const [openMarket, setOpenMarket] = useState<MarketItemView | null>(null);
   const [sheet, setSheet] = useState<null | "filter" | "sort" | "cart">(null);
   const cart = useShopperCart();
   const [cartReady, setCartReady] = useState(false);
@@ -243,7 +245,7 @@ export function ShopperHome({
             />
           </label>
 
-          <ShopperDiscovery onProduct={setOpenProduct} />
+          <ShopperDiscovery onProduct={setOpenProduct} onMarket={setOpenMarket} />
 
           {/* Brand stories */}
           <div className="-mx-4 mt-2 flex gap-3 overflow-x-auto px-4 pb-2 pt-1 [scrollbar-width:none]">
@@ -495,6 +497,13 @@ export function ShopperHome({
         </AnimatePresence>
       </FixedLayer>
 
+      <MarketSheet
+        item={openMarket}
+        money={money}
+        config={config}
+        onClose={() => setOpenMarket(null)}
+        onAdded={flyToCart}
+      />
       <ProductSheet
         product={openProduct}
         money={money}
