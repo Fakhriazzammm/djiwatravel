@@ -567,8 +567,13 @@ function BrandStory({
       aria-pressed={selected}
       className="tap w-14 shrink-0 text-center"
     >
-      <span className="mx-auto flex justify-center py-1">
+      <span className="relative mx-auto flex justify-center py-1">
         <BrandBubble brand={brand} selected={selected} muted={muted} />
+        {muted ? (
+          <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-1.5 py-px text-[8px] font-bold leading-none text-background">
+            Soon
+          </span>
+        ) : null}
       </span>
       <span className="block text-[10px] font-semibold">{label}</span>
     </button>
