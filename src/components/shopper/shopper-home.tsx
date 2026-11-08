@@ -435,7 +435,7 @@ export function ShopperHome({ data }: { data: ShopperHomeData }) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 90, opacity: 0 }}
             transition={{ type: "spring", stiffness: 360, damping: 28 }}
-            className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            className="fixed inset-x-0 bottom-[calc(3rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md px-4"
           >
             <div className="flex items-center gap-2 rounded-2xl bg-foreground p-2 pl-3 text-background shadow-lg">
               <span className="flex min-w-5 items-center justify-center rounded-full bg-brand-red px-1.5 text-[11px] font-bold text-white">
