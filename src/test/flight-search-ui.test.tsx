@@ -79,7 +79,11 @@ describe("FlightSearch results screen (design B)", () => {
     expect(flights.mock.calls[0]![0]).toEqual({
       data: { origin: "CGK", destination: "DPS", departureDate: "2999-12" },
     });
-    expect(screen.getByRole("heading", { name: /CGK\s*DPS/ })).toBeTruthy();
+    expect(
+      screen.getByRole("heading", {
+        name: /Jakarta, Indonesia \(CGK\).*Denpasar \(Bali\), Indonesia \(DPS\)/,
+      }),
+    ).toBeTruthy();
   });
 
   it("shows the cheapest recorded fare per day and the chosen day selected", async () => {
@@ -178,8 +182,8 @@ describe("FlightSearch results screen (design B)", () => {
   it("shows the route and dates with one clear way to change them", async () => {
     flights.mockResolvedValue({ status: "ok", offers: [offer()] });
     mount();
-    const title = await screen.findByRole("heading", { name: /CGK/ });
-    expect(title.textContent).toContain("DPS");
+    const title = await screen.findByRole("heading", { name: /Jakarta, Indonesia \(CGK\)/ });
+    expect(title.textContent).toContain("Denpasar (Bali), Indonesia (DPS)");
     expect(screen.getByText(/sekali jalan$/)).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Ubah pencarian" })).toHaveLength(1);
   });
@@ -256,6 +260,14 @@ describe("FlightSearch with a White Label widget", () => {
 });
 
 describe("FlightSearch form", () => {
+  it("does not auto-search a trip prefill opened from the generic ticket tile", async () => {
+    flights.mockResolvedValue({ status: "ok", offers: [offer()] });
+    mount(NO_WL, { ...prefill, autoSearch: false });
+    expect(await screen.findByRole("button", { name: "Cari tiket" })).toBeTruthy();
+    expect(screen.queryByLabelText("Hasil pencarian tiket")).toBeNull();
+    expect(flights).not.toHaveBeenCalled();
+  });
+
   it("does not search an incomplete form and asks for a city from the list", async () => {
     window.localStorage.clear();
     mount(NO_WL, {});

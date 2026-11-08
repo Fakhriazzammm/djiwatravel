@@ -18,6 +18,7 @@ import {
   normalizeFlightsConfig,
   parseFlightSearch,
   parseFlightsConfig,
+  placeLabel,
   showFlightsHeroTab,
   showFlightsTile,
   transfersLabel,
@@ -298,6 +299,16 @@ describe("airline names", () => {
 });
 
 describe("formatting", () => {
+  it("writes the place name and country before the IATA code", () => {
+    expect(
+      placeLabel({
+        code: "CGK",
+        name: "Soekarno-Hatta",
+        countryName: "Indonesia",
+        type: "airport",
+      }),
+    ).toBe("Soekarno-Hatta, Indonesia (CGK)");
+  });
   it("shortens prices", () => {
     expect(compactFlightPrice(3_412_000)).toBe("Rp 3,4jt");
     expect(compactFlightPrice(850_000)).toBe("Rp 850rb");

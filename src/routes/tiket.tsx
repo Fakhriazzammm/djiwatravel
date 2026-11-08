@@ -62,6 +62,7 @@ export const Route = createFileRoute("/tiket")({
       toText: deps.tujuan,
       depart: deps.berangkat,
       back: deps.pulang,
+      autoSearch: Boolean(deps.ke || deps.tujuan),
     };
     if (!deps.ke && !deps.tujuan) {
       try {
@@ -73,6 +74,7 @@ export const Route = createFileRoute("/tiket")({
             toText: trip.destination_name,
             depart: trip.departure_date ?? undefined,
             back: trip.return_date ?? undefined,
+            autoSearch: false,
           };
         }
       } catch {

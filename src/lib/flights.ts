@@ -378,7 +378,8 @@ export function normalizeFlightPlaces(rows: unknown, limit = 6): FlightPlace[] {
   return places;
 }
 
-export const placeLabel = (place: FlightPlace) => `${place.name} (${place.code})`;
+export const placeLabel = (place: FlightPlace) =>
+  `${place.name}, ${place.countryName} (${place.code})`;
 
 const rupiah = new Intl.NumberFormat("id-ID");
 export const formatFlightPrice = (idr: number) => `Rp ${rupiah.format(Math.round(idr))}`;

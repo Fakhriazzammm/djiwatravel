@@ -6,7 +6,12 @@ import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import { distanceKm } from "./itinerary-map";
-import { forwardGeocode, lookupPlaceImage, placeSearchTarget } from "./itinerary-map.server";
+import {
+  forwardGeocode,
+  lookupPlaceImage,
+  lookupPlaceImageByName,
+  placeSearchTarget,
+} from "./itinerary-map.server";
 import {
   DEFAULT_PLACE_IDEAS_CONFIG,
   PLACE_IDEAS_SETTING_KEY,
@@ -284,9 +289,10 @@ async function verifyIdeas(
       if (!hit && venueCheck) return null;
       if (hit && anchor && distanceKm(bias!, { lat: hit.lat, lng: hit.lng }) > MAX_DISTANCE_KM)
         return null;
-      const image = hit
-        ? await lookupPlaceImage({ lat: hit.lat, lng: hit.lng }, [idea.name]).catch(() => null)
-        : null;
+      const image =
+        (hit
+          ? await lookupPlaceImage({ lat: hit.lat, lng: hit.lng }, [idea.name]).catch(() => null)
+          : null) ?? (await lookupPlaceImageByName(idea.name, destination).catch(() => null));
       const source = sources[idea.source - 1]!;
       return {
         key: placeIdeaKey(idea.name, hit?.lat ?? null, hit?.lng ?? null),
@@ -365,8 +371,28 @@ export async function getPlaceIdeas(
     )
     .catch(() => null);
   const hit = cached?.rows[0]?.ideas as PlaceIdea[] | undefined;
-  if (hit && visible(hit).length)
-    return { status: "ok", ideas: visible(hit), cached: true, remaining, destination };
+  if (hit && visible(hit).length) {
+    const shown = visible(hit);
+    // Older cached answers may lack a photo: find it by name now and save it for everyone.
+    const missing = shown.filter((idea) => !idea.imageUrl);
+    if (missing.length) {
+      await Promise.all(
+        missing.map(async (idea) => {
+          const image = await lookupPlaceImageByName(idea.name, destination).catch(() => null);
+          if (image) idea.imageUrl = image.url;
+        }),
+      );
+      if (missing.some((idea) => idea.imageUrl)) {
+        await pool
+          .query(
+            "update public.travel_place_idea_cache set ideas = $2::jsonb where cache_key = $1",
+            [cacheKey, JSON.stringify(hit)],
+          )
+          .catch(() => undefined);
+      }
+    }
+    return { status: "ok", ideas: shown, cached: true, remaining, destination };
+  }
 
   if (remaining <= 0)
     return {

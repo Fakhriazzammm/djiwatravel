@@ -21,6 +21,8 @@ export type FlightPrefill = {
   toText?: string | undefined;
   depart?: string | undefined;
   back?: string | undefined;
+  /** Generic entry points may show a trip prefill without immediately running the search. */
+  autoSearch?: boolean | undefined;
 };
 
 const ORIGIN_KEY = "djiwa.flights.origin";
@@ -147,7 +149,7 @@ export function FlightSearch({
       if (!live) return;
       if (savedOrigin) setOrigin(savedOrigin);
       if (place) setDestination(place);
-      if (!ran.current && savedOrigin && place && prefill.depart) {
+      if (prefill.autoSearch !== false && !ran.current && savedOrigin && place && prefill.depart) {
         ran.current = true;
         start(savedOrigin, place, prefill.depart, prefill.back ?? "");
       }

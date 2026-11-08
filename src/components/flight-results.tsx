@@ -21,6 +21,7 @@ import {
   flightDay,
   flightPriceStrip,
   formatFlightPrice,
+  placeLabel,
   transfersLabel,
   type FlightOffer,
   type FlightPlace,
@@ -137,9 +138,9 @@ export function FlightResults({
             className="truncate text-[16px] font-bold leading-tight"
             title={`${origin.name} ke ${destination.name}`}
           >
-            {origin.code}
+            {placeLabel(origin)}
             <ArrowRight className="mx-1.5 inline size-4 text-muted-foreground" aria-hidden="true" />
-            {destination.code}
+            {placeLabel(destination)}
           </h2>
           <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
             {dayLabel(depart)}

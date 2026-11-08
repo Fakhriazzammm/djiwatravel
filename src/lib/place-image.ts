@@ -43,3 +43,41 @@ export function pickPlaceImage(pages: WikiPage[], names: string[]) {
   }
   return null;
 }
+
+const GENERIC = new Set([
+  "house",
+  "tokyo",
+  "garden",
+  "park",
+  "hotel",
+  "temple",
+  "shrine",
+  "museum",
+  "restaurant",
+  "cafe",
+  "coffee",
+  "tower",
+  "station",
+  "street",
+  "market",
+  "japan",
+  "indonesia",
+  "bali",
+]);
+
+/**
+ * Photo found by name (no coordinates): the page or file title must contain the distinctive words
+ * of the place, so "Nakajima Tea House" never gets a random house.
+ */
+export function pickNamedImage(pages: WikiPage[], name: string) {
+  const wanted = tokens(name).filter((word) => !GENERIC.has(word));
+  if (!wanted.length) return null;
+  const need = Math.ceil(wanted.length / 2);
+  const match = pages.find((page) => {
+    if (!isAllowedImageUrl(page.thumbnail?.source)) return false;
+    if (/\.(svg|png|gif|tiff?)$/i.test(page.title)) return false;
+    const have = new Set(tokens(page.title));
+    return wanted.filter((word) => have.has(word)).length >= need;
+  });
+  return match ? { url: match.thumbnail!.source!, title: match.title } : null;
+}

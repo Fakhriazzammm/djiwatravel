@@ -5,7 +5,7 @@ import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { requireTripOwner } from "./guest-trips.server";
-import { isAllowedImageUrl, pickPlaceImage, type WikiPage } from "./place-image";
+import { isAllowedImageUrl, pickNamedImage, pickPlaceImage, type WikiPage } from "./place-image";
 import {
   forwardSearchUrl,
   mapPlaceFeatures,
@@ -396,6 +396,76 @@ export async function lookupPlaceImage(point: { lat: number; lng: number }, name
   } catch {
     return null;
   }
+}
+
+type NamedPages = {
+  query?: {
+    pages?: Record<
+      string,
+      {
+        title: string;
+        thumbnail?: { source?: string };
+        imageinfo?: { thumburl?: string }[];
+      }
+    >;
+  };
+};
+
+async function searchImagePages(host: string, params: Record<string, string>) {
+  const url = new URL(`https://${host}/w/api.php`);
+  url.search = new URLSearchParams({ action: "query", format: "json", ...params }).toString();
+  const response = await fetch(url, {
+    headers: { "User-Agent": "DjiwaTravel/1.0 (https://djiwatravel.com)" },
+    signal: AbortSignal.timeout(4000),
+  });
+  if (!response.ok) return [];
+  const payload = (await response.json()) as NamedPages;
+  return Object.values(payload.query?.pages ?? {}).map((page) => ({
+    title: page.title,
+    thumbnail:
+      page.thumbnail ??
+      (page.imageinfo?.[0]?.thumburl ? { source: page.imageinfo[0].thumburl } : undefined),
+  }));
+}
+
+/**
+ * Free, keyless photo lookup by name: Wikipedia article image first, then Wikimedia Commons files.
+ * Used when a place has no coordinates (or none matched nearby).
+ */
+export async function lookupPlaceImageByName(name: string, area?: string) {
+  const key = `name|${name.toLowerCase()}|${(area ?? "").toLowerCase()}`;
+  const hit = imageCache.get(key);
+  if (hit && Date.now() - hit.at < IMAGE_TTL_MS) return hit.value;
+  let value: { url: string; title: string } | null = null;
+  try {
+    const wiki = await searchImagePages("en.wikipedia.org", {
+      generator: "search",
+      gsrsearch: [name, area].filter(Boolean).join(" "),
+      gsrlimit: "5",
+      prop: "pageimages",
+      piprop: "thumbnail",
+      pithumbsize: "480",
+      pilimit: "5",
+    });
+    value = pickNamedImage(wiki, name);
+    if (!value) {
+      const commons = await searchImagePages("commons.wikimedia.org", {
+        generator: "search",
+        gsrnamespace: "6",
+        gsrsearch: [name, area].filter(Boolean).join(" "),
+        gsrlimit: "6",
+        prop: "imageinfo",
+        iiprop: "url",
+        iiurlwidth: "480",
+      });
+      value = pickNamedImage(commons, name);
+    }
+  } catch {
+    value = null;
+  }
+  if (imageCache.size > 500) imageCache.clear();
+  imageCache.set(key, { at: Date.now(), value });
+  return value;
 }
 
 function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
