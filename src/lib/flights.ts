@@ -261,6 +261,11 @@ export function parseFlightSearch(
   if (!departureOk) return null;
   if (YEAR_MONTH.test(departure) && departure < today.slice(0, 7)) return null;
   if (back) {
+    // A month search for a round trip carries a return month, so the calendar shows return fares.
+    if (YEAR_MONTH.test(departure) && YEAR_MONTH.test(back)) {
+      if (back < departure) return null;
+      return { origin, destination, departureDate: departure, returnDate: back };
+    }
     if (!validDate(back) || !validDate(departure) || back < departure) return null;
     return { origin, destination, departureDate: departure, returnDate: back };
   }
@@ -546,16 +551,31 @@ export const shiftFlightDay = addDays;
  * The days around the chosen day with the cheapest recorded fare of each (or none). The provider
  * keeps one cheapest fare per departure day, so offers from a month map onto its days.
  */
+/** Nights of difference between two ISO days (UTC, so no zone shifts it). */
+const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
+
+/** A round-trip day counts when its stay is within this many days of the traveler's stay. */
+const STAY_TOLERANCE_DAYS = 2;
+
 export function flightPriceStrip(
   offers: FlightOffer[],
   center: string,
   today: string,
   radius = 3,
+  /** Chosen return day: only round-trip fares with a similar stay count toward each day. */
+  back = "",
 ): FlightDayPrice[] {
   if (!ISO_DATE.test(center)) return [];
+  const stay = back && ISO_DATE.test(back) ? daysBetween(center, back) : null;
   const cheapest = new Map<string, FlightOffer>();
   for (const offer of offers) {
     const day = offer.departureAt.slice(0, 10);
+    if (stay !== null) {
+      const returnDay = offer.returnAt?.slice(0, 10);
+      if (!returnDay || !ISO_DATE.test(returnDay)) continue;
+      if (Math.abs(daysBetween(day, returnDay) - stay) > STAY_TOLERANCE_DAYS) continue;
+    }
     const best = cheapest.get(day);
     if (!best || offer.priceIdr < best.priceIdr) cheapest.set(day, offer);
   }

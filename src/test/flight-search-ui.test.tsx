@@ -137,7 +137,7 @@ describe("FlightSearch results screen (design B)", () => {
     fireEvent.click(buttons[buttons.length - 1]!); // 2 Jan 3000
     await waitFor(() => expect(flights).toHaveBeenCalledTimes(2));
     expect(flights.mock.calls[1]![0]).toEqual({
-      data: { origin: "CGK", destination: "DPS", departureDate: "3000-01" },
+      data: { origin: "CGK", destination: "DPS", departureDate: "3000-01", returnDate: "3000-01" },
     });
   });
 
@@ -268,6 +268,23 @@ describe("FlightSearch with a White Label widget", () => {
     mount(NO_WL);
     await screen.findByText("1 harga termurah");
     expect(frameOf()).toBeNull();
+  });
+});
+
+describe("FlightSearch round trip", () => {
+  it("asks the provider for round-trip fares of the month, not one-way prices", async () => {
+    flights.mockResolvedValue({ status: "ok", offers: [offer()] });
+    mount(NO_WL, { ...prefill, back: "3000-01-03" });
+    await screen.findByRole("heading", { name: /Jakarta/ });
+    expect(flights.mock.calls[0]![0]).toEqual({
+      data: {
+        origin: "CGK",
+        destination: "DPS",
+        departureDate: "2999-12",
+        returnDate: "3000-01",
+      },
+    });
+    expect(screen.getByText("Harga pulang pergi per hari")).toBeTruthy();
   });
 });
 

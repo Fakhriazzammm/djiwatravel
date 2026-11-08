@@ -315,6 +315,8 @@ export async function revokeFlightSharesHandler({
 
 const SWEEP_BATCH = 20;
 const RECHECK_HOURS = 6;
+const stayDays = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
 const shiftDay = (iso: string, days: number) => {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -329,6 +331,7 @@ type DueAlert = {
   origin_name: string;
   destination_name: string;
   departure_date: string;
+  return_date: string | null;
   flexible: boolean;
   target_idr: number;
   notified_price_idr: number | null;
@@ -348,7 +351,8 @@ export async function sweepFlightAlerts() {
   );
   const due = await pool.query(
     `select id, customer_auth_subject, origin, destination, origin_name, destination_name,
-            to_char(departure_date,'YYYY-MM-DD') as departure_date, flexible, target_idr,
+            to_char(departure_date,'YYYY-MM-DD') as departure_date,
+            to_char(return_date,'YYYY-MM-DD') as return_date, flexible, target_idr,
             notified_price_idr
      from travel_flight_alerts
      where active and (last_checked_at is null or last_checked_at < now() - ($1 || ' hours')::interval)
@@ -362,10 +366,22 @@ export async function sweepFlightAlerts() {
       const months = [...new Set([from.slice(0, 7), to.slice(0, 7)])];
       let best: { price: number; day: string } | null = null;
       for (const month of months) {
-        const offers = await fetchMonthOffers(alert.origin, alert.destination, month);
+        // A round-trip alert compares round-trip fares with a similar stay, never one-way prices.
+        const offers = await fetchMonthOffers(
+          alert.origin,
+          alert.destination,
+          month,
+          alert.return_date ? alert.return_date.slice(0, 7) : "",
+        );
         for (const offer of offers) {
           const day = offer.departureAt.slice(0, 10);
           if (day < from || day > to) continue;
+          if (alert.return_date) {
+            const back = offer.returnAt?.slice(0, 10);
+            if (!back) continue;
+            const stay = stayDays(alert.departure_date, alert.return_date);
+            if (Math.abs(stayDays(day, back) - stay) > 2) continue;
+          }
           if (!best || offer.priceIdr < best.price) best = { price: offer.priceIdr, day };
         }
       }

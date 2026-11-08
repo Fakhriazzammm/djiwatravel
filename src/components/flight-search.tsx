@@ -95,12 +95,18 @@ export function FlightSearch({
   const ran = useRef(false);
 
   /** One call per route and month feeds the whole price calendar. */
-  async function loadMonth(from: FlightPlace, to: FlightPlace, day: string) {
+  async function loadMonth(from: FlightPlace, to: FlightPlace, day: string, returnDay = "") {
     const month = day.slice(0, 7);
-    const key = `${from.code}-${to.code}-${month}`;
+    const returnMonth = returnDay ? returnDay.slice(0, 7) : "";
+    const key = `${from.code}-${to.code}-${month}-${returnMonth}`;
     if (loadedMonth.current === key) return;
     const input = parseFlightSearch(
-      { origin: from.code, destination: to.code, departureDate: month },
+      {
+        origin: from.code,
+        destination: to.code,
+        departureDate: month,
+        ...(returnMonth ? { returnDate: returnMonth } : {}),
+      },
       today,
     );
     if (!input) {
@@ -136,7 +142,7 @@ export function FlightSearch({
     setFormError(null);
     saveOrigin(from);
     setSearched({ from, to, depart: departureDate, back: returnDate });
-    void loadMonth(from, to, departureDate);
+    void loadMonth(from, to, departureDate, returnDate);
   }
 
   // Resolve the prefill (saved origin, trip destination) once, then run if the form is complete.
@@ -189,7 +195,7 @@ export function FlightSearch({
     setDepart(day);
     setBack(nextBack);
     setSearched({ ...searched, depart: day, back: nextBack });
-    void loadMonth(searched.from, searched.to, day);
+    void loadMonth(searched.from, searched.to, day, nextBack);
   }
 
   if (searched) {

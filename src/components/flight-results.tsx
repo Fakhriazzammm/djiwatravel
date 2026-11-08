@@ -103,7 +103,10 @@ export function FlightResults({
   onPickDay: (day: string) => void;
 }) {
   const offers = useMemo(() => result?.offers ?? [], [result]);
-  const strip = useMemo(() => flightPriceStrip(offers, depart, today), [offers, depart, today]);
+  const strip = useMemo(
+    () => flightPriceStrip(offers, depart, today, 3, back),
+    [offers, depart, today, back],
+  );
   const consent = useEmbedConsent();
   const [chosen, setChosen] = useState<FlightOffer | null>(null);
   const [directOnly, setDirectOnly] = useState(false);
@@ -183,7 +186,7 @@ export function FlightResults({
 
       <div>
         <h3 className="px-1 text-[12px] font-semibold text-muted-foreground">
-          Harga termurah per hari
+          {back ? "Harga pulang pergi per hari" : "Harga termurah per hari"}
         </h3>
         <div
           role="group"
@@ -250,7 +253,7 @@ export function FlightResults({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Termurah tercatat · {shortDay(depart)}
+              {back ? "Termurah pulang pergi" : "Termurah tercatat"} · {shortDay(depart)}
             </span>
             <span className="block truncate text-[13px] font-semibold">
               {dayOffer.airlineName} · {flightClock(dayOffer.departureAt)} ·{" "}

@@ -567,4 +567,49 @@ describe("flight extras", () => {
     void share;
     expect(parseFlightsConfig(old).share).toBe(true);
   });
+
+  it("builds the round-trip calendar from round-trip fares with a similar stay", async () => {
+    const { flightPriceStrip, parseFlightSearch } = await import("@/lib/flights");
+    expect(
+      parseFlightSearch(
+        { origin: "CGK", destination: "TYO", departureDate: "2999-11", returnDate: "2999-11" },
+        "2999-01-01",
+      ),
+    ).toEqual({
+      origin: "CGK",
+      destination: "TYO",
+      departureDate: "2999-11",
+      returnDate: "2999-11",
+    });
+    expect(
+      parseFlightSearch(
+        { origin: "CGK", destination: "TYO", departureDate: "2999-11", returnDate: "2999-10" },
+        "2999-01-01",
+      ),
+    ).toBeNull();
+    const fare = (date: string, back: string | null, price: number) => ({
+      id: `${date}-${back}-${price}`,
+      origin: "CGK",
+      destination: "TYO",
+      airline: "TR",
+      airlineName: "Scoot",
+      flightNumber: "1",
+      departureAt: `${date}T10:00:00+07:00`,
+      returnAt: back ? `${back}T10:00:00+09:00` : null,
+      transfers: 1,
+      durationMinutes: 900,
+      priceIdr: price,
+      bookingUrl: null,
+    });
+    const offers = [
+      fare("2999-11-08", null, 3_200_000), // one-way: ignored on a round trip
+      fare("2999-11-08", "2999-11-09", 6_000_000), // stay of 1 day: too short
+      fare("2999-11-08", "2999-11-15", 9_900_000),
+      fare("2999-11-09", "2999-11-16", 10_200_000),
+    ];
+    const strip = flightPriceStrip(offers, "2999-11-08", "2999-01-01", 1, "2999-11-15");
+    expect(strip.map((d) => d.offer?.priceIdr ?? null)).toEqual([null, 9_900_000, 10_200_000]);
+    const oneWay = flightPriceStrip(offers, "2999-11-08", "2999-01-01", 1);
+    expect(oneWay[1]!.offer?.priceIdr).toBe(3_200_000);
+  });
 });
