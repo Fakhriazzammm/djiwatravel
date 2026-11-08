@@ -298,21 +298,21 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
           )}
         </div>
       )}
-      <div className="bg-gradient-to-br from-[#c4485a] to-[#8f2c3c] px-3.5 pb-3 pt-3 text-white">
+      <div className="bg-white px-3.5 pb-3 pt-3 text-foreground">
         <div className="flex items-center justify-between gap-2">
           {showRoute ? (
-            <p className="min-w-0 truncate text-[11px] text-white/75">
+            <p className="min-w-0 truncate text-[11px] text-muted-foreground">
               {view.destination} · {view.dateRange} · {view.travelers} traveler
             </p>
           ) : (
-            <span className="inline-flex rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold">
+            <span className="inline-flex rounded-full bg-brand-red px-2.5 py-1 text-[11px] font-semibold text-white">
               {badge}
             </span>
           )}
           <Link
             to="/my-trips/$tripId"
             params={{ tripId: view.tripId }}
-            className="tap shrink-0 rounded-full bg-white px-3 py-1 text-[12px] font-bold text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="tap shrink-0 rounded-full bg-brand-red-soft px-3 py-1 text-[12px] font-bold text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Buka Ringkas ›
           </Link>
@@ -322,28 +322,28 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
           {!showRoute && weatherChip}
         </div>
         {!showRoute && (
-          <p className="truncate text-[11px] text-white/75">
+          <p className="truncate text-[11px] text-muted-foreground">
             {view.destination} · {view.dateRange} · {view.travelers} traveler
           </p>
         )}
         <Link
           to="/my-trips/$tripId/$section"
           params={{ tripId: view.tripId, section: focusHref }}
-          className="tap mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="tap mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[12px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="truncate">{focusText}</span>
-          <ChevronRight className="size-3.5 shrink-0 opacity-70" aria-hidden="true" />
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
         </Link>
         {view.timeline.length > 0 && (
           <ol className="relative mt-3 flex" aria-label="Agenda berikutnya">
-            <span className="absolute inset-x-0 top-[5px] h-0.5 bg-white/25" aria-hidden="true" />
+            <span className="absolute inset-x-0 top-[5px] h-0.5 bg-border" aria-hidden="true" />
             {view.timeline.map((item) => (
               <li
                 key={item.id}
-                className={`relative min-w-0 flex-1 pr-1 pt-3.5 text-[10px] ${item.isFocus ? "font-semibold text-white" : "text-white/70"}`}
+                className={`relative min-w-0 flex-1 pr-1 pt-3.5 text-[10px] ${item.isFocus ? "font-semibold text-foreground" : "text-muted-foreground"}`}
               >
                 <span
-                  className={`absolute left-0 top-px size-2.5 rounded-full ${item.isFocus ? "bg-white ring-[3px] ring-white/30" : "bg-white/40"}`}
+                  className={`absolute left-0 top-px size-2.5 rounded-full ${item.isFocus ? "bg-brand-red ring-[3px] ring-brand-red/20" : "bg-border"}`}
                   aria-hidden="true"
                 />
                 <span className="block text-[11px] font-semibold tabular-nums">
@@ -354,7 +354,7 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
             ))}
           </ol>
         )}
-        <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-white/20 pt-2.5 text-[12px]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-border pt-2.5 text-[12px]">
           {stats.map(({ section, Icon, value, unit }) => (
             <Link
               key={section}
@@ -362,9 +362,9 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
               params={{ tripId: view.tripId, section }}
               className="tap inline-flex min-h-8 items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Icon className="size-3.5 opacity-80" aria-hidden="true" />
+              <Icon className="size-3.5 text-brand-red" aria-hidden="true" />
               <b className="font-bold tabular-nums">{value}</b>
-              {unit && <span className="text-[11px] opacity-75">{unit}</span>}
+              {unit && <span className="text-[11px] text-muted-foreground">{unit}</span>}
             </Link>
           ))}
         </div>
