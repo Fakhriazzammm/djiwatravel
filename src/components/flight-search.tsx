@@ -7,7 +7,7 @@ import { searchFlightPlaces, searchFlights } from "@/lib/flights.fn";
 import {
   parseFlightSearch,
   shiftFlightDay,
-  whiteLabelSearchUrl,
+  whiteLabelScriptSrc,
   type FlightPlace,
   type FlightSearchResult,
   type FlightsConfig,
@@ -190,12 +190,7 @@ export function FlightSearch({
   }
 
   if (searched) {
-    const embedUrl = whiteLabelSearchUrl(config, {
-      origin: searched.from.code,
-      destination: searched.to.code,
-      departureDate: searched.depart,
-      ...(searched.back ? { returnDate: searched.back } : {}),
-    });
+    const widgetSrc = whiteLabelScriptSrc(config);
     return (
       <FlightResults
         origin={searched.from}
@@ -205,7 +200,7 @@ export function FlightSearch({
         today={today}
         result={result}
         loading={loading}
-        embedUrl={embedUrl}
+        widgetSrc={widgetSrc}
         onBack={() => setSearched(null)}
         onPickDay={pickDay}
       />

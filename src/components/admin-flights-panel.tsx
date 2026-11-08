@@ -92,7 +92,7 @@ export function AdminFlightsPanel({
       <div className="flex items-center justify-between gap-2">
         <SectionHeading
           title="Tiket pesawat"
-          detail="Pencarian tiket di /tiket, pintu masuknya, dan skrip Travelpayouts."
+          detail="Pencarian tiket di /tiket, pintu masuknya, White Label, dan skrip Travelpayouts."
         />
         <StatusPill tone={config.enabled ? "good" : "warn"}>
           {config.enabled ? "Aktif" : "Nonaktif"}
@@ -139,23 +139,22 @@ export function AdminFlightsPanel({
           </span>
         </label>
         <label className="block text-sm font-semibold">
-          Alamat White Label (hasil lengkap di dalam halaman)
+          ID White Label (tipe Widget)
           <input
-            value={config.whiteLabelHost}
-            onChange={(event) => set("whiteLabelHost", event.target.value)}
-            placeholder="tiket.djiwatravel.com"
-            autoCapitalize="none"
-            spellCheck={false}
+            inputMode="numeric"
+            value={config.whiteLabelId}
+            onChange={(event) => set("whiteLabelId", event.target.value)}
+            placeholder="12345"
             className={field}
           />
           <span className="mt-1 block text-xs font-normal text-muted-foreground">
-            Nama host saja dari Travelpayouts › White Label (tanpa https://). Kosong = hanya harga
-            termurah per hari dari data tersimpan.
+            Angka setelah <code>wl_id=</code> di kode widget (Travelpayouts › White Label › WL Web ›
+            Widget › Your widget code). Kosong = hanya harga termurah per hari dari data tersimpan.
           </span>
         </label>
         <p className="text-xs text-muted-foreground" data-testid="flights-wl-status">
-          {config.whiteLabelHost
-            ? `Hasil lengkap aktif dari ${config.whiteLabelHost}.`
+          {config.whiteLabelId
+            ? `Hasil lengkap aktif (White Label ${config.whiteLabelId}), dimuat setelah pelanggan setuju.`
             : "Hasil lengkap belum aktif: belum ada White Label."}
         </p>
         {toggle("travelpayouts", "Muat skrip Travelpayouts")}

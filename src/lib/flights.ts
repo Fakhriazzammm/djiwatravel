@@ -19,11 +19,11 @@ export type FlightsConfig = {
   /** Searches one traveler (or one address) may run per hour. */
   searchesPerHour: number;
   /**
-   * Host of the Travelpayouts White Label (e.g. "tiket.djiwatravel.com"), a bare hostname. When
-   * set, /tiket shows its full real-time results inside the page; empty keeps only the cached
-   * cheapest-per-day prices.
+   * Id of the Travelpayouts White Label of type Widget (the number after `wl_id=` in the widget
+   * code). When set, /tiket shows the White Label's real-time search and results inside the page;
+   * empty keeps only the cached cheapest-per-day prices.
    */
-  whiteLabelHost: string;
+  whiteLabelId: string;
   /** Load the Travelpayouts partner script on customer pages. */
   travelpayouts: boolean;
   /** Public script id from the Travelpayouts dashboard, the `<id>` in `emrldtp.cc/<id>.js`. */
@@ -47,7 +47,7 @@ export const DEFAULT_FLIGHTS_CONFIG: FlightsConfig = {
   homeTile: true,
   guestSearch: true,
   searchesPerHour: 20,
-  whiteLabelHost: "",
+  whiteLabelId: "24328",
   travelpayouts: true,
   scriptId: "NTk3MDMw",
   partnerId: "597030",
@@ -56,8 +56,7 @@ export const DEFAULT_FLIGHTS_CONFIG: FlightsConfig = {
 
 const SCRIPT_ID_PATTERN = /^[A-Za-z0-9]{4,40}$/;
 const PARTNER_ID_PATTERN = /^[0-9]{3,12}$/;
-/** A bare hostname with at least one dot: no scheme, port, path, credentials or spaces. */
-const HOST_PATTERN = /^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/;
+const WHITE_LABEL_ID_PATTERN = /^[0-9]{1,9}$/;
 
 const BOOLEAN_KEYS = [
   "enabled",
@@ -96,16 +95,13 @@ export function parseFlightsConfig(value: unknown): FlightsConfig {
     }
     out.searchesPerHour = perHour;
   }
-  const host = record["whiteLabelHost"];
-  if (host !== undefined) {
-    if (typeof host !== "string") throw new Error("flights.whiteLabelHost harus teks");
-    const clean = host.trim().toLowerCase();
-    if (clean !== "" && !HOST_PATTERN.test(clean)) {
-      throw new Error(
-        "flights.whiteLabelHost harus nama host saja, tanpa https:// atau garis miring (contoh: tiket.djiwatravel.com)",
-      );
+  const wl = record["whiteLabelId"];
+  if (wl !== undefined && wl !== null) {
+    const clean = typeof wl === "number" ? String(wl) : typeof wl === "string" ? wl.trim() : null;
+    if (clean === null || (clean !== "" && !WHITE_LABEL_ID_PATTERN.test(clean))) {
+      throw new Error("flights.whiteLabelId harus angka dari wl_id di kode widget (contoh: 12345)");
     }
-    out.whiteLabelHost = clean;
+    out.whiteLabelId = clean;
   }
   for (const key of ["scriptId", "partnerId"] as const) {
     const raw = record[key];
@@ -137,9 +133,8 @@ export function travelpayoutsScriptSrc(config: FlightsConfig): string | null {
   return `https://emrldtp.cc/${config.scriptId}.js?t=${config.partnerId}`;
 }
 
-/** The full real-time results are on only with the switch, a host, and the same switch for guests. */
-export const whiteLabelOn = (config: FlightsConfig) =>
-  config.enabled && config.whiteLabelHost !== "";
+/** The White Label widget (full real-time results) is on with the master switch and a wl_id. */
+export const whiteLabelOn = (config: FlightsConfig) => config.enabled && config.whiteLabelId !== "";
 
 export const showFlightsHeroTab = (config: FlightsConfig) => config.enabled && config.heroTab;
 export const showFlightsTile = (config: FlightsConfig) => config.enabled && config.homeTile;
@@ -451,9 +446,10 @@ export function flightsPathFor(trip: {
 const ddmm = (iso: string) => `${iso.slice(8, 10)}${iso.slice(5, 7)}`;
 
 /**
- * The White Label's own search code, appended as `?flightSearch=`: origin, departure DDMM,
- * destination, optional return DDMM, then the passenger digit(s). Adults are required by the
- * White Label; the code is case sensitive. Needs an exact departure day, not a month.
+ * The White Label's own search code, which the widget reads from the page address as
+ * `?flightSearch=`: origin, departure DDMM, destination, optional return DDMM, then the number of
+ * adults (required). Verified against the live widget: `CGK0812TYO1` fills Jakarta to Tokyo on
+ * 8 December for one adult. Needs an exact departure day, not a month.
  */
 export function whiteLabelSearchCode(search: FlightSearchInput, adults = 1): string | null {
   if (!ISO_DATE.test(search.departureDate)) return null;
@@ -462,16 +458,10 @@ export function whiteLabelSearchCode(search: FlightSearchInput, adults = 1): str
   return `${search.origin}${ddmm(search.departureDate)}${search.destination}${back}${adults}`;
 }
 
-/** Link to the White Label with the form already filled in, or null when it is off or unusable. */
-export function whiteLabelSearchUrl(
-  config: FlightsConfig,
-  search: FlightSearchInput,
-  adults = 1,
-): string | null {
-  if (!whiteLabelOn(config) || !HOST_PATTERN.test(config.whiteLabelHost)) return null;
-  const code = whiteLabelSearchCode(search, adults);
-  if (!code) return null;
-  return `https://${config.whiteLabelHost}/?flightSearch=${code}`;
+/** Script of the White Label widget; only the validated numeric id reaches the URL. */
+export function whiteLabelScriptSrc(config: FlightsConfig): string | null {
+  if (!whiteLabelOn(config) || !WHITE_LABEL_ID_PATTERN.test(config.whiteLabelId)) return null;
+  return `https://tpwdgt.com/wl_web/main.js?wl_id=${config.whiteLabelId}`;
 }
 
 /* ----------------------------------------------------------- price calendar */

@@ -7,6 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { TravelpayoutsWidget } from "@/components/travelpayouts-widget";
 import { btnRed, btnSoft } from "@/components/shell";
 import { analyticsConsentGranted, CONSENT_EVENT } from "@/lib/cookie-consent";
 import { trackClick } from "@/lib/analytics";
@@ -21,6 +22,7 @@ import {
   flightPriceStrip,
   formatFlightPrice,
   transfersLabel,
+  whiteLabelSearchCode,
   type FlightOffer,
   type FlightPlace,
   type FlightSearchResult,
@@ -85,7 +87,7 @@ export function FlightResults({
   today,
   result,
   loading,
-  embedUrl,
+  widgetSrc,
   onBack,
   onPickDay,
 }: {
@@ -96,27 +98,33 @@ export function FlightResults({
   today: string;
   result: FlightSearchResult | null;
   loading: boolean;
-  /** White Label results link for the chosen day, or null when it is off. */
-  embedUrl: string | null;
+  /** Script of the White Label widget (full real-time results), or null when it is off. */
+  widgetSrc: string | null;
   onBack: () => void;
   onPickDay: (day: string) => void;
 }) {
   const offers = useMemo(() => result?.offers ?? [], [result]);
   const strip = useMemo(() => flightPriceStrip(offers, depart, today), [offers, depart, today]);
   const consent = useEmbedConsent();
+  const widgetCode = whiteLabelSearchCode({
+    origin: origin.code,
+    destination: destination.code,
+    departureDate: depart,
+    ...(back ? { returnDate: back } : {}),
+  });
   const [chosen, setChosen] = useState<FlightOffer | null>(null);
   const [directOnly, setDirectOnly] = useState(false);
 
-  // Count each time the full results are opened for a day (Admin shows this next to the clicks).
+  // Count each time the full results are opened (Admin shows this next to the clicks).
   useEffect(() => {
-    if (embedUrl && consent.ok) trackClick("/tiket", EMBED_OPEN_TARGET);
-  }, [embedUrl, consent.ok]);
+    if (widgetSrc && consent.ok) trackClick("/tiket", EMBED_OPEN_TARGET);
+  }, [widgetSrc, consent.ok]);
 
   // With the full results on screen, "no recorded price" is not a dead end, so stay quiet about it.
   const statusMessage =
     result !== null &&
     result.status !== "ok" &&
-    !(embedUrl && (result.status === "empty" || result.status === "failed"))
+    !(widgetSrc && (result.status === "empty" || result.status === "failed"))
       ? FLIGHT_STATUS_MESSAGE[result.status]
       : null;
 
@@ -184,30 +192,14 @@ export function FlightResults({
         </p>
       </div>
 
-      {embedUrl ? (
+      {widgetSrc ? (
         consent.ok ? (
           <div className="space-y-2">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-[13px] font-bold">Semua penerbangan</h3>
-              <a
-                href={embedUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackClick("/tiket", AVIASALES_CLICK_TARGET)}
-                className="tap inline-flex items-center gap-1 text-[12px] font-semibold text-brand-red"
-              >
-                Buka di tab baru
-                <ExternalLink className="size-3.5" aria-hidden="true" />
-              </a>
-            </div>
-            <iframe
-              key={embedUrl}
-              src={embedUrl}
-              title="Semua penerbangan"
-              loading="lazy"
-              referrerPolicy="strict-origin-when-cross-origin"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-              className="h-[78dvh] min-h-[560px] w-full rounded-2xl bg-surface ring-1 ring-border/40"
+            <h3 className="px-1 text-[13px] font-bold">Semua penerbangan</h3>
+            <TravelpayoutsWidget
+              key={widgetCode ?? "none"}
+              scriptSrc={widgetSrc}
+              code={widgetCode}
             />
           </div>
         ) : (
@@ -232,7 +224,7 @@ export function FlightResults({
       )}
 
       {/* Without the full results the recorded fares are the answer; with them they stay a quick view. */}
-      {!loading && result?.status === "ok" && !embedUrl && (
+      {!loading && result?.status === "ok" && !widgetSrc && (
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-[13px] font-bold">{list.length} harga termurah</h3>

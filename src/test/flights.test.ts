@@ -23,8 +23,8 @@ import {
   transfersLabel,
   travelpayoutsScriptSrc,
   whiteLabelOn,
+  whiteLabelScriptSrc,
   whiteLabelSearchCode,
-  whiteLabelSearchUrl,
   withinSearchAllowance,
 } from "@/lib/flights";
 
@@ -337,44 +337,51 @@ describe("flightsPathFor (Ringkas to /tiket)", () => {
   });
 });
 
-describe("White Label host", () => {
+describe("White Label widget id", () => {
   const base = DEFAULT_FLIGHTS_CONFIG;
 
-  it("is off by default and accepts a bare hostname (lower-cased)", () => {
-    expect(base.whiteLabelHost).toBe("");
-    expect(whiteLabelOn(base)).toBe(false);
-    expect(
-      parseFlightsConfig({ ...base, whiteLabelHost: " Tiket.DjiwaTravel.com " }).whiteLabelHost,
-    ).toBe("tiket.djiwatravel.com");
-    expect(parseFlightsConfig({ ...base, whiteLabelHost: "" }).whiteLabelHost).toBe("");
+  it("ships the White Label of Djiwa on, and accepts a numeric id (string or number)", () => {
+    expect(base.whiteLabelId).toBe("24328");
+    expect(whiteLabelOn(base)).toBe(true);
+    expect(parseFlightsConfig({ ...base, whiteLabelId: " 12345 " }).whiteLabelId).toBe("12345");
+    expect(parseFlightsConfig({ ...base, whiteLabelId: 678 }).whiteLabelId).toBe("678");
+    expect(parseFlightsConfig({ ...base, whiteLabelId: "" }).whiteLabelId).toBe("");
   });
 
-  it.each([
-    "https://tiket.djiwatravel.com",
-    "tiket.djiwatravel.com/path",
-    "tiket.djiwatravel.com:8080",
-    "user@tiket.djiwatravel.com",
-    "tiket djiwatravel.com",
-    "localhost",
-    "-bad.example.com",
-    "a..b.com",
-    "x".repeat(300) + ".com",
-  ])("rejects %s", (host) => {
-    expect(() => parseFlightsConfig({ ...base, whiteLabelHost: host })).toThrow(/whiteLabelHost/);
+  it.each(["12a", "1 2", "https://x.y", "../1", "1234567890", "-1", "1.5", "<script>"])(
+    "rejects %s",
+    (id) => {
+      expect(() => parseFlightsConfig({ ...base, whiteLabelId: id })).toThrow(/whiteLabelId/);
+    },
+  );
+
+  it("ignores the retired host setting an earlier save may still carry", () => {
+    const parsed = parseFlightsConfig({ ...base, whiteLabelHost: "tiket.djiwatravel.com" });
+    expect(parsed).not.toHaveProperty("whiteLabelHost");
+    expect(parsed.whiteLabelId).toBe("24328");
   });
 
-  it("is only on with the master switch and a host", () => {
-    const on = { ...base, whiteLabelHost: "tiket.djiwatravel.com" };
+  it("is only on with the master switch and an id", () => {
+    const on = { ...base, whiteLabelId: "12345" };
     expect(whiteLabelOn(on)).toBe(true);
     expect(whiteLabelOn({ ...on, enabled: false })).toBe(false);
   });
+
+  it("builds the widget script URL from the id only", () => {
+    expect(whiteLabelScriptSrc({ ...base, whiteLabelId: "12345" })).toBe(
+      "https://tpwdgt.com/wl_web/main.js?wl_id=12345",
+    );
+    expect(whiteLabelScriptSrc(base)).toBe("https://tpwdgt.com/wl_web/main.js?wl_id=24328");
+    expect(whiteLabelScriptSrc({ ...base, whiteLabelId: "" })).toBeNull();
+    expect(whiteLabelScriptSrc({ ...base, enabled: false, whiteLabelId: "12345" })).toBeNull();
+    expect(whiteLabelScriptSrc({ ...base, whiteLabelId: "1&x=2" })).toBeNull();
+  });
 });
 
-describe("White Label search link", () => {
-  const config = { ...DEFAULT_FLIGHTS_CONFIG, whiteLabelHost: "tiket.djiwatravel.com" };
+describe("White Label search code (read by the widget from the page address)", () => {
   const search = { origin: "CGK", destination: "TYO", departureDate: "2999-12-20" };
 
-  it("builds the flightSearch code: origin, DDMM, destination, [return DDMM], adults", () => {
+  it("builds origin, DDMM, destination, [return DDMM], adults", () => {
     expect(whiteLabelSearchCode(search)).toBe("CGK2012TYO1");
     expect(whiteLabelSearchCode({ ...search, returnDate: "2999-12-27" })).toBe("CGK2012TYO27121");
     expect(whiteLabelSearchCode(search, 3)).toBe("CGK2012TYO3");
@@ -384,20 +391,6 @@ describe("White Label search link", () => {
     expect(whiteLabelSearchCode({ ...search, departureDate: "2999-12" })).toBeNull();
     expect(whiteLabelSearchCode(search, 0)).toBeNull();
     expect(whiteLabelSearchCode(search, 10)).toBeNull();
-  });
-
-  it("opens the White Label on the configured host with the form filled", () => {
-    expect(whiteLabelSearchUrl(config, search)).toBe(
-      "https://tiket.djiwatravel.com/?flightSearch=CGK2012TYO1",
-    );
-  });
-
-  it("gives nothing when the White Label is off or the host is unusable", () => {
-    expect(whiteLabelSearchUrl(DEFAULT_FLIGHTS_CONFIG, search)).toBeNull();
-    expect(whiteLabelSearchUrl({ ...config, enabled: false }, search)).toBeNull();
-    expect(
-      whiteLabelSearchUrl({ ...config, whiteLabelHost: "https://evil.example" }, search),
-    ).toBeNull();
   });
 });
 
