@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { sweepPendingProviderPayments } from "@/lib/mayar-settlement-sweep.server";
+import { sweepShoppingPayments } from "@/lib/personal-shopper.server";
 import { verifyTentramSignedRequest } from "@/lib/tentram-signed-request.server";
 
 /**
@@ -46,8 +47,19 @@ async function receive(request: Request) {
     });
     return null;
   });
+  // Titip Belanja invoices share the Mayar account: let the same hint settle them too.
+  const shopping = await sweepShoppingPayments({
+    ...(transactionId ? { transactionId } : {}),
+    ...(invoiceId ? { invoiceId } : {}),
+  }).catch(() => null);
+  const base = report ?? { checked: 0, settled: 0, skipped: 0, failed: 1 };
   // 200 with checked=0 means the event belongs to another app sharing the Mayar account.
-  return json({ ok: true, ...(report ?? { checked: 0, settled: 0, skipped: 0, failed: 1 }) });
+  return json({
+    ok: true,
+    ...base,
+    checked: base.checked + (shopping?.checked ?? 0),
+    settled: base.settled + (shopping?.settled ?? 0),
+  });
 }
 
 export const Route = createFileRoute("/api/webhooks/mayar-forward")({

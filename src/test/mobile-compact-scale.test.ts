@@ -34,6 +34,9 @@ const COMPACT_PAGES = [
   "src/routes/share.$token.tsx",
   "src/routes/support.tsx",
   "src/routes/terms.tsx",
+  "src/routes/titip-belanja.index.tsx",
+  "src/routes/titip-belanja.pesanan.index.tsx",
+  "src/routes/titip-belanja.pesanan.$id.tsx",
   "src/routes/wallet.pay.tsx",
   "src/routes/wallet.tsx",
   "src/components/affiliate-referral-capture.tsx",
@@ -104,6 +107,9 @@ const COMPACT_PAGES = [
   "src/components/trip-share-sheet.tsx",
   "src/components/trip-ticket.tsx",
   "src/components/wallet/pay-services-card.tsx",
+  "src/components/shopper/shopper-home.tsx",
+  "src/components/shopper/shopper-sheets.tsx",
+  "src/components/shopper/shopper-ui.tsx",
 ];
 
 describe("mobile compact scale (iOS density)", () => {

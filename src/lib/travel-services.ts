@@ -6,7 +6,7 @@ export type TravelServiceCategory = {
   description: string;
   icon: string;
   status: TravelServiceStatus;
-  href?: "/explore" | "/esim/finder" | "/tiket";
+  href?: "/explore" | "/esim/finder" | "/tiket" | "/titip-belanja";
   displayOrder: number;
 };
 
@@ -93,6 +93,6 @@ export const visibleTravelServices = () =>
 
 export function serviceHref(
   service: TravelServiceCategory,
-): "/explore" | "/esim/finder" | "/tiket" | null {
+): "/explore" | "/esim/finder" | "/tiket" | "/titip-belanja" | null {
   return service.status === "ACTIVE" ? (service.href ?? null) : null;
 }

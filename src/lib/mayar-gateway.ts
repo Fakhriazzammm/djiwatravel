@@ -26,7 +26,7 @@ const invoiceSchema = invoicePayloadSchema.extend({
   redirectUrl: z.string().url(),
 });
 
-function mayarConfig() {
+export function mayarConfig() {
   const apiKey = process.env["MAYAR_API_KEY"];
   if (!apiKey) throw new Error("Payment provider belum dikonfigurasi");
   return {
@@ -145,7 +145,7 @@ async function persistConfirmedMayarInvoice(
  * Every failure returns null on purpose: reconciliation must never break a checkout that could
  * still succeed.
  */
-async function findExistingMayarInvoice(
+export async function findExistingMayarInvoice(
   baseUrl: string,
   apiKey: string,
   description: string,
@@ -198,7 +198,7 @@ async function findExistingMayarInvoice(
   }
 }
 
-function configuredAppOrigin() {
+export function configuredAppOrigin() {
   const raw = process.env["PUBLIC_APP_ORIGIN"] || process.env["APP_ORIGIN"];
   if (!raw) throw new Error("Canonical app origin belum dikonfigurasi");
   const origin = new URL(raw);

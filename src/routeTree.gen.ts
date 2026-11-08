@@ -44,6 +44,7 @@ import { Route as AdminPreordersRouteImport } from './routes/admin.preorders'
 import { Route as AdminProvisioningRouteImport } from './routes/admin.provisioning'
 import { Route as AdminRefundsRouteImport } from './routes/admin.refunds'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminShoppingRouteImport } from './routes/admin.shopping'
 import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
 import { Route as ApiCustomerNotificationsRouteImport } from './routes/api.customer-notifications'
@@ -75,6 +76,7 @@ import { Route as PlanIdRouteImport } from './routes/plan.$id'
 import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
 import { Route as RefundOrderRouteImport } from './routes/refund.$order'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
+import { Route as TitipBelanjaIndexRouteImport } from './routes/titip-belanja.index'
 import { Route as WalletPayRouteImport } from './routes/wallet.pay'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
@@ -94,6 +96,8 @@ import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhook
 import { Route as ApiWebhooksMayarForwardRouteImport } from './routes/api.webhooks.mayar-forward'
 import { Route as MyTripsTripIdSectionRouteImport } from './routes/my-trips.$tripId.$section'
 import { Route as MyTripsTripIdTravelRouteImport } from './routes/my-trips.$tripId.travel'
+import { Route as TitipBelanjaPesananIndexRouteImport } from './routes/titip-belanja.pesanan.index'
+import { Route as TitipBelanjaPesananIdRouteImport } from './routes/titip-belanja.pesanan.$id'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -271,6 +275,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/admin/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminShoppingRoute = AdminShoppingRouteImport.update({
+  id: '/admin/shopping',
+  path: '/admin/shopping',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSupportRoute = AdminSupportRouteImport.update({
   id: '/admin/support',
   path: '/admin/support',
@@ -427,6 +436,11 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
   path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TitipBelanjaIndexRoute = TitipBelanjaIndexRouteImport.update({
+  id: '/titip-belanja/',
+  path: '/titip-belanja/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WalletPayRoute = WalletPayRouteImport.update({
   id: '/pay',
   path: '/pay',
@@ -527,6 +541,17 @@ const MyTripsTripIdTravelRoute = MyTripsTripIdTravelRouteImport.update({
   path: '/travel',
   getParentRoute: () => MyTripsTripIdRoute,
 } as any)
+const TitipBelanjaPesananIndexRoute =
+  TitipBelanjaPesananIndexRouteImport.update({
+    id: '/titip-belanja/pesanan/',
+    path: '/titip-belanja/pesanan/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TitipBelanjaPesananIdRoute = TitipBelanjaPesananIdRouteImport.update({
+  id: '/titip-belanja/pesanan/$id',
+  path: '/titip-belanja/pesanan/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksEsimAccessTokenRoute =
   ApiWebhooksEsimAccessTokenRouteImport.update({
     id: '/api/webhooks/esim-access/$token',
@@ -569,6 +594,7 @@ export interface FileRoutesByFullPath {
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
   '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
@@ -602,6 +628,7 @@ export interface FileRoutesByFullPath {
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
+  '/titip-belanja/': typeof TitipBelanjaIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
@@ -620,6 +647,8 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
+  '/titip-belanja/pesanan/$id': typeof TitipBelanjaPesananIdRoute
+  '/titip-belanja/pesanan/': typeof TitipBelanjaPesananIndexRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
 export interface FileRoutesByTo {
@@ -657,6 +686,7 @@ export interface FileRoutesByTo {
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
   '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
@@ -690,6 +720,7 @@ export interface FileRoutesByTo {
   '/my-esim': typeof MyEsimIndexRoute
   '/my-trips': typeof MyTripsIndexRoute
   '/panduan': typeof PanduanIndexRoute
+  '/titip-belanja': typeof TitipBelanjaIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
@@ -708,6 +739,8 @@ export interface FileRoutesByTo {
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
+  '/titip-belanja/pesanan/$id': typeof TitipBelanjaPesananIdRoute
+  '/titip-belanja/pesanan': typeof TitipBelanjaPesananIndexRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
 export interface FileRoutesById {
@@ -746,6 +779,7 @@ export interface FileRoutesById {
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
   '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
@@ -779,6 +813,7 @@ export interface FileRoutesById {
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
+  '/titip-belanja/': typeof TitipBelanjaIndexRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
@@ -797,6 +832,8 @@ export interface FileRoutesById {
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
+  '/titip-belanja/pesanan/$id': typeof TitipBelanjaPesananIdRoute
+  '/titip-belanja/pesanan/': typeof TitipBelanjaPesananIndexRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
 export interface FileRouteTypes {
@@ -836,6 +873,7 @@ export interface FileRouteTypes {
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
+    | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
     | '/api/customer-notifications'
@@ -869,6 +907,7 @@ export interface FileRouteTypes {
     | '/my-esim/'
     | '/my-trips/'
     | '/panduan/'
+    | '/titip-belanja/'
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/bridge'
@@ -887,6 +926,8 @@ export interface FileRouteTypes {
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
+    | '/titip-belanja/pesanan/$id'
+    | '/titip-belanja/pesanan/'
     | '/api/webhooks/esim-access/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -924,6 +965,7 @@ export interface FileRouteTypes {
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
+    | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
     | '/api/customer-notifications'
@@ -957,6 +999,7 @@ export interface FileRouteTypes {
     | '/my-esim'
     | '/my-trips'
     | '/panduan'
+    | '/titip-belanja'
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/bridge'
@@ -975,6 +1018,8 @@ export interface FileRouteTypes {
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
+    | '/titip-belanja/pesanan/$id'
+    | '/titip-belanja/pesanan'
     | '/api/webhooks/esim-access/$token'
   id:
     | '__root__'
@@ -1012,6 +1057,7 @@ export interface FileRouteTypes {
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
+    | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
     | '/api/customer-notifications'
@@ -1045,6 +1091,7 @@ export interface FileRouteTypes {
     | '/my-esim/'
     | '/my-trips/'
     | '/panduan/'
+    | '/titip-belanja/'
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/bridge'
@@ -1063,6 +1110,8 @@ export interface FileRouteTypes {
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
+    | '/titip-belanja/pesanan/$id'
+    | '/titip-belanja/pesanan/'
     | '/api/webhooks/esim-access/$token'
   fileRoutesById: FileRoutesById
 }
@@ -1101,6 +1150,7 @@ export interface RootRouteChildren {
   AdminProvisioningRoute: typeof AdminProvisioningRoute
   AdminRefundsRoute: typeof AdminRefundsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminShoppingRoute: typeof AdminShoppingRoute
   AdminSupportRoute: typeof AdminSupportRoute
   AdminTeamRoute: typeof AdminTeamRoute
   ApiCustomerNotificationsRoute: typeof ApiCustomerNotificationsRoute
@@ -1133,6 +1183,7 @@ export interface RootRouteChildren {
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   MyTripsIndexRoute: typeof MyTripsIndexRoute
   PanduanIndexRoute: typeof PanduanIndexRoute
+  TitipBelanjaIndexRoute: typeof TitipBelanjaIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDjiwaPayBridgeRoute: typeof ApiDjiwaPayBridgeRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
@@ -1148,6 +1199,8 @@ export interface RootRouteChildren {
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
   ApiWebhooksMayarForwardRoute: typeof ApiWebhooksMayarForwardRoute
+  TitipBelanjaPesananIdRoute: typeof TitipBelanjaPesananIdRoute
+  TitipBelanjaPesananIndexRoute: typeof TitipBelanjaPesananIndexRoute
   ApiWebhooksEsimAccessTokenRoute: typeof ApiWebhooksEsimAccessTokenRoute
 }
 
@@ -1398,6 +1451,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/shopping': {
+      id: '/admin/shopping'
+      path: '/admin/shopping'
+      fullPath: '/admin/shopping'
+      preLoaderRoute: typeof AdminShoppingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/support': {
       id: '/admin/support'
       path: '/admin/support'
@@ -1615,6 +1675,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/titip-belanja/': {
+      id: '/titip-belanja/'
+      path: '/titip-belanja'
+      fullPath: '/titip-belanja/'
+      preLoaderRoute: typeof TitipBelanjaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wallet/pay': {
       id: '/wallet/pay'
       path: '/pay'
@@ -1748,6 +1815,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyTripsTripIdTravelRouteImport
       parentRoute: typeof MyTripsTripIdRoute
     }
+    '/titip-belanja/pesanan/': {
+      id: '/titip-belanja/pesanan/'
+      path: '/titip-belanja/pesanan'
+      fullPath: '/titip-belanja/pesanan/'
+      preLoaderRoute: typeof TitipBelanjaPesananIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/titip-belanja/pesanan/$id': {
+      id: '/titip-belanja/pesanan/$id'
+      path: '/titip-belanja/pesanan/$id'
+      fullPath: '/titip-belanja/pesanan/$id'
+      preLoaderRoute: typeof TitipBelanjaPesananIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/esim-access/$token': {
       id: '/api/webhooks/esim-access/$token'
       path: '/api/webhooks/esim-access/$token'
@@ -1830,6 +1911,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminProvisioningRoute: AdminProvisioningRoute,
   AdminRefundsRoute: AdminRefundsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminShoppingRoute: AdminShoppingRoute,
   AdminSupportRoute: AdminSupportRoute,
   AdminTeamRoute: AdminTeamRoute,
   ApiCustomerNotificationsRoute: ApiCustomerNotificationsRoute,
@@ -1862,6 +1944,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyEsimIndexRoute: MyEsimIndexRoute,
   MyTripsIndexRoute: MyTripsIndexRoute,
   PanduanIndexRoute: PanduanIndexRoute,
+  TitipBelanjaIndexRoute: TitipBelanjaIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDjiwaPayBridgeRoute: ApiDjiwaPayBridgeRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
@@ -1877,6 +1960,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
   ApiWebhooksMayarForwardRoute: ApiWebhooksMayarForwardRoute,
+  TitipBelanjaPesananIdRoute: TitipBelanjaPesananIdRoute,
+  TitipBelanjaPesananIndexRoute: TitipBelanjaPesananIndexRoute,
   ApiWebhooksEsimAccessTokenRoute: ApiWebhooksEsimAccessTokenRoute,
 }
 export const routeTree = rootRouteImport

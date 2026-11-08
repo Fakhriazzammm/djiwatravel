@@ -13,6 +13,7 @@ import {
   repairPreorderNotifications,
 } from "@/lib/preorder-notifications.server";
 import { sweepFlightAlerts } from "@/lib/flight-features.server";
+import { sweepShoppingPayments, sweepShopperCatalog } from "@/lib/personal-shopper.server";
 import { TRAVEL_TASK_WORKER, recordFailure, recordSuccess } from "@/lib/worker-heartbeat.server";
 
 /**
@@ -125,7 +126,21 @@ async function run(request: Request) {
     return { checked: 0, notified: 0, closed: 0, failed: 0 };
   });
 
-  const workerFailures = failed.length + preorders.failed.length + email.failed;
+  // Titip Belanja: settle or expire pending payments, and refresh the store catalog when it is old.
+  const shopping = await sweepShoppingPayments().catch((error) => {
+    console.error("[travel] shopping payment sweep failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+    return { checked: 0, settled: 0, expired: 0, failed: 1 };
+  });
+  // Fire and forget (single-flight inside): a slow store never delays the minute task.
+  void sweepShopperCatalog().catch((error) => {
+    console.error("[travel] shopping catalog refresh failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+  });
+
+  const workerFailures = failed.length + preorders.failed.length + email.failed + shopping.failed;
 
   // Liveness last, and only on a clean run: a heartbeat written by a failing worker would claim
   // health it does not have.

@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
 import { useFlightsStatus } from "@/hooks/use-flights-config";
+import { useShopperStatus } from "@/hooks/use-shopper-status";
 import { showFlightsTile } from "@/lib/flights";
 import { assetForService } from "@/lib/explore-assets";
 import { serviceHref, serviceStatusLabel, visibleTravelServices } from "@/lib/travel-services";
@@ -43,9 +44,19 @@ export function ServiceCategoryGrid({ waitlist = false }: { waitlist?: boolean }
   const [mounted, setMounted] = useState(false);
   const flights = useFlightsStatus();
   const flightsTile = flights.available && showFlightsTile(flights.config);
+  const shopper = useShopperStatus();
+  const shopperOpen = shopper.available && shopper.config.enabled;
   const services = useMemo(
-    () => visibleTravelServices().filter((service) => service.id !== "flights" || flightsTile),
-    [flightsTile],
+    () =>
+      visibleTravelServices()
+        .filter((service) => service.id !== "flights" || flightsTile)
+        // Admin turns Titip Belanja on: the waitlist tile becomes a live entry point.
+        .map((service) =>
+          service.id === "personal-shopper" && shopperOpen
+            ? { ...service, status: "ACTIVE" as const, href: "/titip-belanja" as const }
+            : service,
+        ),
+    [flightsTile, shopperOpen],
   );
 
   useEffect(() => setMounted(true), []);
