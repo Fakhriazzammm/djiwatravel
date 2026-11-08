@@ -342,3 +342,22 @@ Use this structure for each new lesson:
 - Verification boundary: the reachability tests and the handler tests (stubbed `fetch`) prove the
   code path. Whether a keyed provider answers correctly in production is unproven until a key is set
   and one live request is checked on the Travel VPS.
+
+### 2026-11-09 — Photo upload returns 403 only on the public HTTPS origin
+
+- Symptom: customer photo search failed with 403 on production while the same build passed tests and
+  the official-link search worked; the browser console showed the failure only after a photo was picked.
+- Evidence: `api.shopper-search.ts` compared the browser `Origin` header with `new URL(request.url).origin`.
+  Nginx terminates TLS and forwards plain HTTP to `127.0.0.1:3000`, so the request URL is `http://…`
+  while the browser sends `Origin: https://djiwatravel.com`.
+- Root cause: deriving the public origin from the internal proxy request URL on a TLS-terminating host.
+- Safe fix: `discoveryOriginAllowed` compares against the configured canonical `PUBLIC_APP_ORIGIN`
+  (www alias allowed) and accepts the request URL only in development; the same configured origin is
+  also required for payment return URLs. Production `/etc/djiwatravel.env` now sets
+  `PUBLIC_APP_ORIGIN=https://djiwatravel.com`.
+- Prevention rule: never build a public origin from `request.url` behind the Travel nginx; validate
+  browser `Origin`/return URLs against a configured canonical origin, and set that variable before
+  enabling a feature that depends on it.
+- Verification boundary: verified with a real photo upload and an official-link search from the
+  production customer page (HTTP 200, candidates with photos and JPY prices). A paid checkout through
+  the discovery offer was not executed in production; only tests cover it.

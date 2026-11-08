@@ -121,6 +121,21 @@ export type DiscoverySearchResult = {
   exact: boolean;
 };
 
+/** Audit note shown to customer and admin when an action has no message of its own. */
+export function discoveryEventNote(
+  action: "submit" | "reply" | "decline" | "cancel" | "refresh_offer",
+  note: string,
+) {
+  if (note.trim()) return note;
+  return {
+    submit: "Permintaan dikirim untuk diperiksa tim.",
+    reply: "Pelanggan mengirim informasi tambahan.",
+    decline: "Penawaran ditolak pelanggan.",
+    cancel: "Permintaan dibatalkan oleh pelanggan.",
+    refresh_offer: "Pelanggan meminta penawaran baru karena penawaran kedaluwarsa.",
+  }[action];
+}
+
 /** Reverse proxies can terminate TLS; compare browser Origin with the trusted public origin. */
 export function discoveryOriginAllowed(
   origin: string | null,

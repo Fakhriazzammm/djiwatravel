@@ -15,6 +15,7 @@ import {
   DISCOVERY_KEY,
   DEFAULT_DISCOVERY_CONFIG,
   discoveryConfigSchema,
+  discoveryEventNote,
   discoveryOfferSchema,
   offerTotal,
   parseProductReference,
@@ -361,15 +362,7 @@ export async function customerDiscoveryAction(data: z.infer<typeof requestAction
     );
     await c.query(
       "insert into shopping_discovery_events(request_id,actor,status,note,version) values($1,'customer',$2,$3,$4)",
-      [
-        row.id,
-        status,
-        data.note ||
-          (data.action === "refresh_offer"
-            ? "Pelanggan meminta penawaran baru karena penawaran kedaluwarsa."
-            : "Permintaan dikirim untuk diperiksa tim."),
-        row.version + 1,
-      ],
+      [row.id, status, discoveryEventNote(data.action, data.note), row.version + 1],
     );
     await c.query("commit");
     return { ok: true };

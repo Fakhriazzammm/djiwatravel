@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   parseProductReference,
   discoveryOriginAllowed,
+  discoveryEventNote,
   productPhotoMime,
   discoveryOfferSchema,
   offerTotal,
@@ -149,6 +150,12 @@ describe("discovery references and uploads", () => {
     expect(offerTotal(discoveryOfferSchema.parse(offer))).toBe(338000);
     expect(() => discoveryOfferSchema.parse({ ...offer, unitIdr: 1.2 })).toThrow();
   });
+  it("labels each customer action instead of reusing the submit note", () => {
+    expect(discoveryEventNote("submit", "")).toBe("Permintaan dikirim untuk diperiksa tim.");
+    expect(discoveryEventNote("cancel", "")).toBe("Permintaan dibatalkan oleh pelanggan.");
+    expect(discoveryEventNote("decline", "")).toBe("Penawaran ditolak pelanggan.");
+    expect(discoveryEventNote("cancel", "Salah pilih ukuran")).toBe("Salah pilih ukuran");
+  });
 });
 describe("owner, version and payment contract", () => {
   it("denies acceptance of another customer's request", async () => {
@@ -251,5 +258,15 @@ describe("owner, version and payment contract", () => {
     await expect(
       customerDiscoveryAction({ id, expectedVersion: 1, action: "decline", note: "" }),
     ).rejects.toThrow("berubah");
+  });
+  it("audits a cancellation with its own note", async () => {
+    row["status"] = "SUBMITTED";
+    row["version"] = 2;
+    await customerDiscoveryAction({ id, expectedVersion: 2, action: "cancel", note: "" });
+    const event = mock.query.mock.calls.find((c) =>
+      String(c[0]).includes("insert into shopping_discovery_events"),
+    );
+    expect(event?.[1]?.[1]).toBe("CANCELLED");
+    expect(event?.[1]?.[2]).toBe("Permintaan dibatalkan oleh pelanggan.");
   });
 });
