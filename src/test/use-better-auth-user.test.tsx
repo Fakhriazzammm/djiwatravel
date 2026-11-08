@@ -1,11 +1,14 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getBetterAuthSession } from "@/lib/better-auth-client";
+import { getBetterAuthSessionWithRetry } from "@/lib/better-auth-client";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 
-vi.mock("@/lib/better-auth-client", () => ({ getBetterAuthSession: vi.fn() }));
+vi.mock("@/lib/better-auth-client", () => ({
+  getBetterAuthSession: vi.fn(),
+  getBetterAuthSessionWithRetry: vi.fn(),
+}));
 
-const mocked = vi.mocked(getBetterAuthSession);
+const mocked = vi.mocked(getBetterAuthSessionWithRetry);
 
 afterEach(() => {
   vi.clearAllMocks();
