@@ -1,3 +1,4 @@
+import { ShopperNav } from "@/components/shopper/shopper-nav";
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Check } from "lucide-react";
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/titip-belanja/pesanan/$id")({
   loader: ({ params }) => getMyShoppingOrder({ data: { orderId: params.id } }),
   errorComponent: () => (
     <Page tabs={false}>
+      <ShopperNav active="orders" />
       <BackBar title="Pesanan" fallbackTo="/titip-belanja/pesanan" />
       <p className="mt-10 text-center text-[13px] text-muted-foreground">
         Pesanan tidak ditemukan atau kamu belum masuk.
@@ -88,6 +90,7 @@ function ShopperOrder() {
 
   return (
     <Page tabs={false}>
+      <ShopperNav active="orders" />
       <BackBar title={order.code} fallbackTo="/titip-belanja/pesanan" />
       <div className="ios-card p-3">
         <p className="text-[11px] text-muted-foreground">Status</p>

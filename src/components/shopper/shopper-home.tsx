@@ -33,6 +33,7 @@ import {
 } from "@/lib/personal-shopper";
 import { cartCount, cartQuote, useShopperCart } from "./shopper-cart";
 import { CartSheet, FilterSheet, ProductSheet, SortSheet } from "./shopper-sheets";
+import { ShopperNav } from "./shopper-nav";
 import { BrandBubble, ProductImage, SaleTag } from "./shopper-ui";
 
 export type ShopperHomeData = {
@@ -45,7 +46,15 @@ export type ShopperHomeData = {
 const SKELETON_MS = 220;
 
 /** Titip Belanja home: country, search, brand stories, curated rails, then the filterable list. */
-export function ShopperHome({ data }: { data: ShopperHomeData }) {
+export function ShopperHome({
+  data,
+  cartRequested = false,
+  onCartHandled,
+}: {
+  data: ShopperHomeData;
+  cartRequested?: boolean;
+  onCartHandled?: () => void;
+}) {
   const reduce = Boolean(useReducedMotion());
   const config = data.config;
   const firstOpen =
@@ -58,6 +67,16 @@ export function ShopperHome({ data }: { data: ShopperHomeData }) {
   const [openProduct, setOpenProduct] = useState<ShopperProduct | null>(null);
   const [sheet, setSheet] = useState<null | "filter" | "sort" | "cart">(null);
   const cart = useShopperCart();
+  useEffect(() => {
+    if (!cartRequested) return;
+    if (cart.length > 0) setSheet("cart");
+    else toast.info("Keranjang masih kosong. Pilih barang untuk dititip.");
+    onCartHandled?.();
+  }, [cartRequested, cart.length, onCartHandled]);
+  const openCart = () => {
+    if (cart.length > 0) setSheet("cart");
+    else toast.info("Keranjang masih kosong. Pilih barang untuk dititip.");
+  };
   const cartBar = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -433,6 +452,9 @@ export function ShopperHome({ data }: { data: ShopperHomeData }) {
         </div>
       )}
 
+      <div aria-hidden="true" className="h-[calc(3rem+env(safe-area-inset-bottom))]" />
+      <ShopperNav active={sheet === "cart" ? "cart" : "shop"} onCart={openCart} />
+
       {/* Cart bar */}
       <FixedLayer>
         <AnimatePresence>
@@ -444,7 +466,7 @@ export function ShopperHome({ data }: { data: ShopperHomeData }) {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 90, opacity: 0 }}
               transition={{ type: "spring", stiffness: 360, damping: 28 }}
-              className="fixed inset-x-0 bottom-[calc(3rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md px-4"
+              className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md px-4"
             >
               <div className="flex items-center gap-2 rounded-2xl bg-foreground p-2 pl-3 text-background shadow-lg">
                 <span className="flex min-w-5 items-center justify-center rounded-full bg-brand-red px-1.5 text-[11px] font-bold text-white">

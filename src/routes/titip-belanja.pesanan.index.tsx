@@ -1,3 +1,4 @@
+import { ShopperNav } from "@/components/shopper/shopper-nav";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, ShoppingBag } from "lucide-react";
 import { CustomerAuth } from "@/components/customer-auth";
@@ -33,6 +34,7 @@ function ShopperOrders() {
   const orders = Route.useLoaderData();
   return (
     <Page tabs={false}>
+      <ShopperNav active="orders" />
       <BackBar title="Pesanan Titip Belanja" fallbackTo="/titip-belanja" />
       {orders === null ? (
         <div className="mt-4">

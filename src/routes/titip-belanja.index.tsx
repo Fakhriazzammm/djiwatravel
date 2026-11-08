@@ -9,6 +9,8 @@ import {
 } from "@/lib/personal-shopper";
 
 export const Route = createFileRoute("/titip-belanja/")({
+  validateSearch: (search: Record<string, unknown>): { cart?: boolean } =>
+    search["cart"] === true || search["cart"] === "true" ? { cart: true } : {},
   head: () => ({
     meta: [
       { title: "Titip Belanja — Djiwa Travel" },
@@ -45,5 +47,13 @@ export const Route = createFileRoute("/titip-belanja/")({
 
 function ShopperPage() {
   const data = Route.useLoaderData();
-  return <ShopperHome data={data} />;
+  const { cart } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  return (
+    <ShopperHome
+      data={data}
+      cartRequested={Boolean(cart)}
+      onCartHandled={() => void navigate({ search: {}, replace: true })}
+    />
+  );
 }
