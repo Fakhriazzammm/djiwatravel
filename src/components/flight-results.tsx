@@ -159,11 +159,13 @@ export function FlightResults({
       </div>
 
       <div>
-        <h3 className="px-1 text-[13px] font-bold">Harga termurah tercatat per hari</h3>
+        <h3 className="px-1 text-[12px] font-semibold text-muted-foreground">
+          Harga termurah per hari
+        </h3>
         <div
           role="group"
           aria-label="Pilih tanggal berangkat"
-          className="no-scrollbar -mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1"
+          className="no-scrollbar -mx-4 mt-1.5 flex gap-1.5 overflow-x-auto px-4"
         >
           {strip.map((day) => {
             const selected = day.date === depart;
@@ -173,15 +175,15 @@ export function FlightResults({
                 type="button"
                 aria-pressed={selected}
                 onClick={() => onPickDay(day.date)}
-                className={`tap flex min-h-[3.75rem] w-[4.6rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 ring-1 ${
+                className={`tap flex min-h-11 min-w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-xl px-2 ring-1 ${
                   selected ? "bg-brand-red-soft ring-brand-red" : "bg-surface ring-border/50"
                 }`}
               >
-                <span className="text-[11px] font-medium text-muted-foreground">
+                <span className="text-[10px] font-medium leading-tight text-muted-foreground">
                   {shortDay(day.date)}
                 </span>
                 <span
-                  className={`text-[13px] font-bold ${day.offer ? "text-success" : "text-muted-foreground"}`}
+                  className={`text-[12px] font-bold leading-tight ${day.offer ? "text-success" : "text-muted-foreground"}`}
                 >
                   {loading ? "…" : day.offer ? compactFlightPrice(day.offer.priceIdr) : "—"}
                 </span>
@@ -189,10 +191,6 @@ export function FlightResults({
             );
           })}
         </div>
-        <p className="mt-1.5 px-1 text-[11px] leading-snug text-muted-foreground">
-          Harga sekali jalan dari data Aviasales dan bisa berubah. “—” berarti belum ada harga
-          tercatat.
-        </p>
       </div>
 
       {widgetSrc ? (
@@ -205,8 +203,7 @@ export function FlightResults({
           <div className="rounded-2xl bg-surface p-4 ring-1 ring-border/40">
             <h3 className="text-[14px] font-bold">Lihat semua penerbangan</h3>
             <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
-              Hasil lengkap dimuat dari layanan pihak ketiga (Aviasales). Lanjutkan kalau kamu
-              setuju.
+              Hasil lengkap dimuat dari layanan mitra kami. Lanjutkan kalau kamu setuju.
             </p>
             <button type="button" onClick={consent.grant} className={`${btnRed} mt-3 w-full`}>
               Setuju dan buka
