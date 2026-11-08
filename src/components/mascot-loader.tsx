@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { HERO_MASCOT } from "@/lib/home-hero";
 import { easeIos, springIos } from "@/lib/motion";
+
+/** Mascot holding a paper map, made with the mascot skill (see ASSET-MANIFEST.md). */
+const LOADER_MASCOT = "/assets/home-hero/mascot-map-v1.png";
 
 /** Friendly status lines that rotate while something loads, so the wait reads as progress. */
 export const LOADING_LINES = {
@@ -61,10 +63,10 @@ export function MascotLoader({
         />
       ))}
       <motion.img
-        src={HERO_MASCOT}
+        src={LOADER_MASCOT}
         alt=""
         width={size}
-        height={Math.round(size * 0.82)}
+        height={Math.round(size * 0.94)}
         className="relative drop-shadow-md"
         draggable={false}
         {...(reduce ? {} : { animate: { y: [0, -7, 0], rotate: [-3, 3, -3] } })}
