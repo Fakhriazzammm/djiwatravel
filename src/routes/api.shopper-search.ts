@@ -4,7 +4,16 @@ const json = (value: unknown, status = 200) =>
 async function receive(request: Request) {
   try {
     const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin)
+    const { configuredAppOrigin } = await import("@/lib/mayar-gateway");
+    const { discoveryOriginAllowed } = await import("@/lib/shopper-discovery");
+    if (
+      !discoveryOriginAllowed(
+        origin,
+        configuredAppOrigin(),
+        request.url,
+        process.env["NODE_ENV"] !== "production",
+      )
+    )
       return json({ error: "Origin tidak diizinkan" }, 403);
     const { authenticateCustomerRequest } = await import("@/lib/customer-session.server");
     const user = await authenticateCustomerRequest(request);

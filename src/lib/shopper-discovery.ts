@@ -120,3 +120,18 @@ export type DiscoverySearchResult = {
   message: string;
   exact: boolean;
 };
+
+/** Reverse proxies can terminate TLS; compare browser Origin with the trusted public origin. */
+export function discoveryOriginAllowed(
+  origin: string | null,
+  publicOrigin: string,
+  requestOrigin: string,
+  development = false,
+) {
+  if (!origin) return true;
+  const publicUrl = new URL(publicOrigin);
+  if (origin === publicUrl.origin) return true;
+  if (publicUrl.hostname === "djiwatravel.com" && origin === "https://www.djiwatravel.com")
+    return true;
+  return development && origin === new URL(requestOrigin).origin;
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   parseProductReference,
+  discoveryOriginAllowed,
   productPhotoMime,
   discoveryOfferSchema,
   offerTotal,
@@ -92,6 +93,31 @@ beforeEach(() => {
   });
 });
 describe("discovery references and uploads", () => {
+  it("accepts the public HTTPS origin behind an internal HTTP proxy", () => {
+    expect(
+      discoveryOriginAllowed(
+        "https://djiwatravel.com",
+        "https://djiwatravel.com",
+        "http://djiwatravel.com/api/shopper-search",
+      ),
+    ).toBe(true);
+    expect(
+      discoveryOriginAllowed(
+        "https://evil.example",
+        "https://djiwatravel.com",
+        "http://djiwatravel.com/api/shopper-search",
+      ),
+    ).toBe(false);
+    expect(
+      discoveryOriginAllowed(
+        "http://localhost:5173",
+        "https://djiwatravel.com",
+        "http://localhost:5173/api/shopper-search",
+        true,
+      ),
+    ).toBe(true);
+  });
+
   it("resolves only exact Japanese official product paths", () => {
     expect(
       parseProductReference("https://www.uniqlo.com/jp/ja/products/E471809-000/00"),
