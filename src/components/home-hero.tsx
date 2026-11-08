@@ -27,6 +27,42 @@ type Flight = { left: number; top: number; width: number; dx: number; dy: number
  * (`-mt-16` on the next section). The sky spans the whole viewport width and the very top; only
  * the text column is capped at the app's reading width.
  */
+const FLIGHT_HINT_FALLBACK = "Cari tiket pesawat";
+const FLIGHT_HINT_EXAMPLES = ["Bali", "Tokyo", "Singapura", "Seoul"];
+
+/** The same typing effect as the eSIM search line, for "Cari tiket ke <kota>". */
+function useFlightHint(active: boolean, reduceMotion: boolean | null) {
+  const [hint, setHint] = useState(FLIGHT_HINT_FALLBACK);
+  useEffect(() => {
+    if (!active || reduceMotion) {
+      setHint(FLIGHT_HINT_FALLBACK);
+      return;
+    }
+    let wordIndex = 0;
+    let count = 0;
+    let deleting = false;
+    let timeout: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const word = FLIGHT_HINT_EXAMPLES[wordIndex] ?? "";
+      count += deleting ? -1 : 1;
+      setHint(`Cari tiket ke ${word.slice(0, count)}`);
+      if (!deleting && count === word.length) {
+        deleting = true;
+        timeout = setTimeout(tick, 1000);
+      } else if (deleting && count === 0) {
+        deleting = false;
+        wordIndex = (wordIndex + 1) % FLIGHT_HINT_EXAMPLES.length;
+        timeout = setTimeout(tick, 250);
+      } else {
+        timeout = setTimeout(tick, deleting ? 42 : 80);
+      }
+    };
+    timeout = setTimeout(tick, 500);
+    return () => clearTimeout(timeout);
+  }, [active, reduceMotion]);
+  return hint;
+}
+
 export function HomeHero({
   mode,
   firstName,
@@ -64,6 +100,7 @@ export function HomeHero({
   // The Tiket tab only changes what the pill does (it opens the flight search page).
   const [tab, setTab] = useState<"esim" | "tiket">("esim");
   const flightsMode = flightsTab && tab === "tiket";
+  const flightHint = useFlightHint(flightsMode, reduceMotion);
   const [flight, setFlight] = useState<Flight | null>(null);
 
   useEffect(() => {
@@ -265,7 +302,7 @@ export function HomeHero({
             }`}
           >
             <Plane className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate">Cari tiket pesawat</span>
+            <span className="min-w-0 flex-1 truncate">{flightHint}</span>
           </Link>
         ) : (
           <button
