@@ -505,7 +505,7 @@ export async function getPlaceIdeas(
   const scope = tripCities.length ? `${tripCities.join(", ")}, ${destination}` : destination;
   const used = await usedToday(userId, now);
   const remaining = Math.max(0, config.dailyLimit - used);
-  const cacheKey = `${input.query ? "" : "map2|"}${placeIdeasCacheKey(scope, input.category, input.query)}`;
+  const cacheKey = `${input.query ? "" : "map3|"}${placeIdeasCacheKey(scope, input.category, input.query)}`;
   const hidden = await hiddenKeys();
   const visible = (ideas: PlaceIdea[]) =>
     ideas.filter((idea) => !hidden.has(idea.key)).slice(0, config.maxIdeas);

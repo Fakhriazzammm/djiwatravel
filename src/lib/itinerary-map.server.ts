@@ -418,11 +418,16 @@ export async function lookupVenuePoint(
 ): Promise<{ lat: number; lng: number; label: string } | null> {
   const key = `${near.lat.toFixed(2)},${near.lng.toFixed(2)}|${name.toLowerCase()}`;
   if (venueCache.has(key)) return venueCache.get(key) ?? null;
-  const parts = [name, ...name.split(/\s*(?:&|\||\/|,| and | - )\s*/i)]
+  // "A & B" is tried as A, then B; a plain name is tried whole.
+  const pieces = name
+    .split(/\s*(?:&|\||\/|,| and | - )\s*/i)
     .map((part) => part.trim())
-    .filter((part, index, all) => part.length >= 3 && all.indexOf(part) === index);
+    .filter((part) => part.length >= 3);
+  const parts = (pieces.length > 1 ? pieces : [name.trim()]).filter(
+    (part, index, all) => all.indexOf(part) === index,
+  );
   let found: { lat: number; lng: number; label: string } | null = null;
-  for (const part of parts.slice(0, 2)) {
+  for (const part of parts.slice(0, 3)) {
     const slot = Math.max(Date.now(), lastNominatim + 1100);
     lastNominatim = slot;
     if (slot > Date.now()) await new Promise((resolve) => setTimeout(resolve, slot - Date.now()));

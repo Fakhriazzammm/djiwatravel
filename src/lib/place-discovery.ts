@@ -31,9 +31,12 @@ export type Candidate = {
 const SIGHT = "attraction|museum|gallery|viewpoint|theme_park|zoo|aquarium|artwork";
 
 /** One query for every kind; results are sorted into categories locally. */
-export function overpassQuery(lat: number, lng: number, radiusM = 7000) {
+export function overpassQuery(lat: number, lng: number, radiusM = 12000) {
   const around = `(around:${radiusM},${lat.toFixed(5)},${lng.toFixed(5)})`;
-  const known = `[name][~"^(wikidata|wikipedia)$"~"."]`;
+  // Eating places are far more numerous, so they are searched closer to the centre.
+  const near = `(around:4000,${lat.toFixed(5)},${lng.toFixed(5)})`;
+  // A bare key filter is fast on Overpass; a regex over keys timed out on a city this size.
+  const known = `[name][wikidata]`;
   const named = `[name]["name:en"]`;
   return `[out:json][timeout:25];(
 nwr[tourism~"^(${SIGHT})$"]${known}${around};
@@ -43,7 +46,7 @@ nwr[leisure~"^(park|garden|nature_reserve)$"]${known}${around};
 nwr[natural~"^(beach|peak|waterfall)$"]${known}${around};
 nwr[shop~"^(mall|department_store)$"]${known}${around};
 nwr[amenity="marketplace"]${known}${around};
-nwr[amenity~"^(restaurant|cafe)$"]${named}${around};
+nwr[amenity~"^(restaurant|cafe)$"]${named}${near};
 );out center tags 400;`;
 }
 

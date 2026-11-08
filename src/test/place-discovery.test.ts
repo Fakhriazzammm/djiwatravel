@@ -17,7 +17,7 @@ const el = (id: number, tags: Record<string, string>) => ({
 
 describe("place discovery from the map", () => {
   it("builds an Overpass query around the point", () => {
-    expect(overpassQuery(35.6762, 139.6503)).toContain("around:7000,35.67620,139.65030");
+    expect(overpassQuery(35.6762, 139.6503)).toContain("around:12000,35.67620,139.65030");
   });
 
   it("classifies OSM tags and needs a Latin name", () => {
