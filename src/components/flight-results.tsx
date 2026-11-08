@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ChevronLeft, ExternalLink, Plane } from "lucide-react";
+import { ArrowRight, ExternalLink, Pencil, Plane } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -22,7 +22,6 @@ import {
   flightPriceStrip,
   formatFlightPrice,
   transfersLabel,
-  whiteLabelSearchCode,
   type FlightOffer,
   type FlightPlace,
   type FlightSearchResult,
@@ -98,7 +97,7 @@ export function FlightResults({
   today: string;
   result: FlightSearchResult | null;
   loading: boolean;
-  /** Script of the White Label widget (full real-time results), or null when it is off. */
+  /** Frame page of the White Label widget (full real-time results), or null when it is off. */
   widgetSrc: string | null;
   onBack: () => void;
   onPickDay: (day: string) => void;
@@ -106,12 +105,6 @@ export function FlightResults({
   const offers = useMemo(() => result?.offers ?? [], [result]);
   const strip = useMemo(() => flightPriceStrip(offers, depart, today), [offers, depart, today]);
   const consent = useEmbedConsent();
-  const widgetCode = whiteLabelSearchCode({
-    origin: origin.code,
-    destination: destination.code,
-    departureDate: depart,
-    ...(back ? { returnDate: back } : {}),
-  });
   const [chosen, setChosen] = useState<FlightOffer | null>(null);
   const [directOnly, setDirectOnly] = useState(false);
 
@@ -134,35 +127,42 @@ export function FlightResults({
     .slice(0, 12);
 
   return (
-    <section aria-label="Hasil pencarian tiket" className="space-y-3">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Ubah pencarian"
-          className="tap grid size-9 shrink-0 place-items-center rounded-full bg-secondary"
-        >
-          <ChevronLeft className="size-5" aria-hidden="true" />
-        </button>
-        <div className="min-w-0">
-          <h2 className="truncate text-[15px] font-bold">
-            {origin.code} → {destination.code}
+    <section aria-label="Hasil pencarian tiket" className="space-y-4">
+      <div className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-border/40">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-red-soft text-brand-red">
+          <Plane className="size-[18px]" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2
+            className="truncate text-[16px] font-bold leading-tight"
+            title={`${origin.name} ke ${destination.name}`}
+          >
+            {origin.code}
+            <ArrowRight className="mx-1.5 inline size-4 text-muted-foreground" aria-hidden="true" />
+            {destination.code}
           </h2>
-          <p className="truncate text-[11px] text-muted-foreground">
+          <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
             {dayLabel(depart)}
             {back ? ` – ${dayLabel(back)}` : " · sekali jalan"}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Ubah pencarian"
+          className="tap inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full bg-secondary px-3 text-[12px] font-semibold"
+        >
+          <Pencil className="size-3.5" aria-hidden="true" />
+          Ubah
+        </button>
       </div>
 
       <div>
-        <h3 className="px-1 text-[12px] font-semibold text-muted-foreground">
-          Harga termurah tercatat per hari
-        </h3>
+        <h3 className="px-1 text-[13px] font-bold">Harga termurah tercatat per hari</h3>
         <div
           role="group"
           aria-label="Pilih tanggal berangkat"
-          className="no-scrollbar -mx-1 mt-1.5 flex gap-1.5 overflow-x-auto px-1 pb-1"
+          className="no-scrollbar -mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1"
         >
           {strip.map((day) => {
             const selected = day.date === depart;
@@ -172,11 +172,13 @@ export function FlightResults({
                 type="button"
                 aria-pressed={selected}
                 onClick={() => onPickDay(day.date)}
-                className={`tap flex min-h-14 w-[4.4rem] shrink-0 flex-col items-center justify-center rounded-xl px-1 ring-1 ${
+                className={`tap flex min-h-[3.75rem] w-[4.6rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 ring-1 ${
                   selected ? "bg-brand-red-soft ring-brand-red" : "bg-surface ring-border/50"
                 }`}
               >
-                <span className="text-[11px] text-muted-foreground">{shortDay(day.date)}</span>
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {shortDay(day.date)}
+                </span>
                 <span
                   className={`text-[13px] font-bold ${day.offer ? "text-success" : "text-muted-foreground"}`}
                 >
@@ -186,7 +188,7 @@ export function FlightResults({
             );
           })}
         </div>
-        <p className="px-1 text-[11px] text-muted-foreground">
+        <p className="mt-1.5 px-1 text-[11px] leading-snug text-muted-foreground">
           Harga sekali jalan dari data Aviasales dan bisa berubah. “—” berarti belum ada harga
           tercatat.
         </p>
@@ -196,16 +198,12 @@ export function FlightResults({
         consent.ok ? (
           <div className="space-y-2">
             <h3 className="px-1 text-[13px] font-bold">Semua penerbangan</h3>
-            <TravelpayoutsWidget
-              key={widgetCode ?? "none"}
-              scriptSrc={widgetSrc}
-              code={widgetCode}
-            />
+            <TravelpayoutsWidget key={widgetSrc} src={widgetSrc} />
           </div>
         ) : (
           <div className="rounded-2xl bg-surface p-4 ring-1 ring-border/40">
             <h3 className="text-[14px] font-bold">Lihat semua penerbangan</h3>
-            <p className="mt-1 text-[12px] text-muted-foreground">
+            <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
               Hasil lengkap dimuat dari layanan pihak ketiga (Aviasales). Lanjutkan kalau kamu
               setuju.
             </p>

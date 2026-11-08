@@ -23,7 +23,7 @@ import {
   transfersLabel,
   travelpayoutsScriptSrc,
   whiteLabelOn,
-  whiteLabelScriptSrc,
+  whiteLabelFrameSrc,
   whiteLabelSearchCode,
   withinSearchAllowance,
 } from "@/lib/flights";
@@ -367,14 +367,22 @@ describe("White Label widget id", () => {
     expect(whiteLabelOn({ ...on, enabled: false })).toBe(false);
   });
 
-  it("builds the widget script URL from the id only", () => {
-    expect(whiteLabelScriptSrc({ ...base, whiteLabelId: "12345" })).toBe(
-      "https://tpwdgt.com/wl_web/main.js?wl_id=12345",
+  it("builds the frame address: search in the query, id in the hash, nothing else", () => {
+    expect(whiteLabelFrameSrc({ ...base, whiteLabelId: "12345" }, "CGK2012TYO1")).toBe(
+      "/tiket-widget.html?flightSearch=CGK2012TYO1#12345",
     );
-    expect(whiteLabelScriptSrc(base)).toBe("https://tpwdgt.com/wl_web/main.js?wl_id=24328");
-    expect(whiteLabelScriptSrc({ ...base, whiteLabelId: "" })).toBeNull();
-    expect(whiteLabelScriptSrc({ ...base, enabled: false, whiteLabelId: "12345" })).toBeNull();
-    expect(whiteLabelScriptSrc({ ...base, whiteLabelId: "1&x=2" })).toBeNull();
+    expect(whiteLabelFrameSrc(base, "CGK2012TYO27121")).toBe(
+      "/tiket-widget.html?flightSearch=CGK2012TYO27121#24328",
+    );
+    expect(whiteLabelFrameSrc(base, null)).toBe("/tiket-widget.html#24328");
+  });
+
+  it("gives no frame when the White Label is off, or the id or code could break the URL", () => {
+    expect(whiteLabelFrameSrc({ ...base, whiteLabelId: "" }, "CGK2012TYO1")).toBeNull();
+    expect(whiteLabelFrameSrc({ ...base, enabled: false }, "CGK2012TYO1")).toBeNull();
+    expect(whiteLabelFrameSrc({ ...base, whiteLabelId: "1&x=2" }, "CGK2012TYO1")).toBeNull();
+    expect(whiteLabelFrameSrc(base, "CGK2012TYO1&evil=1")).toBeNull();
+    expect(whiteLabelFrameSrc(base, "../x")).toBeNull();
   });
 });
 

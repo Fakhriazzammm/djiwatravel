@@ -458,10 +458,16 @@ export function whiteLabelSearchCode(search: FlightSearchInput, adults = 1): str
   return `${search.origin}${ddmm(search.departureDate)}${search.destination}${back}${adults}`;
 }
 
-/** Script of the White Label widget; only the validated numeric id reaches the URL. */
-export function whiteLabelScriptSrc(config: FlightsConfig): string | null {
+/**
+ * Address of the frame page that runs the White Label widget (`public/tiket-widget.html`): the
+ * search goes in `?flightSearch=`, the White Label id in the hash. Only the validated numeric id and
+ * the code `whiteLabelSearchCode` builds reach the URL.
+ */
+export function whiteLabelFrameSrc(config: FlightsConfig, code: string | null): string | null {
   if (!whiteLabelOn(config) || !WHITE_LABEL_ID_PATTERN.test(config.whiteLabelId)) return null;
-  return `https://tpwdgt.com/wl_web/main.js?wl_id=${config.whiteLabelId}`;
+  if (code !== null && !/^[A-Z]{3}\d{4}[A-Z]{3}(\d{4})?\d$/.test(code)) return null;
+  const query = code ? `?flightSearch=${code}` : "";
+  return `/tiket-widget.html${query}#${config.whiteLabelId}`;
 }
 
 /* ----------------------------------------------------------- price calendar */

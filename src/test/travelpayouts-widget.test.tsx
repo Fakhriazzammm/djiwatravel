@@ -1,58 +1,69 @@
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { TravelpayoutsWidget } from "@/components/travelpayouts-widget";
 
-afterEach(() => {
-  cleanup();
-  window.history.replaceState(null, "", "/");
-  document.head.querySelectorAll("script[data-travelpayouts-widget]").forEach((el) => el.remove());
-});
+afterEach(cleanup);
 
-const SRC = "https://tpwdgt.com/wl_web/main.js?wl_id=12345";
-const scripts = () =>
-  document.head.querySelectorAll<HTMLScriptElement>("script[data-travelpayouts-widget]");
+const SRC = "/tiket-widget.html?flightSearch=CGK2012TYO1#12345";
+const frameOf = (container: HTMLElement) => container.querySelector("iframe")!;
 
-describe("TravelpayoutsWidget", () => {
-  it("renders the two elements the partner script fills, form above results", () => {
-    const { container } = render(<TravelpayoutsWidget scriptSrc={SRC} code={null} />);
-    const ids = Array.from(container.querySelectorAll("[id]")).map((el) => el.id);
-    expect(ids).toEqual(["tpwl-search", "tpwl-tickets"]);
+/** Delivers a message to the window the way the frame page would. */
+function fromFrame(frame: HTMLIFrameElement, data: unknown, origin = window.location.origin) {
+  act(() => {
+    window.dispatchEvent(
+      new MessageEvent("message", { data, origin, source: frame.contentWindow }),
+    );
+  });
+}
+
+describe("TravelpayoutsWidget (same-origin frame)", () => {
+  it("renders the results in a frame, not in the app page", () => {
+    const { container } = render(<TravelpayoutsWidget src={SRC} />);
+    const frame = frameOf(container);
+    expect(frame.getAttribute("src")).toBe(SRC);
+    expect(frame.getAttribute("title")).toBe("Semua penerbangan");
+    expect(frame.getAttribute("referrerpolicy")).toBe("strict-origin-when-cross-origin");
+    // Nothing of the partner's markup or script lands in the app document.
+    expect(document.getElementById("tpwl-tickets")).toBeNull();
+    expect(document.getElementById("tpwl-search")).toBeNull();
+    expect(document.head.querySelector("script[src*='tpwdgt']")).toBeNull();
   });
 
-  it("adds the module script once the elements exist, with a cache buster", () => {
-    render(<TravelpayoutsWidget scriptSrc={SRC} code={null} />);
-    const [script] = Array.from(scripts());
-    expect(scripts()).toHaveLength(1);
-    expect(script!.type).toBe("module");
-    expect(script!.src.startsWith(`${SRC}&r=`)).toBe(true);
+  it("grows with the height the frame reports", () => {
+    const { container } = render(<TravelpayoutsWidget src={SRC} />);
+    const frame = frameOf(container);
+    expect(frame.style.height).toBe("320px");
+    fromFrame(frame, { type: "djiwa-tpwl-height", height: 2480 });
+    expect(frame.style.height).toBe("2480px");
   });
 
-  it("removes the script when leaving and runs a fresh copy on the next visit", () => {
-    const first = render(<TravelpayoutsWidget scriptSrc={SRC} code={null} />);
-    const firstSrc = scripts()[0]!.src;
-    first.unmount();
-    expect(scripts()).toHaveLength(0);
-    render(<TravelpayoutsWidget scriptSrc={SRC} code={null} />);
-    expect(scripts()).toHaveLength(1);
-    expect(scripts()[0]!.src.startsWith(`${SRC}&r=`)).toBe(true);
-    expect(firstSrc.startsWith(`${SRC}&r=`)).toBe(true);
+  it("keeps the height within sane bounds", () => {
+    const { container } = render(<TravelpayoutsWidget src={SRC} />);
+    const frame = frameOf(container);
+    fromFrame(frame, { type: "djiwa-tpwl-height", height: 5 });
+    expect(frame.style.height).toBe("320px");
+    fromFrame(frame, { type: "djiwa-tpwl-height", height: 9_000_000 });
+    expect(frame.style.height).toBe("12000px");
   });
 
-  it("puts the search in the page address for the widget to read, and takes it out again", () => {
-    window.history.replaceState(null, "", "/tiket?dari=CGK");
-    const { unmount } = render(<TravelpayoutsWidget scriptSrc={SRC} code="CGK2012TYO1" />);
-    const url = new URL(window.location.href);
-    expect(url.searchParams.get("flightSearch")).toBe("CGK2012TYO1");
-    expect(url.searchParams.get("dari")).toBe("CGK");
-    unmount();
-    const after = new URL(window.location.href);
-    expect(after.searchParams.has("flightSearch")).toBe(false);
-    expect(after.searchParams.get("dari")).toBe("CGK");
-  });
-
-  it("leaves the address alone when there is no search to fill in", () => {
-    window.history.replaceState(null, "", "/tiket?dari=CGK");
-    render(<TravelpayoutsWidget scriptSrc={SRC} code={null} />);
-    expect(window.location.search).toBe("?dari=CGK");
+  it("ignores messages from other origins, other windows or of another shape", () => {
+    const { container } = render(<TravelpayoutsWidget src={SRC} />);
+    const frame = frameOf(container);
+    fromFrame(frame, { type: "djiwa-tpwl-height", height: 999 }, "https://evil.example");
+    expect(frame.style.height).toBe("320px");
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "djiwa-tpwl-height", height: 999 },
+          origin: window.location.origin,
+          source: window,
+        }),
+      );
+    });
+    expect(frame.style.height).toBe("320px");
+    fromFrame(frame, { type: "other", height: 999 });
+    fromFrame(frame, { type: "djiwa-tpwl-height", height: "999" });
+    fromFrame(frame, null);
+    expect(frame.style.height).toBe("320px");
   });
 });

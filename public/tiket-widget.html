@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Hasil penerbangan</title>
+    <!--
+      Frame for the Travelpayouts White Label widget, opened by /tiket (flight-results.tsx). The
+      partner's stylesheet carries a global reset (margin, padding and font-family on html, body,
+      div, p, a, h1 ... in its own cascade layer) that beats Tailwind and survives navigation, so it
+      must never run inside the app page itself. Here it can reset what it likes.
+      The White Label id arrives in the hash (#24328) and the search in ?flightSearch=<code>, which
+      the widget reads from this address. The page reports its height to the parent so the frame
+      grows with the results instead of scrolling inside the app.
+    -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+      body {
+        font-family:
+          -apple-system, "SF Pro Text", "SF Pro Display", Inter, system-ui, "Segoe UI", Roboto,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      /* Djiwa's red and the app's font in place of the dashboard defaults. */
+      :root,
+      #tpwl-tickets,
+      #tpwl-search,
+      #tpwl-modals {
+        --main-accent: #e5383b !important;
+        --main-accent-darken: #cf2f32 !important;
+        --main-accent-opacified: rgba(229, 56, 59, 0.1) !important;
+        --main-accent-contrast-color: #ffffff !important;
+        --link-color: #e5383b !important;
+        --link-color-darken: #cf2f32 !important;
+        --search-form-icon-color: #e5383b !important;
+        --font-main:
+          -apple-system, "SF Pro Text", Inter, system-ui, "Segoe UI", Roboto, sans-serif !important;
+        --border-radius: 14px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="tpwl-tickets"></div>
+    <script>
+      (function () {
+        var id = (location.hash || "").replace("#", "");
+        if (!/^[0-9]{1,9}$/.test(id)) return;
+        var script = document.createElement("script");
+        script.type = "module";
+        script.async = true;
+        script.src = "https://tpwdgt.com/wl_web/main.js?wl_id=" + id;
+        document.head.appendChild(script);
+
+        function report() {
+          var height = Math.ceil(document.documentElement.scrollHeight);
+          try {
+            parent.postMessage({ type: "djiwa-tpwl-height", height: height }, location.origin);
+          } catch (e) {
+            /* No parent (opened on its own): nothing to tell. */
+          }
+        }
+        if ("ResizeObserver" in window) new ResizeObserver(report).observe(document.body);
+        window.addEventListener("load", report);
+        window.addEventListener("resize", report);
+      })();
+    </script>
+  </body>
+</html>

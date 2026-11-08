@@ -79,7 +79,7 @@ describe("FlightSearch results screen (design B)", () => {
     expect(flights.mock.calls[0]![0]).toEqual({
       data: { origin: "CGK", destination: "DPS", departureDate: "2999-12" },
     });
-    expect(screen.getByRole("heading", { name: /CGK → DPS/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /CGK\s*DPS/ })).toBeTruthy();
   });
 
   it("shows the cheapest recorded fare per day and the chosen day selected", async () => {
@@ -175,6 +175,15 @@ describe("FlightSearch results screen (design B)", () => {
     expect(await screen.findByText(/Terlalu banyak pencarian/)).toBeTruthy();
   });
 
+  it("shows the route and dates with one clear way to change them", async () => {
+    flights.mockResolvedValue({ status: "ok", offers: [offer()] });
+    mount();
+    const title = await screen.findByRole("heading", { name: /CGK/ });
+    expect(title.textContent).toContain("DPS");
+    expect(screen.getByText(/sekali jalan$/)).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Ubah pencarian" })).toHaveLength(1);
+  });
+
   it("goes back to the form from the results", async () => {
     flights.mockResolvedValue({ status: "ok", offers: [offer()] });
     mount();
@@ -183,31 +192,25 @@ describe("FlightSearch results screen (design B)", () => {
   });
 });
 
-const widgetScripts = () =>
-  document.head.querySelectorAll<HTMLScriptElement>("script[data-travelpayouts-widget]");
+const frameOf = () => document.querySelector("iframe");
 
 describe("FlightSearch with a White Label widget", () => {
-  afterEach(() => {
-    widgetScripts().forEach((el) => el.remove());
-    window.history.replaceState(null, "", "/");
-  });
-
-  it("asks before loading the third-party results, then draws the widget in the page", async () => {
+  it("asks before loading the third-party results, then shows them in a frame", async () => {
     flights.mockResolvedValue({ status: "ok", offers: [offer()] });
     mount(WL, { ...prefill, back: "2999-12-27" });
     expect(await screen.findByText("Lihat semua penerbangan")).toBeTruthy();
-    expect(document.getElementById("tpwl-tickets")).toBeNull();
-    expect(widgetScripts()).toHaveLength(0);
+    expect(frameOf()).toBeNull();
     expect(trackClick).not.toHaveBeenCalledWith("/tiket", "flights_embed_open");
     fireEvent.click(screen.getByRole("button", { name: "Setuju dan buka" }));
-    await waitFor(() => expect(document.getElementById("tpwl-tickets")).not.toBeNull());
-    expect(document.getElementById("tpwl-search")).not.toBeNull();
-    expect(widgetScripts()).toHaveLength(1);
-    expect(widgetScripts()[0]!.src).toContain("https://tpwdgt.com/wl_web/main.js?wl_id=12345");
+    await waitFor(() => expect(frameOf()).not.toBeNull());
+    // Our search (12-20, back 12-27, one adult) goes to the widget in the frame address, so the
+    // app page keeps its own address and styles.
+    expect(frameOf()!.getAttribute("src")).toBe(
+      "/tiket-widget.html?flightSearch=CGK2012DPS27121#12345",
+    );
+    expect(new URL(window.location.href).searchParams.has("flightSearch")).toBe(false);
+    expect(document.getElementById("tpwl-tickets")).toBeNull();
     expect(trackClick).toHaveBeenCalledWith("/tiket", "flights_embed_open");
-    expect(document.querySelector("iframe")).toBeNull();
-    // Our search is handed to the widget through the page address (12-20, back 12-27, one adult).
-    expect(new URL(window.location.href).searchParams.get("flightSearch")).toBe("CGK2012DPS27121");
     // The recorded-fare list gives way to the full results.
     expect(screen.queryByText(/harga termurah$/)).toBeNull();
   });
@@ -216,7 +219,7 @@ describe("FlightSearch with a White Label widget", () => {
     window.localStorage.setItem("djiwa.flights.embed-ok", "1");
     flights.mockResolvedValue({ status: "ok", offers: [offer()] });
     mount(WL);
-    await waitFor(() => expect(document.getElementById("tpwl-tickets")).not.toBeNull());
+    await waitFor(() => expect(frameOf()).not.toBeNull());
     expect(screen.getByText("Semua penerbangan")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Setuju dan buka" })).toBeNull();
   });
@@ -225,8 +228,22 @@ describe("FlightSearch with a White Label widget", () => {
     window.localStorage.setItem("djiwa.flights.embed-ok", "1");
     flights.mockResolvedValue({ status: "empty", offers: [] });
     mount(WL);
-    await waitFor(() => expect(document.getElementById("tpwl-tickets")).not.toBeNull());
+    await waitFor(() => expect(frameOf()).not.toBeNull());
     expect(screen.queryByText(/Belum ada harga untuk tanggal ini/)).toBeNull();
+  });
+
+  it("opens a new frame for the day picked in the calendar", async () => {
+    window.localStorage.setItem("djiwa.flights.embed-ok", "1");
+    flights.mockResolvedValue({ status: "ok", offers: [offer()] });
+    mount(WL);
+    await waitFor(() => expect(frameOf()).not.toBeNull());
+    const group = screen.getByRole("group", { name: "Pilih tanggal berangkat" });
+    const next = Array.from(group.querySelectorAll("button")).find((chip) =>
+      chip.textContent?.includes("21 Des"),
+    )!;
+    fireEvent.click(next);
+    await waitFor(() => expect(frameOf()!.getAttribute("src")).toContain("CGK2112DPS1"));
+    expect(document.querySelectorAll("iframe")).toHaveLength(1);
   });
 
   it("does not load anything third-party when Admin has not set a White Label", async () => {
@@ -234,8 +251,7 @@ describe("FlightSearch with a White Label widget", () => {
     flights.mockResolvedValue({ status: "ok", offers: [offer()] });
     mount(NO_WL);
     await screen.findByText("1 harga termurah");
-    expect(widgetScripts()).toHaveLength(0);
-    expect(document.getElementById("tpwl-tickets")).toBeNull();
+    expect(frameOf()).toBeNull();
   });
 });
 

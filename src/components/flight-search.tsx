@@ -7,7 +7,8 @@ import { searchFlightPlaces, searchFlights } from "@/lib/flights.fn";
 import {
   parseFlightSearch,
   shiftFlightDay,
-  whiteLabelScriptSrc,
+  whiteLabelFrameSrc,
+  whiteLabelSearchCode,
   type FlightPlace,
   type FlightSearchResult,
   type FlightsConfig,
@@ -190,7 +191,15 @@ export function FlightSearch({
   }
 
   if (searched) {
-    const widgetSrc = whiteLabelScriptSrc(config);
+    const widgetSrc = whiteLabelFrameSrc(
+      config,
+      whiteLabelSearchCode({
+        origin: searched.from.code,
+        destination: searched.to.code,
+        departureDate: searched.depart,
+        ...(searched.back ? { returnDate: searched.back } : {}),
+      }),
+    );
     return (
       <FlightResults
         origin={searched.from}
