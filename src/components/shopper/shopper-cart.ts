@@ -95,6 +95,11 @@ function subscribe(cb: () => void) {
   };
 }
 
+export function readShopperCart(): readonly CartLine[] {
+  load();
+  return lines;
+}
+
 export function useShopperCart(): CartLine[] {
   return useSyncExternalStore(
     subscribe,

@@ -31,7 +31,7 @@ import {
   type ShopperFilters,
   type ShopperProduct,
 } from "@/lib/personal-shopper";
-import { cartCount, cartQuote, useShopperCart } from "./shopper-cart";
+import { cartCount, cartQuote, readShopperCart, useShopperCart } from "./shopper-cart";
 import { CartSheet, FilterSheet, ProductSheet, SortSheet } from "./shopper-sheets";
 import { ShopperNav } from "./shopper-nav";
 import { BrandBubble, ProductImage, SaleTag } from "./shopper-ui";
@@ -71,7 +71,7 @@ export function ShopperHome({
   useEffect(() => setCartReady(true), []);
   useEffect(() => {
     if (!cartRequested || !cartReady) return;
-    if (cart.length > 0) setSheet("cart");
+    if (readShopperCart().length > 0) setSheet("cart");
     else {
       toast.info("Keranjang masih kosong. Pilih barang untuk dititip.");
       onCartHandled?.();
