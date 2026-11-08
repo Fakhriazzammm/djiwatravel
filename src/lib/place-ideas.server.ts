@@ -10,6 +10,7 @@ import {
   forwardGeocode,
   lookupPlaceImage,
   lookupPlaceImageByName,
+  lookupVenuePoint,
   placeSearchTarget,
 } from "./itinerary-map.server";
 import {
@@ -285,7 +286,11 @@ async function verifyIdeas(
   const bias = anchor ? { lat: anchor.lat, lng: anchor.lng } : undefined;
   const checked = await Promise.all(
     raw.map(async (idea): Promise<PlaceIdea | null> => {
-      const hit = await geocode(`${idea.name} ${destination}`, bias);
+      // A real venue point first (OpenStreetMap, free); the town gazetteer only as a last resort.
+      const venue = bias ? await lookupVenuePoint(idea.name, bias).catch(() => null) : null;
+      const hit = venue
+        ? { lat: venue.lat, lng: venue.lng, label: venue.label, subtitle: "" }
+        : await geocode(`${idea.name} ${destination}`, bias);
       if (!hit && venueCheck) return null;
       if (hit && anchor && distanceKm(bias!, { lat: hit.lat, lng: hit.lng }) > MAX_DISTANCE_KM)
         return null;
@@ -373,16 +378,30 @@ export async function getPlaceIdeas(
   const hit = cached?.rows[0]?.ideas as PlaceIdea[] | undefined;
   if (hit && visible(hit).length) {
     const shown = visible(hit);
-    // Older cached answers may lack a photo: find it by name now and save it for everyone.
-    const missing = shown.filter((idea) => !idea.imageUrl);
+    // Older cached answers may lack a map point or a photo: find them by name and save for everyone.
+    const missing = shown.filter((idea) => !idea.imageUrl || idea.lat === null);
     if (missing.length) {
-      await Promise.all(
-        missing.map(async (idea) => {
+      const anchor = await geocode(destination).catch(() => null);
+      let changed = false;
+      for (const idea of missing) {
+        if (idea.lat === null && anchor) {
+          const venue = await lookupVenuePoint(idea.name, anchor).catch(() => null);
+          if (venue && distanceKm(anchor, venue) <= MAX_DISTANCE_KM) {
+            idea.lat = venue.lat;
+            idea.lng = venue.lng;
+            idea.area = venue.label || idea.area;
+            changed = true;
+          }
+        }
+        if (!idea.imageUrl) {
           const image = await lookupPlaceImageByName(idea.name, destination).catch(() => null);
-          if (image) idea.imageUrl = image.url;
-        }),
-      );
-      if (missing.some((idea) => idea.imageUrl)) {
+          if (image) {
+            idea.imageUrl = image.url;
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
         await pool
           .query(
             "update public.travel_place_idea_cache set ideas = $2::jsonb where cache_key = $1",

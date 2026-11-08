@@ -404,6 +404,62 @@ export async function lookupPlaceImage(point: { lat: number; lng: number }, name
   }
 }
 
+const venueCache = new Map<string, { lat: number; lng: number; label: string } | null>();
+let lastNominatim = 0;
+
+/**
+ * Free venue lookup on OpenStreetMap Nominatim (no key; one request per second at most), limited to
+ * a box around the trip's destination so a same-named place elsewhere never matches. A name like
+ * "Nakajima Tea House & Hamarikyu Gardens" is tried part by part.
+ */
+export async function lookupVenuePoint(
+  name: string,
+  near: { lat: number; lng: number },
+): Promise<{ lat: number; lng: number; label: string } | null> {
+  const key = `${near.lat.toFixed(2)},${near.lng.toFixed(2)}|${name.toLowerCase()}`;
+  if (venueCache.has(key)) return venueCache.get(key) ?? null;
+  const parts = [name, ...name.split(/\s*(?:&|\||\/|,| and | - )\s*/i)]
+    .map((part) => part.trim())
+    .filter((part, index, all) => part.length >= 3 && all.indexOf(part) === index);
+  let found: { lat: number; lng: number; label: string } | null = null;
+  for (const part of parts.slice(0, 2)) {
+    const slot = Math.max(Date.now(), lastNominatim + 1100);
+    lastNominatim = slot;
+    if (slot > Date.now()) await new Promise((resolve) => setTimeout(resolve, slot - Date.now()));
+    try {
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.search = new URLSearchParams({
+        format: "jsonv2",
+        limit: "1",
+        "accept-language": "en",
+        bounded: "1",
+        viewbox: `${near.lng - 0.45},${near.lat + 0.35},${near.lng + 0.45},${near.lat - 0.35}`,
+        q: part,
+      }).toString();
+      const response = await fetch(url, {
+        headers: { "User-Agent": "DjiwaTravel/1.0 (https://djiwatravel.com)" },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) continue;
+      const rows = (await response.json()) as { lat: string; lon: string; display_name?: string }[];
+      const row = rows[0];
+      if (row && Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lon))) {
+        found = {
+          lat: Number(row.lat),
+          lng: Number(row.lon),
+          label: (row.display_name ?? part).split(",").slice(0, 2).join(",").trim(),
+        };
+        break;
+      }
+    } catch {
+      // Try the next part.
+    }
+  }
+  if (venueCache.size > 500) venueCache.clear();
+  venueCache.set(key, found);
+  return found;
+}
+
 type NamedPages = {
   query?: {
     pages?: Record<
