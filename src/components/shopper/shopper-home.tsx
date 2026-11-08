@@ -67,12 +67,16 @@ export function ShopperHome({
   const [openProduct, setOpenProduct] = useState<ShopperProduct | null>(null);
   const [sheet, setSheet] = useState<null | "filter" | "sort" | "cart">(null);
   const cart = useShopperCart();
+  const [cartReady, setCartReady] = useState(false);
+  useEffect(() => setCartReady(true), []);
   useEffect(() => {
-    if (!cartRequested) return;
+    if (!cartRequested || !cartReady) return;
     if (cart.length > 0) setSheet("cart");
-    else toast.info("Keranjang masih kosong. Pilih barang untuk dititip.");
-    onCartHandled?.();
-  }, [cartRequested, cart.length, onCartHandled]);
+    else {
+      toast.info("Keranjang masih kosong. Pilih barang untuk dititip.");
+      onCartHandled?.();
+    }
+  }, [cartRequested, cartReady, cart.length, onCartHandled]);
   const openCart = () => {
     if (cart.length > 0) setSheet("cart");
     else toast.info("Keranjang masih kosong. Pilih barang untuk dititip.");
@@ -515,7 +519,10 @@ export function ShopperHome({
       />
       <CartSheet
         open={sheet === "cart"}
-        onOpenChange={(o) => setSheet(o ? "cart" : null)}
+        onOpenChange={(o) => {
+          setSheet(o ? "cart" : null);
+          if (!o && cartRequested) onCartHandled?.();
+        }}
         cart={cart}
         country={cartCountry}
         money={cartMoney}

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ShopperHome } from "@/components/shopper/shopper-home";
 import { RoutePendingScreen } from "@/components/route-loading";
@@ -49,11 +50,6 @@ function ShopperPage() {
   const data = Route.useLoaderData();
   const { cart } = Route.useSearch();
   const navigate = Route.useNavigate();
-  return (
-    <ShopperHome
-      data={data}
-      cartRequested={Boolean(cart)}
-      onCartHandled={() => void navigate({ search: {}, replace: true })}
-    />
-  );
+  const onCartHandled = useCallback(() => void navigate({ search: {}, replace: true }), [navigate]);
+  return <ShopperHome data={data} cartRequested={Boolean(cart)} onCartHandled={onCartHandled} />;
 }
