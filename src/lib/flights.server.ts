@@ -9,6 +9,7 @@ import { getAuthenticatedUser } from "./customer-session.fn";
 import { flightFeatureStats } from "./flight-features.server";
 import {
   AVIASALES_CLICK_TARGET,
+  BUDGET_PICK_TARGET,
   DEFAULT_FLIGHTS_CONFIG,
   EMBED_OPEN_TARGET,
   ESIM_OFFER_TARGET,
@@ -17,12 +18,16 @@ import {
   SAVE_TRIP_TARGET,
   flightSearchKey,
   normalizeAirlineNames,
+  normalizeFlightIdeas,
   normalizeFlightOffers,
   normalizeFlightPlaces,
   normalizeFlightsConfig,
+  isIataCode,
+  parseBudget,
   parseFlightSearch,
   parseFlightsConfig,
   withinSearchAllowance,
+  type FlightIdeasResult,
   type FlightOffer,
   type FlightPlace,
   type FlightSearchResult,
@@ -67,7 +72,14 @@ const PLACE_BURST = { windowMs: 60_000, max: 60 };
 const REQUEST_TIMEOUT_MS = 8_000;
 
 /** In-process counters since the last restart; the durable number is the Aviasales click count. */
-export const searchStats = { searches: 0, cacheHits: 0, empty: 0, rateLimited: 0, failed: 0 };
+export const searchStats = {
+  searches: 0,
+  cacheHits: 0,
+  empty: 0,
+  rateLimited: 0,
+  failed: 0,
+  ideaSearches: 0,
+};
 
 export const flightsToken = () => process.env["TRAVELPAYOUTS_TOKEN"]?.trim() || null;
 
@@ -233,6 +245,71 @@ export async function searchFlightsHandler({
   }
 }
 
+const IDEAS_URL = "https://api.travelpayouts.com/aviasales/v3/search_by_price_range";
+const ideaCache = new Map<string, { at: number; result: FlightIdeasResult }>();
+
+const ideasInput = z.object({
+  origin: z.string().trim().max(3),
+  budget: z.union([z.number(), z.string().max(20)]),
+});
+export const searchFlightIdeasInput = (data: unknown) => ideasInput.parse(data);
+
+/**
+ * "Cari sesuai budget": the cheapest recorded fares from one city under a price, one per
+ * destination. Same guests, allowance and cache rules as the fare search; the token stays here.
+ */
+export async function searchFlightIdeasHandler({
+  data,
+}: {
+  data: ReturnType<typeof searchFlightIdeasInput>;
+}): Promise<FlightIdeasResult> {
+  const config = await getFlightsConfigHandler();
+  const token = flightsToken();
+  if (!config.enabled || !config.budgetSearch || !token)
+    return { status: "unavailable", ideas: [] };
+  const who = await searcher();
+  if (!who.member && !config.guestSearch) return { status: "login_required", ideas: [] };
+  const origin = data.origin.toUpperCase();
+  const budget = parseBudget(data.budget);
+  if (!isIataCode(origin) || budget === null) return { status: "invalid", ideas: [] };
+  // Round to the nearest 100 thousand so close budgets share one provider call.
+  const cap = Math.round(budget / 100_000) * 100_000;
+  const key = `${origin}|${cap}`;
+  const hit = ideaCache.get(key);
+  if (hit && Date.now() - hit.at < OFFER_CACHE_MS) {
+    searchStats.cacheHits += 1;
+    return hit.result;
+  }
+  if (!takeHit(`ideas:${who.key}`, HOUR_MS, config.searchesPerHour)) {
+    searchStats.rateLimited += 1;
+    return { status: "rate_limited", ideas: [] };
+  }
+  try {
+    const url = new URL(IDEAS_URL);
+    url.searchParams.set("origin", origin);
+    url.searchParams.set("destination", "-");
+    url.searchParams.set("value_min", "1");
+    url.searchParams.set("value_max", String(cap));
+    url.searchParams.set("one_way", "true");
+    url.searchParams.set("direct", "false");
+    url.searchParams.set("locale", "en");
+    url.searchParams.set("currency", "idr");
+    url.searchParams.set("limit", "50");
+    const body = (await fetchJson(url.toString(), token)) as { success?: unknown; data?: unknown };
+    if (body.success === false) throw new Error("provider rejected");
+    const ideas = normalizeFlightIdeas(body.data, origin).filter((idea) => idea.priceIdr <= cap);
+    searchStats.ideaSearches += 1;
+    const result: FlightIdeasResult = { status: ideas.length ? "ok" : "empty", ideas };
+    ideaCache.set(key, { at: Date.now(), result });
+    trim(ideaCache);
+    return result;
+  } catch (error) {
+    searchStats.failed += 1;
+    console.error("[flights] ideas failed", error instanceof Error ? error.message : error);
+    return { status: "failed", ideas: [] };
+  }
+}
+
 /**
  * One month of cheapest-per-day fares for a route, for background jobs (price alerts). It shares
  * the search cache but never counts against a member's hourly allowance. Throws on a provider error.
@@ -311,13 +388,14 @@ export const getAdminFlightsHandler = async () => {
       saves7d: clicks.saves,
       insightPicks7d: clicks.insight,
       esimOffers7d: clicks.esim,
+      budgetPicks7d: clicks.budget,
       ...(await flightFeatureStats()),
     },
   };
 };
 
 async function countFlightClicks() {
-  const counts = { aviasales: 0, embed: 0, saves: 0, insight: 0, esim: 0 };
+  const counts = { aviasales: 0, embed: 0, saves: 0, insight: 0, esim: 0, budget: 0 };
   try {
     const result = await pool.query(
       `select target, count(*)::int as n from site_events
@@ -330,6 +408,7 @@ async function countFlightClicks() {
           SAVE_TRIP_TARGET,
           INSIGHT_TARGET,
           ESIM_OFFER_TARGET,
+          BUDGET_PICK_TARGET,
         ],
       ],
     );
@@ -339,6 +418,7 @@ async function countFlightClicks() {
       if (row.target === SAVE_TRIP_TARGET) counts.saves = Number(row.n) || 0;
       if (row.target === INSIGHT_TARGET) counts.insight = Number(row.n) || 0;
       if (row.target === ESIM_OFFER_TARGET) counts.esim = Number(row.n) || 0;
+      if (row.target === BUDGET_PICK_TARGET) counts.budget = Number(row.n) || 0;
     }
   } catch {
     // Counters are a monitoring nicety; the settings still load.

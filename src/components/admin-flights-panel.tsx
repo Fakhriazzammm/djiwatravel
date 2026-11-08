@@ -37,6 +37,8 @@ export function AdminFlightsPanel({
     saves7d: number;
     insightPicks7d: number;
     esimOffers7d: number;
+    budgetPicks7d: number;
+    ideaSearches: number;
     alertsActive: number;
     alertsNotified: number;
     sharesActive: number;
@@ -92,7 +94,9 @@ export function AdminFlightsPanel({
       | "saveToTrip"
       | "dateInsight"
       | "esimOffer"
-      | "share",
+      | "share"
+      | "budgetSearch"
+      | "searchApi",
     label: string,
   ) => (
     <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
@@ -144,6 +148,10 @@ export function AdminFlightsPanel({
           <Stat label="Disimpan ke perjalanan (7 hari)" value={String(stats.saves7d)} />
           <Stat label="Pindah tanggal hemat (7 hari)" value={String(stats.insightPicks7d)} />
           <Stat label="Buka paket eSIM dari tiket (7 hari)" value={String(stats.esimOffers7d)} />
+          <Stat
+            label="Ide budget dipilih (7 hari) / dicari (sejak restart)"
+            value={`${stats.budgetPicks7d} / ${stats.ideaSearches}`}
+          />
           <Stat
             label="Tautan bagikan aktif / dibuka / suara"
             value={`${stats.sharesActive} / ${stats.shareOpens} / ${stats.votes}`}
@@ -204,6 +212,7 @@ export function AdminFlightsPanel({
             />
           )}
           {toggle("esimOffer", "Tawarkan eSIM negara tujuan")}
+          {toggle("budgetSearch", "Cari sesuai budget (ide tujuan di bawah harga tertentu)")}
           {toggle("share", "Bagikan pilihan ke teman (voting)")}
           {config.share && (
             <NumberField

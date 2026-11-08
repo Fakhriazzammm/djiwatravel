@@ -47,6 +47,16 @@ export const searchFlights = createServerFn({ method: "POST" })
     return searchFlightsHandler({ data });
   });
 
+export const searchFlightIdeas = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { searchFlightIdeasInput } = await import("./flights.server");
+    return searchFlightIdeasInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { searchFlightIdeasHandler } = await import("./flights.server");
+    return searchFlightIdeasHandler({ data });
+  });
+
 /* Price alerts, save to trip and shared fares (signed-in members; owner from the session). */
 
 export const createFlightAlert = createServerFn({ method: "POST" })

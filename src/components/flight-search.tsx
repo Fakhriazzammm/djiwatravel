@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Repeat2 } from "lucide-react";
+import { FlightBudget } from "@/components/flight-budget";
 import { FlightPlaceField } from "@/components/flight-place-field";
 import { FlightResults } from "@/components/flight-results";
 import { btnRed } from "@/components/shell";
@@ -241,66 +242,81 @@ export function FlightSearch({
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="space-y-2.5 rounded-2xl bg-surface p-3 ring-1 ring-border/40"
-    >
-      <FlightPlaceField id="flight-from" label="Dari" value={origin} onPick={setOrigin} />
-      <div className="flex justify-center">
-        <button
-          type="button"
-          onClick={swap}
-          aria-label="Tukar asal dan tujuan"
-          className="tap grid size-8 place-items-center rounded-full bg-secondary text-muted-foreground"
-        >
-          <Repeat2 className="size-4" aria-hidden="true" />
+    <>
+      <form
+        onSubmit={submit}
+        className="space-y-2.5 rounded-2xl bg-surface p-3 ring-1 ring-border/40"
+      >
+        <FlightPlaceField id="flight-from" label="Dari" value={origin} onPick={setOrigin} />
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={swap}
+            aria-label="Tukar asal dan tujuan"
+            className="tap grid size-8 place-items-center rounded-full bg-secondary text-muted-foreground"
+          >
+            <Repeat2 className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <FlightPlaceField id="flight-to" label="Ke" value={destination} onPick={setDestination} />
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <span className="mb-1 block px-1 text-[12px] font-medium text-muted-foreground">
+              Berangkat
+            </span>
+            <input
+              type="date"
+              min={today}
+              value={depart}
+              onChange={(event) => setDepart(event.target.value)}
+              className={inputClass}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block px-1 text-[12px] font-medium text-muted-foreground">
+              Pulang
+            </span>
+            <input
+              type="date"
+              min={depart || today}
+              value={oneWay ? "" : back}
+              disabled={oneWay}
+              onChange={(event) => setBack(event.target.value)}
+              className={`${inputClass} disabled:opacity-40`}
+            />
+          </label>
+        </div>
+        <label className="flex min-h-9 items-center gap-2 px-1 text-[13px] font-medium">
+          <input
+            type="checkbox"
+            checked={oneWay}
+            onChange={(event) => setOneWay(event.target.checked)}
+            className="size-4 accent-[var(--brand-red,#e5383b)]"
+          />
+          Sekali jalan
+        </label>
+        {formError && (
+          <p role="alert" className="px-1 text-[12px] font-medium text-brand-red">
+            {formError}
+          </p>
+        )}
+        <button type="submit" className={`${btnRed} w-full`}>
+          Cari tiket
         </button>
-      </div>
-      <FlightPlaceField id="flight-to" label="Ke" value={destination} onPick={setDestination} />
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block">
-          <span className="mb-1 block px-1 text-[12px] font-medium text-muted-foreground">
-            Berangkat
-          </span>
-          <input
-            type="date"
-            min={today}
-            value={depart}
-            onChange={(event) => setDepart(event.target.value)}
-            className={inputClass}
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block px-1 text-[12px] font-medium text-muted-foreground">
-            Pulang
-          </span>
-          <input
-            type="date"
-            min={depart || today}
-            value={oneWay ? "" : back}
-            disabled={oneWay}
-            onChange={(event) => setBack(event.target.value)}
-            className={`${inputClass} disabled:opacity-40`}
-          />
-        </label>
-      </div>
-      <label className="flex min-h-9 items-center gap-2 px-1 text-[13px] font-medium">
-        <input
-          type="checkbox"
-          checked={oneWay}
-          onChange={(event) => setOneWay(event.target.checked)}
-          className="size-4 accent-[var(--brand-red,#e5383b)]"
+      </form>
+      {config.enabled && config.budgetSearch && (
+        <FlightBudget
+          origin={origin}
+          onPick={(place, date) => {
+            if (!origin) return;
+            setDestination(place);
+            setDepart(date);
+            setBack("");
+            setOneWay(true);
+            start(origin, place, date, "");
+          }}
         />
-        Sekali jalan
-      </label>
-      {formError && (
-        <p role="alert" className="px-1 text-[12px] font-medium text-brand-red">
-          {formError}
-        </p>
       )}
-      <button type="submit" className={`${btnRed} w-full`}>
-        Cari tiket
-      </button>
-    </form>
+    </>
   );
 }

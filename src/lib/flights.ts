@@ -48,6 +48,13 @@ export type FlightsConfig = {
   share: boolean;
   /** Days a shared link stays open. */
   shareDays: number;
+  /** "Cari sesuai budget": destinations a traveler can reach under a price from their city. */
+  budgetSearch: boolean;
+  /**
+   * Real-time results from Djiwa's own Aviasales Flight Search API calls, instead of the White
+   * Label frame. Off by default: the provider only enables that API for approved projects.
+   */
+  searchApi: boolean;
 };
 
 /** Click targets the customer pages report (Admin counts them in the last 7 days). */
@@ -56,6 +63,7 @@ export const EMBED_OPEN_TARGET = "flights_embed_open";
 export const SAVE_TRIP_TARGET = "flights_save_trip";
 export const INSIGHT_TARGET = "flights_insight_pick";
 export const ESIM_OFFER_TARGET = "flights_esim_offer";
+export const BUDGET_PICK_TARGET = "flights_budget_pick";
 
 export const SEARCHES_PER_HOUR_MIN = 5;
 export const SEARCHES_PER_HOUR_MAX = 200;
@@ -79,6 +87,8 @@ export const DEFAULT_FLIGHTS_CONFIG: FlightsConfig = {
   esimOffer: true,
   share: true,
   shareDays: 7,
+  budgetSearch: true,
+  searchApi: false,
 };
 
 /** Integer settings: key, smallest and largest accepted value (also the Admin form limits). */
@@ -104,6 +114,8 @@ const BOOLEAN_KEYS = [
   "dateInsight",
   "esimOffer",
   "share",
+  "budgetSearch",
+  "searchApi",
 ] as const;
 
 /**
@@ -406,6 +418,60 @@ export function normalizeFlightOffers(
     offers.push(offer);
   }
   return offers.sort((a, b) => a.priceIdr - b.priceIdr).slice(0, limit);
+}
+
+/* ------------------------------------------------------------ budget ideas */
+
+export const BUDGET_IDR_MIN = 300_000;
+export const BUDGET_IDR_MAX = 50_000_000;
+
+export type FlightIdea = {
+  destination: FlightPlace;
+  priceIdr: number;
+  /** ISO date of the fare. */
+  departureDate: string;
+  transfers: number;
+  durationMinutes: number | null;
+};
+
+export type FlightIdeasResult = {
+  status: "ok" | "empty" | "unavailable" | "login_required" | "rate_limited" | "invalid" | "failed";
+  ideas: FlightIdea[];
+};
+
+/** A budget input to a whole-rupiah amount inside the allowed range, or null. */
+export function parseBudget(value: unknown): number | null {
+  const n = typeof value === "string" ? Number(value.replace(/[^\d]/g, "")) : Number(value);
+  if (!Number.isFinite(n)) return null;
+  const idr = Math.round(n);
+  return idr >= BUDGET_IDR_MIN && idr <= BUDGET_IDR_MAX ? idr : null;
+}
+
+/** Price-range rows to one idea per destination (the cheapest), cheapest first. */
+export function normalizeFlightIdeas(rows: unknown, origin: string, limit = 12): FlightIdea[] {
+  if (!Array.isArray(rows)) return [];
+  const best = new Map<string, FlightIdea>();
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
+    const code = text(r["destination_code"] ?? r["destination"], 12).toUpperCase();
+    const name = text(r["destination_name"], 80);
+    const price = Number(r["price"]);
+    const date = text(r["departure_at"], 40).slice(0, 10);
+    if (!isIataCode(code) || code === origin || !name) continue;
+    if (!Number.isFinite(price) || price <= 0 || price > 1e9 || !validDate(date)) continue;
+    const duration = Number(r["duration"]);
+    const idea: FlightIdea = {
+      destination: { code, name, countryName: "", type: "city" },
+      priceIdr: Math.round(price),
+      departureDate: date,
+      transfers: Number.isInteger(Number(r["transfers"])) ? Math.max(0, Number(r["transfers"])) : 0,
+      durationMinutes: Number.isFinite(duration) && duration > 0 ? Math.round(duration) : null,
+    };
+    const current = best.get(code);
+    if (!current || idea.priceIdr < current.priceIdr) best.set(code, idea);
+  }
+  return [...best.values()].sort((a, b) => a.priceIdr - b.priceIdr).slice(0, limit);
 }
 
 /** Autocomplete rows to places; only three-letter city and airport codes are kept. */
