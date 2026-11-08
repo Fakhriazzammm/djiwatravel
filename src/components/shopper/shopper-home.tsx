@@ -245,7 +245,7 @@ export function ShopperHome({
             />
           </label>
 
-          <ShopperDiscovery onProduct={setOpenProduct} onMarket={setOpenMarket} />
+          <ShopperDiscovery onProduct={setOpenProduct} onMarket={setOpenMarket} rate={rate} />
 
           {/* Brand stories */}
           <div className="-mx-4 mt-2 flex gap-3 overflow-x-auto px-4 pb-2 pt-1 [scrollbar-width:none]">

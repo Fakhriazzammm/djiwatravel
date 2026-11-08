@@ -5,7 +5,13 @@ import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
 import { compressReceiptPhoto } from "@/lib/receipt-image";
 import { getDiscoveryStatus, runCustomerDiscoveryAction } from "@/lib/shopper-discovery.fn";
-import { formatMinor, productTitle, type ShopperProduct } from "@/lib/personal-shopper";
+import {
+  formatIdr,
+  formatMinor,
+  productTitle,
+  toIdr,
+  type ShopperProduct,
+} from "@/lib/personal-shopper";
 import type { DiscoverySearchResult } from "@/lib/shopper-discovery";
 import type { MarketItemView } from "@/lib/shopper-market";
 import { ProductImage, ShopperSheet } from "./shopper-ui";
@@ -13,9 +19,12 @@ const field = "min-h-10 w-full rounded-xl border border-border bg-secondary px-3
 export function ShopperDiscovery({
   onProduct,
   onMarket,
+  rate,
 }: {
   onProduct: (p: ShopperProduct) => void;
   onMarket: (item: MarketItemView) => void;
+  /** Rupiah per yen, to show the estimate next to the page price. */
+  rate?: number;
 }) {
   const [enabled, setEnabled] = useState(false),
     [open, setOpen] = useState<"link" | "photo" | null>(null),
@@ -27,6 +36,7 @@ export function ShopperDiscovery({
     [signIn, setSignIn] = useState(false),
     [result, setResult] = useState<DiscoverySearchResult | null>(null),
     [sent, setSent] = useState(false),
+    [help, setHelp] = useState(false),
     [preview, setPreview] = useState<string | null>(null);
   const key = useRef("");
   useEffect(() => {
@@ -45,6 +55,7 @@ export function ShopperDiscovery({
   }, [photo]);
   const start = (mode: "link" | "photo") => {
     setOpen(mode);
+    setHelp(false);
     setResult(null);
     setError("");
     setSent(false);
@@ -257,9 +268,23 @@ export function ShopperDiscovery({
                       <span className="block text-[12px]">
                         {result.market.sold
                           ? "Sudah terjual"
-                          : `${formatMinor(result.market.priceJpy, "¥")} · harga halaman`}
+                          : `${formatMinor(result.market.priceJpy, "¥")}${
+                              rate ? ` · ≈ ${formatIdr(toIdr(result.market.priceJpy, rate))}` : ""
+                            }`}
                       </span>
                     </span>
+                  </button>
+                )}
+                {result.market && !result.market.sold && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMarket(result.market!);
+                      setOpen(null);
+                    }}
+                    className="tap ios-btn w-full bg-brand-red text-white"
+                  >
+                    Titip barang ini
                   </button>
                 )}
                 <div className="space-y-2">
@@ -292,28 +317,41 @@ export function ShopperDiscovery({
                     </button>
                   ))}
                 </div>
-                <label className="block text-[12px]">
-                  Detail untuk tim
-                  <input
-                    className={`${field} mt-1`}
-                    value={note}
-                    maxLength={1000}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Contoh: ukuran M, abu-abu, 1 barang"
-                  />
-                </label>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void submit()}
-                  className="tap ios-btn w-full bg-brand-red text-white disabled:opacity-50"
-                >
-                  {busy ? "Mengirim…" : "Minta bantuan cari"}
-                </button>
+                {result.market && !result.market.sold && !help ? (
+                  <button
+                    type="button"
+                    onClick={() => setHelp(true)}
+                    className="tap w-full text-center text-[12px] font-semibold text-muted-foreground"
+                  >
+                    Bukan barang ini? Minta bantuan tim
+                  </button>
+                ) : (
+                  <>
+                    <label className="block text-[12px]">
+                      Detail untuk tim
+                      <input
+                        className={`${field} mt-1`}
+                        value={note}
+                        maxLength={1000}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder="Contoh: ukuran M, abu-abu, 1 barang"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void submit()}
+                      className="tap ios-btn w-full bg-brand-red text-white disabled:opacity-50"
+                    >
+                      {busy ? "Mengirim…" : "Minta bantuan cari"}
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     setResult(null);
+                    setHelp(false);
                     key.current = crypto.randomUUID();
                   }}
                   className="tap ios-btn w-full bg-secondary"

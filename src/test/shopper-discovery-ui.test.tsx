@@ -122,7 +122,7 @@ describe("design A discovery", () => {
       }),
     });
     const onMarket = vi.fn();
-    render(<ShopperDiscovery onProduct={vi.fn()} onMarket={onMarket} />);
+    render(<ShopperDiscovery onProduct={vi.fn()} onMarket={onMarket} rate={114} />);
     fireEvent.click(await screen.findByRole("button", { name: "Tempel link" }));
     fireEvent.change(screen.getByLabelText("Link produk"), {
       target: { value: "https://jp.mercari.com/item/m99035619244" },
@@ -130,7 +130,44 @@ describe("design A discovery", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cari barang" }));
     const card = await screen.findByRole("button", { name: /ユニクロ ダウン/ });
     expect(card.textContent).toContain("¥2.999");
-    fireEvent.click(card);
+    expect(card.textContent).toContain("Rp 341.886");
+    // A priced item is the main action; asking the team is tucked away until needed.
+    expect(screen.queryByRole("button", { name: "Minta bantuan cari" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Titip barang ini" }));
     expect(onMarket).toHaveBeenCalledWith(market);
+  });
+  it("offers team help right away when the marketplace item is sold", async () => {
+    mock.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        requestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        products: [],
+        analysis: null,
+        message: "Barang ini sudah terjual.",
+        exact: false,
+        market: {
+          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          site: "mercari",
+          sourceUrl: "https://jp.mercari.com/item/m44776908724",
+          name: "ダウン",
+          priceJpy: 5500,
+          imageUrl: null,
+          conditionText: null,
+          sizeText: null,
+          sold: true,
+          needsVariant: false,
+          maxQuantity: 1,
+        },
+      }),
+    });
+    render(<ShopperDiscovery onProduct={vi.fn()} onMarket={vi.fn()} rate={114} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Tempel link" }));
+    fireEvent.change(screen.getByLabelText("Link produk"), {
+      target: { value: "https://jp.mercari.com/item/m44776908724" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cari barang" }));
+    await screen.findByRole("button", { name: "Minta bantuan cari" });
+    expect(screen.queryByRole("button", { name: "Titip barang ini" })).toBeNull();
   });
 });
