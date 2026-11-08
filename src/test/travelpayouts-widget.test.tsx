@@ -4,7 +4,7 @@ import { TravelpayoutsWidget } from "@/components/travelpayouts-widget";
 
 afterEach(cleanup);
 
-const SRC = "/tiket-widget.html?flightSearch=CGK2012TYO1#12345";
+const SRC = "/tiket-widget.html?flightSearch=CGK2012TYO1&v=3#12345";
 const frameOf = (container: HTMLElement) => container.querySelector("iframe")!;
 
 /** Delivers a message to the window the way the frame page would. */

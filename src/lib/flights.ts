@@ -459,6 +459,9 @@ export function whiteLabelSearchCode(search: FlightSearchInput, adults = 1): str
   return `${search.origin}${ddmm(search.departureDate)}${search.destination}${back}${adults}`;
 }
 
+/** Bump when `public/tiket-widget.html` changes so browsers do not keep the old frame page. */
+const FRAME_VERSION = 3;
+
 /**
  * Address of the frame page that runs the White Label widget (`public/tiket-widget.html`): the
  * search goes in `?flightSearch=`, the White Label id in the hash. Only the validated numeric id and
@@ -467,7 +470,7 @@ export function whiteLabelSearchCode(search: FlightSearchInput, adults = 1): str
 export function whiteLabelFrameSrc(config: FlightsConfig, code: string | null): string | null {
   if (!whiteLabelOn(config) || !WHITE_LABEL_ID_PATTERN.test(config.whiteLabelId)) return null;
   if (code !== null && !/^[A-Z]{3}\d{4}[A-Z]{3}(\d{4})?\d$/.test(code)) return null;
-  const query = code ? `?flightSearch=${code}` : "";
+  const query = code ? `?flightSearch=${code}&v=${FRAME_VERSION}` : `?v=${FRAME_VERSION}`;
   return `/tiket-widget.html${query}#${config.whiteLabelId}`;
 }
 

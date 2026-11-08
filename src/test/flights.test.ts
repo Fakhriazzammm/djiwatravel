@@ -380,12 +380,12 @@ describe("White Label widget id", () => {
 
   it("builds the frame address: search in the query, id in the hash, nothing else", () => {
     expect(whiteLabelFrameSrc({ ...base, whiteLabelId: "12345" }, "CGK2012TYO1")).toBe(
-      "/tiket-widget.html?flightSearch=CGK2012TYO1#12345",
+      "/tiket-widget.html?flightSearch=CGK2012TYO1&v=3#12345",
     );
     expect(whiteLabelFrameSrc(base, "CGK2012TYO27121")).toBe(
-      "/tiket-widget.html?flightSearch=CGK2012TYO27121#24328",
+      "/tiket-widget.html?flightSearch=CGK2012TYO27121&v=3#24328",
     );
-    expect(whiteLabelFrameSrc(base, null)).toBe("/tiket-widget.html#24328");
+    expect(whiteLabelFrameSrc(base, null)).toBe("/tiket-widget.html?v=3#24328");
   });
 
   it("gives no frame when the White Label is off, or the id or code could break the URL", () => {

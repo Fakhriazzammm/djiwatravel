@@ -210,7 +210,7 @@ describe("FlightSearch with a White Label widget", () => {
     // Our search (12-20, back 12-27, one adult) goes to the widget in the frame address, so the
     // app page keeps its own address and styles.
     expect(frameOf()!.getAttribute("src")).toBe(
-      "/tiket-widget.html?flightSearch=CGK2012DPS27121#12345",
+      "/tiket-widget.html?flightSearch=CGK2012DPS27121&v=3#12345",
     );
     expect(new URL(window.location.href).searchParams.has("flightSearch")).toBe(false);
     expect(document.getElementById("tpwl-tickets")).toBeNull();

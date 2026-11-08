@@ -1499,6 +1499,7 @@ function ItineraryDay({
             layout="position"
             exit={{ opacity: 0, height: 0, marginTop: 0 }}
             transition={springIos}
+            className={index > 0 && hops[index] == null ? "mt-2" : undefined}
           >
             {hops[index] != null && <TravelHop km={hops[index]!} />}
             <ItineraryItem
