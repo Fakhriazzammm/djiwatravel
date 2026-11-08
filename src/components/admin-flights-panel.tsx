@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
-import { revokeFlightShares, saveAdminFlights } from "@/lib/flights.fn";
+import { getAdminFlightEarnings, revokeFlightShares, saveAdminFlights } from "@/lib/flights.fn";
+import type { FlightEarnings } from "@/lib/flight-earnings.server";
 import {
   FLIGHT_NUMBER_LIMITS,
   SEARCHES_PER_HOUR_MAX,
@@ -127,6 +128,7 @@ export function AdminFlightsPanel({
           {config.enabled ? "Aktif" : "Nonaktif"}
         </StatusPill>
       </div>
+      <EarningsCard />
       <AdminSurface className="space-y-3 p-3">
         <div className="grid grid-cols-2 gap-2" data-testid="flights-stats">
           <Stat
@@ -300,6 +302,87 @@ export function AdminFlightsPanel({
         )}
       </AdminSurface>
     </div>
+  );
+}
+
+const usd = (value: number | null) =>
+  value === null ? "-" : `$${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+const STATE_LABEL = { paid: "Dibayar", processing: "Diproses", cancelled: "Dibatalkan" } as const;
+
+/** Travelpayouts balance, next payout and the last 30 days of bookings, read from their finance API. */
+function EarningsCard() {
+  const [data, setData] = useState<FlightEarnings | null>(null);
+  const [busy, setBusy] = useState(true);
+  const load = async (refresh: boolean) => {
+    setBusy(true);
+    try {
+      setData(await getAdminFlightEarnings({ data: { refresh } }));
+    } catch {
+      setData(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    void load(false);
+  }, []);
+
+  return (
+    <AdminSurface className="space-y-2 p-3" data-testid="flights-earnings">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">Pendapatan Travelpayouts</p>
+        <button
+          type="button"
+          onClick={() => void load(true)}
+          disabled={busy}
+          className="min-h-9 rounded-xl bg-secondary px-3 text-xs font-semibold disabled:opacity-40"
+        >
+          {busy ? "Memuat…" : "Muat ulang"}
+        </button>
+      </div>
+      {!busy && (!data || data.status === "failed") && (
+        <p role="alert" className="text-xs font-medium text-brand-red">
+          Data Travelpayouts belum bisa dibaca. Coba lagi sebentar lagi.
+        </p>
+      )}
+      {data?.status === "unconfigured" && (
+        <p className="text-xs text-muted-foreground">TRAVELPAYOUTS_TOKEN belum ada di server.</p>
+      )}
+      {data?.status === "ok" && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Stat label="Saldo" value={usd(data.balance)} />
+            <Stat label="Pembayaran berikutnya" value={usd(data.nextPayout)} />
+            <Stat
+              label={`Booking ${data.windowDays} hari`}
+              value={`${data.bookings}${data.truncated ? "+" : ""}`}
+            />
+            <Stat label="Komisi diproses" value={usd(data.profit.processing)} />
+            <Stat label="Komisi dibayar" value={usd(data.profit.paid)} />
+            <Stat label="Dibatalkan" value={String(data.count.cancelled)} />
+          </div>
+          {data.recent.length > 0 && (
+            <ul className="space-y-1 text-xs" data-testid="flights-earnings-recent">
+              {data.recent.map((row, index) => (
+                <li key={`${row.bookedAt}-${index}`} className="flex justify-between gap-2">
+                  <span className="min-w-0 truncate text-muted-foreground">
+                    {row.bookedAt.slice(0, 10)} · {row.description || "Booking"}
+                  </span>
+                  <span className="shrink-0 font-semibold">
+                    {usd(row.profit)} · {row.state === "other" ? "-" : STATE_LABEL[row.state]}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            Semua program Travelpayouts di akun, bukan hanya tiket. Disimpan 10 menit; Muat ulang
+            paling cepat sekali semenit. Dalam USD sesuai dashboard.
+          </p>
+        </>
+      )}
+    </AdminSurface>
   );
 }
 

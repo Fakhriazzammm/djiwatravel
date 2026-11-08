@@ -123,3 +123,14 @@ export const revokeFlightShares = createServerFn({ method: "POST" })
     const { revokeFlightSharesHandler } = await import("./flight-features.server");
     return revokeFlightSharesHandler({ data });
   });
+
+/* Admin only: Travelpayouts balance, payout and booking actions (read-only, cached server-side). */
+export const getAdminFlightEarnings = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { flightEarningsInput } = await import("./flight-earnings.server");
+    return flightEarningsInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { getFlightEarningsHandler } = await import("./flight-earnings.server");
+    return getFlightEarningsHandler(data);
+  });
