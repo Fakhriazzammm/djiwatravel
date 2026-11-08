@@ -28,9 +28,9 @@ describe("agenda perjalanan", () => {
     render(<ItineraryEditor tripId="trip-1" items={[]} onSaved={vi.fn(async () => {})} />);
 
     expect(screen.getByText("Belum ada aktivitas")).toBeInTheDocument();
-    expect(screen.queryByRole("dialog", { name: "Tambah aktivitas" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]);
-    expect(screen.getByRole("dialog", { name: "Tambah aktivitas" })).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Tambah aktivitas" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
+    expect(screen.getByRole("form", { name: "Tambah aktivitas" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nama aktivitas")).toBeInTheDocument();
     expect(screen.getByLabelText("Tanggal")).toBeInTheDocument();
   });
@@ -40,12 +40,12 @@ describe("agenda perjalanan", () => {
     const onSaved = vi.fn(async () => {});
     render(<ItineraryEditor tripId="trip-1" items={[]} onSaved={onSaved} />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
     fireEvent.change(screen.getByLabelText("Nama aktivitas"), {
       target: { value: "Makan malam" },
     });
     fireEvent.change(screen.getByLabelText(/Cari tempat/), { target: { value: "Shibuya" } });
-    fireEvent.click(screen.getByRole("button", { name: "Simpan aktivitas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
 
     await waitFor(() =>
       expect(postItinerary).toHaveBeenCalledWith({
@@ -58,7 +58,7 @@ describe("agenda perjalanan", () => {
     );
     expect(onSaved).toHaveBeenCalledOnce();
     await waitFor(() =>
-      expect(screen.queryByRole("dialog", { name: "Tambah aktivitas" })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("form", { name: "Tambah aktivitas" })).not.toBeInTheDocument(),
     );
   });
 });

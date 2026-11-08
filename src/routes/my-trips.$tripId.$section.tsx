@@ -4,7 +4,6 @@ import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-rout
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { springIos, springSnappy } from "@/lib/motion";
-import { FixedLayer } from "@/components/motion-primitives";
 import { toast } from "sonner";
 import { getPlaceImage, resolveItemImage, reversePlace } from "@/lib/itinerary-map.fn";
 import { isAllowedImageUrl } from "@/lib/place-image";
@@ -377,6 +376,12 @@ export function ItineraryEditor({
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [ideasOpen, setIdeasOpen] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // The inline form opens inside its day; bring it into view.
+  useEffect(() => {
+    if (showForm) formRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  }, [showForm, editingId]);
 
   // A new time or date makes an earlier overlap warning stale.
   useEffect(() => setConflicts([]), [form.date, form.startTime, form.endTime]);
@@ -438,13 +443,13 @@ export function ItineraryEditor({
     }
   }
 
-  function openNew() {
+  function openNew(date?: string) {
     titleTouched.current = false;
     setEditingId(null);
     setConflicts([]);
     setForm((current) => ({
       title: "",
-      date: scope && scope !== "all" ? scope : current.date,
+      date: date ?? (scope && scope !== "all" ? scope : current.date),
       startTime: "",
       endTime: "",
       location: "",
@@ -629,6 +634,15 @@ export function ItineraryEditor({
         };
       });
   }, [days, trip?.departure_date, trip?.return_date]);
+  const agendaDays = useMemo(
+    () =>
+      ideaDays.map((day) => ({
+        date: day.date,
+        items: days.find((d) => d.date === day.date)?.items ?? [],
+      })),
+    [ideaDays, days],
+  );
+  const formHasDay = agendaDays.some((day) => day.date === form.date);
   const ideasDate = scope && scope !== "all" ? scope : defaultDay || ideaDays[0]?.date || today();
   const model = useMemo(() => buildMapModel(days, scope || "all"), [days, scope]);
   const pinInfo = useMemo(() => new Map(model.pins.map((pin) => [pin.id, pin])), [model]);
@@ -644,6 +658,194 @@ export function ItineraryEditor({
       ? googleMapsDayRouteUrl(model.pins.map((pin) => ({ lat: pin.lat, lng: pin.lng })))
       : null;
   const searchEnabled = Boolean(mapConfig?.enabled && mapConfig.placeSearch);
+  const formNode = showForm ? (
+    <motion.div
+      ref={formRef}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={springIos}
+      className="mt-1.5 scroll-mt-4"
+    >
+      <form
+        aria-label={editingId ? "Ubah aktivitas" : "Tambah aktivitas"}
+        onSubmit={(event) => void submit(event)}
+        className="space-y-2.5 rounded-2xl border border-brand-red/60 bg-surface p-3 shadow-sm"
+      >
+        <div className="space-y-1.5">
+          <label htmlFor="agenda-location" className="text-[13px] font-semibold">
+            Cari tempat <span className="font-normal text-muted-foreground">(opsional)</span>
+          </label>
+          <PlaceSearchField
+            id="agenda-location"
+            value={form.location}
+            picked={point}
+            searchEnabled={searchEnabled}
+            cities={tripCities}
+            autoFocus={!editingId}
+            onChange={(location, picked) => {
+              setForm((current) => ({ ...current, location }));
+              setPoint(picked);
+            }}
+            onPick={(place) => {
+              const category = guessActivityCategory(place.subtitle);
+              setForm((current) => ({
+                ...current,
+                title: titleTouched.current
+                  ? current.title
+                  : titleForPlace(place.label, category || current.category),
+                category: current.category || category,
+              }));
+            }}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="agenda-title" className="text-[13px] font-semibold">
+            Nama aktivitas
+          </label>
+          <input
+            id="agenda-title"
+            required
+            value={form.title}
+            onChange={(event) => {
+              titleTouched.current = true;
+              setForm({ ...form, title: event.target.value });
+            }}
+            placeholder="Contoh: Makan malam"
+            className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3.5 text-[14px] outline-none transition focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+          />
+        </div>
+        {(editingId || !formHasDay) && (
+          <div className="space-y-1.5">
+            <label htmlFor="agenda-date" className="text-[13px] font-semibold">
+              Tanggal
+            </label>
+            <input
+              id="agenda-date"
+              required
+              type="date"
+              value={form.date}
+              onChange={(event) => setForm({ ...form, date: event.target.value })}
+              className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+            />
+          </div>
+        )}
+        <div>
+          <p className="mb-1.5 text-[13px] font-semibold">
+            Waktu <span className="font-normal text-muted-foreground">(opsional)</span>
+          </p>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Selesai lebih awal dari mulai = lanjut ke hari berikutnya.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="space-y-1.5 text-xs text-muted-foreground">
+              Mulai
+              <input
+                id="agenda-start"
+                type="time"
+                value={form.startTime}
+                onChange={(event) => setForm({ ...form, startTime: event.target.value })}
+                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+              />
+            </label>
+            <label className="space-y-1.5 text-xs text-muted-foreground">
+              Selesai
+              <input
+                type="time"
+                value={form.endTime}
+                onChange={(event) => setForm({ ...form, endTime: event.target.value })}
+                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+              />
+            </label>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="agenda-category" className="text-[13px] font-semibold">
+            Kategori <span className="font-normal text-muted-foreground">(opsional)</span>
+          </label>
+          <select
+            id="agenda-category"
+            value={form.category}
+            onChange={(event) => setForm({ ...form, category: event.target.value })}
+            className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+          >
+            <option value="">Pilih kategori</option>
+            <option value="flight">Penerbangan</option>
+            <option value="hotel">Hotel</option>
+            <option value="food">Makan</option>
+            <option value="attraction">Atraksi</option>
+            <option value="transport">Transportasi</option>
+            <option value="other">Lainnya</option>
+          </select>
+        </div>
+        <AnimatePresence initial={false}>
+          {conflicts.length > 0 && (
+            <motion.div
+              role="alert"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={springIos}
+              className="overflow-hidden"
+            >
+              <div className="rounded-xl bg-amber-50 p-3 text-[12px] text-amber-900">
+                <p className="flex items-center gap-1.5 text-[13px] font-semibold">
+                  <TriangleAlert className="size-4" /> Jadwal bertabrakan
+                </p>
+                <p className="mt-1">Waktu ini beririsan dengan aktivitas lain:</p>
+                <ul className="mt-1 space-y-0.5">
+                  {conflicts.map((conflict) => (
+                    <li key={conflict.id} className="tabular-nums">
+                      • {String(conflict.title)} · {conflict.start}
+                      {conflict.end ? `–${conflict.end}` : ""}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-amber-800/80">
+                  Tanpa jam selesai, aktivitas dihitung 30 menit.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConflicts([]);
+                      document.getElementById("agenda-start")?.focus();
+                    }}
+                    className="tap min-h-9 flex-1 rounded-lg bg-surface text-[12px] font-semibold"
+                  >
+                    Ubah waktu
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void submit(undefined, true)}
+                    className="tap min-h-9 flex-1 rounded-lg bg-amber-600 text-[12px] font-semibold text-white disabled:opacity-60"
+                  >
+                    Tetap simpan
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <div className="flex gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => handleFormOpenChange(false)}
+            className={`${btnSoft} min-h-10 flex-1 rounded-xl`}
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className={`${btnRed} min-h-10 flex-[1.6] rounded-xl disabled:opacity-60`}
+          >
+            {saving ? "Menyimpan…" : editingId ? "Simpan perubahan" : "Simpan"}
+          </button>
+        </div>
+      </form>
+    </motion.div>
+  ) : null;
   return (
     <MotionConfig reducedMotion="user">
       <LayoutGroup id="agenda">
@@ -661,216 +863,7 @@ export function ItineraryEditor({
                 </p>
               )}
             </div>
-            <FixedLayer>
-              <motion.button
-                type="button"
-                onClick={openNew}
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                whileTap={{ scale: 0.94 }}
-                transition={springSnappy}
-                className="tap fixed bottom-24 right-[max(1rem,calc((100vw-28rem)/2+1rem))] z-40 flex min-h-11 items-center gap-1.5 rounded-full bg-brand-red px-4 text-[13px] font-semibold text-white shadow-lg"
-                aria-label="Tambah aktivitas"
-                aria-expanded={showForm}
-              >
-                <Plus className="size-4" /> Agenda
-              </motion.button>
-            </FixedLayer>
           </div>
-          <Sheet open={showForm} onOpenChange={handleFormOpenChange}>
-            <SheetContent
-              side="bottom"
-              className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] border-border/70 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7 sm:rounded-t-[28px]"
-            >
-              <div
-                className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/25"
-                aria-hidden="true"
-              />
-              <SheetHeader className="mb-4 pr-8 text-left">
-                <SheetTitle className="text-[22px] tracking-tight">
-                  {editingId ? "Ubah aktivitas" : "Tambah aktivitas"}
-                </SheetTitle>
-                <SheetDescription>
-                  Mulai dari tempatnya. Nama dan kategori terisi sendiri. Semua waktu mengikuti zona
-                  lokal.
-                </SheetDescription>
-              </SheetHeader>
-              <form onSubmit={(event) => void submit(event)} className="space-y-3">
-                <div className="space-y-1.5">
-                  <label htmlFor="agenda-location" className="text-[13px] font-semibold">
-                    Cari tempat{" "}
-                    <span className="font-normal text-muted-foreground">(opsional)</span>
-                  </label>
-                  <PlaceSearchField
-                    id="agenda-location"
-                    value={form.location}
-                    picked={point}
-                    searchEnabled={searchEnabled}
-                    cities={tripCities}
-                    autoFocus={!editingId}
-                    onChange={(location, picked) => {
-                      setForm((current) => ({ ...current, location }));
-                      setPoint(picked);
-                    }}
-                    onPick={(place) => {
-                      const category = guessActivityCategory(place.subtitle);
-                      setForm((current) => ({
-                        ...current,
-                        title: titleTouched.current
-                          ? current.title
-                          : titleForPlace(place.label, category || current.category),
-                        category: current.category || category,
-                      }));
-                    }}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="agenda-title" className="text-[13px] font-semibold">
-                    Nama aktivitas
-                  </label>
-                  <input
-                    id="agenda-title"
-                    required
-                    value={form.title}
-                    onChange={(event) => {
-                      titleTouched.current = true;
-                      setForm({ ...form, title: event.target.value });
-                    }}
-                    placeholder="Contoh: Makan malam"
-                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3.5 text-[14px] outline-none transition focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="agenda-date" className="text-[13px] font-semibold">
-                    Tanggal
-                  </label>
-                  <input
-                    id="agenda-date"
-                    required
-                    type="date"
-                    value={form.date}
-                    onChange={(event) => setForm({ ...form, date: event.target.value })}
-                    className="min-h-10 w-full min-w-0 rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                  />
-                </div>
-                <div>
-                  <p className="mb-1.5 text-[13px] font-semibold">
-                    Waktu <span className="font-normal text-muted-foreground">(opsional)</span>
-                  </p>
-                  <p className="mb-2 text-xs text-muted-foreground">
-                    Jika selesai lebih awal dari mulai, aktivitas dianggap berlanjut sampai hari
-                    berikutnya.
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="space-y-1.5 text-xs text-muted-foreground">
-                      Mulai
-                      <input
-                        id="agenda-start"
-                        type="time"
-                        value={form.startTime}
-                        onChange={(event) => setForm({ ...form, startTime: event.target.value })}
-                        className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                      />
-                    </label>
-                    <label className="space-y-1.5 text-xs text-muted-foreground">
-                      Selesai
-                      <input
-                        type="time"
-                        value={form.endTime}
-                        onChange={(event) => setForm({ ...form, endTime: event.target.value })}
-                        className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                      />
-                    </label>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="agenda-category" className="text-[13px] font-semibold">
-                    Kategori <span className="font-normal text-muted-foreground">(opsional)</span>
-                  </label>
-                  <select
-                    id="agenda-category"
-                    value={form.category}
-                    onChange={(event) => setForm({ ...form, category: event.target.value })}
-                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-                  >
-                    <option value="">Pilih kategori</option>
-                    <option value="flight">Penerbangan</option>
-                    <option value="hotel">Hotel</option>
-                    <option value="food">Makan</option>
-                    <option value="attraction">Atraksi</option>
-                    <option value="transport">Transportasi</option>
-                    <option value="other">Lainnya</option>
-                  </select>
-                </div>
-                <AnimatePresence initial={false}>
-                  {conflicts.length > 0 && (
-                    <motion.div
-                      role="alert"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={springIos}
-                      className="overflow-hidden"
-                    >
-                      <div className="rounded-xl bg-amber-50 p-3 text-[12px] text-amber-900">
-                        <p className="flex items-center gap-1.5 text-[13px] font-semibold">
-                          <TriangleAlert className="size-4" /> Jadwal bertabrakan
-                        </p>
-                        <p className="mt-1">Waktu ini beririsan dengan aktivitas lain:</p>
-                        <ul className="mt-1 space-y-0.5">
-                          {conflicts.map((conflict) => (
-                            <li key={conflict.id} className="tabular-nums">
-                              • {String(conflict.title)} · {conflict.start}
-                              {conflict.end ? `–${conflict.end}` : ""}
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="mt-1 text-amber-800/80">
-                          Tanpa jam selesai, aktivitas dihitung 30 menit.
-                        </p>
-                        <div className="mt-2 flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setConflicts([]);
-                              document.getElementById("agenda-start")?.focus();
-                            }}
-                            className="tap min-h-9 flex-1 rounded-lg bg-surface text-[12px] font-semibold"
-                          >
-                            Ubah waktu
-                          </button>
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() => void submit(undefined, true)}
-                            className="tap min-h-9 flex-1 rounded-lg bg-amber-600 text-[12px] font-semibold text-white disabled:opacity-60"
-                          >
-                            Tetap simpan
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                <div className="sticky bottom-0 -mx-5 flex gap-3 border-t border-border/60 bg-background/95 px-4 pb-1 pt-4 backdrop-blur">
-                  <button
-                    type="button"
-                    onClick={() => handleFormOpenChange(false)}
-                    className={`${btnSoft} min-h-10 flex-1 rounded-full`}
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className={`${btnRed} min-h-10 flex-[1.4] rounded-full disabled:opacity-60`}
-                  >
-                    {saving ? "Menyimpan…" : editingId ? "Simpan perubahan" : "Simpan aktivitas"}
-                  </button>
-                </div>
-              </form>
-            </SheetContent>
-          </Sheet>
           <CalendarConnectBanner />
           {mapOn && (model.pinnedCount > 0 || countryBounds !== null) ? (
             <motion.div
@@ -1202,28 +1195,30 @@ export function ItineraryEditor({
             onOpenChange={setIdeasOpen}
             onAdded={onSaved}
           />
-          {days.length ? (
-            days.map((day) => (
-              <ItineraryDay
-                key={day.date}
-                date={day.date}
-                items={day.items}
-                pinInfo={pinInfo}
-                overlapIds={overlapIds}
-                activeId={activeId}
-                onSelect={selectActivity}
-                onEdit={openEdit}
-                onDelete={async (id) => {
-                  await runTripMutation({
-                    action: () => deleteItinerary({ data: { id } }),
-                    refresh: onSaved,
-                    successMessage: "Aktivitas dihapus",
-                    failureMessage: "Aktivitas belum terhapus. Coba lagi.",
-                  });
-                }}
-              />
-            ))
-          ) : (
+          {showForm && !formHasDay && formNode}
+          {agendaDays.map((day) => (
+            <ItineraryDay
+              key={day.date}
+              date={day.date}
+              items={day.items}
+              pinInfo={pinInfo}
+              overlapIds={overlapIds}
+              activeId={activeId}
+              onSelect={selectActivity}
+              onEdit={openEdit}
+              onAdd={() => openNew(day.date)}
+              form={showForm && form.date === day.date ? formNode : null}
+              onDelete={async (id) => {
+                await runTripMutation({
+                  action: () => deleteItinerary({ data: { id } }),
+                  refresh: onSaved,
+                  successMessage: "Aktivitas dihapus",
+                  failureMessage: "Aktivitas belum terhapus. Coba lagi.",
+                });
+              }}
+            />
+          ))}
+          {agendaDays.length === 0 && !showForm && (
             <div className="rounded-2xl bg-secondary p-4 text-center">
               <CalendarDays className="mx-auto size-9 text-muted-foreground" strokeWidth={1.5} />
               <p className="mt-3 text-sm font-semibold">Belum ada aktivitas</p>
@@ -1232,7 +1227,7 @@ export function ItineraryEditor({
               </p>
               <button
                 type="button"
-                onClick={openNew}
+                onClick={() => openNew()}
                 className="tap mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-background px-4 text-sm font-semibold text-brand-red"
               >
                 <Plus className="size-4" /> Tambah aktivitas
@@ -1439,6 +1434,8 @@ function ItineraryDay({
   activeId,
   onSelect,
   onEdit,
+  onAdd,
+  form,
   onDelete,
 }: {
   date: string;
@@ -1448,6 +1445,8 @@ function ItineraryDay({
   activeId: string | null;
   onSelect: (id: string) => void;
   onEdit: (item: Item) => void;
+  onAdd: () => void;
+  form: React.ReactNode;
   onDelete: (id: string) => Promise<void>;
 }) {
   const dateLabel = formatItineraryDate(date);
@@ -1497,6 +1496,16 @@ function ItineraryDay({
           </motion.div>
         ))}
       </AnimatePresence>
+      {form ?? (
+        <button
+          type="button"
+          onClick={onAdd}
+          aria-label="Tambah aktivitas"
+          className="tap mt-1.5 flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border text-[12px] font-semibold text-brand-red"
+        >
+          <Plus className="size-3.5" /> Tambah ke {dateLabel.full}
+        </button>
+      )}
     </motion.section>
   );
 }

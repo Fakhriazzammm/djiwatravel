@@ -259,7 +259,7 @@ describe("agenda map", () => {
       await screen.findByRole("button", { name: /Shibuya Crossing/ }, { timeout: 2000 }),
     );
     expect(screen.getByText("Titik peta tersimpan.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Simpan aktivitas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
     await waitFor(() =>
       expect(postItinerary).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -366,10 +366,9 @@ describe("agenda map", () => {
     );
     fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
     fireEvent.change(screen.getByLabelText("Nama aktivitas"), { target: { value: "Makan" } });
-    fireEvent.change(screen.getByLabelText("Tanggal"), { target: { value: "2026-11-04" } });
     fireEvent.change(screen.getByLabelText("Mulai"), { target: { value: "10:30" } });
     fireEvent.change(screen.getByLabelText("Selesai"), { target: { value: "11:30" } });
-    fireEvent.click(screen.getByRole("button", { name: "Simpan aktivitas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Jadwal bertabrakan");
     expect(screen.getByRole("alert")).toHaveTextContent("Ngopi");
     expect(postItinerary).not.toHaveBeenCalled();
@@ -385,7 +384,7 @@ describe("agenda map", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
     fireEvent.change(screen.getByLabelText("Nama aktivitas"), { target: { value: "Makan" } });
     fireEvent.change(screen.getByLabelText("Mulai"), { target: { value: "10:30" } });
-    fireEvent.click(screen.getByRole("button", { name: "Simpan aktivitas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
     await waitFor(() => expect(postItinerary).toHaveBeenCalledOnce());
   });
 
@@ -406,7 +405,7 @@ describe("agenda map", () => {
       <ItineraryEditor tripId="t" items={rows} onSaved={vi.fn(async () => {})} mapConfig={null} />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Ubah Ngopi" }));
-    expect(screen.getByRole("dialog", { name: "Ubah aktivitas" })).toBeInTheDocument();
+    expect(screen.getByRole("form", { name: "Ubah aktivitas" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nama aktivitas")).toHaveValue("Ngopi");
     expect(screen.getByLabelText("Mulai")).toHaveValue("10:00");
     fireEvent.change(screen.getByLabelText("Nama aktivitas"), { target: { value: "Ngopi pagi" } });
@@ -549,7 +548,7 @@ describe("agenda map", () => {
     expect(await screen.findByText("Lokasi kamu")).toBeInTheDocument();
     expect(screen.getByText(/±18 m/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Tambah di sini" }));
-    expect(await screen.findByRole("dialog", { name: "Tambah aktivitas" })).toBeInTheDocument();
+    expect(await screen.findByRole("form", { name: "Tambah aktivitas" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /Cari tempat/ })).toHaveValue("Lokasi saya");
     expect(screen.getByText("Titik peta tersimpan.")).toBeInTheDocument();
   });
@@ -588,7 +587,7 @@ describe("agenda map", () => {
     const bubble = await screen.findByTestId("agenda-mascot-bubble");
     expect(bubble).toHaveTextContent("Ke mana lagi ya?");
     fireEvent.click(bubble);
-    expect(await screen.findByRole("dialog", { name: "Tambah aktivitas" })).toBeInTheDocument();
+    expect(await screen.findByRole("form", { name: "Tambah aktivitas" })).toBeInTheDocument();
     expect(screen.getByTestId("agenda-mascot-bubble")).toHaveTextContent("Yuk catat rencananya!");
   });
 
