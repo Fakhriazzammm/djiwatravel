@@ -1,3 +1,4 @@
+import { LOADING_LINES, MascotLoader } from "@/components/mascot-loader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ExternalLink, Search, X } from "lucide-react";
 import { toast } from "sonner";
@@ -326,13 +327,11 @@ function IdeasStrip({
       </div>
       <div className="mt-1.5 flex gap-2 overflow-x-auto overscroll-x-contain pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {load.state === "loading"
-          ? [0, 1, 2].map((n) => (
-              <div key={n} className="w-[116px] shrink-0 animate-pulse rounded-xl bg-surface p-1.5">
-                <div className="h-[68px] rounded-lg bg-secondary" />
-                <div className="mt-1.5 h-3 w-4/5 rounded bg-secondary" />
-                <div className="mt-1 h-2.5 w-3/5 rounded bg-secondary" />
+          ? (
+              <div className="w-full">
+                <MascotLoader compact lines={LOADING_LINES.ideas} label="Memuat ide tempat" />
               </div>
-            ))
+            )
           : load.ideas.slice(0, 6).map((idea) => (
               <button
                 key={idea.key}
@@ -368,16 +367,8 @@ function IdeasList({
 }) {
   if (!load || load.state === "loading") {
     return (
-      <div className="mt-2 divide-y divide-border/70" aria-busy="true" aria-label="Memuat ide">
-        {[0, 1, 2].map((n) => (
-          <div key={n} className="flex animate-pulse items-center gap-3 py-2.5">
-            <div className="size-16 rounded-xl bg-secondary" />
-            <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 w-2/3 rounded bg-secondary" />
-              <div className="h-3 w-full rounded bg-secondary" />
-            </div>
-          </div>
-        ))}
+      <div className="mt-2">
+        <MascotLoader lines={LOADING_LINES.ideas} label="Memuat ide tempat" />
       </div>
     );
   }
