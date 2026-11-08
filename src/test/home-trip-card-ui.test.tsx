@@ -77,10 +77,11 @@ describe("Home trip card (design C1)", () => {
     expect(screen.getByTestId("map").dataset["pins"]).toBe("1:ngopi");
     expect(screen.getByLabelText("Buka peta di Ringkas")).toBeTruthy();
     expect(await screen.findByText(/16°/)).toBeTruthy();
-    expect(screen.getByText("ngopi")).toBeTruthy();
+    expect(screen.getAllByText(/ngopi/).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Agenda berikutnya").textContent).toContain("23:59");
     expect(screen.getByText("2/2")).toBeTruthy();
     expect(screen.getByText("10 jt")).toBeTruthy();
-    expect(screen.getByText("Buka Ringkas")).toBeTruthy();
+    expect(screen.getByText(/Buka Ringkas/)).toBeTruthy();
     expect(screen.queryByText("Lanjutkan persiapan")).toBeNull();
   });
 
@@ -91,8 +92,8 @@ describe("Home trip card (design C1)", () => {
       weather: false,
     });
     render(<HomeMyTripsWidget signedIn />);
-    await screen.findByText("Buka Ringkas");
+    await screen.findByText(/Buka Ringkas/);
     await waitFor(() => expect(screen.queryByTestId("map")).toBeNull());
-    expect(screen.getByText("ngopi")).toBeTruthy();
+    expect(screen.getAllByText(/ngopi/).length).toBeGreaterThan(0);
   });
 });

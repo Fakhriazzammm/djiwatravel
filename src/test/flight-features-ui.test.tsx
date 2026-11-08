@@ -148,7 +148,9 @@ describe("flight extras on the results screen", () => {
     fireEvent.click(await screen.findByRole("button", { name: "turun 20%" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Pantau harga" }).at(-1)!);
     await waitFor(() => expect(createFlightAlert).toHaveBeenCalled());
-    const data = vi.mocked(createFlightAlert).mock.calls[0]![0].data;
+    const data = (
+      vi.mocked(createFlightAlert).mock.calls[0]?.[0] as { data: Record<string, unknown> }
+    ).data;
     expect(data).toMatchObject({
       origin: "CGK",
       destination: "TYO",
@@ -193,10 +195,14 @@ describe("flight extras on the results screen", () => {
     expect(screen.queryByText("Lama")).toBeNull();
     fireEvent.click(await screen.findByRole("button", { name: /Liburan Tokyo/ }));
     await waitFor(() => expect(saveFlightToTrip).toHaveBeenCalled());
-    const data = vi.mocked(saveFlightToTrip).mock.calls[0]![0].data as {
-      tripId: string;
-      offer: { origin: string; originName: string };
-    };
+    const data = (
+      vi.mocked(saveFlightToTrip).mock.calls[0]?.[0] as {
+        data: {
+          tripId: string;
+          offer: { origin: string; originName: string };
+        };
+      }
+    ).data;
     expect(data.tripId).toBe("t1");
     expect(data.offer).toMatchObject({ origin: "CGK", originName: "Jakarta" });
     expect(await screen.findByText(/Tersimpan di Agenda/)).toBeTruthy();
@@ -215,7 +221,10 @@ describe("flight extras on the results screen", () => {
     expect(await screen.findByText("Pembanding (1/3)")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Bagikan ke teman", hidden: true }));
     await waitFor(() => expect(createFlightShare).toHaveBeenCalled());
-    expect(vi.mocked(createFlightShare).mock.calls[0]![0].data.offers).toHaveLength(1);
+    const shared = vi.mocked(createFlightShare).mock.calls[0]?.[0] as {
+      data: { offers: unknown[] };
+    };
+    expect(shared.data.offers).toHaveLength(1);
     expect(await screen.findByText(/Berlaku 7 hari/)).toBeTruthy();
   });
 });
