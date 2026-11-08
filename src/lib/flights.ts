@@ -568,7 +568,6 @@ export function flightPriceStrip(
   return days;
 }
 
-
 /* ------------------------------------------------- insight, trip and share helpers */
 
 /** A cheaper day than the chosen one, when it saves enough to be worth a banner. */
@@ -684,7 +683,8 @@ export function tripItemsForOffer(offer: FlightOfferSnapshot) {
       {
         activityDate: parts.date,
         startTime: parts.time,
-        title: `Penerbangan ${leg.tag}: ${offer.airlineName || offer.airline} ${offer.airline}${offer.flightNumber}`.trim(),
+        title:
+          `Penerbangan ${leg.tag}: ${offer.airlineName || offer.airline} ${offer.airline}${offer.flightNumber}`.trim(),
         location: leg.from,
         notes: `${leg.from} ke ${leg.to}. Harga tercatat ${formatFlightPrice(offer.priceIdr)}; pesan di situs mitra.`,
         activityCategory: "flight",

@@ -58,6 +58,7 @@ import { Route as ApiPwaEventsRouteImport } from './routes/api.pwa-events'
 import { Route as ApiReceiptScanRouteImport } from './routes/api.receipt-scan'
 import { Route as ApiSiteEventsRouteImport } from './routes/api.site-events'
 import { Route as ApiTravelWaitlistRouteImport } from './routes/api.travel-waitlist'
+import { Route as BagikanTiketTokenRouteImport } from './routes/bagikan-tiket.$token'
 import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
 import { Route as ETokenRouteImport } from './routes/e.$token'
@@ -341,6 +342,11 @@ const ApiTravelWaitlistRoute = ApiTravelWaitlistRouteImport.update({
   path: '/api/travel-waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BagikanTiketTokenRoute = BagikanTiketTokenRouteImport.update({
+  id: '/bagikan-tiket/$token',
+  path: '/bagikan-tiket/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutIdRoute = CheckoutIdRouteImport.update({
   id: '/checkout/$id',
   path: '/checkout/$id',
@@ -577,6 +583,7 @@ export interface FileRoutesByFullPath {
   '/api/receipt-scan': typeof ApiReceiptScanRoute
   '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
+  '/bagikan-tiket/$token': typeof BagikanTiketTokenRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/e/$token': typeof ETokenRoute
@@ -664,6 +671,7 @@ export interface FileRoutesByTo {
   '/api/receipt-scan': typeof ApiReceiptScanRoute
   '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
+  '/bagikan-tiket/$token': typeof BagikanTiketTokenRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/e/$token': typeof ETokenRoute
@@ -752,6 +760,7 @@ export interface FileRoutesById {
   '/api/receipt-scan': typeof ApiReceiptScanRoute
   '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
+  '/bagikan-tiket/$token': typeof BagikanTiketTokenRoute
   '/checkout/$id': typeof CheckoutIdRoute
   '/destination/$code': typeof DestinationCodeRoute
   '/e/$token': typeof ETokenRoute
@@ -841,6 +850,7 @@ export interface FileRouteTypes {
     | '/api/receipt-scan'
     | '/api/site-events'
     | '/api/travel-waitlist'
+    | '/bagikan-tiket/$token'
     | '/checkout/$id'
     | '/destination/$code'
     | '/e/$token'
@@ -928,6 +938,7 @@ export interface FileRouteTypes {
     | '/api/receipt-scan'
     | '/api/site-events'
     | '/api/travel-waitlist'
+    | '/bagikan-tiket/$token'
     | '/checkout/$id'
     | '/destination/$code'
     | '/e/$token'
@@ -1015,6 +1026,7 @@ export interface FileRouteTypes {
     | '/api/receipt-scan'
     | '/api/site-events'
     | '/api/travel-waitlist'
+    | '/bagikan-tiket/$token'
     | '/checkout/$id'
     | '/destination/$code'
     | '/e/$token'
@@ -1103,6 +1115,7 @@ export interface RootRouteChildren {
   ApiReceiptScanRoute: typeof ApiReceiptScanRoute
   ApiSiteEventsRoute: typeof ApiSiteEventsRoute
   ApiTravelWaitlistRoute: typeof ApiTravelWaitlistRoute
+  BagikanTiketTokenRoute: typeof BagikanTiketTokenRoute
   CheckoutIdRoute: typeof CheckoutIdRoute
   DestinationCodeRoute: typeof DestinationCodeRoute
   ETokenRoute: typeof ETokenRoute
@@ -1483,6 +1496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTravelWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bagikan-tiket/$token': {
+      id: '/bagikan-tiket/$token'
+      path: '/bagikan-tiket/$token'
+      fullPath: '/bagikan-tiket/$token'
+      preLoaderRoute: typeof BagikanTiketTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout/$id': {
       id: '/checkout/$id'
       path: '/checkout/$id'
@@ -1824,6 +1844,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiReceiptScanRoute: ApiReceiptScanRoute,
   ApiSiteEventsRoute: ApiSiteEventsRoute,
   ApiTravelWaitlistRoute: ApiTravelWaitlistRoute,
+  BagikanTiketTokenRoute: BagikanTiketTokenRoute,
   CheckoutIdRoute: CheckoutIdRoute,
   DestinationCodeRoute: DestinationCodeRoute,
   ETokenRoute: ETokenRoute,

@@ -263,23 +263,23 @@ export function AdminStatStrip({
       {items.map((item) => {
         const content = (
           <>
-          <p className="whitespace-nowrap text-[11px] text-muted-foreground">{item.label}</p>
-          <p
-            className={`text-base font-semibold tabular-nums tracking-tight ${
-              item.tone === "warn"
-                ? "text-[#9a6100]"
-                : item.tone === "danger"
-                  ? "text-destructive"
-                  : item.tone === "good"
-                    ? "text-success"
-                    : ""
-            }`}
-          >
-            {item.value}
-          </p>
-          {item.detail && (
-            <p className="whitespace-nowrap text-[11px] text-muted-foreground">{item.detail}</p>
-          )}
+            <p className="whitespace-nowrap text-[11px] text-muted-foreground">{item.label}</p>
+            <p
+              className={`text-base font-semibold tabular-nums tracking-tight ${
+                item.tone === "warn"
+                  ? "text-[#9a6100]"
+                  : item.tone === "danger"
+                    ? "text-destructive"
+                    : item.tone === "good"
+                      ? "text-success"
+                      : ""
+              }`}
+            >
+              {item.value}
+            </p>
+            {item.detail && (
+              <p className="whitespace-nowrap text-[11px] text-muted-foreground">{item.detail}</p>
+            )}
           </>
         );
         const base = "block shrink-0 snap-start px-2 py-0.5 sm:min-w-0 sm:px-2.5 sm:py-1.5";

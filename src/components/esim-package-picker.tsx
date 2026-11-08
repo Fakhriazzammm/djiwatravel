@@ -40,8 +40,7 @@ export function EsimPackagePicker({
   if (!bucket) return null;
   const best = bestValuePackage(bucket.packages)?.packageCode;
   const chosen = bucket.packages.find(
-    (pkg) =>
-      pkg.packageCode === selected && (pkg.sellable || pkg.preorderAvailable),
+    (pkg) => pkg.packageCode === selected && (pkg.sellable || pkg.preorderAvailable),
   );
 
   return (
@@ -126,7 +125,8 @@ export function EsimPackagePicker({
             onClick={onNavigate}
             className="tap mt-3 flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red text-[14px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            {chosen.preorderAvailable && !chosen.sellable ? "Pre-order" : "Lanjut bayar"} · {rupiah(chosen.priceIdr)}
+            {chosen.preorderAvailable && !chosen.sellable ? "Pre-order" : "Lanjut bayar"} ·{" "}
+            {rupiah(chosen.priceIdr)}
           </Link>
         ) : (
           <p className="mt-3 rounded-xl bg-secondary p-3 text-center text-sm text-muted-foreground">

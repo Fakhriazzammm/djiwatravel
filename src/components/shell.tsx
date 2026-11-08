@@ -118,12 +118,7 @@ export function BackBar({
   };
   return (
     <div className="mb-3 grid h-11 grid-cols-[5.5rem_minmax(0,1fr)_5.5rem] items-center">
-      <button
-        type="button"
-        onClick={goBack}
-        className={glassIconButtonClass}
-        aria-label="Kembali"
-      >
+      <button type="button" onClick={goBack} className={glassIconButtonClass} aria-label="Kembali">
         <ChevronLeft className="size-5" strokeWidth={2.2} aria-hidden="true" />
       </button>
       <span className="truncate text-center text-[16px] font-semibold">{title}</span>
@@ -160,9 +155,7 @@ export function SectionTitle({ children, action }: { children: ReactNode; action
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3">
       <h2 className="min-w-0 truncate text-[22px] font-bold tracking-[-0.02em]">{children}</h2>
-      {action && (
-        <div className="shrink-0 text-[15px] font-medium text-brand-red">{action}</div>
-      )}
+      {action && <div className="shrink-0 text-[15px] font-medium text-brand-red">{action}</div>}
     </div>
   );
 }

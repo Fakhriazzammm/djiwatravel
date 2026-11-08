@@ -75,10 +75,30 @@ export function HomeHero({
     if (!flight || !el) return;
     const animation = el.animate(
       [
-        { transform: "translate(0,0) scale(1) rotate(0deg)", opacity: 1, filter: "blur(0px)", easing: "ease-out" },
-        { transform: "translate(0,10px) scale(0.8) rotate(8deg)", opacity: 1, filter: "blur(0px)", offset: 0.2, easing: "cubic-bezier(0.5,0,0.9,0.45)" },
-        { transform: `translate(${flight.dx * 0.55}px,${flight.dy * 0.55}px) scale(4) rotate(-6deg)`, opacity: 1, filter: "blur(0px)", offset: 0.62 },
-        { transform: `translate(${flight.dx}px,${flight.dy}px) scale(14) rotate(-14deg)`, opacity: 0, filter: "blur(8px)" },
+        {
+          transform: "translate(0,0) scale(1) rotate(0deg)",
+          opacity: 1,
+          filter: "blur(0px)",
+          easing: "ease-out",
+        },
+        {
+          transform: "translate(0,10px) scale(0.8) rotate(8deg)",
+          opacity: 1,
+          filter: "blur(0px)",
+          offset: 0.2,
+          easing: "cubic-bezier(0.5,0,0.9,0.45)",
+        },
+        {
+          transform: `translate(${flight.dx * 0.55}px,${flight.dy * 0.55}px) scale(4) rotate(-6deg)`,
+          opacity: 1,
+          filter: "blur(0px)",
+          offset: 0.62,
+        },
+        {
+          transform: `translate(${flight.dx}px,${flight.dy}px) scale(14) rotate(-14deg)`,
+          opacity: 0,
+          filter: "blur(8px)",
+        },
       ],
       { duration: FLIGHT_MS, fill: "forwards" },
     );
@@ -192,9 +212,7 @@ export function HomeHero({
               height={76}
               animate={{ opacity: fly === "idle" ? 1 : 0, scale: fly === "idle" ? 1 : 0.4 }}
               transition={
-                fly === "idle"
-                  ? { type: "spring", stiffness: 320, damping: 16 }
-                  : { duration: 0 }
+                fly === "idle" ? { type: "spring", stiffness: 320, damping: 16 } : { duration: 0 }
               }
               className="block w-full"
             />
@@ -262,10 +280,10 @@ export function HomeHero({
             }`}
           >
             {flightsTab ? (
-            <CardSim className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
-          ) : (
-            <Search className="size-5 shrink-0" strokeWidth={2} />
-          )}
+              <CardSim className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
+            ) : (
+              <Search className="size-5 shrink-0" strokeWidth={2} />
+            )}
             <span className="min-w-0 flex-1 truncate">{searchHint}</span>
           </button>
         )}

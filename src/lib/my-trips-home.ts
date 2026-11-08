@@ -138,6 +138,8 @@ export type HomeTripWidget =
       dayLabel: string | null;
       /** What is on now or comes next, for the card's agenda row. */
       agenda: HomeAgendaNow | null;
+      /** Up to 3 activities of the focus day, starting at what is on now or next. */
+      timeline: { id: string; title: string; time: string | null }[];
       todayAgendaCount: number;
       agendaCount: number;
       bookingCount: number;
@@ -259,6 +261,25 @@ export function buildHomeTripWidget(
         })
         .map((pin, index) => ({ ...pin, n: index + 1 }))
     : [];
+  const dayItems = routeDate
+    ? dayAgenda
+        .map((item, index) => ({ ...item, id: item.id ?? `a${index}` }))
+        .filter((item) => item.activity_date === routeDate)
+    : [];
+  const timeline = dayItems
+    .slice(
+      Math.max(
+        0,
+        dayItems.findIndex((item) => item.id === focus?.id),
+      ),
+      undefined,
+    )
+    .slice(0, 3)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      time: item.start_time ? String(item.start_time).slice(0, 5) : null,
+    }));
   const totalDays = (() => {
     const a = parseDay(trip.departure_date);
     const b = parseDay(trip.return_date);
@@ -284,6 +305,7 @@ export function buildHomeTripWidget(
     nextStep,
     dayLabel,
     agenda,
+    timeline,
     todayAgendaCount: dayAgenda.filter((item) => item.activity_date === todayKey).length,
     agendaCount: dayAgenda.length,
     bookingCount: trip.booking_count ?? 0,

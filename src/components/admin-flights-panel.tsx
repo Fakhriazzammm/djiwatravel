@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
-import { saveAdminFlights } from "@/lib/flights.fn";
+import { revokeFlightShares, saveAdminFlights } from "@/lib/flights.fn";
 import {
+  FLIGHT_NUMBER_LIMITS,
   SEARCHES_PER_HOUR_MAX,
   SEARCHES_PER_HOUR_MIN,
   parseFlightsConfig,
@@ -32,6 +33,14 @@ export function AdminFlightsPanel({
     failed: number;
     clicks7d: number;
     embedOpens7d: number;
+    saves7d: number;
+    insightPicks7d: number;
+    esimOffers7d: number;
+    alertsActive: number;
+    alertsNotified: number;
+    sharesActive: number;
+    shareOpens: number;
+    votes: number;
   };
 }) {
   const [config, setConfig] = useState(initial);
@@ -71,7 +80,18 @@ export function AdminFlightsPanel({
   };
 
   const toggle = (
-    key: "enabled" | "heroTab" | "homeTile" | "guestSearch" | "travelpayouts" | "waitForConsent",
+    key:
+      | "enabled"
+      | "heroTab"
+      | "homeTile"
+      | "guestSearch"
+      | "travelpayouts"
+      | "waitForConsent"
+      | "priceAlerts"
+      | "saveToTrip"
+      | "dateInsight"
+      | "esimOffer"
+      | "share",
     label: string,
   ) => (
     <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
@@ -86,6 +106,15 @@ export function AdminFlightsPanel({
   );
   const field = "mt-1.5 min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm";
   const src = travelpayoutsScriptSrc(config);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+  const closeShares = async () => {
+    try {
+      const result = await revokeFlightShares({ data: { reason } });
+      setShareNote(`${result.revoked} tautan dicabut dan dicatat di audit log.`);
+    } catch {
+      setShareNote("Gagal mencabut tautan. Tidak ada yang berubah.");
+    }
+  };
 
   return (
     <div className="space-y-2" data-testid="admin-flights-panel">
@@ -108,6 +137,15 @@ export function AdminFlightsPanel({
           <Stat label="Klik ke mitra (7 hari)" value={String(stats.clicks7d)} />
           <Stat label="Buka hasil lengkap (7 hari)" value={String(stats.embedOpens7d)} />
           <Stat label="Pencarian harga (sejak restart)" value={String(stats.searches)} />
+          <Stat label="Pantauan harga aktif" value={String(stats.alertsActive)} />
+          <Stat label="Notifikasi harga terkirim" value={String(stats.alertsNotified)} />
+          <Stat label="Disimpan ke perjalanan (7 hari)" value={String(stats.saves7d)} />
+          <Stat label="Pindah tanggal hemat (7 hari)" value={String(stats.insightPicks7d)} />
+          <Stat label="Buka paket eSIM dari tiket (7 hari)" value={String(stats.esimOffers7d)} />
+          <Stat
+            label="Tautan bagikan aktif / dibuka / suara"
+            value={`${stats.sharesActive} / ${stats.shareOpens} / ${stats.votes}`}
+          />
         </div>
         {!tokenConfigured && (
           <p role="alert" className="text-xs font-medium text-brand-red">
@@ -138,6 +176,56 @@ export function AdminFlightsPanel({
             diambil dari cache dan tidak dihitung.
           </span>
         </label>
+        <div className="space-y-1 rounded-xl bg-secondary/60 p-2" data-testid="flights-features">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Fitur di hasil pencarian
+          </p>
+          {toggle("priceAlerts", "Pantau harga (notifikasi saat harga turun)")}
+          {config.priceAlerts && (
+            <NumberField
+              label="Pantauan aktif per member"
+              limits={FLIGHT_NUMBER_LIMITS.alertsPerMember}
+              value={config.alertsPerMember}
+              onChange={(value) => set("alertsPerMember", value)}
+              className={field}
+            />
+          )}
+          {toggle("saveToTrip", "Simpan penerbangan ke perjalanan (Agenda)")}
+          {toggle("dateInsight", "Saran tanggal lebih hemat")}
+          {config.dateInsight && (
+            <NumberField
+              label="Selisih minimal untuk saran (%)"
+              limits={FLIGHT_NUMBER_LIMITS.insightMinPercent}
+              value={config.insightMinPercent}
+              onChange={(value) => set("insightMinPercent", value)}
+              className={field}
+            />
+          )}
+          {toggle("esimOffer", "Tawarkan eSIM negara tujuan")}
+          {toggle("share", "Bagikan pilihan ke teman (voting)")}
+          {config.share && (
+            <NumberField
+              label="Masa berlaku tautan (hari)"
+              limits={FLIGHT_NUMBER_LIMITS.shareDays}
+              value={config.shareDays}
+              onChange={(value) => set("shareDays", value)}
+              className={field}
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => void closeShares()}
+            disabled={reason.trim().length < 4 || stats.sharesActive === 0}
+            className="min-h-10 w-full rounded-xl bg-secondary px-3 text-xs font-semibold disabled:opacity-40"
+          >
+            Cabut semua tautan bagikan aktif ({stats.sharesActive})
+          </button>
+          {shareNote && (
+            <p role="status" className="text-xs font-medium text-muted-foreground">
+              {shareNote}
+            </p>
+          )}
+        </div>
         <label className="block text-sm font-semibold">
           ID White Label (tipe Widget)
           <input
@@ -221,5 +309,36 @@ function Stat({ label, value, bad }: { label: string; value: string; bad?: boole
       <p className="text-[10px] text-muted-foreground">{label}</p>
       <p className={`text-sm font-bold ${bad ? "text-brand-red" : ""}`}>{value}</p>
     </div>
+  );
+}
+
+function NumberField({
+  label,
+  limits,
+  value,
+  onChange,
+  className,
+}: {
+  label: string;
+  limits: readonly [number, number];
+  value: number;
+  onChange: (value: number) => void;
+  className: string;
+}) {
+  return (
+    <label className="block text-xs font-semibold">
+      {label}
+      <input
+        type="number"
+        min={limits[0]}
+        max={limits[1]}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className={className}
+      />
+      <span className="mt-0.5 block font-normal text-muted-foreground">
+        {limits[0]}-{limits[1]}
+      </span>
+    </label>
   );
 }

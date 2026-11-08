@@ -85,7 +85,8 @@ export function AdminHomePackageHighlights({
       <p className="text-xs text-muted-foreground">
         Dua paket yang tampil setelah pelanggan mengetuk negara di Beranda. Biarkan “Otomatis” agar
         server memilih (Terlaris: paling banyak dibeli 90 hari terakhir; Best Deal: Rp/hari
-        terendah). Pin yang sama juga dipakai di “Pilihan tercepat” pada halaman destinasi; slot “Hemat” (paket termurah) selalu otomatis.
+        terendah). Pin yang sama juga dipakai di “Pilihan tercepat” pada halaman destinasi; slot
+        “Hemat” (paket termurah) selalu otomatis.
       </p>
       <select
         aria-label="Destinasi highlight"

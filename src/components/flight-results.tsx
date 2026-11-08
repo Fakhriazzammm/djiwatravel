@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ExternalLink, Pencil, Plane } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { ArrowRight, Bell, ChevronRight, Pencil, Plane, TrendingDown } from "lucide-react";
 import { TravelpayoutsWidget } from "@/components/travelpayouts-widget";
-import { btnRed, btnSoft } from "@/components/shell";
+import { btnRed } from "@/components/shell";
+import { CompareTray, FlightAlertSheet, FlightDetailSheet } from "@/components/flight-actions";
 import { analyticsConsentGranted, CONSENT_EVENT } from "@/lib/cookie-consent";
 import { trackClick } from "@/lib/analytics";
 import {
-  AVIASALES_CLICK_TARGET,
   EMBED_OPEN_TARGET,
+  INSIGHT_TARGET,
+  cheaperDayInsight,
   FLIGHT_STATUS_MESSAGE,
   compactFlightPrice,
   durationLabel,
@@ -24,8 +19,10 @@ import {
   placeLabel,
   transfersLabel,
   type FlightOffer,
+  type FlightOfferSnapshot,
   type FlightPlace,
   type FlightSearchResult,
+  type FlightsConfig,
 } from "@/lib/flights";
 
 const EMBED_OK_KEY = "djiwa.flights.embed-ok";
@@ -88,6 +85,7 @@ export function FlightResults({
   result,
   loading,
   widgetSrc,
+  config,
   onBack,
   onPickDay,
 }: {
@@ -100,6 +98,7 @@ export function FlightResults({
   loading: boolean;
   /** Frame page of the White Label widget (full real-time results), or null when it is off. */
   widgetSrc: string | null;
+  config: FlightsConfig;
   onBack: () => void;
   onPickDay: (day: string) => void;
 }) {
@@ -108,6 +107,20 @@ export function FlightResults({
   const consent = useEmbedConsent();
   const [chosen, setChosen] = useState<FlightOffer | null>(null);
   const [directOnly, setDirectOnly] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [compare, setCompare] = useState<FlightOfferSnapshot[]>([]);
+  const dayOffer = strip.find((day) => day.date === depart)?.offer ?? null;
+  const insight = config.dateInsight
+    ? cheaperDayInsight(strip, depart, config.insightMinPercent)
+    : null;
+  const toggleCompare = (snapshot: FlightOfferSnapshot) =>
+    setCompare((current) =>
+      current.some((item) => item.id === snapshot.id)
+        ? current.filter((item) => item.id !== snapshot.id)
+        : current.length >= 3
+          ? current
+          : [...current, snapshot],
+    );
 
   // Count each time the full results are opened (Admin shows this next to the clicks).
   useEffect(() => {
@@ -147,6 +160,16 @@ export function FlightResults({
             {back ? ` – ${dayLabel(back)}` : " · sekali jalan"}
           </p>
         </div>
+        {config.priceAlerts && (
+          <button
+            type="button"
+            onClick={() => setAlertOpen(true)}
+            aria-label="Pantau harga"
+            className="tap grid size-9 shrink-0 place-items-center rounded-full bg-secondary"
+          >
+            <Bell className="size-4" aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onBack}
@@ -192,6 +215,62 @@ export function FlightResults({
           })}
         </div>
       </div>
+
+      {insight && (
+        <div className="flex items-center gap-2.5 rounded-2xl bg-brand-red-soft p-3">
+          <TrendingDown className="size-4 shrink-0 text-brand-red" aria-hidden="true" />
+          <p className="min-w-0 flex-1 text-[12px] leading-snug">
+            <span className="font-bold text-brand-red">
+              Hemat {compactFlightPrice(insight.savingIdr)}
+            </span>
+            <br />
+            Berangkat {shortDay(insight.date)} lebih murah dari harga tercatat.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              trackClick("/tiket", INSIGHT_TARGET);
+              onPickDay(insight.date);
+            }}
+            className="tap min-h-9 shrink-0 rounded-full bg-brand-red px-3 text-[12px] font-semibold text-white"
+          >
+            Pindah
+          </button>
+        </div>
+      )}
+
+      {dayOffer && !loading && (
+        <button
+          type="button"
+          onClick={() => setChosen(dayOffer)}
+          className="tap flex min-h-14 w-full items-center gap-3 rounded-2xl bg-surface p-3 text-left ring-1 ring-border/40"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-red-soft text-[11px] font-bold text-brand-red">
+            {dayOffer.airline || "✈"}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Termurah tercatat · {shortDay(depart)}
+            </span>
+            <span className="block truncate text-[13px] font-semibold">
+              {dayOffer.airlineName} · {flightClock(dayOffer.departureAt)} ·{" "}
+              {transfersLabel(dayOffer.transfers)}
+            </span>
+          </span>
+          <span className="text-right text-[15px] font-extrabold text-success">
+            {compactFlightPrice(dayOffer.priceIdr)}
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </button>
+      )}
+
+      {compare.length > 0 && (
+        <CompareTray
+          items={compare}
+          onRemove={(id) => setCompare((current) => current.filter((item) => item.id !== id))}
+          onClear={() => setCompare([])}
+        />
+      )}
 
       {widgetSrc ? (
         consent.ok ? (
@@ -278,56 +357,26 @@ export function FlightResults({
         </div>
       )}
 
-      <Sheet open={chosen !== null} onOpenChange={(open) => !open && setChosen(null)}>
-        <SheetContent
-          side="bottom"
-          className="mx-auto w-full max-w-md rounded-t-[24px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4"
-        >
-          {chosen && (
-            <>
-              <SheetHeader className="mb-3 text-left">
-                <SheetTitle>{chosen.airlineName}</SheetTitle>
-                <SheetDescription>
-                  {chosen.airline} {chosen.flightNumber} · {chosen.origin}
-                  <ArrowRight className="mx-1 inline size-3.5" aria-hidden="true" />
-                  {chosen.destination} · {dayLabel(flightDay(chosen.departureAt))} ·{" "}
-                  {flightClock(chosen.departureAt)} · {transfersLabel(chosen.transfers)}
-                  {chosen.durationMinutes ? ` · ${durationLabel(chosen.durationMinutes)}` : ""}
-                </SheetDescription>
-              </SheetHeader>
-              <p className="text-[24px] font-extrabold text-success">
-                {formatFlightPrice(chosen.priceIdr)}
-              </p>
-              {chosen.bookingUrl ? (
-                <a
-                  href={chosen.bookingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer sponsored"
-                  onClick={() => trackClick("/tiket", AVIASALES_CLICK_TARGET)}
-                  className={`${btnRed} mt-3 flex w-full items-center justify-center gap-1.5`}
-                >
-                  Lihat & pesan di Aviasales
-                  <ExternalLink className="size-4" aria-hidden="true" />
-                </a>
-              ) : (
-                <p className="mt-3 text-[13px] text-muted-foreground">
-                  Tautan pemesanan tidak tersedia untuk penerbangan ini.
-                </p>
-              )}
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Pembayaran dilakukan di Aviasales.
-              </p>
-              <button
-                type="button"
-                onClick={() => setChosen(null)}
-                className={`${btnSoft} mt-3 w-full`}
-              >
-                Tutup
-              </button>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
+      <FlightDetailSheet
+        offer={chosen}
+        origin={origin}
+        destination={destination}
+        config={config}
+        compared={chosen ? compare.some((item) => item.id === chosen.id) : false}
+        onToggleCompare={toggleCompare}
+        onClose={() => setChosen(null)}
+      />
+      {config.priceAlerts && (
+        <FlightAlertSheet
+          open={alertOpen}
+          onClose={() => setAlertOpen(false)}
+          origin={origin}
+          destination={destination}
+          depart={depart}
+          back={back}
+          refPriceIdr={dayOffer?.priceIdr ?? null}
+        />
+      )}
     </section>
   );
 }

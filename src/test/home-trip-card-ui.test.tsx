@@ -65,7 +65,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("Home trip card (design A)", () => {
+describe("Home trip card (design C1)", () => {
   it("shows the route, weather, next activity, numbers and the Ringkas button", async () => {
     vi.mocked(getItineraryMapConfig).mockResolvedValue(DEFAULT_ITINERARY_MAP_CONFIG);
     vi.mocked(getTripWeather).mockResolvedValue({

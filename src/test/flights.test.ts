@@ -465,3 +465,106 @@ describe("flightPriceStrip", () => {
     expect(flightPriceStrip([], "2026-12", "2026-11-07")).toEqual([]);
   });
 });
+
+describe("flight extras", () => {
+  const day = (date: string, price: number | null) => ({
+    date,
+    offer:
+      price === null
+        ? null
+        : ({
+            id: date,
+            origin: "CGK",
+            destination: "TYO",
+            airline: "TR",
+            airlineName: "Scoot",
+            flightNumber: "1",
+            departureAt: `${date}T22:10:00+07:00`,
+            returnAt: null,
+            transfers: 1,
+            durationMinutes: 900,
+            priceIdr: price,
+            bookingUrl: null,
+          } as const),
+  });
+
+  it("points at the cheapest other day only when the saving is big enough", async () => {
+    const { cheaperDayInsight } = await import("@/lib/flights");
+    const strip = [
+      day("2999-11-08", 3_700_000),
+      day("2999-11-09", 3_220_000),
+      day("2999-11-10", null),
+    ];
+    expect(cheaperDayInsight(strip, "2999-11-08", 5)).toEqual({
+      date: "2999-11-09",
+      savingIdr: 480_000,
+      priceIdr: 3_220_000,
+    });
+    expect(cheaperDayInsight(strip, "2999-11-08", 20)).toBeNull();
+    expect(cheaperDayInsight(strip, "2999-11-09", 5)).toBeNull();
+    expect(cheaperDayInsight(strip, "2999-11-10", 5)).toBeNull();
+  });
+
+  it("reads the local date and time from the timestamp text, not the viewer's zone", async () => {
+    const { offerLocalParts } = await import("@/lib/flights");
+    expect(offerLocalParts("2026-11-08T22:10:00+07:00")).toEqual({
+      date: "2026-11-08",
+      time: "22:10",
+    });
+    expect(offerLocalParts("garbage")).toBeNull();
+  });
+
+  it("turns a fare into one Agenda item per leg, flagged as a flight", async () => {
+    const { parseOfferSnapshot, tripItemsForOffer } = await import("@/lib/flights");
+    const snap = parseOfferSnapshot({
+      id: "x",
+      origin: "cgk",
+      destination: "HND",
+      originName: "Soekarno-Hatta",
+      destinationName: "Haneda",
+      airlineName: "Scoot",
+      airline: "TR",
+      flightNumber: "285",
+      departureAt: "2026-11-08T22:10:00+07:00",
+      returnAt: "2026-11-15T23:55:00+09:00",
+      transfers: 1,
+      durationMinutes: 995,
+      priceIdr: 9_944_720,
+    });
+    expect(snap?.origin).toBe("CGK");
+    const items = tripItemsForOffer(snap!);
+    expect(items.map((i) => [i.activityDate, i.startTime, i.activityCategory])).toEqual([
+      ["2026-11-08", "22:10", "flight"],
+      ["2026-11-15", "23:55", "flight"],
+    ]);
+    expect(items[0]!.title).toContain("Scoot");
+    expect(items[1]!.location).toBe("Haneda");
+  });
+
+  it("rejects a snapshot with a bad route, time or price", async () => {
+    const { parseOfferSnapshot } = await import("@/lib/flights");
+    const ok = {
+      origin: "CGK",
+      destination: "HND",
+      departureAt: "2026-11-08T22:10:00+07:00",
+      priceIdr: 1000,
+    };
+    expect(parseOfferSnapshot(ok)).not.toBeNull();
+    expect(parseOfferSnapshot({ ...ok, origin: "XX" })).toBeNull();
+    expect(parseOfferSnapshot({ ...ok, departureAt: "soon" })).toBeNull();
+    expect(parseOfferSnapshot({ ...ok, priceIdr: -5 })).toBeNull();
+    expect(parseOfferSnapshot(null)).toBeNull();
+  });
+
+  it("keeps the new Admin settings inside their limits", async () => {
+    const { parseFlightsConfig, DEFAULT_FLIGHTS_CONFIG } = await import("@/lib/flights");
+    expect(parseFlightsConfig({ ...DEFAULT_FLIGHTS_CONFIG, shareDays: 14 }).shareDays).toBe(14);
+    expect(() => parseFlightsConfig({ ...DEFAULT_FLIGHTS_CONFIG, shareDays: 0 })).toThrow();
+    expect(() => parseFlightsConfig({ ...DEFAULT_FLIGHTS_CONFIG, alertsPerMember: 99 })).toThrow();
+    expect(() => parseFlightsConfig({ ...DEFAULT_FLIGHTS_CONFIG, share: "yes" })).toThrow();
+    // A record saved before these settings existed takes the defaults.
+    const { share, ...old } = DEFAULT_FLIGHTS_CONFIG;
+    void share;
+    expect(parseFlightsConfig(old).share).toBe(true);
+  });
+});

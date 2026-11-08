@@ -20,6 +20,18 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/lib/flights.fn", () => ({
   searchFlightPlaces: vi.fn(),
   searchFlights: vi.fn(),
+  createFlightAlert: vi.fn(),
+  listFlightAlerts: vi.fn(async () => ({ alerts: [] })),
+  deleteFlightAlert: vi.fn(),
+  saveFlightToTrip: vi.fn(),
+  createFlightShare: vi.fn(),
+}));
+vi.mock("@/lib/my-trips.fn", () => ({ getMyTripsHome: vi.fn(async () => ({ trips: [] })) }));
+vi.mock("@/lib/use-better-auth-user", () => ({
+  useBetterAuthUser: () => ({ user: null, setUser: vi.fn(), loading: false }),
+}));
+vi.mock("@/components/customer-auth", () => ({
+  CustomerAuth: () => <button>Masuk atau daftar</button>,
 }));
 vi.mock("@/lib/analytics", () => ({ trackClick: vi.fn() }));
 
@@ -150,7 +162,7 @@ describe("FlightSearch results screen (design B)", () => {
     expect(rows[0]!.textContent).toContain("Lion Air");
     expect(rows[0]!.textContent).toContain("Termurah");
     fireEvent.click(rows[0]!);
-    const link = await screen.findByRole("link", { name: /Lihat & pesan di Aviasales/ });
+    const link = await screen.findByRole("link", { name: /Lanjut pesan/ });
     expect(link.getAttribute("href")).toContain("marker=597030");
     expect(link.getAttribute("rel")).toContain("noopener");
     expect(document.body.textContent).not.toMatch(/komisi|commission|afiliasi/i);

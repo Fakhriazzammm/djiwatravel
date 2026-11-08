@@ -77,9 +77,9 @@ export function EsimQuickBuyPanel({
 
   const chosen =
     state.kind === "ready"
-      ? state.picks.find((pick) => pick.pkg.packageCode === selected)?.pkg ??
+      ? (state.picks.find((pick) => pick.pkg.packageCode === selected)?.pkg ??
         state.preorderPicks.find((pkg) => pkg.packageCode === selected) ??
-        null
+        null)
       : null;
 
   return (
@@ -136,46 +136,48 @@ export function EsimQuickBuyPanel({
 
       {state.kind === "ready" && (state.picks.length > 0 || state.preorderPicks.length > 0) && (
         <>
-          {state.picks.length > 0 && <div role="radiogroup" aria-label="Pilih paket" className="flex gap-2">
-            {state.picks.map((pick) => {
-              const checked = pick.pkg.packageCode === selected;
-              const tag = TAG[pick.tag];
-              return (
-                <button
-                  key={pick.pkg.packageCode}
-                  type="button"
-                  role="radio"
-                  aria-checked={checked}
-                  onClick={() => setSelected(pick.pkg.packageCode)}
-                  className={`tap min-w-0 flex-1 rounded-2xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                    checked
-                      ? "border-brand-red bg-brand-red-soft/40"
-                      : "border-border/60 bg-secondary/60"
-                  }`}
-                >
-                  <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-extrabold ${tag.className}`}
+          {state.picks.length > 0 && (
+            <div role="radiogroup" aria-label="Pilih paket" className="flex gap-2">
+              {state.picks.map((pick) => {
+                const checked = pick.pkg.packageCode === selected;
+                const tag = TAG[pick.tag];
+                return (
+                  <button
+                    key={pick.pkg.packageCode}
+                    type="button"
+                    role="radio"
+                    aria-checked={checked}
+                    onClick={() => setSelected(pick.pkg.packageCode)}
+                    className={`tap min-w-0 flex-1 rounded-2xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      checked
+                        ? "border-brand-red bg-brand-red-soft/40"
+                        : "border-border/60 bg-secondary/60"
+                    }`}
                   >
-                    {tag.label}
-                  </span>
-                  <span className="mt-1 block truncate text-[15px] font-extrabold leading-tight tracking-[-0.02em]">
-                    {packageDataLabel(pick.pkg).replace(/ data$/, "")}
-                    <span className="text-[12px] font-medium text-muted-foreground">
-                      {" "}
-                      · {pick.pkg.durationDays} hari
+                    <span
+                      className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-extrabold ${tag.className}`}
+                    >
+                      {tag.label}
                     </span>
-                  </span>
-                  <span className="block text-[14px] font-extrabold tabular-nums leading-tight">
-                    {rupiah(pick.pkg.priceIdr)}
-                    <span className="text-[10.5px] font-medium text-muted-foreground">
-                      {" "}
-                      {rupiah(Math.round(pricePerDay(pick.pkg)))}/hr
+                    <span className="mt-1 block truncate text-[15px] font-extrabold leading-tight tracking-[-0.02em]">
+                      {packageDataLabel(pick.pkg).replace(/ data$/, "")}
+                      <span className="text-[12px] font-medium text-muted-foreground">
+                        {" "}
+                        · {pick.pkg.durationDays} hari
+                      </span>
                     </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>}
+                    <span className="block text-[14px] font-extrabold tabular-nums leading-tight">
+                      {rupiah(pick.pkg.priceIdr)}
+                      <span className="text-[10.5px] font-medium text-muted-foreground">
+                        {" "}
+                        {rupiah(Math.round(pricePerDay(pick.pkg)))}/hr
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {state.preorderPicks.length > 0 && (
             <div className="mt-2 space-y-1.5" role="radiogroup" aria-label="Paket pre-order">
               {state.preorderPicks.map((pkg) => (
@@ -188,7 +190,9 @@ export function EsimQuickBuyPanel({
                   className={`tap flex min-h-10 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${pkg.packageCode === selected ? "border-brand-red bg-brand-red-soft/40" : "border-border/60 bg-secondary/60"}`}
                 >
                   <span className="min-w-0 truncate font-semibold">
-                    <span className="mr-1.5 rounded-full bg-brand-red-soft px-2 py-0.5 text-[10px] font-bold text-brand-red">Pre-order</span>
+                    <span className="mr-1.5 rounded-full bg-brand-red-soft px-2 py-0.5 text-[10px] font-bold text-brand-red">
+                      Pre-order
+                    </span>
                     {packageDataLabel(pkg)} · {pkg.durationDays} hari
                   </span>
                   <span className="shrink-0 font-bold tabular-nums">{rupiah(pkg.priceIdr)}</span>
@@ -203,7 +207,9 @@ export function EsimQuickBuyPanel({
             onClick={() => chosen && onBuy(chosen.packageCode)}
             className="tap mt-2 flex min-h-10 w-full items-center justify-between rounded-full bg-brand-red px-4 text-[14px] font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <span>{chosen?.preorderAvailable && !chosen.sellable ? "Lanjut pre-order" : "Beli sekarang"}</span>
+            <span>
+              {chosen?.preorderAvailable && !chosen.sellable ? "Lanjut pre-order" : "Beli sekarang"}
+            </span>
             <span className="tabular-nums">{chosen ? rupiah(chosen.priceIdr) : ""}</span>
           </button>
           <Link

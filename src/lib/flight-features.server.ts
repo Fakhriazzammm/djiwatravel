@@ -196,7 +196,11 @@ export async function createFlightShareHandler({
 const tokenSchema = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/) });
 export const flightShareInput = (data: unknown) => tokenSchema.parse(data);
 
-export async function getFlightShareHandler({ data }: { data: ReturnType<typeof flightShareInput> }) {
+export async function getFlightShareHandler({
+  data,
+}: {
+  data: ReturnType<typeof flightShareInput>;
+}) {
   const config = await getFlightsConfigHandler();
   if (!config.enabled || !config.share) return null;
   const row = await pool.query(

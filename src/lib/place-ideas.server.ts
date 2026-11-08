@@ -6,6 +6,8 @@ import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import { distanceKm } from "./itinerary-map";
+import { discoverPlaces, wikipediaFacts } from "./place-discovery.server";
+import { osmUrl } from "./place-discovery";
 import {
   forwardGeocode,
   lookupPlaceImage,
@@ -26,6 +28,7 @@ import {
   placeIdeasCacheKey,
   sourceHost,
   type PlaceIdea,
+  type PlaceIdeaCategoryId,
   type PlaceIdeasConfig,
   type PlaceIdeasResponse,
   type PlaceIdeasStatus,
@@ -182,7 +185,39 @@ export const PLACE_IDEAS_SYSTEM_PROMPT = [
   "Prefer places that fit the requested kind and are well recommended; skip duplicates, chains and closed places.",
 ].join("\n");
 
-async function askModel(model: string, userContent: string) {
+const WHY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["items"],
+  properties: {
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "why"],
+        properties: { id: { type: "integer" }, why: { type: "string" } },
+      },
+    },
+  },
+} as const;
+
+const WHY_SYSTEM_PROMPT = [
+  "You write short travel blurbs. Answer ONLY with JSON that follows the schema.",
+  "For each numbered place write `why`: ONE sentence in casual Indonesian (max 110 characters) on why it is worth a visit.",
+  "Use ONLY the facts given for that place. Never invent details, prices, years or opening hours.",
+  "When a place has few facts, say simply what it is and where, without praise you cannot support.",
+].join("\n");
+
+async function askModel(
+  model: string,
+  userContent: string,
+  mode: { system: string; schema: object; name: string } = {
+    system: PLACE_IDEAS_SYSTEM_PROMPT,
+    schema: IDEAS_SCHEMA,
+    name: "place_ideas",
+  },
+) {
   const key = process.env["HELIPOD_AI_KEY"];
   if (!key) throw new Error("not_configured");
   // The model "thinks" before answering. On long pages that used up every token and cut the JSON
@@ -194,14 +229,14 @@ async function askModel(model: string, userContent: string) {
       max_tokens: 3000,
       ...(withEffort ? { reasoning_effort: "low" } : {}),
       messages: [
-        { role: "system", content: PLACE_IDEAS_SYSTEM_PROMPT },
+        { role: "system", content: mode.system },
         { role: "user", content: userContent },
       ],
       ...(withSchema
         ? {
             response_format: {
               type: "json_schema",
-              json_schema: { name: "place_ideas", strict: true, schema: IDEAS_SCHEMA },
+              json_schema: { name: mode.name, strict: true, schema: mode.schema },
             },
           }
         : {}),
@@ -326,6 +361,82 @@ async function verifyIdeas(
   return checked.filter((idea): idea is PlaceIdea => idea !== null);
 }
 
+/* ------------------------------------------------------------- ideas from the map (OpenStreetMap) */
+
+const CATEGORY_WORD: Record<string, string> = {
+  food: "Tempat makan",
+  cafe: "Kafe",
+  sight: "Tempat wisata",
+  nature: "Taman / alam",
+  shop: "Tempat belanja",
+};
+
+/**
+ * Places come from the map (always with coordinates); Wikipedia adds the text and the photo, and
+ * the AI only phrases one sentence from those facts.
+ */
+async function ideasFromMap(
+  anchor: { lat: number; lng: number },
+  category: PlaceIdeaCategoryId,
+  limit: number,
+  destination: string,
+  model: string,
+) {
+  const found = await discoverPlaces(anchor, category, limit + 4);
+  const withFacts = await Promise.all(
+    found.map(async (candidate) => ({ candidate, wiki: await wikipediaFacts(candidate) })),
+  );
+  const list = withFacts.map(({ candidate, wiki }, index) => {
+    const facts = [wiki.extract, ...candidate.facts].filter(Boolean).join(" | ");
+    return `[${index + 1}] ${candidate.name} (${CATEGORY_WORD[candidate.category]})${facts ? `: ${facts}` : ""}`;
+  });
+  let usage = { input: 0, output: 0 };
+  const why = new Map<number, string>();
+  if (list.length) {
+    try {
+      const answer = await askModel(model, `City: ${destination}\n${list.join("\n")}`, {
+        system: WHY_SYSTEM_PROMPT,
+        schema: WHY_SCHEMA,
+        name: "place_why",
+      });
+      usage = answer.usage;
+      const items = (answer.parsed as { items?: { id?: unknown; why?: unknown }[] } | null)?.items;
+      for (const item of items ?? []) {
+        if (Number.isInteger(item.id) && typeof item.why === "string" && item.why.trim())
+          why.set(Number(item.id), item.why.trim().slice(0, 140));
+      }
+    } catch {
+      // Fall back to the plain description below.
+    }
+  }
+  const ideas = await Promise.all(
+    withFacts.map(async ({ candidate, wiki }, index): Promise<PlaceIdea> => {
+      const image =
+        wiki.imageUrl ??
+        (await lookupPlaceImage({ lat: candidate.lat, lng: candidate.lng }, [candidate.name])
+          .then((r) => r?.url ?? null)
+          .catch(() => null)) ??
+        (await lookupPlaceImageByName(candidate.name, destination)
+          .then((r) => r?.url ?? null)
+          .catch(() => null));
+      const fromWiki = Boolean(wiki.pageUrl);
+      return {
+        key: placeIdeaKey(candidate.name, candidate.lat, candidate.lng),
+        name: candidate.name,
+        category: candidate.category,
+        why: why.get(index + 1) ?? CATEGORY_WORD[candidate.category] ?? "Tempat",
+        area: destination,
+        lat: candidate.lat,
+        lng: candidate.lng,
+        sourceHost: fromWiki ? "wikipedia.org" : "openstreetmap.org",
+        sourceUrl: wiki.pageUrl ?? osmUrl(candidate),
+        imageUrl: image,
+      };
+    }),
+  );
+  return { ideas, usage };
+}
+
 /* --------------------------------------------------------------------------- main entry */
 
 const inputSchema = z.object({
@@ -372,7 +483,7 @@ export async function getPlaceIdeas(
   const scope = tripCities.length ? `${tripCities.join(", ")}, ${destination}` : destination;
   const used = await usedToday(userId, now);
   const remaining = Math.max(0, config.dailyLimit - used);
-  const cacheKey = placeIdeasCacheKey(scope, input.category, input.query);
+  const cacheKey = `${input.query ? "" : "map2|"}${placeIdeasCacheKey(scope, input.category, input.query)}`;
   const hidden = await hiddenKeys();
   const visible = (ideas: PlaceIdea[]) =>
     ideas.filter((idea) => !hidden.has(idea.key)).slice(0, config.maxIdeas);
@@ -439,6 +550,50 @@ export async function getPlaceIdeas(
     const phrase = input.query ? `${input.query}` : kind.search;
     let usage = { input: 0, output: 0 };
     try {
+      const mapAnchor = input.query ? null : await tripAnchor(tripCities, destination);
+      if (mapAnchor) {
+        const result = await ideasFromMap(
+          mapAnchor,
+          input.category,
+          config.maxIdeas,
+          tripCities[0] ?? destination,
+          config.model,
+        );
+        if (result.ideas.length) {
+          await pool
+            .query(
+              `insert into public.travel_place_idea_runs
+                 (customer_auth_subject, trip_id, cache_key, status, model, places, tokens_in, tokens_out, cost_idr)
+               values ($1,$2,$3,'ok',$4,$5,$6,$7,$8)`,
+              [
+                userId,
+                input.tripId,
+                cacheKey,
+                config.model,
+                result.ideas.length,
+                result.usage.input,
+                result.usage.output,
+                estimateCostIdr(config.model, result.usage),
+              ],
+            )
+            .catch(() => undefined);
+          await pool
+            .query(
+              `insert into public.travel_place_idea_cache (cache_key, destination, category, query, ideas, created_at)
+               values ($1,$2,$3,$4,$5::jsonb, now())
+               on conflict (cache_key) do update set ideas = excluded.ideas, created_at = now()`,
+              [cacheKey, destination, input.category, input.query, JSON.stringify(result.ideas)],
+            )
+            .catch(() => undefined);
+          return {
+            status: "ok",
+            ideas: visible(result.ideas),
+            cached: false,
+            remaining: Math.max(0, remaining - 1),
+            destination,
+          };
+        }
+      }
       const found = await searchWeb(`${phrase} in ${scope} travel guide`);
       const sources = await fetchPages(found);
       if (!sources.length) throw new Error("no_sources");

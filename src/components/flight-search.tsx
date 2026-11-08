@@ -212,6 +212,7 @@ export function FlightSearch({
         result={result}
         loading={loading}
         widgetSrc={widgetSrc}
+        config={config}
         onBack={() => setSearched(null)}
         onPickDay={pickDay}
       />

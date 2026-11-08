@@ -323,7 +323,15 @@ async function countFlightClicks() {
       `select target, count(*)::int as n from site_events
        where event_name = 'click' and target = any($1) and created_at > now() - interval '7 days'
        group by target`,
-      [[AVIASALES_CLICK_TARGET, EMBED_OPEN_TARGET, SAVE_TRIP_TARGET, INSIGHT_TARGET, ESIM_OFFER_TARGET]],
+      [
+        [
+          AVIASALES_CLICK_TARGET,
+          EMBED_OPEN_TARGET,
+          SAVE_TRIP_TARGET,
+          INSIGHT_TARGET,
+          ESIM_OFFER_TARGET,
+        ],
+      ],
     );
     for (const row of result.rows as { target?: unknown; n?: unknown }[]) {
       if (row.target === AVIASALES_CLICK_TARGET) counts.aviasales = Number(row.n) || 0;

@@ -103,7 +103,9 @@ export function EsimPackageResults({
                         {packageDestinationLabel(pkg)} · {packageDataLabel(pkg)}
                       </span>
                       <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                        {pkg.durationDays} hari · {pkg.preorderAvailable && !pkg.sellable ? "Pre-order · " : ""}Rp{pkg.priceIdr.toLocaleString("id-ID")}
+                        {pkg.durationDays} hari ·{" "}
+                        {pkg.preorderAvailable && !pkg.sellable ? "Pre-order · " : ""}Rp
+                        {pkg.priceIdr.toLocaleString("id-ID")}
                       </span>
                     </span>
                     <ChevronRight

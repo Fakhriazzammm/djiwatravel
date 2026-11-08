@@ -2,6 +2,9 @@ import { Link } from "@tanstack/react-router";
 import {
   CalendarRange,
   Check,
+  ListChecks,
+  Ticket,
+  Wallet,
   ChevronRight,
   Cloud,
   CloudDrizzle,
@@ -140,7 +143,7 @@ export function HomeMyTripsWidget({ signedIn }: { signedIn: boolean }) {
   return <TripCard view={view} />;
 }
 
-/** The focus trip card: route preview and weather on top, then what is next and the key numbers. */
+/** The focus trip card: route and weather on top, then a hero with what is next, today's timeline and the key numbers. */
 function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> }) {
   const [config, setConfig] = useState<ItineraryMapConfig>(DEFAULT_ITINERARY_MAP_CONFIG);
   const [weather, setWeather] = useState<DayWeather | null>(null);
@@ -220,7 +223,7 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
       : view.countdown;
   const weatherChip =
     weather && WeatherIcon ? (
-      <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold shadow">
+      <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-[11px] font-semibold text-foreground shadow">
         <WeatherIcon className="size-3.5 text-brand-red" aria-hidden="true" />
         {weather.tempMax}°
         {weather.rainPercent !== null && weather.rainPercent >= 30
@@ -233,63 +236,32 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
       {badge}
     </span>
   );
-  const agendaLink = view.agenda ? (
-    <Link
-      to="/my-trips/$tripId/$section"
-      params={{ tripId: view.tripId, section: "itinerary" }}
-      className="tap mt-2.5 flex min-h-12 items-center gap-2.5 rounded-2xl bg-secondary px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-brand-red text-white">
-        <CalendarRange className="size-4" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-semibold">{view.agenda.title}</span>
-        <span className="block truncate text-[11px] text-muted-foreground">
-          {[view.agenda.time, view.agenda.location, view.agenda.when].filter(Boolean).join(" · ")}
-        </span>
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
-    </Link>
-  ) : (
-    <Link
-      to="/my-trips/$tripId/$section"
-      params={{
-        tripId: view.tripId,
-        section: view.checklistTotal > view.checklistDone ? "checklist" : "itinerary",
-      }}
-      className="tap mt-2.5 flex min-h-12 items-center gap-2.5 rounded-2xl bg-secondary px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-semibold">{view.nextStep.label}</span>
-        <span className="block text-[11px] text-muted-foreground">{view.nextStep.hint}</span>
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
-    </Link>
-  );
-  const stats: { section: Section; label: string; value: string }[] = [
-    {
-      section: "itinerary",
-      label: "Agenda",
-      value:
-        view.status === "ongoing"
-          ? `${view.todayAgendaCount} hari ini`
-          : `${view.agendaCount} agenda`,
-    },
+  const focusHref = view.agenda
+    ? "itinerary"
+    : view.checklistTotal > view.checklistDone
+      ? "checklist"
+      : "itinerary";
+  const focusText = view.agenda
+    ? `${view.agenda.title}${view.agenda.time ? ` ${view.agenda.time}` : ""} · ${view.agenda.when}`
+    : `${view.nextStep.label} · ${view.nextStep.hint}`;
+  const stats: { section: Section; Icon: typeof Sun; value: string; unit: string }[] = [
     {
       section: "checklist",
-      label: "Checklist",
+      Icon: ListChecks,
       value: view.checklistTotal ? `${view.checklistDone}/${view.checklistTotal}` : "Belum ada",
+      unit: "",
     },
-    { section: "bookings", label: "Booking", value: String(view.bookingCount) },
+    { section: "bookings", Icon: Ticket, value: String(view.bookingCount), unit: "booking" },
     {
       section: "budget",
-      label: "Sisa",
+      Icon: Wallet,
       value: view.budget.set
         ? compactMoney(
             view.budget.remainingMinor,
             formatTripMoney(view.budget.remainingMinor, view.budget.currency),
           )
         : "Atur",
+      unit: view.budget.set ? "sisa" : "",
     },
   ];
   return (
@@ -322,42 +294,76 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
           )}
         </div>
       )}
-      <div className="px-3.5 pb-3.5 pt-3">
+      <div className="bg-gradient-to-br from-[#c4485a] to-[#8f2c3c] px-3.5 pb-3 pt-3 text-white">
+        <div className="flex items-center justify-between gap-2">
+          {showRoute ? (
+            <p className="min-w-0 truncate text-[11px] text-white/75">
+              {view.destination} · {view.dateRange} · {view.travelers} traveler
+            </p>
+          ) : (
+            <span className="inline-flex rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold">
+              {badge}
+            </span>
+          )}
+          <Link
+            to="/my-trips/$tripId"
+            params={{ tripId: view.tripId }}
+            className="tap shrink-0 rounded-full bg-white px-3 py-1 text-[12px] font-bold text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Buka Ringkas ›
+          </Link>
+        </div>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <h3 className="truncate text-[20px] font-bold tracking-[-0.02em]">{view.title}</h3>
+          {!showRoute && weatherChip}
+        </div>
         {!showRoute && (
-          <div className="mb-2 flex items-center justify-between gap-2">
-            {badgeEl}
-            {weatherChip}
-          </div>
-        )}
-        <div className="flex items-baseline justify-between gap-2">
-          <h3 className="truncate text-[18px] font-bold tracking-[-0.02em]">{view.title}</h3>
-          <p className="shrink-0 text-[11px] text-muted-foreground">
+          <p className="truncate text-[11px] text-white/75">
             {view.destination} · {view.dateRange} · {view.travelers} traveler
           </p>
-        </div>
-        {agendaLink}
-        <div className="mt-2 grid grid-cols-4 gap-1.5">
-          {stats.map((stat) => (
+        )}
+        <Link
+          to="/my-trips/$tripId/$section"
+          params={{ tripId: view.tripId, section: focusHref }}
+          className="tap mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[12px] font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="truncate">{focusText}</span>
+          <ChevronRight className="size-3.5 shrink-0 opacity-70" aria-hidden="true" />
+        </Link>
+        {view.timeline.length > 0 && (
+          <ol className="relative mt-3 flex" aria-label="Agenda berikutnya">
+            <span className="absolute inset-x-0 top-[5px] h-0.5 bg-white/25" aria-hidden="true" />
+            {view.timeline.map((item, index) => (
+              <li
+                key={item.id}
+                className={`relative min-w-0 flex-1 pr-1 pt-3.5 text-[10px] ${index === 0 ? "font-semibold text-white" : "text-white/70"}`}
+              >
+                <span
+                  className={`absolute left-0 top-px size-2.5 rounded-full ${index === 0 ? "bg-white ring-[3px] ring-white/30" : "bg-white/40"}`}
+                  aria-hidden="true"
+                />
+                <span className="block text-[11px] font-semibold tabular-nums">
+                  {item.time ?? "—"}
+                </span>
+                <span className="block truncate">{item.title}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-white/20 pt-2.5 text-[12px]">
+          {stats.map(({ section, Icon, value, unit }) => (
             <Link
-              key={stat.section}
+              key={section}
               to="/my-trips/$tripId/$section"
-              params={{ tripId: view.tripId, section: stat.section }}
-              className="tap min-w-0 rounded-xl bg-secondary px-2.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              params={{ tripId: view.tripId, section }}
+              className="tap inline-flex min-h-8 items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <span className="block truncate text-[11px] text-muted-foreground">{stat.label}</span>
-              <span className="block truncate text-[14px] font-bold tabular-nums">
-                {stat.value}
-              </span>
+              <Icon className="size-3.5 opacity-80" aria-hidden="true" />
+              <b className="font-bold tabular-nums">{value}</b>
+              {unit && <span className="text-[11px] opacity-75">{unit}</span>}
             </Link>
           ))}
         </div>
-        <Link
-          to="/my-trips/$tripId"
-          params={{ tripId: view.tripId }}
-          className="tap mt-2.5 flex min-h-10 items-center justify-center rounded-xl bg-brand-red text-[14px] font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Buka Ringkas
-        </Link>
       </div>
     </div>
   );
