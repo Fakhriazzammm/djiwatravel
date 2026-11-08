@@ -1,3 +1,4 @@
+import { ShopperDiscovery } from "./shopper-discovery";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -241,6 +242,8 @@ export function ShopperHome({
               className="min-h-9 w-full rounded-xl border border-border/70 bg-surface pl-9 pr-3 text-[14px] outline-none transition-shadow focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
             />
           </label>
+
+          <ShopperDiscovery onProduct={setOpenProduct} />
 
           {/* Brand stories */}
           <div className="-mx-4 mt-2 flex gap-3 overflow-x-auto px-4 pb-2 pt-1 [scrollbar-width:none]">

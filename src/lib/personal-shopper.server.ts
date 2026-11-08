@@ -99,7 +99,7 @@ async function fetchSeed(brand: "uniqlo" | "gu", query: string): Promise<unknown
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 let refreshing: Promise<unknown> | null = null;
 
-async function upsertRows(rows: CatalogRow[]) {
+async function upsertRows(rows: CatalogRow[], discovery = false) {
   for (const r of rows) {
     await pool.query(
       `insert into shopping_catalog_items
@@ -109,10 +109,10 @@ async function upsertRows(rows: CatalogRow[]) {
        on conflict (brand, product_code) do update set
          name = excluded.name,
          name_id = case when shopping_catalog_items.name = excluded.name then shopping_catalog_items.name_id else null end,
-         category = excluded.category, price_minor = excluded.price_minor,
+         category = case when $15::boolean then shopping_catalog_items.category else excluded.category end, price_minor = excluded.price_minor,
          original_minor = excluded.original_minor, image_url = excluded.image_url,
          product_url = excluded.product_url, rating = excluded.rating,
-         rating_count = excluded.rating_count, trend_score = excluded.trend_score,
+         rating_count = excluded.rating_count, trend_score = case when $15::boolean then shopping_catalog_items.trend_score else excluded.trend_score end,
          is_new = excluded.is_new, sizes = excluded.sizes, colors = excluded.colors, fetched_at = now()`,
       [
         r.brand,
@@ -129,6 +129,7 @@ async function upsertRows(rows: CatalogRow[]) {
         r.isNew,
         JSON.stringify(r.sizes),
         JSON.stringify(r.colors),
+        discovery,
       ],
     );
   }
@@ -444,6 +445,7 @@ type OrderRow = {
   subtotal_idr: number;
   fee_idr: number;
   shipping_idr: number;
+  domestic_shipping_idr?: number;
   total_idr: number;
   status: ShopperOrderStatus;
   payment_state: string;
@@ -932,6 +934,7 @@ const view = (o: OrderRow, items: OrderItemView[], events: OrderEventView[] = []
   currency: o.currency,
   rate: Number(o.rate_idr),
   subtotalIdr: o.subtotal_idr,
+  domesticIdr: o.domestic_shipping_idr ?? 0,
   feeIdr: o.fee_idr,
   shippingIdr: o.shipping_idr,
   totalIdr: o.total_idr,
@@ -1293,4 +1296,63 @@ export async function adminShopperCatalogHandler({
     price: r.price_minor,
     hidden: r.hidden,
   }));
+}
+
+/** Discovery only queries fixed official adapter hosts; arbitrary user URLs are never fetched. */
+export async function discoverCatalogProducts(
+  query: string,
+  brand?: "uniqlo" | "gu",
+  code?: string,
+) {
+  const config = await getShopperConfig();
+  const targets = (["uniqlo", "gu"] as const).filter(
+    (b) => (!brand || b === brand) && brandEnabled(config, b),
+  );
+  if (code) {
+    const cached = await getShopperCatalogHandler({ data: { country: "JP" } });
+    const exact = cached.products.filter(
+      (p) => (!brand || p.brand === brand) && p.code.replace(/^E/, "").startsWith(code),
+    );
+    if (exact.length) return exact.slice(0, 8);
+  }
+  const ids = new Set<string>();
+  await Promise.all(
+    targets.map(async (b) => {
+      const raws = await fetchSeed(b, query).catch(() => []);
+      const rows = raws
+        .map((raw, i) => mapStoreItem(raw, b, "Lainnya", i, raws.length))
+        .filter((r): r is CatalogRow => Boolean(r));
+      const filtered = code
+        ? rows.filter((r) => r.productCode.replace(/^E/, "").startsWith(code))
+        : rows;
+      await upsertRows(
+        filtered.map((r) => ({ ...r, trendScore: 0 })),
+        true,
+      );
+      filtered.forEach((r) => ids.add(`${r.brand}:${r.productCode}`));
+    }),
+  );
+  catalogCache.clear();
+  const catalog = await getShopperCatalogHandler({ data: { country: "JP" } });
+  if (code)
+    return catalog.products
+      .filter((p) => (!brand || p.brand === brand) && p.code.replace(/^E/, "").startsWith(code))
+      .slice(0, 8);
+  const words = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 1)
+    .slice(0, 8);
+  return catalog.products
+    .map((p) => ({
+      p,
+      score:
+        (ids.has(`${p.brand}:${p.code}`) ? 2 : 0) +
+        words.filter((w) => `${p.name} ${p.nameId || ""} ${p.code}`.toLowerCase().includes(w))
+          .length,
+    }))
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map((r) => r.p);
 }

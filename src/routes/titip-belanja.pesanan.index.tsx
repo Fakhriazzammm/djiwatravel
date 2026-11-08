@@ -1,3 +1,4 @@
+import { ShopperRequests } from "@/components/shopper/shopper-requests";
 import { ShopperNav } from "@/components/shopper/shopper-nav";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, ShoppingBag } from "lucide-react";
@@ -36,6 +37,7 @@ function ShopperOrders() {
     <Page tabs={false}>
       <ShopperNav active="orders" />
       <BackBar title="Pesanan Titip Belanja" fallbackTo="/titip-belanja" />
+      {orders !== null && <ShopperRequests />}
       {orders === null ? (
         <div className="mt-4">
           <p className="mb-2 text-[13px] text-muted-foreground">Masuk untuk melihat pesananmu.</p>

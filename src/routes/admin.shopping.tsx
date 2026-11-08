@@ -1,3 +1,4 @@
+import { AdminShopperDiscovery } from "@/components/shopper/admin-shopper-discovery";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, createFileRoute, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, ExternalLink, LoaderCircle, RefreshCw } from "lucide-react";
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/admin/shopping")({
   component: AdminShopping,
 });
 
-type Tab = "orders" | "catalog" | "settings";
+type Tab = "orders" | "catalog" | "settings" | "requests";
 type Data = Awaited<ReturnType<typeof getAdminShopping>>;
 type Order = Data["orders"][number];
 
@@ -57,11 +58,13 @@ function AdminShopping() {
   const [tab, setTab] = useState<Tab>("orders");
   useEffect(() => {
     setTab(
-      location.hash === "catalog"
-        ? "catalog"
-        : location.hash === "settings"
-          ? "settings"
-          : "orders",
+      location.hash === "requests"
+        ? "requests"
+        : location.hash === "catalog"
+          ? "catalog"
+          : location.hash === "settings"
+            ? "settings"
+            : "orders",
     );
   }, [location.hash]);
   const [notice, setNotice] = useState<{ error: boolean; text: string } | null>(null);
@@ -91,6 +94,7 @@ function AdminShopping() {
             [
               ["orders", `Pesanan${toPay ? ` (${toPay} perlu dibeli)` : ""}`],
               ["catalog", "Katalog"],
+              ["requests", "Permintaan"],
               ["settings", "Pengaturan"],
             ] as const
           ).map(([id, label]) => (
@@ -114,6 +118,7 @@ function AdminShopping() {
             {notice.text}
           </p>
         )}
+        {tab === "requests" && <AdminShopperDiscovery />}
         {tab === "orders" && <Orders data={data} setNotice={setNotice} refresh={refresh} />}
         {tab === "catalog" && <Catalog data={data} setNotice={setNotice} refresh={refresh} />}
         {tab === "settings" && <Settings data={data} setNotice={setNotice} refresh={refresh} />}
@@ -271,12 +276,12 @@ function OrderCard({
 
       <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
         <div>
-          <p className="text-muted-foreground">Total / barang / jasa / ongkir</p>
+          <p className="text-muted-foreground">Total / barang / domestik Jepang / jasa / ongkir</p>
           <p className="font-semibold">
             {formatIdr(order.totalIdr)}{" "}
             <span className="font-normal text-muted-foreground">
-              ({formatIdr(order.subtotalIdr)} / {formatIdr(order.feeIdr)} /{" "}
-              {formatIdr(order.shippingIdr)})
+              ({formatIdr(order.subtotalIdr)} / {formatIdr(order.domesticIdr)} /{" "}
+              {formatIdr(order.feeIdr)} / {formatIdr(order.shippingIdr)})
             </span>
           </p>
         </div>

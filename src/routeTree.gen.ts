@@ -57,6 +57,7 @@ import { Route as ApiHomeEsimEventsRouteImport } from './routes/api.home-esim-ev
 import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recovery'
 import { Route as ApiPwaEventsRouteImport } from './routes/api.pwa-events'
 import { Route as ApiReceiptScanRouteImport } from './routes/api.receipt-scan'
+import { Route as ApiShopperSearchRouteImport } from './routes/api.shopper-search'
 import { Route as ApiSiteEventsRouteImport } from './routes/api.site-events'
 import { Route as ApiTravelWaitlistRouteImport } from './routes/api.travel-waitlist'
 import { Route as BagikanTiketTokenRouteImport } from './routes/bagikan-tiket.$token'
@@ -89,6 +90,7 @@ import { Route as ApiGoogleCalendarStatusRouteImport } from './routes/api.google
 import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api.google-calendar.sync'
 import { Route as ApiInternalMemberPurchasesRouteImport } from './routes/api.internal.member-purchases'
 import { Route as ApiReceiptPhotoIdRouteImport } from './routes/api.receipt-photo.$id'
+import { Route as ApiShopperPhotoIdRouteImport } from './routes/api.shopper-photo.$id'
 import { Route as ApiTasksAffiliateSweepRouteImport } from './routes/api.tasks.affiliate-sweep'
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
@@ -341,6 +343,11 @@ const ApiReceiptScanRoute = ApiReceiptScanRouteImport.update({
   path: '/api/receipt-scan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiShopperSearchRoute = ApiShopperSearchRouteImport.update({
+  id: '/api/shopper-search',
+  path: '/api/shopper-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSiteEventsRoute = ApiSiteEventsRouteImport.update({
   id: '/api/site-events',
   path: '/api/site-events',
@@ -505,6 +512,11 @@ const ApiReceiptPhotoIdRoute = ApiReceiptPhotoIdRouteImport.update({
   path: '/api/receipt-photo/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiShopperPhotoIdRoute = ApiShopperPhotoIdRouteImport.update({
+  id: '/api/shopper-photo/$id',
+  path: '/api/shopper-photo/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTasksAffiliateSweepRoute = ApiTasksAffiliateSweepRouteImport.update({
   id: '/api/tasks/affiliate-sweep',
   path: '/api/tasks/affiliate-sweep',
@@ -607,6 +619,7 @@ export interface FileRoutesByFullPath {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shopper-search': typeof ApiShopperSearchRoute
   '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/bagikan-tiket/$token': typeof BagikanTiketTokenRoute
@@ -640,6 +653,7 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/receipt-photo/$id': typeof ApiReceiptPhotoIdRoute
+  '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
@@ -699,6 +713,7 @@ export interface FileRoutesByTo {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shopper-search': typeof ApiShopperSearchRoute
   '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/bagikan-tiket/$token': typeof BagikanTiketTokenRoute
@@ -732,6 +747,7 @@ export interface FileRoutesByTo {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/receipt-photo/$id': typeof ApiReceiptPhotoIdRoute
+  '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
@@ -792,6 +808,7 @@ export interface FileRoutesById {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shopper-search': typeof ApiShopperSearchRoute
   '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
   '/bagikan-tiket/$token': typeof BagikanTiketTokenRoute
@@ -825,6 +842,7 @@ export interface FileRoutesById {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/receipt-photo/$id': typeof ApiReceiptPhotoIdRoute
+  '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
@@ -886,6 +904,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shopper-search'
     | '/api/site-events'
     | '/api/travel-waitlist'
     | '/bagikan-tiket/$token'
@@ -919,6 +938,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/internal/member-purchases'
     | '/api/receipt-photo/$id'
+    | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
@@ -978,6 +998,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shopper-search'
     | '/api/site-events'
     | '/api/travel-waitlist'
     | '/bagikan-tiket/$token'
@@ -1011,6 +1032,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/internal/member-purchases'
     | '/api/receipt-photo/$id'
+    | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
@@ -1070,6 +1092,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shopper-search'
     | '/api/site-events'
     | '/api/travel-waitlist'
     | '/bagikan-tiket/$token'
@@ -1103,6 +1126,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/internal/member-purchases'
     | '/api/receipt-photo/$id'
+    | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
@@ -1163,6 +1187,7 @@ export interface RootRouteChildren {
   ApiOrderRecoveryRoute: typeof ApiOrderRecoveryRoute
   ApiPwaEventsRoute: typeof ApiPwaEventsRoute
   ApiReceiptScanRoute: typeof ApiReceiptScanRoute
+  ApiShopperSearchRoute: typeof ApiShopperSearchRoute
   ApiSiteEventsRoute: typeof ApiSiteEventsRoute
   ApiTravelWaitlistRoute: typeof ApiTravelWaitlistRoute
   BagikanTiketTokenRoute: typeof BagikanTiketTokenRoute
@@ -1194,6 +1219,7 @@ export interface RootRouteChildren {
   ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
   ApiInternalMemberPurchasesRoute: typeof ApiInternalMemberPurchasesRoute
   ApiReceiptPhotoIdRoute: typeof ApiReceiptPhotoIdRoute
+  ApiShopperPhotoIdRoute: typeof ApiShopperPhotoIdRoute
   ApiTasksAffiliateSweepRoute: typeof ApiTasksAffiliateSweepRoute
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
@@ -1542,6 +1568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReceiptScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/shopper-search': {
+      id: '/api/shopper-search'
+      path: '/api/shopper-search'
+      fullPath: '/api/shopper-search'
+      preLoaderRoute: typeof ApiShopperSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/site-events': {
       id: '/api/site-events'
       path: '/api/site-events'
@@ -1766,6 +1799,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReceiptPhotoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/shopper-photo/$id': {
+      id: '/api/shopper-photo/$id'
+      path: '/api/shopper-photo/$id'
+      fullPath: '/api/shopper-photo/$id'
+      preLoaderRoute: typeof ApiShopperPhotoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tasks/affiliate-sweep': {
       id: '/api/tasks/affiliate-sweep'
       path: '/api/tasks/affiliate-sweep'
@@ -1924,6 +1964,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOrderRecoveryRoute: ApiOrderRecoveryRoute,
   ApiPwaEventsRoute: ApiPwaEventsRoute,
   ApiReceiptScanRoute: ApiReceiptScanRoute,
+  ApiShopperSearchRoute: ApiShopperSearchRoute,
   ApiSiteEventsRoute: ApiSiteEventsRoute,
   ApiTravelWaitlistRoute: ApiTravelWaitlistRoute,
   BagikanTiketTokenRoute: BagikanTiketTokenRoute,
@@ -1955,6 +1996,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
   ApiInternalMemberPurchasesRoute: ApiInternalMemberPurchasesRoute,
   ApiReceiptPhotoIdRoute: ApiReceiptPhotoIdRoute,
+  ApiShopperPhotoIdRoute: ApiShopperPhotoIdRoute,
   ApiTasksAffiliateSweepRoute: ApiTasksAffiliateSweepRoute,
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,

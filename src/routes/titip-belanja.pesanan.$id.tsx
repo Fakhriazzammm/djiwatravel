@@ -182,6 +182,9 @@ function ShopperOrder() {
 
       <dl className="ios-group mt-3 space-y-1 p-3 text-[12px]">
         <Money label="Barang" value={order.subtotalIdr} />
+        {order.domesticIdr > 0 && (
+          <Money label="Ongkir domestik Jepang" value={order.domesticIdr} />
+        )}
         <Money label="Jasa titip" value={order.feeIdr} />
         <Money label="Ongkir" value={order.shippingIdr} />
         <div className="flex justify-between pt-1 text-[14px] font-bold">
