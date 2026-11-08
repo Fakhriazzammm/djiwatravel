@@ -43,6 +43,46 @@
           -apple-system, "SF Pro Text", Inter, system-ui, "Segoe UI", Roboto, sans-serif !important;
         --border-radius: 14px !important;
       }
+
+      /*
+        Compact iOS density. The widget sizes everything in rem, so a smaller root size shrinks the
+        cards in one move (prices 23px -> 18px, buttons 36px -> 30px). The rules below then tighten
+        the spacing the widget hard-codes. Class names are CSS-module names with a build hash, so
+        match on the stable part.
+      */
+      html {
+        font-size: 12.5px;
+      }
+      [class*="TicketsWidget-module__wrapper"] {
+        gap: 0.6rem !important;
+      }
+      [class*="TicketsWidget-module__root"] {
+        margin-top: 0.25rem !important;
+        grid-row-gap: 0.6rem !important;
+      }
+      [class*="FlightCard-module__card___"] {
+        margin-bottom: 0 !important;
+        border: 0 !important;
+        border-radius: 16px !important;
+        box-shadow: 0 0 0 1px rgba(17, 33, 56, 0.06) !important;
+      }
+      [class*="FlightCard-module__cardLeft___"] {
+        margin-bottom: 0.75rem !important;
+      }
+      [class*="FlightCard-module__cardBlockFlight___"] {
+        margin-top: 0.6rem !important;
+      }
+      [class*="FlightCard-module__cardLeftButton"] {
+        min-height: 2.1rem !important;
+        padding: 0.4rem 1.1rem !important;
+        border-radius: 999px !important;
+      }
+      [class*="TicketsWidget-module__moreTickets"] {
+        margin: 0.25rem 0 1rem !important;
+        padding: 0.7rem 0 !important;
+        border-radius: 14px !important;
+        font-size: 1rem !important;
+      }
     </style>
   </head>
   <body>
