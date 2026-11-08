@@ -46,3 +46,13 @@ export const clearAdminPlaceIdeasCache = createServerFn({ method: "POST" }).hand
   const { clearPlaceIdeasCacheHandler } = await import("./place-ideas.server");
   return clearPlaceIdeasCacheHandler();
 });
+
+export const pinItemOnMap = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { pinItemInput } = await import("./place-ideas.server");
+    return pinItemInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { pinItemOnMapHandler } = await import("./place-ideas.server");
+    return pinItemOnMapHandler({ data });
+  });

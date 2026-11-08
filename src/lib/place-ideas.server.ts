@@ -913,3 +913,62 @@ export async function clearPlaceIdeasCacheHandler() {
   );
   return { ok: true as const, deleted: result.rowCount ?? 0 };
 }
+
+/* ------------------------------------------------------------ pin an existing activity on the map */
+
+const pinSchema = z.object({ itemId: z.string().uuid() });
+export const pinItemInput = (data: unknown) => pinSchema.parse(data);
+
+/**
+ * The traveler taps "Pasang di peta" on an activity that has no point: find the place by name near
+ * the trip's city and save the point. Only on request, so typed locations never move on their own.
+ */
+export async function pinItemOnMapHandler({ data }: { data: ReturnType<typeof pinItemInput> }) {
+  const user = await getAuthenticatedUser();
+  const row = (
+    await pool.query(
+      `select i.id, i.title, i.location, i.latitude, t.id as trip_id, t.destination_name
+       from public.travel_itinerary_items i join public.travel_trips t on t.id = i.trip_id
+       where i.id = $1 and t.customer_auth_subject = $2`,
+      [data.itemId, user.id],
+    )
+  ).rows[0] as
+    | {
+        title: string;
+        location: string | null;
+        latitude: number | null;
+        trip_id: string;
+        destination_name: string | null;
+      }
+    | undefined;
+  if (!row) throw new Error("Aktivitas tidak ditemukan");
+  if (row.latitude !== null) return { found: true };
+  const cities = (
+    await pool
+      .query(
+        "select name, latitude, longitude from public.travel_trip_cities where trip_id=$1 order by sort_order, created_at",
+        [row.trip_id],
+      )
+      .catch(() => null)
+  )?.rows as { name: string; latitude: number | null; longitude: number | null }[] | undefined;
+  const stored = cities?.find((c) => c.latitude !== null && c.longitude !== null);
+  const anchor = stored
+    ? { lat: Number(stored.latitude), lng: Number(stored.longitude) }
+    : await tripAnchor(
+        (cities ?? []).map((c) => c.name),
+        String(row.destination_name ?? ""),
+      );
+  if (!anchor) return { found: false };
+  const names = [row.location, row.title].filter((n): n is string => Boolean(n?.trim()));
+  for (const name of names) {
+    const venue = await lookupVenuePoint(name, anchor).catch(() => null);
+    if (venue && distanceKm(anchor, venue) <= MAX_DISTANCE_KM) {
+      await pool.query(
+        "update public.travel_itinerary_items set latitude=$2, longitude=$3, place_label=$4 where id=$1",
+        [data.itemId, venue.lat, venue.lng, venue.label.slice(0, 200)],
+      );
+      return { found: true };
+    }
+  }
+  return { found: false };
+}

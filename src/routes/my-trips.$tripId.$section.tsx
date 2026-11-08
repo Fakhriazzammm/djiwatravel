@@ -39,7 +39,7 @@ import ItineraryMap, { type PickedPoi } from "@/components/itinerary-map";
 import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import { getReceiptScanStatus } from "@/lib/receipt-scan.fn";
-import { getPlaceIdeasStatus } from "@/lib/place-ideas.fn";
+import { getPlaceIdeasStatus, pinItemOnMap } from "@/lib/place-ideas.fn";
 import { UNAVAILABLE_PLACE_IDEAS, type PlaceIdeasStatus } from "@/lib/place-ideas";
 import { PlaceIdeasFeature, type IdeaDay } from "@/components/place-ideas";
 import { UNAVAILABLE_RECEIPT_SCAN } from "@/lib/receipt-scan";
@@ -1225,6 +1225,11 @@ export function ItineraryEditor({
               onEdit={openEdit}
               onAdd={() => openNew(day.date)}
               form={showForm && form.date === day.date ? formNode : null}
+              onPin={async (id) => {
+                const result = await pinItemOnMap({ data: { itemId: id } });
+                if (result.found) await onSaved();
+                return result.found;
+              }}
               onDelete={async (id) => {
                 await runTripMutation({
                   action: () => deleteItinerary({ data: { id } }),
@@ -1454,6 +1459,7 @@ function ItineraryDay({
   onAdd,
   form,
   onDelete,
+  onPin,
 }: {
   date: string;
   items: Item[];
@@ -1465,6 +1471,7 @@ function ItineraryDay({
   onAdd: () => void;
   form: React.ReactNode;
   onDelete: (id: string) => Promise<void>;
+  onPin: (id: string) => Promise<boolean>;
 }) {
   const dateLabel = formatItineraryDate(date);
   const points = items.map((item) => itemPoint(item));
@@ -1510,6 +1517,7 @@ function ItineraryDay({
               onSelect={onSelect}
               onEdit={onEdit}
               onDelete={onDelete}
+              onPin={onPin}
             />
           </motion.div>
         ))}
@@ -1536,6 +1544,7 @@ function ItineraryItem({
   onSelect,
   onEdit,
   onDelete,
+  onPin,
 }: {
   item: Item;
   pin?: AgendaPin | undefined;
@@ -1544,7 +1553,9 @@ function ItineraryItem({
   onSelect: (id: string) => void;
   onEdit: (item: Item) => void;
   onDelete: (id: string) => Promise<void>;
+  onPin: (id: string) => Promise<boolean>;
 }) {
+  const [pinState, setPinState] = useState<"idle" | "busy" | "missed">("idle");
   const point = itemPoint(item);
   const imageUrl = isAllowedImageUrl(item.place_image_url) ? item.place_image_url : null;
   const [deleting, setDeleting] = useState(false);
@@ -1615,6 +1626,27 @@ function ItineraryItem({
             <span>Lokasi belum diatur</span>
           )}
         </div>
+        {!point && (
+          <button
+            type="button"
+            disabled={pinState === "busy"}
+            onClick={(event) => {
+              event.stopPropagation();
+              setPinState("busy");
+              void onPin(item.id)
+                .then((found) => setPinState(found ? "idle" : "missed"))
+                .catch(() => setPinState("missed"));
+            }}
+            className="tap mr-1.5 mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand-red/10 px-2 py-0.5 text-[10.5px] font-semibold text-brand-red disabled:opacity-60"
+          >
+            <MapPin className="size-3" />
+            {pinState === "busy"
+              ? "Mencari di peta…"
+              : pinState === "missed"
+                ? "Tidak ketemu, ubah lokasi"
+                : "Pasang di peta"}
+          </button>
+        )}
         {overlaps && (
           <span className="mr-1.5 mt-1.5 inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[10.5px] font-semibold text-orange-700">
             <TriangleAlert className="size-3" /> Jadwal bentrok
