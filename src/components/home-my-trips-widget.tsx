@@ -265,7 +265,11 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
     },
   ];
   return (
-    <div className={`${CARD} overflow-hidden`} data-testid="home-trips-widget" data-state="trip">
+    <div
+      className="ios-card mt-2 overflow-hidden"
+      data-testid="home-trips-widget"
+      data-state="trip"
+    >
       {showRoute && view.route && (
         <div className="relative h-[118px]">
           {mapBroken ? (
@@ -333,13 +337,13 @@ function TripCard({ view }: { view: Extract<HomeTripWidget, { kind: "trip" }> })
         {view.timeline.length > 0 && (
           <ol className="relative mt-3 flex" aria-label="Agenda berikutnya">
             <span className="absolute inset-x-0 top-[5px] h-0.5 bg-white/25" aria-hidden="true" />
-            {view.timeline.map((item, index) => (
+            {view.timeline.map((item) => (
               <li
                 key={item.id}
-                className={`relative min-w-0 flex-1 pr-1 pt-3.5 text-[10px] ${index === 0 ? "font-semibold text-white" : "text-white/70"}`}
+                className={`relative min-w-0 flex-1 pr-1 pt-3.5 text-[10px] ${item.isFocus ? "font-semibold text-white" : "text-white/70"}`}
               >
                 <span
-                  className={`absolute left-0 top-px size-2.5 rounded-full ${index === 0 ? "bg-white ring-[3px] ring-white/30" : "bg-white/40"}`}
+                  className={`absolute left-0 top-px size-2.5 rounded-full ${item.isFocus ? "bg-white ring-[3px] ring-white/30" : "bg-white/40"}`}
                   aria-hidden="true"
                 />
                 <span className="block text-[11px] font-semibold tabular-nums">

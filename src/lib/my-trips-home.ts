@@ -139,7 +139,7 @@ export type HomeTripWidget =
       /** What is on now or comes next, for the card's agenda row. */
       agenda: HomeAgendaNow | null;
       /** Up to 3 activities of the focus day, starting at what is on now or next. */
-      timeline: { id: string; title: string; time: string | null }[];
+      timeline: { id: string; title: string; time: string | null; isFocus: boolean }[];
       todayAgendaCount: number;
       agendaCount: number;
       bookingCount: number;
@@ -261,10 +261,13 @@ export function buildHomeTripWidget(
         })
         .map((pin, index) => ({ ...pin, n: index + 1 }))
     : [];
-  const dayItems = routeDate
+  // With nothing on or ahead today (all done), the strip still shows today's activities.
+  const timelineDate =
+    routeDate || (dayAgenda.some((item) => item.activity_date === todayKey) ? todayKey : "");
+  const dayItems = timelineDate
     ? dayAgenda
         .map((item, index) => ({ ...item, id: item.id ?? `a${index}` }))
-        .filter((item) => item.activity_date === routeDate)
+        .filter((item) => item.activity_date === timelineDate)
     : [];
   const timeline = dayItems
     .slice(
@@ -279,6 +282,7 @@ export function buildHomeTripWidget(
       id: item.id,
       title: item.title,
       time: item.start_time ? String(item.start_time).slice(0, 5) : null,
+      isFocus: item.id === focus?.id,
     }));
   const totalDays = (() => {
     const a = parseDay(trip.departure_date);
