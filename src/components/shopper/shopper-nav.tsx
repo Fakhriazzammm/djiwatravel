@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ReceiptText, ShoppingBag, ShoppingCart } from "lucide-react";
+import { Home, ReceiptText, ShoppingBag, ShoppingCart } from "lucide-react";
 import { FixedLayer } from "@/components/motion-primitives";
 import { cartCount, useShopperCart } from "./shopper-cart";
 
@@ -13,6 +13,7 @@ export function ShopperNav({
 }) {
   const count = cartCount(useShopperCart());
   const tabs = [
+    { id: "home", label: "Beranda", icon: Home },
     { id: "shop", label: "Belanja", icon: ShoppingBag },
     { id: "cart", label: "Keranjang", icon: ShoppingCart },
     { id: "orders", label: "Pesanan", icon: ReceiptText },
@@ -23,7 +24,7 @@ export function ShopperNav({
         aria-label="Menu Titip Belanja"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"
       >
-        <div className="mx-auto grid max-w-md grid-cols-3 px-1 pt-1.5 pb-1">
+        <div className="mx-auto grid max-w-md grid-cols-4 px-1 pt-1.5 pb-1">
           {tabs.map(({ id, label, icon: Icon }) => {
             const on = active === id;
             const className = `tap flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium ${
@@ -42,6 +43,12 @@ export function ShopperNav({
                 {label}
               </>
             );
+            if (id === "home")
+              return (
+                <Link key={id} to="/" activeOptions={{ exact: true }} className={className}>
+                  {body}
+                </Link>
+              );
             if (id === "cart" && onCart)
               return (
                 <button

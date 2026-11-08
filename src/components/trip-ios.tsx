@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   Home,
+  LayoutDashboard,
   Ticket,
   WalletCards,
   type LucideIcon,
@@ -24,8 +25,9 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 
 export type TripTabId = "summary" | "itinerary" | "bookings" | "checklist" | "budget";
 
-const tripTabs: Array<{ id: TripTabId; label: string; icon: LucideIcon }> = [
-  { id: "summary", label: "Ringkas", icon: Home },
+const tripTabs: Array<{ id: TripTabId | "home"; label: string; icon: LucideIcon }> = [
+  { id: "home", label: "Beranda", icon: Home },
+  { id: "summary", label: "Ringkas", icon: LayoutDashboard },
   { id: "itinerary", label: "Agenda", icon: CalendarDays },
   { id: "budget", label: "Biaya", icon: WalletCards },
   { id: "checklist", label: "Checklist", icon: CheckCircle2 },
@@ -40,7 +42,7 @@ export function TripTabBar({ tripId, active }: { tripId: string; active: TripTab
         aria-label="Bagian perjalanan"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl"
       >
-        <div className="mx-auto grid max-w-md grid-cols-5 px-1 pt-1.5 pb-1">
+        <div className="mx-auto grid max-w-md grid-cols-6 px-1 pt-1.5 pb-1">
           {tripTabs.map(({ id, label, icon: Icon }) => {
             const on = id === active;
             const className = `tap flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium ${
@@ -52,6 +54,12 @@ export function TripTabBar({ tripId, active }: { tripId: string; active: TripTab
                 {label}
               </>
             );
+            if (id === "home")
+              return (
+                <Link key={id} to="/" activeOptions={{ exact: true }} className={className}>
+                  {body}
+                </Link>
+              );
             return id === "summary" ? (
               <Link
                 key={id}
