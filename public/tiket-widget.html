@@ -83,6 +83,22 @@
         border-radius: 14px !important;
         font-size: 1rem !important;
       }
+
+      /* Airport names under the codes and the airline line, added by the script below. */
+      [class*="FlightCard-module__card___"] [data-djiwa-airport] {
+        display: block;
+        max-width: 8.5rem;
+        font-size: 0.8rem !important;
+        line-height: 1.2 !important;
+        white-space: normal;
+      }
+      .djiwa-airline {
+        margin: 0.6rem 0 0 !important;
+        font-size: 0.85rem;
+        font-weight: 600;
+        line-height: 1.2;
+        color: #1f1f26;
+      }
     </style>
   </head>
   <body>
@@ -104,6 +120,84 @@
           } catch (e) {
             /* No parent (opened on its own): nothing to tell. */
           }
+        }
+
+        /*
+          The widget shows bare IATA codes and airline logos. Spell them out: the airport name next
+          to each code and the airline name above each leg. Names come from the Travelpayouts public
+          data (CORS open); on any failure the widget stays as it was.
+        */
+        var airports = {};
+        var airlines = null;
+        function airportName(code) {
+          if (!airports[code]) {
+            airports[code] = fetch(
+              "https://autocomplete.travelpayouts.com/places2?locale=id&types[]=airport&types[]=city&term=" + code
+            )
+              .then(function (r) { return r.json(); })
+              .then(function (rows) {
+                var hit = rows.filter(function (x) { return x.code === code; })[0] || rows[0];
+                if (!hit) return "";
+                return String(hit.name || hit.city_name || "").replace(/\s+(International\s+)?Airport$/i, "");
+              })
+              .catch(function () { return ""; });
+          }
+          return airports[code];
+        }
+        function loadAirlines() {
+          if (!airlines) {
+            airlines = fetch("https://api.travelpayouts.com/data/id/airlines.json")
+              .then(function (r) { return r.json(); })
+              .then(function (rows) {
+                var map = {};
+                rows.forEach(function (a) {
+                  map[a.code] = a.name || (a.name_translations && a.name_translations.en) || "";
+                });
+                return map;
+              })
+              .catch(function () { return {}; });
+          }
+          return airlines;
+        }
+        function enhance() {
+          var cards = document.querySelectorAll('[class*="FlightCard-module__card___"]');
+          cards.forEach(function (card) {
+            card.querySelectorAll("*").forEach(function (el) {
+              if (el.children.length || el.dataset.djiwaAirport) return;
+              var code = (el.textContent || "").trim();
+              if (!/^[A-Z]{3}$/.test(code)) return;
+              el.dataset.djiwaAirport = code;
+              airportName(code).then(function (name) {
+                if (name) el.textContent = name + " (" + code + ")";
+              });
+            });
+            card.querySelectorAll('[class*="cardBlockFlight___"]').forEach(function (block) {
+              if (block.dataset.djiwaAirline) return;
+              var tokens = [];
+              block.querySelectorAll("img").forEach(function (img) {
+                (img.getAttribute("src") || "").split(/[\/?&=._@-]/).forEach(function (t) {
+                  if (/^[A-Z0-9]{2}$/.test(t) && tokens.indexOf(t) < 0) tokens.push(t);
+                });
+              });
+              if (!tokens.length) return;
+              block.dataset.djiwaAirline = "1";
+              loadAirlines().then(function (map) {
+                var names = tokens.map(function (c) { return map[c]; }).filter(Boolean);
+                if (!names.length || !block.parentNode) return;
+                var line = document.createElement("div");
+                line.className = "djiwa-airline";
+                line.textContent = names.join(" + ");
+                block.parentNode.insertBefore(line, block);
+              });
+            });
+          });
+        }
+        if ("MutationObserver" in window) {
+          var pending = 0;
+          new MutationObserver(function () {
+            clearTimeout(pending);
+            pending = setTimeout(enhance, 150);
+          }).observe(document.body, { childList: true, subtree: true });
         }
         if ("ResizeObserver" in window) new ResizeObserver(report).observe(document.body);
         window.addEventListener("load", report);
