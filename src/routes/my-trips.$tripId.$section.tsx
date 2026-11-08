@@ -378,6 +378,7 @@ export function ItineraryEditor({
   const [extrasOpen, setExtrasOpen] = useState(false);
   const [ideasOpen, setIdeasOpen] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  const [quickQuery, setQuickQuery] = useState("");
 
   // The inline form opens inside its day; bring it into view.
   useEffect(() => {
@@ -1201,6 +1202,34 @@ export function ItineraryEditor({
               <MapPin className="size-4 shrink-0 text-brand-red" />
               Cari tempat saat menambah aktivitas agar muncul di peta.
             </p>
+          )}
+          {searchEnabled && !showForm && (
+            <div className="rounded-2xl border border-border/70 bg-surface p-2 shadow-sm">
+              <label htmlFor="agenda-quick-search" className="sr-only">
+                Tambah cepat dari tempat
+              </label>
+              <PlaceSearchField
+                id="agenda-quick-search"
+                value={quickQuery}
+                picked={null}
+                searchEnabled={searchEnabled}
+                cities={tripCities}
+                onChange={(value) => setQuickQuery(value)}
+                onPick={(place) => {
+                  const category = guessActivityCategory(place.subtitle);
+                  openNew(ideasDate);
+                  titleTouched.current = false;
+                  setForm((current) => ({
+                    ...current,
+                    location: place.label,
+                    title: titleForPlace(place.label, category || current.category),
+                    category,
+                  }));
+                  setPoint({ lat: place.lat, lng: place.lng });
+                  setQuickQuery("");
+                }}
+              />
+            </div>
           )}
           <PlaceIdeasFeature
             tripId={tripId}
