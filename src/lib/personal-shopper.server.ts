@@ -186,31 +186,23 @@ const NAME_SCHEMA = {
   },
 };
 
-/** Store names are Japanese. Short Indonesian-friendly names make the catalog readable; optional. */
-async function translateMissingNames(limit = 60) {
-  const key = process.env["HELIPOD_AI_KEY"];
-  if (!key) return 0;
-  const missing = await pool.query(
-    "select id, name from shopping_catalog_items where name_id is null and hidden = false order by trend_score desc limit $1",
-    [limit],
-  );
-  if (missing.rows.length === 0) return 0;
+/** Store names are Japanese. Short English names make the catalog readable; optional. */
+async function translateBatch(key: string, rows: { id: string; name: string }[]): Promise<number> {
   const base = (process.env["HELIPOD_AI_BASE_URL"] || "https://ai.helipod.io/v1").replace(
     /\/$/,
     "",
   );
-  const list = (missing.rows as { id: string; name: string }[]).map((r) => ({
-    code: r.id,
-    name: r.name,
-  }));
-  const call = (withSchema: boolean) =>
+  const list = rows.map((r) => ({ code: r.id, name: r.name }));
+  const call = (withSchema: boolean, withEffort: boolean) =>
     fetch(`${base}/chat/completions`, {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
       body: JSON.stringify({
         model: "glm-5.3-flash",
         temperature: 0,
-        max_tokens: 4000,
+        max_tokens: 3000,
+        // The model "thinks" first; on a long list that used every token and cut the JSON off.
+        ...(withEffort ? { reasoning_effort: "low" } : {}),
         messages: [
           {
             role: "system",
@@ -230,8 +222,9 @@ async function translateMissingNames(limit = 60) {
       }),
       signal: AbortSignal.timeout(60_000),
     });
-  let response = await call(true);
-  if (response.status === 400) response = await call(false);
+  let response = await call(true, true);
+  if (response.status === 400) response = await call(true, false);
+  if (response.status === 400) response = await call(false, false);
   if (!response.ok) return 0;
   const json = (await response.json()) as { choices?: { message?: { content?: unknown } }[] };
   const content = String(json.choices?.[0]?.message?.content ?? "")
@@ -259,6 +252,30 @@ async function translateMissingNames(limit = 60) {
     saved += 1;
   }
   return saved;
+}
+
+let translating = false;
+
+/** Small batches, so a slow or cut-off answer loses a few names instead of the whole run. */
+async function translateMissingNames(limit = 90, batch = 15) {
+  const key = process.env["HELIPOD_AI_KEY"];
+  if (!key || translating) return 0;
+  translating = true;
+  try {
+    const missing = await pool.query(
+      "select id, name from shopping_catalog_items where name_id is null and hidden = false order by trend_score desc limit $1",
+      [limit],
+    );
+    const rows = missing.rows as { id: string; name: string }[];
+    let saved = 0;
+    for (let i = 0; i < rows.length; i += batch) {
+      saved += await translateBatch(key, rows.slice(i, i + batch)).catch(() => 0);
+    }
+    if (saved > 0) catalogCache.clear();
+    return saved;
+  } finally {
+    translating = false;
+  }
 }
 
 export async function refreshShopperCatalog(trigger: "schedule" | "admin" | "lazy") {
@@ -289,8 +306,11 @@ export async function sweepShopperCatalog() {
     "select max(started_at) as at from shopping_catalog_runs where error is null or items_saved > 0",
   );
   const at = (last.rows[0] as { at: Date | null } | undefined)?.at;
-  if (at && Date.now() - new Date(at).getTime() < config.catalogRefreshHours * 3_600_000)
+  if (at && Date.now() - new Date(at).getTime() < config.catalogRefreshHours * 3_600_000) {
+    // Fresh catalog: finish any names that are still untranslated, a few per minute.
+    await translateMissingNames(45).catch(() => 0);
     return { skipped: "fresh" as const };
+  }
   return refreshShopperCatalog("schedule");
 }
 
