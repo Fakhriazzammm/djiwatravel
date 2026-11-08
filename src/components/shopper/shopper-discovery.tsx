@@ -213,7 +213,7 @@ export function ShopperDiscovery({
                     {busy ? (
                       <>
                         <LoaderCircle className="mr-2 size-4 animate-spin" />
-                        Mencari barang…
+                        {open === "link" ? "Membaca halaman… (sampai 20 detik)" : "Mencari barang…"}
                       </>
                     ) : (
                       "Cari barang"

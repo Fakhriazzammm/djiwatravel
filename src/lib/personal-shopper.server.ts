@@ -649,6 +649,19 @@ export async function createShoppingOrderHandler({
     url: string;
   };
   const lines: Line[] = [];
+  // Marketplace pages are slow (Mercari takes 10-20 s): read every distinct item at the same time.
+  const marketIds = [
+    ...new Set(data.items.flatMap((i) => (i.marketItemId ? [i.marketItemId] : []))),
+  ];
+  const marketLive = new Map<string, Awaited<ReturnType<typeof refreshMarketItem>>>();
+  await Promise.all(
+    marketIds.map(async (id) => {
+      const stored = await marketItemRow(id);
+      if (!stored) throw new Error("Barang tidak ditemukan. Tempel linknya lagi.");
+      if (!marketEnabled(config, stored.site)) throw new Error("Marketplace ini belum tersedia");
+      marketLive.set(id, await refreshMarketItem(marketRefOf(stored)));
+    }),
+  );
   for (const item of data.items) {
     if (item.quantity > config.maxQtyPerItem)
       throw new Error(`Maksimal ${config.maxQtyPerItem} per barang`);
@@ -680,11 +693,8 @@ export async function createShoppingOrderHandler({
       continue;
     }
     // Marketplace item: read the page again now, so the price and stock are what we bill for.
-    const stored = await marketItemRow(item.marketItemId!);
-    if (!stored) throw new Error("Barang tidak ditemukan. Tempel linknya lagi.");
-    const site = stored.site;
-    if (!marketEnabled(config, site)) throw new Error("Marketplace ini belum tersedia");
-    const live = await refreshMarketItem(marketRefOf(stored));
+    const live = marketLive.get(item.marketItemId!)!;
+    const site = live.site;
     if (live.sold) throw new Error("Barang ini sudah terjual atau stoknya habis.");
     if (item.expectedUnitMinor !== undefined && item.expectedUnitMinor !== live.price_jpy)
       throw new Error(
