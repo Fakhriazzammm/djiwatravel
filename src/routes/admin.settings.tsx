@@ -67,41 +67,57 @@ function AdminSettings() {
   const counted = readiness.filter((x) => !x.external);
   const ready = counted.filter((x) => x.ready).length;
   return (
-    <AdminShell title="Settings" subtitle="Server readiness">
-      <AdminHomeEsimPanel initial={homeEsim.config} version={homeEsim.version} railPool={rail} />
-      <AdminGeoPanel initial={geo.config} version={geo.version} />
-      <AdminPwaPanel initial={pwa.config} version={pwa.version} stats={pwa.stats} />
+    <AdminShell title="Pengaturan" subtitle="Server readiness">
+      <section id="esim" className="scroll-mt-24">
+        <AdminHomeEsimPanel initial={homeEsim.config} version={homeEsim.version} railPool={rail} />
+      </section>
+      <section id="marketing" className="scroll-mt-24">
+        <AdminGeoPanel initial={geo.config} version={geo.version} />
+      </section>
+      <section id="pwa" className="scroll-mt-24">
+        <AdminPwaPanel initial={pwa.config} version={pwa.version} stats={pwa.stats} />
+      </section>
       <AdminEsimSharingPanel initial={esimSharing.config} version={esimSharing.version} />
-      <AdminItineraryMapPanel
-        initial={itineraryMap.config}
-        version={itineraryMap.version}
-        stats={itineraryMap.stats}
-        geocoder={itineraryMap.geocoder}
-      />
-      <AdminReceiptScanPanel
-        initial={receiptScan.config}
-        version={receiptScan.version}
-        stats={receiptScan.stats}
-        aiConfigured={receiptScan.aiConfigured}
-      />
-      <AdminPlaceIdeasPanel
-        initial={placeIdeas.config}
-        version={placeIdeas.version}
-        stats={placeIdeas.stats}
-        recent={placeIdeas.recent}
-        keys={placeIdeas.keys}
-      />
-      <AdminGuestTripsPanel
-        initial={guestTrips.config}
-        version={guestTrips.version}
-        stats={guestTrips.stats}
-      />
-      <AdminFlightsPanel
-        initial={flights.config}
-        version={flights.version}
-        tokenConfigured={flights.tokenConfigured}
-        stats={flights.stats}
-      />
+      <section id="itinerary" className="scroll-mt-24">
+        <AdminItineraryMapPanel
+          initial={itineraryMap.config}
+          version={itineraryMap.version}
+          stats={itineraryMap.stats}
+          geocoder={itineraryMap.geocoder}
+        />
+      </section>
+      <section id="receipt" className="scroll-mt-24">
+        <AdminReceiptScanPanel
+          initial={receiptScan.config}
+          version={receiptScan.version}
+          stats={receiptScan.stats}
+          aiConfigured={receiptScan.aiConfigured}
+        />
+      </section>
+      <section id="places" className="scroll-mt-24">
+        <AdminPlaceIdeasPanel
+          initial={placeIdeas.config}
+          version={placeIdeas.version}
+          stats={placeIdeas.stats}
+          recent={placeIdeas.recent}
+          keys={placeIdeas.keys}
+        />
+      </section>
+      <section id="guests" className="scroll-mt-24">
+        <AdminGuestTripsPanel
+          initial={guestTrips.config}
+          version={guestTrips.version}
+          stats={guestTrips.stats}
+        />
+      </section>
+      <section id="flights" className="scroll-mt-24">
+        <AdminFlightsPanel
+          initial={flights.config}
+          version={flights.version}
+          tokenConfigured={flights.tokenConfigured}
+          stats={flights.stats}
+        />
+      </section>
       <AdminGooglePanel overview={google} />
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">

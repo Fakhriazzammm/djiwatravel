@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, createFileRoute, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, ExternalLink, LoaderCircle, RefreshCw } from "lucide-react";
 import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
 import { requireAdmin } from "@/lib/admin-guard";
@@ -53,7 +53,17 @@ const tone = (s: ShopperOrderStatus) =>
 function AdminShopping() {
   const data = Route.useLoaderData();
   const router = useRouter();
+  const location = useLocation();
   const [tab, setTab] = useState<Tab>("orders");
+  useEffect(() => {
+    setTab(
+      location.hash === "catalog"
+        ? "catalog"
+        : location.hash === "settings"
+          ? "settings"
+          : "orders",
+    );
+  }, [location.hash]);
   const [notice, setNotice] = useState<{ error: boolean; text: string } | null>(null);
   const refresh = () => router.invalidate();
   const toPay = data.counts["PAID"] ?? 0;

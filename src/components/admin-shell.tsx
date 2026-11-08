@@ -1,7 +1,7 @@
 import { LogOut, Menu, X } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { adminNavigation, isAdminNavigationActive } from "@/components/admin-navigation";
+import { adminNavigationGroups, isAdminNavigationActive } from "@/components/admin-navigation";
 import { FixedLayer } from "@/components/motion-primitives";
 import { signOutBetterAuth } from "@/lib/better-auth-client";
 
@@ -99,7 +99,7 @@ export function AdminShell({
   }, []);
   useEffect(() => {
     setOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, location.hash]);
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -132,7 +132,7 @@ export function AdminShell({
         <aside
           id="admin-mobile-drawer"
           aria-label="Navigasi admin"
-          className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-border bg-surface p-4 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+          className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-border bg-surface overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -151,23 +151,43 @@ export function AdminShell({
             </button>
           </div>
           <nav className="mt-7 space-y-1" aria-label="Menu admin">
-            {adminNavigation.map(([label, href, Icon]) => {
-              const active = isAdminNavigationActive(location.pathname, href);
+            {adminNavigationGroups.map((group) => {
+              const groupActive = group.items.some(([, href]) =>
+                isAdminNavigationActive(location.pathname, href, location.hash),
+              );
               return (
-                <Link
-                  key={href}
-                  to={href as never}
-                  onClick={closeMenu}
-                  className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors motion-reduce:transition-none ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary"}`}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <Icon className="size-4" strokeWidth={1.8} />
-                  {label}
-                </Link>
+                <details key={`${group.label}-${groupActive}`} open={groupActive} className="group">
+                  <summary className="min-h-11 cursor-pointer rounded-xl px-3 py-3 text-xs font-semibold text-muted-foreground hover:bg-secondary focus-visible:ring-2 focus-visible:ring-brand-red">
+                    {group.label}
+                  </summary>
+                  <div className="ml-2 space-y-0.5 border-l border-border pl-2">
+                    {group.items.map(([label, href, Icon]) => {
+                      const active = isAdminNavigationActive(
+                        location.pathname,
+                        href,
+                        location.hash,
+                      );
+                      const [path, hash] = href.split("#");
+                      return (
+                        <Link
+                          key={href}
+                          to={path as never}
+                          hash={hash ?? ""}
+                          onClick={closeMenu}
+                          aria-current={active ? "page" : undefined}
+                          className={`flex min-h-11 items-center gap-2 rounded-xl px-3 text-[13px] font-medium focus-visible:ring-2 focus-visible:ring-brand-red ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+                        >
+                          <Icon className="size-4 shrink-0" aria-hidden="true" />
+                          {label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </details>
               );
             })}
           </nav>
-          <div className="absolute bottom-5 left-4 right-4 rounded-2xl bg-secondary p-3 text-xs text-muted-foreground">
+          <div className="mt-5 rounded-2xl bg-secondary p-3 text-xs text-muted-foreground">
             <p className="font-semibold text-foreground">Mode operasional</p>
             <p className="mt-1">Data mengikuti readiness server.</p>
           </div>
@@ -196,7 +216,17 @@ export function AdminShell({
               <Menu className="mx-auto size-5" />
             </button>
             <div className="min-w-0">
-              <p className="hidden text-[11px] text-muted-foreground sm:block">Admin / {title}</p>
+              <p className="hidden text-[11px] text-muted-foreground sm:block">
+                Admin /{" "}
+                {
+                  adminNavigationGroups.find((group) =>
+                    group.items.some(([, href]) =>
+                      isAdminNavigationActive(location.pathname, href, location.hash),
+                    ),
+                  )?.label
+                }{" "}
+                / {title}
+              </p>
               <h1 className="truncate text-[17px] font-bold sm:text-xl">{title}</h1>
             </div>
             <div className="ml-auto flex items-center gap-2">
