@@ -38,6 +38,7 @@ type Line = {
   color: string | null;
   quantity: number;
   unit_idr: number;
+  unit_minor: number;
   image_url: string | null;
   product_url: string;
   variant: string | null;
@@ -167,7 +168,9 @@ function ShopperOrder() {
               <span className="line-clamp-1 block text-[13px] font-semibold">{l.name}</span>
               <span className="block text-[11px] text-muted-foreground">
                 {l.market_item_id ? (l.variant ?? "") : l.size}
-                {l.color ? ` · ${l.color}` : ""} · {l.quantity} × {formatIdr(l.unit_idr)}
+                {l.color ? ` · ${l.color}` : ""} · {l.quantity} ×{" "}
+                {order.currency === "JPY" ? "¥" : `${order.currency} `}
+                {l.unit_minor.toLocaleString("id-ID")} = {formatIdr(l.unit_idr * l.quantity)}
               </span>
             </span>
             <a
@@ -183,7 +186,21 @@ function ShopperOrder() {
       </ul>
 
       <dl className="ios-group mt-3 space-y-1 p-3 text-[12px]">
-        <Money label="Barang" value={order.subtotalIdr} />
+        <div className="flex justify-between">
+          <dt className="text-muted-foreground">Harga toko</dt>
+          <dd>
+            {order.currency === "JPY" ? "¥" : `${order.currency} `}
+            {items.reduce((n, l) => n + l.unit_minor * l.quantity, 0).toLocaleString("id-ID")}
+          </dd>
+        </div>
+        <div className="flex justify-between">
+          <dt className="text-muted-foreground">Kurs yang dikunci</dt>
+          <dd>
+            {order.currency === "JPY" ? "¥" : `${order.currency} `}1 = Rp{" "}
+            {order.rate.toLocaleString("id-ID")}
+          </dd>
+        </div>
+        <Money label="Barang dalam Rupiah" value={order.subtotalIdr} />
         {order.domesticIdr > 0 && (
           <Money label="Ongkir domestik Jepang" value={order.domesticIdr} />
         )}

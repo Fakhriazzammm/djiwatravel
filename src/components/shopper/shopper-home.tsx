@@ -405,12 +405,15 @@ export function ShopperHome({
                             {productTitle(p)}
                           </span>
                           <span className="block text-[12px] font-bold">
-                            {formatIdrShort(toIdr(p.price, rate))}
+                            {formatMinor(p.price, info.symbol)}
                             {p.originalPrice ? (
                               <s className="ml-1 text-[9px] font-normal text-muted-foreground">
-                                {formatIdrShort(toIdr(p.originalPrice, rate))}
+                                {formatMinor(p.originalPrice, info.symbol)}
                               </s>
                             ) : null}
+                            <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                              ≈ {formatIdrShort(toIdr(p.price, rate))}
+                            </span>
                           </span>
                           <span className="block text-[10px] text-muted-foreground">
                             {soldLabel(p)}
@@ -641,7 +644,10 @@ function Rail({
               {productTitle(p)}
             </span>
             <span className="block text-[12px] font-bold">
-              {formatIdrShort(toIdr(p.price, money.rate))}
+              {formatMinor(p.price, money.symbol)}
+            </span>
+            <span className="block text-[10px] text-muted-foreground">
+              ≈ {formatIdrShort(toIdr(p.price, money.rate))}
             </span>
             <span className="block text-[9px] text-muted-foreground">{meta(p)}</span>
           </button>

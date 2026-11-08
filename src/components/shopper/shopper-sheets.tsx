@@ -90,10 +90,10 @@ export function ProductSheet({
             ) : null}
           </p>
           <p className="text-[11px] text-muted-foreground">
-            ≈ {formatIdr(toIdr(product.price, money.rate))}
-            {product.rating
-              ? ` · Rating ${product.rating.toFixed(1).replace(".", ",")}`
-              : ""} · {soldLabel(product)}
+            ≈ {formatIdr(toIdr(product.price, money.rate))} (kurs {money.symbol}1 = Rp{" "}
+            {money.rate.toLocaleString("id-ID")})
+            {product.rating ? ` · Rating ${product.rating.toFixed(1).replace(".", ",")}` : ""} ·{" "}
+            {soldLabel(product)}
           </p>
           <a
             href={product.productUrl}
@@ -381,7 +381,9 @@ export function MarketSheet({
             {item.conditionText ? ` · ${item.conditionText}` : ""}
           </p>
           <p className="mt-0.5 text-[16px] font-bold">{formatMinor(item.priceJpy, money.symbol)}</p>
-          <p className="text-[11px] text-muted-foreground">≈ {formatIdr(unitIdr)}</p>
+          <p className="text-[11px] text-muted-foreground">
+            ≈ {formatIdr(unitIdr)} (kurs {money.symbol}1 = Rp {money.rate.toLocaleString("id-ID")})
+          </p>
           {item.sizeText && <p className="text-[11px]">Ukuran: {item.sizeText}</p>}
           <a
             href={item.sourceUrl}
@@ -591,7 +593,13 @@ export function CartSheet({
                     {l.marketItemId
                       ? `${l.brand === "rakuten" ? "Rakuten" : "Mercari"}${l.variant ? ` · ${l.variant}` : ""}`
                       : `${brandById(l.brand)?.name} · ${l.size}${l.color ? ` · ${l.color}` : ""}`}{" "}
-                    · {formatIdr(toIdr(l.unitMinor, money.rate))}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {formatMinor(l.unitMinor, money.symbol)} × kurs{" "}
+                    {money.rate.toLocaleString("id-ID")} ={" "}
+                    <span className="font-semibold text-foreground">
+                      {formatIdr(toIdr(l.unitMinor, money.rate))}
+                    </span>
                   </p>
                 </div>
                 <Stepper
@@ -610,7 +618,18 @@ export function CartSheet({
             ))}
           </div>
           <dl className="mt-2 space-y-1 text-[12px]">
-            <Row label="Barang" value={formatIdr(quote.subtotalIdr)} />
+            <Row
+              label="Harga toko"
+              value={formatMinor(
+                cart.reduce((n, l) => n + l.unitMinor * l.quantity, 0),
+                money.symbol,
+              )}
+            />
+            <Row
+              label={`Kurs ${money.currency} (dikunci saat pesanan dibuat)`}
+              value={`${money.symbol}1 = Rp ${money.rate.toLocaleString("id-ID")}`}
+            />
+            <Row label="Barang dalam Rupiah" value={formatIdr(quote.subtotalIdr)} />
             {quote.domesticIdr > 0 && (
               <Row label="Kirim dalam Jepang (estimasi)" value={formatIdr(quote.domesticIdr)} />
             )}
@@ -619,9 +638,8 @@ export function CartSheet({
             <Row label="Total" value={formatIdr(quote.totalIdr)} strong />
           </dl>
           <p className="mt-1 text-[10px] text-muted-foreground">
-            Kurs {money.currency} 1 = Rp {money.rate.toLocaleString("id-ID")}, dikunci saat pesanan
-            dibuat. Harga toko dicek saat barang dibeli; bila berubah atau habis, tim kami
-            menghubungimu dan dana dikembalikan.
+            Jasa titip dihitung dari harga barang dalam Rupiah. Harga toko dicek saat barang dibeli;
+            bila berubah atau habis, tim kami menghubungimu dan dana dikembalikan.
           </p>
           <button type="button" className={`${primaryBtn} mt-3`} onClick={() => setStep("address")}>
             Lanjut ke alamat
