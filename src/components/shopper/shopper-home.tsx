@@ -65,6 +65,13 @@ export function ShopperHome({ data }: { data: ShopperHomeData }) {
   const countryOpen = config.enabled && config.countries[country];
   const rate = config.rates[info.currency] ?? 0;
   const money = { symbol: info.symbol, rate, currency: info.currency };
+  const firstCartItem = cart[0];
+  const cartCountry = firstCartItem
+    ? (brandById(firstCartItem.brand)?.country ?? country)
+    : country;
+  const cartInfo = countryByCode(cartCountry)!;
+  const cartRate = config.rates[cartInfo.currency] ?? 0;
+  const cartMoney = { symbol: cartInfo.symbol, rate: cartRate, currency: cartInfo.currency };
   const brands = SHOPPER_BRANDS.filter((b) => b.country === country);
 
   // A short shimmer on every change keeps the list from jumping and mirrors the prototype.
@@ -108,7 +115,7 @@ export function ShopperHome({ data }: { data: ShopperHomeData }) {
   const filtering =
     filters.query.trim() !== "" || activeFilterCount(filters) > 0 || filters.sort !== "pop";
   const maxPrice = useMemo(() => products.reduce((m, p) => Math.max(m, p.price), 0), [products]);
-  const quote = cartQuote(cart, rate, config);
+  const quote = cartQuote(cart, cartRate, config);
 
   function flyToCart(origin: HTMLElement | null) {
     const target = cartBar.current;
@@ -488,8 +495,8 @@ export function ShopperHome({ data }: { data: ShopperHomeData }) {
         open={sheet === "cart"}
         onOpenChange={(o) => setSheet(o ? "cart" : null)}
         cart={cart}
-        country={country}
-        money={money}
+        country={cartCountry}
+        money={cartMoney}
         config={config}
       />
     </Page>
