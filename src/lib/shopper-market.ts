@@ -70,6 +70,11 @@ export type MarketPage = {
   itempropPrice: string | null;
   itempropCurrency: string | null;
   itempropAvailability: string | null;
+  /**
+   * Mercari: the page's checkout button exists only on a listing that was sold, and is then disabled.
+   * `null` means it was not checked.
+   */
+  checkoutButtonDisabled?: boolean | null;
 };
 
 const IMAGE_HOSTS = [
@@ -117,8 +122,9 @@ export function parseMarketPage(ref: MarketRef, page: MarketPage): MarketParse {
     const price = priceOf(page.metaPrice, page.metaCurrency);
     if (price === null) return { ok: false, reason: "Harga tidak terbaca dari halaman." };
     const t = compact(page.text);
-    // A listing that can still be bought shows the buy button; a sold one says so.
-    const sold = /売り切れ(ました)?/.test(t) || !t.includes("購入手続きへ");
+    // Verified live: a sold listing says so and/or carries a disabled checkout button; a listing that
+    // can be bought has neither (its buy button text is not reliably in the page text).
+    const sold = /売り切れ/.test(t) || page.checkoutButtonDisabled === true;
     const size = t.match(/サイズ([A-Za-z0-9()（）/.-]{1,14}?)商品の状態/)?.[1] ?? null;
     const condition =
       t.match(/商品の状態(.{1,60}?)(?:配送料の負担|配送の方法|発送元|出品者)/)?.[1] ?? null;

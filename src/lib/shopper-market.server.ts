@@ -50,6 +50,25 @@ async function tinyFetch(body: Record<string, unknown>, timeoutMs = 40_000): Pro
   return first;
 }
 
+/** Like `tinyFetch`, but a selector that matches nothing is an answer (null), not a failure. */
+async function tinyFetchOptional(
+  body: Record<string, unknown>,
+  timeoutMs = 40_000,
+): Promise<TinyResult | null> {
+  const key = process.env["TINYFISH_API_KEY"];
+  if (!key) throw new Error("not_configured");
+  if (!reserveFetchSlot()) throw new Error("busy");
+  const response = await fetch(TINYFISH_FETCH, {
+    method: "POST",
+    headers: { "X-API-Key": key, "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new Error(`fetch_${response.status}`);
+  const json = (await response.json()) as { results?: TinyResult[] };
+  return json.results?.[0] ?? null;
+}
+
 const metaContent = (html: string, prop: string) => {
   const a = html.match(new RegExp(`<meta[^>]*content="([^"]*)"[^>]*itemprop="${prop}"`, "i"));
   const b = html.match(new RegExp(`<meta[^>]*itemprop="${prop}"[^>]*content="([^"]*)"`, "i"));
@@ -59,7 +78,16 @@ const metaContent = (html: string, prop: string) => {
 /** A live read of the item page (never an old cached copy: the price and stock must be current). */
 export async function fetchMarketPage(ref: MarketRef): Promise<MarketPage> {
   const base = { urls: [ref.url], ttl: 0 };
-  const page = await tinyFetch({ ...base, format: "markdown", page_metadata: true });
+  const [page, button] = await Promise.all([
+    tinyFetch({ ...base, format: "markdown", page_metadata: true }),
+    ref.site === "mercari"
+      ? tinyFetchOptional({
+          ...base,
+          format: "html",
+          include_selectors: ["[data-testid=checkout-button]"],
+        }).catch(() => null)
+      : Promise.resolve(null),
+  ]);
   const og = page.page_metadata?.og;
   const other = page.page_metadata?.other ?? {};
   const out: MarketPage = {
@@ -72,6 +100,8 @@ export async function fetchMarketPage(ref: MarketRef): Promise<MarketPage> {
     itempropPrice: null,
     itempropCurrency: null,
     itempropAvailability: null,
+    checkoutButtonDisabled:
+      ref.site === "mercari" && button ? /\bdisabled\b/.test(String(button.text ?? "")) : null,
   };
   if (ref.site === "rakuten") {
     // The price is only in the page's own structured metas, which the text view drops.

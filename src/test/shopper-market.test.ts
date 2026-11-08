@@ -86,6 +86,20 @@ describe("reading an item page", () => {
       conditionText: "目立った傷や汚れなし",
     });
   });
+  it("treats a Mercari item without a buy button text as available, and a disabled checkout button as sold", () => {
+    const base = {
+      title: "ダウン by メルカリ",
+      metaPrice: "1200",
+      metaCurrency: "JPY",
+      text: "1 / 4ユニクロダウンサイズXL(LL)商品の状態新品、未使用",
+    };
+    const open = parseMarketPage(mercari, page({ ...base, checkoutButtonDisabled: false }));
+    expect(open.ok && open.listing.sold).toBe(false);
+    const unchecked = parseMarketPage(mercari, page(base));
+    expect(unchecked.ok && unchecked.listing.sold).toBe(false);
+    const sold = parseMarketPage(mercari, page({ ...base, checkoutButtonDisabled: true }));
+    expect(sold.ok && sold.listing.sold).toBe(true);
+  });
   it("marks a sold Mercari item and refuses to sell it", () => {
     const parsed = parseMarketPage(
       mercari,
