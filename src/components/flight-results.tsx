@@ -165,7 +165,7 @@ export function FlightResults({
         <div
           role="group"
           aria-label="Pilih tanggal berangkat"
-          className="no-scrollbar -mx-4 mt-1.5 flex gap-1.5 overflow-x-auto px-4"
+          className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 py-1"
         >
           {strip.map((day) => {
             const selected = day.date === depart;
