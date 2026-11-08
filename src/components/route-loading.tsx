@@ -3,6 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { TabBar } from "@/components/shell";
+import { LOADING_LINES, MascotLoader } from "@/components/mascot-loader";
 import { AdminPendingScreen } from "@/components/admin-loading";
 import { easeIos, springIos } from "@/lib/motion";
 
@@ -128,6 +129,7 @@ export function RoutePendingScreen({
         <span className="sr-only">{label}</span>
         <span className="sr-only">{hint}</span>
         <div aria-hidden="true" className="space-y-5">
+          <MascotLoader lines={LOADING_LINES.page} label={label} />
           <div className="h-7 w-40 animate-pulse rounded-full bg-secondary motion-reduce:animate-none" />
           <div className="h-12 w-full animate-pulse rounded-2xl bg-secondary motion-reduce:animate-none" />
           <div className="space-y-3 rounded-[28px] border border-border/60 bg-surface p-4">

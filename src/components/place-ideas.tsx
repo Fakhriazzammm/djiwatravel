@@ -326,27 +326,27 @@ function IdeasStrip({
         </button>
       </div>
       <div className="mt-1.5 flex gap-2 overflow-x-auto overscroll-x-contain pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {load.state === "loading"
-          ? (
-              <div className="w-full">
-                <MascotLoader compact lines={LOADING_LINES.ideas} label="Memuat ide tempat" />
-              </div>
-            )
-          : load.ideas.slice(0, 6).map((idea) => (
-              <button
-                key={idea.key}
-                type="button"
-                onClick={() => onPick(idea)}
-                className="tap w-[116px] shrink-0 rounded-xl bg-surface p-1.5 text-left shadow-sm ring-1 ring-border/50"
-              >
-                <IdeaThumb idea={idea} className="h-[68px] w-full rounded-lg" />
-                <span className="mt-1.5 block truncate text-[12px] font-semibold">{idea.name}</span>
-                <span className="block truncate text-[11px] text-muted-foreground">
-                  {placeIdeaCategory(idea.category).label}
-                  {nearLabel(idea, from) ? ` · ${nearLabel(idea, from)}` : ""}
-                </span>
-              </button>
-            ))}
+        {load.state === "loading" ? (
+          <div className="w-full">
+            <MascotLoader compact lines={LOADING_LINES.ideas} label="Memuat ide tempat" />
+          </div>
+        ) : (
+          load.ideas.slice(0, 6).map((idea) => (
+            <button
+              key={idea.key}
+              type="button"
+              onClick={() => onPick(idea)}
+              className="tap w-[116px] shrink-0 rounded-xl bg-surface p-1.5 text-left shadow-sm ring-1 ring-border/50"
+            >
+              <IdeaThumb idea={idea} className="h-[68px] w-full rounded-lg" />
+              <span className="mt-1.5 block truncate text-[12px] font-semibold">{idea.name}</span>
+              <span className="block truncate text-[11px] text-muted-foreground">
+                {placeIdeaCategory(idea.category).label}
+                {nearLabel(idea, from) ? ` · ${nearLabel(idea, from)}` : ""}
+              </span>
+            </button>
+          ))
+        )}
       </div>
     </section>
   );
