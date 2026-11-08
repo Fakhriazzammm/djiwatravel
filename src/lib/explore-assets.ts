@@ -26,8 +26,8 @@ export const exploreAssets: Record<string, ExploreAsset> = {
     fallback: Ticket,
   },
   transportation: {
-    src: assetPath("transportation"),
-    alt: "Ikon 3D transportasi",
+    src: assetPath("flight-plane-v1", "png"),
+    alt: "Ikon 3D pesawat",
     fallback: Plane,
   },
   "open-trip": {
