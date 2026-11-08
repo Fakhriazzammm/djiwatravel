@@ -375,6 +375,7 @@ export function ItineraryEditor({
   const [poiImage, setPoiImage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [extrasOpen, setExtrasOpen] = useState(false);
   const [ideasOpen, setIdeasOpen] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -445,6 +446,7 @@ export function ItineraryEditor({
 
   function openNew(date?: string) {
     titleTouched.current = false;
+    setExtrasOpen(false);
     setEditingId(null);
     setConflicts([]);
     setForm((current) => ({
@@ -658,6 +660,8 @@ export function ItineraryEditor({
       ? googleMapsDayRouteUrl(model.pins.map((pin) => ({ lat: pin.lat, lng: pin.lng })))
       : null;
   const searchEnabled = Boolean(mapConfig?.enabled && mapConfig.placeSearch);
+  const showExtras =
+    extrasOpen || Boolean(form.startTime || form.endTime || form.category) || conflicts.length > 0;
   const formNode = showForm ? (
     <motion.div
       ref={formRef}
@@ -729,54 +733,67 @@ export function ItineraryEditor({
             />
           </div>
         )}
-        <div>
-          <p className="mb-1.5 text-[13px] font-semibold">
-            Waktu <span className="font-normal text-muted-foreground">(opsional)</span>
-          </p>
-          <p className="mb-2 text-xs text-muted-foreground">
-            Selesai lebih awal dari mulai = lanjut ke hari berikutnya.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="space-y-1.5 text-xs text-muted-foreground">
-              Mulai
-              <input
-                id="agenda-start"
-                type="time"
-                value={form.startTime}
-                onChange={(event) => setForm({ ...form, startTime: event.target.value })}
-                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-              />
-            </label>
-            <label className="space-y-1.5 text-xs text-muted-foreground">
-              Selesai
-              <input
-                type="time"
-                value={form.endTime}
-                onChange={(event) => setForm({ ...form, endTime: event.target.value })}
-                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
-              />
-            </label>
+        {showExtras ? (
+          <div className="space-y-2.5">
+            <div>
+              <p className="mb-1.5 text-[13px] font-semibold">
+                Waktu <span className="font-normal text-muted-foreground">(opsional)</span>
+              </p>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Jam selesai lebih kecil dari jam mulai berarti berakhir keesokan harinya (misal
+                22.00 sampai 01.00).
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1.5 text-xs text-muted-foreground">
+                  Mulai
+                  <input
+                    id="agenda-start"
+                    type="time"
+                    value={form.startTime}
+                    onChange={(event) => setForm({ ...form, startTime: event.target.value })}
+                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                  />
+                </label>
+                <label className="space-y-1.5 text-xs text-muted-foreground">
+                  Selesai
+                  <input
+                    type="time"
+                    value={form.endTime}
+                    onChange={(event) => setForm({ ...form, endTime: event.target.value })}
+                    className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm text-foreground outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="agenda-category" className="text-[13px] font-semibold">
+                Kategori <span className="font-normal text-muted-foreground">(opsional)</span>
+              </label>
+              <select
+                id="agenda-category"
+                value={form.category}
+                onChange={(event) => setForm({ ...form, category: event.target.value })}
+                className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+              >
+                <option value="">Pilih kategori</option>
+                <option value="flight">Penerbangan</option>
+                <option value="hotel">Hotel</option>
+                <option value="food">Makan</option>
+                <option value="attraction">Atraksi</option>
+                <option value="transport">Transportasi</option>
+                <option value="other">Lainnya</option>
+              </select>
+            </div>
           </div>
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="agenda-category" className="text-[13px] font-semibold">
-            Kategori <span className="font-normal text-muted-foreground">(opsional)</span>
-          </label>
-          <select
-            id="agenda-category"
-            value={form.category}
-            onChange={(event) => setForm({ ...form, category: event.target.value })}
-            className="min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-sm outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15"
+        ) : (
+          <button
+            type="button"
+            onClick={() => setExtrasOpen(true)}
+            className="tap flex min-h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border text-[12px] font-semibold text-brand-red"
           >
-            <option value="">Pilih kategori</option>
-            <option value="flight">Penerbangan</option>
-            <option value="hotel">Hotel</option>
-            <option value="food">Makan</option>
-            <option value="attraction">Atraksi</option>
-            <option value="transport">Transportasi</option>
-            <option value="other">Lainnya</option>
-          </select>
-        </div>
+            <Plus className="size-3.5" /> Atur waktu &amp; kategori
+          </button>
+        )}
         <AnimatePresence initial={false}>
           {conflicts.length > 0 && (
             <motion.div
