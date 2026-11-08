@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@mapbox/vector-tile": "^3.0.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.8",
@@ -64,6 +65,7 @@
     "lucide-react": "^0.575.0",
     "maplibre-gl": "^6.16.0",
     "motion": "^12.43.0",
+    "pbf": "^5.1.2",
     "pg": "^8.23.1",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",

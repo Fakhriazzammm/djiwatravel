@@ -6,7 +6,7 @@ import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import { distanceKm } from "./itinerary-map";
-import { discoverPlaces, wikipediaFacts } from "./place-discovery.server";
+import { discoverPlaces } from "./place-discovery.server";
 import { osmUrl } from "./place-discovery";
 import {
   forwardGeocode,
@@ -398,18 +398,15 @@ async function ideasFromMap(
   const perCity = await Promise.all(
     anchors.map((anchor) => discoverPlaces(anchor, category, limit + 4)),
   );
-  const found: Awaited<ReturnType<typeof discoverPlaces>> = [];
-  for (let round = 0; found.length < limit + 4 && round < limit + 4; round += 1) {
+  const withFacts: Awaited<ReturnType<typeof discoverPlaces>> = [];
+  for (let round = 0; withFacts.length < limit + 4 && round < limit + 4; round += 1) {
     for (const list of perCity) {
       const next = list[round];
-      if (next && found.length < limit + 4) found.push(next);
+      if (next && withFacts.length < limit + 4) withFacts.push(next);
     }
   }
-  const withFacts = await Promise.all(
-    found.map(async (candidate) => ({ candidate, wiki: await wikipediaFacts(candidate) })),
-  );
   const list = withFacts.map(({ candidate, wiki }, index) => {
-    const facts = [wiki.extract, ...candidate.facts].filter(Boolean).join(" | ");
+    const facts = [wiki?.extract, ...candidate.facts].filter(Boolean).join(" | ");
     return `[${index + 1}] ${candidate.name} (${CATEGORY_WORD[candidate.category]})${facts ? `: ${facts}` : ""}`;
   });
   let usage = { input: 0, output: 0 };
@@ -434,14 +431,14 @@ async function ideasFromMap(
   const ideas = await Promise.all(
     withFacts.map(async ({ candidate, wiki }, index): Promise<PlaceIdea> => {
       const image =
-        wiki.imageUrl ??
+        wiki?.imageUrl ??
         (await lookupPlaceImage({ lat: candidate.lat, lng: candidate.lng }, [candidate.name])
           .then((r) => r?.url ?? null)
           .catch(() => null)) ??
         (await lookupPlaceImageByName(candidate.name, destination)
           .then((r) => r?.url ?? null)
           .catch(() => null));
-      const fromWiki = Boolean(wiki.pageUrl);
+      const fromWiki = Boolean(wiki?.pageUrl);
       return {
         key: placeIdeaKey(candidate.name, candidate.lat, candidate.lng),
         name: candidate.name,
@@ -451,7 +448,7 @@ async function ideasFromMap(
         lat: candidate.lat,
         lng: candidate.lng,
         sourceHost: fromWiki ? "wikipedia.org" : "openstreetmap.org",
-        sourceUrl: wiki.pageUrl ?? osmUrl(candidate),
+        sourceUrl: wiki?.pageUrl ?? osmUrl(candidate),
         imageUrl: image,
       };
     }),
@@ -505,7 +502,7 @@ export async function getPlaceIdeas(
   const scope = tripCities.length ? `${tripCities.join(", ")}, ${destination}` : destination;
   const used = await usedToday(userId, now);
   const remaining = Math.max(0, config.dailyLimit - used);
-  const cacheKey = `${input.query ? "" : "map3|"}${placeIdeasCacheKey(scope, input.category, input.query)}`;
+  const cacheKey = `${input.query ? "" : "map4|"}${placeIdeasCacheKey(scope, input.category, input.query)}`;
   const hidden = await hiddenKeys();
   const visible = (ideas: PlaceIdea[]) =>
     ideas.filter((idea) => !hidden.has(idea.key)).slice(0, config.maxIdeas);

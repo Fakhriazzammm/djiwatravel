@@ -1,18 +1,9 @@
 /**
- * Ide tempat from the map. Pure helpers: build the OpenStreetMap (Overpass) query around the trip's
- * city, sort what comes back by how well known each place is, and map OSM tags to our categories.
- * Every place found this way already has coordinates, so it can always be pinned on the Agenda.
+ * Ide tempat from the map. Pure helpers: the candidate shape, chain filtering, and the match
+ * between a map place and a Wikipedia article. Places come from the same map tiles as the Agenda
+ * map markers (see place-tiles.server.ts), so every idea already has coordinates.
  */
 import type { PlaceIdeaCategoryId } from "./place-ideas";
-
-export type OsmElement = {
-  type: "node" | "way" | "relation";
-  id: number;
-  lat?: number;
-  lon?: number;
-  center?: { lat: number; lon: number };
-  tags?: Record<string, string>;
-};
 
 export type Candidate = {
   osmType: string;
@@ -22,132 +13,32 @@ export type Candidate = {
   lat: number;
   lng: number;
   score: number;
-  /** `lang:Title` of the Wikipedia article, when OSM links one. */
+  /** `lang:Title` of a Wikipedia article, when one is known. */
   wikipedia: string | null;
-  /** Short facts from the OSM tags, used when no article exists. */
+  /** Short facts from the map data, used when no article exists. */
   facts: string[];
 };
 
-const SIGHT = "attraction|museum|gallery|viewpoint|theme_park|zoo|aquarium|artwork";
+const CHAINS =
+  /\b(mcdonald'?s|starbucks|kfc|burger king|subway|lawson|7-?eleven|familymart|family mart|doutor|tully'?s|yoshinoya|sukiya|matsuya|mos burger|domino'?s|pizza hut|saizeriya|gusto|jonathan'?s|denny'?s|coco'?s|ministop|daiso|uniqlo|muji|donki|don quijote|stamp|datum|toilet|parking|vending|salon|clinic|hall)\b/i;
 
-/** One query for every kind; results are sorted into categories locally. */
-export function overpassQuery(lat: number, lng: number, radiusM = 12000) {
-  const around = `(around:${radiusM},${lat.toFixed(5)},${lng.toFixed(5)})`;
-  // Eating places are far more numerous, so they are searched closer to the centre.
-  const near = `(around:4000,${lat.toFixed(5)},${lng.toFixed(5)})`;
-  // A bare key filter is fast on Overpass; a regex over keys timed out on a city this size.
-  const known = `[name][wikidata]`;
-  const named = `[name]["name:en"]`;
-  return `[out:json][timeout:25];(
-nwr[tourism~"^(${SIGHT})$"]${known}${around};
-nwr[historic~"^(castle|monument|memorial|ruins)$"]${known}${around};
-nwr[amenity="place_of_worship"]${known}${around};
-nwr[leisure~"^(park|garden|nature_reserve)$"]${known}${around};
-nwr[natural~"^(beach|peak|waterfall)$"]${known}${around};
-nwr[shop~"^(mall|department_store)$"]${known}${around};
-nwr[amenity="marketplace"]${known}${around};
-nwr[amenity~"^(restaurant|cafe)$"]${named}${near};
-);out center tags 400;`;
-}
+/** Big chains are not "ideas": drop them so the list shows places worth a trip. */
+export const isChain = (name: string) => CHAINS.test(name);
 
-export function classify(tags: Record<string, string>): Candidate["category"] | null {
-  if (tags["amenity"] === "cafe") return "cafe";
-  if (tags["amenity"] === "restaurant") return "food";
-  if (
-    tags["shop"] === "mall" ||
-    tags["shop"] === "department_store" ||
-    tags["amenity"] === "marketplace"
-  )
-    return "shop";
-  if (/^(park|garden|nature_reserve)$/.test(tags["leisure"] ?? "")) return "nature";
-  if (/^(beach|peak|waterfall)$/.test(tags["natural"] ?? "")) return "nature";
-  if (tags["tourism"] || tags["historic"] || tags["amenity"] === "place_of_worship") return "sight";
-  return null;
-}
+const fold = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+const words = (text: string) =>
+  fold(text)
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 4);
 
-const LATIN = /[A-Za-z]{3}/;
-
-export function displayName(tags: Record<string, string>) {
-  const en = tags["name:en"];
-  if (en && LATIN.test(en)) return en.trim();
-  const name = tags["name"];
-  if (name && LATIN.test(name)) return name.trim();
-  return null;
-}
-
-export function scoreTags(tags: Record<string, string>) {
-  let score = 0;
-  if (tags["wikipedia"]) score += 4;
-  if (tags["wikidata"]) score += 3;
-  if (tags["website"] || tags["contact:website"]) score += 1.5;
-  if (tags["name:en"]) score += 1;
-  if (tags["opening_hours"]) score += 0.5;
-  if (tags["cuisine"]) score += 0.5;
-  score += Math.min(Object.keys(tags).length, 30) / 30;
-  return score;
-}
-
-const FACT_LABELS: [string, string][] = [
-  ["cuisine", "Masakan"],
-  ["opening_hours", "Jam buka"],
-  ["tourism", "Jenis"],
-  ["historic", "Jenis"],
-  ["leisure", "Jenis"],
-  ["religion", "Agama"],
-];
-
-function factsOf(tags: Record<string, string>) {
-  const out: string[] = [];
-  for (const [key, label] of FACT_LABELS) {
-    const value = tags[key];
-    if (value && out.length < 4) out.push(`${label}: ${value.replace(/_/g, " ")}`);
-  }
-  return out;
-}
-
-/** Best-known places first, a few per kind when "all" is asked, deduped by name. */
-export function pickCandidates(
-  elements: OsmElement[],
-  want: PlaceIdeaCategoryId,
-  limit: number,
-): Candidate[] {
-  const seen = new Set<string>();
-  const all: Candidate[] = [];
-  for (const el of elements) {
-    const tags = el.tags;
-    if (!tags) continue;
-    const category = classify(tags);
-    const name = displayName(tags);
-    const lat = el.lat ?? el.center?.lat;
-    const lng = el.lon ?? el.center?.lon;
-    if (!category || !name || lat === undefined || lng === undefined) continue;
-    const key = name.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    all.push({
-      osmType: el.type,
-      osmId: el.id,
-      name,
-      category,
-      lat,
-      lng,
-      score: scoreTags(tags),
-      wikipedia: tags["wikipedia"] ?? null,
-      facts: factsOf(tags),
-    });
-  }
-  all.sort((a, b) => b.score - a.score);
-  if (want !== "all") return all.filter((c) => c.category === want).slice(0, limit);
-  // A mixed list: take turns between kinds so it is not all temples.
-  const order: Candidate["category"][] = ["sight", "food", "nature", "cafe", "sight", "shop"];
-  const buckets = new Map<string, Candidate[]>();
-  for (const c of all) buckets.set(c.category, [...(buckets.get(c.category) ?? []), c]);
-  const picked: Candidate[] = [];
-  for (let round = 0; picked.length < limit && round < limit * 2; round += 1) {
-    const next = buckets.get(order[round % order.length]!)?.shift();
-    if (next) picked.push(next);
-  }
-  return picked;
+/** A Wikipedia title belongs to the place when they share a distinctive word. */
+export function titleMatchesName(title: string, name: string) {
+  const have = new Set(words(title));
+  return words(name).some((word) => have.has(word));
 }
 
 export function parseWikipediaTag(tag: string | null) {
@@ -155,5 +46,5 @@ export function parseWikipediaTag(tag: string | null) {
   return match ? { lang: match[1]!.toLowerCase(), title: match[2]!.trim() } : null;
 }
 
-export const osmUrl = (c: Pick<Candidate, "osmType" | "osmId">) =>
-  `https://www.openstreetmap.org/${c.osmType}/${c.osmId}`;
+export const osmUrl = (c: Pick<Candidate, "lat" | "lng">) =>
+  `https://www.openstreetmap.org/?mlat=${c.lat}&mlon=${c.lng}#map=18/${c.lat}/${c.lng}`;
