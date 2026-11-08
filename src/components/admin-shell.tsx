@@ -1,4 +1,4 @@
-import { LogOut, Menu, X } from "lucide-react";
+import { ChevronDown, Gauge, LogOut, Menu, X } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { adminNavigationGroups, isAdminNavigationActive } from "@/components/admin-navigation";
@@ -132,14 +132,14 @@ export function AdminShell({
         <aside
           id="admin-mobile-drawer"
           aria-label="Navigasi admin"
-          className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-border bg-surface overflow-y-auto p-4 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+          className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-border bg-surface overflow-y-auto p-3 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-2 py-2">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-red">
                 Djiwa Travel
               </p>
-              <h2 className="mt-1 text-lg font-bold">Admin console</h2>
+              <h2 className="mt-0.5 text-[15px] font-semibold">Admin console</h2>
             </div>
             <button
               type="button"
@@ -150,46 +150,76 @@ export function AdminShell({
               <X className="mx-auto size-5" />
             </button>
           </div>
-          <nav className="mt-7 space-y-1" aria-label="Menu admin">
-            {adminNavigationGroups.map((group) => {
-              const groupActive = group.items.some(([, href]) =>
-                isAdminNavigationActive(location.pathname, href, location.hash),
-              );
-              return (
-                <details key={`${group.label}-${groupActive}`} open={groupActive} className="group">
-                  <summary className="min-h-11 cursor-pointer rounded-xl px-3 py-3 text-xs font-semibold text-muted-foreground hover:bg-secondary focus-visible:ring-2 focus-visible:ring-brand-red">
-                    {group.label}
-                  </summary>
-                  <div className="ml-2 space-y-0.5 border-l border-border pl-2">
-                    {group.items.map(([label, href, Icon]) => {
-                      const active = isAdminNavigationActive(
-                        location.pathname,
-                        href,
-                        location.hash,
-                      );
-                      const [path, hash] = href.split("#");
-                      return (
-                        <Link
-                          key={href}
-                          to={path as never}
-                          hash={hash ?? ""}
-                          onClick={closeMenu}
-                          aria-current={active ? "page" : undefined}
-                          className={`flex min-h-11 items-center gap-2 rounded-xl px-3 text-[13px] font-medium focus-visible:ring-2 focus-visible:ring-brand-red ${active ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary"}`}
-                        >
-                          <Icon className="size-4 shrink-0" aria-hidden="true" />
-                          {label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </details>
-              );
-            })}
+          <nav className="mt-5 space-y-1" aria-label="Menu admin">
+            <Link
+              to="/admin/dashboard"
+              onClick={closeMenu}
+              aria-current={
+                location.pathname === "/admin/dashboard" || location.pathname === "/admin"
+                  ? "page"
+                  : undefined
+              }
+              className={`mb-3 flex min-h-11 items-center gap-3 rounded-xl px-3 text-[13px] font-semibold focus-visible:ring-2 focus-visible:ring-brand-red ${location.pathname === "/admin/dashboard" || location.pathname === "/admin" ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+            >
+              <Gauge className="size-4" aria-hidden="true" />
+              Dashboard
+            </Link>
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Kelola layanan
+            </p>
+            {adminNavigationGroups
+              .filter((group) => group.label !== "Ringkasan")
+              .map((group) => {
+                const groupActive = group.items.some(([, href]) =>
+                  isAdminNavigationActive(location.pathname, href, location.hash),
+                );
+                const GroupIcon = group.items[0][2];
+                return (
+                  <details
+                    key={`${group.label}-${groupActive}`}
+                    open={groupActive}
+                    className="group"
+                  >
+                    <summary
+                      className={`flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-xl px-3 text-[13px] font-medium outline-none transition-colors hover:bg-secondary focus-visible:ring-2 focus-visible:ring-brand-red [&::-webkit-details-marker]:hidden ${groupActive ? "text-foreground" : "text-muted-foreground"}`}
+                    >
+                      <GroupIcon className="size-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
+                      <span className="flex-1">{group.label}</span>
+                      <ChevronDown
+                        className="size-3.5 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+                        aria-hidden="true"
+                      />
+                    </summary>
+                    <div className="mb-2 ml-5 mt-1 space-y-0.5 border-l border-border pl-2">
+                      {group.items.map(([label, href, Icon]) => {
+                        const active = isAdminNavigationActive(
+                          location.pathname,
+                          href,
+                          location.hash,
+                        );
+                        const [path, hash] = href.split("#");
+                        return (
+                          <Link
+                            key={href}
+                            to={path as never}
+                            hash={hash ?? ""}
+                            onClick={closeMenu}
+                            aria-current={active ? "page" : undefined}
+                            className={`flex min-h-11 items-center gap-2 rounded-xl px-3 text-[13px] font-medium focus-visible:ring-2 focus-visible:ring-brand-red ${active ? "bg-secondary text-foreground font-semibold" : "text-muted-foreground hover:bg-secondary"}`}
+                          >
+                            <Icon className="size-4 shrink-0" aria-hidden="true" />
+                            {label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </details>
+                );
+              })}
           </nav>
-          <div className="mt-5 rounded-2xl bg-secondary p-3 text-xs text-muted-foreground">
+          <div className="mt-5 border-t border-border px-3 pt-4 text-[11px] text-muted-foreground">
             <p className="font-semibold text-foreground">Mode operasional</p>
-            <p className="mt-1">Data mengikuti readiness server.</p>
+            <p className="mt-1">Status integrasi tersedia di menu Sistem.</p>
           </div>
         </aside>
         {open && (
