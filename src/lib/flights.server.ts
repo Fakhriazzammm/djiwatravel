@@ -241,17 +241,11 @@ export async function fetchMonthOffers(
   origin: string,
   destination: string,
   month: string,
-  returnMonth = "",
 ): Promise<FlightOffer[]> {
   const config = await getFlightsConfigHandler();
   const token = flightsToken();
   if (!config.enabled || !token) return [];
-  const search = parseFlightSearch({
-    origin,
-    destination,
-    departureDate: month,
-    ...(returnMonth ? { returnDate: returnMonth } : {}),
-  });
+  const search = parseFlightSearch({ origin, destination, departureDate: month });
   if (!search) return [];
   const key = flightSearchKey(search);
   const hit = offerCache.get(key);
@@ -260,8 +254,7 @@ export async function fetchMonthOffers(
   url.searchParams.set("origin", search.origin);
   url.searchParams.set("destination", search.destination);
   url.searchParams.set("departure_at", search.departureDate);
-  if (search.returnDate) url.searchParams.set("return_at", search.returnDate);
-  url.searchParams.set("one_way", search.returnDate ? "false" : "true");
+  url.searchParams.set("one_way", "true");
   url.searchParams.set("currency", "idr");
   url.searchParams.set("sorting", "price");
   url.searchParams.set("unique", "false");

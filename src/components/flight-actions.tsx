@@ -383,7 +383,11 @@ export function FlightDetailSheet({
           <p className="mt-1.5 text-[22px] font-extrabold leading-none text-success">
             {formatFlightPrice(offer.priceIdr)}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Harga tercatat, bisa berubah.</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {offer.returnAt && !offer.bookingUrl
+              ? "Perkiraan: tiket pergi ditambah tiket pulang. Harga pasti ada di hasil lengkap."
+              : "Harga tercatat, bisa berubah."}
+          </p>
         </div>
 
         {config.saveToTrip && (

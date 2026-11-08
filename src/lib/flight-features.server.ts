@@ -8,7 +8,10 @@ import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { randomUUID } from "node:crypto";
 import {
+  combineRoundTrip,
+  daysBetween,
   formatFlightPrice,
+  type FlightOffer,
   isIataCode,
   parseOfferSnapshot,
   tripItemsForOffer,
@@ -315,8 +318,6 @@ export async function revokeFlightSharesHandler({
 
 const SWEEP_BATCH = 20;
 const RECHECK_HOURS = 6;
-const stayDays = (from: string, to: string) =>
-  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
 const shiftDay = (iso: string, days: number) => {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -363,27 +364,28 @@ export async function sweepFlightAlerts() {
     try {
       const from = alert.flexible ? shiftDay(alert.departure_date, -3) : alert.departure_date;
       const to = alert.flexible ? shiftDay(alert.departure_date, 3) : alert.departure_date;
+      const stay = alert.return_date ? daysBetween(alert.departure_date, alert.return_date) : 0;
       const months = [...new Set([from.slice(0, 7), to.slice(0, 7)])];
-      let best: { price: number; day: string } | null = null;
+      let offers: FlightOffer[] = [];
       for (const month of months) {
-        // A round-trip alert compares round-trip fares with a similar stay, never one-way prices.
-        const offers = await fetchMonthOffers(
-          alert.origin,
-          alert.destination,
-          month,
-          alert.return_date ? alert.return_date.slice(0, 7) : "",
-        );
-        for (const offer of offers) {
-          const day = offer.departureAt.slice(0, 10);
-          if (day < from || day > to) continue;
-          if (alert.return_date) {
-            const back = offer.returnAt?.slice(0, 10);
-            if (!back) continue;
-            const stay = stayDays(alert.departure_date, alert.return_date);
-            if (Math.abs(stayDays(day, back) - stay) > 2) continue;
-          }
-          if (!best || offer.priceIdr < best.price) best = { price: offer.priceIdr, day };
+        offers = offers.concat(await fetchMonthOffers(alert.origin, alert.destination, month));
+      }
+      if (alert.return_date) {
+        // Priced like the calendar: a one-way fare out plus a one-way fare back after the same stay.
+        const backMonths = [
+          ...new Set([shiftDay(from, stay).slice(0, 7), shiftDay(to, stay).slice(0, 7)]),
+        ];
+        let inbound: FlightOffer[] = [];
+        for (const month of backMonths) {
+          inbound = inbound.concat(await fetchMonthOffers(alert.destination, alert.origin, month));
         }
+        offers = combineRoundTrip(offers, inbound, stay);
+      }
+      let best: { price: number; day: string } | null = null;
+      for (const offer of offers) {
+        const day = offer.departureAt.slice(0, 10);
+        if (day < from || day > to) continue;
+        if (!best || offer.priceIdr < best.price) best = { price: offer.priceIdr, day };
       }
       result.checked += 1;
       await pool.query(

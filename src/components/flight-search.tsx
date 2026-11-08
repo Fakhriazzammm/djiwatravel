@@ -5,6 +5,8 @@ import { FlightResults } from "@/components/flight-results";
 import { btnRed } from "@/components/shell";
 import { searchFlightPlaces, searchFlights } from "@/lib/flights.fn";
 import {
+  combineRoundTrip,
+  daysBetween,
   parseFlightSearch,
   shiftFlightDay,
   whiteLabelFrameSrc,
@@ -97,26 +99,39 @@ export function FlightSearch({
   /** One call per route and month feeds the whole price calendar. */
   async function loadMonth(from: FlightPlace, to: FlightPlace, day: string, returnDay = "") {
     const month = day.slice(0, 7);
-    const returnMonth = returnDay ? returnDay.slice(0, 7) : "";
-    const key = `${from.code}-${to.code}-${month}-${returnMonth}`;
+    const stay = returnDay ? daysBetween(day, returnDay) : 0;
+    const key = `${from.code}-${to.code}-${month}-${returnDay ? `${returnDay.slice(0, 7)}-${stay}` : ""}`;
     if (loadedMonth.current === key) return;
-    const input = parseFlightSearch(
-      {
-        origin: from.code,
-        destination: to.code,
-        departureDate: month,
-        ...(returnMonth ? { returnDate: returnMonth } : {}),
-      },
+    const outbound = parseFlightSearch(
+      { origin: from.code, destination: to.code, departureDate: month },
       today,
     );
-    if (!input) {
+    // A round trip is priced as two one-way legs (the provider holds almost no round-trip fares).
+    const inbound = returnDay
+      ? parseFlightSearch(
+          { origin: to.code, destination: from.code, departureDate: returnDay.slice(0, 7) },
+          today,
+        )
+      : null;
+    if (!outbound || (returnDay && !inbound)) {
       setResult({ status: "invalid", offers: [] });
       return;
     }
     loadedMonth.current = key;
     setLoading(true);
     try {
-      setResult(await searchFlights({ data: input }));
+      const there = await searchFlights({ data: outbound });
+      if (!inbound) {
+        setResult(there);
+      } else {
+        const back = await searchFlights({ data: inbound });
+        if (there.status !== "ok" || back.status !== "ok") {
+          setResult({ status: there.status === "ok" ? back.status : there.status, offers: [] });
+        } else {
+          const offers = combineRoundTrip(there.offers, back.offers, stay);
+          setResult({ status: offers.length ? "ok" : "empty", offers });
+        }
+      }
     } catch {
       loadedMonth.current = "";
       setResult({ status: "failed", offers: [] });

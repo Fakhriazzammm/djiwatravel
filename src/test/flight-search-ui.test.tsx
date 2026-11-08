@@ -135,9 +135,13 @@ describe("FlightSearch results screen (design B)", () => {
     window.localStorage.setItem("djiwa.flights.embed-ok", "1");
     const buttons = Array.from(group.querySelectorAll("button"));
     fireEvent.click(buttons[buttons.length - 1]!); // 2 Jan 3000
-    await waitFor(() => expect(flights).toHaveBeenCalledTimes(2));
-    expect(flights.mock.calls[1]![0]).toEqual({
-      data: { origin: "CGK", destination: "DPS", departureDate: "3000-01", returnDate: "3000-01" },
+    // Each month load of a round trip asks for the way out and the way back.
+    await waitFor(() => expect(flights).toHaveBeenCalledTimes(4));
+    expect(flights.mock.calls[2]![0]).toEqual({
+      data: { origin: "CGK", destination: "DPS", departureDate: "3000-01" },
+    });
+    expect(flights.mock.calls[3]![0]).toEqual({
+      data: { origin: "DPS", destination: "CGK", departureDate: "3000-01" },
     });
   });
 
@@ -272,19 +276,26 @@ describe("FlightSearch with a White Label widget", () => {
 });
 
 describe("FlightSearch round trip", () => {
-  it("asks the provider for round-trip fares of the month, not one-way prices", async () => {
-    flights.mockResolvedValue({ status: "ok", offers: [offer()] });
-    mount(NO_WL, { ...prefill, back: "3000-01-03" });
-    await screen.findByRole("heading", { name: /Jakarta/ });
-    expect(flights.mock.calls[0]![0]).toEqual({
-      data: {
-        origin: "CGK",
-        destination: "DPS",
-        departureDate: "2999-12",
-        returnDate: "3000-01",
-      },
-    });
-    expect(screen.getByText("Harga pulang pergi per hari")).toBeTruthy();
+  it("prices a day as the way out plus the way back, and says it is an estimate", async () => {
+    flights.mockImplementation((async ({ data }: { data: { origin: string } }) => ({
+      status: "ok",
+      offers:
+        data.origin === "CGK"
+          ? [offer({ id: "out", priceIdr: 1_000_000 })]
+          : [
+              offer({
+                id: "back",
+                origin: "DPS",
+                destination: "CGK",
+                departureAt: "2999-12-27T09:00:00+07:00",
+                priceIdr: 1_500_000,
+              }),
+            ],
+    })) as never);
+    mount(NO_WL, { ...prefill, back: "2999-12-27" });
+    expect(await screen.findByText("Perkiraan harga pulang pergi per hari")).toBeTruthy();
+    const day = (await screen.findAllByRole("button", { name: /20 Des/ }))[0]!;
+    expect(day.textContent).toContain("Rp 2,5jt");
   });
 });
 
