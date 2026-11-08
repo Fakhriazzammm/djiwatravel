@@ -5,7 +5,13 @@ import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { requireTripOwner } from "./guest-trips.server";
-import { isAllowedImageUrl, pickNamedImage, pickPlaceImage, type WikiPage } from "./place-image";
+import {
+  distinctiveQuery,
+  isAllowedImageUrl,
+  pickNamedImage,
+  pickPlaceImage,
+  type WikiPage,
+} from "./place-image";
 import {
   forwardSearchUrl,
   mapPlaceFeatures,
@@ -440,7 +446,7 @@ export async function lookupPlaceImageByName(name: string, area?: string) {
   try {
     const wiki = await searchImagePages("en.wikipedia.org", {
       generator: "search",
-      gsrsearch: [name, area].filter(Boolean).join(" "),
+      gsrsearch: distinctiveQuery(name) || name,
       gsrlimit: "5",
       prop: "pageimages",
       piprop: "thumbnail",
@@ -452,7 +458,7 @@ export async function lookupPlaceImageByName(name: string, area?: string) {
       const commons = await searchImagePages("commons.wikimedia.org", {
         generator: "search",
         gsrnamespace: "6",
-        gsrsearch: [name, area].filter(Boolean).join(" "),
+        gsrsearch: distinctiveQuery(name) || name,
         gsrlimit: "6",
         prop: "imageinfo",
         iiprop: "url",

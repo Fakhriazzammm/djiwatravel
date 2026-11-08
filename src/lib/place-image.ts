@@ -9,13 +9,13 @@ export type WikiPage = {
   dist?: number | undefined;
 };
 
-const ALLOWED_IMAGE_HOST = "upload.wikimedia.org";
+const ALLOWED_IMAGE_HOSTS = new Set(["upload.wikimedia.org", "thumb.wikimedia.org"]);
 
 export function isAllowedImageUrl(value: unknown): value is string {
   if (typeof value !== "string" || value.length > 500) return false;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && url.hostname === ALLOWED_IMAGE_HOST;
+    return url.protocol === "https:" && ALLOWED_IMAGE_HOSTS.has(url.hostname);
   } catch {
     return false;
   }
@@ -80,4 +80,12 @@ export function pickNamedImage(pages: WikiPage[], name: string) {
     return wanted.filter((word) => have.has(word)).length >= need;
   });
   return match ? { url: match.thumbnail!.source!, title: match.title } : null;
+}
+
+/** The distinctive words of a place name, used as the search text. */
+export function distinctiveQuery(name: string) {
+  return tokens(name)
+    .filter((word) => !GENERIC.has(word))
+    .slice(0, 3)
+    .join(" ");
 }

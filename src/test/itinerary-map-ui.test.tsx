@@ -366,6 +366,7 @@ describe("agenda map", () => {
     );
     fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
     fireEvent.change(screen.getByLabelText("Nama aktivitas"), { target: { value: "Makan" } });
+    fireEvent.click(screen.getByRole("button", { name: /Atur waktu/ }));
     fireEvent.change(screen.getByLabelText("Mulai"), { target: { value: "10:30" } });
     fireEvent.change(screen.getByLabelText("Selesai"), { target: { value: "11:30" } });
     fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
@@ -383,6 +384,7 @@ describe("agenda map", () => {
     );
     fireEvent.click(screen.getAllByRole("button", { name: "Tambah aktivitas" })[0]!);
     fireEvent.change(screen.getByLabelText("Nama aktivitas"), { target: { value: "Makan" } });
+    fireEvent.click(screen.getByRole("button", { name: /Atur waktu/ }));
     fireEvent.change(screen.getByLabelText("Mulai"), { target: { value: "10:30" } });
     fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
     await waitFor(() => expect(postItinerary).toHaveBeenCalledOnce());
