@@ -7,6 +7,9 @@ import { getAdminDashboard } from "@/lib/admin-read-model.fn";
 import { getHomeEsimFunnel } from "@/lib/home-esim-events.fn";
 import { funnelRates } from "@/lib/home-esim-events";
 import { getSiteTraffic } from "@/lib/site-events.fn";
+import { getTrafficDashboard } from "@/lib/traffic-dashboard.fn";
+import { TRAFFIC_RANGES } from "@/lib/traffic-dashboard";
+import { TrafficPanel } from "@/components/admin-traffic-panel";
 import {
   ageFrom,
   formatAdminDateTime,
@@ -32,15 +35,17 @@ export const Route = createFileRoute("/admin/dashboard")({
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
   validateSearch: z.object({
     period: z.enum(["daily", "weekly", "monthly"]).default("daily"),
+    range: z.enum(TRAFFIC_RANGES).default("24j"),
   }),
-  loaderDeps: ({ search }) => ({ period: search.period }),
+  loaderDeps: ({ search }) => ({ period: search.period, range: search.range }),
   loader: async ({ deps }) => {
-    const [dashboard, traffic, homeFunnel] = await Promise.all([
-      getAdminDashboard({ data: deps }),
-      getSiteTraffic({ data: deps }),
+    const [dashboard, traffic, homeFunnel, census] = await Promise.all([
+      getAdminDashboard({ data: { period: deps.period } }),
+      getSiteTraffic({ data: { period: deps.period } }),
       getHomeEsimFunnel(),
+      getTrafficDashboard({ data: { range: deps.range } }),
     ]);
-    return { ...dashboard, traffic, homeFunnel };
+    return { ...dashboard, traffic, homeFunnel, census };
   },
   component: AdminDashboard,
 });
@@ -71,6 +76,7 @@ function AdminDashboard() {
   const data = Route.useLoaderData();
   const router = useRouter();
   const period = data.period;
+  const { range } = Route.useSearch();
   const [metric, setMetric] = useState<"orders" | "revenue" | "visitors" | "clicks">("visitors");
   const [privateMode, setPrivateMode] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -613,6 +619,7 @@ function AdminDashboard() {
           </AdminSurface>
         </div>
       </div>
+      <TrafficPanel data={data.census} range={range} />
     </AdminShell>
   );
 }
