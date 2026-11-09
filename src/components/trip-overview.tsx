@@ -663,7 +663,7 @@ export function TripOverview(props: Props) {
   ];
 
   return (
-    <div className={`mx-auto min-h-dvh w-full max-w-md ${assistantOn ? "pb-52" : "pb-28"}`}>
+    <div className={`mx-auto min-h-dvh w-full max-w-md ${assistantOn ? "" : "pb-28"}`}>
       {mapOn && expanded && <div className="h-[300px]" aria-hidden="true" />}
       <section
         aria-label="Peta perjalanan"
@@ -778,7 +778,7 @@ export function TripOverview(props: Props) {
       </section>
 
       <div
-        className={`relative bg-background px-4 pb-4 pt-2 ${mapOn ? "-mt-5 rounded-t-[20px] shadow-[0_-4px_16px_rgb(0_0_0/0.12)]" : "mt-3"}`}
+        className={`relative bg-background px-4 pt-2 ${assistantOn ? "min-h-[calc(100dvh-300px)] pb-52" : "pb-4"} ${mapOn ? "-mt-5 rounded-t-[20px] shadow-[0_-4px_16px_rgb(0_0_0/0.12)]" : "mt-3"}`}
       >
         {mapOn && (
           <div
