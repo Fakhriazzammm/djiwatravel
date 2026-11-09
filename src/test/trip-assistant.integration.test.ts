@@ -67,7 +67,7 @@ import {
   resetReminderThrottle,
   sweepAssistantReminders,
 } from "@/lib/trip-assistant-reminders.server";
-import { nominatimVenue } from "@/lib/trip-assistant-places.server";
+import { hoursNote, nominatimVenue } from "@/lib/trip-assistant-places.server";
 import {
   assistantApplyHandler,
   assistantDismissHandler,
@@ -624,6 +624,16 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
             !new URL(u).searchParams.has("bounded"),
         ),
       ).toBe(true);
+    });
+
+    it("never guesses from seasonal or holiday hours", () => {
+      expect(
+        hoursNote(null, { raw: "Mo off; Oct 01-Mar 14 Tu-Su 09:00-16:30", open: null }, null),
+      ).toBe("Jam buka berubah menurut musim atau hari libur: cek jam buka");
+      expect(hoursNote(null, { raw: "10:00-20:00", open: null }, "10:00-20:00")).toBe(
+        "Jam buka: 10:00-20:00 (OpenStreetMap)",
+      );
+      expect(hoursNote("makan malam", null, null)).toBe("makan malam · cek jam buka");
     });
 
     it("does not call the map when Admin turned the place check off, and still says cek jam buka", async () => {

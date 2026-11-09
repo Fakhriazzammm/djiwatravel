@@ -104,7 +104,11 @@ export function hoursNote(
   if (hours && hours.open === true && dayHours) return `Buka ${dayHours} (OpenStreetMap)`;
   if (hours && hours.open === false && dayHours)
     return `Mungkin tutup di jam ini: buka ${dayHours} (OpenStreetMap)`;
-  if (hours) return `Jam buka: ${hours.raw.slice(0, 60)} (OpenStreetMap)`;
+  // Hours that change by season or holiday are not turned into a guess.
+  if (hours)
+    return dayHours
+      ? `Jam buka: ${dayHours} (OpenStreetMap)`
+      : "Jam buka berubah menurut musim atau hari libur: cek jam buka";
   if (existing && /jam buka/i.test(existing)) return existing;
   return existing ? `${existing} · cek jam buka` : "cek jam buka";
 }
