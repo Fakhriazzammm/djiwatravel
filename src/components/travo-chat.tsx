@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ChevronLeft, History, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { AssistantMascot } from "@/components/assistant-mascot";
+import { AssistantMascot, AssistantProfileSheet } from "@/components/assistant-mascot";
 import { TravoComposer, TravoLive, TravoMessage } from "@/components/travo-parts";
 import { TripToolsBar, TripToolsOverlays } from "@/components/trip-chat-tools";
 import { ShareTripSheet } from "@/components/trip-share-sheet";
@@ -119,6 +119,7 @@ export function TravoChat({
     onChanged: async () => tripCtx.reload(),
   });
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState<TravoConversationSummary[] | null>(null);
   const [deleting, setDeleting] = useState<TravoConversationSummary | null>(null);
@@ -179,10 +180,18 @@ export function TravoChat({
         >
           <ChevronLeft className="size-4" aria-hidden="true" />
         </Link>
-        <AssistantMascot size={34} mood={travoMood(chat)} cheer={chat.cheer} />
+        <AssistantMascot
+          size={34}
+          mood={travoMood(chat)}
+          cheer={chat.cheer}
+          label={`Profil ${ASSISTANT_NAME}`}
+          onPress={() => setProfileOpen(true)}
+        />
         <div className="min-w-0 flex-1">
           <h1 className="text-[14px] font-bold leading-tight">{ASSISTANT_NAME}</h1>
-          <p className="truncate text-[11px] text-muted-foreground">Asisten perjalanan Djiwa</p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            Siap membantu · ketuk untuk kenalan
+          </p>
         </div>
         <button
           type="button"
@@ -326,6 +335,20 @@ export function TravoChat({
           />
         </>
       )}
+      <AssistantProfileSheet
+        variant="general"
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        mood={travoMood(chat)}
+        remaining={chat.remaining}
+        dailyLimit={status?.available ? status.dailyLimit : undefined}
+        guest={status?.available === true && status.guest}
+        hasConversation={messages.length > 0}
+        onReset={() => {
+          setProfileOpen(false);
+          startNew();
+        }}
+      />
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
         <SheetContent
           side="bottom"

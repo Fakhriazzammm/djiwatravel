@@ -150,6 +150,24 @@ const CHATTER = [
   "Pssst, struk belanja bisa difoto langsung.",
 ];
 
+const CHATTER_GENERAL = [
+  "Halo! Aku Travo. Mau ke mana hari ini?",
+  "Cari eSIM, tiket, atau titip belanja? Bilang saja.",
+  "Aku bisa bantu beli eSIM langsung di sini.",
+  "Cek saldo dan top up Djiwa Pay juga bisa.",
+  "Mau bikin trip baru? Sebut tujuan dan tanggalnya.",
+  "Pssst, tanya soal visa atau tax refund juga boleh.",
+];
+
+const SKILLS_GENERAL = [
+  "Mencari dan membeli eSIM, lengkap dengan pemasangan QR",
+  "Mencari harga tiket pesawat termurah",
+  "Membuat trip, itinerary, anggaran, dan checklist",
+  "Titip belanja dari Jepang, Korea, Thailand, dan Singapura",
+  "Cek pesanan, saldo Djiwa Pay, dan top up",
+  "Menjawab soal visa, tax refund, dan tips perjalanan",
+];
+
 const SKILLS = [
   "Menyusun itinerary per hari dan menaruhnya di peta",
   "Merapikan agenda yang bentrok atau tutup",
@@ -171,7 +189,10 @@ export function AssistantProfileSheet({
   guest,
   onReset,
   hasConversation,
+  variant = "trip",
 }: {
+  /** "general" is the standalone Travo page: every feature of the app, not only one trip. */
+  variant?: "trip" | "general";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mood: MascotMood;
@@ -182,6 +203,8 @@ export function AssistantProfileSheet({
   hasConversation: boolean;
 }) {
   const reduce = Boolean(useReducedMotion());
+  const chatter = variant === "general" ? CHATTER_GENERAL : CHATTER;
+  const skills = variant === "general" ? SKILLS_GENERAL : SKILLS;
   const [line, setLine] = useState(0);
   const [taps, setTaps] = useState(0);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -208,7 +231,9 @@ export function AssistantProfileSheet({
         <SheetHeader className="text-center">
           <SheetTitle className="text-[17px]">{ASSISTANT_NAME}</SheetTitle>
           <SheetDescription className="text-[12px]">
-            Asisten perjalanan berbasis AI · maskot pesawat Djiwa Travel
+            {variant === "general"
+              ? "Asisten AI semua fitur Djiwa Travel · maskot pesawat"
+              : "Asisten perjalanan berbasis AI · maskot pesawat Djiwa Travel"}
           </SheetDescription>
         </SheetHeader>
 
@@ -227,7 +252,7 @@ export function AssistantProfileSheet({
               transition={springIos}
               className="absolute top-0 max-w-[85%] rounded-2xl rounded-bl-md bg-surface px-3 py-1.5 text-center text-[12px] font-medium ring-1 ring-border/50"
             >
-              {CHATTER[line % CHATTER.length]}
+              {chatter[line % chatter.length]}
             </motion.p>
           </AnimatePresence>
           <motion.div
@@ -258,7 +283,7 @@ export function AssistantProfileSheet({
         </p>
 
         <ul className="mt-3 space-y-1.5 rounded-2xl bg-surface p-3 text-[13px] ring-1 ring-border/40">
-          {SKILLS.map((skill) => (
+          {skills.map((skill) => (
             <li key={skill} className="flex gap-2">
               <span
                 className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-red"
@@ -275,7 +300,9 @@ export function AssistantProfileSheet({
             : ""}
         </p>
         <p className="mt-1 text-center text-[11px] text-muted-foreground">
-          AI bisa keliru. Usulan baru tersimpan setelah kamu menekan Terapkan.
+          {variant === "general"
+            ? "AI bisa keliru. Harga dan paket diambil langsung dari katalog; cek lagi sebelum membayar."
+            : "AI bisa keliru. Usulan baru tersimpan setelah kamu menekan Terapkan."}
         </p>
         {hasConversation && (
           <button

@@ -403,4 +403,23 @@ describe("Travo page", () => {
       timeout: 2500,
     });
   });
+
+  it("introduces Travo for the whole app when the mascot is tapped", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: { id: "c5", tripId: null, title: "x", scope: "all", tripCurrency: null },
+      messages: [
+        msg({ id: "u", role: "user", content: "halo" }),
+        msg({ id: "a", content: "Hai!" }),
+      ],
+    });
+    render(<TravoChat conversationId="c5" />);
+    await screen.findByText("Hai!");
+    fireEvent.click(screen.getByRole("button", { name: "Profil Travo" }));
+    expect(await screen.findByText(/Mencari dan membeli eSIM/)).toBeTruthy();
+    expect(screen.getByText(/Titip belanja dari Jepang/)).toBeTruthy();
+    expect(screen.getByText(/Sisa 12 dari 30 pesan hari ini/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Mulai obrolan baru" })).toBeTruthy();
+  });
 });
