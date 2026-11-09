@@ -20,6 +20,31 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
   useRouter: () => ({ invalidate: vi.fn(), history: { back: vi.fn() } }),
 }));
+vi.mock("@/lib/my-trips.fn", () => ({
+  getTrip: vi.fn(async () => ({
+    trip: {
+      id: "t1",
+      name: "Jepang",
+      destination_name: "Japan",
+      departure_date: "2026-11-07",
+      return_date: "2026-11-12",
+      travelers_count: 2,
+      primary_currency: "IDR",
+      total_budget_minor: 1000000000,
+    },
+    itinerary: [],
+    budget: [],
+    expenses: [],
+    checklist: [],
+    bookings: [],
+    totals: { remainingMinor: 1000000000 },
+    share: null,
+  })),
+  getTripShare: vi.fn(),
+  postTripShare: vi.fn(),
+  deleteTripShare: vi.fn(),
+}));
+vi.mock("@/lib/receipt-scan.fn", () => ({ getReceiptScanStatus: vi.fn(async () => null) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/trip-assistant.fn", () => ({
   loadTravo: vi.fn(),
@@ -157,5 +182,23 @@ describe("Travo page", () => {
     render(<TravoChat />);
     expect(await screen.findByText("Masuk untuk ngobrol")).toBeTruthy();
     expect(screen.queryByLabelText("Pesan untuk Travo")).toBeNull();
+  });
+
+  it("gives a trip chat the same tools as Ringkas: the summary card and Ringkas semua", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: { id: "c1", tripId: "t1", title: "Jepang", scope: "trip", tripCurrency: "IDR" },
+      messages: [
+        msg({ id: "u", role: "user", content: "Ringkas semua perjalananku", local: "summary" }),
+        msg({ id: "a", content: "Ini ringkasan lengkap.", local: "summary" }),
+      ],
+    });
+    render(<TravoChat conversationId="c1" />);
+    // The stored summary exchange comes back as the live card, not as plain text.
+    expect(await screen.findByTestId("trip-summary")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /ringkas semua/i })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /bagikan/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Catat biaya" })).toBeTruthy();
   });
 });

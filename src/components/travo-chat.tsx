@@ -4,6 +4,9 @@ import { ChevronLeft, History, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantMascot } from "@/components/assistant-mascot";
 import { TravoComposer, TravoLive, TravoMessage } from "@/components/travo-parts";
+import { TripToolsBar, TripToolsOverlays } from "@/components/trip-chat-tools";
+import { ShareTripSheet } from "@/components/trip-share-sheet";
+import { TripSummaryCard } from "@/components/trip-summary-card";
 import { ConfirmDialog } from "@/components/trip-ios";
 import {
   Sheet,
@@ -13,10 +16,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { travoMood, useTravoChat } from "@/hooks/use-travo-chat";
+import { useTripChatTools } from "@/hooks/use-trip-chat-tools";
+import { useTripContext } from "@/hooks/use-trip-context";
 import { deleteTravoConversation, listTravoConversations } from "@/lib/trip-assistant.fn";
 import {
   ASSISTANT_NAME,
-  QUICK,
+  SHARE_WORDS,
   TRAVO_SCOPES,
   TRAVO_SCOPE_LABEL,
   TRAVO_SCOPE_LINK,
@@ -77,7 +82,15 @@ export function TravoChat({
 }) {
   const navigate = useNavigate();
   const router = useRouter();
+  const [shareOpen, setShareOpen] = useState(false);
+  // "bagikan itinerary" opens the share sheet, but only once the trip is loaded.
+  const shareReady = useRef(false);
   const chat = useTravoChat({
+    intercept: (text) => {
+      if (!shareReady.current || !SHARE_WORDS.test(text)) return false;
+      setShareOpen(true);
+      return true;
+    },
     conversationId,
     tripParam,
     scope: initialScope,
@@ -86,6 +99,16 @@ export function TravoChat({
       void navigate({ to: "/travo", search: { c: id } as never, replace: true }),
   });
   const { status, loggedIn, ready, messages, sending, notice, convId, chatTrip, scope } = chat;
+  // A trip chat has the same trip tools as Ringkas, from the same trip data.
+  const tripCtx = useTripContext(chatTrip);
+  shareReady.current = tripCtx.ready;
+  const tools = useTripChatTools({
+    chat,
+    tripId: chatTrip,
+    summary: tripCtx.ready ? tripCtx.summary : undefined,
+    onChanged: async () => tripCtx.reload(),
+  });
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState<TravoConversationSummary[] | null>(null);
   const [deleting, setDeleting] = useState<TravoConversationSummary | null>(null);
@@ -264,10 +287,24 @@ export function TravoChat({
                 message={m}
                 last={m.id === lastId}
                 chat={chat}
-                currency={chat.tripCurrency ?? "IDR"}
+                currency={tripCtx.ready ? tripCtx.currency : (chat.tripCurrency ?? "IDR")}
+                onShare={tripCtx.ready ? () => setShareOpen(true) : undefined}
+                extra={
+                  m.role === "assistant" && m.local === "summary" && tripCtx.ready && chatTrip ? (
+                    <TripSummaryCard
+                      summary={tripCtx.summary}
+                      tripId={chatTrip}
+                      onAction={tools.runSummaryAction}
+                      onShare={() => setShareOpen(true)}
+                    />
+                  ) : undefined
+                }
               />
             ))}
             <TravoLive chat={chat} />
+            {tools.summarizing && (
+              <p className="ml-8 text-[11px] text-muted-foreground">Travo sedang meringkas…</p>
+            )}
             {!sending && link && !chatTrip && messages.length > 0 && (
               <Link
                 to={link.to as never}
@@ -292,24 +329,41 @@ export function TravoChat({
       {available && loggedIn && (
         <footer className="shrink-0 border-t border-border/60 bg-background px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
           {chatTrip && (
-            <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1.5 [scrollbar-width:none]">
-              {QUICK.map((q) => (
-                <button
-                  key={q.intent}
-                  type="button"
-                  disabled={sending}
-                  onClick={() => void send(q.text, q.intent)}
-                  className="tap min-h-8 shrink-0 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50 disabled:opacity-50"
-                >
-                  {q.label}
-                </button>
-              ))}
-            </div>
+            <TripToolsBar
+              chat={chat}
+              tools={tools}
+              summary={tripCtx.ready ? tripCtx.summary : undefined}
+              unpinned={tripCtx.ready ? tripCtx.unpinned : 0}
+              onShare={tripCtx.ready ? () => setShareOpen(true) : undefined}
+              onCatat={() => {
+                chat.setDraft("Catat ");
+                inputRef.current?.focus();
+              }}
+            />
           )}
-          <TravoComposer chat={chat} />
+          <TravoComposer chat={chat} inputRef={inputRef} />
         </footer>
       )}
 
+      {chatTrip && tripCtx.ready && (
+        <>
+          <TripToolsOverlays
+            tools={tools}
+            tripId={chatTrip}
+            currency={tripCtx.currency}
+            categories={tripCtx.categories}
+            budget={{ budgetMinor: tripCtx.budgetMinor, spentMinor: tripCtx.spentMinor }}
+            onChanged={async () => tripCtx.reload()}
+          />
+          <ShareTripSheet
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            trip={tripCtx.trip}
+            share={tripCtx.share}
+            onChanged={async () => tripCtx.reload()}
+          />
+        </>
+      )}
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
         <SheetContent
           side="bottom"

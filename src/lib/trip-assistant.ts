@@ -1054,3 +1054,6 @@ export const QUICK: { label: string; intent: AssistantIntent; text: string }[] =
     text: "Apa saja persiapan yang belum ada di checklist saya?",
   },
 ];
+
+/** "bagikan itinerary", "share perjalanan", ...: opens the share sheet instead of asking the model. */
+export const SHARE_WORDS = /\b(bagikan|share|kirim)\b.*\b(itinerar\w*|perjalanan|rencana|trip)\b/i;

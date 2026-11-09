@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Camera, MapPin, Plus, Share2, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { FixedLayer } from "@/components/motion-primitives";
 import { ConfirmDialog } from "@/components/trip-ios";
@@ -13,15 +13,15 @@ import {
   TypingBubble,
 } from "@/components/travo-parts";
 import { TripSummaryCard } from "@/components/trip-summary-card";
-import { ReceiptScanner } from "@/components/receipt-scanner";
+import { TripToolsBar, TripToolsOverlays } from "@/components/trip-chat-tools";
 import { travoMood, useTravoChat } from "@/hooks/use-travo-chat";
-import { getReceiptScanStatus } from "@/lib/receipt-scan.fn";
-import type { ReceiptScanStatus } from "@/lib/receipt-scan";
-import type { SummaryAction, TripSummary } from "@/lib/trip-summary";
-import { pinTripPlaces, recordTripSummary, resetTripAssistant } from "@/lib/trip-assistant.fn";
+import { useTripChatTools } from "@/hooks/use-trip-chat-tools";
+import type { TripSummary } from "@/lib/trip-summary";
+import { resetTripAssistant } from "@/lib/trip-assistant.fn";
 import {
   ASSISTANT_NAME,
   QUICK,
+  SHARE_WORDS,
   buildNudges,
   type AssistantIntent,
   type AssistantNudge,
@@ -56,9 +56,6 @@ type Props = {
   onAvailability: (on: boolean) => void;
 };
 
-/** "bagikan itinerary", "share perjalanan", ...: opens the share sheet instead of asking the model. */
-const SHARE_WORDS = /\b(bagikan|share|kirim)\b.*\b(itinerar\w*|perjalanan|rencana|trip)\b/i;
-
 /**
  * The AI conversation under the Ringkas map. The Ringkas cards (agenda, attention, budget) sit
  * inside it, then the conversation: the assistant asks, answers and proposes; the traveler taps
@@ -89,24 +86,17 @@ export function TripAssistant(props: Props) {
   });
   const { status, messages, setMessages, sending, notice, setNotice, remaining, streamText } = chat;
   const [resetOpen, setResetOpen] = useState(false);
-  const [receipt, setReceipt] = useState<ReceiptScanStatus | null>(null);
-  const [scanning, setScanning] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Receipt scanning is for members; a guest or a switched-off scanner has no camera chip.
-  useEffect(() => {
-    if (status?.available !== true || status.guest) return;
-    let cancelled = false;
-    void Promise.resolve()
-      .then(() => getReceiptScanStatus())
-      .then((r) => !cancelled && setReceipt(r))
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [status]);
+  const tools = useTripChatTools({
+    chat,
+    tripId,
+    summary: props.summary,
+    onChanged: props.onChanged,
+    onStart: () => setIntroShown(introLength),
+  });
 
   const live = status?.available === true;
   useEffect(() => {
@@ -152,73 +142,6 @@ export function TripAssistant(props: Props) {
     const rest = QUICK.filter((q) => !first.includes(q));
     return [...new Set([...first, ...rest])] as typeof QUICK;
   }, [nudges]);
-
-  const send = chat.send;
-
-  const [summarizing, setSummarizing] = useState(false);
-  /** "Ringkas semua": the whole trip as one balloon, built on the spot from the page data (no AI call). */
-  async function summarize() {
-    if (!props.summary || sending || summarizing) return;
-    setNotice(null);
-    setIntroShown(introLength);
-    setSummarizing(true);
-    const stamp = Date.now();
-    setMessages((list) => [
-      ...list,
-      {
-        id: `local-u-${stamp}`,
-        role: "user",
-        content: "Ringkas semua perjalananku",
-        chips: null,
-        proposal: null,
-        blocks: [],
-        local: "summary",
-        createdAt: new Date(stamp).toISOString(),
-      },
-    ]);
-    await new Promise((resolve) => window.setTimeout(resolve, 750));
-    setMessages((list) => [
-      ...list,
-      {
-        id: `local-a-${stamp}`,
-        role: "assistant",
-        content: `Ini ringkasan lengkap **${props.summary?.destination || props.summary?.name || "perjalananmu"}**. Semua datanya dari halaman Agenda, Biaya, Checklist, dan Booking.`,
-        chips: null,
-        proposal: null,
-        blocks: [],
-        local: "summary",
-        createdAt: new Date(stamp + 1).toISOString(),
-      },
-    ]);
-    setSummarizing(false);
-    // Remember the exchange so a refresh brings the (freshly built) card back.
-    void recordTripSummary({ data: { tripId } }).catch(() => undefined);
-  }
-
-  const runSummaryAction = (action: SummaryAction) => {
-    if (action === "pin") return void pinPlaces();
-    const q = QUICK.find((item) => item.intent === (action === "plan" ? "plan" : action));
-    if (q) void send(q.text, q.intent);
-  };
-
-  const [pinning, setPinning] = useState(false);
-  async function pinPlaces() {
-    setPinning(true);
-    try {
-      const result = await pinTripPlaces({ data: { tripId } });
-      await props.onChanged();
-      toast.success(
-        result.pinned
-          ? `${result.pinned} pin ditambahkan di peta${result.approximate ? ` (${result.approximate} perkiraan)` : ""}`
-          : "Semua aktivitas sudah punya titik di peta",
-      );
-      if (result.remaining) toast.error("Lokasi belum bisa dicari. Coba lagi sebentar lagi.");
-    } catch {
-      toast.error("Pin belum bisa dipasang. Coba lagi.");
-    } finally {
-      setPinning(false);
-    }
-  }
 
   async function reset() {
     try {
@@ -307,7 +230,7 @@ export function TripAssistant(props: Props) {
                 <TripSummaryCard
                   summary={props.summary}
                   tripId={tripId}
-                  onAction={runSummaryAction}
+                  onAction={tools.runSummaryAction}
                   {...(props.onShare ? { onShare: props.onShare } : {})}
                 />
               ) : undefined
@@ -315,7 +238,7 @@ export function TripAssistant(props: Props) {
           />
         ))}
         <TravoLive chat={chat} />
-        {summarizing && <TypingBubble label={`${ASSISTANT_NAME} sedang meringkas`} />}
+        {tools.summarizing && <TypingBubble label={`${ASSISTANT_NAME} sedang meringkas`} />}
         {notice && (
           <p
             role="alert"
@@ -342,71 +265,18 @@ export function TripAssistant(props: Props) {
       <FixedLayer>
         <div className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-40">
           <div className="mx-auto max-w-md border-t border-border/60 bg-background/95 px-3 pb-2 pt-1.5 backdrop-blur-xl">
-            <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1.5 [scrollbar-width:none]">
-              {props.summary && (
-                <button
-                  type="button"
-                  disabled={sending || summarizing}
-                  onClick={() => void summarize()}
-                  className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-brand-red px-3 text-xs font-bold text-white disabled:opacity-50"
-                >
-                  <Sparkles className="size-3.5" aria-hidden="true" />
-                  Ringkas semua
-                </button>
-              )}
-              {props.onShare && (
-                <button
-                  type="button"
-                  onClick={props.onShare}
-                  className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50"
-                >
-                  <Share2 className="size-3.5 text-brand-red" aria-hidden="true" />
-                  Bagikan
-                </button>
-              )}
-              {quick.map((q) => (
-                <button
-                  key={q.intent}
-                  type="button"
-                  disabled={sending}
-                  onClick={() => void send(q.text, q.intent)}
-                  className="tap min-h-8 shrink-0 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50 disabled:opacity-50"
-                >
-                  {q.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  chat.setDraft("Catat ");
-                  inputRef.current?.focus();
-                }}
-                className="tap min-h-8 shrink-0 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50"
-              >
-                Catat biaya
-              </button>
-              {(props.unpinned ?? 0) > 0 && (
-                <button
-                  type="button"
-                  disabled={pinning || sending}
-                  onClick={() => void pinPlaces()}
-                  className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-brand-red-soft px-3 text-xs font-semibold text-brand-red ring-1 ring-brand-red/30 disabled:opacity-50"
-                >
-                  <MapPin className="size-3.5" aria-hidden="true" />
-                  {pinning ? "Memasang pin…" : `Pasang pin (${props.unpinned})`}
-                </button>
-              )}
-              {receipt?.available && (
-                <button
-                  type="button"
-                  onClick={() => setScanning(true)}
-                  className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50"
-                >
-                  <Camera className="size-3.5" aria-hidden="true" />
-                  Foto struk
-                </button>
-              )}
-            </div>
+            <TripToolsBar
+              chat={chat}
+              tools={tools}
+              summary={props.summary}
+              unpinned={props.unpinned ?? 0}
+              quick={quick}
+              onShare={props.onShare}
+              onCatat={() => {
+                chat.setDraft("Catat ");
+                inputRef.current?.focus();
+              }}
+            />
             <TravoComposer
               chat={chat}
               inputRef={inputRef}
@@ -431,20 +301,14 @@ export function TripAssistant(props: Props) {
         </div>
       </FixedLayer>
 
-      {scanning && receipt?.available && (
-        <ReceiptScanner
-          tripId={tripId}
-          tripCurrency={props.currency}
-          categories={props.categories ?? []}
-          status={receipt}
-          budget={props.budget ?? null}
-          onClose={() => setScanning(false)}
-          onChanged={async () => {
-            await props.onChanged();
-            toast.success("Struk dicatat di Biaya");
-          }}
-        />
-      )}
+      <TripToolsOverlays
+        tools={tools}
+        tripId={tripId}
+        currency={props.currency}
+        categories={props.categories ?? []}
+        budget={props.budget ?? null}
+        onChanged={props.onChanged}
+      />
 
       <AssistantProfileSheet
         open={profileOpen}
