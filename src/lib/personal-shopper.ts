@@ -31,9 +31,27 @@ export const SHOPPER_BRANDS: readonly {
   country: ShopperCountryCode;
   /** Brands with a working catalog adapter. The others are shown as "Segera". */
   adapter: boolean;
+  /** Official mark kept on our own origin. "fill" logos are square art, "fit" ones sit on white. */
+  logo: { src: string; mode: "fill" | "fit" };
 }[] = [
-  { id: "uniqlo", name: "Uniqlo", monogram: "UQ", color: "#e60012", country: "JP", adapter: true },
-  { id: "gu", name: "GU", monogram: "GU", color: "#1d1d1f", country: "JP", adapter: true },
+  {
+    id: "uniqlo",
+    name: "Uniqlo",
+    monogram: "UQ",
+    color: "#e60012",
+    country: "JP",
+    adapter: true,
+    logo: { src: "/shopper-brands/uniqlo.svg", mode: "fill" },
+  },
+  {
+    id: "gu",
+    name: "GU",
+    monogram: "GU",
+    color: "#1d1d1f",
+    country: "JP",
+    adapter: true,
+    logo: { src: "/shopper-brands/gu.svg", mode: "fill" },
+  },
   {
     id: "legato",
     name: "Legato Largo",
@@ -41,8 +59,17 @@ export const SHOPPER_BRANDS: readonly {
     color: "#1f6f5c",
     country: "JP",
     adapter: true,
+    logo: { src: "/shopper-brands/legato.svg", mode: "fit" },
   },
-  { id: "anello", name: "anello", monogram: "AN", color: "#e8663d", country: "JP", adapter: true },
+  {
+    id: "anello",
+    name: "anello",
+    monogram: "AN",
+    color: "#e8663d",
+    country: "JP",
+    adapter: true,
+    logo: { src: "/shopper-brands/anello.png", mode: "fit" },
+  },
   {
     id: "longchamp",
     name: "Longchamp",
@@ -50,6 +77,7 @@ export const SHOPPER_BRANDS: readonly {
     color: "#0b2a5b",
     country: "JP",
     adapter: true,
+    logo: { src: "/shopper-brands/longchamp.png", mode: "fill" },
   },
   {
     id: "donki",
@@ -58,8 +86,17 @@ export const SHOPPER_BRANDS: readonly {
     color: "#d99100",
     country: "JP",
     adapter: false,
+    logo: { src: "/shopper-brands/donki.jpg", mode: "fill" },
   },
-  { id: "muji", name: "MUJI", monogram: "MJ", color: "#7d1f1f", country: "JP", adapter: false },
+  {
+    id: "muji",
+    name: "MUJI",
+    monogram: "MJ",
+    color: "#7d1f1f",
+    country: "JP",
+    adapter: false,
+    logo: { src: "/shopper-brands/muji.svg", mode: "fit" },
+  },
 ];
 
 export const SHOPPER_CATEGORIES: readonly ShopperCategory[] = [

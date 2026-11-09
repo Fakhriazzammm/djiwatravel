@@ -78,20 +78,34 @@ export function BrandBubble({
   muted?: boolean;
 }) {
   const info = brand === "all" ? null : brandById(brand);
+  const logo = info?.logo;
   return (
     <span
       style={{
         width: size,
         height: size,
-        background: info ? info.color : undefined,
+        background: logo?.mode === "fit" ? "#fff" : info ? info.color : undefined,
       }}
-      className={`flex items-center justify-center rounded-full text-[13px] font-extrabold transition-all duration-300 ${
+      className={`relative flex items-center justify-center overflow-hidden rounded-full text-[13px] font-extrabold transition-all duration-300 ${
         info ? "text-white" : "bg-secondary text-foreground"
-      } ${selected ? "scale-[1.08] ring-2 ring-brand-red ring-offset-2 ring-offset-background" : ""} ${
-        muted ? "opacity-45" : ""
-      }`}
+      } ${logo?.mode === "fit" ? "ring-1 ring-border" : ""} ${
+        selected ? "scale-[1.08] ring-2 ring-brand-red ring-offset-2 ring-offset-background" : ""
+      } ${muted ? "opacity-45" : ""}`}
     >
-      {info ? info.monogram : "All"}
+      {info && logo ? (
+        <img
+          src={logo.src}
+          alt={info.name}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          className={logo.mode === "fill" ? "size-full object-cover" : "w-[74%] object-contain"}
+        />
+      ) : info ? (
+        info.monogram
+      ) : (
+        "All"
+      )}
     </span>
   );
 }
