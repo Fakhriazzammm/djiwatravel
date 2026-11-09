@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { brandById, type ShopperProduct } from "@/lib/personal-shopper";
+import { brandById, imageVariant, type ShopperProduct } from "@/lib/personal-shopper";
 
 /** Flat T-shirt glyph shown while a store image loads or when it is missing. */
 function TeeGlyph({ className }: { className?: string }) {
@@ -20,11 +20,14 @@ export function ProductImage({
   src,
   alt,
   className = "",
+  width,
   children,
 }: {
   src: string | null;
   alt: string;
   className?: string;
+  /** Ask the image server for a smaller file (CSS pixels x 2 is a good value). */
+  width?: number;
   children?: ReactNode;
 }) {
   const [failed, setFailed] = useState(false);
@@ -34,7 +37,7 @@ export function ProductImage({
     >
       {src && !failed ? (
         <img
-          src={src}
+          src={width ? (imageVariant(src, width) ?? src) : src}
           alt={alt}
           loading="lazy"
           decoding="async"

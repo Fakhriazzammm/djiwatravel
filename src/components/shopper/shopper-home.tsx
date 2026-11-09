@@ -24,6 +24,7 @@ import {
   formatIdr,
   formatIdrShort,
   formatMinor,
+  productGallery,
   productTitle,
   soldLabel,
   toIdr,
@@ -37,6 +38,7 @@ import { cartCount, cartQuote, readShopperCart, useShopperCart } from "./shopper
 import { CartSheet, FilterSheet, MarketSheet, ProductSheet, SortSheet } from "./shopper-sheets";
 import type { MarketItemView } from "@/lib/shopper-market";
 import { ShopperNav } from "./shopper-nav";
+import { ImageViewer } from "./shopper-viewer";
 import { BrandBubble, ProductImage, SaleTag } from "./shopper-ui";
 
 export type ShopperHomeData = {
@@ -68,6 +70,11 @@ export function ShopperHome({
   const [filters, setFilters] = useState<ShopperFilters>(DEFAULT_SHOPPER_FILTERS);
   const [busy, setBusy] = useState(false);
   const [openProduct, setOpenProduct] = useState<ShopperProduct | null>(null);
+  const [viewer, setViewer] = useState<{
+    product: ShopperProduct;
+    color: string | null;
+    titip: boolean;
+  } | null>(null);
   const [openMarket, setOpenMarket] = useState<MarketItemView | null>(null);
   const [sheet, setSheet] = useState<null | "filter" | "sort" | "cart">(null);
   const cart = useShopperCart();
@@ -316,6 +323,7 @@ export function ShopperHome({
                   money={money}
                   meta={(p) => `Skor ${p.trend} · ${brandById(p.brand)?.name}`}
                   onOpen={setOpenProduct}
+                  onZoom={(p) => setViewer({ product: p, color: null, titip: true })}
                 />
               )}
               {!filtering && config.showBestSellers && (
@@ -326,6 +334,7 @@ export function ShopperHome({
                   money={money}
                   meta={soldLabel}
                   onOpen={setOpenProduct}
+                  onZoom={(p) => setViewer({ product: p, color: null, titip: true })}
                 />
               )}
 
@@ -389,42 +398,52 @@ export function ShopperHome({
                         damping: 30,
                       }}
                     >
-                      <button
-                        type="button"
-                        onClick={() => setOpenProduct(p)}
-                        className="tap flex w-full items-center gap-2.5 rounded-2xl border border-border/70 bg-surface p-2 text-left"
-                      >
-                        <ProductImage
-                          src={p.imageUrl}
-                          alt={productTitle(p)}
-                          className="size-14 shrink-0"
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[10px] text-muted-foreground">
-                            {brandById(p.brand)?.name} · {p.category}
-                          </span>
-                          <span className="line-clamp-2 text-[12px] font-semibold leading-tight">
-                            {productTitle(p)}
-                          </span>
-                          <span className="block text-[12px] font-bold">
-                            {formatMinor(p.price, info.symbol)}
-                            {p.originalPrice ? (
-                              <s className="ml-1 text-[9px] font-normal text-muted-foreground">
-                                {formatMinor(p.originalPrice, info.symbol)}
-                              </s>
-                            ) : null}
-                            <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-                              ≈ {formatIdrShort(toIdr(p.price, rate))}
+                      <div className="flex w-full items-center gap-2.5 rounded-2xl border border-border/70 bg-surface p-2">
+                        <button
+                          type="button"
+                          aria-label={`Lihat foto ${productTitle(p)}`}
+                          onClick={() => setViewer({ product: p, color: null, titip: true })}
+                          className="tap shrink-0"
+                        >
+                          <ProductImage
+                            src={p.imageUrl}
+                            alt={productTitle(p)}
+                            width={160}
+                            className="size-14"
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOpenProduct(p)}
+                          className="tap flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[10px] text-muted-foreground">
+                              {brandById(p.brand)?.name} · {p.category}
+                            </span>
+                            <span className="line-clamp-2 text-[12px] font-semibold leading-tight">
+                              {productTitle(p)}
+                            </span>
+                            <span className="block text-[12px] font-bold">
+                              {formatMinor(p.price, info.symbol)}
+                              {p.originalPrice ? (
+                                <s className="ml-1 text-[9px] font-normal text-muted-foreground">
+                                  {formatMinor(p.originalPrice, info.symbol)}
+                                </s>
+                              ) : null}
+                              <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                                ≈ {formatIdrShort(toIdr(p.price, rate))}
+                              </span>
+                            </span>
+                            <span className="block text-[10px] text-muted-foreground">
+                              {soldLabel(p)}
                             </span>
                           </span>
-                          <span className="block text-[10px] text-muted-foreground">
-                            {soldLabel(p)}
+                          <span className="ios-btn min-h-7 bg-brand-red px-2.5 text-[11px] text-white">
+                            Titip
                           </span>
-                        </span>
-                        <span className="ios-btn min-h-7 bg-brand-red px-2.5 text-[11px] text-white">
-                          Titip
-                        </span>
-                      </button>
+                        </button>
+                      </div>
                     </motion.li>
                   ))}
                 </ul>
@@ -508,6 +527,27 @@ export function ShopperHome({
         config={config}
         onClose={() => setOpenMarket(null)}
         onAdded={flyToCart}
+      />
+      <ImageViewer
+        open={viewer !== null}
+        title={viewer ? productTitle(viewer.product) : ""}
+        images={viewer ? productGallery(viewer.product, viewer.color) : []}
+        index={0}
+        onClose={() => setViewer(null)}
+        footer={
+          viewer?.titip ? (
+            <button
+              type="button"
+              className="ios-btn min-h-10 w-full bg-brand-red text-[14px] text-white"
+              onClick={() => {
+                setOpenProduct(viewer.product);
+                setViewer(null);
+              }}
+            >
+              Titip barang ini
+            </button>
+          ) : null
+        }
       />
       <ProductSheet
         product={openProduct}
@@ -620,6 +660,7 @@ function Rail({
   money,
   meta,
   onOpen,
+  onZoom,
 }: {
   title: string;
   subtitle: string;
@@ -627,6 +668,7 @@ function Rail({
   money: { symbol: string; rate: number };
   meta: (p: ShopperProduct) => string;
   onOpen: (p: ShopperProduct) => void;
+  onZoom: (p: ShopperProduct) => void;
 }) {
   if (items.length === 0) return null;
   return (
@@ -635,29 +677,38 @@ function Rail({
       <p className="mb-1.5 text-[10px] text-muted-foreground">{subtitle}</p>
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {items.map((p, i) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => onOpen(p)}
-            className="tap relative w-[106px] shrink-0 text-left"
-          >
-            <span className="absolute left-1.5 top-0 z-10 text-[28px] font-extrabold leading-none text-white [text-shadow:0_1px_6px_rgb(0_0_0/0.4)]">
+          <div key={p.id} className="relative w-[106px] shrink-0 text-left">
+            <span className="pointer-events-none absolute left-1.5 top-0 z-10 text-[28px] font-extrabold leading-none text-white [text-shadow:0_1px_6px_rgb(0_0_0/0.4)]">
               {i + 1}
             </span>
-            <ProductImage src={p.imageUrl} alt={productTitle(p)} className="aspect-square w-full">
-              <SaleTag product={p} />
-            </ProductImage>
-            <span className="mt-1 line-clamp-2 block text-[11px] font-semibold leading-tight">
-              {productTitle(p)}
-            </span>
-            <span className="block text-[12px] font-bold">
-              {formatMinor(p.price, money.symbol)}
-            </span>
-            <span className="block text-[10px] text-muted-foreground">
-              ≈ {formatIdrShort(toIdr(p.price, money.rate))}
-            </span>
-            <span className="block text-[9px] text-muted-foreground">{meta(p)}</span>
-          </button>
+            <button
+              type="button"
+              aria-label={`Lihat foto ${productTitle(p)}`}
+              onClick={() => onZoom(p)}
+              className="tap block w-full"
+            >
+              <ProductImage
+                src={p.imageUrl}
+                alt={productTitle(p)}
+                width={320}
+                className="aspect-square w-full"
+              >
+                <SaleTag product={p} />
+              </ProductImage>
+            </button>
+            <button type="button" onClick={() => onOpen(p)} className="tap block w-full text-left">
+              <span className="mt-1 line-clamp-2 block text-[11px] font-semibold leading-tight">
+                {productTitle(p)}
+              </span>
+              <span className="block text-[12px] font-bold">
+                {formatMinor(p.price, money.symbol)}
+              </span>
+              <span className="block text-[10px] text-muted-foreground">
+                ≈ {formatIdrShort(toIdr(p.price, money.rate))}
+              </span>
+              <span className="block text-[9px] text-muted-foreground">{meta(p)}</span>
+            </button>
+          </div>
         ))}
       </div>
     </section>

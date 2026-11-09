@@ -36,6 +36,7 @@ const product = (over: Partial<ShopperProduct>): ShopperProduct => ({
   isNew: false,
   sizes: ["M"],
   colors: [],
+  gallery: [],
   ...over,
 });
 

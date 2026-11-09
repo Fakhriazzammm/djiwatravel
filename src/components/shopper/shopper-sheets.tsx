@@ -1,7 +1,8 @@
 import { FeeExplainer } from "./shopper-about";
+import { ImageViewer } from "./shopper-viewer";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
 import { getBetterAuthSession } from "@/lib/better-auth-client";
@@ -15,6 +16,7 @@ import {
   brandEnabled,
   formatIdr,
   formatMinor,
+  productGallery,
   productTitle,
   soldLabel,
   toIdr,
@@ -55,9 +57,11 @@ export function ProductSheet({
   const [size, setSize] = useState("");
   const [color, setColor] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
+  const [zoom, setZoom] = useState(false);
 
   useEffect(() => {
     if (!product) return;
+    setZoom(false);
     setSize(product.sizes.includes("M") ? "M" : (product.sizes[0] ?? ""));
     setColor(product.colors.length > 1 ? (product.colors[0]?.code ?? null) : null);
     setQty(1);
@@ -77,7 +81,24 @@ export function ProductSheet({
   return (
     <ShopperSheet open onOpenChange={(o) => !o && onClose()} title={productTitle(product)}>
       <div className="flex gap-3">
-        <ProductImage src={image} alt={productTitle(product)} className="size-24 shrink-0" />
+        <button
+          type="button"
+          aria-label="Lihat foto lebih besar"
+          onClick={() => setZoom(true)}
+          className="tap relative shrink-0"
+        >
+          <ProductImage src={image} alt={productTitle(product)} width={240} className="size-24" />
+          <span className="absolute bottom-1 right-1 flex size-5 items-center justify-center rounded-full bg-black/55 text-white">
+            <Maximize2 className="size-3" aria-hidden="true" />
+          </span>
+        </button>
+        <ImageViewer
+          open={zoom}
+          title={productTitle(product)}
+          images={productGallery(product, color)}
+          index={0}
+          onClose={() => setZoom(false)}
+        />
         <div className="min-w-0 flex-1">
           <p className="text-[11px] text-muted-foreground">
             {brandById(product.brand)?.name} · {product.category}
@@ -360,6 +381,7 @@ export function MarketSheet({
 }) {
   const [variant, setVariant] = useState("");
   const [qty, setQty] = useState(1);
+  const [zoom, setZoom] = useState(false);
   useEffect(() => {
     setVariant("");
     setQty(1);
@@ -376,7 +398,28 @@ export function MarketSheet({
   return (
     <ShopperSheet open onOpenChange={(o) => !o && onClose()} title={item.name}>
       <div className="flex gap-3">
-        <ProductImage src={item.imageUrl} alt={item.name} className="size-24 shrink-0" />
+        {item.imageUrl ? (
+          <button
+            type="button"
+            aria-label="Lihat foto lebih besar"
+            onClick={() => setZoom(true)}
+            className="tap relative shrink-0"
+          >
+            <ProductImage src={item.imageUrl} alt={item.name} className="size-24" />
+            <span className="absolute bottom-1 right-1 flex size-5 items-center justify-center rounded-full bg-black/55 text-white">
+              <Maximize2 className="size-3" aria-hidden="true" />
+            </span>
+          </button>
+        ) : (
+          <ProductImage src={null} alt={item.name} className="size-24 shrink-0" />
+        )}
+        <ImageViewer
+          open={zoom}
+          title={item.name}
+          images={item.imageUrl ? [{ src: item.imageUrl, label: item.name }] : []}
+          index={0}
+          onClose={() => setZoom(false)}
+        />
         <div className="min-w-0 flex-1">
           <p className="text-[11px] text-muted-foreground">
             {SITE_NAME[item.site]}

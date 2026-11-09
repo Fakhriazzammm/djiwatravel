@@ -435,6 +435,8 @@ export type ShopperProduct = {
   isNew: boolean;
   sizes: string[];
   colors: ShopperColor[];
+  /** Extra shots from the store (back, detail, styling), full size, never the colour photos. */
+  gallery: string[];
 };
 
 export const productTitle = (p: Pick<ShopperProduct, "name" | "nameId">) => p.nameId || p.name;
@@ -617,6 +619,7 @@ export type CatalogRow = {
   isNew: boolean;
   sizes: string[];
   colors: ShopperColor[];
+  gallery: string[];
 };
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -677,6 +680,15 @@ export function mapStoreItem(
     .filter((s) => s.length > 0 && s.length <= 20)
     .slice(0, 16);
 
+  const subImages =
+    isRecord(raw["images"]) && Array.isArray(raw["images"]["sub"]) ? raw["images"]["sub"] : [];
+  const gallery: string[] = [];
+  for (const entry of subImages) {
+    const url = isRecord(entry) ? imageOk(entry["image"]) : null;
+    if (url && !gallery.includes(url)) gallery.push(url);
+    if (gallery.length >= 8) break;
+  }
+
   const rating = isRecord(raw["rating"]) ? raw["rating"] : {};
   const average = Number(rating["average"]);
   const count = Number(rating["count"]);
@@ -706,7 +718,63 @@ export function mapStoreItem(
     isNew,
     sizes,
     colors,
+    gallery,
   };
+}
+
+/* -------------------------------------------------------------------- photos */
+
+/**
+ * The same photo at another width. Uniqlo/GU and Longchamp image servers resize on request,
+ * so lists load small files and the viewer loads large ones. Other hosts are returned as is.
+ */
+export function imageVariant(url: string | null, width: number): string | null {
+  if (!url) return url;
+  const w = String(Math.max(64, Math.min(2000, Math.round(width))));
+  try {
+    const u = new URL(url);
+    if (u.hostname === "image.uniqlo.com") {
+      u.searchParams.set("width", w);
+      return u.toString();
+    }
+    if (u.hostname === "www.longchamp.com" && u.pathname.startsWith("/dw/image/")) {
+      u.searchParams.set("sw", w);
+      u.searchParams.set("sh", w);
+      return u.toString();
+    }
+  } catch {
+    return url;
+  }
+  return url;
+}
+
+export type GalleryImage = { src: string; label: string };
+
+const photoKey = (src: string) => src.split("?")[0] ?? src;
+
+/**
+ * Every photo the viewer can show, the chosen colour first: the main photo, one per colour,
+ * then the store's extra shots. Duplicates are dropped; at most 16.
+ */
+export function productGallery(
+  product: Pick<ShopperProduct, "imageUrl" | "colors" | "gallery">,
+  colorCode?: string | null,
+): GalleryImage[] {
+  const out: GalleryImage[] = [];
+  const seen = new Set<string>();
+  const add = (src: string | null | undefined, label: string) => {
+    if (!src || out.length >= 16) return;
+    const key = photoKey(src);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ src, label });
+  };
+  const chosen = colorCode ? product.colors.find((c) => c.code === colorCode) : undefined;
+  if (chosen?.image) add(chosen.image, chosen.name);
+  add(product.imageUrl, "Foto utama");
+  for (const c of product.colors) add(c.image, c.name);
+  product.gallery.forEach((src, i) => add(src, `Detail ${i + 1}`));
+  return out;
 }
 
 /* ------------------------------------------------------------------- orders */

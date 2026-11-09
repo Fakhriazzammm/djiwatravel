@@ -105,6 +105,10 @@ export function parseCarrotPage(html: string, brand: BagBrand): CatalogRow[] {
       const label = text(m[1] ?? "");
       if (image && label && !photoByColor.has(label)) photoByColor.set(label, image);
     }
+    const gallery = [...tile.matchAll(/data-src="([^"]+)"/g)]
+      .map((m) => imageFrom(m[1] ?? "", CARROT_IMAGE))
+      .filter((u, i, all): u is string => Boolean(u) && all.indexOf(u) === i)
+      .slice(0, 10);
     const stock = new Map<string, boolean>();
     const variant =
       /fs-c-variationCart__variationName__name">([^<]*)<[\s\S]*?(?=fs-c-variationCart__variationName__name"|$)/g;
@@ -146,6 +150,7 @@ export function parseCarrotPage(html: string, brand: BagBrand): CatalogRow[] {
       isNew: /NEW|新作|新商品/.test(tile.slice(0, 1500)),
       sizes: [],
       colors: colors.length > 1 ? colors : [],
+      gallery,
     });
   });
   return rows;
@@ -180,6 +185,8 @@ export function parseLongchampPage(html: string): CatalogRow[] {
     if (!link || !name || priceMinor === null) return;
     if (/priceCurrency" content="(?!JPY)/.test(body)) return;
     const image = /class="tile-image product-item__img[^"]*"\s+src="([^"]+)"/.exec(body)?.[1];
+    const second = /class="tile-image product-item__img cropped"\s+src="([^"]+)"/.exec(body)?.[1];
+    const secondUrl = imageFrom(second ?? "", LONGCHAMP_IMAGE);
     seen.add(pid);
     rows.push({
       brand: "longchamp",
@@ -196,6 +203,7 @@ export function parseLongchampPage(html: string): CatalogRow[] {
       isNew: false,
       sizes: [],
       colors: [],
+      gallery: secondUrl ? [secondUrl] : [],
     });
   });
   return rows;

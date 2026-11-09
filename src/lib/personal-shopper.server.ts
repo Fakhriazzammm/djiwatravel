@@ -115,8 +115,8 @@ async function upsertRows(rows: CatalogRow[], discovery = false) {
     await pool.query(
       `insert into shopping_catalog_items
          (country, brand, product_code, name, category, price_minor, original_minor, currency,
-          image_url, product_url, rating, rating_count, trend_score, is_new, sizes, colors, fetched_at)
-       values ('JP', $1, $2, $3, $4, $5, $6, 'JPY', $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb, now())
+          image_url, product_url, rating, rating_count, trend_score, is_new, sizes, colors, gallery, fetched_at)
+       values ('JP', $1, $2, $3, $4, $5, $6, 'JPY', $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb, $16::jsonb, now())
        on conflict (brand, product_code) do update set
          name = excluded.name,
          name_id = case when shopping_catalog_items.name = excluded.name then shopping_catalog_items.name_id else null end,
@@ -124,7 +124,8 @@ async function upsertRows(rows: CatalogRow[], discovery = false) {
          original_minor = excluded.original_minor, image_url = excluded.image_url,
          product_url = excluded.product_url, rating = excluded.rating,
          rating_count = excluded.rating_count, trend_score = case when $15::boolean then shopping_catalog_items.trend_score else excluded.trend_score end,
-         is_new = excluded.is_new, sizes = excluded.sizes, colors = excluded.colors, fetched_at = now()`,
+         is_new = excluded.is_new, sizes = excluded.sizes, colors = excluded.colors,
+         gallery = excluded.gallery, fetched_at = now()`,
       [
         r.brand,
         r.productCode,
@@ -141,6 +142,7 @@ async function upsertRows(rows: CatalogRow[], discovery = false) {
         JSON.stringify(r.sizes),
         JSON.stringify(r.colors),
         discovery,
+        JSON.stringify(r.gallery ?? []),
       ],
     );
   }
@@ -365,6 +367,10 @@ async function runRefresh(trigger: string) {
         : await refreshBrand(brand.id as "uniqlo" | "gu", trigger),
     );
   }
+  // Rows the stores no longer list keep a NULL gallery; mark them read so the sweep can settle.
+  await pool
+    .query("update shopping_catalog_items set gallery = '[]'::jsonb where gallery is null")
+    .catch(() => undefined);
   const translated = await translateMissingNames().catch(() => 0);
   catalogCache.clear();
   return { results, translated };
@@ -386,9 +392,13 @@ export async function sweepShopperCatalog() {
   const missingBrand = SHOPPER_BRANDS.some(
     (b) => b.adapter && config.brands[b.id] && !loadedBrands.has(b.id),
   );
+  const unread = await pool.query(
+    "select 1 from shopping_catalog_items where gallery is null and hidden = false limit 1",
+  );
   if (
     at &&
     !missingBrand &&
+    unread.rows.length === 0 &&
     Date.now() - new Date(at).getTime() < config.catalogRefreshHours * 3_600_000
   ) {
     // Fresh catalog: finish any names that are still untranslated, a few per minute.
@@ -417,6 +427,7 @@ type CatalogRowDb = {
   is_new: boolean;
   sizes: string[];
   colors: ShopperProduct["colors"];
+  gallery: string[] | null;
   sold: number | string | null;
 };
 
@@ -438,6 +449,7 @@ const toProduct = (r: CatalogRowDb): ShopperProduct => ({
   isNew: r.is_new,
   sizes: Array.isArray(r.sizes) ? r.sizes : [],
   colors: Array.isArray(r.colors) ? r.colors : [],
+  gallery: Array.isArray(r.gallery) ? r.gallery : [],
 });
 
 const catalogInput = (data: unknown) =>
