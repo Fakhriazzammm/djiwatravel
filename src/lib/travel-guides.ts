@@ -454,6 +454,9 @@ export const travelGuides: readonly TravelGuide[] = [
     publishedAt: "2026-11-09",
     updatedAt: "2026-11-09",
     readTime: "4 menit baca",
+    image: "/assets/guides/checklist-persiapan-ke-jepang.jpg",
+    imageAlt:
+      "Traveler menulis checklist persiapan ke Jepang dengan paspor, tiket, dan ponsel di meja hotel",
     sources: [
       {
         label:
@@ -519,6 +522,9 @@ export const travelGuides: readonly TravelGuide[] = [
     publishedAt: "2026-11-09",
     updatedAt: "2026-11-09",
     readTime: "4 menit baca",
+    image: "/assets/guides/titip-beli-barang-jepang.jpg",
+    imageAlt:
+      "Pembeli memeriksa barang di toko Jepang sambil memakai ponsel untuk memesan titip beli",
     sources: [
       {
         label: "Bea Cukai: ketentuan barang penumpang",
@@ -575,6 +581,8 @@ export const travelGuides: readonly TravelGuide[] = [
     publishedAt: "2026-11-09",
     updatedAt: "2026-11-09",
     readTime: "4 menit baca",
+    image: "/assets/guides/tas-jepang.jpg",
+    imageAlt: "Perempuan memilih tas ransel, tote, dan tas bahu di butik bergaya Jepang",
     sources: [
       { label: "Longchamp Jepang", url: "https://www.longchamp.com/jp/ja" },
       {
@@ -623,6 +631,8 @@ export const travelGuides: readonly TravelGuide[] = [
     publishedAt: "2026-11-09",
     updatedAt: "2026-11-09",
     readTime: "5 menit baca",
+    image: "/assets/guides/itinerary-jepang-7-hari.jpg",
+    imageAlt: "Traveler membuka peta di jalan tua Kyoto dengan pagoda saat matahari terbenam",
     sources: [
       {
         label: "JNTO: informasi resmi wisata Jepang",
@@ -678,6 +688,8 @@ export const travelGuides: readonly TravelGuide[] = [
     publishedAt: "2026-11-09",
     updatedAt: "2026-11-09",
     readTime: "4 menit baca",
+    image: "/assets/guides/oleh-oleh-jepang.jpg",
+    imageAlt: "Traveler menata kotak oleh-oleh dan paspor ke dalam koper di bandara Jepang",
     sources: [
       {
         label: "Bea Cukai: ketentuan barang penumpang",

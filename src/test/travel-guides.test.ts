@@ -39,7 +39,7 @@ describe("travel guide SEO registry", () => {
 
   it("attaches an original image and descriptive alternative text to every guide", () => {
     const added = travelGuides.filter((guide) => guide.image);
-    expect(added.length).toBeGreaterThanOrEqual(8);
+    expect(added).toHaveLength(travelGuides.length);
     expect(added.every((guide) => guide.imageAlt)).toBe(true);
     for (const guide of added) {
       expect(guide.image).toMatch(/^\/assets\/guides\/.+\.jpg$/);
