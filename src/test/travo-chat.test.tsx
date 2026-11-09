@@ -45,6 +45,10 @@ vi.mock("@/lib/my-trips.fn", () => ({
   deleteTripShare: vi.fn(),
 }));
 vi.mock("@/lib/receipt-scan.fn", () => ({ getReceiptScanStatus: vi.fn(async () => null) }));
+vi.mock("@/components/esim-checkout-sheet", () => ({
+  EsimCheckoutSheet: ({ packageCode }: { packageCode: string | null }) =>
+    packageCode ? <div data-testid="checkout-open">{packageCode}</div> : null,
+}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/trip-assistant.fn", () => ({
   loadTravo: vi.fn(),
@@ -133,7 +137,6 @@ describe("Travo page", () => {
     });
     render(<TravoChat />);
     expect(await screen.findByText("Hai, aku Travo")).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "eSIM" }));
     fireEvent.change(screen.getByLabelText("Pesan untuk Travo"), {
       target: { value: "eSIM Korea?" },
     });
@@ -141,7 +144,7 @@ describe("Travo page", () => {
     expect(await screen.findByText("Cukup 1 GB per hari.")).toBeTruthy();
     // A general chat is sent by scope, not by trip.
     expect(sendTripAssistantMessage).toHaveBeenCalledWith({
-      data: { text: "eSIM Korea?", scope: "esim" },
+      data: { text: "eSIM Korea?", scope: "all" },
     });
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(
@@ -165,7 +168,6 @@ describe("Travo page", () => {
     expect(await screen.findByText("Saya usul begini.")).toBeTruthy();
     // Trip shortcuts are there, and the topic chips (general chats only) are not.
     expect(screen.getByRole("button", { name: "Buat itinerary" })).toBeTruthy();
-    expect(screen.queryByRole("tab", { name: "eSIM" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /terapkan/i }));
     await waitFor(() =>
       expect(applyTripAssistantProposal).toHaveBeenCalledWith({ data: { proposalId: "p1" } }),
@@ -200,5 +202,54 @@ describe("Travo page", () => {
     expect(screen.getByRole("button", { name: /ringkas semua/i })).toBeTruthy();
     expect(screen.getAllByRole("button", { name: /bagikan/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Catat biaya" })).toBeTruthy();
+  });
+
+  it("shows live eSIM plans in the answer and opens checkout inside the chat", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: { id: "c2", tripId: null, title: "eSIM", scope: "all", tripCurrency: null },
+      messages: [
+        msg({ id: "u", role: "user", content: "eSIM Jepang" }),
+        msg({
+          id: "a",
+          content: "Ini pilihan terbaik.",
+          chips: { options: ["Paket lain"], multi: false },
+          cards: [
+            {
+              kind: "esim",
+              destination: { code: "JP", name: "Jepang", flag: "🇯🇵" },
+              picks: [
+                {
+                  packageCode: "JP-7D",
+                  tag: "Terlaris",
+                  name: "Jepang 7 hari",
+                  dataLabel: "1 GB/hari",
+                  days: 7,
+                  priceIdr: 89000,
+                  preorder: false,
+                },
+              ],
+              total: 5,
+              fromPriceIdr: 89000,
+            },
+          ],
+        }),
+      ],
+    });
+    render(<TravoChat conversationId="c2" />);
+    expect(await screen.findByTestId("travo-card-esim")).toBeTruthy();
+    expect(screen.getByText("Rp89.000")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Beli" }));
+    expect(screen.getByTestId("checkout-open").textContent).toBe("JP-7D");
+    // "Paket lain" asks Travo for more plans, in the same chat.
+    vi.mocked(streamTripAssistantMessage).mockRejectedValue(new Error("no stream"));
+    vi.mocked(sendTripAssistantMessage).mockResolvedValue({
+      status: "ok",
+      remaining: 10,
+      messages: [],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /paket lain \(/i }));
+    await waitFor(() => expect(sendTripAssistantMessage).toHaveBeenCalled());
   });
 });

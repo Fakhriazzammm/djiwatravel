@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUp } from "lucide-react";
 import { AssistantMascot, type MascotMood } from "@/components/assistant-mascot";
 import { AssistantBlocks, RichText } from "@/components/assistant-blocks";
+import { TravoCards } from "@/components/travo-cards";
 import { ProposalCard } from "@/components/trip-assistant-cards";
 import type { TravoChatState } from "@/hooks/use-travo-chat";
 import { useSmoothText } from "@/hooks/use-smooth-text";
@@ -98,9 +99,10 @@ export function TravoMessage({
   const chips = !chat.sending && last ? visibleChips(m.chips, m.proposal?.status ?? null) : null;
   const { picked, setPicked, send } = chat;
   const footer =
-    m.proposal || chips || m.blocks.length > 0 || extra ? (
+    m.proposal || chips || m.blocks.length > 0 || extra || m.cards?.length ? (
       <>
         {extra}
+        {m.cards?.length ? <TravoCards cards={m.cards} chat={chat} /> : null}
         {m.blocks.length > 0 && (
           <AssistantBlocks blocks={m.blocks} onAsk={(text) => void send(text)} />
         )}

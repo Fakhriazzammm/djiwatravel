@@ -73,6 +73,7 @@ export function AdminTripAssistantPanel({
   const [guestEnabled, setGuestEnabled] = useState(initial.guestEnabled);
   const [allowAgenda, setAllowAgenda] = useState(initial.allowAgenda);
   const [allowBudget, setAllowBudget] = useState(initial.allowBudget);
+  const [allowCommerce, setAllowCommerce] = useState(initial.allowCommerce);
   const [verifyHours, setVerifyHours] = useState(initial.verifyHours);
   const [reminders, setReminders] = useState(initial.reminders);
   const [dailyMessages, setDailyMessages] = useState(String(initial.dailyMessages));
@@ -100,6 +101,7 @@ export function AdminTripAssistantPanel({
         guestEnabled,
         allowAgenda,
         allowBudget,
+        allowCommerce,
         verifyHours,
         reminders,
         dailyMessages: Number(dailyMessages),
@@ -234,6 +236,12 @@ export function AdminTripAssistantPanel({
           "Pembagian anggaran, item checklist, dan satu catatan biaya",
           allowBudget,
           setAllowBudget,
+        )}
+        {check(
+          "AI boleh menampilkan kartu produk di chat",
+          "Paket eSIM dengan tombol Beli (checkout langsung di chat), harga tiket, panduan, dan daftar trip. Harga selalu diambil langsung dari katalog",
+          allowCommerce,
+          setAllowCommerce,
         )}
 
         {check(

@@ -6,6 +6,7 @@ import {
   buildAssistantSystemPrompt,
   buildNudges,
   buildGeneralContext,
+  cleanCards,
   buildTravoGeneralPrompt,
   isTravoScope,
   TRAVO_SCOPES,
@@ -503,5 +504,39 @@ describe("Travo standalone scopes", () => {
     );
     expect(json.trips[0]).toBe("Jepang | Japan | 2026-11-07 - ?");
     expect(json.esimOrders).toEqual(["Korea 5H (READY)"]);
+  });
+});
+
+describe("Travo cards", () => {
+  it("keeps only valid card requests and caps them at three", () => {
+    const row = (over: Record<string, unknown>) => ({
+      kind: "esim",
+      destination: "Jepang",
+      query: "",
+      from: "",
+      to: "",
+      date: "",
+      returnDate: "",
+      days: 7,
+      ...over,
+    });
+    const cards = cleanCards([
+      row({}),
+      row({ kind: "bogus" }),
+      row({ kind: "esim", destination: "" }),
+      row({ kind: "tiket", from: "cgk", to: "nrt", date: "2026-12-01", destination: "" }),
+      row({ kind: "tiket", from: "CGK", to: "", date: "2026-12-01" }),
+      row({ kind: "panduan", query: "visa jepang" }),
+      row({ kind: "trip" }),
+    ]);
+    expect(cards.map((c) => c.kind)).toEqual(["esim", "tiket", "panduan"]);
+    expect(cards[1]).toMatchObject({ from: "CGK", to: "NRT", date: "2026-12-01" });
+  });
+  it("shows no cards when Admin turns them off", () => {
+    const reply = cleanAssistantReply(
+      { reply: "Ini.", cards: [{ kind: "trip" }] },
+      ctx({ config: { ...DEFAULT_TRIP_ASSISTANT_CONFIG, allowCommerce: false } }),
+    );
+    expect(reply.cards).toEqual([]);
   });
 });

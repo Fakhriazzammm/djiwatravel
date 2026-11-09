@@ -22,9 +22,7 @@ import { deleteTravoConversation, listTravoConversations } from "@/lib/trip-assi
 import {
   ASSISTANT_NAME,
   SHARE_WORDS,
-  TRAVO_SCOPES,
   TRAVO_SCOPE_LABEL,
-  TRAVO_SCOPE_LINK,
   type TravoConversationSummary,
   type TravoScope,
 } from "@/lib/trip-assistant";
@@ -34,13 +32,13 @@ const STARTERS: { title: string; hint: string; scope: TravoScope; text: string }
     title: "eSIM terbaik",
     hint: "Pilih paket sesuai negara",
     scope: "esim",
-    text: "eSIM terbaik buat liburan saya?",
+    text: "Carikan eSIM terbaik untuk liburan saya",
   },
   {
     title: "Tiket pesawat",
     hint: "Cari rute dan harga",
     scope: "tiket",
-    text: "Tips cari tiket pesawat yang murah?",
+    text: "Carikan tiket pesawat yang murah",
   },
   {
     title: "Rencana trip",
@@ -98,7 +96,7 @@ export function TravoChat({
     onConversationCreated: (id) =>
       void navigate({ to: "/travo", search: { c: id } as never, replace: true }),
   });
-  const { status, loggedIn, ready, messages, sending, notice, convId, chatTrip, scope } = chat;
+  const { status, loggedIn, ready, messages, sending, notice, convId, chatTrip } = chat;
   // A trip chat has the same trip tools as Ringkas, from the same trip data.
   const tripCtx = useTripContext(chatTrip);
   shareReady.current = tripCtx.ready;
@@ -154,7 +152,6 @@ export function TravoChat({
   }
 
   const lastId = messages[messages.length - 1]?.id;
-  const link = TRAVO_SCOPE_LINK[scope];
   const grouped = (history ?? []).reduce<Record<string, TravoConversationSummary[]>>((acc, c) => {
     (acc[dayLabel(c.lastMessageAt)] ||= []).push(c);
     return acc;
@@ -196,30 +193,6 @@ export function TravoChat({
         </button>
       </header>
 
-      {!chatTrip ? (
-        <div
-          className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-border/60 bg-surface px-3 py-2 [scrollbar-width:none]"
-          role="tablist"
-          aria-label="Topik obrolan"
-        >
-          {TRAVO_SCOPES.filter((s) => s !== "trip").map((s) => (
-            <button
-              key={s}
-              type="button"
-              role="tab"
-              aria-selected={scope === s}
-              disabled={Boolean(convId)}
-              onClick={() => chat.setScope(s)}
-              className={`tap min-h-8 shrink-0 rounded-full px-3 text-[12px] font-semibold disabled:opacity-60 ${
-                scope === s ? "bg-brand-red text-white" : "bg-secondary"
-              }`}
-            >
-              {TRAVO_SCOPE_LABEL[s]}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       <main className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-3 [scrollbar-width:none]">
         {!ready ? (
           <div className="h-10 w-2/3 animate-pulse rounded-2xl bg-secondary" />
@@ -255,7 +228,6 @@ export function TravoChat({
                   key={s.title}
                   type="button"
                   onClick={() => {
-                    chat.setScope(s.scope === "trip" ? "all" : s.scope);
                     void send(s.text);
                   }}
                   className="tap min-h-[52px] rounded-2xl bg-surface p-2.5 text-left ring-1 ring-border/50"
@@ -291,14 +263,6 @@ export function TravoChat({
             <TravoLive chat={chat} />
             {tools.summarizing && (
               <p className="ml-8 text-[11px] text-muted-foreground">Travo sedang meringkas…</p>
-            )}
-            {!sending && link && !chatTrip && messages.length > 0 && (
-              <Link
-                to={link.to as never}
-                className="tap ml-8 inline-flex min-h-9 w-fit items-center rounded-xl bg-secondary px-3 text-[12px] font-semibold"
-              >
-                {link.label}
-              </Link>
             )}
           </>
         )}

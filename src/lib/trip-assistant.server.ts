@@ -5,6 +5,7 @@ import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { buildSettingAudit } from "./admin-settings";
 import { resolveTripOwner, type TripOwner } from "./guest-trips.server";
+import { resolveTravoCards } from "./travo-cards.server";
 import {
   addBudgetCategory,
   addChecklistItem,
@@ -35,6 +36,7 @@ import {
   isTravoScope,
   type GeneralFacts,
   type TravoConversationSummary,
+  type TravoCardRequest,
   type TravoScope,
   cleanAssistantReply,
   detectIntent,
@@ -397,6 +399,7 @@ type MessageRow = {
   content: string;
   chips: AssistantMessage["chips"];
   blocks: AssistantMessage["blocks"] | null;
+  cards: TravoCardRequest[] | null;
   created_at: Date | string;
   proposal_id: string | null;
   p_kind: ProposalView["kind"] | null;
@@ -435,12 +438,13 @@ type MessageFilter = { tripId: string } | { conversationId: string };
 async function readMessages(
   filter: MessageFilter | string,
   limit = 60,
+  owner?: TripOwner,
 ): Promise<AssistantMessage[]> {
   const f: MessageFilter = typeof filter === "string" ? { tripId: filter } : filter;
   const tripId = "tripId" in f ? f.tripId : null;
   const result = await pool.query(
     `select * from (
-       select m.id, m.role, m.content, m.chips, m.blocks, m.created_at, m.proposal_id,
+       select m.id, m.role, m.content, m.chips, m.blocks, m.cards, m.created_at, m.proposal_id,
               p.kind as p_kind, p.title as p_title, p.status as p_status, p.payload as p_payload
        from public.travel_assistant_messages m
        left join public.travel_assistant_proposals p on p.id = m.proposal_id
@@ -455,8 +459,19 @@ async function readMessages(
         rows.flatMap((r) => (r.p_payload ? [r.p_payload] : [])),
       )
     : {};
+  // Cards are looked up again on every read, so prices and plans are live. Only the latest few are resolved.
+  const wanted = owner
+    ? rows.filter((r) => Array.isArray(r.cards) && r.cards.length).slice(-6)
+    : [];
+  const resolved = new Map<string, Awaited<ReturnType<typeof resolveTravoCards>>>();
+  await Promise.all(
+    wanted.map(async (r) => {
+      resolved.set(r.id, await resolveTravoCards(r.cards ?? [], owner!));
+    }),
+  );
   return rows.map((r) => ({
     id: r.id,
+    ...((resolved.get(r.id)?.length ?? 0) > 0 ? { cards: resolved.get(r.id)! } : {}),
     role: r.role,
     content: r.content,
     chips: r.chips ?? null,
@@ -497,7 +512,7 @@ export async function assistantLoadHandler({
   await ownedTripRow(data.tripId, owner.id);
   const { status } = await statusFor(owner);
   if (!status.available) return { status, messages: [] as AssistantMessage[] };
-  return { status, messages: await readMessages(data.tripId) };
+  return { status, messages: await readMessages(data.tripId, 60, owner) };
 }
 
 export async function assistantResetHandler({
@@ -601,6 +616,8 @@ export async function travoLoadHandler({ data }: { data: ReturnType<typeof travo
     },
     messages: await readMessages(
       row.trip_id ? { tripId: row.trip_id } : { conversationId: row.id },
+      60,
+      owner,
     ),
   };
 }
@@ -822,7 +839,7 @@ async function runTurn(
         ),
       );
     }
-    if (!cleaned.reply && !cleaned.proposal && !cleaned.blocks.length) {
+    if (!cleaned.reply && !cleaned.proposal && !cleaned.blocks.length && !cleaned.cards.length) {
       await recordRun(owner, tripId, conv, intent, "error", model, null, outcome.usage);
       return {
         status: "error",
@@ -870,8 +887,8 @@ async function runTurn(
         );
       }
       await client.query(
-        `insert into public.travel_assistant_messages (trip_id, conversation_id, customer_auth_subject, role, content, chips, blocks, proposal_id, created_at)
-         values ($1,$2,$3,'assistant',$4,$5::jsonb,$6::jsonb,$7, now() + interval '1 millisecond')`,
+        `insert into public.travel_assistant_messages (trip_id, conversation_id, customer_auth_subject, role, content, chips, blocks, cards, proposal_id, created_at)
+         values ($1,$2,$3,'assistant',$4,$5::jsonb,$6::jsonb,$7::jsonb,$8, now() + interval '1 millisecond')`,
         [
           tripId,
           conversationId,
@@ -879,6 +896,7 @@ async function runTurn(
           cleaned.reply || cleaned.proposal?.title || "Ini usulan saya.",
           cleaned.chips ? JSON.stringify(cleaned.chips) : null,
           cleaned.blocks.length ? JSON.stringify(cleaned.blocks) : null,
+          cleaned.cards.length ? JSON.stringify(cleaned.cards) : null,
           proposalId,
         ],
       );
@@ -908,7 +926,7 @@ async function runTurn(
       remaining: Math.max(0, status.remaining - 1),
       conversationId: conversationId!,
       messages: (
-        await readMessages(tripId ? { tripId } : { conversationId: conversationId! }, 2)
+        await readMessages(tripId ? { tripId } : { conversationId: conversationId! }, 2, owner)
       ).slice(-2),
     };
   } finally {
