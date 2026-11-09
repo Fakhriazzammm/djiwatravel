@@ -21,6 +21,8 @@ import { AdminItineraryMapPanel } from "@/components/admin-itinerary-map-panel";
 import { AdminReceiptScanPanel } from "@/components/admin-receipt-scan-panel";
 import { getAdminReceiptScan } from "@/lib/receipt-scan.fn";
 import { AdminPlaceIdeasPanel } from "@/components/admin-place-ideas-panel";
+import { AdminTripAssistantPanel } from "@/components/admin-trip-assistant-panel";
+import { getAdminTripAssistant } from "@/lib/trip-assistant.fn";
 import { AdminFlightsPanel } from "@/components/admin-flights-panel";
 import { getAdminFlights } from "@/lib/flights.fn";
 import { AdminGuestTripsPanel } from "@/components/admin-guest-trips-panel";
@@ -42,6 +44,7 @@ export const Route = createFileRoute("/admin/settings")({
     itineraryMap: await getAdminItineraryMap(),
     receiptScan: await getAdminReceiptScan(),
     placeIdeas: await getAdminPlaceIdeas(),
+    tripAssistant: await getAdminTripAssistant(),
     guestTrips: await getAdminGuestTrips(),
     flights: await getAdminFlights(),
     google: await getAdminGoogle(),
@@ -59,6 +62,7 @@ function AdminSettings() {
     itineraryMap,
     receiptScan,
     placeIdeas,
+    tripAssistant,
     guestTrips,
     flights,
     google,
@@ -101,6 +105,15 @@ function AdminSettings() {
           stats={placeIdeas.stats}
           recent={placeIdeas.recent}
           keys={placeIdeas.keys}
+        />
+      </section>
+      <section id="assistant" className="scroll-mt-24">
+        <AdminTripAssistantPanel
+          initial={tripAssistant.config}
+          version={tripAssistant.version}
+          stats={tripAssistant.stats}
+          recent={tripAssistant.recent}
+          keyConfigured={tripAssistant.keyConfigured}
         />
       </section>
       <section id="guests" className="scroll-mt-24">

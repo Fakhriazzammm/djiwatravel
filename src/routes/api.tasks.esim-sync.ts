@@ -13,6 +13,7 @@ import {
   repairPreorderNotifications,
 } from "@/lib/preorder-notifications.server";
 import { sweepFlightAlerts } from "@/lib/flight-features.server";
+import { purgeAssistantHistory } from "@/lib/trip-assistant.server";
 import { sweepShoppingPayments, sweepShopperCatalog } from "@/lib/personal-shopper.server";
 import { TRAVEL_TASK_WORKER, recordFailure, recordSuccess } from "@/lib/worker-heartbeat.server";
 
@@ -124,6 +125,13 @@ async function run(request: Request) {
       reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
     });
     return { checked: 0, notified: 0, closed: 0, failed: 0 };
+  });
+
+  // Trip assistant conversations are kept for the Admin retention only (cheap delete by date).
+  void purgeAssistantHistory().catch((error) => {
+    console.error("[travel] assistant history purge failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
   });
 
   // Titip Belanja: settle or expire pending payments, and refresh the store catalog when it is old.

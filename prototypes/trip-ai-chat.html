@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ringkas + Asisten AI: prototipe</title>
+<style>
+:root{--bg:#f3f4f7;--fg:#17181c;--mut:#6b7080;--bd:#e6e8ee;--red:#c8302f;--soft:#fdecec;--ok:#16a34a;--sec:#eef0f4;--ink:#1c1d22}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:13px/1.4 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;background:#e9ebf0;color:var(--fg);min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+svg{display:block}
+.top{display:flex;gap:6px;justify-content:center;padding:12px;position:sticky;top:0;z-index:50;background:#e9ebf0}
+.top button{padding:7px 14px;border-radius:999px;background:#fff;font-weight:600;font-size:12px}
+.top button.on{background:var(--ink);color:#fff}
+.view{display:none;padding:8px 12px 40px}.view.on{display:block}
+.stage{display:flex;gap:28px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.notes{width:300px;font-size:12px;color:#40434d}
+.notes h3{font-size:14px;margin-bottom:6px}
+.notes li{margin:0 0 7px 16px}
+.notes .k{display:inline-block;background:#fff;border-radius:6px;padding:0 6px;font-weight:700;font-size:11px}
+/* phone */
+.phone{width:390px;height:844px;border-radius:44px;border:8px solid var(--ink);background:var(--bg);position:relative;overflow:hidden;flex:none}
+.map{position:absolute;inset:0 0 auto 0;height:330px;transition:height .3s,opacity .3s;background:#e8ecdf}
+.phone.full .map{height:120px}
+.map svg{width:100%;height:100%}
+.hdr{position:absolute;top:34px;left:12px;right:12px;display:flex;gap:8px;align-items:center;z-index:5}
+.ib{width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 1px 4px #0002;flex:none}
+.ttl{flex:1;background:#fff;border-radius:999px;height:36px;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:13px;box-shadow:0 1px 4px #0002;white-space:nowrap;overflow:hidden;padding:0 10px}
+.ttl span{font-weight:400;color:var(--mut);font-size:12px}
+.fab-map{position:absolute;right:12px;top:84px;display:flex;flex-direction:column;gap:8px;z-index:5}
+.phone.full .fab-map{display:none}
+.sheet{position:absolute;left:0;right:0;bottom:62px;top:300px;background:var(--bg);border-radius:22px 22px 0 0;box-shadow:0 -2px 12px #0002;display:flex;flex-direction:column;transition:top .3s;z-index:6}
+.phone.full .sheet{top:96px}
+.grab{height:18px;display:grid;place-items:center;flex:none;cursor:grab}
+.grab i{width:38px;height:4px;border-radius:2px;background:#c7cad3}
+.stats{display:flex;gap:6px;padding:0 12px 6px;flex:none;overflow-x:auto;scrollbar-width:none}
+.stats::-webkit-scrollbar{display:none}
+.st{flex:none;background:#fff;border:1px solid var(--bd);border-radius:12px;padding:5px 10px;min-width:78px}
+.st small{display:block;font-size:10px;color:var(--mut)}
+.st b{font-size:13px;font-weight:700;transition:color .3s}
+.st.pulse b{color:var(--red)}
+.day{display:flex;gap:6px;padding:0 12px 6px;flex:none;align-items:center}
+.dchip{background:var(--red);color:#fff;border-radius:999px;padding:5px 12px;font-weight:700;font-size:12px}
+.dchip.g{background:#fff;color:var(--fg);border:1px solid var(--bd);font-weight:600}
+.thread{flex:1;min-height:0;overflow-y:auto;padding:4px 12px 8px;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
+.thread::-webkit-scrollbar{display:none}
+.row{display:flex;gap:6px;align-items:flex-end;animation:in .25s both}
+@keyframes in{from{opacity:0;transform:translateY(6px)}}
+.av{width:24px;height:24px;border-radius:50%;background:var(--red);flex:none;display:grid;place-items:center}
+.b{max-width:84%;padding:8px 11px;border-radius:16px;font-size:13px;line-height:1.38}
+.ai .b{background:#fff;border:1px solid var(--bd);border-bottom-left-radius:5px}
+.me{justify-content:flex-end}.me .b{background:var(--red);color:#fff;border-bottom-right-radius:5px}
+.typing{display:flex;gap:3px;padding:10px 12px}
+.typing i{width:6px;height:6px;border-radius:50%;background:#aab;animation:bl 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes bl{0%,60%,100%{opacity:.3}30%{opacity:1}}
+.card{background:#fff;border:1px solid var(--bd);border-radius:16px;overflow:hidden;margin-left:30px;animation:in .25s both}
+.card .h{padding:8px 11px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:700;display:flex;justify-content:space-between}
+.it{display:flex;gap:9px;padding:7px 11px;border-top:1px solid var(--bd);align-items:center;min-height:44px}
+.it:first-of-type{border-top:0}
+.num{width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;flex:none}
+.num.w{background:#f59e0b}
+.it .t{flex:1;min-width:0}.it .t b{display:block;font-size:13px;font-weight:600}
+.it .t small{font-size:11px;color:var(--mut)}
+.it .t small.warn{color:#b45309}
+.it .x{font-size:11px;font-weight:600;color:var(--red);padding:6px}
+.arrow{font-size:11px;color:var(--mut)}
+.acts{display:flex;gap:6px;padding:8px 11px 10px;border-top:1px solid var(--bd)}
+.btn{flex:1;min-height:36px;border-radius:12px;background:var(--red);color:#fff;font-weight:700;font-size:13px;padding:0 10px}
+.btn.g{background:var(--sec);color:var(--fg)}
+.btn[disabled]{background:#dcfce7;color:#15803d;pointer-events:none}
+.chips{display:flex;gap:6px;padding:0 12px 6px;overflow-x:auto;flex:none;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;background:#fff;border:1px solid var(--bd);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;min-height:32px}
+.chip.on{background:var(--soft);border-color:var(--red);color:var(--red)}
+.inline{display:flex;gap:6px;flex-wrap:wrap;padding:4px 11px 8px}
+.q{padding:4px 11px 0;font-size:11px;color:var(--mut);font-weight:600}
+.comp{display:flex;gap:6px;align-items:center;padding:6px 12px 8px;background:var(--bg);flex:none}
+.comp input{flex:1;height:38px;border-radius:999px;border:1px solid var(--bd);background:#fff;padding:0 14px;font:inherit;font-size:13px;outline:none}
+.comp input:focus{border-color:var(--red)}
+.send{width:38px;height:38px;border-radius:50%;background:var(--red);display:grid;place-items:center;flex:none}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:62px;background:#fff;border-top:1px solid var(--bd);display:flex;justify-content:space-around;align-items:center;z-index:7;padding-bottom:6px}
+.tabbar div{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:10px;color:var(--mut)}
+.tabbar .on{color:var(--red);font-weight:700}
+.bars{padding:2px 11px 6px}
+.stack{display:flex;height:10px;border-radius:6px;overflow:hidden;margin:6px 0 8px}
+.stack i{display:block;height:100%;transition:width .6s}
+.bl{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
+.bl .d{width:8px;height:8px;border-radius:50%;flex:none}
+.bl span{flex:1}.bl b{font-weight:700}
+.steps{padding:8px 11px;font-size:12px}
+.steps div{display:flex;gap:8px;align-items:center;padding:3px 0;color:var(--mut)}
+.steps div.done{color:var(--fg)}
+.steps .c{width:14px;height:14px;border-radius:50%;border:1.5px solid #c7cad3;display:grid;place-items:center;flex:none}
+.steps .done .c{background:var(--ok);border-color:var(--ok)}
+.chk{display:flex;gap:9px;align-items:center;padding:8px 11px;border-top:1px solid var(--bd);min-height:40px;width:100%;text-align:left}
+.chk .c{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--red);display:grid;place-items:center;flex:none}
+.chk.done .c{background:var(--ok);border-color:var(--ok)}
+.chk.done span{color:var(--mut);text-decoration:line-through}
+.toast{position:absolute;left:12px;right:12px;bottom:140px;background:var(--ink);color:#fff;border-radius:14px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;z-index:20;font-size:12.5px;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none}
+.toast.on{opacity:1;transform:none;pointer-events:auto}
+.toast button{color:#ff9d9d;font-weight:700}
+/* admin + plan */
+.page{max-width:880px;margin:0 auto;background:#fff;border-radius:16px;padding:20px 24px;line-height:1.5}
+.page h2{font-size:20px;margin-bottom:4px}.page h3{font-size:14px;margin:18px 0 6px}
+.page p,.page li{font-size:13px;color:#33363f}.page ul,.page ol{margin-left:18px}
+.page table{border-collapse:collapse;width:100%;font-size:12px;margin:6px 0}
+.page td,.page th{border:1px solid var(--bd);padding:6px 8px;text-align:left;vertical-align:top}
+.page th{background:var(--sec)}
+.tag{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;background:var(--soft);color:var(--red)}
+.adm{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:10px}
+.box{border:1px solid var(--bd);border-radius:14px;padding:12px}
+.box h4{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin-bottom:8px}
+.sw{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;border-top:1px solid var(--bd)}
+.sw:first-of-type{border-top:0}
+.tg{width:38px;height:22px;border-radius:11px;background:#cfd2da;position:relative;flex:none}
+.tg:after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
+.tg.on{background:var(--ok)}.tg.on:after{left:18px}
+.kpi{display:flex;gap:10px;flex-wrap:wrap}.kpi div{flex:1;min-width:110px;background:var(--sec);border-radius:12px;padding:8px 10px}
+.kpi b{font-size:18px;display:block}.kpi small{color:var(--mut);font-size:11px}
+</style></head><body>
+<div class="top">
+  <button class="on" data-v="proto">Prototipe</button>
+  <button data-v="admin">Admin</button>
+  <button data-v="plan">Rencana</button>
+</div>
+
+<!-- ============ PROTOTIPE ============ -->
+<div class="view on" id="v-proto">
+<div class="stage">
+ <div class="phone" id="phone">
+  <div class="map">
+   <svg viewBox="0 0 374 330" preserveAspectRatio="xMidYMid slice">
+    <rect width="374" height="330" fill="#eaeee0"/>
+    <path d="M250 0 C260 90 230 170 300 330 L374 330 L374 0Z" fill="#cfe3ef"/>
+    <g stroke="#fff" stroke-width="5" fill="none" opacity=".95"><path d="M0 120 L374 150"/><path d="M60 0 L120 330"/><path d="M0 250 L374 210"/><path d="M190 0 L170 330"/></g>
+    <g stroke="#f6d98a" stroke-width="3" fill="none"><path d="M0 60 L374 80"/><path d="M0 190 L250 175"/><path d="M110 0 L330 330"/></g>
+    <g fill="#d8e6c6"><rect x="20" y="130" width="70" height="55" rx="10"/><rect x="200" y="215" width="80" height="50" rx="10"/></g>
+    <path id="route" d="M200 80 L170 150 L150 210 L72 175" stroke="#c8302f" stroke-width="3" stroke-dasharray="1 7" stroke-linecap="round" fill="none"/>
+    <g id="pins" font-size="11" font-weight="700" text-anchor="middle" fill="#c8302f">
+     <g transform="translate(200 80)"><circle r="11" fill="#fff" stroke="#c8302f" stroke-width="2"/><text y="4">1</text></g>
+     <g transform="translate(170 150)"><circle r="11" fill="#fff" stroke="#c8302f" stroke-width="2"/><text y="4">2</text></g>
+     <g transform="translate(150 210)"><circle r="11" fill="#fff" stroke="#c8302f" stroke-width="2"/><text y="4">3</text></g>
+     <g transform="translate(72 175)"><circle r="11" fill="#fff" stroke="#c8302f" stroke-width="2"/><text y="4">4</text></g>
+    </g>
+    <g id="newpins" font-size="11" font-weight="700" text-anchor="middle" fill="#fff"></g>
+   </svg>
+  </div>
+  <div class="hdr">
+   <div class="ib"><svg width="16" height="16" fill="none" stroke="#17181c" stroke-width="2.4" stroke-linecap="round"><path d="M10 2L4 8l6 6"/></svg></div>
+   <div class="ttl">Hari ke-2 serunya di Jepang <span>· Tokyo</span></div>
+   <div class="ib"><svg width="16" height="16" fill="#17181c"><circle cx="3" cy="8" r="1.6"/><circle cx="8" cy="8" r="1.6"/><circle cx="13" cy="8" r="1.6"/></svg></div>
+  </div>
+  <div class="fab-map"><div class="ib"><svg width="16" height="16" fill="none" stroke="#17181c" stroke-width="1.8"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg></div><div class="ib" style="font-weight:700;font-size:12px">3D</div></div>
+
+  <div class="sheet" id="sheet">
+   <div class="grab" id="grab"><i></i></div>
+   <div class="stats" id="stats">
+    <div class="st" id="st-ag"><small>Agenda</small><b>4 aktivitas</b></div>
+    <div class="st"><small>Booking</small><b>0 aktif</b></div>
+    <div class="st" id="st-ck"><small>Checklist</small><b>0/9</b></div>
+    <div class="st" id="st-bd"><small>Sisa</small><b>10 jt</b></div>
+   </div>
+   <div class="day"><div class="dchip">8 Nov</div><div class="dchip g">9 Nov</div><div class="dchip g">10 Nov</div></div>
+   <div class="thread" id="thread"></div>
+   <div class="chips" id="chips"></div>
+   <form class="comp" id="form">
+    <input id="inp" placeholder="Tanya atau minta apa saja…" autocomplete="off">
+    <button class="send" aria-label="Kirim"><svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5"/></svg></button>
+   </form>
+  </div>
+  <div class="toast" id="toast"><span id="toastT"></span><button id="undo">Urungkan</button></div>
+  <div class="tabbar">
+   <div><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10l8-6 8 6v8H3z"/></svg>Beranda</div>
+   <div class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="13" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="13" width="6" height="6" rx="1.5"/><rect x="13" y="13" width="6" height="6" rx="1.5"/></svg>Ringkas</div>
+   <div><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="16" height="15" rx="2"/><path d="M3 9h16"/></svg>Agenda</div>
+   <div><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="16" height="12" rx="2"/><path d="M3 9h16"/></svg>Biaya</div>
+   <div><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="M7.5 11l2.5 2.5 4.5-5"/></svg>Checklist</div>
+   <div><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="16" height="10" rx="2"/></svg>Booking</div>
+  </div>
+ </div>
+ <div class="notes">
+  <h3>Coba di prototipe</h3>
+  <ul>
+   <li>Tarik atau ketuk <span class="k">garis abu</span> di sheet: peta mengecil, obrolan melebar (2 posisi).</li>
+   <li>Ketuk chip <span class="k">Rapikan hari ini</span>: AI menemukan bentrok jam buka, usul perbaikan, ada <b>Terapkan</b> dan <b>Urungkan</b>.</li>
+   <li><span class="k">Buat rencana hari ke-3</span>: AI bertanya (pilih chip), menyusun, lalu pin baru muncul di peta.</li>
+   <li><span class="k">Atur anggaran</span>: ketik angka (mis. "15 juta") atau pilih chip. Kartu rincian, lalu Terapkan.</li>
+   <li><span class="k">Cek checklist</span>: centang langsung di dalam obrolan, angka di atas ikut berubah.</li>
+   <li>Ketik bebas di kolom bawah, mis. "anggaran", "rencana", "checklist".</li>
+  </ul>
+  <h3>Yang dipertahankan</h3>
+  <ul><li>Peta, 4 angka ringkas, chip hari, dan tab bawah tetap sama seperti sekarang.</li>
+  <li>Daftar Agenda, Perlu perhatian, Sisa anggaran dan Atur kota pindah ke dalam obrolan sebagai kartu.</li>
+  <li>Halaman Agenda, Biaya, Checklist tetap ada untuk edit manual.</li></ul>
+ </div>
+</div>
+</div>
+
+<!-- ============ ADMIN ============ -->
+<div class="view" id="v-admin"><div class="page">
+ <h2>Admin › Pengaturan › Asisten perjalanan</h2>
+ <p>Kontrol operasional untuk fitur obrolan AI di Ringkas. Semua perubahan berversi dan masuk audit log (pola sama dengan Ide tempat dan Scan struk).</p>
+ <div class="adm">
+  <div class="box"><h4>Saklar</h4>
+   <div class="sw">Asisten aktif<span class="tg on"></span></div>
+   <div class="sw">Boleh ubah Agenda<span class="tg on"></span></div>
+   <div class="sw">Boleh ubah Anggaran<span class="tg on"></span></div>
+   <div class="sw">Untuk tamu (tanpa login)<span class="tg"></span></div>
+  </div>
+  <div class="box"><h4>Batas dan model</h4>
+   <div class="sw">Pesan per hari / pelancong<b>30</b></div>
+   <div class="sw">Rencana otomatis per hari<b>5</b></div>
+   <div class="sw">Model<b>Helipod · standar</b></div>
+   <div class="sw">Model ulang (kuat)<b>Aktif</b></div>
+   <div class="sw">Simpan riwayat obrolan<b>90 hari</b></div>
+  </div>
+  <div class="box"><h4>Perilaku</h4>
+   <div class="sw">Nada bicara<b>Santai, sopan</b></div>
+   <div class="sw">Selalu minta persetujuan sebelum menulis<span class="tg on"></span></div>
+   <div class="sw">Larangan topik<b>3 baris</b></div>
+   <div class="sw">Ketat jam buka tempat<span class="tg on"></span></div>
+  </div>
+ </div>
+ <h3>7 hari terakhir</h3>
+ <div class="kpi"><div><b>1.284</b><small>pesan</small></div><div><b>212</b><small>pelancong aktif</small></div><div><b>46%</b><small>usulan diterapkan</small></div><div><b>Rp 38.400</b><small>biaya AI</small></div><div><b>1,2%</b><small>gagal / sibuk</small></div></div>
+ <h3>Percakapan terbaru (tanpa nama, isi dipotong)</h3>
+ <table><tr><th>Waktu</th><th>Maksud</th><th>Hasil</th><th>Token</th></tr>
+ <tr><td>14:02</td><td>Buat rencana</td><td><span class="tag">Diterapkan</span></td><td>3,1 rb</td></tr>
+ <tr><td>13:48</td><td>Atur anggaran</td><td>Diabaikan</td><td>1,4 rb</td></tr>
+ <tr><td>13:20</td><td>Rapikan hari</td><td><span class="tag">Diterapkan</span> lalu diurungkan</td><td>2,2 rb</td></tr></table>
+ <p style="margin-top:8px">Admin juga bisa: matikan satu kemampuan tanpa deploy, hapus riwayat satu pengguna, dan lihat usulan yang paling sering ditolak.</p>
+</div></div>
+
+<!-- ============ RENCANA ============ -->
+<div class="view" id="v-plan"><div class="page">
+ <h2>Rencana: Asisten AI di Ringkas</h2>
+ <p><b>Pendapat singkat:</b> idenya kuat dan cocok. Aplikasi sudah punya semua bahan (peta, Agenda, Biaya, Checklist, Ide tempat, Scan struk, gateway AI Helipod). Yang belum ada hanya satu pintu bicara yang menyatukannya. Syaratnya: AI <b>mengusulkan</b>, pelancong <b>menyetujui</b>, tidak ada yang tertulis diam-diam.</p>
+
+ <h3>1. Pengalaman (UX)</h3>
+ <ul>
+  <li><b>Peta tetap di atas</b>, sheet di bawah berisi obrolan. Dua posisi: setengah (peta besar) dan penuh (fokus obrolan). Angka ringkas dan chip hari tetap.</li>
+  <li><b>AI membuka dengan konteks</b>, bukan "Halo, ada yang bisa dibantu?": mis. jam tutup yang bentrok, checklist tertunda, anggaran belum diatur.</li>
+  <li><b>Kartu interaktif di dalam obrolan</b> (komponen yang sudah ada dipakai ulang): usulan Agenda, rincian anggaran, checklist, ide tempat. Chip balasan cepat untuk menjawab dengan satu ketukan, kolom ketik untuk jawaban bebas.</li>
+  <li><b>Alur AI bertanya</b>: pertanyaan singkat dengan pilihan (tempo, minat, anggaran), lalu progres "Mencari tempat, cek jam buka, urutkan rute", lalu kartu hasil.</li>
+  <li><b>Aman:</b> tombol Terapkan lalu toast Urungkan (sesuai pedoman: aksi bisa dibalik tidak pakai dialog konfirmasi). Halaman Agenda/Biaya/Checklist tetap ada untuk edit manual.</li>
+ </ul>
+
+ <h3>2. Kemampuan AI (bertahap)</h3>
+ <table>
+  <tr><th>Fase</th><th>Isi</th><th>Menulis data?</th></tr>
+  <tr><td>1</td><td>Tanya jawab konteks perjalanan, rapikan hari (cek bentrok jam), ringkas checklist. Kartu hanya membaca dan mengusulkan.</td><td>Hanya lewat tombol Terapkan</td></tr>
+  <tr><td>2</td><td>Buat itinerary per hari (tanya minat/tempo, tempat dari Ide tempat + jam buka), pin muncul di peta.</td><td>Terapkan semua / satu per satu</td></tr>
+  <tr><td>3</td><td>Susun anggaran dari total + kota + tiket (rincian kategori) dan catat biaya dari obrolan ("makan ramen 1.200 yen").</td><td>Terapkan, sinkron Google Sheets yang sudah ada</td></tr>
+  <tr><td>4</td><td>Foto struk, tiket, voucher langsung dari obrolan (memakai Scan struk), pengingat proaktif.</td><td>Sesuai fitur masing-masing</td></tr>
+ </table>
+
+ <h3>3. Arsitektur singkat</h3>
+ <ul>
+  <li><b>Server:</b> <code>trip-assistant.server.ts</code> (orkestrasi), <code>trip-assistant.ts</code> (murni: skema kartu, batas, validasi), <code>trip-assistant.fn.ts</code>, tabel <code>travel_assistant_threads</code> dan <code>_messages</code> (satu utas per perjalanan; migrasi baru, aditif).</li>
+  <li><b>AI lewat gateway Helipod</b> (<code>HELIPOD_AI_KEY</code> server-only), dengan <i>tool calling</i>: <code>read_trip</code>, <code>propose_agenda_patch</code>, <code>propose_budget</code>, <code>propose_checklist</code>, <code>search_places</code> (memakai Ide tempat + TinyFish). Tool <b>hanya mengusulkan</b>; penulisan terjadi lewat fungsi yang sudah ada (<code>addItineraryItem</code>, <code>patchItinerary</code>, anggaran) setelah pelancong menekan Terapkan.</li>
+  <li><b>Kepemilikan:</b> perjalanan ditentukan server dari sesi, tidak dari input browser. Data pribadi disamarkan sebelum ke penyedia (<code>redaction.ts</code> yang ada).</li>
+  <li><b>Validasi:</b> tempat harus ketemu di peta dalam 60 km dari kota perjalanan (aturan Ide tempat), jam buka diperiksa, angka anggaran dijumlah ulang di server.</li>
+  <li><b>Streaming</b> jawaban lewat API route; riwayat disimpan, bisa dihapus pengguna.</li>
+  <li>Layar: <code>trip-assistant.tsx</code> + <code>trip-assistant-cards.tsx</code> di dalam <code>trip-overview.tsx</code>; kartu lama (Agenda, Perlu perhatian, Sisa anggaran) menjadi kartu obrolan.</li>
+ </ul>
+
+ <h3>4. Sisi Admin (wajib sepaket)</h3>
+ <ul>
+  <li>Panel di <code>/admin/settings</code> (lihat tab Admin): saklar utama dan per kemampuan, batas harian, model, nada dan larangan topik, riwayat, statistik (pesan, usulan diterapkan, biaya, gagal), hapus riwayat pengguna. Berversi dan masuk audit log.</li>
+  <li>Dikirim <b>mati</b> secara default, sama seperti Titip Belanja.</li>
+ </ul>
+
+ <h3>5. Risiko dan jawabannya</h3>
+ <table>
+  <tr><th>Risiko</th><th>Penanganan</th></tr>
+  <tr><td>AI mengarang tempat atau jam buka</td><td>Hanya tempat dari sumber terambil + cek peta; tidak ketemu berarti dibuang.</td></tr>
+  <tr><td>Biaya token membengkak</td><td>Batas harian, cache, model standar dulu, Admin bisa matikan per kemampuan.</td></tr>
+  <tr><td>Mengubah data tanpa sadar</td><td>Wajib Terapkan + Urungkan, catat sumber "AI" di item.</td></tr>
+  <tr><td>Layar penuh sesak</td><td>Hanya satu wilayah gulir (obrolan); Agenda penuh tetap di tab Agenda.</td></tr>
+  <tr><td>Tamu tanpa login</td><td>Default mati; bila dibuka, batas ketat per cookie tamu.</td></tr>
+ </table>
+
+ <h3>6. Pertanyaan untuk Anda</h3>
+ <ol>
+  <li>Mulai dari Fase 1+2 saja (baca, rapikan, itinerary), atau langsung sampai anggaran?</li>
+  <li>Obrolan <b>menggantikan</b> kartu Agenda di Ringkas, atau kartu ringkas tetap di atas obrolan?</li>
+  <li>Boleh untuk tamu (freemium) atau khusus akun?</li>
+ </ol>
+</div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const th=$('#thread'),chipsEl=$('#chips'),inp=$('#inp');
+const ic={ok:'<svg width="9" height="9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M1.5 4.5l2 2 4-4.5"/></svg>',
+ ai:'<svg width="12" height="12" fill="#fff"><path d="M6 0l1.4 4.1L12 6 7.4 7.9 6 12 4.6 7.9 0 6l4.6-1.9z"/></svg>'};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const S={ag:4,ck:0,bd:10,applied:null,planAdded:false,budgetSet:false,ckState:[0,0,0,0,0,0],ckTotal:9};
+let busy=false,undoFn=null,toastTm;
+
+/* tabs */
+document.querySelectorAll('.top button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('.top button').forEach(x=>x.classList.toggle('on',x===b));
+ document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));
+});
+/* sheet snap */
+const phone=$('#phone');
+$('#grab').onclick=()=>phone.classList.toggle('full');
+(()=>{let y0=null;const g=$('#grab');
+ g.addEventListener('pointerdown',e=>{y0=e.clientY;g.setPointerCapture(e.pointerId)});
+ g.addEventListener('pointerup',e=>{if(y0===null)return;const d=e.clientY-y0;y0=null;if(d<-25)phone.classList.add('full');else if(d>25)phone.classList.remove('full')});})();
+
+function scroll(){th.scrollTo({top:th.scrollHeight,behavior:'smooth'})}
+function bubble(who,html){const r=document.createElement('div');r.className='row '+who;
+ r.innerHTML=(who==='ai'?'<div class="av">'+ic.ai+'</div>':'')+'<div class="b">'+html+'</div>';th.appendChild(r);scroll();return r}
+function card(html){const c=document.createElement('div');c.className='card';c.innerHTML=html;th.appendChild(c);scroll();return c}
+async function typing(ms=700){const r=document.createElement('div');r.className='row ai';
+ r.innerHTML='<div class="av">'+ic.ai+'</div><div class="b typing"><i></i><i></i><i></i></div>';th.appendChild(r);scroll();await sleep(ms);r.remove()}
+async function say(html,ms){await typing(ms);return bubble('ai',html)}
+function setChips(list){chipsEl.innerHTML='';list.forEach(([t,fn])=>{const b=document.createElement('button');b.className='chip';b.textContent=t;b.onclick=()=>run(()=>{user(t);return fn()});chipsEl.appendChild(b)})}
+function user(t){bubble('me',t.replace(/</g,'&lt;'))}
+async function run(fn){if(busy)return;busy=true;chipsEl.style.opacity=.4;try{await fn()}finally{busy=false;chipsEl.style.opacity=1}}
+function stat(id,txt){const e=$(id);e.querySelector('b').textContent=txt;e.classList.add('pulse');setTimeout(()=>e.classList.remove('pulse'),900)}
+function toast(t,fn){$('#toastT').textContent=t;undoFn=fn;$('#toast').classList.add('on');clearTimeout(toastTm);toastTm=setTimeout(()=>$('#toast').classList.remove('on'),5000)}
+$('#undo').onclick=()=>{if(undoFn)undoFn();undoFn=null;$('#toast').classList.remove('on')};
+const idr=n=>'Rp '+Math.round(n).toLocaleString('id-ID');
+
+const mainChips=()=>setChips([
+ ['Rapikan hari ini',tidy],['Buat rencana hari ke-3',plan],['Atur anggaran',budget],['Cek checklist',checklist],['Ide tempat makan',()=>say('Di sekitar Ginza ada tiga yang cocok dengan jadwal malammu: Ginza Kagari (sudah di agenda), Tsukiji Sushi Sei (21:00, ¥¥), dan Uobei Shibuya (cepat, ¥). Mau saya tambahkan salah satunya?')]
+]);
+
+/* ---------- flows ---------- */
+async function hello(){
+ await say('Hai! Hari ke-2 di Tokyo punya <b>4 aktivitas</b>, tapi ada dua hal yang saya lihat:',500);
+ card(`<div class="h">Perlu perhatian</div>
+  <div class="it"><div class="num w">!</div><div class="t"><b>Meiji Memorial Picture Gallery · 22:00</b><small class="warn">Biasanya tutup pukul 17:00</small></div></div>
+  <div class="it"><div class="num w">!</div><div class="t"><b>Anggaran belum dibagi</b><small class="warn">Sisa Rp 10.000.000, belum ada rincian</small></div></div>`);
+ await say('Mau saya bantu rapikan, atau ada yang ingin kamu rencanakan dulu?',600);
+ mainChips();
+}
+async function tidy(){
+ await say('Saya cek jam buka dan jarak antar tempat…',500);
+ const s=card(`<div class="steps"><div id="s1"><span class="c"></span>Membaca agenda 8 Nov</div><div id="s2"><span class="c"></span>Mengecek jam buka</div><div id="s3"><span class="c"></span>Mengurutkan rute</div></div>`);
+ for(const id of ['#s1','#s2','#s3']){await sleep(550);const e=s.querySelector(id);e.classList.add('done');e.querySelector('.c').innerHTML=ic.ok}
+ await sleep(300);s.remove();
+ await say('Galeri tutup jam 17:00, jadi saya usul pindah ke siang dan geser sisanya. Total jalan kaki turun sekitar 25 menit.',300);
+ const c=card(`<div class="h">Usulan Agenda · 8 Nov</div>
+  <div class="it"><div class="num">1</div><div class="t"><b>Donki</b><small>10:00 <span class="arrow">tetap</span></small></div></div>
+  <div class="it"><div class="num w">2</div><div class="t"><b>Meiji Memorial Picture Gallery</b><small><s>22:00</s> → <b style="color:var(--fg)">13:00</b> · buka 10:00-17:00</small></div></div>
+  <div class="it"><div class="num">3</div><div class="t"><b>Ginza Kagari</b><small><s>21:30</s> → 19:00 · antre ±30 mnt</small></div></div>
+  <div class="it"><div class="num">4</div><div class="t"><b>Fuglen Tokyo</b><small><s>20:00</s> → 21:00 · kopi malam</small></div></div>
+  <div class="acts"><button class="btn g">Ubah dulu</button><button class="btn" data-a="apply">Terapkan</button></div>`);
+ const b=c.querySelector('[data-a=apply]');
+ b.onclick=()=>{b.disabled=true;b.textContent='Diterapkan';stat('#st-ag','4 aktivitas');
+  toast('Agenda 8 Nov dirapikan',()=>{b.disabled=false;b.textContent='Terapkan';bubble('ai','Dikembalikan seperti semula.')});
+  setTimeout(()=>bubble('ai','Beres. Mau lanjut rencanakan <b>9 Nov</b> atau atur anggaran?'),500)};
+ mainChips();
+}
+
+async function plan(){
+ await say('Seru! Hari ke-3 (9 Nov) mau seperti apa? Pilih beberapa, lalu tekan Buat.',500);
+ const sel={minat:new Set(['Kuliner']),tempo:'Seimbang'};
+ const c=card(`<div class="q">Minat (boleh lebih dari satu)</div><div class="inline" id="mi"></div>
+  <div class="q">Tempo</div><div class="inline" id="tp"></div>
+  <div class="acts"><button class="btn" id="go">Buat rencana</button></div>`);
+ const mk=(host,list,multi)=>{list.forEach(t=>{const b=document.createElement('button');b.type='button';b.className='chip'+((multi?sel.minat.has(t):sel.tempo===t)?' on':'');b.textContent=t;
+  b.onclick=()=>{if(multi){sel.minat.has(t)?sel.minat.delete(t):sel.minat.add(t);b.classList.toggle('on')}else{sel.tempo=t;host.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===b))}};host.appendChild(b)})};
+ mk(c.querySelector('#mi'),['Kuliner','Belanja','Budaya','Alam','Anime'],true);
+ mk(c.querySelector('#tp'),['Santai','Seimbang','Padat'],false);
+ setChips([['Kuliner + belanja, santai',()=>{}]]);chipsEl.innerHTML='';
+ c.querySelector('#go').onclick=()=>run(async()=>{
+  c.querySelector('#go').disabled=true;
+  user(`${[...sel.minat].join(', ')||'Bebas'} · ${sel.tempo}`);
+  await say('Oke, saya susun dari tempat yang buka hari Minggu dan dekat dengan hotelmu.',500);
+  const s=card(`<div class="steps"><div id="a"><span class="c"></span>Mencari tempat</div><div id="b"><span class="c"></span>Cek jam buka dan antrean</div><div id="d"><span class="c"></span>Mengurutkan rute, hitung biaya</div></div>`);
+  for(const id of ['#a','#b','#d']){await sleep(600);const e=s.querySelector(id);e.classList.add('done');e.querySelector('.c').innerHTML=ic.ok}
+  await sleep(300);s.remove();await showPlan();});
+}
+const PL=[['Sarapan Tsukiji Outer Market','08:30','¥2.000 · jalan 12 mnt'],['teamLab Planets','10:30','¥3.800 · tiket sudah dicek buka'],['Shibuya Sky (sunset)','16:30','¥2.200 · jam emas 16:50'],['Uobei Shibuya','18:30','¥1.500 · cepat, tanpa reservasi'],['Don Quijote Shibuya','20:00','Belanja, buka 24 jam']];
+const ALT=[['Sarapan Toyosu Fish Market','08:30','¥2.500 · jalan 18 mnt'],['Senso-ji Asakusa','10:30','Gratis · ramai setelah 11:00'],['Tokyo Tower','16:30','¥1.500 · buka sampai 22:30'],['Ichiran Shibuya','18:30','¥1.200 · antre ±20 mnt'],['Mega Donki Shibuya','20:00','Buka 24 jam']];
+async function showPlan(){
+ const list=PL.map(x=>x.slice());
+ await say('Ini rencana hari ke-3. Estimasi total <b>¥9.500</b> (±Rp 1,03 jt). Ketuk <b>Ganti</b> kalau ada yang kurang pas.',300);
+ const c=card(`<div class="h"><span>Usulan · 9 Nov</span><span id="tot">¥9.500</span></div><div id="items"></div>
+  <div class="acts"><button class="btn g" id="re">Buat ulang</button><button class="btn" id="ad">Tambah semua ke Agenda</button></div>`);
+ const draw=()=>{c.querySelector('#items').innerHTML=list.map((x,i)=>`<div class="it"><div class="num">${i+1}</div><div class="t"><b>${x[0]}</b><small>${x[1]} · ${x[2]}</small></div><button class="x" data-i="${i}">Ganti</button></div>`).join('');
+  c.querySelectorAll('.x').forEach(b=>b.onclick=()=>{const i=+b.dataset.i,cur=list[i][0]===PL[i][0];list[i]=(cur?ALT:PL)[i].slice();draw();scroll()})};
+ draw();
+ c.querySelector('#re').onclick=()=>{list.forEach((_,i)=>list[i]=(list[i][0]===PL[i][0]?ALT:PL)[i].slice());draw()};
+ const ad=c.querySelector('#ad');
+ ad.onclick=()=>{ad.disabled=true;ad.textContent='Ditambahkan';S.ag=9;stat('#st-ag','9 aktivitas');addPins();
+  toast('5 aktivitas ditambahkan ke 9 Nov',()=>{ad.disabled=false;ad.textContent='Tambah semua ke Agenda';S.ag=4;stat('#st-ag','4 aktivitas');$('#newpins').innerHTML=''});
+  setTimeout(()=>bubble('ai','Sudah masuk Agenda dan peta. Untuk tiket teamLab, mau saya tambahkan ke Checklist atau cari tiketnya?'),500)};
+ setChips([['Tambah ke Checklist',async()=>{await say('Ditambahkan: "Beli tiket teamLab Planets" di Checklist.',500);S.ckTotal=10;stat('#st-ck','0/10');mainChips()}],['Atur anggaran',budget],['Rapikan hari ini',tidy]]);
+}
+function addPins(){const pts=[[250,60],[290,140],[110,100],[130,260],[220,250]];
+ $('#newpins').innerHTML=pts.map((p,i)=>`<g transform="translate(${p[0]} ${p[1]})"><circle r="11" fill="#c8302f" stroke="#fff" stroke-width="2"/><text y="4">${i+1}</text></g>`).join('')}
+
+async function budget(){
+ await say('Biar rinciannya pas, berapa <b>total anggaran</b> perjalanan ini? Pilih atau ketik angka di bawah.',500);
+ setChips([['Rp 10 jt',()=>doBudget(10e6)],['Rp 15 jt',()=>doBudget(15e6)],['Rp 20 jt',()=>doBudget(20e6)]]);
+}
+async function doBudget(total){
+ await say(`Dengan ${idr(total)} untuk 5 hari di Tokyo, ini pembagian yang masuk akal. Tiket dan penginapan saya ambil dari data Booking dan Checklist.`,700);
+ const cats=[['Tiket pesawat',.34,'#c8302f'],['Penginapan',.26,'#e2753a'],['Makan',.16,'#e8b23c'],['Transport lokal',.08,'#4f8fd9'],['Belanja & oleh-oleh',.10,'#8b6fd1'],['Cadangan',.06,'#9aa0ae']];
+ const c=card(`<div class="h"><span>Usulan anggaran</span><span>${idr(total)}</span></div><div class="bars"><div class="stack">${cats.map(x=>`<i style="width:0;background:${x[2]}" data-w="${x[1]*100}"></i>`).join('')}</div>
+  ${cats.map(x=>`<div class="bl"><span class="d" style="background:${x[2]}"></span><span>${x[0]}</span><b>${idr(total*x[1])}</b></div>`).join('')}</div>
+  <div class="acts"><button class="btn g">Ubah angka</button><button class="btn" id="ap">Terapkan ke Biaya</button></div>`);
+ setTimeout(()=>c.querySelectorAll('.stack i').forEach(i=>i.style.width=i.dataset.w+'%'),60);
+ const ap=c.querySelector('#ap');
+ ap.onclick=()=>{ap.disabled=true;ap.textContent='Diterapkan';stat('#st-bd',(total/1e6)+' jt');S.budgetSet=true;
+  toast('Anggaran '+idr(total)+' diterapkan',()=>{ap.disabled=false;ap.textContent='Terapkan ke Biaya';stat('#st-bd','10 jt')});
+  setTimeout(()=>bubble('ai','Sinkron ke Google Sheets kalau terhubung. Kamu bisa catat pengeluaran di sini juga, contoh: <i>"ramen 1.200 yen"</i>.'),500)};
+ mainChips();
+}
+
+const CK=['Paspor','Visa','Tiket penerbangan','Pemesanan penginapan','Asuransi perjalanan','Aktifkan eSIM'];
+async function checklist(){
+ await say('Ada <b>6 hal</b> yang belum selesai. Ketuk untuk menandai langsung di sini:',500);
+ const c=card(`<div class="h">Checklist belum selesai</div><div id="cl"></div>`);
+ const draw=()=>{c.querySelector('#cl').innerHTML=CK.map((t,i)=>`<button class="chk ${S.ckState[i]?'done':''}" data-i="${i}"><span class="c">${S.ckState[i]?ic.ok:''}</span><span>${t}</span></button>`).join('');
+  c.querySelectorAll('.chk').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;S.ckState[i]^=1;draw();stat('#st-ck',S.ckState.reduce((a,b)=>a+b,0)+'/'+S.ckTotal)})};
+ draw();
+ setTimeout(()=>bubble('ai','Saran: <b>eSIM</b> bisa kamu aktifkan hari ini lewat Djiwa, 2 menit. Mau saya buka?'),900);
+ setChips([['Buka eSIM Jepang',()=>say('Membuka paket eSIM Jepang… (di versi nyata: tautan ke /destination/JP)',500)],['Atur anggaran',budget],['Buat rencana hari ke-3',plan]]);
+}
+
+/* free text */
+async function free(t){
+ const l=t.toLowerCase();
+ if(/anggaran|budget|biaya|duit/.test(l)){const m=l.match(/(\d+(?:[.,]\d+)?)\s*(jt|juta|rb|ribu|k)?/);
+  if(m){let n=parseFloat(m[1].replace(',','.'));const u=m[2]||'';if(/jt|juta/.test(u))n*=1e6;else if(/rb|ribu|k/.test(u))n*=1e3;if(n>=1e6)return doBudget(n)}
+  return budget()}
+ if(/\b(\d+(?:[.,]\d+)?)\s*(jt|juta)\b/.test(l)&&S.awaitBudget){}
+ if(/rencana|itinerary|jadwal|hari ke-?3|besok/.test(l))return plan();
+ if(/checklist|persiapan|siap/.test(l))return checklist();
+ if(/rapi|bentrok|jam buka|tutup/.test(l))return tidy();
+ const m=l.match(/(\d+(?:[.,]\d+)?)\s*(jt|juta|rb|ribu)/);if(m&&chipsEl.textContent.includes('Rp 10 jt')){let n=parseFloat(m[1].replace(',','.'))*(/jt|juta/.test(m[2])?1e6:1e3);return doBudget(n)}
+ const x=l.match(/(.+?)\s+(\d[\d.]*)\s*(yen|¥)/);
+ if(x){const y=parseInt(x[2].replace('.',''));return say(`Catat pengeluaran: <b>${x[1]}</b> ¥${y.toLocaleString('id-ID')} (±${idr(y*105)}) ke kategori Makan, tanggal 8 Nov?<div class="inline" style="padding:6px 0 0"><button class="chip on" onclick="this.textContent='Tercatat';this.disabled=true">Catat</button><button class="chip">Ubah</button></div>`,600)}
+ await say('Saya bisa bantu <b>merapikan agenda</b>, <b>membuat rencana per hari</b>, <b>mengatur anggaran</b>, atau <b>cek checklist</b>. Yang mana dulu? Atau ceritakan lebih detail apa yang kamu mau.',700);
+ mainChips();
+}
+$('#form').onsubmit=e=>{e.preventDefault();const t=inp.value.trim();if(!t||busy)return;inp.value='';run(()=>{user(t);return free(t)})};
+
+hello();
+</script>
+</body></html>

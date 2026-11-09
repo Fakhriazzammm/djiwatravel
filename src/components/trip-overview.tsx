@@ -43,6 +43,7 @@ import { countryBoundsFor } from "@/lib/trip-country-bounds";
 import { citiesBounds, type TripCity } from "@/lib/trip-cities";
 import { TripCitiesSheet } from "@/components/trip-cities-sheet";
 import { runTripMutation } from "@/lib/trip-actions";
+import { TripAssistant } from "@/components/trip-assistant";
 import { getTripWeather } from "@/lib/trip-weather.fn";
 import {
   describeWeather,
@@ -77,6 +78,11 @@ type Props = {
   checklist: Row[];
   bookings: Row[];
   budgetSet: boolean;
+  /** Some budget category already has an amount (the AI offers to split it when not). */
+  budgetAllocated?: boolean | undefined;
+  currency?: string | undefined;
+  departureDate?: string | null | undefined;
+  returnDate?: string | null | undefined;
   remainingLabel: string;
   remainingMinor: number;
   mapConfig: ItineraryMapConfig | null;
@@ -152,6 +158,8 @@ export function TripOverview(props: Props) {
   const [tilt, setTilt] = useState(false);
   const [forecast, setForecast] = useState<DayWeather[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  // The AI chat reports whether it is live (Admin switch, key, guest rule); off keeps the old layout.
+  const [assistantOn, setAssistantOn] = useState(false);
   const cities = props.cities ?? [];
   const cityFlow = Boolean(mapConfig?.cityOnboarding);
   const [citiesOpen, setCitiesOpen] = useState(false);
@@ -291,8 +299,246 @@ export function TripOverview(props: Props) {
     </Link>
   );
 
+  const nudgeInput = useMemo(
+    () => ({
+      today,
+      departureDate: props.departureDate ?? null,
+      returnDate: props.returnDate ?? null,
+      itineraryDates: days.map((day) => day.date),
+      checklistOpen: props.checklist.length - done,
+      budgetSet: props.budgetSet,
+      budgetAllocated: props.budgetAllocated ?? true,
+      bookingsActive: activeBookings,
+    }),
+    [
+      today,
+      props.departureDate,
+      props.returnDate,
+      days,
+      props.checklist.length,
+      done,
+      props.budgetSet,
+      props.budgetAllocated,
+      activeBookings,
+    ],
+  );
+
+  const staticCards = (
+    <>
+      <div className="mt-3 flex items-end justify-between">
+        <h2 className={`${iosHeading} px-1`}>
+          Agenda{scope && scope !== "all" ? ` · ${shortDate(scope)}` : ""}
+        </h2>
+        <Link
+          to="/my-trips/$tripId/$section"
+          params={{ tripId, section: "itinerary" }}
+          className="tap px-1 pb-1.5 text-xs font-semibold text-brand-red"
+        >
+          Kelola
+        </Link>
+      </div>
+      <div className={iosGroup}>
+        {shown.length ? (
+          shown.map((item) => {
+            const pin = pinInfo.get(item.id);
+            const point = itemPoint(item);
+            const time = String(item["start_time"] ?? "").slice(0, 5);
+            const where = String(item["location"] ?? "");
+            return (
+              <div
+                key={item.id}
+                className={`flex min-h-12 items-center gap-2 border-b border-border/60 pr-1 pl-3 last:border-b-0 ${activeId === item.id ? "bg-brand-red/5" : ""}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => (point ? setActiveId(item.id) : setRowMenu(item))}
+                  className="tap flex min-w-0 flex-1 items-center gap-2.5 py-2 text-left"
+                >
+                  <span
+                    className="grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
+                    style={{ background: pin && !pin.muted ? pin.color : "#9aa0a6" }}
+                  >
+                    {pin ? pin.n : <CalendarDays className="size-3.5" aria-hidden="true" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[14px] font-semibold">
+                      {String(item["title"] ?? "Aktivitas")}
+                    </span>
+                    <span className="block truncate text-[11px] text-muted-foreground">
+                      {[
+                        scope === "all"
+                          ? shortDate(String(item["activity_date"] ?? "").slice(0, 10))
+                          : "",
+                        time,
+                        where,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "Tanpa jam"}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Menu ${String(item["title"] ?? "aktivitas")}`}
+                  onClick={() => setRowMenu(item)}
+                  className="tap grid size-11 shrink-0 place-items-center text-muted-foreground"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden="true" />
+                </button>
+              </div>
+            );
+          })
+        ) : (
+          <button
+            type="button"
+            onClick={() => goAdd("itinerary")}
+            className="tap flex min-h-12 w-full items-center gap-2.5 px-3 text-left text-[14px] text-brand-red"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            {props.itinerary.length
+              ? "Belum ada agenda di hari ini. Tambah"
+              : "Tambah aktivitas pertama"}
+          </button>
+        )}
+        {dayItems.length > AGENDA_PREVIEW && (
+          <Link
+            to="/my-trips/$tripId/$section"
+            params={{ tripId, section: "itinerary" }}
+            className="tap flex min-h-10 items-center justify-between border-t border-border/60 px-3 text-[13px] text-brand-red"
+          >
+            Lihat semua ({dayItems.length})
+            <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden="true" />
+          </Link>
+        )}
+      </div>
+
+      {cityFlow && (
+        <div className={`${iosGroup} mt-4`}>
+          <button
+            type="button"
+            onClick={() => setCitiesOpen(true)}
+            className="tap flex min-h-12 w-full items-center gap-2.5 px-3 text-left"
+          >
+            <MapPin className="size-4 shrink-0 text-brand-red" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[14px] font-semibold">
+                {cities.length ? cities.map((c) => c.name).join(", ") : "Pilih kota tujuan"}
+              </span>
+              <span className="block text-[11px] text-muted-foreground">
+                {cities.length
+                  ? "Peta dan pencarian tempat mengikuti kota ini"
+                  : "Agar peta dan pencarian tempat langsung tepat"}
+              </span>
+            </span>
+            <span className="text-xs font-semibold text-brand-red">
+              {cities.length ? "Atur kota" : "Pilih"}
+            </span>
+          </button>
+        </div>
+      )}
+      {attention.length > 0 && (
+        <>
+          <h2 className={`${iosHeading} mt-4 px-1`}>Perlu perhatian</h2>
+          <div className={iosGroup}>
+            {attention.map((entry) =>
+              entry.kind === "checklist" ? (
+                <div
+                  key={`c-${entry.id}`}
+                  className="flex min-h-12 items-center gap-2 border-b border-border/60 pl-1 pr-3 last:border-b-0"
+                >
+                  <button
+                    type="button"
+                    aria-label={`Tandai selesai: ${displayChecklistTitle(entry.title)}`}
+                    onClick={() => void completeChecklist(entry.id)}
+                    className="tap grid size-11 shrink-0 place-items-center text-brand-red"
+                  >
+                    <CheckCircle2 className="size-5" strokeWidth={1.8} aria-hidden="true" />
+                  </button>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[14px] font-semibold">
+                      {displayChecklistTitle(entry.title)}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      Checklist belum selesai
+                    </span>
+                  </span>
+                  <Link
+                    to="/my-trips/$tripId/$section"
+                    params={{ tripId, section: "checklist" }}
+                    className="tap text-xs font-semibold text-brand-red"
+                  >
+                    Buka
+                  </Link>
+                </div>
+              ) : (
+                <Link
+                  key={`b-${entry.id}`}
+                  to="/my-trips/$tripId/$section"
+                  params={{ tripId, section: "bookings" }}
+                  className="tap flex min-h-12 items-center gap-2.5 border-b border-border/60 px-3 last:border-b-0"
+                >
+                  <Ticket className="size-4 shrink-0 text-brand-red" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[14px] font-semibold">{entry.title}</span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      Menunggu konfirmasi
+                    </span>
+                  </span>
+                  <span className="text-xs font-semibold text-brand-red">Detail</span>
+                </Link>
+              ),
+            )}
+          </div>
+        </>
+      )}
+
+      <div className={`${iosGroup} mt-4 flex items-center gap-2.5 p-3`}>
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-red-soft text-brand-red">
+          <WalletCards className="size-4" aria-hidden="true" />
+        </span>
+        <Link
+          to="/my-trips/$tripId/$section"
+          params={{ tripId, section: "budget" }}
+          className="tap min-w-0 flex-1"
+        >
+          <span className="block text-[11px] text-muted-foreground">Sisa anggaran</span>
+          <span className="block truncate text-[15px] font-bold">
+            {props.budgetSet ? props.remainingLabel : "Belum diatur"}
+          </span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => goAdd("expenses")}
+          className="tap inline-flex min-h-9 shrink-0 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold"
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+          Catat biaya
+        </button>
+      </div>
+      {props.flightsSearch && (
+        <Link
+          to={props.flightsSearch.to}
+          search={props.flightsSearch.search}
+          data-track="ringkas_flights"
+          className={`${iosGroup} tap mt-2 flex min-h-12 items-center gap-2.5 p-3`}
+        >
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-red-soft text-brand-red">
+            <Plane className="size-4" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold">Cari tiket pesawat</span>
+            <span className="block truncate text-[11px] text-muted-foreground">
+              Bandingkan harga ke {props.destination}
+            </span>
+          </span>
+          <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden="true" />
+        </Link>
+      )}
+    </>
+  );
+
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-md pb-28">
+    <div className={`mx-auto min-h-dvh w-full max-w-md ${assistantOn ? "pb-52" : "pb-28"}`}>
       {mapOn && expanded && <div className="h-[300px]" aria-hidden="true" />}
       <section
         aria-label="Peta perjalanan"
@@ -539,229 +785,31 @@ export function TripOverview(props: Props) {
           </div>
         )}
 
-        <div className="mt-3 flex items-end justify-between">
-          <h2 className={`${iosHeading} px-1`}>
-            Agenda{scope && scope !== "all" ? ` · ${shortDate(scope)}` : ""}
-          </h2>
-          <Link
-            to="/my-trips/$tripId/$section"
-            params={{ tripId, section: "itinerary" }}
-            className="tap px-1 pb-1.5 text-xs font-semibold text-brand-red"
-          >
-            Kelola
-          </Link>
-        </div>
-        <div className={iosGroup}>
-          {shown.length ? (
-            shown.map((item) => {
-              const pin = pinInfo.get(item.id);
-              const point = itemPoint(item);
-              const time = String(item["start_time"] ?? "").slice(0, 5);
-              const where = String(item["location"] ?? "");
-              return (
-                <div
-                  key={item.id}
-                  className={`flex min-h-12 items-center gap-2 border-b border-border/60 pr-1 pl-3 last:border-b-0 ${activeId === item.id ? "bg-brand-red/5" : ""}`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => (point ? setActiveId(item.id) : setRowMenu(item))}
-                    className="tap flex min-w-0 flex-1 items-center gap-2.5 py-2 text-left"
-                  >
-                    <span
-                      className="grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
-                      style={{ background: pin && !pin.muted ? pin.color : "#9aa0a6" }}
-                    >
-                      {pin ? pin.n : <CalendarDays className="size-3.5" aria-hidden="true" />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-semibold">
-                        {String(item["title"] ?? "Aktivitas")}
-                      </span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
-                        {[
-                          scope === "all"
-                            ? shortDate(String(item["activity_date"] ?? "").slice(0, 10))
-                            : "",
-                          time,
-                          where,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ") || "Tanpa jam"}
-                      </span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Menu ${String(item["title"] ?? "aktivitas")}`}
-                    onClick={() => setRowMenu(item)}
-                    className="tap grid size-11 shrink-0 place-items-center text-muted-foreground"
-                  >
-                    <MoreHorizontal className="size-4" aria-hidden="true" />
-                  </button>
-                </div>
-              );
-            })
-          ) : (
-            <button
-              type="button"
-              onClick={() => goAdd("itinerary")}
-              className="tap flex min-h-12 w-full items-center gap-2.5 px-3 text-left text-[14px] text-brand-red"
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              {props.itinerary.length
-                ? "Belum ada agenda di hari ini. Tambah"
-                : "Tambah aktivitas pertama"}
-            </button>
-          )}
-          {dayItems.length > AGENDA_PREVIEW && (
-            <Link
-              to="/my-trips/$tripId/$section"
-              params={{ tripId, section: "itinerary" }}
-              className="tap flex min-h-10 items-center justify-between border-t border-border/60 px-3 text-[13px] text-brand-red"
-            >
-              Lihat semua ({dayItems.length})
-              <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden="true" />
-            </Link>
-          )}
-        </div>
-
-        {cityFlow && (
-          <div className={`${iosGroup} mt-4`}>
-            <button
-              type="button"
-              onClick={() => setCitiesOpen(true)}
-              className="tap flex min-h-12 w-full items-center gap-2.5 px-3 text-left"
-            >
-              <MapPin className="size-4 shrink-0 text-brand-red" aria-hidden="true" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold">
-                  {cities.length ? cities.map((c) => c.name).join(", ") : "Pilih kota tujuan"}
-                </span>
-                <span className="block text-[11px] text-muted-foreground">
-                  {cities.length
-                    ? "Peta dan pencarian tempat mengikuti kota ini"
-                    : "Agar peta dan pencarian tempat langsung tepat"}
-                </span>
-              </span>
-              <span className="text-xs font-semibold text-brand-red">
-                {cities.length ? "Atur kota" : "Pilih"}
-              </span>
-            </button>
-          </div>
-        )}
-        {attention.length > 0 && (
-          <>
-            <h2 className={`${iosHeading} mt-4 px-1`}>Perlu perhatian</h2>
-            <div className={iosGroup}>
-              {attention.map((entry) =>
-                entry.kind === "checklist" ? (
-                  <div
-                    key={`c-${entry.id}`}
-                    className="flex min-h-12 items-center gap-2 border-b border-border/60 pl-1 pr-3 last:border-b-0"
-                  >
-                    <button
-                      type="button"
-                      aria-label={`Tandai selesai: ${displayChecklistTitle(entry.title)}`}
-                      onClick={() => void completeChecklist(entry.id)}
-                      className="tap grid size-11 shrink-0 place-items-center text-brand-red"
-                    >
-                      <CheckCircle2 className="size-5" strokeWidth={1.8} aria-hidden="true" />
-                    </button>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-semibold">
-                        {displayChecklistTitle(entry.title)}
-                      </span>
-                      <span className="block text-[11px] text-muted-foreground">
-                        Checklist belum selesai
-                      </span>
-                    </span>
-                    <Link
-                      to="/my-trips/$tripId/$section"
-                      params={{ tripId, section: "checklist" }}
-                      className="tap text-xs font-semibold text-brand-red"
-                    >
-                      Buka
-                    </Link>
-                  </div>
-                ) : (
-                  <Link
-                    key={`b-${entry.id}`}
-                    to="/my-trips/$tripId/$section"
-                    params={{ tripId, section: "bookings" }}
-                    className="tap flex min-h-12 items-center gap-2.5 border-b border-border/60 px-3 last:border-b-0"
-                  >
-                    <Ticket className="size-4 shrink-0 text-brand-red" aria-hidden="true" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-semibold">
-                        {entry.title}
-                      </span>
-                      <span className="block text-[11px] text-muted-foreground">
-                        Menunggu konfirmasi
-                      </span>
-                    </span>
-                    <span className="text-xs font-semibold text-brand-red">Detail</span>
-                  </Link>
-                ),
-              )}
-            </div>
-          </>
-        )}
-
-        <div className={`${iosGroup} mt-4 flex items-center gap-2.5 p-3`}>
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-red-soft text-brand-red">
-            <WalletCards className="size-4" aria-hidden="true" />
-          </span>
-          <Link
-            to="/my-trips/$tripId/$section"
-            params={{ tripId, section: "budget" }}
-            className="tap min-w-0 flex-1"
-          >
-            <span className="block text-[11px] text-muted-foreground">Sisa anggaran</span>
-            <span className="block truncate text-[15px] font-bold">
-              {props.budgetSet ? props.remainingLabel : "Belum diatur"}
-            </span>
-          </Link>
-          <button
-            type="button"
-            onClick={() => goAdd("expenses")}
-            className="tap inline-flex min-h-9 shrink-0 items-center gap-1 rounded-xl bg-secondary px-3 text-xs font-semibold"
-          >
-            <Plus className="size-3.5" aria-hidden="true" />
-            Catat biaya
-          </button>
-        </div>
-        {props.flightsSearch && (
-          <Link
-            to={props.flightsSearch.to}
-            search={props.flightsSearch.search}
-            data-track="ringkas_flights"
-            className={`${iosGroup} tap mt-2 flex min-h-12 items-center gap-2.5 p-3`}
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-red-soft text-brand-red">
-              <Plane className="size-4" aria-hidden="true" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[14px] font-semibold">Cari tiket pesawat</span>
-              <span className="block truncate text-[11px] text-muted-foreground">
-                Bandingkan harga ke {props.destination}
-              </span>
-            </span>
-            <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden="true" />
-          </Link>
-        )}
+        <TripAssistant
+          tripId={tripId}
+          destination={props.destination}
+          currency={props.currency ?? "IDR"}
+          nudgeInput={nudgeInput}
+          onChanged={props.onChanged}
+          onAdd={() => setAddOpen(true)}
+          onAvailability={setAssistantOn}
+        >
+          {staticCards}
+        </TripAssistant>
       </div>
 
-      <FixedLayer>
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          aria-label="Tambah"
-          className="tap fixed bottom-24 right-[max(1rem,calc((100vw-28rem)/2+1rem))] z-40 grid size-11 place-items-center rounded-full bg-brand-red text-white shadow-lg"
-        >
-          <Plus className="size-5" aria-hidden="true" />
-        </button>
-      </FixedLayer>
+      {!assistantOn && (
+        <FixedLayer>
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            aria-label="Tambah"
+            className="tap fixed bottom-24 right-[max(1rem,calc((100vw-28rem)/2+1rem))] z-40 grid size-11 place-items-center rounded-full bg-brand-red text-white shadow-lg"
+          >
+            <Plus className="size-5" aria-hidden="true" />
+          </button>
+        </FixedLayer>
+      )}
 
       <TripCitiesSheet
         open={citiesOpen}

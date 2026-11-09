@@ -196,6 +196,12 @@ function TripDetail() {
         checklist={data.checklist as never}
         bookings={data.bookings as never}
         budgetSet={budget > 0}
+        budgetAllocated={(data.budget as { allocated_minor?: number }[]).some(
+          (c) => Number(c.allocated_minor) > 0,
+        )}
+        currency={currency}
+        departureDate={trip.departure_date}
+        returnDate={trip.return_date}
         remainingLabel={money(remaining, currency)}
         remainingMinor={remaining}
         mapConfig={(data.mapConfig as ItineraryMapConfig | null) ?? null}

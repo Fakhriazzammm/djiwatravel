@@ -7,6 +7,7 @@ import { parseHomeEsimConfig } from "./home-esim-config";
 import { parseItineraryMapConfig } from "./itinerary-map";
 import { parseReceiptScanConfig } from "./receipt-scan";
 import { parsePlaceIdeasConfig } from "./place-ideas";
+import { parseTripAssistantConfig } from "./trip-assistant";
 import { parsePwaConfig } from "./pwa-config";
 
 export type AdminSettingKey =
@@ -28,6 +29,7 @@ export type AdminSettingKey =
   | "itineraryMap"
   | "receiptScan"
   | "placeIdeas"
+  | "tripAssistant"
   | "guestTrips"
   | "flights"
   | "personalShopper";
@@ -51,6 +53,7 @@ export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "itineraryMap",
   "receiptScan",
   "placeIdeas",
+  "tripAssistant",
   "guestTrips",
   "flights",
   "personalShopper",
@@ -90,6 +93,7 @@ export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (key === "itineraryMap") parseItineraryMapConfig(value);
   if (key === "receiptScan") parseReceiptScanConfig(value);
   if (key === "placeIdeas") parsePlaceIdeasConfig(value);
+  if (key === "tripAssistant") parseTripAssistantConfig(value);
   if (key === "guestTrips") parseGuestTripsConfig(value);
   if (key === "flights") parseFlightsConfig(value);
   if (key === "personalShopper") parseShopperConfig(value);

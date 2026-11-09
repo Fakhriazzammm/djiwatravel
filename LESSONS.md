@@ -361,3 +361,17 @@ Use this structure for each new lesson:
 - Verification boundary: verified with a real photo upload and an official-link search from the
   production customer page (HTTP 200, candidates with photos and JPY prices). A paid checkout through
   the discovery offer was not executed in production; only tests cover it.
+
+### 2026-11-09 — Local dev always acts as `local-demo-user`, so guest cookies are ignored
+
+- Symptom: a trip seeded for a guest subject (`guest:<sha256 of the cookie token>`) opened with the
+  right cookie on `127.0.0.1` still failed with "Perjalanan tidak ditemukan".
+- Root cause: `getAuthenticatedUser()` returns `LOCAL_DEMO_USER` for local hosts, and
+  `resolveTripOwner()` prefers a member over a guest cookie.
+- Safe fix for local checks: seed the trip with `customer_auth_subject = 'local-demo-user'`. Guest
+  behavior is covered by the owner-mocked integration test (`trip-assistant.integration.test.ts`),
+  not by a browser on localhost.
+- Prevention rule: when verifying a guest flow in a browser, use a non-local host or mock the owner;
+  do not conclude a guest bug from a local 404.
+- Verification boundary: the assistant was driven in a real browser against a throwaway Postgres
+  with a scripted stand-in for the AI gateway. No live model call has been made with the real key.
