@@ -34,9 +34,11 @@ type List = Awaited<ReturnType<typeof getAdminChatList>>;
 type Thread = Awaited<ReturnType<typeof getAdminChatThread>>;
 type Summary = List["threads"][number];
 
-const field = "min-h-9 w-full rounded-lg border border-border bg-background px-2.5 text-[13px]";
+const field = "min-h-10 w-full rounded-lg border border-border bg-background px-3 text-sm";
 const chipBtn =
-  "tap rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold disabled:opacity-50";
+  "tap rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50";
+const panel = "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface";
+const panelTitle = "text-xs font-semibold uppercase tracking-wide text-muted-foreground";
 
 type Filter = "all" | "new" | "waiting" | "offer" | "done";
 
@@ -57,7 +59,7 @@ function Sla({ dueAt }: { dueAt: string | null }) {
   if (!dueAt) return null;
   const left = new Date(dueAt).getTime() - now;
   return (
-    <span className={`text-[10px] font-bold ${left <= 0 ? "text-destructive" : "text-[#a16207]"}`}>
+    <span className={`text-xs font-bold ${left <= 0 ? "text-destructive" : "text-[#a16207]"}`}>
       ⏱ {formatCountdown(left)}
     </span>
   );
@@ -209,43 +211,47 @@ export function AdminShopperChat() {
           {error}
         </p>
       )}
-      <ChatSettings />
-      <div className="grid gap-3 lg:grid-cols-[230px_minmax(0,1fr)_260px]">
+      <div className="grid gap-3 lg:h-[calc(100vh-17rem)] lg:min-h-[560px] lg:grid-cols-[320px_minmax(0,1fr)_340px]">
         {/* Queue */}
-        <section aria-label="Antrean" className="rounded-2xl border border-border bg-surface p-2">
-          <h3 className="px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Antrean
-          </h3>
-          <div className="mb-2 flex flex-wrap gap-1">
-            {(
-              [
-                ["all", "Semua", ""],
-                ["new", "Baru", counts.new ? ` ${counts.new}` : ""],
-                ["waiting", "Menunggu", counts.waiting ? ` ${counts.waiting}` : ""],
-                ["offer", "Penawaran", counts.offer ? ` ${counts.offer}` : ""],
-                ["done", "Selesai", ""],
-              ] as const
-            ).map(([id, label, n]) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={filter === id}
-                onClick={() => setFilter(id)}
-                className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                  filter === id ? "bg-foreground text-background" : "bg-secondary"
-                }`}
-              >
-                {label}
-                {n}
-              </button>
-            ))}
+        <section aria-label="Antrean" className={`${panel} max-lg:max-h-[420px]`}>
+          <div className="space-y-2 border-b border-border p-3">
+            <div className="flex items-center justify-between">
+              <h3 className={panelTitle}>Antrean</h3>
+              <span className="text-xs text-muted-foreground">{shown.length} percakapan</span>
+            </div>
+            <div className="flex gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+              {(
+                [
+                  ["all", "Semua", ""],
+                  ["new", "Baru", counts.new ? ` ${counts.new}` : ""],
+                  ["waiting", "Menunggu", counts.waiting ? ` ${counts.waiting}` : ""],
+                  ["offer", "Penawaran", counts.offer ? ` ${counts.offer}` : ""],
+                  ["done", "Selesai", ""],
+                ] as const
+              ).map(([id, label, n]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={filter === id}
+                  onClick={() => setFilter(id)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${
+                    filter === id ? "bg-foreground text-background" : "bg-secondary"
+                  }`}
+                >
+                  {label}
+                  {n}
+                </button>
+              ))}
+            </div>
           </div>
           {!list ? (
-            <p className="p-2 text-xs text-muted-foreground">Memuat…</p>
+            <p className="p-4 text-sm text-muted-foreground">Memuat…</p>
           ) : shown.length === 0 ? (
-            <p className="p-2 text-xs text-muted-foreground">Tidak ada percakapan.</p>
+            <p className="p-6 text-center text-sm text-muted-foreground">
+              Tidak ada percakapan di filter ini.
+            </p>
           ) : (
-            <ul className="max-h-[560px] space-y-1 overflow-y-auto">
+            <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2">
               {shown.map((t) => (
                 <QueueItem
                   key={t.id}
@@ -259,28 +265,35 @@ export function AdminShopperChat() {
         </section>
 
         {/* Conversation */}
-        <section
-          aria-label="Percakapan"
-          className="flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-border bg-surface"
-        >
+        <section aria-label="Percakapan" className={`${panel} max-lg:min-h-[480px]`}>
           {!selected || !current ? (
-            <p className="m-auto p-6 text-center text-sm text-muted-foreground">
-              {selected ? "Memuat percakapan…" : "Pilih percakapan dari antrean."}
-            </p>
+            <div className="m-auto flex flex-col items-center gap-2 p-8 text-center">
+              <span className="flex size-11 items-center justify-center rounded-full bg-secondary text-lg">
+                💬
+              </span>
+              <p className="text-sm font-semibold">
+                {selected ? "Memuat percakapan…" : "Belum ada percakapan dipilih"}
+              </p>
+              {!selected && (
+                <p className="max-w-[260px] text-xs text-muted-foreground">
+                  Pilih satu dari antrean di kiri untuk membalas, menandai tahap atau mengirim
+                  penawaran.
+                </p>
+              )}
+            </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+              <div className="flex items-center gap-2 border-b border-border px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold">
-                    {current.customerName} · {current.title}
-                  </p>
+                  <p className="truncate text-[15px] font-bold">{current.customerName}</p>
+                  <p className="truncate text-xs text-muted-foreground">{current.title}</p>
                 </div>
                 <Pill tone={current.stage.tone}>Tahap: {current.stage.label}</Pill>
               </div>
               {current.kind === "REQUEST" && <StageTrack done={current.stage.done} />}
               <div
                 ref={scroller}
-                className="max-h-[420px] min-h-[220px] flex-1 space-y-1.5 overflow-y-auto bg-secondary/40 px-3 py-2.5"
+                className="min-h-[220px] flex-1 space-y-2 overflow-y-auto bg-secondary/40 px-4 py-3"
               >
                 {messages.map((m) =>
                   m.card?.type === "request" ? (
@@ -316,16 +329,17 @@ export function AdminShopperChat() {
                   ),
                 )}
               </div>
-              <div className="border-t border-border p-2">
-                <div className="mb-1.5 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
+              <div className="border-t border-border p-3">
+                <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
                   {(list?.config.templates ?? []).map((t) => (
                     <button
                       key={t}
                       type="button"
-                      className={`${chipBtn} shrink-0`}
+                      title={t}
+                      className={`${chipBtn} max-w-[240px] shrink-0 truncate`}
                       onClick={() => setText((x) => (x ? `${x} ${t}` : t))}
                     >
-                      {t.length > 34 ? `${t.slice(0, 34)}…` : t}
+                      {t}
                     </button>
                   ))}
                 </div>
@@ -333,13 +347,16 @@ export function AdminShopperChat() {
                   <textarea
                     rows={2}
                     value={text}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void send(text, note);
+                    }}
                     maxLength={2000}
                     onChange={(e) => setText(e.target.value)}
                     aria-label={note ? "Catatan internal" : "Balas pelanggan"}
                     placeholder={
                       note ? "Catatan internal (tidak terlihat pelanggan)…" : "Balas pelanggan…"
                     }
-                    className={`min-h-9 flex-1 resize-none rounded-xl border px-3 py-2 text-[13px] ${
+                    className={`min-h-11 flex-1 resize-none rounded-xl border px-3 py-2.5 text-sm ${
                       note
                         ? "border-dashed border-[#e6c875] bg-[#fff8e6] dark:bg-[#3a3017]"
                         : "border-border bg-background"
@@ -350,7 +367,7 @@ export function AdminShopperChat() {
                     aria-label="Catatan internal"
                     aria-pressed={note}
                     onClick={() => setNote((v) => !v)}
-                    className={`tap flex size-9 shrink-0 items-center justify-center rounded-full border ${
+                    className={`tap flex size-11 shrink-0 items-center justify-center rounded-full border ${
                       note ? "border-[#e6c875] bg-[#fff8e6] dark:bg-[#3a3017]" : "border-border"
                     }`}
                   >
@@ -361,7 +378,7 @@ export function AdminShopperChat() {
                     aria-label="Kirim"
                     disabled={busy || !text.trim()}
                     onClick={() => void send(text, note)}
-                    className="tap flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-red text-white disabled:opacity-40"
+                    className="tap flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-red text-white disabled:opacity-40"
                   >
                     <Send className="size-4" aria-hidden="true" />
                   </button>
@@ -372,19 +389,16 @@ export function AdminShopperChat() {
         </section>
 
         {/* Actions */}
-        <section
-          aria-label="Tindakan"
-          className="space-y-3 rounded-2xl border border-border bg-surface p-3 text-sm"
-        >
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Tindakan
-          </h3>
+        <section aria-label="Tindakan" className={`${panel} text-sm`}>
+          <h3 className={`${panelTitle} border-b border-border px-4 py-3`}>Tindakan</h3>
           {!current ? (
-            <p className="text-xs text-muted-foreground">Pilih percakapan.</p>
+            <p className="p-4 text-sm text-muted-foreground">
+              Tindakan muncul setelah percakapan dipilih.
+            </p>
           ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <label className="text-[11px] text-muted-foreground">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+              <div className="flex items-end gap-2">
+                <label className="min-w-0 flex-1 text-xs text-muted-foreground">
                   Penanggung jawab
                   <select
                     className={`${field} mt-0.5`}
@@ -418,63 +432,68 @@ export function AdminShopperChat() {
                     void loadList();
                   }}
                 >
-                  {current.closed ? "Buka lagi" : "Tutup percakapan"}
+                  {current.closed ? "Buka lagi" : "Tutup"}
                 </button>
               </div>
               {request && (
                 <>
-                  <div className="text-xs">
+                  <div className="space-y-1 rounded-xl bg-secondary p-3 text-sm">
                     <p className="font-semibold">{request.note || current.title}</p>
                     {request.analysis && (
-                      <p className="text-muted-foreground">Analisis foto: {request.analysis}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Analisis foto: {request.analysis}
+                      </p>
                     )}
                     {request.sourceUrl && (
                       <a
                         href={request.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer nofollow"
-                        className="break-all text-brand-red"
+                        className="block break-all text-xs text-brand-red"
                       >
                         {request.sourceUrl}
                       </a>
                     )}
                   </div>
                   {request.orderId ? (
-                    <p className="rounded-xl bg-secondary p-2 text-xs">
+                    <p className="rounded-xl bg-secondary p-3 text-xs">
                       Sudah menjadi pesanan. Kelola pembayaran, pembelian dan pengiriman di tab
                       Pesanan.
                     </p>
                   ) : canAct ? (
                     <>
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          className={chipBtn}
-                          disabled={busy}
-                          onClick={() => void stageAction("search")}
-                        >
-                          Mulai cari
-                        </button>
-                        <button
-                          type="button"
-                          className={chipBtn}
-                          disabled={busy}
-                          onClick={() => void stageAction("ask")}
-                        >
-                          Minta info
-                        </button>
-                        <button
-                          type="button"
-                          className={chipBtn}
-                          disabled={busy}
-                          onClick={() => void stageAction("unavailable")}
-                        >
-                          Tidak ditemukan
-                        </button>
+                      <div className="space-y-1.5">
+                        <p className={panelTitle}>Ubah tahap</p>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <button
+                            type="button"
+                            className={`${chipBtn} rounded-xl`}
+                            disabled={busy}
+                            onClick={() => void stageAction("search")}
+                          >
+                            Mulai cari
+                          </button>
+                          <button
+                            type="button"
+                            className={`${chipBtn} rounded-xl`}
+                            disabled={busy}
+                            onClick={() => void stageAction("ask")}
+                          >
+                            Minta info
+                          </button>
+                          <button
+                            type="button"
+                            className={`${chipBtn} rounded-xl`}
+                            disabled={busy}
+                            onClick={() => void stageAction("unavailable")}
+                          >
+                            Tidak ditemukan
+                          </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Tombol tahap mengirim isi kotak balasan sebagai pesan ke pelanggan.
+                        </p>
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        Tombol tahap mengirim isi kotak balasan sebagai pesan ke pelanggan.
-                      </p>
                       <OfferForm
                         key={`${request.id}-${request.version}`}
                         request={request}
@@ -497,14 +516,15 @@ export function AdminShopperChat() {
                 </>
               )}
               {current.kind === "ORDER" && (
-                <p className="rounded-xl bg-secondary p-2 text-xs">
+                <p className="rounded-xl bg-secondary p-3 text-xs">
                   Percakapan pesanan {current.orderCode}. Kelola pesanannya di tab Pesanan.
                 </p>
               )}
-            </>
+            </div>
           )}
         </section>
       </div>
+      <ChatSettings />
       <ImageViewer
         open={viewer !== null}
         title={viewer?.label ?? ""}
@@ -523,25 +543,20 @@ function QueueItem({ t, on, onPick }: { t: Summary; on: boolean; onPick: () => v
         type="button"
         onClick={onPick}
         aria-current={on}
-        className={`w-full rounded-xl border p-2 text-left ${
-          on ? "border-brand-red bg-brand-red-soft" : "border-border"
+        className={`w-full rounded-xl border p-3 text-left transition-colors ${
+          on ? "border-brand-red bg-brand-red-soft" : "border-border hover:bg-secondary/60"
         }`}
       >
         <span className="flex items-start gap-2">
           <ThreadIcon icon={t.icon} />
           <span className="min-w-0 flex-1">
             <span className="flex justify-between gap-1">
-              <b className="truncate text-[12px]">
-                {t.customerName} · {t.title}
-              </b>
-              <span className="shrink-0 text-[10px] text-muted-foreground">
-                {listTime(t.lastAt)}
-              </span>
+              <b className="truncate text-sm">{t.customerName}</b>
+              <span className="shrink-0 text-xs text-muted-foreground">{listTime(t.lastAt)}</span>
             </span>
-            <span className="block truncate text-[11px] text-muted-foreground">
-              {t.lastPreview}
-            </span>
-            <span className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span className="block truncate text-xs font-medium">{t.title}</span>
+            <span className="block truncate text-xs text-muted-foreground">{t.lastPreview}</span>
+            <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <Pill tone={t.stage.tone}>{t.closed ? "Ditutup" : t.stage.label}</Pill>
               {t.unread > 0 && (
                 <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[10px] font-bold text-white">
@@ -559,7 +574,7 @@ function QueueItem({ t, on, onPick }: { t: Summary; on: boolean; onPick: () => v
               )}
             </span>
             {t.kind === "REQUEST" && (
-              <span className="mt-1 block">
+              <span className="mt-2 block">
                 <StageDots done={t.stage.done} mini />
               </span>
             )}
@@ -646,52 +661,58 @@ function OfferForm({
     key: "name" | "merchant" | "productUrl" | "condition" | "variant" | "note",
     label: string,
   ) => (
-    <label className="block text-[11px] text-muted-foreground">
+    <label className="block text-xs text-muted-foreground">
       {label}
       <input
-        className={`${field} mt-0.5`}
+        className={`${field} mt-1`}
         value={o[key]}
         onChange={(e) => set({ [key]: e.target.value })}
       />
     </label>
   );
   const num = (label: string, value: number, onChange: (n: number) => void, min = 0) => (
-    <label className="block text-[11px] text-muted-foreground">
+    <label className="block text-xs text-muted-foreground">
       {label}
       <input
         type="number"
         min={min}
-        className={`${field} mt-0.5`}
+        className={`${field} mt-1`}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
       />
     </label>
   );
   return (
-    <details className="border-t border-border pt-2" open={!!prior || undefined}>
-      <summary className="cursor-pointer text-[13px] font-semibold">Kirim penawaran</summary>
-      <div className="mt-2 space-y-1.5">
+    <details className="rounded-xl border border-border" open>
+      <summary className="cursor-pointer px-3 py-2.5 text-sm font-semibold">
+        Kirim penawaran
+      </summary>
+      <div className="space-y-2.5 border-t border-border p-3">
         {text("name", "Nama barang")}
         {text("merchant", "Toko / penjual")}
         {text("productUrl", "Link produk penjual")}
         {text("condition", "Kondisi barang")}
         {text("variant", "Ukuran dan warna")}
-        {num("Jumlah", o.quantity, (n) => set({ quantity: n }), 1)}
-        {num("Harga toko ¥", o.unitJpy, (n) => set({ unitJpy: n }))}
-        {num("Kirim dalam Jepang (Rp)", o.domesticIdr, (n) => set({ domesticIdr: n }))}
-        {num("Jasa titip (Rp)", fee, (n) => {
-          setFeeTouched(true);
-          set({ feeIdr: n });
-        })}
-        {num("Ongkir ke Indonesia (Rp)", o.shippingIdr, (n) => set({ shippingIdr: n }))}
-        {num("Berlaku (jam)", hours, setHours, 1)}
+        <div className="grid grid-cols-2 gap-2">
+          {num("Jumlah", o.quantity, (n) => set({ quantity: n }), 1)}
+          {num("Harga toko ¥", o.unitJpy, (n) => set({ unitJpy: n }))}
+          {num("Kirim dlm Jepang (Rp)", o.domesticIdr, (n) => set({ domesticIdr: n }))}
+          {num("Jasa titip (Rp)", fee, (n) => {
+            setFeeTouched(true);
+            set({ feeIdr: n });
+          })}
+          {num("Ongkir ke RI (Rp)", o.shippingIdr, (n) => set({ shippingIdr: n }))}
+          {num("Berlaku (jam)", hours, setHours, 1)}
+        </div>
         {text("note", "Rincian tambahan")}
-        <p className="flex justify-between border-t border-dashed border-border pt-1.5 text-[13px] font-bold">
-          <span>Total</span>
-          <span>{formatIdr(total)}</span>
-        </p>
-        <p className="text-[11px] text-muted-foreground">Kurs ¥1 = {formatIdr(rate)}</p>
-        <label className="flex items-start gap-2 text-[11px]">
+        <div className="rounded-xl bg-secondary p-3">
+          <p className="flex justify-between text-sm font-bold">
+            <span>Total</span>
+            <span>{formatIdr(total)}</span>
+          </p>
+          <p className="text-xs text-muted-foreground">Kurs ¥1 = {formatIdr(rate)}</p>
+        </div>
+        <label className="flex items-start gap-2 text-xs">
           <input
             type="checkbox"
             className="mt-0.5"
@@ -705,11 +726,11 @@ function OfferForm({
           type="button"
           disabled={busy || sending || !verified || o.unitJpy <= 0}
           onClick={() => void submit()}
-          className="tap w-full rounded-xl bg-brand-red px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+          className="tap min-h-11 w-full rounded-xl bg-brand-red px-3 text-sm font-semibold text-white disabled:opacity-50"
         >
           Kirim kartu penawaran
         </button>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Revisi membuat penawaran baru; yang lama ditandai &quot;Diganti&quot;. Pelanggan harus
           menyetujui rincian terbaru sebelum membayar.
         </p>

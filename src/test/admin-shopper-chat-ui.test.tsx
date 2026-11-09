@@ -149,19 +149,19 @@ afterEach(cleanup);
 
 async function open() {
   render(<AdminShopperChat />);
-  fireEvent.click(await screen.findByRole("button", { name: /Budi · Poster A3/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /Budi.*Poster A3/ }));
   await screen.findByText("Barangnya sudah terjual, bisa carikan?");
 }
 
 describe("admin inbox", () => {
   it("lists the queue with counts and filters it", async () => {
     render(<AdminShopperChat />);
-    expect(await screen.findByRole("button", { name: /Budi · Poster A3/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Sari · Tas hitam/ })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Budi.*Poster A3/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Sari.*Tas hitam/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /^Baru 1/ }));
-    expect(screen.queryByRole("button", { name: /Sari · Tas hitam/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Sari.*Tas hitam/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /^Menunggu 1/ }));
-    expect(screen.getByRole("button", { name: /Sari · Tas hitam/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Sari.*Tas hitam/ })).toBeTruthy();
   });
 
   it("shows the conversation, the tracker and the internal note", async () => {
