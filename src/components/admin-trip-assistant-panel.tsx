@@ -5,6 +5,8 @@ import {
   TRIP_ASSISTANT_MODELS,
   parseTripAssistantConfig,
   type TripAssistantConfig,
+  TRAVO_SCOPE_LABEL,
+  type TravoScope,
 } from "@/lib/trip-assistant";
 
 type Stats = {
@@ -19,10 +21,13 @@ type Stats = {
   undone: number;
   appliedPercent: number;
   byIntent: { intent: string; n: number }[];
+  byScope: { scope: string; n: number }[];
+  conversations: number;
 };
 type Recent = {
   at: string;
   intent: string;
+  scope: string;
   status: string;
   model: string;
   proposalKind: string | null;
@@ -313,6 +318,7 @@ export function AdminTripAssistantPanel({
               ["Diurungkan", stats.undone.toLocaleString("id-ID")],
               ["Biaya AI", `Rp ${stats.costIdr.toLocaleString("id-ID")}`],
               ["Rata-rata per pesan", `Rp ${stats.avgCostIdr.toLocaleString("id-ID")}`],
+              ["Obrolan baru", stats.conversations.toLocaleString("id-ID")],
             ].map(([label, value]) => (
               <div key={label} className="rounded-xl bg-secondary px-3 py-2">
                 <p className="text-[11px] text-muted-foreground">{label}</p>
@@ -320,6 +326,17 @@ export function AdminTripAssistantPanel({
               </div>
             ))}
           </div>
+          {stats.byScope.length > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground" data-testid="assistant-scopes">
+              Halaman Travo:{" "}
+              {stats.byScope
+                .map(
+                  (i) =>
+                    `${i.scope === "trip" ? "Trip" : (TRAVO_SCOPE_LABEL[i.scope as TravoScope] ?? i.scope)} ${i.n}`,
+                )
+                .join(" · ")}
+            </p>
+          )}
           {stats.byIntent.length > 0 && (
             <p className="mt-2 text-xs text-muted-foreground">
               {stats.byIntent
@@ -343,7 +360,9 @@ export function AdminTripAssistantPanel({
                 <li key={`${row.at}-${index}`} className="flex min-h-11 items-center gap-2 py-1.5">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">
-                      {INTENT_LABEL[row.intent] ?? row.intent}
+                      {row.scope === "trip"
+                        ? (INTENT_LABEL[row.intent] ?? row.intent)
+                        : `Travo · ${TRAVO_SCOPE_LABEL[row.scope as TravoScope] ?? row.scope}`}
                       {row.proposalKind ? ` → ${row.proposalKind}` : ""}
                     </span>
                     <span className="block truncate text-[11px] text-muted-foreground">

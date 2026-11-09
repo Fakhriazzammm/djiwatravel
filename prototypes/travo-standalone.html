@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Travo: halaman chat mandiri</title>
+<style>
+:root{--bg:#f3f4f7;--fg:#17181c;--mut:#6b7080;--bd:#e6e8ee;--red:#c0394b;--soft:#fbe9ec;--ink:#1c1d22}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:13px/1.4 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;background:#e9ebf0;color:var(--fg);padding:16px}
+h1{font-size:18px}h2{font-size:13px;margin:0 0 6px}
+.lead{color:var(--mut);font-size:12px;margin:2px 0 14px}
+.grid{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column}
+.cap{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;margin-bottom:6px;letter-spacing:.03em}
+.phone{width:330px;height:640px;border-radius:30px;border:6px solid var(--ink);background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column}
+/* hero (screen 1) */
+.hero{background:linear-gradient(180deg,#0e1440,#2a2f7a 60%,#4a3f8f);color:#fff;flex:1;padding:18px 14px;position:relative}
+.hero small{opacity:.7;font-size:11px}
+.hero h3{font-size:22px;margin:10px 0 2px}
+.seg{display:inline-flex;background:rgba(255,255,255,.15);border-radius:999px;padding:2px;margin-top:14px;font-weight:600;font-size:12px}
+.seg span{padding:7px 12px;border-radius:999px;display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
+.seg .on{background:var(--red)}
+.pill{margin-top:10px;height:46px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);display:flex;align-items:center;gap:10px;padding:0 16px;font-size:15px;color:rgba(255,255,255,.9)}
+.caret{display:inline-block;width:1.5px;height:16px;background:#fff;margin-left:1px;vertical-align:-3px;animation:bl 1s steps(1) infinite}
+@keyframes bl{50%{opacity:0}}
+.hint{margin-top:10px;font-size:11px;opacity:.75}
+.mini{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.mini span{background:rgba(255,255,255,.14);border-radius:999px;padding:5px 10px;font-size:11.5px}
+/* travo page */
+.top{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--bd);flex:none}
+.ib{width:34px;height:34px;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-size:14px;flex:none}
+.av{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ef6a79,#a42a3b);flex:none;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
+.av.s{width:24px;height:24px;font-size:10px}
+.t1{font-weight:700;font-size:14px}.t2{font-size:11px;color:var(--mut)}.grow{flex:1;min-width:0}
+.scope{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:#fff;border-bottom:1px solid var(--bd);flex:none;scrollbar-width:none}
+.scope span{flex:none;min-height:30px;display:inline-flex;align-items:center;border-radius:999px;background:var(--bg);padding:0 11px;font-size:12px;font-weight:600}
+.scope .on{background:var(--red);color:#fff}
+.msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
+.row{display:flex;gap:6px;align-items:flex-end}
+.b{max-width:80%;padding:8px 11px;border-radius:16px;font-size:13px}
+.b.bot{background:#fff;border:1px solid var(--bd);border-bottom-left-radius:4px}
+.b.me{margin-left:auto;background:var(--red);color:#fff;border-bottom-right-radius:4px}
+.card{margin-left:30px;background:#fff;border:1px solid var(--bd);border-radius:16px;overflow:hidden}
+.card .h{padding:8px 12px 0;font-size:11px;text-transform:uppercase;color:var(--mut);font-weight:700;display:flex;justify-content:space-between}
+.card .h b{color:var(--red)}
+.item{display:flex;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid var(--bd);min-height:48px}
+.item:first-of-type{border-top:0}
+.tile{width:32px;height:32px;border-radius:9px;background:var(--soft);color:var(--red);display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.item .n{font-weight:600;font-size:13.5px}.item .m{font-size:11px;color:var(--mut)}
+.item .p{margin-left:auto;font-weight:700;font-size:13px;white-space:nowrap}
+.btnrow{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--bd)}
+.btn{flex:1;min-height:36px;border-radius:12px;background:var(--red);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}
+.btn.g{background:var(--bg);color:var(--fg)}
+.sug{display:flex;gap:6px;overflow-x:auto;padding:0 12px 6px;flex:none;scrollbar-width:none}
+.sug span{flex:none;min-height:32px;display:inline-flex;align-items:center;background:#fff;border:1px solid var(--bd);border-radius:999px;padding:0 12px;font-size:12px;font-weight:600}
+.sug .hl{background:var(--red);color:#fff;border-color:var(--red)}
+.comp{display:flex;gap:8px;align-items:center;padding:6px 12px 12px;flex:none}
+.inp{flex:1;min-height:40px;border-radius:999px;background:#fff;border:1px solid var(--bd);padding:0 14px;display:flex;align-items:center;color:#9aa0ad}
+.send{width:40px;height:40px;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;font-weight:700}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px;text-align:center}
+.empty .av{width:64px;height:64px;font-size:22px}
+.empty h3{font-size:17px}.empty p{color:var(--mut);font-size:12px}
+.starts{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;margin-top:10px}
+.starts div{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:9px 10px;text-align:left;font-size:12px;font-weight:600;min-height:52px}
+.starts div small{display:block;color:var(--mut);font-weight:400;font-size:10.5px;margin-top:2px}
+.hist{padding:8px 12px;overflow:auto;flex:1}
+.hist .sec{font-size:11px;text-transform:uppercase;color:var(--mut);font-weight:700;margin:10px 0 4px}
+.hist .li{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:9px 12px;margin-bottom:6px;min-height:48px}
+.hist .li b{font-size:13px}.hist .li small{display:block;color:var(--mut);font-size:11px}
+.tabbar{display:flex;justify-content:space-around;padding:6px 0 10px;background:#fff;border-top:1px solid var(--bd);font-size:10.5px;color:var(--mut);flex:none}
+.tabbar span{text-align:center;padding:2px 6px}.tabbar .on{color:var(--red);font-weight:700}
+.notes{max-width:680px;background:#fff;border-radius:14px;padding:14px 16px;margin-top:6px}
+.notes table{border-collapse:collapse;width:100%;font-size:12px;margin:6px 0 10px}
+.notes td,.notes th{border-top:1px solid var(--bd);padding:5px 6px;text-align:left;vertical-align:top}
+.notes code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:11.5px}
+.notes ul{padding-left:18px;font-size:12px}
+</style></head><body>
+<h1>Travo: halaman chat mandiri</h1>
+<p class="lead">Prototype prakarsa. Tiga layar: (1) entry di Home, (2) halaman <code>/travo</code> baru, (3) riwayat obrolan.</p>
+
+<div class="grid">
+
+<div class="col"><div class="cap">1 · Home: tab ketiga "Travo"</div>
+<div class="phone"><div class="hero">
+<small>Djiwa Travel</small><h3>Mau ke mana?</h3>
+<div class="seg"><span>eSIM</span><span>Tiket</span><span class="on">✦ Travo</span></div>
+<div class="pill"><span>✦</span><span id="tw"></span><i class="caret"></i></div>
+<div class="hint">Tanya apa saja soal perjalananmu. Travo bisa cek eSIM, tiket, dan trip kamu.</div>
+<div class="mini"><span>eSIM Jepang</span><span>Tiket ke Seoul</span><span>Cek trip saya</span></div>
+</div></div>
+<script>
+const L=["Cari eSIM paling murah ke Korea…","Rapikan itinerary Tokyo 5 hari…","Berapa budget ke Bali 3 hari?","Tiket Jakarta ke Singapura…","Apa perlu visa ke Jepang?"];
+let i=0,j=0,d=0;const el=document.getElementById("tw");
+(function t(){const s=L[i];el.textContent=s.slice(0,j);
+ if(!d&&j++>=s.length){d=1;return setTimeout(t,1400)}
+ if(d&&j--<=0){d=0;i=(i+1)%L.length}
+ setTimeout(t,d?22:48)})();
+</script></div>
+
+<div class="col"><div class="cap">2 · /travo (percakapan aktif)</div>
+<div class="phone">
+<div class="top"><div class="ib">‹</div><div class="av">T</div><div class="grow"><div class="t1">Travo</div><div class="t2">Asisten perjalanan Djiwa</div></div><div class="ib">⏱</div><div class="ib">＋</div></div>
+<div class="scope"><span class="on">Semua</span><span>Trip saya</span><span>eSIM</span><span>Tiket</span><span>Titip belanja</span><span>Panduan</span></div>
+<div class="msgs">
+<div class="b me">eSIM terbaik buat 5 hari di Korea?</div>
+<div class="row"><div class="av s">T</div><div class="b bot">Buat 5 hari, 1 GB/hari sudah cukup. Ini dua pilihan:</div></div>
+<div class="card"><div class="h"><span>eSIM · Korea Selatan</span></div>
+<div class="item"><div class="tile">5H</div><div><div class="n">Korea 1 GB/hari</div><div class="m">5 hari · 4G/5G</div></div><div class="p">Rp 78 rb</div></div>
+<div class="item"><div class="tile">5H</div><div><div class="n">Korea 3 GB/hari</div><div class="m">5 hari · 4G/5G</div></div><div class="p">Rp 129 rb</div></div>
+<div class="btnrow"><div class="btn">Beli 1 GB/hari</div><div class="btn g">Lihat semua</div></div></div>
+<div class="b me">Oke. Trip Tokyo-ku, hari ini ngapain?</div>
+<div class="row"><div class="av s">T</div><div class="b bot">Dari trip <b>Tokyo Nov</b>, agenda 9 Nov:</div></div>
+<div class="card"><div class="h"><span>Agenda · 9 Nov</span><b>Buka trip</b></div>
+<div class="item"><div class="tile">1</div><div><div class="n">Sensō-ji Temple</div><div class="m">09:00 · Asakusa</div></div></div>
+<div class="item"><div class="tile">2</div><div><div class="n">Tokyo National Museum</div><div class="m">11:30 · Ueno</div></div></div></div>
+</div>
+<div class="sug"><span class="hl">Ringkas trip saya</span><span>Bandingkan eSIM</span><span>Cek tiket murah</span></div>
+<div class="comp"><div class="ib">＋</div><div class="inp">Tanya Travo apa saja…</div><div class="send">↑</div></div>
+</div></div>
+
+<div class="col"><div class="cap">2b · /travo (obrolan baru)</div>
+<div class="phone">
+<div class="top"><div class="ib">‹</div><div class="av">T</div><div class="grow"><div class="t1">Travo</div><div class="t2">Asisten perjalanan Djiwa</div></div><div class="ib">⏱</div></div>
+<div class="empty"><div class="av">T</div><h3>Hai, aku Travo</h3><p>Tanya soal eSIM, tiket, trip, atau titip belanja.</p>
+<div class="starts">
+<div>eSIM terbaik<small>Pilih paket sesuai negara</small></div>
+<div>Tiket pesawat<small>Cari rute dan harga</small></div>
+<div>Rencana trip<small>Buat itinerary baru</small></div>
+<div>Cek pesanan<small>Status eSIM dan tiket</small></div>
+</div></div>
+<div class="comp"><div class="ib">＋</div><div class="inp">Tanya Travo apa saja…</div><div class="send">↑</div></div>
+</div></div>
+
+<div class="col"><div class="cap">3 · Riwayat obrolan (sheet)</div>
+<div class="phone">
+<div class="top"><div class="ib">‹</div><div class="grow"><div class="t1">Riwayat</div><div class="t2">Obrolan dengan Travo</div></div><div class="ib">＋</div></div>
+<div class="hist">
+<div class="sec">Hari ini</div>
+<div class="li"><b>eSIM Korea 5 hari</b><small>Beli 1 GB/hari? · 14:02</small></div>
+<div class="li"><b>Agenda Tokyo 9 Nov</b><small>Trip: Tokyo Nov · 09:15</small></div>
+<div class="sec">Minggu ini</div>
+<div class="li"><b>Budget Bali 3 hari</b><small>Estimasi Rp 4,2 jt · Kam</small></div>
+<div class="li"><b>Tiket Jakarta - Singapura</b><small>Senin</small></div>
+</div>
+</div></div>
+
+</div>
+
+<div class="notes">
+<h2>Route dan perilaku</h2>
+<table>
+<tr><th>Route</th><th>Fungsi</th></tr>
+<tr><td><code>/travo</code></td><td>Obrolan baru atau lanjut obrolan terakhir</td></tr>
+<tr><td><code>/travo?c=&lt;id&gt;</code></td><td>Buka obrolan tertentu (dari Riwayat)</td></tr>
+<tr><td><code>/travo?q=...&amp;scope=esim</code></td><td>Dari Home: kirim pertanyaan awal, scope terpilih</td></tr>
+<tr><td><code>/travo?trip=&lt;tripId&gt;</code></td><td>Dari halaman trip: konteks trip dibawa (ringkas, agenda, biaya)</td></tr>
+<tr><td><code>POST /api/travo-chat</code></td><td>Endpoint baru, scope luas (reuse mesin <code>trip-assistant</code>)</td></tr>
+</table>
+<h2>Keputusan desain</h2>
+<ul>
+<li><b>Home:</b> tab ketiga "Travo" di segmented (eSIM · Tiket · Travo). Placeholder pill beranimasi mengetik bergantian (hormati <code>prefers-reduced-motion</code>: teks statis). Ketuk pill atau chip langsung ke <code>/travo?q=...</code>.</li>
+<li><b>Scope chip:</b> Semua, Trip saya, eSIM, Tiket, Titip belanja, Panduan. Chip hanya mengarahkan konteks, bukan membatasi keras.</li>
+<li><b>Kartu hasil:</b> eSIM (harga + beli), agenda trip (buka trip), tiket, pesanan. Pakai kartu yang sudah ada di <code>trip-assistant-cards</code>.</li>
+<li><b>Tamu (belum login):</b> bisa tanya eSIM, tiket, panduan. Trip saya dan pesanan meminta login.</li>
+<li><b>Dari halaman trip:</b> chat trip tetap ada; tombol "Buka di Travo" melanjutkan ke halaman penuh dengan konteks trip.</li>
+<li><b>Admin:</b> panel Travo sudah ada; tambah scope baru (eSIM, tiket, panduan), batas pesan per hari, dan log percakapan di <code>admin-trip-assistant-panel</code>.</li>
+<li><b>Tab bar:</b> ganti ke Travo sebagai tab tetap atau tombol di Beranda (perlu keputusan, lihat tanya di bawah).</li>
+</ul>
+</div>
+</body></html>

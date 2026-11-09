@@ -122,3 +122,36 @@ export const clearAdminTripAssistantHistory = createServerFn({ method: "POST" })
     return adminClearAssistantHistoryHandler();
   },
 );
+
+/* Travo page: the same conversations as the trip chat, plus general ones. */
+
+export const loadTravo = createServerFn({ method: "GET" })
+  .validator(async (data: unknown) => {
+    const { travoLoadInput } = await import("./trip-assistant.server");
+    return travoLoadInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { travoLoadHandler } = await import("./trip-assistant.server");
+    return travoLoadHandler({ data });
+  });
+
+export const listTravoConversations = createServerFn({ method: "GET" }).handler(async () => {
+  const { travoListHandler } = await import("./trip-assistant.server");
+  return travoListHandler();
+});
+
+export const deleteTravoConversation = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { travoConversationInput } = await import("./trip-assistant.server");
+    return travoConversationInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { travoDeleteHandler } = await import("./trip-assistant.server");
+    return travoDeleteHandler({ data });
+  });
+
+/** Public: whether Home may show the Travo tab (Admin switch on and the AI key set). */
+export const getTravoEntry = createServerFn({ method: "GET" }).handler(async () => {
+  const { travoEntryHandler } = await import("./trip-assistant.server");
+  return travoEntryHandler();
+});

@@ -28,6 +28,7 @@ import { trackAnalytics } from "@/lib/analytics";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import { useHomeEsimConfig } from "@/hooks/use-home-esim-config";
 import { useFlightsStatus } from "@/hooks/use-flights-config";
+import { getTravoEntry } from "@/lib/trip-assistant.fn";
 import { showFlightsHeroTab } from "@/lib/flights";
 import { activeHomePromo, orderHomeDestinations } from "@/lib/home-esim-config";
 
@@ -105,6 +106,16 @@ function Home() {
   const orders = useOrders();
   const homeConfig = useHomeEsimConfig();
   const flights = useFlightsStatus();
+  const [travoTab, setTravoTab] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void getTravoEntry()
+      .then((r) => !cancelled && setTravoTab(r.available))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [sheetDestination, setSheetDestination] = useState<SheetDestination | null>(null);
   const { user, loading } = useBetterAuthUser();
   const unread = useUnreadNotifications(Boolean(user));
@@ -200,6 +211,7 @@ function Home() {
         firstName={user ? accountLabel : null}
         searchHint={searchHint}
         flightsTab={flights.available && showFlightsHeroTab(flights.config)}
+        travoTab={travoTab}
         searchOpen={searchOpen}
         onOpenSearch={() => setSearchOpen(true)}
         headerAction={

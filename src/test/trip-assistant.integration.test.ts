@@ -87,6 +87,9 @@ import {
   assistantSendHandler,
   assistantStreamHandler,
   assistantUndoHandler,
+  travoDeleteHandler,
+  travoListHandler,
+  travoLoadHandler,
   clearAssistantBurst,
   purgeAssistantHistory,
 } from "@/lib/trip-assistant.server";
@@ -150,6 +153,7 @@ async function reset() {
     "048_trip_cities",
     "058_trip_assistant",
     "059_assistant_blocks",
+    "060_travo_conversations",
   ])
     await pool.query(readFileSync(resolve(`migrations/${file}.sql`), "utf8"));
   await pool.query(`create table notification_events (id uuid primary key default gen_random_uuid(), event_key text not null unique, event_type text not null);
@@ -252,6 +256,7 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
     clearAssistantBurst();
     await seed();
     await pool.query("delete from travel_assistant_messages");
+    await pool.query("delete from travel_assistant_conversations");
     await pool.query("delete from travel_assistant_proposals");
     await pool.query("delete from travel_assistant_runs");
   });
@@ -273,6 +278,68 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
       { kind: "tip", title: "Tips", items: ["Datang pagi"] },
     ]);
     expect(history.messages[0]!.blocks).toEqual([]); // the traveler's own message has none
+  });
+
+  it("shares one history between the trip chat and the Travo page", async () => {
+    nextAnswer = answer({ reply: "Halo dari trip." });
+    expect((await send("halo")).status).toBe("ok");
+    // The trip chat shows up in the Travo history, with the same messages.
+    const list = await travoListHandler();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ tripId: TRIP, scope: "trip", title: "Jepang" });
+    const opened = await travoLoadHandler({ data: { conversationId: list[0]!.id } });
+    expect(opened.messages.map((m) => m.content)).toEqual(["halo", "Halo dari trip."]);
+    // Continuing from the Travo page lands in the same conversation, on the same trip.
+    const again = await assistantSendHandler({
+      data: { conversationId: list[0]!.id, text: "lanjut" },
+    });
+    expect(again.status).toBe("ok");
+    expect(await count("select count(*)::int as n from travel_assistant_conversations")).toBe(1);
+    const trip = await assistantLoadHandler({ data: { tripId: TRIP } });
+    expect(trip.messages).toHaveLength(4);
+    // Opening the trip from the Travo page reaches the same chat.
+    const byTrip = await travoLoadHandler({ data: { tripId: TRIP } });
+    expect(byTrip.messages).toHaveLength(4);
+  });
+
+  it("keeps a general Travo chat apart from trips and never proposes changes", async () => {
+    nextAnswer = answer({
+      reply: "Untuk 5 hari, 1 GB per hari cukup.",
+      kind: "agenda",
+      agenda: [add("Tidak boleh", "09:00")],
+    });
+    const sent = await assistantSendHandler({ data: { text: "eSIM Korea?", scope: "esim" } });
+    if (sent.status !== "ok") throw new Error(sent.status);
+    expect(sent.conversationId).toBeTruthy();
+    expect(sent.messages.at(-1)!.proposal).toBeNull();
+    expect(await count("select count(*)::int as n from travel_assistant_proposals")).toBe(0);
+    expect(
+      await count(
+        "select count(*)::int as n from travel_itinerary_items where title='Tidak boleh'",
+      ),
+    ).toBe(0);
+    const list = await travoListHandler();
+    expect(list[0]).toMatchObject({ tripId: null, scope: "esim", title: "eSIM Korea?" });
+    const run = await pool.query("select scope, trip_id from travel_assistant_runs");
+    expect(run.rows[0]).toMatchObject({ scope: "esim", trip_id: null });
+  });
+
+  it("hides conversations from other travelers and deletes both views of a trip chat", async () => {
+    nextAnswer = answer({ reply: "Halo." });
+    await send("halo");
+    const [mine] = await travoListHandler();
+    holder.owner = { id: "u2", email: null, guest: false };
+    expect(await travoListHandler()).toEqual([]);
+    expect(
+      (await travoLoadHandler({ data: { conversationId: mine!.id } })).conversation,
+    ).toBeNull();
+    await expect(
+      assistantSendHandler({ data: { conversationId: mine!.id, text: "intip" } }),
+    ).rejects.toThrow(/tidak ditemukan/);
+    holder.owner = { id: "u1", email: "a@b.c", guest: false };
+    await travoDeleteHandler({ data: { conversationId: mine!.id } });
+    expect(await travoListHandler()).toEqual([]);
+    expect((await assistantLoadHandler({ data: { tripId: TRIP } })).messages).toEqual([]);
   });
 
   it("keeps the 'Ringkas semua' exchange after a reload, and never sends it to the model", async () => {
@@ -988,9 +1055,11 @@ describe("trip assistant migration", () => {
   it.skipIf(!url)("is safe to run twice", async () => {
     const p = new pg.Pool({ connectionString: url });
     try {
-      const sql = readFileSync(resolve("migrations/058_trip_assistant.sql"), "utf8");
-      await p.query(sql);
-      await p.query(sql);
+      for (const file of ["058_trip_assistant", "060_travo_conversations"]) {
+        const sql = readFileSync(resolve(`migrations/${file}.sql`), "utf8");
+        await p.query(sql);
+        await p.query(sql);
+      }
     } finally {
       await p.end();
     }

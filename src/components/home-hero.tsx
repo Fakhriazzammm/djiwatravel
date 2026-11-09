@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CardSim, Plane, Search } from "lucide-react";
+import { CardSim, Plane, Search, Sparkles } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -29,13 +29,27 @@ type Flight = { left: number; top: number; width: number; dx: number; dy: number
  */
 const FLIGHT_HINT_FALLBACK = "Cari tiket pesawat";
 const FLIGHT_HINT_EXAMPLES = ["Bali", "Tokyo", "Singapura", "Seoul"];
+const TRAVO_HINT_FALLBACK = "Tanya Travo apa saja";
+const TRAVO_HINT_EXAMPLES = [
+  "eSIM paling murah ke Korea…",
+  "itinerary Tokyo 5 hari…",
+  "budget ke Bali 3 hari…",
+  "tiket Jakarta ke Singapura…",
+  "perlu visa ke Jepang?",
+];
 
-/** The same typing effect as the eSIM search line, for "Cari tiket ke <kota>". */
-function useFlightHint(active: boolean, reduceMotion: boolean | null) {
-  const [hint, setHint] = useState(FLIGHT_HINT_FALLBACK);
+/** The same typing effect as the eSIM search line, for "<prefix><example>". Still text with reduced motion. */
+function useTypedHint(
+  active: boolean,
+  reduceMotion: boolean | null,
+  examples: string[],
+  fallback: string,
+  prefix: string,
+) {
+  const [hint, setHint] = useState(fallback);
   useEffect(() => {
     if (!active || reduceMotion) {
-      setHint(FLIGHT_HINT_FALLBACK);
+      setHint(fallback);
       return;
     }
     let wordIndex = 0;
@@ -43,15 +57,15 @@ function useFlightHint(active: boolean, reduceMotion: boolean | null) {
     let deleting = false;
     let timeout: ReturnType<typeof setTimeout>;
     const tick = () => {
-      const word = FLIGHT_HINT_EXAMPLES[wordIndex] ?? "";
+      const word = examples[wordIndex] ?? "";
       count += deleting ? -1 : 1;
-      setHint(`Cari tiket ke ${word.slice(0, count)}`);
+      setHint(`${prefix}${word.slice(0, count)}`);
       if (!deleting && count === word.length) {
         deleting = true;
         timeout = setTimeout(tick, 1000);
       } else if (deleting && count === 0) {
         deleting = false;
-        wordIndex = (wordIndex + 1) % FLIGHT_HINT_EXAMPLES.length;
+        wordIndex = (wordIndex + 1) % examples.length;
         timeout = setTimeout(tick, 250);
       } else {
         timeout = setTimeout(tick, deleting ? 42 : 80);
@@ -59,7 +73,7 @@ function useFlightHint(active: boolean, reduceMotion: boolean | null) {
     };
     timeout = setTimeout(tick, 500);
     return () => clearTimeout(timeout);
-  }, [active, reduceMotion]);
+  }, [active, reduceMotion, examples, fallback, prefix]);
   return hint;
 }
 
@@ -69,6 +83,7 @@ export function HomeHero({
   headerAction,
   searchHint,
   flightsTab = false,
+  travoTab = false,
   searchOpen,
   onOpenSearch,
 }: {
@@ -78,6 +93,8 @@ export function HomeHero({
   searchHint: string;
   /** Show the eSIM | Tiket switch (Admin `flights.heroTab` and a working search). */
   flightsTab?: boolean;
+  /** Show the Travo tab (assistant on in Admin and its key set). The pill then opens /travo. */
+  travoTab?: boolean;
   searchOpen: boolean;
   onOpenSearch: () => void;
 }) {
@@ -98,9 +115,24 @@ export function HomeHero({
   const flightRef = useRef<HTMLImageElement>(null);
   const [fly, setFly] = useState<"idle" | "launch" | "away">("idle");
   // The Tiket tab only changes what the pill does (it opens the flight search page).
-  const [tab, setTab] = useState<"esim" | "tiket">("esim");
+  const [tab, setTab] = useState<"esim" | "tiket" | "travo">("esim");
+  const showTabs = flightsTab || travoTab;
   const flightsMode = flightsTab && tab === "tiket";
-  const flightHint = useFlightHint(flightsMode, reduceMotion);
+  const travoMode = travoTab && tab === "travo";
+  const flightHint = useTypedHint(
+    flightsMode,
+    reduceMotion,
+    FLIGHT_HINT_EXAMPLES,
+    FLIGHT_HINT_FALLBACK,
+    "Cari tiket ke ",
+  );
+  const travoHint = useTypedHint(
+    travoMode,
+    reduceMotion,
+    TRAVO_HINT_EXAMPLES,
+    TRAVO_HINT_FALLBACK,
+    "Tanya Travo: ",
+  );
   const [flight, setFlight] = useState<Flight | null>(null);
 
   useEffect(() => {
@@ -256,7 +288,7 @@ export function HomeHero({
           </span>
         </div>
 
-        {flightsTab && (
+        {showTabs && (
           <div
             role="tablist"
             aria-label="Jenis pencarian"
@@ -267,8 +299,9 @@ export function HomeHero({
             {(
               [
                 ["esim", "eSIM"],
-                ["tiket", "Tiket"],
-              ] as const
+                ...(flightsTab ? [["tiket", "Tiket"]] : []),
+                ...(travoTab ? [["travo", "Travo"]] : []),
+              ] as ["esim" | "tiket" | "travo", string][]
             ).map(([id, label]) => (
               <button
                 key={id}
@@ -282,6 +315,8 @@ export function HomeHero({
               >
                 {id === "tiket" ? (
                   <Plane className="size-3.5" aria-hidden="true" />
+                ) : id === "travo" ? (
+                  <Sparkles className="size-3.5" aria-hidden="true" />
                 ) : (
                   <CardSim className="size-3.5" aria-hidden="true" />
                 )}
@@ -291,7 +326,20 @@ export function HomeHero({
           </div>
         )}
 
-        {flightsMode ? (
+        {travoMode ? (
+          <Link
+            to="/travo"
+            data-track="home_travo_tab"
+            className={`tap relative mt-2.5 flex h-[3.25rem] w-full items-center gap-3 rounded-full border px-5 text-left text-[17px] [text-shadow:none] shadow-[0_8px_24px_rgb(40_30_90/0.16)] backdrop-blur-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              dark
+                ? "border-white/30 bg-white/15 text-white/90"
+                : "border-white/55 bg-white/75 text-[#5b5f6b]"
+            }`}
+          >
+            <Sparkles className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">{travoHint}</span>
+          </Link>
+        ) : flightsMode ? (
           <Link
             to="/tiket"
             data-track="home_flights_tab"
@@ -310,13 +358,13 @@ export function HomeHero({
             onClick={launch}
             aria-haspopup="dialog"
             aria-expanded={searchOpen}
-            className={`tap relative ${flightsTab ? "mt-2.5" : "mt-4"} flex h-[3.25rem] w-full items-center gap-3 rounded-full border px-5 text-left text-[17px] [text-shadow:none] shadow-[0_8px_24px_rgb(40_30_90/0.16)] backdrop-blur-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`tap relative ${showTabs ? "mt-2.5" : "mt-4"} flex h-[3.25rem] w-full items-center gap-3 rounded-full border px-5 text-left text-[17px] [text-shadow:none] shadow-[0_8px_24px_rgb(40_30_90/0.16)] backdrop-blur-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               dark
                 ? "border-white/30 bg-white/15 text-white/90"
                 : "border-white/55 bg-white/75 text-[#5b5f6b]"
             }`}
           >
-            {flightsTab ? (
+            {showTabs ? (
               <CardSim className="size-5 shrink-0" strokeWidth={2} aria-hidden="true" />
             ) : (
               <Search className="size-5 shrink-0" strokeWidth={2} />

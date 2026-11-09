@@ -34,6 +34,8 @@ const COMPACT_PAGES = [
   "src/routes/share.$token.tsx",
   "src/routes/support.tsx",
   "src/routes/terms.tsx",
+  "src/routes/travo.tsx",
+  "src/components/travo-chat.tsx",
   "src/routes/titip-belanja.index.tsx",
   "src/routes/titip-belanja.pesan.$id.tsx",
   "src/routes/titip-belanja.pesan.index.tsx",

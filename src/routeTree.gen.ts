@@ -26,6 +26,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TiketRouteImport } from './routes/tiket'
+import { Route as TravoRouteImport } from './routes/travo'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAffiliatesRouteImport } from './routes/admin.affiliates'
@@ -191,6 +192,11 @@ const TermsRoute = TermsRouteImport.update({
 const TiketRoute = TiketRouteImport.update({
   id: '/tiket',
   path: '/tiket',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TravoRoute = TravoRouteImport.update({
+  id: '/travo',
+  path: '/travo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WalletRoute = WalletRouteImport.update({
@@ -625,6 +631,7 @@ export interface FileRoutesByFullPath {
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/tiket': typeof TiketRoute
+  '/travo': typeof TravoRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/affiliates': typeof AdminAffiliatesRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -725,6 +732,7 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/tiket': typeof TiketRoute
+  '/travo': typeof TravoRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/affiliates': typeof AdminAffiliatesRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -826,6 +834,7 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/tiket': typeof TiketRoute
+  '/travo': typeof TravoRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/affiliates': typeof AdminAffiliatesRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -928,6 +937,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/terms'
     | '/tiket'
+    | '/travo'
     | '/wallet'
     | '/admin/affiliates'
     | '/admin/analytics'
@@ -1028,6 +1038,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/terms'
     | '/tiket'
+    | '/travo'
     | '/wallet'
     | '/admin/affiliates'
     | '/admin/analytics'
@@ -1128,6 +1139,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/terms'
     | '/tiket'
+    | '/travo'
     | '/wallet'
     | '/admin/affiliates'
     | '/admin/analytics'
@@ -1229,6 +1241,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   TiketRoute: typeof TiketRoute
+  TravoRoute: typeof TravoRoute
   WalletRoute: typeof WalletRouteWithChildren
   AdminAffiliatesRoute: typeof AdminAffiliatesRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
@@ -1427,6 +1440,13 @@ declare module '@tanstack/react-router' {
       path: '/tiket'
       fullPath: '/tiket'
       preLoaderRoute: typeof TiketRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/travo': {
+      id: '/travo'
+      path: '/travo'
+      fullPath: '/travo'
+      preLoaderRoute: typeof TravoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wallet': {
@@ -2054,6 +2074,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   TiketRoute: TiketRoute,
+  TravoRoute: TravoRoute,
   WalletRoute: WalletRouteWithChildren,
   AdminAffiliatesRoute: AdminAffiliatesRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,

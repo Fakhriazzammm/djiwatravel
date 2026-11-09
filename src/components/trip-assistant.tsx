@@ -91,7 +91,7 @@ const QUICK: { label: string; intent: AssistantIntent; text: string }[] = [
   },
 ];
 
-function Bubble({
+export function Bubble({
   role,
   children,
   mood = "idle",
@@ -129,7 +129,7 @@ function Bubble({
 }
 
 /** Dots shown while the assistant is thinking or typing; the mascot thinks along. */
-function TypingBubble({ label }: { label: string }) {
+export function TypingBubble({ label }: { label: string }) {
   return (
     <div className="flex items-end gap-1.5" role="status" aria-label={label}>
       <span className="mb-0.5">
@@ -152,7 +152,7 @@ function TypingBubble({ label }: { label: string }) {
  * Types the streamed reply out smoothly: the model delivers text in bursts, so the screen catches
  * up a few characters per frame instead of jumping. Reduced motion shows it as it arrives.
  */
-function useSmoothText(target: string, active: boolean) {
+export function useSmoothText(target: string, active: boolean) {
   const reduce = Boolean(useReducedMotion());
   const [shown, setShown] = useState(0);
   useEffect(() => {
@@ -523,6 +523,13 @@ export function TripAssistant(props: Props) {
             {statusLine}
           </p>
         </div>
+        <Link
+          to="/travo"
+          search={{ trip: tripId } as never}
+          className="tap px-1 text-xs font-semibold text-brand-red"
+        >
+          Buka di Travo
+        </Link>
         {messages.length > 0 && (
           <button
             type="button"

@@ -5,6 +5,12 @@ import {
   buildAssistantContext,
   buildAssistantSystemPrompt,
   buildNudges,
+  buildGeneralContext,
+  buildTravoGeneralPrompt,
+  isTravoScope,
+  TRAVO_SCOPES,
+  TRAVO_SCOPE_LABEL,
+  TRAVO_SCOPE_LINK,
   cleanAssistantReply,
   detectIntent,
   extractReplyPrefix,
@@ -464,5 +470,38 @@ describe("cleanBlocks (visual answers)", () => {
     );
     expect(out.blocks).toEqual([{ kind: "tip", title: "Tips", items: ["Bawa payung"] }]);
     expect(out.reply).toBe("Ini rencananya.");
+  });
+});
+
+describe("Travo standalone scopes", () => {
+  it("knows every scope, with a label and an exit link where one makes sense", () => {
+    for (const s of TRAVO_SCOPES) expect(TRAVO_SCOPE_LABEL[s]).toBeTruthy();
+    expect(isTravoScope("esim")).toBe(true);
+    expect(isTravoScope("admin")).toBe(false);
+    expect(TRAVO_SCOPE_LINK.tiket?.to).toBe("/tiket");
+    expect(TRAVO_SCOPE_LINK.all).toBeNull();
+  });
+  it("the general prompt forbids changing trip data and carries the admin rules", () => {
+    const prompt = buildTravoGeneralPrompt(
+      { ...DEFAULT_TRIP_ASSISTANT_CONFIG, tone: "santai", blockedTopics: "politik" },
+      "esim",
+      "2026-11-09",
+    );
+    expect(prompt).toContain("Travo");
+    expect(prompt).toMatch(/always set `kind` to none/);
+    expect(prompt).toContain("santai");
+    expect(prompt).toContain("politik");
+    expect(prompt).toContain("2026-11-09");
+  });
+  it("the general context lists trips and orders compactly", () => {
+    const json = JSON.parse(
+      buildGeneralContext({
+        today: "2026-11-09",
+        trips: [{ id: ID, name: "Jepang", destination: "Japan", from: "2026-11-07", to: null }],
+        esimOrders: [{ name: "Korea 5H", status: "READY" }],
+      }),
+    );
+    expect(json.trips[0]).toBe("Jepang | Japan | 2026-11-07 - ?");
+    expect(json.esimOrders).toEqual(["Korea 5H (READY)"]);
   });
 });

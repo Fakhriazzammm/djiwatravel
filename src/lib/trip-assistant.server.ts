@@ -30,6 +30,12 @@ import {
   assistantCostIdr,
   buildAssistantContext,
   buildAssistantSystemPrompt,
+  buildGeneralContext,
+  buildTravoGeneralPrompt,
+  isTravoScope,
+  type GeneralFacts,
+  type TravoConversationSummary,
+  type TravoScope,
   cleanAssistantReply,
   detectIntent,
   extractReplyPrefix,
@@ -423,22 +429,32 @@ async function previousItems(tripId: string, payloads: ProposalPayload[]) {
 const SUMMARY_MARKER = "summary" as never;
 const SUMMARY_ASK = "Ringkas semua perjalananku";
 
-async function readMessages(tripId: string, limit = 60): Promise<AssistantMessage[]> {
+/** A conversation is read by its trip (the trip chat) or by its own id (a general Travo chat). */
+type MessageFilter = { tripId: string } | { conversationId: string };
+
+async function readMessages(
+  filter: MessageFilter | string,
+  limit = 60,
+): Promise<AssistantMessage[]> {
+  const f: MessageFilter = typeof filter === "string" ? { tripId: filter } : filter;
+  const tripId = "tripId" in f ? f.tripId : null;
   const result = await pool.query(
     `select * from (
        select m.id, m.role, m.content, m.chips, m.blocks, m.created_at, m.proposal_id,
               p.kind as p_kind, p.title as p_title, p.status as p_status, p.payload as p_payload
        from public.travel_assistant_messages m
        left join public.travel_assistant_proposals p on p.id = m.proposal_id
-       where m.trip_id=$1 order by m.created_at desc limit $2
+       where ${"tripId" in f ? "m.trip_id" : "m.conversation_id"}=$1 order by m.created_at desc limit $2
      ) x order by created_at asc`,
-    [tripId, limit],
+    ["tripId" in f ? f.tripId : f.conversationId, limit],
   );
   const rows = result.rows as MessageRow[];
-  const previous = await previousItems(
-    tripId,
-    rows.flatMap((r) => (r.p_payload ? [r.p_payload] : [])),
-  );
+  const previous = tripId
+    ? await previousItems(
+        tripId,
+        rows.flatMap((r) => (r.p_payload ? [r.p_payload] : [])),
+      )
+    : {};
   return rows.map((r) => ({
     id: r.id,
     role: r.role,
@@ -503,10 +519,135 @@ export async function assistantResetHandler({
   return { ok: true as const };
 }
 
+/* ----------------------------------------------------------------- Travo page (all chats) */
+
+export async function travoEntryHandler() {
+  const { config } = await readTripAssistantConfig();
+  return { available: config.enabled && tripAssistantConfigured() };
+}
+
+const conversationInput = z.object({
+  conversationId: z.string().uuid().optional(),
+  /** Open the chat of one trip (its conversation, or an empty one that the first message creates). */
+  tripId: z.string().uuid().optional(),
+});
+export const travoLoadInput = (data: unknown) => conversationInput.parse(data ?? {});
+const conversationIdInput = z.object({ conversationId: z.string().uuid() });
+export const travoConversationInput = (data: unknown) => conversationIdInput.parse(data);
+
+/** One conversation (or the empty start screen) with the same status the trip chat uses. */
+export async function travoLoadHandler({ data }: { data: ReturnType<typeof travoLoadInput> }) {
+  const owner = await resolveTripOwner();
+  if (!owner)
+    return {
+      status: { available: false, reason: "off" } as AssistantStatus,
+      loggedIn: false as const,
+      conversation: null,
+      messages: [] as AssistantMessage[],
+    };
+  const { status } = await statusFor(owner);
+  if (!status.available || (!data.conversationId && !data.tripId))
+    return {
+      status,
+      loggedIn: true as const,
+      conversation: null,
+      messages: [] as AssistantMessage[],
+    };
+  if (data.tripId) await ownedTripRow(data.tripId, owner.id);
+  const found = data.conversationId
+    ? await pool.query(
+        "select id, trip_id, title, scope from public.travel_assistant_conversations where id=$1 and customer_auth_subject=$2",
+        [data.conversationId, owner.id],
+      )
+    : await pool.query(
+        "select id, trip_id, title, scope from public.travel_assistant_conversations where trip_id=$1 and customer_auth_subject=$2",
+        [data.tripId, owner.id],
+      );
+  const row = found.rows[0] as
+    { id: string; trip_id: string | null; title: string; scope: string } | undefined;
+  if (!row)
+    return {
+      status,
+      loggedIn: true as const,
+      // A trip without a chat yet: empty, and the first message creates its conversation.
+      conversation: data.tripId
+        ? { id: null as string | null, tripId: data.tripId, title: "", scope: "trip" as TravoScope }
+        : null,
+      messages: [] as AssistantMessage[],
+    };
+  const scope: TravoScope = isTravoScope(row.scope) ? row.scope : "all";
+  return {
+    status,
+    loggedIn: true as const,
+    conversation: { id: row.id as string | null, tripId: row.trip_id, title: row.title, scope },
+    messages: await readMessages(
+      row.trip_id ? { tripId: row.trip_id } : { conversationId: row.id },
+    ),
+  };
+}
+
+/** History: every conversation of this traveler, trip chats included, newest first. */
+export async function travoListHandler(): Promise<TravoConversationSummary[]> {
+  const owner = await resolveTripOwner();
+  if (!owner) return [];
+  const result = await pool.query(
+    `select c.id, c.trip_id, c.title, c.scope, c.last_message_at,
+            (select m.content from public.travel_assistant_messages m
+              where m.conversation_id = c.id order by m.created_at desc limit 1) as preview
+     from public.travel_assistant_conversations c
+     where c.customer_auth_subject=$1
+       and exists (select 1 from public.travel_assistant_messages m where m.conversation_id = c.id)
+     order by c.last_message_at desc limit 60`,
+    [owner.id],
+  );
+  return result.rows.map((r) => ({
+    id: String(r.id),
+    tripId: (r.trip_id as string | null) ?? null,
+    title: String(r.title || "Obrolan baru"),
+    scope: isTravoScope(r.scope) ? r.scope : "all",
+    lastMessageAt: new Date(r.last_message_at).toISOString(),
+    preview: String(r.preview ?? "").slice(0, 90),
+  }));
+}
+
+export async function travoDeleteHandler({
+  data,
+}: {
+  data: ReturnType<typeof travoConversationInput>;
+}) {
+  const owner = await resolveTripOwner();
+  if (!owner) throw new Error("Autentikasi diperlukan");
+  const found = await pool.query(
+    "select trip_id from public.travel_assistant_conversations where id=$1 and customer_auth_subject=$2",
+    [data.conversationId, owner.id],
+  );
+  if (!found.rows[0]) return { ok: true as const };
+  const tripId = found.rows[0].trip_id as string | null;
+  // The trip chat and its history are one: deleting it from either page empties both.
+  await pool.query(
+    "delete from public.travel_assistant_messages where conversation_id=$1 and customer_auth_subject=$2",
+    [data.conversationId, owner.id],
+  );
+  if (tripId)
+    await pool.query(
+      "delete from public.travel_assistant_proposals where trip_id=$1 and customer_auth_subject=$2 and status <> 'applied'",
+      [tripId, owner.id],
+    );
+  await pool.query(
+    "delete from public.travel_assistant_conversations where id=$1 and customer_auth_subject=$2",
+    [data.conversationId, owner.id],
+  );
+  return { ok: true as const };
+}
+
 /* ----------------------------------------------------------------------------- sending */
 
 const sendSchema = z.object({
-  tripId: z.string().uuid(),
+  /** A trip chat. Without it, the message belongs to a general Travo conversation. */
+  tripId: z.string().uuid().optional(),
+  /** An existing conversation (general or trip). Omitted for a new general conversation. */
+  conversationId: z.string().uuid().optional(),
+  scope: z.string().optional(),
   text: z.string().trim().min(1).max(ASSISTANT_MAX_TEXT),
   intent: z.enum(ASSISTANT_INTENTS as [AssistantIntent, ...AssistantIntent[]]).optional(),
 });
@@ -514,13 +655,72 @@ export const assistantSendInput = (data: unknown) => sendSchema.parse(data);
 
 export type TurnEvent = { type: "delta"; text: string } | { type: "status"; text: string };
 
+type Conversation = { id: string | null; tripId: string | null; scope: TravoScope };
+
+/** Finds the conversation a message belongs to. A new general one is only created when the turn is stored. */
+async function resolveConversation(
+  owner: TripOwner,
+  data: ReturnType<typeof assistantSendInput>,
+): Promise<Conversation> {
+  if (data.conversationId) {
+    const found = await pool.query(
+      "select id, trip_id, scope from public.travel_assistant_conversations where id=$1 and customer_auth_subject=$2",
+      [data.conversationId, owner.id],
+    );
+    const row = found.rows[0] as { id: string; trip_id: string | null; scope: string } | undefined;
+    if (!row) throw new Error("Obrolan tidak ditemukan");
+    return {
+      id: row.id,
+      tripId: row.trip_id,
+      scope: isTravoScope(row.scope) ? row.scope : "all",
+    };
+  }
+  if (data.tripId) {
+    const found = await pool.query(
+      "select id from public.travel_assistant_conversations where customer_auth_subject=$1 and trip_id=$2",
+      [owner.id, data.tripId],
+    );
+    return {
+      id: (found.rows[0]?.id as string | undefined) ?? null,
+      tripId: data.tripId,
+      scope: "trip",
+    };
+  }
+  const scope = isTravoScope(data.scope) && data.scope !== "trip" ? data.scope : "all";
+  return { id: null, tripId: null, scope };
+}
+
+async function loadGeneralFacts(owner: TripOwner): Promise<GeneralFacts> {
+  const trips = await pool
+    .query(
+      `select id, name, destination_name,
+              to_char(departure_date,'YYYY-MM-DD') as d, to_char(return_date,'YYYY-MM-DD') as r
+       from public.travel_trips where customer_auth_subject=$1 order by departure_date desc nulls last limit 8`,
+      [owner.id],
+    )
+    .catch(() => ({ rows: [] as Record<string, unknown>[] }));
+  return {
+    today: todayJakarta(),
+    trips: trips.rows.map((t) => ({
+      id: String(t["id"]),
+      name: String(t["name"] ?? ""),
+      destination: String(t["destination_name"] ?? ""),
+      from: (t["d"] as string | null) ?? null,
+      to: (t["r"] as string | null) ?? null,
+    })),
+    esimOrders: [],
+  };
+}
+
 async function runTurn(
   data: ReturnType<typeof assistantSendInput>,
   emit?: (event: TurnEvent) => void,
 ): Promise<AssistantSendResult> {
   const owner = await resolveTripOwner();
   if (!owner) throw new Error("Autentikasi diperlukan");
-  const trip = await ownedTripRow(data.tripId, owner.id);
+  const conv = await resolveConversation(owner, data);
+  const tripId = conv.tripId;
+  if (tripId) await ownedTripRow(tripId, owner.id);
   const { status, config } = await statusFor(owner);
   if (!status.available)
     return { status: "disabled", message: "Travo sedang tidak tersedia.", remaining: 0 };
@@ -539,11 +739,17 @@ async function runTurn(
       remaining: status.remaining,
     };
   inFlight.add(owner.id);
-  const intent = data.intent ?? detectIntent(data.text);
+  const intent = tripId ? (data.intent ?? detectIntent(data.text)) : "chat";
   const model = isGenerationIntent(intent) ? config.generationModel : config.model;
+  const filter: MessageFilter | null = tripId
+    ? { tripId }
+    : conv.id
+      ? { conversationId: conv.id }
+      : null;
   try {
-    const facts = await loadFacts(data.tripId, intent === "plan");
-    const history = (await readMessages(data.tripId, 8))
+    const facts = tripId ? await loadFacts(tripId, intent === "plan") : null;
+    const general = tripId ? null : await loadGeneralFacts(owner);
+    const history = (filter ? await readMessages(filter, 8) : [])
       .filter((m) => !m.local)
       .map((m) => ({
         role: m.role,
@@ -551,8 +757,12 @@ async function runTurn(
           ? `${m.content}\n[usulan ${m.proposal.kind}: ${m.proposal.status}]`
           : m.content,
       }));
-    const system = buildAssistantSystemPrompt(config, intent, facts.today);
-    const userMessage = `DATA PERJALANAN (JSON):\n${buildAssistantContext(facts)}\n\nPESAN TRAVELER:\n${data.text}`;
+    const system = facts
+      ? buildAssistantSystemPrompt(config, intent, facts.today)
+      : buildTravoGeneralPrompt(config, conv.scope, general!.today);
+    const userMessage = facts
+      ? `DATA PERJALANAN (JSON):\n${buildAssistantContext(facts)}\n\nPESAN TRAVELER:\n${data.text}`
+      : `DATA PENGGUNA (JSON):\n${buildGeneralContext(general!)}\n\nPESAN TRAVELER:\n${data.text}`;
     let outcome: Awaited<ReturnType<typeof askModel>>;
     try {
       outcome = await askModel(
@@ -567,25 +777,26 @@ async function runTurn(
         "[trip-assistant] model failed",
         error instanceof Error ? error.message : error,
       );
-      await recordRun(owner, data.tripId, intent, "error", model, null, { input: 0, output: 0 });
+      await recordRun(owner, tripId, conv, intent, "error", model, null, { input: 0, output: 0 });
       return {
         status: "error",
         remaining: status.remaining,
         message: "Travo sedang sibuk. Coba kirim lagi sebentar lagi.",
       };
     }
+    // A general conversation can never change trip data: every proposal permission is off.
     const cleaned = cleanAssistantReply(outcome.parsed, {
-      config,
-      currency: facts.currency,
-      departureDate: facts.departureDate,
-      returnDate: facts.returnDate,
-      itemIds: new Set(facts.itinerary.map((i) => i.id)),
-      budgetNames: facts.budget.map((b) => b.name),
-      today: facts.today,
+      config: facts ? config : { ...config, allowAgenda: false, allowBudget: false },
+      currency: facts?.currency ?? "IDR",
+      departureDate: facts?.departureDate ?? null,
+      returnDate: facts?.returnDate ?? null,
+      itemIds: new Set(facts?.itinerary.map((i) => i.id) ?? []),
+      budgetNames: facts?.budget.map((b) => b.name) ?? [],
+      today: facts?.today ?? general!.today,
     });
-    if (cleaned.proposal?.payload.kind === "agenda" && config.verifyHours) {
+    if (facts && tripId && cleaned.proposal?.payload.kind === "agenda" && config.verifyHours) {
       emit?.({ type: "status", text: "Mengecek lokasi dan jam buka…" });
-      await verifyAgendaPlaces(cleaned.proposal.payload.items, data.tripId, facts).catch((error) =>
+      await verifyAgendaPlaces(cleaned.proposal.payload.items, tripId, facts).catch((error) =>
         console.error(
           "[trip-assistant] place check failed",
           error instanceof Error ? error.message : error,
@@ -593,29 +804,45 @@ async function runTurn(
       );
     }
     if (!cleaned.reply && !cleaned.proposal && !cleaned.blocks.length) {
-      await recordRun(owner, data.tripId, intent, "error", model, null, outcome.usage);
+      await recordRun(owner, tripId, conv, intent, "error", model, null, outcome.usage);
       return {
         status: "error",
         remaining: status.remaining,
         message: "Jawaban Travo belum bisa dibaca. Coba ulangi dengan kalimat lain.",
       };
     }
+    let conversationId = conv.id;
     const client = await pool.connect();
     try {
       await client.query("begin");
+      if (!conversationId) {
+        const created = await client.query(
+          tripId
+            ? `insert into public.travel_assistant_conversations (customer_auth_subject, trip_id, title, scope)
+               values ($1,$2,$3,'trip')
+               on conflict (customer_auth_subject, trip_id) where trip_id is not null
+               do update set last_message_at = now() returning id`
+            : `insert into public.travel_assistant_conversations (customer_auth_subject, trip_id, title, scope)
+               values ($1,$2,$3,$4) returning id`,
+          tripId
+            ? [owner.id, tripId, facts?.name ?? ""]
+            : [owner.id, null, data.text.slice(0, 60), conv.scope],
+        );
+        conversationId = String(created.rows[0].id);
+      }
       await client.query(
-        "insert into public.travel_assistant_messages (trip_id, customer_auth_subject, role, content) values ($1,$2,'user',$3)",
-        [data.tripId, owner.id, data.text],
+        "insert into public.travel_assistant_messages (trip_id, conversation_id, customer_auth_subject, role, content) values ($1,$2,$3,'user',$4)",
+        [tripId, conversationId, owner.id, data.text],
       );
       let proposalId: string | null = null;
-      if (cleaned.proposal) {
+      if (cleaned.proposal && tripId) {
         proposalId = randomUUID();
         await client.query(
           `insert into public.travel_assistant_proposals (id, trip_id, customer_auth_subject, kind, title, payload)
            values ($1,$2,$3,$4,$5,$6::jsonb)`,
           [
             proposalId,
-            data.tripId,
+            tripId,
             owner.id,
             cleaned.proposal.payload.kind,
             cleaned.proposal.title,
@@ -624,16 +851,21 @@ async function runTurn(
         );
       }
       await client.query(
-        `insert into public.travel_assistant_messages (trip_id, customer_auth_subject, role, content, chips, blocks, proposal_id, created_at)
-         values ($1,$2,'assistant',$3,$4::jsonb,$5::jsonb,$6, now() + interval '1 millisecond')`,
+        `insert into public.travel_assistant_messages (trip_id, conversation_id, customer_auth_subject, role, content, chips, blocks, proposal_id, created_at)
+         values ($1,$2,$3,'assistant',$4,$5::jsonb,$6::jsonb,$7, now() + interval '1 millisecond')`,
         [
-          data.tripId,
+          tripId,
+          conversationId,
           owner.id,
           cleaned.reply || cleaned.proposal?.title || "Ini usulan saya.",
           cleaned.chips ? JSON.stringify(cleaned.chips) : null,
           cleaned.blocks.length ? JSON.stringify(cleaned.blocks) : null,
           proposalId,
         ],
+      );
+      await client.query(
+        "update public.travel_assistant_conversations set last_message_at = now() where id=$1",
+        [conversationId],
       );
       await client.query("commit");
     } catch (error) {
@@ -644,18 +876,21 @@ async function runTurn(
     }
     await recordRun(
       owner,
-      data.tripId,
+      tripId,
+      { ...conv, id: conversationId },
       intent,
       "ok",
       model,
       cleaned.proposal?.payload.kind ?? null,
       outcome.usage,
     );
-    void trip;
     return {
       status: "ok",
       remaining: Math.max(0, status.remaining - 1),
-      messages: (await readMessages(data.tripId, 2)).slice(-2),
+      conversationId: conversationId!,
+      messages: (
+        await readMessages(tripId ? { tripId } : { conversationId: conversationId! }, 2)
+      ).slice(-2),
     };
   } finally {
     inFlight.delete(owner.id);
@@ -716,7 +951,8 @@ export async function* assistantStreamHandler({
 
 async function recordRun(
   owner: TripOwner,
-  tripId: string,
+  tripId: string | null,
+  conv: Conversation,
   intent: AssistantIntent,
   status: "ok" | "error" | "blocked",
   model: string,
@@ -726,12 +962,14 @@ async function recordRun(
   await pool
     .query(
       `insert into public.travel_assistant_runs
-         (customer_auth_subject, guest, trip_id, intent, status, model, proposal_kind, tokens_in, tokens_out, cost_idr)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+         (customer_auth_subject, guest, trip_id, conversation_id, scope, intent, status, model, proposal_kind, tokens_in, tokens_out, cost_idr)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [
         owner.id,
         owner.guest,
         tripId,
+        conv.id,
+        conv.scope,
         intent,
         status,
         model,
@@ -1151,6 +1389,9 @@ export async function purgeAssistantHistory(now = Date.now()) {
     [days],
   );
   await pool.query(
+    "delete from public.travel_assistant_conversations c where not exists (select 1 from public.travel_assistant_messages m where m.conversation_id = c.id) and c.created_at < now() - interval '1 day'",
+  );
+  await pool.query(
     "delete from public.travel_assistant_runs where created_at < now() - interval '180 days'",
   );
   return { messages: messages.rowCount ?? 0, proposals: proposals.rowCount ?? 0 };
@@ -1170,10 +1411,14 @@ export type TripAssistantStats = {
   undone: number;
   appliedPercent: number;
   byIntent: { intent: string; n: number }[];
+  /** Messages per Travo scope (trip chat vs. the standalone /travo page). */
+  byScope: { scope: string; n: number }[];
+  conversations: number;
 };
 export type TripAssistantRecent = {
   at: string;
   intent: string;
+  scope: string;
   status: string;
   model: string;
   proposalKind: string | null;
@@ -1183,7 +1428,7 @@ export type TripAssistantRecent = {
 };
 
 async function readStats(): Promise<TripAssistantStats> {
-  const [runs, props, intents] = await Promise.all([
+  const [runs, props, intents, scopes, convs] = await Promise.all([
     pool.query(
       `select count(*)::int as n,
               count(*) filter (where guest)::int as guests,
@@ -1201,6 +1446,13 @@ async function readStats(): Promise<TripAssistantStats> {
     pool.query(
       `select intent, count(*)::int as n from public.travel_assistant_runs
        where created_at > now() - interval '30 days' and status='ok' group by intent order by n desc`,
+    ),
+    pool.query(
+      `select coalesce(scope, 'trip') as scope, count(*)::int as n from public.travel_assistant_runs
+       where created_at > now() - interval '30 days' and status='ok' group by 1 order by n desc`,
+    ),
+    pool.query(
+      `select count(*)::int as n from public.travel_assistant_conversations where created_at > now() - interval '30 days'`,
     ),
   ]);
   const r = runs.rows[0] ?? {};
@@ -1220,17 +1472,20 @@ async function readStats(): Promise<TripAssistantStats> {
     undone: Number(p.undone) || 0,
     appliedPercent: pn ? Math.round(((Number(p.applied) || 0) / pn) * 100) : 0,
     byIntent: intents.rows.map((x) => ({ intent: String(x.intent), n: Number(x.n) })),
+    byScope: scopes.rows.map((x) => ({ scope: String(x.scope), n: Number(x.n) })),
+    conversations: Number(convs.rows[0]?.n) || 0,
   };
 }
 
 async function readRecent(): Promise<TripAssistantRecent[]> {
   const result = await pool.query(
-    `select created_at, intent, status, model, proposal_kind, guest, tokens_in + tokens_out as tokens, cost_idr::float as cost
+    `select created_at, intent, coalesce(scope, 'trip') as scope, status, model, proposal_kind, guest, tokens_in + tokens_out as tokens, cost_idr::float as cost
      from public.travel_assistant_runs order by created_at desc limit 20`,
   );
   return result.rows.map((x) => ({
     at: new Date(x.created_at).toISOString(),
     intent: String(x.intent),
+    scope: String(x.scope),
     status: String(x.status),
     model: String(x.model),
     proposalKind: x.proposal_kind ? String(x.proposal_kind) : null,
@@ -1256,6 +1511,8 @@ export const getAdminTripAssistantHandler = async () => {
       undone: 0,
       appliedPercent: 0,
       byIntent: [],
+      byScope: [],
+      conversations: 0,
     })),
     readRecent().catch(() => [] as TripAssistantRecent[]),
   ]);
@@ -1336,6 +1593,7 @@ export async function adminClearAssistantHistoryHandler() {
   await requireAdmin();
   const actor = (await getAdminEmailHandler()) ?? "admin";
   const messages = await pool.query("delete from public.travel_assistant_messages");
+  await pool.query("delete from public.travel_assistant_conversations");
   await pool.query("delete from public.travel_assistant_proposals where status <> 'applied'");
   await pool.query(
     `insert into public.admin_audit_logs (id, action, entity_type, entity_id, reason, before_json, after_json)
