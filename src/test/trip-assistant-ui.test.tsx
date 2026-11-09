@@ -140,7 +140,7 @@ describe("TripAssistant", () => {
     await waitFor(() => expect(onAvailability).toHaveBeenCalledWith(false));
     expect(screen.getByText("KARTU STATIS")).toBeInTheDocument();
     expect(screen.queryByText("KARTU AGENDA")).toBeNull();
-    expect(screen.queryByLabelText("Pesan untuk asisten")).toBeNull();
+    expect(screen.queryByLabelText("Pesan untuk Travo")).toBeNull();
   });
 
   it("keeps the agenda card inside the conversation, with a greeting and quick actions", async () => {
@@ -148,7 +148,7 @@ describe("TripAssistant", () => {
     const { onAvailability } = setup();
     await waitFor(() => expect(onAvailability).toHaveBeenCalledWith(true));
     expect(screen.getByText("KARTU AGENDA")).toBeInTheDocument();
-    expect(screen.getByText(/asisten perjalananmu ke Japan/)).toBeInTheDocument();
+    expect(screen.getByText(/Aku Travo, asisten perjalananmu ke Japan/)).toBeInTheDocument();
     expect(screen.getByText(/Anggaran perjalanan belum diatur/)).toBeInTheDocument();
     // The most urgent nudge (budget) is the first quick action.
     expect(
@@ -179,7 +179,7 @@ describe("TripAssistant", () => {
       ],
     });
     setup();
-    const input = await screen.findByLabelText("Pesan untuk asisten");
+    const input = await screen.findByLabelText("Pesan untuk Travo");
     fireEvent.change(input, { target: { value: "halo" } });
     fireEvent.submit(input.closest("form")!);
     await waitFor(() =>
@@ -288,7 +288,7 @@ describe("TripAssistant", () => {
       message: "Batas obrolan hari ini habis.",
     });
     setup();
-    const input = (await screen.findByLabelText("Pesan untuk asisten")) as HTMLInputElement;
+    const input = (await screen.findByLabelText("Pesan untuk Travo")) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "halo" } });
     fireEvent.submit(input.closest("form")!);
     expect(await screen.findByText(/Batas obrolan hari ini habis/)).toBeInTheDocument();
@@ -326,7 +326,7 @@ describe("TripAssistant", () => {
         };
       })()) as never);
     setup();
-    const input = await screen.findByLabelText("Pesan untuk asisten");
+    const input = await screen.findByLabelText("Pesan untuk Travo");
     fireEvent.change(input, { target: { value: "halo" } });
     fireEvent.submit(input.closest("form")!);
     const live = await screen.findByTestId("assistant-streaming");
@@ -346,7 +346,7 @@ describe("TripAssistant", () => {
       messages: [assistantMsg({ content: "Jawaban biasa." })],
     });
     setup();
-    const input = await screen.findByLabelText("Pesan untuk asisten");
+    const input = await screen.findByLabelText("Pesan untuk Travo");
     fireEvent.change(input, { target: { value: "halo" } });
     fireEvent.submit(input.closest("form")!);
     expect(await screen.findByText("Jawaban biasa.")).toBeInTheDocument();
@@ -366,7 +366,7 @@ describe("TripAssistant", () => {
       messages: [],
     });
     setup();
-    await screen.findByLabelText("Pesan untuk asisten");
+    await screen.findByLabelText("Pesan untuk Travo");
     expect(screen.queryByRole("button", { name: "Foto struk" })).toBeNull();
     expect(getReceiptScanStatus).not.toHaveBeenCalled();
   });
@@ -377,11 +377,11 @@ describe("TripAssistant", () => {
     try {
       vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
       setup();
-      await screen.findByLabelText("Pesan untuk asisten");
+      await screen.findByLabelText("Pesan untuk Travo");
       // Nothing from Ringkas is dumped up front: only the greeting and a typing indicator.
-      expect(screen.getByText(/Saya rangkum dulu/)).toBeInTheDocument();
+      expect(screen.getByText(/Aku rangkum dulu/)).toBeInTheDocument();
       expect(screen.queryByText("KARTU AGENDA")).toBeNull();
-      expect(screen.getByRole("status", { name: "Asisten sedang mengetik" })).toBeInTheDocument();
+      expect(screen.getByRole("status", { name: "Travo sedang mengetik" })).toBeInTheDocument();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(600);
       });
@@ -393,7 +393,7 @@ describe("TripAssistant", () => {
       });
       expect(screen.getByText("KARTU ANGGARAN")).toBeInTheDocument();
       expect(screen.getByText(/Mau mulai dari mana\?/)).toBeInTheDocument();
-      expect(screen.queryByRole("status", { name: "Asisten sedang mengetik" })).toBeNull();
+      expect(screen.queryByRole("status", { name: "Travo sedang mengetik" })).toBeNull();
     } finally {
       vi.useRealTimers();
     }
@@ -409,7 +409,7 @@ describe("TripAssistant", () => {
       messages: [assistantMsg({ content: "Siap." })],
     });
     setup();
-    const input = await screen.findByLabelText("Pesan untuk asisten");
+    const input = await screen.findByLabelText("Pesan untuk Travo");
     fireEvent.change(input, { target: { value: "halo" } });
     fireEvent.submit(input.closest("form")!);
     expect(await screen.findByText("KARTU ANGGARAN")).toBeInTheDocument();
@@ -443,7 +443,7 @@ describe("TripAssistant", () => {
     const faces = document.querySelectorAll('img[src="/assets/home-hero/mascot-ai-v1.png"]');
     expect(faces.length).toBeGreaterThan(1);
     expect(screen.getByText("Siap membantu · ketuk untuk kenalan")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Profil Asisten Djiwa" }));
+    fireEvent.click(screen.getByRole("button", { name: "Profil Travo" }));
     expect(await screen.findByText(/Menyusun itinerary per hari/)).toBeInTheDocument();
     expect(screen.getByText(/Sisa 12 dari 30 pesan hari ini/)).toBeInTheDocument();
     // Touching the big mascot answers with a line.
@@ -472,7 +472,7 @@ describe("TripAssistant", () => {
         };
       })()) as never);
     setup();
-    const input = await screen.findByLabelText("Pesan untuk asisten");
+    const input = await screen.findByLabelText("Pesan untuk Travo");
     fireEvent.change(input, { target: { value: "halo" } });
     fireEvent.submit(input.closest("form")!);
     expect(await screen.findByText("Sedang berpikir…")).toBeInTheDocument();
@@ -496,7 +496,7 @@ describe("TripAssistant", () => {
   it("has no pin button when every activity is on the map", async () => {
     vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
     setup({ unpinned: 0 });
-    await screen.findByLabelText("Pesan untuk asisten");
+    await screen.findByLabelText("Pesan untuk Travo");
     expect(screen.queryByRole("button", { name: /Pasang pin/ })).toBeNull();
   });
 });

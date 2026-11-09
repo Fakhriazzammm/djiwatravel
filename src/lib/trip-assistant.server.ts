@@ -510,7 +510,7 @@ async function runTurn(
   const trip = await ownedTripRow(data.tripId, owner.id);
   const { status, config } = await statusFor(owner);
   if (!status.available)
-    return { status: "disabled", message: "Asisten sedang tidak tersedia.", remaining: 0 };
+    return { status: "disabled", message: "Travo sedang tidak tersedia.", remaining: 0 };
   if (status.remaining <= 0)
     return {
       status: "limit",
@@ -556,7 +556,7 @@ async function runTurn(
       return {
         status: "error",
         remaining: status.remaining,
-        message: "Asisten sedang sibuk. Coba kirim lagi sebentar lagi.",
+        message: "Travo sedang sibuk. Coba kirim lagi sebentar lagi.",
       };
     }
     const cleaned = cleanAssistantReply(outcome.parsed, {
@@ -582,7 +582,7 @@ async function runTurn(
       return {
         status: "error",
         remaining: status.remaining,
-        message: "Jawaban asisten belum bisa dibaca. Coba ulangi dengan kalimat lain.",
+        message: "Jawaban Travo belum bisa dibaca. Coba ulangi dengan kalimat lain.",
       };
     }
     const client = await pool.connect();
@@ -1006,12 +1006,12 @@ export async function assistantApplyHandler({
   const proposal = await ownedProposal(data.proposalId, owner.id);
   const trip = await ownedTripRow(proposal.trip_id, owner.id);
   const { config } = await readTripAssistantConfig();
-  if (!config.enabled) throw new Error("Asisten sedang tidak tersedia.");
+  if (!config.enabled) throw new Error("Travo sedang tidak tersedia.");
   const payload = proposal.payload;
   if (payload.kind === "agenda" && !config.allowAgenda)
-    throw new Error("Perubahan agenda lewat asisten sedang dimatikan.");
+    throw new Error("Perubahan agenda lewat Travo sedang dimatikan.");
   if (payload.kind !== "agenda" && !config.allowBudget)
-    throw new Error("Perubahan ini lewat asisten sedang dimatikan.");
+    throw new Error("Perubahan ini lewat Travo sedang dimatikan.");
   // Claim first: a double tap or a second device cannot apply the same proposal twice.
   const claim = await pool.query(
     "update public.travel_assistant_proposals set status='applied', applied_at=now() where id=$1 and status='proposed' returning id",

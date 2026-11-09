@@ -26,6 +26,7 @@ import {
 } from "@/lib/trip-assistant.fn";
 import {
   ASSISTANT_MAX_TEXT,
+  ASSISTANT_NAME,
   buildNudges,
   type AssistantIntent,
   type AssistantMessage,
@@ -418,7 +419,7 @@ export function TripAssistant(props: Props) {
 
   if (!live) return <>{props.children}</>;
 
-  const greeting = `Hai! Saya asisten perjalananmu ke ${props.destination}. Saya rangkum dulu kondisi perjalananmu ya.`;
+  const greeting = `Hai! Aku ${ASSISTANT_NAME}, asisten perjalananmu ke ${props.destination}. Aku rangkum dulu kondisi perjalananmu ya.`;
   const introDone = introShown >= introLength;
   const outro = nudges.length
     ? `${nudges.map((n) => n.text).join(" ")} Mau mulai dari mana?`
@@ -446,11 +447,11 @@ export function TripAssistant(props: Props) {
           size={44}
           mood={mood}
           cheer={cheer}
-          label="Profil Asisten Djiwa"
+          label={`Profil ${ASSISTANT_NAME}`}
           onPress={() => setProfileOpen(true)}
         />
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-bold leading-tight">Asisten Djiwa</p>
+          <p className="text-[15px] font-bold leading-tight">{ASSISTANT_NAME}</p>
           <p className="truncate text-[11px] text-muted-foreground" aria-live="polite">
             {statusLine}
           </p>
@@ -473,7 +474,7 @@ export function TripAssistant(props: Props) {
             <div className="ml-8 [&>*:first-child]:mt-0">{part.node}</div>
           </div>
         ))}
-        {!introDone && <TypingBubble label="Asisten sedang mengetik" />}
+        {!introDone && <TypingBubble label={`${ASSISTANT_NAME} sedang mengetik`} />}
         {introDone && <Bubble role="assistant">{outro}</Bubble>}
       </div>
 
@@ -498,7 +499,7 @@ export function TripAssistant(props: Props) {
             <div
               className="flex items-end gap-1.5"
               role="status"
-              aria-label="Asisten sedang menjawab"
+              aria-label={`${ASSISTANT_NAME} sedang menjawab`}
             >
               <span className="mb-0.5">
                 <AssistantMascot size={28} mood="talking" />
@@ -520,7 +521,7 @@ export function TripAssistant(props: Props) {
               </p>
             </div>
           ) : (
-            <TypingBubble label="Asisten sedang menjawab" />
+            <TypingBubble label={`${ASSISTANT_NAME} sedang menjawab`} />
           ))}
         {notice && (
           <p
@@ -649,8 +650,8 @@ export function TripAssistant(props: Props) {
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 maxLength={ASSISTANT_MAX_TEXT}
-                placeholder="Tanya atau minta apa saja…"
-                aria-label="Pesan untuk asisten"
+                placeholder="Tanya Travo apa saja…"
+                aria-label={`Pesan untuk ${ASSISTANT_NAME}`}
                 enterKeyHint="send"
                 className="min-h-10 min-w-0 flex-1 rounded-full border border-border bg-surface px-3.5 text-[13px] outline-none focus:border-brand-red"
               />

@@ -11,6 +11,9 @@ import { estimateCostIdr } from "./receipt-scan";
 
 export const TRIP_ASSISTANT_SETTING_KEY = "tripAssistant";
 
+/** The assistant's name everywhere: chat, profile, notifications, Admin and the model prompt. */
+export const ASSISTANT_NAME = "Travo";
+
 /** Text models on the Helipod AI Gateway, cheapest first (prices: see `MODEL_PRICES`). */
 export const TRIP_ASSISTANT_MODELS = [
   "glm-5.3-flash",
@@ -450,7 +453,7 @@ export function buildAssistantSystemPrompt(
   today: string,
 ): string {
   const lines = [
-    "You are Djiwa, the trip assistant inside the Djiwa Travel app. You help one traveler plan THIS trip. Answer ONLY with JSON that follows the schema.",
+    "You are Travo, the friendly trip assistant inside the Djiwa Travel app (the plush red airplane mascot). Your name is Travo: introduce yourself as Travo when asked or greeting for the first time, and refer to yourself as 'aku'. You help one traveler plan THIS trip. Answer ONLY with JSON that follows the schema.",
     "Language: casual, polite Indonesian. Short: `reply` is at most 450 characters, no markdown, no emoji. Ask at most ONE question per turn.",
     "You can read the trip (JSON in the user message). Money in the context and in your output is in WHOLE units of the trip currency (not cents).",
     "You never write anything yourself. To change data you fill `kind` and its payload as a PROPOSAL; the traveler reviews it and presses Apply. Say in `reply` what you propose and why, in one or two sentences.",
@@ -840,7 +843,7 @@ export function pickReminder(t: ReminderInput): Reminder | null {
     return {
       eventKey: key(`today:${t.today}`),
       title: "Hari ini belum ada agenda",
-      body: `Mau saya susunkan rencana hari ini untuk ${t.name}? Buka Ringkas dan tanya asisten.`,
+      body: `Mau saya susunkan rencana hari ini untuk ${t.name}? Buka Ringkas dan tanya Travo.`,
     };
   const upcoming = t.daysToDeparture >= 0 && t.daysToDeparture <= 14;
   if (upcoming && !t.budgetSet)

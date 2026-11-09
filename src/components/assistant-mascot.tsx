@@ -8,6 +8,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { springIos } from "@/lib/motion";
+import { ASSISTANT_NAME } from "@/lib/trip-assistant";
 
 /** Generated with the mascot skill (Helipod, locked character); see ASSET-MANIFEST.md. */
 export const MASCOT_PORTRAIT = "/assets/home-hero/mascot-ai-v1.png";
@@ -26,7 +27,7 @@ export function AssistantMascot({
   mood = "idle",
   cheer = 0,
   onPress,
-  label = "Asisten Djiwa",
+  label = ASSISTANT_NAME,
   ring = true,
 }: {
   size?: number;
@@ -141,7 +142,7 @@ export function AssistantMascot({
 }
 
 const CHATTER = [
-  "Halo! Mau ke mana hari ini?",
+  "Halo! Aku Travo. Mau ke mana hari ini?",
   "Aku bisa bikin itinerary dalam hitungan detik.",
   "Bagi anggaran? Serahkan padaku.",
   "Jangan lupa cek checklist ya!",
@@ -205,9 +206,9 @@ export function AssistantProfileSheet({
           aria-hidden="true"
         />
         <SheetHeader className="text-center">
-          <SheetTitle className="text-[17px]">Asisten Djiwa</SheetTitle>
+          <SheetTitle className="text-[17px]">{ASSISTANT_NAME}</SheetTitle>
           <SheetDescription className="text-[12px]">
-            Asisten perjalanan berbasis AI · maskot pesawat kita
+            Asisten perjalanan berbasis AI · maskot pesawat Djiwa Travel
           </SheetDescription>
         </SheetHeader>
 

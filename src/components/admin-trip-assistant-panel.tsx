@@ -191,8 +191,8 @@ export function AdminTripAssistantPanel({
     <div className="space-y-2" data-testid="admin-trip-assistant-panel">
       <div className="flex items-center justify-between gap-2">
         <SectionHeading
-          title="Asisten perjalanan (obrolan AI)"
-          detail="Obrolan di Ringkas yang membuat itinerary, anggaran, dan checklist. AI hanya mengusulkan; pelancong yang menerapkan."
+          title="Travo (asisten perjalanan AI)"
+          detail="Obrolan Travo di Ringkas yang membuat itinerary, anggaran, dan checklist. AI hanya mengusulkan; pelancong yang menerapkan."
         />
         <StatusPill tone={live ? "good" : "warn"}>{live ? "Aktif" : "Nonaktif"}</StatusPill>
       </div>

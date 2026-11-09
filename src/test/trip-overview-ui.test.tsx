@@ -302,7 +302,7 @@ describe("TripOverview (Ringkas)", () => {
     });
     window.sessionStorage.removeItem("djiwa-assistant-intro-t1");
     render(<TripOverview {...base} cities={[]} destinationCode="JP" />);
-    expect(await screen.findByText(/Saya rangkum dulu/)).toBeInTheDocument();
+    expect(await screen.findByText(/Aku rangkum dulu/)).toBeInTheDocument();
     // None of the old cards is on screen yet, and the city question is not a pop-up.
     expect(screen.queryByText("Sisa anggaran")).toBeNull();
     expect(screen.queryByText("Perlu perhatian")).toBeNull();
