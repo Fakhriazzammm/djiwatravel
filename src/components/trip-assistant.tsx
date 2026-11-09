@@ -27,13 +27,20 @@ import {
   type ProposalView,
 } from "@/lib/trip-assistant";
 
+/** One thing the assistant tells at the start of the chat: a sentence, then the live card. */
+export type IntroPart = { id: string; lead: string; node: ReactNode };
+
 type Props = {
   tripId: string;
   destination: string;
   currency: string;
   nudgeInput: Parameters<typeof buildNudges>[0];
-  /** The static Ringkas cards (agenda, attention, budget...). They live inside the conversation. */
+  /** What Ringkas shows without the chat (agenda, attention, budget...): used when the chat is off. */
   children: ReactNode;
+  /** The same cards as chat messages, revealed one by one when the chat opens. */
+  intro?: IntroPart[];
+  /** Called after an agenda proposal is applied, with the days it touched (the map follows). */
+  onFocusDays?: (dates: string[]) => void;
   /** Budget categories and totals, for the receipt scanner opened from the chat. */
   categories?: { id: string; name: string }[];
   budget?: { budgetMinor: number; spentMinor: number } | null;
@@ -104,6 +111,9 @@ export function TripAssistant(props: Props) {
   const [statusText, setStatusText] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptScanStatus | null>(null);
   const [scanning, setScanning] = useState(false);
+  // How many intro messages are on screen. They arrive one by one, like the assistant talking.
+  const introLength = props.intro?.length ?? 0;
+  const [introShown, setIntroShown] = useState(0);
   const endRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -132,6 +142,36 @@ export function TripAssistant(props: Props) {
   }, [tripId, onAvailability]);
 
   const live = status?.available === true;
+  useEffect(() => {
+    if (!live) return;
+    if (introShown >= introLength) {
+      try {
+        window.sessionStorage.setItem(`djiwa-assistant-intro-${tripId}`, "1");
+      } catch {
+        /* only a convenience */
+      }
+      return;
+    }
+    let seen = false;
+    try {
+      seen = window.sessionStorage.getItem(`djiwa-assistant-intro-${tripId}`) === "1";
+    } catch {
+      /* treat as not seen */
+    }
+    const calm =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Coming back to the page in the same visit, or reduced motion: no staging, everything is there.
+    if (seen || calm) {
+      setIntroShown(introLength);
+      return;
+    }
+    const timer = window.setTimeout(
+      () => setIntroShown((n) => n + 1),
+      introShown === 0 ? 500 : 750,
+    );
+    return () => window.clearTimeout(timer);
+  }, [live, introShown, introLength, tripId]);
   const guest = status?.available === true && status.guest;
 
   useEffect(() => {
@@ -158,6 +198,7 @@ export function TripAssistant(props: Props) {
       if (!value || sending) return;
       setNotice(null);
       setPicked([]);
+      setIntroShown(introLength);
       setSending(true);
       setDraft("");
       const temp: AssistantMessage = {
@@ -225,7 +266,7 @@ export function TripAssistant(props: Props) {
         setStatusText(null);
       }
     },
-    [sending, tripId],
+    [sending, tripId, introLength],
   );
 
   const setProposalStatus = (id: string, next: ProposalView["status"]) =>
@@ -254,6 +295,9 @@ export function TripAssistant(props: Props) {
     try {
       await applyTripAssistantProposal({ data: { proposalId } });
       setProposalStatus(proposalId, "applied");
+      const applied = messages.find((m) => m.proposal?.id === proposalId)?.proposal?.payload;
+      if (applied?.kind === "agenda")
+        props.onFocusDays?.([...new Set(applied.items.map((i) => i.date).filter(Boolean))].sort());
       await props.onChanged();
       toast.success("Usulan diterapkan", {
         action: { label: "Urungkan", onClick: () => void undo(proposalId) },
@@ -288,9 +332,11 @@ export function TripAssistant(props: Props) {
 
   if (!live) return <>{props.children}</>;
 
-  const greeting = nudges.length
-    ? `Hai! Saya asisten perjalananmu ke ${props.destination}. ${nudges.map((n) => n.text).join(" ")} Mau mulai dari mana?`
-    : `Hai! Saya asisten perjalananmu ke ${props.destination}. Tanya apa saja, atau minta saya menyusun agenda, anggaran, dan checklist.`;
+  const greeting = `Hai! Saya asisten perjalananmu ke ${props.destination}. Saya rangkum dulu kondisi perjalananmu ya.`;
+  const introDone = introShown >= introLength;
+  const outro = nudges.length
+    ? `${nudges.map((n) => n.text).join(" ")} Mau mulai dari mana?`
+    : "Tanya apa saja, atau minta saya menyusun agenda, anggaran, dan checklist.";
 
   return (
     <>
@@ -308,12 +354,37 @@ export function TripAssistant(props: Props) {
       </div>
       <div className="space-y-2" aria-live="polite" data-testid="assistant-thread">
         <Bubble role="assistant">{greeting}</Bubble>
+        {(props.intro ?? []).slice(0, introShown).map((part) => (
+          <div key={part.id} className="space-y-2" data-testid={`assistant-intro-${part.id}`}>
+            <Bubble role="assistant">{part.lead}</Bubble>
+            <div className="ml-8 [&>*:first-child]:mt-0">{part.node}</div>
+          </div>
+        ))}
+        {!introDone && (
+          <div
+            className="flex items-end gap-1.5"
+            role="status"
+            aria-label="Asisten sedang mengetik"
+          >
+            <span className="mb-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-brand-red text-white">
+              <Sparkles className="size-3" aria-hidden="true" />
+            </span>
+            <span className="flex gap-1 rounded-2xl rounded-bl-md bg-surface px-3 py-3 ring-1 ring-border/50">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
+                  style={{ animationDelay: `${i * 150}ms` }}
+                />
+              ))}
+            </span>
+          </div>
+        )}
+        {introDone && <Bubble role="assistant">{outro}</Bubble>}
       </div>
 
-      <div className="mt-1">{props.children}</div>
-
       <div className="mt-3 space-y-2">
-        {messages.map((m) => (
+        {(introDone ? messages : []).map((m) => (
           <div key={m.id} className="space-y-2">
             <Bubble role={m.role}>{m.content}</Bubble>
             {m.proposal && (

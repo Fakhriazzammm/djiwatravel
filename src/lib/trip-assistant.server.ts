@@ -742,6 +742,8 @@ type Applied = {
   prevTotalMinor?: number;
   prevAlloc?: { id: string; allocatedMinor: number }[];
   createdCategories?: string[];
+  /** A trip city the agenda proposal added because the trip had none (frames the maps). */
+  createdCity?: string;
   expenseId?: string;
 };
 
@@ -801,6 +803,31 @@ function itemInput(row: Record<string, unknown>) {
   };
 }
 
+/** A trip with no city yet gets the one its new places are in, so the maps frame the right area. */
+async function ensureTripCity(tripId: string, items: AgendaChange[], applied: Applied) {
+  const have = await pool.query(
+    "select 1 from public.travel_trip_cities where trip_id=$1 limit 1",
+    [tripId],
+  );
+  if (have.rows[0]) return;
+  const points = items.filter((i) => i.op === "add" && i.lat != null && i.lng != null);
+  if (!points.length) return;
+  const lat = points.reduce((n, i) => n + (i.lat as number), 0) / points.length;
+  const lng = points.reduce((n, i) => n + (i.lng as number), 0) / points.length;
+  const name = (points.map((i) => i.location).find(Boolean) ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .pop();
+  if (!name || name.length > 120) return;
+  const row = await pool.query(
+    `insert into public.travel_trip_cities (trip_id, name, latitude, longitude, sort_order)
+     values ($1,$2,$3,$4,0) on conflict (trip_id, name) do nothing returning id`,
+    [tripId, name, lat, lng],
+  );
+  if (row.rows[0]) applied.createdCity = String(row.rows[0].id);
+}
+
 async function applyAgenda(tripId: string, items: AgendaChange[], trip: TripRow, applied: Applied) {
   for (const change of items) {
     if (change.op === "add") {
@@ -842,6 +869,7 @@ async function applyAgenda(tripId: string, items: AgendaChange[], trip: TripRow,
     });
     applied.updated.push({ id: change.itemId!, before });
   }
+  await ensureTripCity(tripId, items, applied).catch(() => undefined);
 }
 
 async function applyBudget(
@@ -934,6 +962,13 @@ async function applyExpense(
 async function revert(tripId: string, trip: TripRow, kind: ProposalRow["kind"], applied: Applied) {
   if (kind === "agenda") {
     for (const id of applied.created) await deleteItineraryItem({ id }).catch(() => undefined);
+    if (applied.createdCity)
+      await pool
+        .query("delete from public.travel_trip_cities where id=$1 and trip_id=$2", [
+          applied.createdCity,
+          tripId,
+        ])
+        .catch(() => undefined);
     for (const u of applied.updated)
       await updateItineraryItem({ id: u.id, ...itemInput(u.before) }).catch(() => undefined);
     for (const r of applied.removed)

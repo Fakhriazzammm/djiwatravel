@@ -43,7 +43,7 @@ import { countryBoundsFor } from "@/lib/trip-country-bounds";
 import { citiesBounds, type TripCity } from "@/lib/trip-cities";
 import { TripCitiesSheet } from "@/components/trip-cities-sheet";
 import { runTripMutation } from "@/lib/trip-actions";
-import { TripAssistant } from "@/components/trip-assistant";
+import { TripAssistant, type IntroPart } from "@/components/trip-assistant";
 import { getTripWeather } from "@/lib/trip-weather.fn";
 import {
   describeWeather,
@@ -163,13 +163,16 @@ export function TripOverview(props: Props) {
   const [forecast, setForecast] = useState<DayWeather[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   // The AI chat reports whether it is live (Admin switch, key, guest rule); off keeps the old layout.
-  const [assistantOn, setAssistantOn] = useState(false);
+  // null = not known yet (the chat asks the server once), so nothing pops up before it answers.
+  const [assistantState, setAssistantState] = useState<boolean | null>(null);
+  const assistantOn = assistantState === true;
   const cities = props.cities ?? [];
   const cityFlow = Boolean(mapConfig?.cityOnboarding);
   const [citiesOpen, setCitiesOpen] = useState(false);
   // A trip without cities asks once on arrival; "Lewati dulu" is remembered on this device.
   useEffect(() => {
-    if (!cityFlow || cities.length > 0) return;
+    // With the chat on, the city question is part of the conversation instead of a pop-up.
+    if (assistantState !== false || !cityFlow || cities.length > 0) return;
     try {
       if (window.localStorage.getItem(`djiwa-cities-skip-${tripId}`) !== "1") setCitiesOpen(true);
     } catch {
@@ -177,7 +180,7 @@ export function TripOverview(props: Props) {
     }
     // Decide once per trip, not on every refresh of the cities list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tripId, cityFlow]);
+  }, [tripId, cityFlow, assistantState]);
   const [rowMenu, setRowMenu] = useState<Row | null>(null);
   const [toDelete, setToDelete] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
@@ -327,7 +330,7 @@ export function TripOverview(props: Props) {
     ],
   );
 
-  const staticCards = (
+  const agendaPart = (
     <>
       <div className="mt-3 flex items-end justify-between">
         <h2 className={`${iosHeading} px-1`}>
@@ -415,7 +418,11 @@ export function TripOverview(props: Props) {
           </Link>
         )}
       </div>
+    </>
+  );
 
+  const cityPart = (
+    <>
       {cityFlow && (
         <div className={`${iosGroup} mt-4`}>
           <button
@@ -440,6 +447,11 @@ export function TripOverview(props: Props) {
           </button>
         </div>
       )}
+    </>
+  );
+
+  const attentionPart = (
+    <>
       {attention.length > 0 && (
         <>
           <h2 className={`${iosHeading} mt-4 px-1`}>Perlu perhatian</h2>
@@ -495,7 +507,11 @@ export function TripOverview(props: Props) {
           </div>
         </>
       )}
+    </>
+  );
 
+  const budgetPart = (
+    <>
       <div className={`${iosGroup} mt-4 flex items-center gap-2.5 p-3`}>
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-red-soft text-brand-red">
           <WalletCards className="size-4" aria-hidden="true" />
@@ -519,6 +535,11 @@ export function TripOverview(props: Props) {
           Catat biaya
         </button>
       </div>
+    </>
+  );
+
+  const flightsPart = (
+    <>
       {props.flightsSearch && (
         <Link
           to={props.flightsSearch.to}
@@ -540,6 +561,106 @@ export function TripOverview(props: Props) {
       )}
     </>
   );
+
+  const focusPart = (
+    <>
+      {focusRow && (
+        <div
+          className={`mt-3 flex items-center gap-2.5 rounded-2xl p-3 ${current ? "bg-brand-red text-white" : "bg-surface ring-1 ring-border/40"}`}
+        >
+          <div className="min-w-0 flex-1">
+            <p
+              className={`text-[11px] font-semibold uppercase tracking-wide ${current ? "text-white/80" : "text-brand-red"}`}
+            >
+              {current ? "Sedang berlangsung" : "Berikutnya"}
+            </p>
+            <p className="truncate text-[15px] font-bold">
+              {String(focusRow["title"] ?? "Aktivitas")}
+            </p>
+            <p
+              className={`truncate text-[11px] ${current ? "text-white/80" : "text-muted-foreground"}`}
+            >
+              {[
+                String(focusRow["activity_date"] ?? "").slice(0, 10) === today
+                  ? ""
+                  : shortDate(String(focusRow["activity_date"] ?? "").slice(0, 10)),
+                String(focusRow["start_time"] ?? "").slice(0, 5) || "Fleksibel",
+                String(focusRow["location"] ?? ""),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          </div>
+          {itemPoint(focusRow) && (
+            <a
+              href={googleMapsPointUrl(itemPoint(focusRow)!)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`tap inline-flex min-h-9 shrink-0 items-center gap-1 rounded-xl px-3 text-xs font-semibold ${current ? "bg-white text-brand-red" : "bg-brand-red text-white"}`}
+            >
+              <Navigation className="size-3.5" aria-hidden="true" />
+              Rute
+            </a>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  const staticCards = (
+    <>
+      {focusRow && focusPart}
+      {agendaPart}
+      {cityPart}
+      {attentionPart}
+      {budgetPart}
+      {flightsPart}
+    </>
+  );
+
+  // The chat tells the same things one message at a time, in this order.
+  const intro: IntroPart[] = [
+    ...(focusRow
+      ? [
+          {
+            id: "next",
+            lead: current ? "Ini yang sedang berlangsung:" : "Berikutnya di perjalananmu:",
+            node: focusPart,
+          },
+        ]
+      : []),
+    {
+      id: "agenda",
+      lead: dayItems.length
+        ? `Ini agenda ${scope && scope !== "all" ? shortDate(scope) : "perjalananmu"}:`
+        : "Agendanya masih kosong. Kamu bisa tambah sendiri, atau minta saya menyusunnya.",
+      node: agendaPart,
+    },
+    ...(cityFlow
+      ? [
+          {
+            id: "city",
+            lead: cities.length
+              ? "Kota yang kamu pilih untuk trip ini:"
+              : "Kotanya belum dipilih. Peta dan pencarian tempat mengikuti kota ini:",
+            node: cityPart,
+          },
+        ]
+      : []),
+    ...(attention.length
+      ? [{ id: "attention", lead: "Ini yang masih perlu perhatianmu:", node: attentionPart }]
+      : []),
+    {
+      id: "budget",
+      lead: props.budgetSet
+        ? "Posisi anggaranmu sekarang:"
+        : "Anggaran belum diatur. Kita bisa bagi bersama.",
+      node: budgetPart,
+    },
+    ...(props.flightsSearch
+      ? [{ id: "flights", lead: "Kalau tiket belum ada:", node: flightsPart }]
+      : []),
+  ];
 
   return (
     <div className={`mx-auto min-h-dvh w-full max-w-md ${assistantOn ? "pb-52" : "pb-28"}`}>
@@ -748,47 +869,6 @@ export function TripOverview(props: Props) {
           </section>
         )}
 
-        {focusRow && (
-          <div
-            className={`mt-3 flex items-center gap-2.5 rounded-2xl p-3 ${current ? "bg-brand-red text-white" : "bg-surface ring-1 ring-border/40"}`}
-          >
-            <div className="min-w-0 flex-1">
-              <p
-                className={`text-[11px] font-semibold uppercase tracking-wide ${current ? "text-white/80" : "text-brand-red"}`}
-              >
-                {current ? "Sedang berlangsung" : "Berikutnya"}
-              </p>
-              <p className="truncate text-[15px] font-bold">
-                {String(focusRow["title"] ?? "Aktivitas")}
-              </p>
-              <p
-                className={`truncate text-[11px] ${current ? "text-white/80" : "text-muted-foreground"}`}
-              >
-                {[
-                  String(focusRow["activity_date"] ?? "").slice(0, 10) === today
-                    ? ""
-                    : shortDate(String(focusRow["activity_date"] ?? "").slice(0, 10)),
-                  String(focusRow["start_time"] ?? "").slice(0, 5) || "Fleksibel",
-                  String(focusRow["location"] ?? ""),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            </div>
-            {itemPoint(focusRow) && (
-              <a
-                href={googleMapsPointUrl(itemPoint(focusRow)!)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`tap inline-flex min-h-9 shrink-0 items-center gap-1 rounded-xl px-3 text-xs font-semibold ${current ? "bg-white text-brand-red" : "bg-brand-red text-white"}`}
-              >
-                <Navigation className="size-3.5" aria-hidden="true" />
-                Rute
-              </a>
-            )}
-          </div>
-        )}
-
         <TripAssistant
           tripId={tripId}
           destination={props.destination}
@@ -802,13 +882,15 @@ export function TripOverview(props: Props) {
           nudgeInput={nudgeInput}
           onChanged={props.onChanged}
           onAdd={() => setAddOpen(true)}
-          onAvailability={setAssistantOn}
+          intro={intro}
+          onFocusDays={(dates) => setPicked(dates.length === 1 ? dates[0]! : "all")}
+          onAvailability={setAssistantState}
         >
           {staticCards}
         </TripAssistant>
       </div>
 
-      {!assistantOn && (
+      {assistantState === false && (
         <FixedLayer>
           <button
             type="button"

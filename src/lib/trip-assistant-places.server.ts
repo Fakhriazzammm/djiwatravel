@@ -125,7 +125,7 @@ export async function verifyAgendaPlaces(
   options: { budgetMs?: number; maxItems?: number; fetcher?: typeof fetch } = {},
 ) {
   let anchor = await tripAnchor(tripId);
-  const deadline = Date.now() + (options.budgetMs ?? 16_000);
+  const deadline = Date.now() + (options.budgetMs ?? 22_000);
   const maxItems = options.maxItems ?? 10;
   let checked = 0;
   if (!anchor) {
@@ -143,10 +143,10 @@ export async function verifyAgendaPlaces(
   }
   for (const item of items) {
     if (item.op !== "add" || !item.title) continue;
-    const found =
-      anchor && checked < maxItems && Date.now() < deadline
-        ? await nominatimVenue(item.place || item.title, anchor, options.fetcher)
-        : null;
+    const inTime = () => anchor && checked < maxItems && Date.now() < deadline;
+    const found = inTime()
+      ? await nominatimVenue(item.place || item.title, anchor, options.fetcher)
+      : null;
     checked += 1;
     if (found && anchor && distanceKm(anchor, found) <= 60) {
       item.lat = found.lat;
@@ -165,7 +165,32 @@ export async function verifyAgendaPlaces(
         );
         continue;
       }
+      item.note = hoursNote(item.note, null, null);
+      continue;
     }
     item.note = hoursNote(item.note, null, null);
+    // Not found by name: the activity still belongs on the map, so it gets the point of its area
+    // (or the city centre, nudged so pins do not stack), and the card says the point is approximate.
+    if (anchor) {
+      const area =
+        item.location && inTime()
+          ? await nominatimVenue(item.location, anchor, options.fetcher)
+          : null;
+      if (area && distanceKm(anchor, area) <= 60) {
+        item.lat = area.lat;
+        item.lng = area.lng;
+      } else {
+        const h = hash(`${item.title}|${item.date}|${item.startTime ?? ""}`);
+        item.lat = anchor.lat + ((h % 17) - 8) * 0.0006;
+        item.lng = anchor.lng + (((h >> 5) % 17) - 8) * 0.0006;
+      }
+      item.note = `${item.note} · titik perkiraan di peta`;
+    }
   }
+}
+
+function hash(text: string) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
 }

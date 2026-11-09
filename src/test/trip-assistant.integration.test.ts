@@ -579,9 +579,15 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
       expect(items[1]!.note).toBe("cek jam buka");
       expect(items[2]!.hours).toMatchObject({ open: false });
       expect(items[2]!.note).toMatch(/^Mungkin tutup di jam ini: buka 10:00-20:00/);
-      expect(items[3]).toMatchObject({ lat: null, hours: null }); // too far from the trip's city
-      expect(items[4]).toMatchObject({ lat: null, hours: null });
-      expect(items[4]!.note).toBe("cek jam buka");
+      // Too far from the city, or not on the map at all: the activity still gets an approximate point
+      // near the city centre, and the card says so. It is never put on the wrong side of the world.
+      for (const i of [3, 4]) {
+        expect(Math.abs(items[i]!.lat! - 35.68)).toBeLessThan(0.02);
+        expect(Math.abs(items[i]!.lng! - 139.76)).toBeLessThan(0.02);
+        expect(items[i]!.hours).toBeNull();
+        expect(items[i]!.note).toBe("cek jam buka · titik perkiraan di peta");
+      }
+      expect([items[3]!.lat, items[3]!.lng]).not.toEqual([items[4]!.lat, items[4]!.lng]);
 
       await assistantApplyHandler({ data: { proposalId: proposal.id } });
       const saved = (
@@ -624,6 +630,53 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
             !new URL(u).searchParams.has("bounded"),
         ),
       ).toBe(true);
+    });
+
+    it("adds the city of the new places to a trip that has none, and removes it on undo", async () => {
+      nominatimRows["Tsukiji, Tokyo"] = {
+        lat: "35.665",
+        lon: "139.77",
+        display_name: "Tsukiji, Chuo, Tokyo",
+        extratags: {},
+      };
+      nominatimRows["Hamarikyu Gardens"] = {
+        lat: "35.66",
+        lon: "139.763",
+        display_name: "Hamarikyu, Chuo, Tokyo",
+        extratags: {},
+      };
+      nextAnswer = planAnswer([
+        {
+          ...add("Taman tepi laut", "10:30"),
+          place: "Hamarikyu Gardens",
+          location: "Tsukiji, Tokyo",
+          note: "",
+        },
+      ]);
+      const proposal = proposalOf(await send("buatkan itinerary", "plan"));
+      await assistantApplyHandler({ data: { proposalId: proposal.id } });
+      const city = (await pool.query("select name, latitude from travel_trip_cities")).rows;
+      expect(city).toEqual([{ name: "Tokyo", latitude: 35.66 }]);
+      await assistantUndoHandler({ data: { proposalId: proposal.id } });
+      expect(await count("select count(*)::int n from travel_trip_cities")).toBe(0);
+    });
+
+    it("keeps an existing city untouched when applying", async () => {
+      await city();
+      nominatimRows["Shibuya Sky"] = {
+        lat: "35.6582",
+        lon: "139.7022",
+        display_name: "Shibuya Sky, Tokyo",
+        extratags: {},
+      };
+      nextAnswer = planAnswer([
+        { ...add("Shibuya Sky", "16:30"), location: "Shibuya, Osaka", note: "" },
+      ]);
+      const proposal = proposalOf(await send("buatkan itinerary", "plan"));
+      await assistantApplyHandler({ data: { proposalId: proposal.id } });
+      expect((await pool.query("select name from travel_trip_cities")).rows).toEqual([
+        { name: "Tokyo" },
+      ]);
     });
 
     it("never guesses from seasonal or holiday hours", () => {

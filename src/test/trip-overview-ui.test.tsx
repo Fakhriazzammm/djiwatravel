@@ -41,10 +41,27 @@ vi.mock("@/components/itinerary-map", () => ({
 vi.mock("@/lib/trip-weather.fn", () => ({
   getTripWeather: vi.fn(async () => ({ status: "ok", days: [] })),
 }));
+vi.mock("@/lib/trip-assistant.fn", () => ({
+  loadTripAssistant: vi.fn(async () => ({
+    status: { available: false, reason: "off" },
+    messages: [],
+  })),
+  sendTripAssistantMessage: vi.fn(),
+  streamTripAssistantMessage: vi.fn(),
+  resetTripAssistant: vi.fn(),
+  applyTripAssistantProposal: vi.fn(),
+  undoTripAssistantProposal: vi.fn(),
+  dismissTripAssistantProposal: vi.fn(),
+}));
+vi.mock("@/lib/receipt-scan.fn", () => ({ getReceiptScanStatus: vi.fn(async () => null) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const day = new Date();
 const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+
+// Tomorrow keeps "the next activity" present whatever time of day the suite runs.
+const tomorrowDate = new Date(day.getTime() + 86_400_000);
+const tomorrow = `${tomorrowDate.getFullYear()}-${String(tomorrowDate.getMonth() + 1).padStart(2, "0")}-${String(tomorrowDate.getDate()).padStart(2, "0")}`;
 
 const base = {
   tripId: "t1",
@@ -66,7 +83,7 @@ const base = {
     {
       id: "a2",
       title: "Makan siang",
-      activity_date: key,
+      activity_date: tomorrow,
       start_time: "13:00",
       location: "Ichiran",
     },
@@ -160,7 +177,7 @@ describe("TripOverview (Ringkas)", () => {
 
   it("opens the right editor from the add sheet", async () => {
     render(<TripOverview {...base} />);
-    fireEvent.click(screen.getByLabelText("Tambah"));
+    fireEvent.click(await screen.findByLabelText("Tambah"));
     fireEvent.click((await screen.findAllByText("Catat biaya")).at(-1)!);
     expect(navigate).toHaveBeenCalledWith({
       to: "/my-trips/$tripId/$section",
@@ -198,7 +215,12 @@ describe("TripOverview (Ringkas)", () => {
     expect(card.textContent).toContain("19°");
     expect(screen.getByText(/hujan 70%/)).toBeTruthy();
     expect(getTripWeather).toHaveBeenCalledWith({
-      data: { places: [{ date: key, lat: 35.67, lng: 139.69 }] },
+      data: {
+        places: [
+          { date: key, lat: 35.67, lng: 139.69 },
+          { date: tomorrow, lat: 35.67, lng: 139.69 },
+        ],
+      },
     });
   });
 
@@ -236,9 +258,9 @@ describe("TripOverview (Ringkas)", () => {
     expect(screen.queryByText("Cari tiket pesawat")).toBeNull();
   });
 
-  it("asks for the cities of a trip that has none, and shows them once chosen", () => {
+  it("asks for the cities of a trip that has none, and shows them once chosen", async () => {
     render(<TripOverview {...base} cities={[]} destinationCode="JP" />);
-    expect(screen.getByText("Mau ke kota mana saja di Jepang?")).toBeInTheDocument();
+    expect(await screen.findByText("Mau ke kota mana saja di Jepang?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Tokyo/ })).toBeInTheDocument();
   });
 
@@ -264,4 +286,32 @@ describe("TripOverview (Ringkas)", () => {
     expect(screen.queryByText(/Mau ke kota mana saja/)).toBeNull();
     expect(screen.queryByText("Pilih kota tujuan")).toBeNull();
   });
+
+  it("with the chat on, tells the trip as chat messages instead of showing the cards up front", async () => {
+    const { loadTripAssistant } = await import("@/lib/trip-assistant.fn");
+    vi.mocked(loadTripAssistant).mockResolvedValueOnce({
+      status: {
+        available: true,
+        guest: false,
+        remaining: 5,
+        dailyLimit: 30,
+        canAgenda: true,
+        canBudget: true,
+      },
+      messages: [],
+    });
+    window.sessionStorage.removeItem("djiwa-assistant-intro-t1");
+    render(<TripOverview {...base} cities={[]} destinationCode="JP" />);
+    expect(await screen.findByText(/Saya rangkum dulu/)).toBeInTheDocument();
+    // None of the old cards is on screen yet, and the city question is not a pop-up.
+    expect(screen.queryByText("Sisa anggaran")).toBeNull();
+    expect(screen.queryByText("Perlu perhatian")).toBeNull();
+    expect(screen.queryByText("Mau ke kota mana saja di Jepang?")).toBeNull();
+    expect(screen.queryByLabelText("Tambah")).toBeNull();
+    // They arrive as the assistant talks.
+    expect(
+      await screen.findByText("Posisi anggaranmu sekarang:", {}, { timeout: 8000 }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Sisa anggaran")).toBeInTheDocument();
+  }, 15000);
 });

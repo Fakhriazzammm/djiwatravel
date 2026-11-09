@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TripAssistant } from "@/components/trip-assistant";
 import {
@@ -92,6 +92,11 @@ const proposal = {
   },
 };
 
+const INTRO = [
+  { id: "agenda", lead: "Ini agenda 8 Nov:", node: <div>KARTU AGENDA</div> },
+  { id: "budget", lead: "Posisi anggaranmu:", node: <div>KARTU ANGGARAN</div> },
+];
+
 function setup(over: Partial<React.ComponentProps<typeof TripAssistant>> = {}) {
   const onChanged = vi.fn(async () => {});
   const onAvailability = vi.fn();
@@ -104,9 +109,10 @@ function setup(over: Partial<React.ComponentProps<typeof TripAssistant>> = {}) {
       onChanged={onChanged}
       onAdd={vi.fn()}
       onAvailability={onAvailability}
+      intro={INTRO}
       {...over}
     >
-      <div>KARTU AGENDA</div>
+      <div>KARTU STATIS</div>
     </TripAssistant>,
   );
   return { onChanged, onAvailability };
@@ -115,20 +121,23 @@ function setup(over: Partial<React.ComponentProps<typeof TripAssistant>> = {}) {
 describe("TripAssistant", () => {
   beforeEach(() => {
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    // Most tests are about the conversation, so the staged intro counts as already seen.
+    window.sessionStorage.setItem("djiwa-assistant-intro-trip-1", "1");
   });
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
   });
 
-  it("shows only the static cards when the assistant is off", async () => {
+  it("shows the static cards (not the chat) when the assistant is off", async () => {
     vi.mocked(loadTripAssistant).mockResolvedValue({
       status: { available: false, reason: "off" },
       messages: [],
     });
     const { onAvailability } = setup();
     await waitFor(() => expect(onAvailability).toHaveBeenCalledWith(false));
-    expect(screen.getByText("KARTU AGENDA")).toBeInTheDocument();
+    expect(screen.getByText("KARTU STATIS")).toBeInTheDocument();
+    expect(screen.queryByText("KARTU AGENDA")).toBeNull();
     expect(screen.queryByLabelText("Pesan untuk asisten")).toBeNull();
   });
 
@@ -354,5 +363,62 @@ describe("TripAssistant", () => {
     await screen.findByLabelText("Pesan untuk asisten");
     expect(screen.queryByRole("button", { name: "Foto struk" })).toBeNull();
     expect(getReceiptScanStatus).not.toHaveBeenCalled();
+  });
+
+  it("tells the agenda, budget and the rest one message at a time, then asks what to do first", async () => {
+    window.sessionStorage.removeItem("djiwa-assistant-intro-trip-1");
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+      setup();
+      await screen.findByLabelText("Pesan untuk asisten");
+      // Nothing from Ringkas is dumped up front: only the greeting and a typing indicator.
+      expect(screen.getByText(/Saya rangkum dulu/)).toBeInTheDocument();
+      expect(screen.queryByText("KARTU AGENDA")).toBeNull();
+      expect(screen.getByRole("status", { name: "Asisten sedang mengetik" })).toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600);
+      });
+      expect(screen.getByText("Ini agenda 8 Nov:")).toBeInTheDocument();
+      expect(screen.getByText("KARTU AGENDA")).toBeInTheDocument();
+      expect(screen.queryByText("KARTU ANGGARAN")).toBeNull();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(800);
+      });
+      expect(screen.getByText("KARTU ANGGARAN")).toBeInTheDocument();
+      expect(screen.getByText(/Mau mulai dari mana\?/)).toBeInTheDocument();
+      expect(screen.queryByRole("status", { name: "Asisten sedang mengetik" })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("skips the staging when the person starts typing", async () => {
+    window.sessionStorage.removeItem("djiwa-assistant-intro-trip-1");
+    vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+    vi.mocked(streamTripAssistantMessage).mockRejectedValue(new Error("no stream"));
+    vi.mocked(sendTripAssistantMessage).mockResolvedValue({
+      status: "ok",
+      remaining: 9,
+      messages: [assistantMsg({ content: "Siap." })],
+    });
+    setup();
+    const input = await screen.findByLabelText("Pesan untuk asisten");
+    fireEvent.change(input, { target: { value: "halo" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(await screen.findByText("KARTU ANGGARAN")).toBeInTheDocument();
+    expect(await screen.findByText("Siap.")).toBeInTheDocument();
+  });
+
+  it("moves the map to the days of an applied itinerary", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({
+      status: available,
+      messages: [assistantMsg({ proposal })],
+    });
+    vi.mocked(applyTripAssistantProposal).mockResolvedValue({ ok: true, status: "applied" });
+    const onFocusDays = vi.fn();
+    setup({ onFocusDays });
+    fireEvent.click(await screen.findByRole("button", { name: "Terapkan" }));
+    await waitFor(() => expect(onFocusDays).toHaveBeenCalledWith(["2026-11-09"]));
   });
 });
