@@ -6,6 +6,30 @@ import { getIndexablePlans } from "@/lib/seo-indexability.server";
 
 const BASE_URL = "https://djiwatravel.com";
 
+/**
+ * Thousands of near-identical /plan pages dilute crawl budget on a young domain, so the sitemap
+ * only advertises a few representative plans per destination. Every other plan stays reachable
+ * (and indexable) through links from its destination page.
+ */
+const SITEMAP_PLANS_PER_DESTINATION = 3;
+
+function pickRepresentativePlans<
+  T extends { package: { locationCodes: string[]; priceIdr: number } },
+>(plans: T[]): T[] {
+  const byDestination = new Map<string, T[]>();
+  for (const plan of plans) {
+    const key = plan.package.locationCodes[0] ?? "ASIA";
+    const list = byDestination.get(key) ?? [];
+    list.push(plan);
+    byDestination.set(key, list);
+  }
+  return [...byDestination.values()].flatMap((list) =>
+    [...list]
+      .sort((a, b) => a.package.priceIdr - b.package.priceIdr)
+      .slice(0, SITEMAP_PLANS_PER_DESTINATION),
+  );
+}
+
 /** Public pages that should be indexed. Order matters only for readability. */
 const STATIC_PATHS: Array<{ path: string; priority: string; changefreq: string }> = [
   { path: "/", priority: "1.0", changefreq: "daily" },
@@ -44,7 +68,7 @@ export const Route = createFileRoute("/sitemap.xml")({
           ...indexed.map((destination) =>
             urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
           ),
-          ...plans.map(({ package: plan }) =>
+          ...pickRepresentativePlans(plans).map(({ package: plan }) =>
             urlEntry(`/plan/${encodeURIComponent(plan.packageCode)}`, "0.9", "weekly"),
           ),
         ];
