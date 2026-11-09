@@ -8,15 +8,13 @@ import {
   Compass,
   Copy,
   Download,
-  Instagram,
   MapPin,
-  MessageCircle,
   Plane,
-  Send,
   ShieldCheck,
   Ticket,
   Utensils,
 } from "lucide-react";
+import { SiFacebook, SiInstagram, SiTelegram, SiWhatsapp, SiX } from "react-icons/si";
 import { toast } from "sonner";
 import logoUrl from "@/assets/logo.png";
 import { isAllowedImageUrl } from "@/lib/place-image";
@@ -395,34 +393,78 @@ function ShareBar({
 
   const open = (href: string) => window.open(href, "_blank", "noopener,noreferrer");
   const enc = encodeURIComponent;
-  const button =
-    "tap flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl bg-surface text-[11px] font-semibold ring-1 ring-border/60 disabled:opacity-60";
+  const tile = "grid size-9 place-items-center rounded-full text-white";
+  const item =
+    "tap flex flex-col items-center gap-1 rounded-xl py-1 text-[10px] font-medium text-muted-foreground disabled:opacity-60";
 
   return (
-    <section className="mt-3" aria-label="Bagikan itinerary">
-      <div className="grid grid-cols-5 gap-1.5">
-        <button type="button" className={button} disabled={busy} onClick={() => shareImage(false)}>
-          <Instagram className="size-4 text-brand-red" /> {busy ? "Membuat…" : "Story"}
-        </button>
+    <section
+      className="mt-3 rounded-2xl bg-surface p-3 ring-1 ring-border/60"
+      aria-label="Bagikan itinerary"
+    >
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => shareImage(false)}
+        className="tap flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(45deg,#f9a03a,#e1306c_55%,#7a3fd0)] text-[14px] font-semibold text-white disabled:opacity-60"
+      >
+        <SiInstagram className="size-4" />
+        {busy ? "Membuat gambar…" : "Bagikan ke Instagram Story"}
+      </button>
+      <div className="mt-2.5 grid grid-cols-6 gap-1">
         <button
           type="button"
-          className={button}
+          className={item}
           onClick={() => open(`https://wa.me/?text=${enc(`${text}\n${url()}`)}`)}
         >
-          <MessageCircle className="size-4 text-[#1fa855]" /> WhatsApp
+          <span className={`${tile} bg-[#25d366]`}>
+            <SiWhatsapp className="size-[18px]" />
+          </span>
+          WhatsApp
         </button>
         <button
           type="button"
-          className={button}
+          className={item}
           onClick={() => open(`https://t.me/share/url?url=${enc(url())}&text=${enc(text)}`)}
         >
-          <Send className="size-4 text-[#2a9fd6]" /> Telegram
+          <span className={`${tile} bg-[#27a7e7]`}>
+            <SiTelegram className="size-[18px]" />
+          </span>
+          Telegram
         </button>
-        <button type="button" className={button} disabled={busy} onClick={() => shareImage(true)}>
-          <Download className="size-4" /> Gambar
+        <button
+          type="button"
+          className={item}
+          onClick={() =>
+            open(`https://twitter.com/intent/tweet?text=${enc(text)}&url=${enc(url())}`)
+          }
+        >
+          <span className={`${tile} bg-black`}>
+            <SiX className="size-4" />
+          </span>
+          X
         </button>
-        <button type="button" className={button} onClick={copy}>
-          {copied ? <Check className="size-4 text-[#1fa855]" /> : <Copy className="size-4" />} Salin
+        <button
+          type="button"
+          className={item}
+          onClick={() => open(`https://www.facebook.com/sharer/sharer.php?u=${enc(url())}`)}
+        >
+          <span className={`${tile} bg-[#1877f2]`}>
+            <SiFacebook className="size-[18px]" />
+          </span>
+          Facebook
+        </button>
+        <button type="button" className={item} disabled={busy} onClick={() => shareImage(true)}>
+          <span className={`${tile} bg-secondary text-foreground`}>
+            <Download className="size-4" />
+          </span>
+          Gambar
+        </button>
+        <button type="button" className={item} onClick={copy}>
+          <span className={`${tile} bg-secondary text-foreground`}>
+            {copied ? <Check className="size-4 text-[#1fa855]" /> : <Copy className="size-4" />}
+          </span>
+          Salin
         </button>
       </div>
     </section>
