@@ -79,8 +79,8 @@ export const travelGuides: readonly TravelGuide[] = [
         url: "https://www.customs.go.jp/kaigairyoko/taxrefund/C-details.html",
       },
       {
-        label: "Japan Tourism Agency: ringkasan perubahan sistem mulai November 2026",
-        url: "https://www.mlit.go.jp/kankocho/tax-free/content/001978459.pdf",
+        label: "Japan Tourism Agency: leaflet resmi sistem refund (bahasa Inggris)",
+        url: "https://www.mlit.go.jp/kankocho/tax-free/content/002028626.pdf",
       },
     ],
     relatedDestinations: [{ code: "jp", label: "Lihat paket eSIM Jepang" }],
