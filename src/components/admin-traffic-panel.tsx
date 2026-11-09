@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { CountUp, GrowBar, Reveal } from "@/components/admin-motion";
 import {
   TrafficLine,
   TrafficRows,
@@ -21,7 +22,13 @@ const MONO = "font-mono text-[9.5px] font-semibold uppercase tracking-wider text
 
 /** Flat bordered block: data first, no rounded cards or shadows. */
 function Block({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`border border-border bg-card ${className}`}>{children}</div>;
+  return (
+    <Reveal
+      className={`border border-border bg-card transition-colors hover:border-foreground/25 ${className}`}
+    >
+      {children}
+    </Reveal>
+  );
 }
 function Cap({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <p className={`${MONO} ${className}`}>{children}</p>;
@@ -36,10 +43,26 @@ function Heading({ children, tone }: { children: ReactNode; tone?: "ai" | "sales
     </h2>
   );
 }
-function Stat({ value, label, hint }: { value: string; label: string; hint?: ReactNode }) {
+function Stat({
+  value,
+  label,
+  hint,
+  format,
+}: {
+  value: number | string;
+  label: string;
+  hint?: ReactNode;
+  format?: (v: number) => string;
+}) {
   return (
-    <div className="min-w-0 border-r border-border p-3 last:border-r-0">
-      <p className="truncate text-2xl font-bold leading-none tabular-nums">{value}</p>
+    <div className="min-w-0 border-r border-border p-3 transition-colors last:border-r-0 hover:bg-muted/40">
+      <p className="truncate text-2xl font-bold leading-none tabular-nums">
+        {typeof value === "number" ? (
+          <CountUp value={value} {...(format ? { format } : {})} />
+        ) : (
+          value
+        )}
+      </p>
       <Cap className="mt-2">{label}</Cap>
       {hint && <p className="mt-1 text-[10px] text-muted-foreground">{hint}</p>}
     </div>
@@ -90,7 +113,7 @@ export function TrafficPanel({
   ].filter((a) => a.n === null || a.n > 0);
 
   return (
-    <div>
+    <div key={range}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <nav className="inline-flex border border-border" aria-label="Rentang waktu">
           {TRAFFIC_RANGES.map((r) => (
@@ -114,7 +137,9 @@ export function TrafficPanel({
 
       <Block className="mt-3 grid grid-cols-[110px_1fr]">
         <div className="border-r border-border p-3">
-          <p className="text-5xl font-bold leading-none tabular-nums">{data.live.online}</p>
+          <p className="text-5xl font-bold leading-none tabular-nums">
+            <CountUp value={data.live.online} />
+          </p>
           <Cap className="mt-2">Orang membaca sekarang</Cap>
         </div>
         <div className="p-3">
@@ -126,16 +151,17 @@ export function TrafficPanel({
       <Heading tone="sales">Penjualan · {label}</Heading>
       <Block className="grid grid-cols-2 md:grid-cols-4">
         <Stat
-          value={formatRupiah(s.revenue)}
+          value={s.revenue}
+          format={formatRupiah}
           label="Pendapatan terbayar"
           hint={range === "all" ? undefined : <Delta now={s.revenue} before={s.previousRevenue} />}
         />
         <Stat
-          value={id(s.orders)}
+          value={s.orders}
           label="Pesanan dibayar"
           hint={range === "all" ? undefined : <Delta now={s.orders} before={s.previousOrders} />}
         />
-        <Stat value={formatRupiah(s.aov)} label="Rata-rata per pesanan" />
+        <Stat value={s.aov} format={formatRupiah} label="Rata-rata per pesanan" />
         <Stat
           value={s.conversionPct === null ? "—" : `${s.conversionPct}%`}
           label="Konversi ke bayar"
@@ -155,16 +181,17 @@ export function TrafficPanel({
                 <div className="flex justify-between">
                   <span>{f.label}</span>
                   <b className="font-mono tabular-nums">
-                    {id(f.value)}
+                    <CountUp value={f.value} />
                     {i > 0 && s.funnel[0]!.value > 0
                       ? ` · ${Math.round((f.value / s.funnel[0]!.value) * 100)}%`
                       : ""}
                   </b>
                 </div>
                 <div className="mt-0.5 h-1.5 bg-muted">
-                  <div
+                  <GrowBar
+                    percent={Math.max(2, (f.value / funnelMax) * 100)}
+                    delay={i * 120}
                     className="h-1.5 bg-brand-red"
-                    style={{ width: `${Math.max(2, (f.value / funnelMax) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -195,7 +222,10 @@ export function TrafficPanel({
             <table className="mt-1 w-full font-mono text-[11px]">
               <tbody>
                 {s.recent.map((r, i) => (
-                  <tr key={i} className="border-t border-border first:border-0">
+                  <tr
+                    key={i}
+                    className="border-t border-border transition-colors first:border-0 hover:bg-muted/40"
+                  >
                     <td className="whitespace-nowrap py-1.5 pr-3 text-muted-foreground">
                       {new Date(r.at).toLocaleString("id-ID", {
                         timeZone: "Asia/Jakarta",
@@ -221,7 +251,7 @@ export function TrafficPanel({
           ) : (
             <ul className="mt-1 divide-y divide-border text-[11px]">
               {actions.map((a) => (
-                <li key={a.label}>
+                <li key={a.label} className="transition-colors hover:bg-muted/40">
                   <Link to={a.href as never} className="flex justify-between gap-2 py-1.5">
                     <span>{a.label}</span>
                     {a.n !== null && (
@@ -244,7 +274,7 @@ export function TrafficPanel({
       ).map(([title, t]) => (
         <Block key={title} className="mb-3 p-3">
           <p className="text-3xl font-bold leading-none tabular-nums">
-            {id(t.people + t.aiAnswers + t.aiCrawl + t.searchEngine)}{" "}
+            <CountUp value={t.people + t.aiAnswers + t.aiCrawl + t.searchEngine} />{" "}
             <span className={MONO}>{title}</span>
           </p>
           <TrafficSplit
@@ -262,17 +292,17 @@ export function TrafficPanel({
         <div>
           <Heading>Orang</Heading>
           <Block className="grid grid-cols-3">
-            <Stat value={id(data.people.views24h)} label="Tampilan · 24 jam" />
-            <Stat value={id(data.people.visitors24h)} label="Pengunjung · 24 jam" />
-            <Stat value={id(data.people.viewsAll)} label="Tampilan · semua" />
+            <Stat value={data.people.views24h} label="Tampilan · 24 jam" />
+            <Stat value={data.people.visitors24h} label="Pengunjung · 24 jam" />
+            <Stat value={data.people.viewsAll} label="Tampilan · semua" />
           </Block>
         </div>
         <div>
           <Heading tone="ai">AI</Heading>
           <Block className="grid grid-cols-3">
-            <Stat value={id(data.ai.answers24h)} label="Jawaban AI · 24 jam" />
-            <Stat value={id(data.ai.crawls24h)} label="Perayapan AI · 24 jam" />
-            <Stat value={id(data.ai.answersAll)} label="Jawaban AI · semua" />
+            <Stat value={data.ai.answers24h} label="Jawaban AI · 24 jam" />
+            <Stat value={data.ai.crawls24h} label="Perayapan AI · 24 jam" />
+            <Stat value={data.ai.answersAll} label="Jawaban AI · semua" />
           </Block>
         </div>
       </div>
@@ -354,8 +384,13 @@ export function TrafficPanel({
               [data.kinds.aiTrain, "Perayapan pelatihan AI"],
               [data.kinds.searchEngine, "Perayapan mesin pencari"],
             ].map(([v, l]) => (
-              <div key={String(l)} className="flex items-baseline gap-3">
-                <dt className="w-14 text-xl font-bold tabular-nums">{id(Number(v))}</dt>
+              <div
+                key={String(l)}
+                className="grid grid-cols-[5.5rem_1fr] items-baseline gap-3 transition-colors hover:bg-muted/40"
+              >
+                <dt className="text-right text-xl font-bold leading-tight tabular-nums">
+                  <CountUp value={Number(v)} />
+                </dt>
                 <dd className="text-muted-foreground">{l}</dd>
               </div>
             ))}
