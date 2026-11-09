@@ -378,7 +378,19 @@ export async function sweepShopperCatalog() {
     "select max(started_at) as at from shopping_catalog_runs where error is null or items_saved > 0",
   );
   const at = (last.rows[0] as { at: Date | null } | undefined)?.at;
-  if (at && Date.now() - new Date(at).getTime() < config.catalogRefreshHours * 3_600_000) {
+  // A brand switched on later (or added by a release) must not wait for the next refresh window.
+  const loaded = await pool.query(
+    "select distinct brand from shopping_catalog_runs where items_saved > 0",
+  );
+  const loadedBrands = new Set((loaded.rows as { brand: string }[]).map((r) => r.brand));
+  const missingBrand = SHOPPER_BRANDS.some(
+    (b) => b.adapter && config.brands[b.id] && !loadedBrands.has(b.id),
+  );
+  if (
+    at &&
+    !missingBrand &&
+    Date.now() - new Date(at).getTime() < config.catalogRefreshHours * 3_600_000
+  ) {
     // Fresh catalog: finish any names that are still untranslated, a few per minute.
     await translateMissingNames(45).catch(() => 0);
     return { skipped: "fresh" as const };
