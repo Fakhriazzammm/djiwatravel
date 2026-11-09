@@ -324,6 +324,12 @@ export function AdminShopperChat() {
                       key={m.id}
                       m={m}
                       mine={m.sender === "ADMIN"}
+                      read={
+                        m.sender === "ADMIN" &&
+                        !m.internal &&
+                        !!current.peerReadAt &&
+                        current.peerReadAt >= m.at
+                      }
                       onPhoto={(url, label) => setViewer({ url, label })}
                     />
                   ),
@@ -550,16 +556,33 @@ function QueueItem({ t, on, onPick }: { t: Summary; on: boolean; onPick: () => v
           <ThreadIcon icon={t.icon} />
           <span className="min-w-0 flex-1">
             <span className="flex justify-between gap-1">
-              <b className="truncate text-sm">{t.customerName}</b>
+              <b className="flex min-w-0 items-center gap-1.5 truncate text-sm">
+                {t.unread > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="size-2 shrink-0 rounded-full bg-destructive"
+                  />
+                )}
+                <span className="truncate">{t.customerName}</span>
+              </b>
               <span className="shrink-0 text-xs text-muted-foreground">{listTime(t.lastAt)}</span>
             </span>
             <span className="block truncate text-xs font-medium">{t.title}</span>
-            <span className="block truncate text-xs text-muted-foreground">{t.lastPreview}</span>
+            <span
+              className={`block truncate text-xs ${t.unread > 0 ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+            >
+              {t.lastSender === "ADMIN" && (
+                <span className={t.lastRead ? "font-bold text-brand-red" : ""}>
+                  {t.lastRead ? "✓✓ " : "✓ "}
+                </span>
+              )}
+              {t.lastPreview}
+            </span>
             <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <Pill tone={t.stage.tone}>{t.closed ? "Ditutup" : t.stage.label}</Pill>
               {t.unread > 0 && (
                 <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[10px] font-bold text-white">
-                  {t.unread}
+                  {t.unread} baru
                 </span>
               )}
               {!t.closed && <Sla dueAt={t.dueAt} />}

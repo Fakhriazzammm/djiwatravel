@@ -155,7 +155,7 @@ export function MessageBubble({
 }: {
   m: ChatMessageView;
   mine: boolean;
-  /** Show a double tick: the team has answered after this message. */
+  /** The other side has opened the thread since this message: "Dibaca", otherwise "Terkirim". */
   read?: boolean;
   onPhoto: (url: string, label: string) => void;
 }) {
@@ -197,7 +197,15 @@ export function MessageBubble({
         >
           {m.senderName && !mine ? `${m.senderName} · ` : ""}
           {formatClock(m.at)}
-          {mine && !note ? (read ? " ✓✓" : " ✓") : ""}
+          {mine && !note ? (
+            read ? (
+              <b className="ml-1 font-bold text-white">✓✓ Dibaca</b>
+            ) : (
+              <span className="ml-1">✓ Terkirim</span>
+            )
+          ) : (
+            ""
+          )}
         </span>
       </div>
     </div>

@@ -44,6 +44,8 @@ type ThreadRow = {
   closed_at: Date | null;
   customer_unread: number;
   admin_unread: number;
+  customer_read_at: Date | null;
+  admin_read_at: Date | null;
   last_message_at: Date;
   last_preview: string;
   last_sender: ChatSender | null;
@@ -82,6 +84,10 @@ export type ChatThreadSummary = {
   lastSender: ChatSender | null;
   /** Unread for the viewer: the customer's own count, or the team's. */
   unread: number;
+  /** My last message is the latest and the other side has opened the thread since. */
+  lastRead: boolean;
+  /** When the other side last opened the thread: drives the double tick. */
+  peerReadAt: string | null;
   closed: boolean;
   requestId: string | null;
   orderId: string | null;
@@ -133,6 +139,15 @@ function summary(row: ThreadRow, viewer: "customer" | "admin"): ChatThreadSummar
     lastAt: new Date(row.last_message_at).toISOString(),
     lastSender: row.last_sender,
     unread: viewer === "customer" ? row.customer_unread : row.admin_unread,
+    lastRead:
+      viewer === "customer"
+        ? row.last_sender === "CUSTOMER" &&
+          !!row.admin_read_at &&
+          row.admin_read_at >= row.last_message_at
+        : row.last_sender === "ADMIN" &&
+          !!row.customer_read_at &&
+          row.customer_read_at >= row.last_message_at,
+    peerReadAt: iso(viewer === "customer" ? row.admin_read_at : row.customer_read_at),
     closed: row.closed_at !== null,
     requestId: row.request_id,
     orderId: row.order_ref,
@@ -491,10 +506,12 @@ export async function getMyThreadHandler({ data }: { data: z.infer<typeof thread
   ).rows[0] as ThreadRow | undefined;
   if (!t) throw new Error("Percakapan tidak ditemukan.");
   const rows = await loadMessages(t.id, false, data.after ?? null);
-  if (t.customer_unread > 0)
-    await pool.query("update shopping_chat_threads set customer_unread = 0 where id = $1", [t.id]);
+  await pool.query(
+    "update shopping_chat_threads set customer_unread = 0, customer_read_at = now() where id = $1",
+    [t.id],
+  );
   return {
-    thread: summary({ ...t, customer_unread: 0 }, "customer"),
+    thread: summary({ ...t, customer_unread: 0, customer_read_at: new Date() }, "customer"),
     messages: await viewMessages(t, rows, false),
     request: t.request_id
       ? {
@@ -965,8 +982,10 @@ export async function adminChatThreadHandler({ data }: { data: z.infer<typeof th
     ThreadRow | undefined;
   if (!t) throw new Error("Percakapan tidak ditemukan.");
   const rows = await loadMessages(t.id, true, data.after ?? null);
-  if (t.admin_unread > 0)
-    await pool.query("update shopping_chat_threads set admin_unread = 0 where id = $1", [t.id]);
+  await pool.query(
+    "update shopping_chat_threads set admin_unread = 0, admin_read_at = now() where id = $1",
+    [t.id],
+  );
   const request = t.request_id
     ? ((
         await pool.query(
@@ -988,7 +1007,7 @@ export async function adminChatThreadHandler({ data }: { data: z.infer<typeof th
         | undefined)
     : undefined;
   return {
-    thread: summary({ ...t, admin_unread: 0 }, "admin"),
+    thread: summary({ ...t, admin_unread: 0, admin_read_at: new Date() }, "admin"),
     messages: await viewMessages(t, rows, true),
     request: request
       ? {

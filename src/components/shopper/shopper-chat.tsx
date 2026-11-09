@@ -181,12 +181,23 @@ export function ChatInbox() {
                     <ThreadIcon icon={t.icon} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline justify-between gap-2">
-                        <b className="truncate text-[13px]">{t.title}</b>
+                        <b
+                          className={`truncate text-[13px] ${t.unread > 0 ? "text-foreground" : "font-semibold"}`}
+                        >
+                          {t.title}
+                        </b>
                         <span className="shrink-0 text-[10px] text-muted-foreground">
                           {listTime(t.lastAt)}
                         </span>
                       </span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
+                      <span
+                        className={`block truncate text-xs ${t.unread > 0 ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                      >
+                        {t.lastSender === "CUSTOMER" && (
+                          <span className={t.lastRead ? "font-bold text-brand-red" : ""}>
+                            {t.lastRead ? "✓✓ " : "✓ "}
+                          </span>
+                        )}
                         {t.lastPreview || "Belum ada pesan"}
                       </span>
                       <span className="mt-1 flex items-center gap-1.5">
@@ -196,7 +207,7 @@ export function ChatInbox() {
                           {t.closed && !t.stage.closed ? "Ditutup" : t.stage.label}
                         </Pill>
                         {t.unread > 0 && (
-                          <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[10px] font-bold text-white">
+                          <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[11px] font-bold text-white">
                             {t.unread}
                           </span>
                         )}
@@ -376,10 +387,6 @@ export function ChatThread({ id }: { id: string }) {
     [messages],
   );
   const firstCard = messages.find((m) => m.card?.type === "request")?.card;
-  const lastTeamAt = useMemo(
-    () => [...messages].reverse().find((m) => m.sender !== "CUSTOMER")?.at ?? "",
-    [messages],
-  );
 
   async function send(body: string, file: File | null) {
     if (!thread || sending || (!body.trim() && !file)) return;
@@ -579,7 +586,9 @@ export function ChatThread({ id }: { id: string }) {
                   <MessageBubble
                     m={m}
                     mine={m.sender === "CUSTOMER"}
-                    read={m.sender === "CUSTOMER" && lastTeamAt > m.at}
+                    read={
+                      m.sender === "CUSTOMER" && !!thread?.peerReadAt && thread.peerReadAt >= m.at
+                    }
                     onPhoto={(url, label) => setViewer({ url, label })}
                   />
                 )}
