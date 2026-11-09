@@ -181,8 +181,8 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
   ctx.font = `500 30px ${font}`;
   if (input.owner)
     ctx.fillText(fit(ctx, `${input.owner} · Member Djiwa Travel`, W - 128), 64, H - 150);
-  ctx.fillStyle = "#fff";
-  ctx.font = `700 36px ${font}`;
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.font = `500 24px ${font}`;
   ctx.fillText(fit(ctx, input.link, W - 128), 64, H - 96);
 
   return new Promise((resolve, reject) =>
