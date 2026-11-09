@@ -214,6 +214,8 @@
 }
 html {
   scroll-behavior: smooth;
+  /* No pinch / double-tap zoom: the app is a fixed-scale mobile UI. */
+  touch-action: manipulation;
 }
 /* The Home hero sky is full-bleed (100vw); never let it add a horizontal scrollbar. */
 html,

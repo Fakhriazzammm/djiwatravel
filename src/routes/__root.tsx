@@ -129,7 +129,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "viewport", content:
+          "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+      },
       { name: "theme-color", content: "#1f2d5c" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
@@ -203,6 +205,16 @@ function RootComponent() {
  * usually finds a warm cache instead of paying for the cold provider read.
  */
 function CatalogWarmup() {
+  useEffect(() => {
+    // iOS Safari ignores user-scalable=no for pinch; block its gesture events so the app never zooms.
+    const block = (event: Event) => event.preventDefault();
+    document.addEventListener("gesturestart", block);
+    document.addEventListener("gesturechange", block);
+    return () => {
+      document.removeEventListener("gesturestart", block);
+      document.removeEventListener("gesturechange", block);
+    };
+  }, []);
   useEffect(() => {
     void warmResellerCatalog().catch(() => {
       // A warm-up failure must never affect the page: the routes load the catalogue themselves.
