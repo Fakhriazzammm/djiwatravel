@@ -7,6 +7,8 @@ import {
   buildNudges,
   cleanAssistantReply,
   detectIntent,
+  extractReplyPrefix,
+  pickReminder,
   isGenerationIntent,
   normalizeTripAssistantConfig,
   parseJsonLoose,
@@ -321,5 +323,61 @@ describe("helpers", () => {
     for (let i = 0; i < 8; i++) expect(allowAssistantBurst("burst-user", now + i)).toBe(true);
     expect(allowAssistantBurst("burst-user", now + 9)).toBe(false);
     expect(allowAssistantBurst("burst-user", now + 61_000)).toBe(true);
+  });
+});
+
+describe("extractReplyPrefix (streaming)", () => {
+  it("returns the reply as it grows and when it is complete", () => {
+    expect(extractReplyPrefix('{"rep')).toEqual({ text: "", done: false });
+    expect(extractReplyPrefix('{"reply":"Hal')).toEqual({ text: "Hal", done: false });
+    expect(extractReplyPrefix('{"reply":"Halo!","chips":[]')).toEqual({
+      text: "Halo!",
+      done: true,
+    });
+  });
+
+  it("decodes escapes and holds back half-received ones", () => {
+    expect(extractReplyPrefix('{"reply":"Baris 1\\nBaris \\"dua\\""').text).toBe(
+      'Baris 1\nBaris "dua"',
+    );
+    expect(extractReplyPrefix('{"reply":"Kopi \\u00e9').text).toBe("Kopi é");
+    expect(extractReplyPrefix('{"reply":"Kopi \\u00').text).toBe("Kopi ");
+    expect(extractReplyPrefix('{"reply":"a\\').text).toBe("a");
+    expect(extractReplyPrefix('{ "reply" : "spasi" }').text).toBe("spasi");
+  });
+});
+
+describe("pickReminder", () => {
+  const base = {
+    tripId: "t1",
+    name: "Jepang",
+    daysToDeparture: 5,
+    daysToReturn: 10,
+    budgetSet: true,
+    itemCount: 3,
+    todayItemCount: 1,
+    openChecklist: 0,
+    today: "2026-11-09",
+  };
+  it("stays quiet when nothing needs attention", () => {
+    expect(pickReminder(base)).toBeNull();
+    expect(pickReminder({ ...base, daysToDeparture: 30, budgetSet: false })).toBeNull(); // too early
+    expect(
+      pickReminder({ ...base, daysToDeparture: -20, daysToReturn: -15, budgetSet: false }),
+    ).toBeNull(); // over
+  });
+  it("picks the most urgent thing, with a stable key per kind", () => {
+    expect(pickReminder({ ...base, budgetSet: false })?.eventKey).toBe("assistant:t1:budget");
+    expect(pickReminder({ ...base, itemCount: 0 })?.eventKey).toBe("assistant:t1:agenda");
+    expect(pickReminder({ ...base, daysToDeparture: 2, openChecklist: 4 })).toMatchObject({
+      eventKey: "assistant:t1:checklist",
+      title: "4 persiapan belum selesai",
+    });
+    expect(pickReminder({ ...base, daysToDeparture: -1, todayItemCount: 0 })?.eventKey).toBe(
+      "assistant:t1:today:2026-11-09",
+    );
+    expect(pickReminder({ ...base, itemCount: 0, budgetSet: false })?.eventKey).toBe(
+      "assistant:t1:budget",
+    );
   });
 });

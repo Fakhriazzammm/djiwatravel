@@ -22,6 +22,25 @@ export const sendTripAssistantMessage = createServerFn({ method: "POST" })
     return assistantSendHandler({ data });
   });
 
+/** Same as sending a message, but yields the reply while the model writes it (then a `done`). */
+export const streamTripAssistantMessage = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { assistantSendInput } = await import("./trip-assistant.server");
+    return assistantSendInput(data);
+  })
+  .handler(async function* ({ data }) {
+    const { setResponseHeader } = await import("@tanstack/react-start/server");
+    try {
+      // nginx would otherwise hold the chunks back until its buffer fills.
+      setResponseHeader("X-Accel-Buffering", "no");
+      setResponseHeader("Cache-Control", "no-cache, no-transform");
+    } catch {
+      /* headers are an optimisation only */
+    }
+    const { assistantStreamHandler } = await import("./trip-assistant.server");
+    yield* assistantStreamHandler({ data });
+  });
+
 export const resetTripAssistant = createServerFn({ method: "POST" })
   .validator(async (data: unknown) => {
     const { assistantLoadInput } = await import("./trip-assistant.server");

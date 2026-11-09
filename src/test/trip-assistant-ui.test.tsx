@@ -6,8 +6,10 @@ import {
   dismissTripAssistantProposal,
   loadTripAssistant,
   sendTripAssistantMessage,
+  streamTripAssistantMessage,
   undoTripAssistantProposal,
 } from "@/lib/trip-assistant.fn";
+import { getReceiptScanStatus } from "@/lib/receipt-scan.fn";
 import type { AssistantMessage } from "@/lib/trip-assistant";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -17,10 +19,17 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }));
+vi.mock("@/lib/receipt-scan.fn", () => ({ getReceiptScanStatus: vi.fn() }));
+vi.mock("@/components/receipt-scanner", () => ({
+  ReceiptScanner: ({ onClose }: { onClose: () => void }) => (
+    <button onClick={onClose}>SCANNER TERBUKA</button>
+  ),
+}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/trip-assistant.fn", () => ({
   loadTripAssistant: vi.fn(),
   sendTripAssistantMessage: vi.fn(),
+  streamTripAssistantMessage: vi.fn(),
   resetTripAssistant: vi.fn(),
   applyTripAssistantProposal: vi.fn(),
   undoTripAssistantProposal: vi.fn(),
@@ -74,6 +83,9 @@ const proposal = {
         category: "food",
         estimatedCostMinor: null,
         note: null,
+        lat: null,
+        lng: null,
+        hours: null,
       },
     ],
   },
@@ -266,5 +278,80 @@ describe("TripAssistant", () => {
     expect(await screen.findByText(/Batas obrolan hari ini habis/)).toBeInTheDocument();
     expect(input.value).toBe("halo");
     expect(screen.getByText(/Mode tamu/)).toBeInTheDocument();
+  });
+
+  it("shows the answer word by word while the model writes it, then stores the final messages", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    vi.mocked(streamTripAssistantMessage).mockImplementation((async () =>
+      (async function* () {
+        yield { type: "delta" as const, text: "Hari ke-3 " };
+        yield { type: "delta" as const, text: "kita mulai" };
+        await gate;
+        yield { type: "status" as const, text: "Mengecek lokasi dan jam buka…" };
+        yield {
+          type: "done" as const,
+          result: {
+            status: "ok" as const,
+            remaining: 9,
+            messages: [
+              {
+                id: "m1",
+                role: "user" as const,
+                content: "halo",
+                chips: null,
+                proposal: null,
+                createdAt: "2026-11-09T01:00:00.000Z",
+              },
+              assistantMsg({ content: "Hari ke-3 kita mulai dari Tsukiji." }),
+            ],
+          },
+        };
+      })()) as never);
+    setup();
+    const input = await screen.findByLabelText("Pesan untuk asisten");
+    fireEvent.change(input, { target: { value: "halo" } });
+    fireEvent.submit(input.closest("form")!);
+    const live = await screen.findByTestId("assistant-streaming");
+    await waitFor(() => expect(live).toHaveTextContent("Hari ke-3 kita mulai"));
+    expect(sendTripAssistantMessage).not.toHaveBeenCalled();
+    release();
+    expect(await screen.findByText("Hari ke-3 kita mulai dari Tsukiji.")).toBeInTheDocument();
+    expect(screen.queryByTestId("assistant-streaming")).toBeNull();
+  });
+
+  it("falls back to a normal request when streaming is not available", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+    vi.mocked(streamTripAssistantMessage).mockRejectedValue(new Error("no stream"));
+    vi.mocked(sendTripAssistantMessage).mockResolvedValue({
+      status: "ok",
+      remaining: 9,
+      messages: [assistantMsg({ content: "Jawaban biasa." })],
+    });
+    setup();
+    const input = await screen.findByLabelText("Pesan untuk asisten");
+    fireEvent.change(input, { target: { value: "halo" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(await screen.findByText("Jawaban biasa.")).toBeInTheDocument();
+  });
+
+  it("offers the receipt camera for members only when the scanner is on, and opens it", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+    vi.mocked(getReceiptScanStatus).mockResolvedValue({ available: true } as never);
+    setup();
+    fireEvent.click(await screen.findByRole("button", { name: "Foto struk" }));
+    expect(await screen.findByText("SCANNER TERBUKA")).toBeInTheDocument();
+  });
+
+  it("hides the receipt camera for guests and when the scanner is off", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({
+      status: { ...available, guest: true },
+      messages: [],
+    });
+    setup();
+    await screen.findByLabelText("Pesan untuk asisten");
+    expect(screen.queryByRole("button", { name: "Foto struk" })).toBeNull();
+    expect(getReceiptScanStatus).not.toHaveBeenCalled();
   });
 });

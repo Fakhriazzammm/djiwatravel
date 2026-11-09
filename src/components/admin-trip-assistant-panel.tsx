@@ -55,17 +55,21 @@ export function AdminTripAssistantPanel({
   stats,
   recent,
   keyConfigured,
+  reminderSent = 0,
 }: {
   initial: TripAssistantConfig;
   version: number;
   stats: Stats;
   recent: Recent[];
   keyConfigured: boolean;
+  reminderSent?: number;
 }) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [guestEnabled, setGuestEnabled] = useState(initial.guestEnabled);
   const [allowAgenda, setAllowAgenda] = useState(initial.allowAgenda);
   const [allowBudget, setAllowBudget] = useState(initial.allowBudget);
+  const [verifyHours, setVerifyHours] = useState(initial.verifyHours);
+  const [reminders, setReminders] = useState(initial.reminders);
   const [dailyMessages, setDailyMessages] = useState(String(initial.dailyMessages));
   const [guestDailyMessages, setGuestDailyMessages] = useState(String(initial.guestDailyMessages));
   const [maxAgendaItems, setMaxAgendaItems] = useState(String(initial.maxAgendaItems));
@@ -91,6 +95,8 @@ export function AdminTripAssistantPanel({
         guestEnabled,
         allowAgenda,
         allowBudget,
+        verifyHours,
+        reminders,
         dailyMessages: Number(dailyMessages),
         guestDailyMessages: Number(guestDailyMessages),
         maxAgendaItems: Number(maxAgendaItems),
@@ -223,6 +229,19 @@ export function AdminTripAssistantPanel({
           "Pembagian anggaran, item checklist, dan satu catatan biaya",
           allowBudget,
           setAllowBudget,
+        )}
+
+        {check(
+          "Cek lokasi dan jam buka di peta",
+          "Tempat baru dicari di OpenStreetMap; kartu menandai yang mungkin tutup. Mati: hanya catatan “cek jam buka”",
+          verifyHours,
+          setVerifyHours,
+        )}
+        {check(
+          "Pengingat proaktif (notifikasi)",
+          `Anggaran, agenda kosong, checklist, hari tanpa agenda. Hanya akun, maks 1 per hari, jam 08-20 WIB. Terkirim 30 hari: ${reminderSent}`,
+          reminders,
+          setReminders,
         )}
 
         <div className="space-y-2 border-t border-border pt-3">

@@ -19,6 +19,7 @@ import {
   updateTrip,
 } from "./my-trips.server";
 import { fetchFxRate } from "./receipt-scan.server";
+import { verifyAgendaPlaces } from "./trip-assistant-places.server";
 import { jakartaDayStart } from "./receipt-scan";
 import {
   ASSISTANT_INTENTS,
@@ -31,6 +32,7 @@ import {
   buildAssistantSystemPrompt,
   cleanAssistantReply,
   detectIntent,
+  extractReplyPrefix,
   isGenerationIntent,
   normalizeTripAssistantConfig,
   parseJsonLoose,
@@ -232,20 +234,77 @@ async function loadFacts(tripId: string, withPlaces: boolean): Promise<TripFacts
 
 /* ----------------------------------------------------------------------------- AI call */
 
+type ModelOutcome = {
+  parsed: unknown;
+  usage: { input: number; output: number };
+};
+
+/** Reads an OpenAI-style event stream, calling `onReply` with the new reply text as it arrives. */
+async function readModelStream(
+  response: Response,
+  onReply: (delta: string) => void,
+): Promise<{ content: string; usage: { input: number; output: number } | null }> {
+  const reader = response.body?.getReader();
+  if (!reader) return { content: "", usage: null };
+  const decoder = new TextDecoder();
+  let pending = "";
+  let content = "";
+  let shown = 0;
+  let usage: { input: number; output: number } | null = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    pending += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = pending.indexOf("\n")) >= 0) {
+      const line = pending.slice(0, nl).trim();
+      pending = pending.slice(nl + 1);
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      try {
+        const json = JSON.parse(payload) as {
+          choices?: { delta?: { content?: unknown } }[];
+          usage?: { prompt_tokens?: number; completion_tokens?: number };
+        };
+        const piece = json.choices?.[0]?.delta?.content;
+        if (typeof piece === "string" && piece) {
+          content += piece;
+          const reply = extractReplyPrefix(content).text;
+          if (reply.length > shown) {
+            onReply(reply.slice(shown));
+            shown = reply.length;
+          }
+        }
+        if (json.usage)
+          usage = {
+            input: Number(json.usage.prompt_tokens) || 0,
+            output: Number(json.usage.completion_tokens) || 0,
+          };
+      } catch {
+        /* a partial or non-JSON line is skipped */
+      }
+    }
+  }
+  return { content, usage };
+}
+
 async function askModel(
   model: string,
   system: string,
   messages: { role: string; content: string }[],
   maxTokens: number,
-) {
+  onReply?: (delta: string) => void,
+): Promise<ModelOutcome> {
   const key = process.env["HELIPOD_AI_KEY"];
   if (!key) throw new Error("not_configured");
-  const body = (withSchema: boolean, withEffort: boolean) =>
+  const body = (withSchema: boolean, withEffort: boolean, stream: boolean) =>
     JSON.stringify({
       model,
       temperature: 0.35,
       max_tokens: maxTokens,
       ...(withEffort ? { reasoning_effort: "low" } : {}),
+      ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
       messages: [{ role: "system", content: system }, ...messages],
       ...(withSchema
         ? {
@@ -256,29 +315,50 @@ async function askModel(
           }
         : {}),
     });
-  const call = (withSchema: boolean, withEffort: boolean) =>
+  const call = (withSchema: boolean, withEffort: boolean, stream: boolean) =>
     fetch(`${aiBase()}/chat/completions`, {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: body(withSchema, withEffort),
+      body: body(withSchema, withEffort, stream),
       signal: AbortSignal.timeout(75_000),
     });
-  let response = await call(true, true);
+  const stream = Boolean(onReply);
+  let response = await call(true, true, stream);
   // A model that rejects a parameter still answers when asked more plainly.
-  if (response.status === 400) response = await call(true, false);
-  if (response.status === 400) response = await call(false, false);
+  if (response.status === 400) response = await call(true, false, stream);
+  if (response.status === 400) response = await call(false, false, stream);
   if (response.status === 429 || response.status >= 500) {
     await new Promise((resolve) => setTimeout(resolve, 1200));
-    response = await call(true, true);
+    response = await call(true, true, stream);
   }
   if (!response.ok) throw new Error(`ai_${response.status}`);
+  const ctype = response.headers.get("content-type") ?? "";
+  if (stream && ctype.includes("text/event-stream")) {
+    const result = await readModelStream(response, onReply!);
+    if (result.content.trim()) {
+      return {
+        parsed: parseJsonLoose(result.content),
+        usage: result.usage ?? {
+          input: Math.ceil(
+            (system.length + messages.reduce((n, m) => n + m.content.length, 0)) / 3.5,
+          ),
+          output: Math.ceil(result.content.length / 3.5),
+        },
+      };
+    }
+    // An empty stream is retried once as a normal answer rather than shown as a failure.
+    response = await call(true, true, false);
+    if (!response.ok) throw new Error(`ai_${response.status}`);
+  }
   const json = (await response.json()) as {
     choices?: { message?: { content?: unknown } }[];
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   const content = json.choices?.[0]?.message?.content;
+  const text = typeof content === "string" ? content : "";
+  if (onReply) onReply(extractReplyPrefix(text).text);
   return {
-    parsed: parseJsonLoose(typeof content === "string" ? content : ""),
+    parsed: parseJsonLoose(text),
     usage: {
       input: Number(json.usage?.prompt_tokens) || 0,
       output: Number(json.usage?.completion_tokens) || 0,
@@ -419,11 +499,12 @@ const sendSchema = z.object({
 });
 export const assistantSendInput = (data: unknown) => sendSchema.parse(data);
 
-export async function assistantSendHandler({
-  data,
-}: {
-  data: ReturnType<typeof assistantSendInput>;
-}): Promise<AssistantSendResult> {
+export type TurnEvent = { type: "delta"; text: string } | { type: "status"; text: string };
+
+async function runTurn(
+  data: ReturnType<typeof assistantSendInput>,
+  emit?: (event: TurnEvent) => void,
+): Promise<AssistantSendResult> {
   const owner = await resolveTripOwner();
   if (!owner) throw new Error("Autentikasi diperlukan");
   const trip = await ownedTripRow(data.tripId, owner.id);
@@ -464,6 +545,7 @@ export async function assistantSendHandler({
         system,
         [...history, { role: "user", content: userMessage }],
         isGenerationIntent(intent) ? 4000 : 1400,
+        emit ? (text) => emit({ type: "delta", text }) : undefined,
       );
     } catch (error) {
       console.error(
@@ -486,6 +568,15 @@ export async function assistantSendHandler({
       budgetNames: facts.budget.map((b) => b.name),
       today: facts.today,
     });
+    if (cleaned.proposal?.payload.kind === "agenda" && config.verifyHours) {
+      emit?.({ type: "status", text: "Mengecek lokasi dan jam buka…" });
+      await verifyAgendaPlaces(cleaned.proposal.payload.items, data.tripId, facts).catch((error) =>
+        console.error(
+          "[trip-assistant] place check failed",
+          error instanceof Error ? error.message : error,
+        ),
+      );
+    }
     if (!cleaned.reply && !cleaned.proposal) {
       await recordRun(owner, data.tripId, intent, "error", model, null, outcome.usage);
       return {
@@ -553,6 +644,58 @@ export async function assistantSendHandler({
   } finally {
     inFlight.delete(owner.id);
   }
+}
+
+export async function assistantSendHandler({
+  data,
+}: {
+  data: ReturnType<typeof assistantSendInput>;
+}): Promise<AssistantSendResult> {
+  return runTurn(data);
+}
+
+export type StreamItem = TurnEvent | { type: "done"; result: AssistantSendResult };
+
+/** Same turn as `assistantSendHandler`, but yields the reply text while the model writes it. */
+export async function* assistantStreamHandler({
+  data,
+}: {
+  data: ReturnType<typeof assistantSendInput>;
+}): AsyncGenerator<StreamItem> {
+  const queue: TurnEvent[] = [];
+  let wake: (() => void) | null = null;
+  let finished = false;
+  let result: AssistantSendResult | null = null;
+  let failure: unknown = null;
+  const notify = () => {
+    const w = wake;
+    wake = null;
+    w?.();
+  };
+  void runTurn(data, (event) => {
+    queue.push(event);
+    notify();
+  })
+    .then((r) => {
+      result = r;
+    })
+    .catch((error) => {
+      failure = error;
+    })
+    .finally(() => {
+      finished = true;
+      notify();
+    });
+  for (;;) {
+    while (queue.length) yield queue.shift()!;
+    if (finished) break;
+    await new Promise<void>((resolve) => {
+      wake = resolve;
+    });
+  }
+  while (queue.length) yield queue.shift()!;
+  if (failure) throw failure;
+  yield { type: "done", result: result! };
 }
 
 async function recordRun(
@@ -669,6 +812,8 @@ async function applyAgenda(tripId: string, items: AgendaChange[], trip: TripRow,
         timezone: trip.timezone ?? undefined,
         title: change.title,
         location: change.location ?? undefined,
+        latitude: change.lat ?? undefined,
+        longitude: change.lng ?? undefined,
         notes: change.note ?? undefined,
         estimatedCostMinor: change.estimatedCostMinor ?? undefined,
         currency: change.estimatedCostMinor ? trip.primary_currency : undefined,
@@ -1028,7 +1173,10 @@ export const getAdminTripAssistantHandler = async () => {
     })),
     readRecent().catch(() => [] as TripAssistantRecent[]),
   ]);
-  return { ...record, stats, recent, keyConfigured: tripAssistantConfigured() };
+  const reminders = await import("./trip-assistant-reminders.server")
+    .then((m) => m.reminderStats())
+    .catch(() => ({ sent30d: 0 }));
+  return { ...record, stats, recent, reminders, keyConfigured: tripAssistantConfigured() };
 };
 
 const adminSaveSchema = z.object({

@@ -73,7 +73,18 @@ function AgendaRows({
                     {change.location ? ` · ${change.location}` : ""}
                   </span>
                   {change.note && (
-                    <span className="block text-[11px] text-muted-foreground/80">
+                    <span
+                      className={`block text-[11px] ${
+                        change.hours?.open === false
+                          ? "font-semibold text-amber-700"
+                          : "text-muted-foreground/80"
+                      }`}
+                    >
+                      {change.hours?.open === true
+                        ? "✓ "
+                        : change.hours?.open === false
+                          ? "⚠ "
+                          : ""}
                       {change.note}
                     </span>
                   )}

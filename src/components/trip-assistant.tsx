@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, Plus, ScanLine, Sparkles } from "lucide-react";
+import { ArrowUp, Camera, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { FixedLayer } from "@/components/motion-primitives";
 import { ConfirmDialog, iosHeading } from "@/components/trip-ios";
 import { ProposalCard } from "@/components/trip-assistant-cards";
+import { ReceiptScanner } from "@/components/receipt-scanner";
+import { getReceiptScanStatus } from "@/lib/receipt-scan.fn";
+import type { ReceiptScanStatus } from "@/lib/receipt-scan";
 import {
   applyTripAssistantProposal,
   dismissTripAssistantProposal,
   loadTripAssistant,
   resetTripAssistant,
   sendTripAssistantMessage,
+  streamTripAssistantMessage,
   undoTripAssistantProposal,
 } from "@/lib/trip-assistant.fn";
 import {
@@ -30,6 +34,9 @@ type Props = {
   nudgeInput: Parameters<typeof buildNudges>[0];
   /** The static Ringkas cards (agenda, attention, budget...). They live inside the conversation. */
   children: ReactNode;
+  /** Budget categories and totals, for the receipt scanner opened from the chat. */
+  categories?: { id: string; name: string }[];
+  budget?: { budgetMinor: number; spentMinor: number } | null;
   onChanged: () => Promise<unknown>;
   onAdd: () => void;
   /** Tells Ringkas whether the chat is live, so it can keep its own "+" button when it is not. */
@@ -93,6 +100,10 @@ export function TripAssistant(props: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
+  const [streamText, setStreamText] = useState("");
+  const [statusText, setStatusText] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<ReceiptScanStatus | null>(null);
+  const [scanning, setScanning] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -105,6 +116,12 @@ export function TripAssistant(props: Props) {
         setMessages(result.messages);
         if (result.status.available) setRemaining(result.status.remaining);
         onAvailability(result.status.available);
+        // Receipt scanning is for members; a guest or a switched-off scanner has no camera chip.
+        if (result.status.available && !result.status.guest)
+          void Promise.resolve()
+            .then(() => getReceiptScanStatus())
+            .then((r) => !cancelled && setReceipt(r))
+            .catch(() => undefined);
       })
       .catch(() => {
         if (!cancelled) onAvailability(false);
@@ -152,10 +169,10 @@ export function TripAssistant(props: Props) {
         createdAt: new Date().toISOString(),
       };
       setMessages((list) => [...list, temp]);
-      try {
-        const result = await sendTripAssistantMessage({
-          data: { tripId, text: value, ...(intent ? { intent } : {}) },
-        });
+      setStreamText("");
+      setStatusText(null);
+      const input = { tripId, text: value, ...(intent ? { intent } : {}) };
+      const finish = (result: Awaited<ReturnType<typeof sendTripAssistantMessage>>) => {
         if (result.status === "ok") {
           setMessages((list) => [...list.filter((m) => m.id !== temp.id), ...result.messages]);
           setRemaining(result.remaining);
@@ -165,12 +182,47 @@ export function TripAssistant(props: Props) {
           setNotice(result.message);
           if (result.status === "limit") setRemaining(0);
         }
+      };
+      let started = false;
+      try {
+        try {
+          // The reply arrives while the model writes it; `done` carries the stored messages.
+          const stream = await streamTripAssistantMessage({ data: input });
+          let result: Awaited<ReturnType<typeof sendTripAssistantMessage>> | null = null;
+          for await (const event of stream) {
+            started = true;
+            if (event.type === "delta") setStreamText((text) => text + event.text);
+            else if (event.type === "status") setStatusText(event.text);
+            else result = event.result;
+          }
+          if (!result) throw new Error("stream_incomplete");
+          finish(result);
+        } catch (streamError) {
+          if (started) {
+            // The connection broke mid-answer: the server may have stored it, so look before resending.
+            const fresh = await loadTripAssistant({ data: { tripId } }).catch(() => null);
+            const last = fresh?.messages[fresh.messages.length - 1];
+            if (
+              fresh &&
+              last?.role === "assistant" &&
+              fresh.messages.some((m) => m.content === value)
+            ) {
+              setMessages(fresh.messages);
+              return;
+            }
+            throw streamError;
+          }
+          // Streaming is an extra: without it the same turn runs as one request.
+          finish(await sendTripAssistantMessage({ data: input }));
+        }
       } catch {
         setMessages((list) => list.filter((m) => m.id !== temp.id));
         setDraft(value);
         setNotice("Pesan belum terkirim. Periksa koneksi lalu coba lagi.");
       } finally {
         setSending(false);
+        setStreamText("");
+        setStatusText(null);
       }
     },
     [sending, tripId],
@@ -282,18 +334,30 @@ export function TripAssistant(props: Props) {
             role="status"
             aria-label="Asisten sedang menjawab"
           >
-            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-red text-white">
+            <span className="mb-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-brand-red text-white">
               <Sparkles className="size-3" aria-hidden="true" />
             </span>
-            <span className="flex gap-1 rounded-2xl rounded-bl-md bg-surface px-3 py-3 ring-1 ring-border/50">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
-                  style={{ animationDelay: `${i * 150}ms` }}
-                />
-              ))}
-            </span>
+            {streamText ? (
+              <p
+                className="max-w-[84%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-surface px-3 py-2 text-[13px] leading-[1.4] ring-1 ring-border/50"
+                data-testid="assistant-streaming"
+              >
+                {streamText}
+                {statusText && (
+                  <span className="mt-1 block text-[11px] text-muted-foreground">{statusText}</span>
+                )}
+              </p>
+            ) : (
+              <span className="flex gap-1 rounded-2xl rounded-bl-md bg-surface px-3 py-3 ring-1 ring-border/50">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
+                    style={{ animationDelay: `${i * 150}ms` }}
+                  />
+                ))}
+              </span>
+            )}
           </div>
         )}
         {notice && (
@@ -381,15 +445,16 @@ export function TripAssistant(props: Props) {
               >
                 Catat biaya
               </button>
-              <Link
-                to="/my-trips/$tripId/$section"
-                params={{ tripId, section: "expenses" }}
-                search={{ add: true }}
-                className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50"
-              >
-                <ScanLine className="size-3.5" aria-hidden="true" />
-                Scan struk
-              </Link>
+              {receipt?.available && (
+                <button
+                  type="button"
+                  onClick={() => setScanning(true)}
+                  className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50"
+                >
+                  <Camera className="size-3.5" aria-hidden="true" />
+                  Foto struk
+                </button>
+              )}
             </div>
             <form
               className="flex items-center gap-2"
@@ -434,6 +499,21 @@ export function TripAssistant(props: Props) {
           </div>
         </div>
       </FixedLayer>
+
+      {scanning && receipt?.available && (
+        <ReceiptScanner
+          tripId={tripId}
+          tripCurrency={props.currency}
+          categories={props.categories ?? []}
+          status={receipt}
+          budget={props.budget ?? null}
+          onClose={() => setScanning(false)}
+          onChanged={async () => {
+            await props.onChanged();
+            toast.success("Struk dicatat di Biaya");
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={resetOpen}

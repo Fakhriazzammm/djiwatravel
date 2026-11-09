@@ -14,6 +14,7 @@ import {
 } from "@/lib/preorder-notifications.server";
 import { sweepFlightAlerts } from "@/lib/flight-features.server";
 import { purgeAssistantHistory } from "@/lib/trip-assistant.server";
+import { sweepAssistantReminders } from "@/lib/trip-assistant-reminders.server";
 import { sweepShoppingPayments, sweepShopperCatalog } from "@/lib/personal-shopper.server";
 import { TRAVEL_TASK_WORKER, recordFailure, recordSuccess } from "@/lib/worker-heartbeat.server";
 
@@ -130,6 +131,13 @@ async function run(request: Request) {
   // Trip assistant conversations are kept for the Admin retention only (cheap delete by date).
   void purgeAssistantHistory().catch((error) => {
     console.error("[travel] assistant history purge failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+  });
+
+  // Proactive trip reminders (members only, once a day at most, throttled to every half hour).
+  void sweepAssistantReminders().catch((error) => {
+    console.error("[travel] assistant reminder sweep failed", {
       reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
     });
   });

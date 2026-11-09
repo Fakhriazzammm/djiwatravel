@@ -32,27 +32,62 @@ vi.mock("@/lib/guest-trips.server", () => ({
   resolveTripOwnerForCreate: async () => holder.owner,
   getGuestTripStatusHandler: async () => ({}),
 }));
+vi.mock("@/lib/push.server", () => ({
+  // Same contract as the real one (idempotent on the event key), minus the web push itself.
+  createCustomerNotification: async (input: {
+    subject: string;
+    type: string;
+    title: string;
+    body: string;
+    href: string;
+    eventKey: string;
+    source: string;
+  }) => {
+    const p = holder.pool as {
+      query: (sql: string, args?: unknown[]) => Promise<{ rows: { id: string }[] }>;
+    };
+    const event = await p.query(
+      "insert into notification_events (event_key, event_type) values ($1,$2) on conflict (event_key) do nothing returning id",
+      [input.eventKey, input.type],
+    );
+    if (!event.rows[0]) return { created: false, notificationId: null, sent: 0 };
+    await p.query(
+      "insert into customer_notifications (event_id, recipient_customer_auth_subject, type, title, body, action_href) values ($1,$2,$3,$4,$5,$6)",
+      [event.rows[0].id, input.subject, input.type, input.title, input.body, input.href],
+    );
+    return { created: true, notificationId: event.rows[0].id, sent: 0 };
+  },
+}));
 vi.mock("@/lib/google-calendar.server", () => ({
   syncItineraryItem: async () => undefined,
   renameGoogleFiles: async () => undefined,
 }));
 
 import {
+  resetReminderThrottle,
+  sweepAssistantReminders,
+} from "@/lib/trip-assistant-reminders.server";
+import { nominatimVenue } from "@/lib/trip-assistant-places.server";
+import {
   assistantApplyHandler,
   assistantDismissHandler,
   assistantLoadHandler,
   assistantResetHandler,
   assistantSendHandler,
+  assistantStreamHandler,
   assistantUndoHandler,
   clearAssistantBurst,
   purgeAssistantHistory,
 } from "@/lib/trip-assistant.server";
 
+type Item = { note: string | null; hours: unknown; lat: number | null; lng: number | null };
 const TRIP = "11111111-1111-4111-8111-111111111111";
 const I1 = "dddddddd-dddd-4ddd-8ddd-ddddddddddd1";
 let pool: pg.Pool;
 let nextAnswer: unknown = null;
 let failAi = false;
+const nominatimCalls: string[] = [];
+const nominatimRows: Record<string, unknown> = {};
 
 const answer = (over: Record<string, unknown>) => ({
   reply: "Ini usulan saya.",
@@ -101,6 +136,8 @@ async function reset() {
     "058_trip_assistant",
   ])
     await pool.query(readFileSync(resolve(`migrations/${file}.sql`), "utf8"));
+  await pool.query(`create table notification_events (id uuid primary key default gen_random_uuid(), event_key text not null unique, event_type text not null);
+    create table customer_notifications (id uuid primary key default gen_random_uuid(), event_id uuid not null, recipient_customer_auth_subject text not null, type text not null, title text not null, body text not null, action_href text, created_at timestamptz not null default now())`);
 }
 
 async function seed() {
@@ -139,20 +176,48 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
     process.env["HELIPOD_AI_KEY"] = "test-key";
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (input: string | URL) => {
+      vi.fn(async (input: string | URL, init?: RequestInit) => {
         const target = String(input);
         if (target.includes("frankfurter"))
           return new Response(JSON.stringify({ date: "2026-11-09", rates: { IDR: 105 } }), {
             status: 200,
           });
+        if (target.includes("nominatim")) {
+          nominatimCalls.push(target);
+          const q = new URL(target).searchParams.get("q") ?? "";
+          const row = nominatimRows[q];
+          return new Response(JSON.stringify(row ? [row] : []), { status: 200 });
+        }
         if (failAi) return new Response("boom", { status: 500 });
-        return new Response(
-          JSON.stringify({
-            choices: [{ message: { content: JSON.stringify(nextAnswer) } }],
-            usage: { prompt_tokens: 2000, completion_tokens: 800 },
-          }),
-          { status: 200 },
-        );
+        const content = JSON.stringify(nextAnswer);
+        const usage = { prompt_tokens: 2000, completion_tokens: 800 };
+        const wantsStream = String(init?.body ?? "").includes('"stream":true');
+        if (wantsStream) {
+          const encoder = new TextEncoder();
+          const pieces = content.match(/.{1,12}/gs) ?? [];
+          const body = new ReadableStream({
+            start(controller) {
+              for (const piece of pieces)
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`,
+                  ),
+                );
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ choices: [], usage })}\n\n`),
+              );
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              controller.close();
+            },
+          });
+          return new Response(body, {
+            status: 200,
+            headers: { "content-type": "text/event-stream" },
+          });
+        }
+        return new Response(JSON.stringify({ choices: [{ message: { content } }], usage }), {
+          status: 200,
+        });
       }),
     );
     await reset();
@@ -164,6 +229,10 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
   beforeEach(async () => {
     holder.owner = { id: "u1", email: "a@b.c", guest: false };
     failAi = false;
+    nominatimCalls.length = 0;
+    for (const k of Object.keys(nominatimRows)) delete nominatimRows[k];
+    await pool.query("delete from customer_notifications");
+    await pool.query("delete from notification_events");
     clearAssistantBurst();
     await seed();
     await pool.query("delete from travel_assistant_messages");
@@ -427,6 +496,202 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
     );
     const out = await purgeAssistantHistory(Date.now() + 10 * 3_600_000);
     expect(out.messages).toBe(1);
+  });
+
+  describe("streaming, place checks, reminders", () => {
+    const city = async () =>
+      pool.query(
+        "insert into travel_trip_cities (trip_id, name, latitude, longitude) values ($1,'Tokyo',35.68,139.76)",
+        [TRIP],
+      );
+    const planAnswer = (items: ReturnType<typeof add>[]) =>
+      answer({ kind: "agenda", title: "Hari ke-3", agenda: items });
+
+    it("streams the reply in pieces and stores the same final messages", async () => {
+      nextAnswer = answer({
+        reply: "Halo, ini jawaban yang cukup panjang untuk dipotong.",
+        chips: ["Ya"],
+      });
+      const seen: string[] = [];
+      let done: unknown = null;
+      for await (const event of assistantStreamHandler({ data: { tripId: TRIP, text: "halo" } })) {
+        if (event.type === "delta") seen.push(event.text);
+        if (event.type === "done") done = event.result;
+      }
+      expect(seen.length).toBeGreaterThan(2);
+      expect(seen.join("")).toBe("Halo, ini jawaban yang cukup panjang untuk dipotong.");
+      expect(done).toMatchObject({ status: "ok" });
+      const history = await assistantLoadHandler({ data: { tripId: TRIP } });
+      expect(history.messages.at(-1)).toMatchObject({
+        content: "Halo, ini jawaban yang cukup panjang untuk dipotong.",
+        chips: { options: ["Ya"] },
+      });
+      const run = (await pool.query("select tokens_in, tokens_out from travel_assistant_runs"))
+        .rows[0];
+      expect(run).toMatchObject({ tokens_in: 2000, tokens_out: 800 });
+    });
+
+    it("reports a streamed failure as a result, not a crash", async () => {
+      failAi = true;
+      const events: string[] = [];
+      let done: { status?: string } = {};
+      for await (const event of assistantStreamHandler({ data: { tripId: TRIP, text: "halo" } })) {
+        events.push(event.type);
+        if (event.type === "done") done = event.result;
+      }
+      expect(done.status).toBe("error");
+      expect(events.at(-1)).toBe("done");
+    });
+
+    it("puts a pin and the real opening hours on proposed places, and flags a closed one", async () => {
+      await city();
+      nominatimRows["Shibuya Sky"] = {
+        lat: "35.6582",
+        lon: "139.7022",
+        display_name: "Shibuya Sky, Shibuya, Tokyo",
+        extratags: { opening_hours: "10:00-20:00" },
+      };
+      nominatimRows["Uobei Shibuya"] = {
+        lat: "35.6594",
+        lon: "139.6977",
+        display_name: "Uobei, Shibuya, Tokyo",
+        extratags: {},
+      };
+      nominatimRows["Tempat Jauh"] = {
+        lat: "34.0",
+        lon: "135.0",
+        display_name: "Far away",
+        extratags: { opening_hours: "24/7" },
+      };
+      nextAnswer = planAnswer([
+        { ...add("Shibuya Sky", "16:30"), location: "", note: "cek jam buka" },
+        { ...add("Uobei Shibuya", "18:30"), location: "", note: "" },
+        { ...add("Shibuya Sky", "22:30"), title: "Shibuya Sky", location: "", note: "" },
+        { ...add("Tempat Jauh", "12:00"), location: "", note: "" },
+        { ...add("Tempat Tidak Ada", "13:00"), location: "", note: "" },
+      ]);
+      const proposal = proposalOf(await send("buatkan itinerary", "plan"));
+      const items = (proposal.payload as { items: Item[] }).items;
+      expect(items[0]).toMatchObject({ lat: 35.6582, hours: { raw: "10:00-20:00", open: true } });
+      expect(items[0]!.note).toBe("Buka 10:00-20:00 (OpenStreetMap)");
+      expect(items[1]).toMatchObject({ lat: 35.6594, hours: null });
+      expect(items[1]!.note).toBe("cek jam buka");
+      expect(items[2]!.hours).toMatchObject({ open: false });
+      expect(items[2]!.note).toMatch(/^Mungkin tutup di jam ini: buka 10:00-20:00/);
+      expect(items[3]).toMatchObject({ lat: null, hours: null }); // too far from the trip's city
+      expect(items[4]).toMatchObject({ lat: null, hours: null });
+      expect(items[4]!.note).toBe("cek jam buka");
+
+      await assistantApplyHandler({ data: { proposalId: proposal.id } });
+      const saved = (
+        await pool.query(
+          "select title, latitude, longitude, notes from travel_itinerary_items where title='Shibuya Sky' order by start_time",
+        )
+      ).rows;
+      expect(saved[0]).toMatchObject({ latitude: 35.6582, longitude: 139.7022 });
+      expect(saved[0].notes).toContain("OpenStreetMap");
+    });
+
+    it("does not call the map when Admin turned the place check off, and still says cek jam buka", async () => {
+      await city();
+      await pool.query(
+        `insert into admin_settings (setting_key, value_json, version) values ('tripAssistant', '{"verifyHours":false}'::jsonb, 1)`,
+      );
+      nextAnswer = planAnswer([{ ...add("Shibuya Sky", "16:30"), note: "" }]);
+      const proposal = proposalOf(await send("buatkan itinerary", "plan"));
+      expect(nominatimCalls).toHaveLength(0);
+      expect((proposal.payload as { items: Item[] }).items[0]).toMatchObject({
+        lat: null,
+        hours: null,
+      });
+    });
+
+    it("asks Nominatim politely: one at a time, bounded, cached", async () => {
+      nominatimRows["Cache Cafe"] = {
+        lat: "35.7",
+        lon: "139.7",
+        display_name: "Cache Cafe",
+        extratags: {},
+      };
+      const near = { lat: 35.68, lng: 139.76 };
+      const t0 = Date.now();
+      await nominatimVenue("Cache Cafe", near);
+      await nominatimVenue("Cache Cafe", near);
+      expect(nominatimCalls).toHaveLength(1);
+      expect(new URL(nominatimCalls[0]!).searchParams.get("bounded")).toBe("1");
+      expect(Date.now() - t0).toBeLessThan(3000);
+    });
+
+    describe("reminders", () => {
+      beforeEach(async () => {
+        resetReminderThrottle();
+        await pool.query("delete from travel_trips where id = $1", [TRIP]);
+      });
+      const jakartaMorning = () => Date.UTC(2026, 10, 9, 3, 0); // 10:00 Jakarta
+      let clock = 0;
+      const next = () => (clock += 31 * 60_000) + jakartaMorning();
+      const trip = async (
+        id: string,
+        subject: string,
+        depOffset: number,
+        retOffset: number,
+        budget = 0,
+      ) =>
+        pool.query(
+          `insert into travel_trips (id,customer_auth_subject,name,destination_code,destination_name,departure_date,return_date,primary_currency,total_budget_minor)
+         values ($1,$2,'Bali','ID','Bali',(now() at time zone 'Asia/Jakarta')::date + $3::int,(now() at time zone 'Asia/Jakarta')::date + $4::int,'IDR',$5)`,
+          [id, subject, depOffset, retOffset, budget],
+        );
+      const notes = async () =>
+        (
+          await pool.query(
+            "select recipient_customer_auth_subject s, title from customer_notifications order by title",
+          )
+        ).rows;
+
+      it("sends one useful reminder to a member, once, and never to guests", async () => {
+        await trip("22222222-2222-4222-8222-222222222222", "u1", 5, 9, 0);
+        await trip("33333333-3333-4333-8333-333333333333", "guest:abc", 5, 9, 0);
+        const first = await sweepAssistantReminders(next());
+        expect(first).toMatchObject({ skipped: null, sent: 1 });
+        expect(await notes()).toEqual([{ s: "u1", title: "Anggaran Bali belum diatur" }]);
+        const again = await sweepAssistantReminders(next());
+        expect(again.sent).toBe(0);
+        expect(await notes()).toHaveLength(1);
+      });
+
+      it("sends at most one per traveler per day, even with two needy trips", async () => {
+        await trip("22222222-2222-4222-8222-222222222222", "u1", 5, 9, 0);
+        await trip("44444444-4444-4444-8444-444444444444", "u1", 6, 9, 0);
+        expect((await sweepAssistantReminders(next())).sent).toBe(1);
+        expect(await notes()).toHaveLength(1);
+      });
+
+      it("respects quiet hours, the Admin switch and trips that need nothing", async () => {
+        await trip("22222222-2222-4222-8222-222222222222", "u1", 5, 9, 0);
+        expect(
+          (await sweepAssistantReminders(Date.UTC(2026, 10, 9, 18, 0) + (clock += 31 * 60_000)))
+            .skipped,
+        ).toBe("quiet_hours");
+        resetReminderThrottle();
+        await pool.query(
+          `insert into admin_settings (setting_key, value_json, version) values ('tripAssistant', '{"reminders":false}'::jsonb, 1)`,
+        );
+        expect((await sweepAssistantReminders(next())).skipped).toBe("off");
+        resetReminderThrottle();
+        resetReminderThrottle();
+        await pool.query("delete from admin_settings");
+        await pool.query("delete from travel_trips where id <> $1", [TRIP]);
+        await trip("55555555-5555-4555-8555-555555555555", "u1", 40, 45, 0);
+        expect((await sweepAssistantReminders(next())).sent).toBe(0);
+      });
+
+      it("throttles itself to every half hour", async () => {
+        const t = next();
+        await sweepAssistantReminders(t);
+        expect((await sweepAssistantReminders(t + 60_000)).skipped).toBe("throttled");
+      });
+    });
   });
 });
 

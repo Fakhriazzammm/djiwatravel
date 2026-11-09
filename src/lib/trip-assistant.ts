@@ -27,6 +27,10 @@ export type TripAssistantConfig = {
   allowAgenda: boolean;
   /** The AI may propose a budget split, checklist items and logged expenses. */
   allowBudget: boolean;
+  /** Look each proposed place up on the map and read its OpenStreetMap opening hours. */
+  verifyHours: boolean;
+  /** Send an occasional push/inbox reminder about an upcoming trip (members only). */
+  reminders: boolean;
   /** Messages per member per day (Asia/Jakarta). */
   dailyMessages: number;
   /** Messages per guest per day. */
@@ -50,6 +54,8 @@ export const DEFAULT_TRIP_ASSISTANT_CONFIG: TripAssistantConfig = {
   guestEnabled: true,
   allowAgenda: true,
   allowBudget: true,
+  verifyHours: true,
+  reminders: true,
   dailyMessages: 30,
   guestDailyMessages: 10,
   maxAgendaItems: 10,
@@ -71,7 +77,14 @@ export function parseTripAssistantConfig(value: unknown): TripAssistantConfig {
     throw new Error("tripAssistant harus berupa objek");
   const raw = value as Record<string, unknown>;
   const d = DEFAULT_TRIP_ASSISTANT_CONFIG;
-  for (const key of ["enabled", "guestEnabled", "allowAgenda", "allowBudget"] as const) {
+  for (const key of [
+    "enabled",
+    "guestEnabled",
+    "allowAgenda",
+    "allowBudget",
+    "verifyHours",
+    "reminders",
+  ] as const) {
     if (raw[key] !== undefined && typeof raw[key] !== "boolean")
       throw new Error(`tripAssistant.${key} harus boolean`);
   }
@@ -97,6 +110,8 @@ export function parseTripAssistantConfig(value: unknown): TripAssistantConfig {
     guestEnabled: (raw["guestEnabled"] as boolean | undefined) ?? d.guestEnabled,
     allowAgenda: (raw["allowAgenda"] as boolean | undefined) ?? d.allowAgenda,
     allowBudget: (raw["allowBudget"] as boolean | undefined) ?? d.allowBudget,
+    verifyHours: (raw["verifyHours"] as boolean | undefined) ?? d.verifyHours,
+    reminders: (raw["reminders"] as boolean | undefined) ?? d.reminders,
     dailyMessages: num("dailyMessages", 1, 500),
     guestDailyMessages: num("guestDailyMessages", 0, 200),
     maxAgendaItems: num("maxAgendaItems", 3, 15),
@@ -177,6 +192,11 @@ export type AgendaChange = {
   category: string | null;
   estimatedCostMinor: number | null;
   note: string | null;
+  /** Map point found for a new place (so it also gets a pin), null when not found or not checked. */
+  lat: number | null;
+  lng: number | null;
+  /** OpenStreetMap hours for the day and whether the planned time falls inside them (null = unknown). */
+  hours: { raw: string; open: boolean | null } | null;
 };
 export type BudgetProposal = {
   totalMinor: number | null;
@@ -559,6 +579,9 @@ export function cleanAssistantReply(parsed: unknown, ctx: CleanContext): Cleaned
         category: clean(r["category"], 40) || null,
         estimatedCostMinor: cost > 0 ? toMinor(cost, ctx.currency) : null,
         note: clean(r["note"], 400) || null,
+        lat: null,
+        lng: null,
+        hours: null,
       });
     }
     if (!items.length) return drop("agenda_empty");
@@ -737,3 +760,101 @@ export function buildNudges(input: {
 /** Cost of one call in Rupiah (model prices checked against the gateway list). */
 export const assistantCostIdr = (model: string, usage: { input: number; output: number }) =>
   Math.round(estimateCostIdr(model, usage) * 100) / 100;
+
+/* ------------------------------------------------------------------------------ streaming */
+
+/**
+ * The model answers one JSON object whose first field is `reply`. While it streams, this returns
+ * the reply text decoded so far (so the screen can show it word by word) and whether the closing
+ * quote has arrived. A half-received escape such as `\u00` is held back until it completes.
+ */
+export function extractReplyPrefix(buffer: string): { text: string; done: boolean } {
+  const start = buffer.match(/"reply"\s*:\s*"/);
+  if (!start || start.index === undefined) return { text: "", done: false };
+  let i = start.index + start[0].length;
+  let out = "";
+  while (i < buffer.length) {
+    const c = buffer[i]!;
+    if (c === '"') return { text: out, done: true };
+    if (c !== "\\") {
+      out += c;
+      i += 1;
+      continue;
+    }
+    const next = buffer[i + 1];
+    if (next === undefined) break;
+    if (next === "u") {
+      const hex = buffer.slice(i + 2, i + 6);
+      if (hex.length < 4) break;
+      out += String.fromCharCode(Number.parseInt(hex, 16) || 63);
+      i += 6;
+      continue;
+    }
+    const map: Record<string, string> = {
+      n: "\n",
+      t: "\t",
+      r: "",
+      b: "",
+      f: "",
+      '"': '"',
+      "\\": "\\",
+      "/": "/",
+    };
+    out += map[next] ?? next;
+    i += 2;
+  }
+  return { text: out, done: false };
+}
+
+/* ---------------------------------------------------------------------------- reminders */
+
+export type ReminderInput = {
+  tripId: string;
+  name: string;
+  /** Days from today (Asia/Jakarta) to departure; zero or negative once the trip has started. */
+  daysToDeparture: number;
+  /** Days from today to the return date; negative once the trip is over. */
+  daysToReturn: number;
+  budgetSet: boolean;
+  itemCount: number;
+  todayItemCount: number;
+  openChecklist: number;
+  today: string;
+};
+
+export type Reminder = { eventKey: string; title: string; body: string };
+
+/**
+ * The one reminder worth sending for a trip right now, or null. Each kind has a stable key, so a
+ * traveler hears about the same thing once (the daily one carries the date). Order = urgency.
+ */
+export function pickReminder(t: ReminderInput): Reminder | null {
+  const key = (kind: string) => `assistant:${t.tripId}:${kind}`;
+  const ongoing = t.daysToDeparture <= 0 && t.daysToReturn >= 0;
+  if (ongoing && t.todayItemCount === 0)
+    return {
+      eventKey: key(`today:${t.today}`),
+      title: "Hari ini belum ada agenda",
+      body: `Mau saya susunkan rencana hari ini untuk ${t.name}? Buka Ringkas dan tanya asisten.`,
+    };
+  const upcoming = t.daysToDeparture >= 0 && t.daysToDeparture <= 14;
+  if (upcoming && !t.budgetSet)
+    return {
+      eventKey: key("budget"),
+      title: `Anggaran ${t.name} belum diatur`,
+      body: "Asisten bisa membagi anggaran per kategori dalam satu ketukan.",
+    };
+  if (t.daysToDeparture >= 1 && t.daysToDeparture <= 7 && t.itemCount === 0)
+    return {
+      eventKey: key("agenda"),
+      title: `Agenda ${t.name} masih kosong`,
+      body: `Berangkat ${t.daysToDeparture} hari lagi. Minta asisten menyusun itinerary.`,
+    };
+  if (t.daysToDeparture >= 0 && t.daysToDeparture <= 3 && t.openChecklist > 0)
+    return {
+      eventKey: key("checklist"),
+      title: `${t.openChecklist} persiapan belum selesai`,
+      body: `Berangkat ${t.daysToDeparture === 0 ? "hari ini" : `${t.daysToDeparture} hari lagi`}. Cek checklist bersama asisten.`,
+    };
+  return null;
+}

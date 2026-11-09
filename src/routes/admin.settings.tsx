@@ -114,6 +114,7 @@ function AdminSettings() {
           stats={tripAssistant.stats}
           recent={tripAssistant.recent}
           keyConfigured={tripAssistant.keyConfigured}
+          reminderSent={tripAssistant.reminders.sent30d}
         />
       </section>
       <section id="guests" className="scroll-mt-24">

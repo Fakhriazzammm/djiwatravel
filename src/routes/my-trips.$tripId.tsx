@@ -200,6 +200,12 @@ function TripDetail() {
           (c) => Number(c.allocated_minor) > 0,
         )}
         currency={currency}
+        categories={(data.budget as { id: string; name: string }[]).map((c) => ({
+          id: c.id,
+          name: String(c.name),
+        }))}
+        budgetMinor={budget}
+        spentMinor={budget - remaining}
         departureDate={trip.departure_date}
         returnDate={trip.return_date}
         remainingLabel={money(remaining, currency)}

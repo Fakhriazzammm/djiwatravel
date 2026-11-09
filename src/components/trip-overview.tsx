@@ -81,6 +81,10 @@ type Props = {
   /** Some budget category already has an amount (the AI offers to split it when not). */
   budgetAllocated?: boolean | undefined;
   currency?: string | undefined;
+  /** Budget categories and totals the receipt scanner opened from the chat needs. */
+  categories?: { id: string; name: string }[] | undefined;
+  budgetMinor?: number | undefined;
+  spentMinor?: number | undefined;
   departureDate?: string | null | undefined;
   returnDate?: string | null | undefined;
   remainingLabel: string;
@@ -789,6 +793,12 @@ export function TripOverview(props: Props) {
           tripId={tripId}
           destination={props.destination}
           currency={props.currency ?? "IDR"}
+          categories={props.categories ?? []}
+          budget={
+            props.budgetMinor && props.budgetMinor > 0
+              ? { budgetMinor: props.budgetMinor, spentMinor: props.spentMinor ?? 0 }
+              : null
+          }
           nudgeInput={nudgeInput}
           onChanged={props.onChanged}
           onAdd={() => setAddOpen(true)}
