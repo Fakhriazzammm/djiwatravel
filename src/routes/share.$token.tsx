@@ -139,7 +139,7 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
     <Page tabs={false}>
       <header className="pt-3">
         <div className="flex items-center justify-between gap-3">
-          <Wordmark className="h-7" />
+          <Wordmark className="h-10" />
           <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
             <ShieldCheck className="size-3" /> Baca-saja
           </span>

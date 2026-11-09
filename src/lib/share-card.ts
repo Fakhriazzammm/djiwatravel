@@ -102,25 +102,16 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
   ctx.fillStyle = fade;
   ctx.fillRect(0, 0, W, coverH);
 
-  // Logo as a white silhouette (no pill) so it reads on any photo.
+  // Original logo (full colour) with a soft white halo so it reads on any photo.
   if (logo) {
-    const lh = 84;
+    const lh = 120;
     const lw = (logo.width / logo.height) * lh;
-    const tint = document.createElement("canvas");
-    tint.width = Math.ceil(lw);
-    tint.height = lh;
-    const tctx = tint.getContext("2d");
-    if (tctx) {
-      tctx.drawImage(logo, 0, 0, lw, lh);
-      tctx.globalCompositeOperation = "source-in";
-      tctx.fillStyle = "#fff";
-      tctx.fillRect(0, 0, tint.width, tint.height);
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.45)";
-      ctx.shadowBlur = 18;
-      ctx.drawImage(tint, 64, 64);
-      ctx.restore();
-    }
+    ctx.save();
+    ctx.shadowColor = "rgba(255,255,255,0.95)";
+    ctx.shadowBlur = 28;
+    ctx.drawImage(logo, 56, 56, lw, lh);
+    ctx.drawImage(logo, 56, 56, lw, lh);
+    ctx.restore();
   }
 
   // Title block
@@ -182,7 +173,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
   if (input.owner)
     ctx.fillText(fit(ctx, `${input.owner} · Member Djiwa Travel`, W - 128), 64, H - 150);
   ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.font = `500 24px ${font}`;
+  ctx.font = `500 20px ${font}`;
   ctx.fillText(fit(ctx, input.link, W - 128), 64, H - 96);
 
   return new Promise((resolve, reject) =>
