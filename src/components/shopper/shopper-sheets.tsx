@@ -143,7 +143,8 @@ export function ProductSheet({
           cartActions.add(
             {
               productId: product.id,
-              size,
+              // Bags have no sizes; the order line still needs a value, shown as nothing.
+              size: size || "-",
               color,
               quantity: qty,
               name: productTitle(product),
@@ -592,7 +593,7 @@ export function CartSheet({
                   <p className="text-[11px] text-muted-foreground">
                     {l.marketItemId
                       ? `${l.brand === "rakuten" ? "Rakuten" : "Mercari"}${l.variant ? ` · ${l.variant}` : ""}`
-                      : `${brandById(l.brand)?.name} · ${l.size}${l.color ? ` · ${l.color}` : ""}`}{" "}
+                      : `${brandById(l.brand)?.name}${l.size !== "-" ? ` · ${l.size}` : ""}${l.color ? ` · ${l.color}` : ""}`}{" "}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {formatMinor(l.unitMinor, money.symbol)} × kurs{" "}

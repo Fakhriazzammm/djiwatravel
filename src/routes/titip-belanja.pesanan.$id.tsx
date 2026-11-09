@@ -167,7 +167,7 @@ function ShopperOrder() {
             <span className="min-w-0 flex-1">
               <span className="line-clamp-1 block text-[13px] font-semibold">{l.name}</span>
               <span className="block text-[11px] text-muted-foreground">
-                {l.market_item_id ? (l.variant ?? "") : l.size}
+                {l.market_item_id ? (l.variant ?? "") : l.size === "-" ? "" : l.size}
                 {l.color ? ` · ${l.color}` : ""} · {l.quantity} ×{" "}
                 {order.currency === "JPY" ? "¥" : `${order.currency} `}
                 {l.unit_minor.toLocaleString("id-ID")} = {formatIdr(l.unit_idr * l.quantity)}

@@ -282,7 +282,11 @@ function OrderCard({
               <span className="block font-semibold">{l.name}</span>
               <span className="text-muted-foreground">
                 {l.brand} · {l.product_code} ·{" "}
-                {l.market_item_id ? `pilihan: ${l.variant ?? "-"}` : `ukuran ${l.size}`}
+                {l.market_item_id
+                  ? `pilihan: ${l.variant ?? "-"}`
+                  : l.size === "-"
+                    ? "tanpa ukuran"
+                    : `ukuran ${l.size}`}
                 {l.color ? ` · ${l.color}` : ""} · {l.quantity} × ¥
                 {l.unit_minor.toLocaleString("id-ID")}
               </span>

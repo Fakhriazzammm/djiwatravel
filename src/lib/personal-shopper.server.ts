@@ -45,6 +45,15 @@ import {
   type ShopperOrderStatus,
   type ShopperProduct,
 } from "./personal-shopper";
+import {
+  BAG_SOURCES,
+  carrotSearchUrl,
+  isBagBrand,
+  longchampSearchUrl,
+  parseCarrotPage,
+  parseLongchampPage,
+  type BagBrand,
+} from "./shopper-bags";
 
 /* ------------------------------------------------------------------ config */
 
@@ -135,6 +144,62 @@ async function upsertRows(rows: CatalogRow[], discovery = false) {
       ],
     );
   }
+}
+
+async function fetchPage(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      "user-agent": "Mozilla/5.0 (compatible; DjiwaTravelCatalog/1.0; +https://djiwatravel.com)",
+      accept: "text/html",
+      "accept-language": "ja",
+    },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error(`store_${response.status}`);
+  const html = await response.text();
+  if (html.length > 6_000_000) throw new Error("store_format");
+  return html;
+}
+
+/** Bag brands: read the stores' public search pages (Carrot Online, Longchamp). */
+async function refreshBagBrand(brand: BagBrand, trigger: string) {
+  const run = await pool.query(
+    "insert into shopping_catalog_runs (brand, trigger) values ($1, $2) returning id",
+    [brand, trigger],
+  );
+  const runId = (run.rows[0] as { id: string }).id;
+  const source = BAG_SOURCES[brand];
+  const best = new Map<string, CatalogRow>();
+  let seen = 0;
+  let firstError: string | null = null;
+  const targets =
+    source.kind === "carrot"
+      ? source.keywords.flatMap((k) =>
+          Array.from({ length: source.pages }, (_, i) => carrotSearchUrl(k, i + 1)),
+        )
+      : source.queries.map(longchampSearchUrl);
+  for (const url of targets) {
+    try {
+      const html = await fetchPage(url);
+      const rows =
+        source.kind === "carrot" ? parseCarrotPage(html, brand) : parseLongchampPage(html);
+      seen += rows.length;
+      for (const row of rows) {
+        const current = best.get(row.productCode);
+        if (!current || row.trendScore > current.trendScore) best.set(row.productCode, row);
+      }
+    } catch (error) {
+      firstError ??= error instanceof Error ? error.message.slice(0, 120) : "store_error";
+    }
+    await sleep(700);
+  }
+  const rows = [...best.values()];
+  if (rows.length > 0) await upsertRows(rows);
+  await pool.query(
+    "update shopping_catalog_runs set finished_at = now(), items_seen = $2, items_saved = $3, error = $4 where id = $1",
+    [runId, seen, rows.length, rows.length === 0 ? (firstError ?? "no_items") : firstError],
+  );
+  return { brand, seen, saved: rows.length, error: firstError };
 }
 
 /** One brand: run the seed searches, keep the best position of each product, save, log the run. */
@@ -294,7 +359,11 @@ async function runRefresh(trigger: string) {
   const results = [];
   for (const brand of SHOPPER_BRANDS) {
     if (!brand.adapter || !config.brands[brand.id]) continue;
-    results.push(await refreshBrand(brand.id as "uniqlo" | "gu", trigger));
+    results.push(
+      isBagBrand(brand.id)
+        ? await refreshBagBrand(brand.id, trigger)
+        : await refreshBrand(brand.id as "uniqlo" | "gu", trigger),
+    );
   }
   const translated = await translateMissingNames().catch(() => 0);
   catalogCache.clear();

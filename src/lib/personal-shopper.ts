@@ -6,8 +6,8 @@
 export const SHOPPER_SETTING_KEY = "personalShopper";
 
 export type ShopperCountryCode = "JP" | "KR" | "TH" | "SG";
-export type ShopperBrandId = "uniqlo" | "gu" | "donki" | "muji";
-export type ShopperCategory = "Atasan" | "Bawahan" | "Jaket" | "Inner" | "Lainnya";
+export type ShopperBrandId = "uniqlo" | "gu" | "legato" | "anello" | "longchamp" | "donki" | "muji";
+export type ShopperCategory = "Atasan" | "Bawahan" | "Jaket" | "Inner" | "Tas" | "Lainnya";
 export type ShopperSort = "pop" | "best" | "low" | "high" | "new";
 
 export const SHOPPER_COUNTRIES: readonly {
@@ -35,6 +35,23 @@ export const SHOPPER_BRANDS: readonly {
   { id: "uniqlo", name: "Uniqlo", monogram: "UQ", color: "#e60012", country: "JP", adapter: true },
   { id: "gu", name: "GU", monogram: "GU", color: "#1d1d1f", country: "JP", adapter: true },
   {
+    id: "legato",
+    name: "Legato Largo",
+    monogram: "LL",
+    color: "#1f6f5c",
+    country: "JP",
+    adapter: true,
+  },
+  { id: "anello", name: "anello", monogram: "AN", color: "#e8663d", country: "JP", adapter: true },
+  {
+    id: "longchamp",
+    name: "Longchamp",
+    monogram: "LC",
+    color: "#0b2a5b",
+    country: "JP",
+    adapter: true,
+  },
+  {
     id: "donki",
     name: "Don Quijote",
     monogram: "DQ",
@@ -50,6 +67,7 @@ export const SHOPPER_CATEGORIES: readonly ShopperCategory[] = [
   "Bawahan",
   "Jaket",
   "Inner",
+  "Tas",
 ];
 
 export const SHOPPER_SORTS: readonly { id: ShopperSort; label: string }[] = [
@@ -105,7 +123,15 @@ export type ShopperConfig = {
 export const DEFAULT_SHOPPER_CONFIG: ShopperConfig = {
   enabled: false,
   countries: { JP: true, KR: false, TH: false, SG: false },
-  brands: { uniqlo: true, gu: true, donki: false, muji: false },
+  brands: {
+    uniqlo: true,
+    gu: true,
+    legato: true,
+    anello: true,
+    longchamp: true,
+    donki: false,
+    muji: false,
+  },
   feePercent: 10,
   shippingIdr: 60_000,
   rates: { JPY: 105, KRW: 11.5, THB: 460, SGD: 12_000 },
@@ -403,6 +429,19 @@ const SEARCH_ALIASES: Record<string, string[]> = {
   wide: ["ワイド"],
   socks: ["ソックス"],
   kaos_kaki: ["ソックス"],
+  tas: ["バッグ", "ポーチ"],
+  bag: ["バッグ"],
+  ransel: ["リュック"],
+  backpack: ["リュック"],
+  rucksack: ["リュック"],
+  tote: ["トート"],
+  selempang: ["ショルダー", "ポシェット"],
+  shoulder: ["ショルダー"],
+  sling: ["ショルダー", "ボディ"],
+  pouch: ["ポーチ"],
+  dompet: ["財布", "ウォレット"],
+  wallet: ["財布", "ウォレット"],
+  pliage: ["プリアージュ"],
 };
 
 /** Lower-case terms (original + aliases) that a product name may contain. */
@@ -505,7 +544,7 @@ export const STORE_HOSTS: Record<"uniqlo" | "gu", string> = {
 };
 
 export type CatalogRow = {
-  brand: "uniqlo" | "gu";
+  brand: ShopperBrandId;
   productCode: string;
   name: string;
   category: ShopperCategory;
