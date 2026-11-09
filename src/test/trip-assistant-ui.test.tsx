@@ -82,6 +82,7 @@ const proposal = {
         location: "Tsukiji",
         category: "food",
         estimatedCostMinor: null,
+        place: null,
         note: null,
         lat: null,
         lng: null,

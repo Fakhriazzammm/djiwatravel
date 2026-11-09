@@ -105,6 +105,7 @@ const add = (title: string, start: string) => ({
   op: "add",
   id: "",
   title,
+  place: "",
   date: "2026-11-09",
   start,
   end: "",
@@ -590,6 +591,39 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
       ).rows;
       expect(saved[0]).toMatchObject({ latitude: 35.6582, longitude: 139.7022 });
       expect(saved[0].notes).toContain("OpenStreetMap");
+    });
+
+    it("finds the area itself when the trip has no city yet, and looks places up by their own name", async () => {
+      nominatimRows["Tsukiji, Tokyo"] = {
+        lat: "35.665",
+        lon: "139.77",
+        display_name: "Tsukiji, Chuo, Tokyo",
+        extratags: {},
+      };
+      nominatimRows["Hamarikyu Gardens"] = {
+        lat: "35.66",
+        lon: "139.763",
+        display_name: "Hamarikyu Gardens, Chuo, Tokyo",
+        extratags: { opening_hours: "09:00-17:00" },
+      };
+      nextAnswer = planAnswer([
+        {
+          ...add("Jalan santai di taman tepi laut", "10:30"),
+          place: "Hamarikyu Gardens",
+          location: "Tsukiji, Tokyo",
+          note: "",
+        },
+      ]);
+      const proposal = proposalOf(await send("buatkan itinerary", "plan"));
+      const item = (proposal.payload as { items: Item[] }).items[0]!;
+      expect(item).toMatchObject({ lat: 35.66, hours: { raw: "09:00-17:00", open: true } });
+      expect(
+        nominatimCalls.some(
+          (u) =>
+            new URL(u).searchParams.get("q") === "Tsukiji, Tokyo" &&
+            !new URL(u).searchParams.has("bounded"),
+        ),
+      ).toBe(true);
     });
 
     it("does not call the map when Admin turned the place check off, and still says cek jam buka", async () => {

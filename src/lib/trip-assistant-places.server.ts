@@ -19,10 +19,10 @@ const cache = new Map<string, VenueHit | null>();
 
 export async function nominatimVenue(
   name: string,
-  near: Point,
+  near: Point | null,
   fetcher: typeof fetch = fetch,
 ): Promise<VenueHit | null> {
-  const key = `${near.lat.toFixed(2)},${near.lng.toFixed(2)}|${name.toLowerCase()}`;
+  const key = `${near ? `${near.lat.toFixed(2)},${near.lng.toFixed(2)}` : "-"}|${name.toLowerCase()}`;
   if (cache.has(key)) return cache.get(key) ?? null;
   const slot = Math.max(Date.now(), lastRequest + 1100);
   lastRequest = slot;
@@ -35,8 +35,12 @@ export async function nominatimVenue(
       limit: "1",
       extratags: "1",
       "accept-language": "en",
-      bounded: "1",
-      viewbox: `${near.lng - 0.45},${near.lat + 0.35},${near.lng + 0.45},${near.lat - 0.35}`,
+      ...(near
+        ? {
+            bounded: "1",
+            viewbox: `${near.lng - 0.45},${near.lat + 0.35},${near.lng + 0.45},${near.lat - 0.35}`,
+          }
+        : {}),
       q: name,
     }).toString();
     const response = await fetcher(url, {
@@ -105,21 +109,39 @@ export function hoursNote(
   return existing ? `${existing} · cek jam buka` : "cek jam buka";
 }
 
-/** Fills `lat`/`lng`/`hours` and the note on the new places of an agenda proposal, in place. */
+/**
+ * Fills `lat`/`lng`/`hours` and the note on the new places of an agenda proposal, in place. With
+ * no city or point on the trip yet, the first place's area ("Tsukiji, Tokyo") is looked up to
+ * decide where "near" is; every other place must then be within 60 km of it.
+ */
 export async function verifyAgendaPlaces(
   items: AgendaChange[],
   tripId: string,
-  _facts: Pick<TripFacts, "destination">,
+  facts: Pick<TripFacts, "destination">,
   options: { budgetMs?: number; maxItems?: number; fetcher?: typeof fetch } = {},
 ) {
-  const anchor = await tripAnchor(tripId);
-  const deadline = Date.now() + (options.budgetMs ?? 14_000);
+  let anchor = await tripAnchor(tripId);
+  const deadline = Date.now() + (options.budgetMs ?? 16_000);
+  const maxItems = options.maxItems ?? 10;
   let checked = 0;
+  if (!anchor) {
+    const first = items.find(
+      (item) => item.op === "add" && (item.location || item.place || item.title),
+    );
+    if (first) {
+      const area = await nominatimVenue(
+        first.location || `${first.place || first.title}, ${facts.destination}`,
+        null,
+        options.fetcher,
+      );
+      if (area) anchor = { lat: area.lat, lng: area.lng };
+    }
+  }
   for (const item of items) {
     if (item.op !== "add" || !item.title) continue;
     const found =
-      anchor && checked < (options.maxItems ?? 6) && Date.now() < deadline
-        ? await nominatimVenue(item.title, anchor, options.fetcher)
+      anchor && checked < maxItems && Date.now() < deadline
+        ? await nominatimVenue(item.place || item.title, anchor, options.fetcher)
         : null;
     checked += 1;
     if (found && anchor && distanceKm(anchor, found) <= 60) {
