@@ -29,11 +29,13 @@ import {
   MapPin,
   Plane,
   Plus,
+  Share2,
   Ticket,
   Utensils,
   WalletCards,
 } from "lucide-react";
 import { AgendaMascotBubble } from "@/components/agenda-mascot-bubble";
+import { ShareTripSheet, type ShareLink } from "@/components/trip-share-sheet";
 import { CalendarConnectBanner } from "@/components/calendar-connect-banner";
 import ItineraryMap, { type PickedPoi } from "@/components/itinerary-map";
 import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
@@ -272,6 +274,7 @@ function TripSection() {
           <ItineraryEditor
             tripId={tripId}
             trip={trip}
+            share={(trip as { share?: ShareLink }).share ?? null}
             items={items}
             onSaved={refresh}
             mapConfig={(data.mapConfig as ItineraryMapConfig | null) ?? null}
@@ -317,6 +320,7 @@ export function ItineraryEditor({
   tripId,
   trip,
   items,
+  share = null,
   onSaved,
   mapConfig = null,
   placeIdeas = UNAVAILABLE_PLACE_IDEAS,
@@ -336,6 +340,8 @@ export function ItineraryEditor({
     return_date: string | null;
   };
   items: Item[];
+  /** The active read-only share link of this trip, if one exists (the share sheet creates or closes it). */
+  share?: ShareLink;
   onSaved: () => Promise<void>;
   mapConfig?: ItineraryMapConfig | null;
   /** AI place ideas (carousel + "Ke mana lagi ya?" sheet); hidden unless available. */
@@ -360,6 +366,7 @@ export function ItineraryEditor({
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [mapBroken, setMapBroken] = useState(false);
   const [poiOn, setPoiOn] = useState<PoiCategoryId[]>(() =>
     POI_CATEGORIES.filter((category) => category.defaultOn).map((category) => category.id),
@@ -881,6 +888,18 @@ export function ItineraryEditor({
                 </p>
               )}
             </div>
+            {trip && (
+              <button
+                type="button"
+                onClick={() => setShareOpen(true)}
+                aria-label="Bagikan itinerary"
+                className="tap grid size-11 shrink-0 place-items-center rounded-full text-brand-red"
+              >
+                <span className="grid size-9 place-items-center rounded-full bg-brand-red-soft">
+                  <Share2 className="size-4" aria-hidden="true" />
+                </span>
+              </button>
+            )}
           </div>
           <CalendarConnectBanner />
           {mapOn && (model.pinnedCount > 0 || countryBounds !== null) ? (
@@ -1287,6 +1306,15 @@ export function ItineraryEditor({
           )}
         </section>
       </LayoutGroup>
+      {trip && (
+        <ShareTripSheet
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          trip={{ id: tripId, name: trip.name, destination_name: trip.destination_name }}
+          share={share}
+          onChanged={onSaved}
+        />
+      )}
     </MotionConfig>
   );
 }

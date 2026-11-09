@@ -518,7 +518,9 @@ export async function loadSharedTrip(token: string) {
     `select s.token, s.created_at as shared_at,
       t.id, t.name, t.destination_code, t.destination_name,
       t.departure_date::text as departure_date, t.return_date::text as return_date,
-      t.travelers_count, t.primary_currency, t.timezone
+      t.travelers_count, t.primary_currency, t.timezone,
+      (select p.display_name from customer_profiles p
+        where p.auth_user_id=t.customer_auth_subject limit 1) as owner_display_name
      from travel_trip_shares s
      join travel_trips t on t.id=s.trip_id
      where s.token=$1 and s.revoked_at is null
@@ -529,13 +531,21 @@ export async function loadSharedTrip(token: string) {
   const trip = share.rows[0];
   const itinerary = await pool.query(
     `select id, activity_date::text as activity_date, start_time, end_time, timezone,
-      title, location, latitude, longitude, notes, activity_category
+      title, location, latitude, longitude, notes, activity_category, place_image_url
      from travel_itinerary_items
      where trip_id=$1
      order by activity_date, start_time nulls last`,
     [trip.id],
   );
+  // Only the first name is public; the full profile name and contact never leave the server.
+  const ownerName =
+    String(trip.owner_display_name ?? "")
+      .trim()
+      .split(/\s+/)[0]
+      ?.slice(0, 40) || null;
+  delete trip.owner_display_name;
   return {
+    owner: { firstName: ownerName },
     trip,
     sharedAt: trip.shared_at as string,
     itinerary: itinerary.rows,
@@ -666,6 +676,8 @@ export async function getTripSectionData(tripId: string, section: string) {
   const returnDate = dateText(trip["return_date"]);
   const tripView = {
     ...trip,
+    // The Agenda shares the itinerary with the same link as Ringkas.
+    share: section === "itinerary" ? await getActiveTripShare(tripId) : null,
     cities: await loadTripCities(tripId),
     departure_date: departureDate,
     return_date: returnDate,

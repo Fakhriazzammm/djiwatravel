@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ItineraryEditor } from "@/routes/my-trips.$tripId.$section";
-import { postItinerary } from "@/lib/my-trips.fn";
+import { postItinerary, postTripShare } from "@/lib/my-trips.fn";
 
 vi.mock("@/lib/my-trips.fn", () => ({
   deleteBookingRecord: vi.fn(),
@@ -18,6 +18,9 @@ vi.mock("@/lib/my-trips.fn", () => ({
   postExpense: vi.fn(),
   postItinerary: vi.fn(),
   patchItinerary: vi.fn(),
+  postTripShare: vi.fn(),
+  deleteTripShare: vi.fn(),
+  getTripShare: vi.fn(),
 }));
 
 afterEach(cleanup);
@@ -60,5 +63,47 @@ describe("agenda perjalanan", () => {
     await waitFor(() =>
       expect(screen.queryByRole("form", { name: "Tambah aktivitas" })).not.toBeInTheDocument(),
     );
+  });
+
+  it("shares the itinerary from the Agenda with the same sheet as Ringkas", async () => {
+    const trip = {
+      name: "Jepang",
+      destination_name: "Jepang",
+      departure_date: "2026-11-08",
+      return_date: "2026-11-15",
+    };
+    const onSaved = vi.fn(async () => {});
+    vi.mocked(postTripShare).mockResolvedValue({} as never);
+    render(
+      <ItineraryEditor tripId="trip-1" trip={trip} items={[]} share={null} onSaved={onSaved} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Bagikan itinerary" }));
+    expect(await screen.findByText(/Tautan baca-saja berisi nama perjalanan/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /Buat tautan/i }));
+    await waitFor(() => expect(postTripShare).toHaveBeenCalledWith({ data: { tripId: "trip-1" } }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+  });
+
+  it("shows the existing share link and has no share button without a trip", async () => {
+    render(
+      <ItineraryEditor
+        tripId="trip-1"
+        trip={{
+          name: "Jepang",
+          destination_name: "Jepang",
+          departure_date: null,
+          return_date: null,
+        }}
+        items={[]}
+        share={{ token: "abc".repeat(12), createdAt: "2026-11-09T00:00:00Z" }}
+        onSaved={vi.fn(async () => {})}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Bagikan itinerary" }));
+    const link = (await screen.findByLabelText("Tautan itinerary")) as HTMLInputElement;
+    expect(link.value).toContain("abcabcabc");
+    cleanup();
+    render(<ItineraryEditor tripId="trip-1" items={[]} onSaved={vi.fn(async () => {})} />);
+    expect(screen.queryByRole("button", { name: "Bagikan itinerary" })).toBeNull();
   });
 });
