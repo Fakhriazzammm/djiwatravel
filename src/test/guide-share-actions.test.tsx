@@ -2,27 +2,43 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GuideShareActions } from "@/components/guide-share-actions";
 
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
 describe("guide share actions", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("offers WhatsApp, X, Facebook, and copy-link sharing for an article", () => {
+  it("offers Instagram Story, WhatsApp, Telegram, X, Facebook, image, and copy-link sharing", () => {
     render(
       <GuideShareActions
         title="Panduan eSIM Jepang"
         url="https://djiwatravel.com/panduan/esim-jepang"
       />,
     );
-
-    expect(screen.getByRole("link", { name: "WhatsApp" }).getAttribute("href"))
-      .toContain("https://wa.me/?text=");
-    expect(screen.getByRole("link", { name: "Facebook" }).getAttribute("href"))
-      .toContain("https://www.facebook.com/sharer/sharer.php?");
-    expect(screen.getByRole("link", { name: "X" }).getAttribute("href"))
-      .toContain("https://twitter.com/intent/tweet?");
-    expect(screen.getByRole("button", { name: "Salin tautan" })).toBeTruthy();
+    for (const name of [
+      "Bagikan ke Instagram Story",
+      "WhatsApp",
+      "Telegram",
+      "X",
+      "Facebook",
+      "Gambar",
+      "Salin",
+    ])
+      expect(screen.getByText(name)).toBeTruthy();
   });
 
-  it("copies the article URL and confirms the action accessibly", async () => {
+  it("opens WhatsApp with the article URL", () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    render(<GuideShareActions title="Panduan eSIM" url="https://djiwatravel.com/panduan/esim" />);
+
+    fireEvent.click(screen.getByText("WhatsApp"));
+
+    expect(open.mock.calls[0]?.[0]).toContain("https://wa.me/?text=");
+    expect(decodeURIComponent(String(open.mock.calls[0]?.[0]))).toContain(
+      "https://djiwatravel.com/panduan/esim",
+    );
+  });
+
+  it("copies the article URL", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -30,25 +46,10 @@ describe("guide share actions", () => {
     });
     render(<GuideShareActions title="Panduan eSIM" url="https://djiwatravel.com/panduan/esim" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Salin tautan" }));
-
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://djiwatravel.com/panduan/esim"));
-    expect(await screen.findByRole("status")).toHaveTextContent("Tautan panduan disalin.");
-  });
-
-  it("uses the native share sheet when the browser supports it", async () => {
-    const share = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "share", { configurable: true, value: share });
-    render(<GuideShareActions title="Panduan eSIM" url="https://djiwatravel.com/panduan/esim" />);
-
-    const button = await screen.findByRole("button", { name: "Bagikan panduan" });
-    fireEvent.click(button);
+    fireEvent.click(screen.getByText("Salin"));
 
     await waitFor(() =>
-      expect(share).toHaveBeenCalledWith({
-        title: "Panduan eSIM",
-        url: "https://djiwatravel.com/panduan/esim",
-      }),
+      expect(writeText).toHaveBeenCalledWith("https://djiwatravel.com/panduan/esim"),
     );
   });
 });

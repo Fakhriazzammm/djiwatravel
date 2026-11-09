@@ -1,5 +1,7 @@
+import logoUrl from "@/assets/logo.png";
+import { SocialShare } from "@/components/social-share";
+import { renderBrandCard } from "@/lib/share-card";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Copy, Share2 } from "lucide-react";
 import { useState } from "react";
 import { BackBar, Page, btnPrimary } from "@/components/shell";
 import { CustomerAuth } from "@/components/customer-auth";
@@ -145,22 +147,6 @@ function AffiliatePage() {
   const { config, account, stats } = data;
   const origin = typeof window !== "undefined" ? window.location.origin : "https://djiwatravel.com";
   const link = account ? affiliateLink(origin, account.code) : "";
-  const copy = async (text: string, done: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setNotice(done);
-    } catch {
-      setNotice("Tidak bisa menyalin otomatis. Salin manual.");
-    }
-  };
-  const share = async () => {
-    if (navigator.share) {
-      await navigator
-        .share({ title: "Djiwa Travel", text: "Beli eSIM travel lewat link ini:", url: link })
-        .catch(() => undefined);
-    } else await copy(link, "Link disalin.");
-  };
-
   return (
     <Page>
       <BackBar title="Affiliate" fallbackTo="/profile" />
@@ -247,22 +233,21 @@ function AffiliatePage() {
             <div className="rounded-xl border border-dashed border-ring p-3 text-center font-mono text-[20px] font-bold tracking-wider">
               {account.code}
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={ghostBtn}
-                onClick={() => void copy(link, "Link disalin.")}
-              >
-                <Copy className="size-4" aria-hidden="true" /> Salin link
-              </button>
-              <button
-                type="button"
-                className={`${ghostBtn} bg-primary text-primary-foreground`}
-                onClick={() => void share()}
-              >
-                <Share2 className="size-4" aria-hidden="true" /> Bagikan
-              </button>
-            </div>
+            <SocialShare
+              url={link}
+              text="Beli eSIM travel lewat link ini:"
+              label="Bagikan link affiliate"
+              makeImage={async () => {
+                const blob = await renderBrandCard({
+                  kicker: "eSIM untuk traveler",
+                  title: "Internet cepat saat traveling",
+                  subtitle: `Pakai kode ${account.code}`,
+                  link: link.replace(/^https?:\/\//, ""),
+                  logoUrl,
+                });
+                return new File([blob], "esim-djiwa-travel.png", { type: "image/png" });
+              }}
+            />
             <div className="rounded-xl bg-secondary/60 p-3 text-[13px]">
               <h2 className="text-[14px] font-semibold">Cara dapat komisi dari link ini</h2>
               <ol className="mt-2 list-decimal space-y-1 pl-5">
