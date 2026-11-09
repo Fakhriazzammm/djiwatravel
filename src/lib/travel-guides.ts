@@ -36,12 +36,12 @@ export const travelGuides: readonly TravelGuide[] = [
     imageAlt:
       "Traveler menyiapkan paspor dan tas belanja di dekat kios bea cukai di bandara Jepang",
     paragraphs: [
-      "Mulai 1 November 2026, Jepang memakai sistem refund untuk pembelian tax-free. Jika memenuhi syarat, tunjukkan paspor di toko tax-free untuk mendaftarkan pembelian dan metode pengembalian. Kamu membayar harga termasuk pajak di toko; setelah bea cukai mengonfirmasi barang akan dibawa keluar Jepang, toko atau penyedia refund memproses pengembalian pajak. Tanggal pembelian menentukan sistem yang berlaku.",
+      "Mulai 1 November 2026, Jepang memakai sistem refund untuk pembelian tax-free. Fasilitas ini hanya berlaku bagi pembeli non-residen dengan status dan dokumen yang memenuhi syarat; status short-term stay termasuk kategori umum untuk wisatawan asing. Tunjukkan paspor dan ikuti pemeriksaan toko untuk mendaftarkan pembelian serta metode refund. Kamu membayar harga termasuk pajak di toko; setelah bea cukai mengonfirmasi barang akan dibawa keluar Jepang, toko atau penyedia refund memproses pengembalian pajak. Tanggal pembelian menentukan sistem yang berlaku.",
       "Umumnya, total belanja perlu mencapai ¥5.000 sebelum pajak per hari di toko yang sama. Pemisahan barang umum dan barang habis pakai, batas ¥500.000 untuk barang habis pakai, serta kemasan khusus barang habis pakai telah dihapus. Namun, barang tax-free tetap harus dibawa keluar Jepang. Makanan, kosmetik, obat-obatan, dan barang habis pakai lain tidak bisa mendapat refund jika dikonsumsi di Jepang.",
       "Lakukan konfirmasi di bandara atau pelabuhan tempat kamu benar-benar keluar dari Jepang, dalam 90 hari sejak pembelian. Pindai paspor di kios atau terminal bea cukai sebelum menyerahkan bagasi tercatat. Jika kamu transit dengan penerbangan domestik, lakukan prosedur di bandara terakhir sebelum terbang ke luar Jepang. Sistem dapat meminta pemeriksaan barang oleh petugas, jadi sisihkan waktu yang cukup.",
       "Bawa semua barang tax-free agar siap diperiksa dan jangan masukkan ke bagasi tercatat lebih dulu. Bea cukai memeriksa barang per transaksi atau nota. Jika satu barang dalam nota tidak kamu bawa saat pemeriksaan, barang lain dalam nota yang sama juga tidak bisa mendapat konfirmasi refund.",
       "Refund diproses setelah konfirmasi bea cukai oleh toko atau penyedia refund yang ditunjuk, memakai metode yang didaftarkan saat pembelian. Prosesnya tidak selalu berupa pembayaran tunai di bandara; cara dan waktunya dapat berbeda antar toko. Tanyakan metode, biaya, dan perkiraan waktu refund saat berbelanja, lalu simpan struk serta petunjuk refund.",
-      "Di Narita, Haneda, Kansai, Chubu, New Chitose, Fukuoka, dan Naha, Visit Japan Web juga dapat digunakan untuk konfirmasi daring di area Wi-Fi khusus pada lobi keberangkatan internasional sebelum pemeriksaan keamanan. Cek syarat dan petunjuk bandara keberangkatanmu sebelum berangkat.",
+      "Untuk pembeli yang memenuhi kategori penggunaan Visit Japan Web—termasuk wisatawan dengan status short-term stay—konfirmasi daring tersedia di Narita, Haneda, Kansai, Chubu, New Chitose, Fukuoka, dan Naha. Selesaikan di area Wi-Fi khusus pada lobi keberangkatan internasional sebelum pemeriksaan keamanan; warga negara Jepang tidak dapat memakai prosedur daring ini. Cek petunjuk bandara keberangkatanmu sebelum berangkat.",
     ],
     steps: [
       {
@@ -73,6 +73,10 @@ export const travelGuides: readonly TravelGuide[] = [
       {
         label: "Japan Tourism Agency: metode dan waktu refund",
         url: "https://www.mlit.go.jp/kankocho/tax-free/page01_000001_00051.html",
+      },
+      {
+        label: "Japan Tourism Agency: daftar status pembeli yang memenuhi syarat",
+        url: "https://www.mlit.go.jp/kankocho/tax-free/content/001981481.pdf",
       },
       {
         label: "Japan Customs: detail prosedur refund di bea cukai (bahasa Inggris)",
