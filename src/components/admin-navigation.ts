@@ -1,5 +1,6 @@
 import {
   Bell,
+  MessageCircle,
   CreditCard,
   FileClock,
   Handshake,
@@ -52,6 +53,7 @@ export const adminNavigationGroups = [
     label: "Titip Belanja",
     items: [
       ["Pesanan", "/admin/shopping", ShoppingCart],
+      ["Pesan", "/admin/shopping#requests", MessageCircle],
       ["Katalog Produk", "/admin/shopping#catalog", Tags],
       ["Pengaturan", "/admin/shopping#settings", Settings],
     ],

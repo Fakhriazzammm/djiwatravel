@@ -4,6 +4,21 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { adminNavigationGroups, isAdminNavigationActive } from "@/components/admin-navigation";
 import { FixedLayer } from "@/components/motion-primitives";
 import { signOutBetterAuth } from "@/lib/better-auth-client";
+import { getAdminChatUnread } from "@/lib/shopper-chat.fn";
+
+/** Red count badge: number of customer chats waiting for the team. */
+export function CountBadge({ n, label }: { n: number; label: string }) {
+  if (n <= 0) return null;
+  return (
+    <span
+      role="status"
+      aria-label={`${n} ${label}`}
+      className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold leading-none text-white"
+    >
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
 
 const adminUi = {
   canvas: "bg-background text-foreground",
@@ -93,6 +108,22 @@ export function AdminShell({
   const [signingOut, setSigningOut] = useState(false);
   const location = useLocation();
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const [chatWaiting, setChatWaiting] = useState(0);
+  useEffect(() => {
+    let live = true;
+    const load = () =>
+      getAdminChatUnread()
+        .then((r) => live && setChatWaiting(r.waiting))
+        .catch(() => undefined);
+    void load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 20_000);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+    };
+  }, []);
   const closeMenu = useCallback(() => {
     setOpen(false);
     menuTriggerRef.current?.focus();
@@ -185,6 +216,9 @@ export function AdminShell({
                     >
                       <GroupIcon className="size-4 shrink-0" strokeWidth={1.7} aria-hidden="true" />
                       <span className="flex-1">{group.label}</span>
+                      {group.label === "Titip Belanja" && (
+                        <CountBadge n={chatWaiting} label="pesan menunggu" />
+                      )}
                       <ChevronDown
                         className="size-3.5 shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none"
                         aria-hidden="true"
@@ -208,7 +242,10 @@ export function AdminShell({
                             className={`flex min-h-11 items-center gap-2 rounded-xl px-3 text-[13px] font-medium focus-visible:ring-2 focus-visible:ring-brand-red ${active ? "bg-secondary text-foreground font-semibold" : "text-muted-foreground hover:bg-secondary"}`}
                           >
                             <Icon className="size-4 shrink-0" aria-hidden="true" />
-                            {label}
+                            <span className="flex-1">{label}</span>
+                            {href === "/admin/shopping#requests" && (
+                              <CountBadge n={chatWaiting} label="pesan menunggu" />
+                            )}
                           </Link>
                         );
                       })}

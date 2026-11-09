@@ -3,7 +3,13 @@ import { getAdminChatUnread } from "@/lib/shopper-chat.fn";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, createFileRoute, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, ExternalLink, LoaderCircle, RefreshCw } from "lucide-react";
-import { AdminShell, AdminSurface, SectionHeading, StatusPill } from "@/components/admin-shell";
+import {
+  AdminShell,
+  AdminSurface,
+  CountBadge,
+  SectionHeading,
+  StatusPill,
+} from "@/components/admin-shell";
 import { requireAdmin } from "@/lib/admin-guard";
 import { formatAdminDateTime } from "@/lib/admin-display";
 import {
@@ -109,10 +115,7 @@ function AdminShopping() {
             [
               ["orders", `Pesanan${toPay ? ` (${toPay} perlu dibeli)` : ""}`],
               ["catalog", "Katalog"],
-              [
-                "requests",
-                `Pesan${chat.waiting ? ` (${chat.waiting}${chat.late ? `, ${chat.late} terlambat` : ""})` : ""}`,
-              ],
+              ["requests", "Pesan"],
               ["settings", "Pengaturan"],
             ] as const
           ).map(([id, label]) => (
@@ -124,7 +127,15 @@ function AdminShopping() {
               onClick={() => setTab(id)}
               className={`min-h-10 flex-1 rounded-lg text-xs font-semibold ${tab === id ? "bg-background shadow-sm" : "text-muted-foreground"}`}
             >
-              {label}
+              <span className="inline-flex items-center justify-center gap-1.5">
+                {label}
+                {id === "requests" && <CountBadge n={chat.waiting} label="pesan menunggu" />}
+                {id === "requests" && chat.late > 0 && (
+                  <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[11px] font-bold text-destructive">
+                    {chat.late} terlambat
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>
