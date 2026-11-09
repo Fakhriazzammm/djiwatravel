@@ -920,6 +920,7 @@ async function runTurn(
       model,
       cleaned.proposal?.payload.kind ?? null,
       outcome.usage,
+      cleaned.cards.map((c) => c.kind),
     );
     return {
       status: "ok",
@@ -995,12 +996,13 @@ async function recordRun(
   model: string,
   proposalKind: string | null,
   usage: { input: number; output: number },
+  cardKinds: string[] = [],
 ) {
   await pool
     .query(
       `insert into public.travel_assistant_runs
-         (customer_auth_subject, guest, trip_id, conversation_id, scope, intent, status, model, proposal_kind, tokens_in, tokens_out, cost_idr)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+         (customer_auth_subject, guest, trip_id, conversation_id, scope, intent, status, model, proposal_kind, tokens_in, tokens_out, cost_idr, cards)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [
         owner.id,
         owner.guest,
@@ -1014,6 +1016,7 @@ async function recordRun(
         usage.input,
         usage.output,
         assistantCostIdr(model, usage),
+        cardKinds.length ? cardKinds.join(",") : null,
       ],
     )
     .catch((error) =>
@@ -1450,6 +1453,8 @@ export type TripAssistantStats = {
   byIntent: { intent: string; n: number }[];
   /** Messages per Travo scope (trip chat vs. the standalone /travo page). */
   byScope: { scope: string; n: number }[];
+  /** How often each product card was shown (eSIM, tiket, pesanan, ...). */
+  byCard: { card: string; n: number }[];
   conversations: number;
 };
 export type TripAssistantRecent = {
@@ -1465,7 +1470,7 @@ export type TripAssistantRecent = {
 };
 
 async function readStats(): Promise<TripAssistantStats> {
-  const [runs, props, intents, scopes, convs] = await Promise.all([
+  const [runs, props, intents, scopes, convs, cards] = await Promise.all([
     pool.query(
       `select count(*)::int as n,
               count(*) filter (where guest)::int as guests,
@@ -1491,6 +1496,12 @@ async function readStats(): Promise<TripAssistantStats> {
     pool.query(
       `select count(*)::int as n from public.travel_assistant_conversations where created_at > now() - interval '30 days'`,
     ),
+    pool.query(
+      `select k as card, count(*)::int as n
+       from public.travel_assistant_runs r, unnest(string_to_array(r.cards, ',')) as k
+       where r.created_at > now() - interval '30 days' and r.status='ok' and r.cards is not null
+       group by k order by n desc`,
+    ),
   ]);
   const r = runs.rows[0] ?? {};
   const p = props.rows[0] ?? {};
@@ -1510,6 +1521,7 @@ async function readStats(): Promise<TripAssistantStats> {
     appliedPercent: pn ? Math.round(((Number(p.applied) || 0) / pn) * 100) : 0,
     byIntent: intents.rows.map((x) => ({ intent: String(x.intent), n: Number(x.n) })),
     byScope: scopes.rows.map((x) => ({ scope: String(x.scope), n: Number(x.n) })),
+    byCard: cards.rows.map((x) => ({ card: String(x.card), n: Number(x.n) })),
     conversations: Number(convs.rows[0]?.n) || 0,
   };
 }
@@ -1549,6 +1561,7 @@ export const getAdminTripAssistantHandler = async () => {
       appliedPercent: 0,
       byIntent: [],
       byScope: [],
+      byCard: [],
       conversations: 0,
     })),
     readRecent().catch(() => [] as TripAssistantRecent[]),

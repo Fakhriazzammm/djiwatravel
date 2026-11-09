@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { postTrip } from "@/lib/my-trips.fn";
 import { TravoChat } from "@/components/travo-chat";
 import {
   applyTripAssistantProposal,
@@ -40,6 +41,7 @@ vi.mock("@/lib/my-trips.fn", () => ({
     totals: { remainingMinor: 1000000000 },
     share: null,
   })),
+  postTrip: vi.fn(),
   getTripShare: vi.fn(),
   postTripShare: vi.fn(),
   deleteTripShare: vi.fn(),
@@ -48,6 +50,17 @@ vi.mock("@/lib/receipt-scan.fn", () => ({ getReceiptScanStatus: vi.fn(async () =
 vi.mock("@/components/esim-checkout-sheet", () => ({
   EsimCheckoutSheet: ({ packageCode }: { packageCode: string | null }) =>
     packageCode ? <div data-testid="checkout-open">{packageCode}</div> : null,
+}));
+vi.mock("@/lib/use-better-auth-user", () => ({
+  useBetterAuthUser: () => ({ user: { id: "u1", name: "Aku" }, loading: false }),
+}));
+vi.mock("@/components/djiwa-pay-topup", () => ({
+  DjiwaPayTopup: ({ open }: { open: boolean }) => (open ? <div data-testid="topup-open" /> : null),
+}));
+vi.mock("@/components/esim-install", () => ({
+  EsimQr: () => <div data-testid="qr" />,
+  ManualDetails: () => <div>MANUAL</div>,
+  InstallGuide: () => <div>PANDUAN</div>,
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/trip-assistant.fn", () => ({
@@ -251,5 +264,71 @@ describe("Travo page", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /paket lain \(/i }));
     await waitFor(() => expect(sendTripAssistantMessage).toHaveBeenCalled());
+  });
+
+  it("does the rest in the chat: orders with install, wallet top-up and creating a trip", async () => {
+    vi.mocked(postTrip).mockResolvedValue({ id: "t-new" } as never);
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: { id: "c3", tripId: null, title: "Cek", scope: "all", tripCurrency: null },
+      messages: [
+        msg({ id: "u", role: "user", content: "cek semuanya" }),
+        msg({
+          id: "a",
+          content: "Ini semuanya.",
+          cards: [
+            {
+              kind: "pesanan",
+              loggedIn: true,
+              orders: [
+                {
+                  id: "o1",
+                  name: "Jepang 7 hari",
+                  status: "READY",
+                  statusLabel: "Siap dipasang",
+                  usagePercent: 10,
+                  packageId: "JP-7D",
+                  needsPayment: false,
+                  esim: { iccid: "1", smdp: "s", activationCode: "a", lpa: "LPA:1$s$a" },
+                },
+              ],
+            },
+            { kind: "dompet", status: "ok", balanceIdr: 250000, creditedIdr: 500000 },
+            {
+              kind: "buat_trip",
+              name: "Tokyo Des",
+              destinationCode: "JP",
+              destinationName: "Jepang",
+              departureDate: "2026-12-01",
+              returnDate: "2026-12-07",
+              travelers: 2,
+            },
+          ],
+        }),
+      ],
+    });
+    render(<TravoChat conversationId="c3" />);
+    // eSIM order: the install sheet (QR + manual) opens right here.
+    fireEvent.click(await screen.findByRole("button", { name: "Pasang" }));
+    expect(screen.getByTestId("qr")).toBeTruthy();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    // Wallet: balance and a top-up that opens in place.
+    expect(screen.getByText("Rp250.000")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Top up" }));
+    expect(screen.getByTestId("topup-open")).toBeTruthy();
+    // New trip: one tap creates it, then the chat continues on that trip.
+    fireEvent.click(screen.getByRole("button", { name: "Buat trip" }));
+    await waitFor(() =>
+      expect(postTrip).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          destinationCode: "JP",
+          departureDate: "2026-12-01",
+          returnDate: "2026-12-07",
+          travelersCount: 2,
+        }),
+      }),
+    );
+    expect(await screen.findByText("Lanjut di chat")).toBeTruthy();
   });
 });

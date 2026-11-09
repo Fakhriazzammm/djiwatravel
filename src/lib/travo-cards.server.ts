@@ -1,4 +1,9 @@
 import { pool } from "../db/client.server";
+import { ORDER_STATUS_LABEL } from "./esim-status";
+import { mapGuestOrderRecord } from "./guest-order-view";
+import { getCustomerWalletHandler } from "./customer-wallet.server";
+import { getMemberOrdersHandler } from "./member-orders.server";
+import { getShopperCatalogHandler, listMyShoppingOrdersHandler } from "./personal-shopper.server";
 import { destinations, getDest, search as searchDestinations } from "./catalog";
 import { getDestinationPackagesHandler } from "./destination-packages.server";
 import { searchFlightsHandler } from "./flights.server";
@@ -7,6 +12,7 @@ import { countryScopedPackages } from "./home-quick-packages";
 import { packageDataLabel } from "./package-copy";
 import { travelGuides } from "./travel-guides";
 import type { TripOwner } from "./guest-trips.server";
+import type { EsimProfile } from "./providers";
 import type { TravoCard, TravoCardRequest } from "./trip-assistant";
 
 type EsimCard = Extract<TravoCard, { kind: "esim" }>;
@@ -174,6 +180,100 @@ async function tripCard(owner: TripOwner): Promise<TravoCard | null> {
   };
 }
 
+async function orderCard(owner: TripOwner): Promise<TravoCard> {
+  if (owner.guest) return { kind: "pesanan", loggedIn: false, orders: [] };
+  const records = await getMemberOrdersHandler().catch(() => null);
+  if (!records) return { kind: "pesanan", loggedIn: false, orders: [] };
+  const raw = new Map(records.map((r) => [r.id, r]));
+  const views = records
+    .map((r) => mapGuestOrderRecord(r as never))
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, 5);
+  return {
+    kind: "pesanan",
+    loggedIn: true,
+    orders: views.map((o) => {
+      const total = o.usageVolumeBytes ?? o.volumeBytes ?? 0;
+      const usagePercent =
+        o.usedGb != null && total > 0
+          ? Math.min(100, Math.round(((o.usedGb * 1_000_000_000) / total) * 100))
+          : null;
+      const ready = o.status === "READY" || o.status === "INSTALLED";
+      return {
+        id: o.id,
+        name: o.packageName ?? o.packageId,
+        status: o.status,
+        statusLabel: ORDER_STATUS_LABEL[o.status as keyof typeof ORDER_STATUS_LABEL] ?? o.status,
+        usagePercent,
+        packageId: o.packageId,
+        needsPayment: o.status === "ORDER_CREATED" || o.status === "WAITING_PAYMENT",
+        esim: ready ? ((raw.get(o.id) as { esim?: EsimProfile } | undefined)?.esim ?? null) : null,
+      };
+    }),
+  };
+}
+
+async function walletCard(owner: TripOwner): Promise<TravoCard> {
+  if (owner.guest)
+    return { kind: "dompet", status: "login_required", balanceIdr: null, creditedIdr: null };
+  const wallet = await getCustomerWalletHandler({ data: { scope: "all" } } as never).catch(
+    () => null,
+  );
+  if (!wallet)
+    return { kind: "dompet", status: "unavailable", balanceIdr: null, creditedIdr: null };
+  return {
+    kind: "dompet",
+    status: "ok",
+    balanceIdr: Number(wallet.wallet?.available_balance ?? 0),
+    creditedIdr: Number(wallet.wallet?.total_credited ?? 0),
+  };
+}
+
+function newTripCard(req: TravoCardRequest): TravoCard | null {
+  const dest = destinationFor(req.destination);
+  if (!dest || !req.date || !req.returnDate || req.returnDate < req.date) return null;
+  return {
+    kind: "buat_trip",
+    name: req.query || `Trip ke ${dest.nameId}`,
+    destinationCode: dest.code.toUpperCase(),
+    destinationName: dest.nameId,
+    departureDate: req.date,
+    returnDate: req.returnDate,
+    travelers: Math.max(1, Math.min(20, req.days || 1)),
+  };
+}
+
+async function shopCard(req: TravoCardRequest, owner: TripOwner): Promise<TravoCard | null> {
+  const country = req.destination.toUpperCase();
+  const [catalog, orders] = await Promise.all([
+    getShopperCatalogHandler({ data: { country } } as never).catch(() => null),
+    owner.guest ? Promise.resolve([]) : listMyShoppingOrdersHandler().catch(() => []),
+  ]);
+  const words = req.query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 2);
+  const products = (catalog?.products ?? [])
+    .map((p) => ({
+      p,
+      hit: words.filter((w) => `${p.name} ${p.nameId ?? ""} ${p.brand}`.toLowerCase().includes(w))
+        .length,
+    }))
+    .sort((a, b) => b.hit - a.hit || b.p.sold - a.p.sold || b.p.trend - a.p.trend)
+    .slice(0, 4)
+    .map(({ p }) => ({ id: p.id, name: p.nameId || p.name, price: p.price, imageUrl: p.imageUrl }));
+  return {
+    kind: "titip",
+    country,
+    open: Boolean(catalog?.open),
+    products,
+    orders: orders
+      .filter((o) => o.country === country)
+      .slice(0, 3)
+      .map((o) => ({ id: o.id, code: o.code, statusLabel: o.statusLabel, totalIdr: o.totalIdr })),
+  };
+}
+
 /** Looks the requested cards up with live data. A card that cannot be built is simply left out. */
 export async function resolveTravoCards(
   requests: TravoCardRequest[],
@@ -185,6 +285,10 @@ export async function resolveTravoCards(
         if (req.kind === "esim") return await esimCard(req);
         if (req.kind === "tiket") return await flightCard(req);
         if (req.kind === "panduan") return guideCard(req);
+        if (req.kind === "pesanan") return await orderCard(owner);
+        if (req.kind === "dompet") return await walletCard(owner);
+        if (req.kind === "buat_trip") return newTripCard(req);
+        if (req.kind === "titip") return await shopCard(req, owner);
         return await tripCard(owner);
       } catch (error) {
         console.error(

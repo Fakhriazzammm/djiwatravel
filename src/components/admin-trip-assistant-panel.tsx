@@ -22,6 +22,7 @@ type Stats = {
   appliedPercent: number;
   byIntent: { intent: string; n: number }[];
   byScope: { scope: string; n: number }[];
+  byCard: { card: string; n: number }[];
   conversations: number;
 };
 type Recent = {
@@ -39,6 +40,16 @@ type Recent = {
 const toggleRow = "flex min-h-11 items-center gap-3 text-sm font-semibold";
 const field =
   "min-h-11 w-24 rounded-xl border border-border bg-surface px-3 text-right text-sm font-semibold";
+const CARD_LABEL: Record<string, string> = {
+  esim: "eSIM",
+  tiket: "Tiket",
+  panduan: "Panduan",
+  trip: "Trip",
+  pesanan: "Pesanan",
+  dompet: "Dompet",
+  buat_trip: "Buat trip",
+  titip: "Titip belanja",
+};
 const INTENT_LABEL: Record<string, string> = {
   chat: "Tanya jawab",
   plan: "Itinerary",
@@ -334,15 +345,10 @@ export function AdminTripAssistantPanel({
               </div>
             ))}
           </div>
-          {stats.byScope.length > 0 && (
-            <p className="mt-2 text-xs text-muted-foreground" data-testid="assistant-scopes">
-              Halaman Travo:{" "}
-              {stats.byScope
-                .map(
-                  (i) =>
-                    `${i.scope === "trip" ? "Trip" : (TRAVO_SCOPE_LABEL[i.scope as TravoScope] ?? i.scope)} ${i.n}`,
-                )
-                .join(" · ")}
+          {stats.byCard.length > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground" data-testid="assistant-cards">
+              Kartu di chat:{" "}
+              {stats.byCard.map((i) => `${CARD_LABEL[i.card] ?? i.card} ${i.n}`).join(" · ")}
             </p>
           )}
           {stats.byIntent.length > 0 && (

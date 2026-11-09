@@ -539,4 +539,38 @@ describe("Travo cards", () => {
     );
     expect(reply.cards).toEqual([]);
   });
+  it("accepts the action cards only with what they need", () => {
+    const row = (over: Record<string, unknown>) => ({
+      kind: "pesanan",
+      destination: "",
+      query: "",
+      from: "",
+      to: "",
+      date: "",
+      returnDate: "",
+      days: 0,
+      ...over,
+    });
+    const cards = cleanCards([
+      row({}),
+      row({ kind: "dompet" }),
+      row({ kind: "buat_trip", destination: "Jepang", date: "2026-12-01" }),
+      row({
+        kind: "buat_trip",
+        destination: "Jepang",
+        date: "2026-12-07",
+        returnDate: "2026-12-01",
+      }),
+      row({
+        kind: "buat_trip",
+        destination: "Jepang",
+        date: "2026-12-01",
+        returnDate: "2026-12-07",
+        days: 2,
+      }),
+    ]);
+    expect(cards.map((c) => c.kind)).toEqual(["pesanan", "dompet", "buat_trip"]);
+    expect(cleanCards([row({ kind: "titip", destination: "us" })])).toEqual([]);
+    expect(cleanCards([row({ kind: "titip", destination: "jp" })])).toHaveLength(1);
+  });
 });
