@@ -81,6 +81,16 @@ export const dismissTripAssistantProposal = createServerFn({ method: "POST" })
     return assistantDismissHandler({ data });
   });
 
+export const pinTripPlaces = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { assistantLoadInput } = await import("./trip-assistant.server");
+    return assistantLoadInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { assistantPinHandler } = await import("./trip-assistant.server");
+    return assistantPinHandler({ data });
+  });
+
 export const getAdminTripAssistant = createServerFn({ method: "GET" }).handler(async () => {
   const { getAdminTripAssistantHandler } = await import("./trip-assistant.server");
   return getAdminTripAssistantHandler();

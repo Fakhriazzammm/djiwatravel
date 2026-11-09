@@ -19,7 +19,7 @@ import {
   updateTrip,
 } from "./my-trips.server";
 import { fetchFxRate } from "./receipt-scan.server";
-import { verifyAgendaPlaces } from "./trip-assistant-places.server";
+import { pinMissingPlaces, verifyAgendaPlaces } from "./trip-assistant-places.server";
 import { jakartaDayStart } from "./receipt-scan";
 import {
   ASSISTANT_INTENTS,
@@ -865,6 +865,8 @@ async function applyAgenda(tripId: string, items: AgendaChange[], trip: TripRow,
       endTime: change.endTime ?? (change.startTime ? undefined : base.endTime),
       title: change.title || base.title,
       location: change.location ?? base.location,
+      latitude: change.lat ?? base.latitude,
+      longitude: change.lng ?? base.longitude,
       activityCategory: change.category ?? base.activityCategory,
     });
     applied.updated.push({ id: change.itemId!, before });
@@ -1042,7 +1044,12 @@ export async function assistantApplyHandler({
     proposal.id,
     JSON.stringify(applied),
   ]);
-  return { ok: true as const, status: "applied" as const };
+  // Whatever the change did, every activity of the trip should be on the map.
+  const pins =
+    payload.kind === "agenda"
+      ? await pinMissingPlaces(trip.id, { budgetMs: 8000 }).catch(() => null)
+      : null;
+  return { ok: true as const, status: "applied" as const, pinned: pins?.pinned ?? 0 };
 }
 
 export async function assistantUndoHandler({
@@ -1296,4 +1303,16 @@ export async function adminClearAssistantHistoryHandler() {
     ],
   );
   return { deleted: messages.rowCount ?? 0 };
+}
+
+/** "Pasang pin di peta": gives every activity without a point one, for the traveler's own trip. */
+export async function assistantPinHandler({
+  data,
+}: {
+  data: ReturnType<typeof assistantLoadInput>;
+}) {
+  const owner = await resolveTripOwner();
+  if (!owner) throw new Error("Autentikasi diperlukan");
+  await ownedTripRow(data.tripId, owner.id);
+  return pinMissingPlaces(data.tripId, { budgetMs: 25_000 });
 }

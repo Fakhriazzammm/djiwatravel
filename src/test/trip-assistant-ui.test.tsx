@@ -5,6 +5,7 @@ import {
   applyTripAssistantProposal,
   dismissTripAssistantProposal,
   loadTripAssistant,
+  pinTripPlaces,
   sendTripAssistantMessage,
   streamTripAssistantMessage,
   undoTripAssistantProposal,
@@ -29,6 +30,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/trip-assistant.fn", () => ({
   loadTripAssistant: vi.fn(),
   sendTripAssistantMessage: vi.fn(),
+  pinTripPlaces: vi.fn(),
   streamTripAssistantMessage: vi.fn(),
   resetTripAssistant: vi.fn(),
   applyTripAssistantProposal: vi.fn(),
@@ -242,7 +244,11 @@ describe("TripAssistant", () => {
       status: available,
       messages: [assistantMsg({ proposal })],
     });
-    vi.mocked(applyTripAssistantProposal).mockResolvedValue({ ok: true, status: "applied" });
+    vi.mocked(applyTripAssistantProposal).mockResolvedValue({
+      ok: true,
+      status: "applied",
+      pinned: 0,
+    });
     vi.mocked(undoTripAssistantProposal).mockResolvedValue({ ok: true, status: "undone" });
     const { onChanged } = setup();
     expect(await screen.findByText("Sarapan Tsukiji")).toBeInTheDocument();
@@ -415,7 +421,11 @@ describe("TripAssistant", () => {
       status: available,
       messages: [assistantMsg({ proposal })],
     });
-    vi.mocked(applyTripAssistantProposal).mockResolvedValue({ ok: true, status: "applied" });
+    vi.mocked(applyTripAssistantProposal).mockResolvedValue({
+      ok: true,
+      status: "applied",
+      pinned: 0,
+    });
     const onFocusDays = vi.fn();
     setup({ onFocusDays });
     fireEvent.click(await screen.findByRole("button", { name: "Terapkan" }));
@@ -472,5 +482,21 @@ describe("TripAssistant", () => {
     release();
     expect(await screen.findByText("Sedang menjawab…")).toBeInTheDocument();
     expect(await screen.findByText("Selesai.")).toBeInTheDocument();
+  });
+
+  it("offers to pin activities that have no point on the map, and says how many it added", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+    vi.mocked(pinTripPlaces).mockResolvedValue({ pinned: 3, approximate: 1, remaining: 0 });
+    const { onChanged } = setup({ unpinned: 3 });
+    fireEvent.click(await screen.findByRole("button", { name: "Pasang pin (3)" }));
+    await waitFor(() => expect(pinTripPlaces).toHaveBeenCalledWith({ data: { tripId: "trip-1" } }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+
+  it("has no pin button when every activity is on the map", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+    setup({ unpinned: 0 });
+    await screen.findByLabelText("Pesan untuk asisten");
+    expect(screen.queryByRole("button", { name: /Pasang pin/ })).toBeNull();
   });
 });

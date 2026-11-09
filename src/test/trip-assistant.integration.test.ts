@@ -9,6 +9,9 @@ import { resolve } from "node:path";
 import pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+// The place lookups keep Nominatim's one request a second even with a stubbed network.
+vi.setConfig({ testTimeout: 30_000 });
+
 const url = process.env["TEST_DATABASE_URL"];
 const holder = vi.hoisted(() => ({
   pool: null as unknown,
@@ -72,6 +75,7 @@ import {
   assistantApplyHandler,
   assistantDismissHandler,
   assistantLoadHandler,
+  assistantPinHandler,
   assistantResetHandler,
   assistantSendHandler,
   assistantStreamHandler,
@@ -677,6 +681,119 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
       expect((await pool.query("select name from travel_trip_cities")).rows).toEqual([
         { name: "Tokyo" },
       ]);
+    });
+
+    it("finds the new location of a place the AI renames, and keeps the old point when only the time changes", async () => {
+      await city();
+      await pool.query(
+        "update travel_itinerary_items set latitude=35.7, longitude=139.7 where id=$1",
+        [I1],
+      );
+      nominatimRows["The Roastery by Nozy Coffee"] = {
+        lat: "35.6702",
+        lon: "139.7054",
+        display_name: "The Roastery, Jingumae, Tokyo",
+        extratags: { opening_hours: "08:00-19:00" },
+      };
+      nextAnswer = answer({
+        kind: "agenda",
+        title: "Perbaiki pin",
+        agenda: [
+          {
+            ...add("The Roastery by Nozy Coffee", "20:00"),
+            op: "update",
+            id: I1,
+            date: "2026-11-08",
+            location: "Jingumae, Shibuya, Tokyo",
+            place: "The Roastery by Nozy Coffee",
+          },
+        ],
+      });
+      const proposal = proposalOf(await send("kenapa di peta tidak ada?", "tidy"));
+      const item = (proposal.payload as { items: Item[] }).items[0]!;
+      expect(item).toMatchObject({ lat: 35.6702, hours: { raw: "08:00-19:00", open: false } });
+      await assistantApplyHandler({ data: { proposalId: proposal.id } });
+      expect(
+        (await pool.query("select title, latitude from travel_itinerary_items where id=$1", [I1]))
+          .rows[0],
+      ).toMatchObject({ title: "The Roastery by Nozy Coffee", latitude: 35.6702 });
+
+      nextAnswer = answer({
+        kind: "agenda",
+        title: "Geser",
+        agenda: [
+          {
+            ...add("", "21:00"),
+            op: "update",
+            id: I1,
+            date: "2026-11-08",
+            title: "",
+            location: "",
+            place: "",
+          },
+        ],
+      });
+      const second = proposalOf(await send("geser sedikit", "tidy"));
+      await assistantApplyHandler({ data: { proposalId: second.id } });
+      expect(
+        Number(
+          (await pool.query("select latitude from travel_itinerary_items where id=$1", [I1]))
+            .rows[0].latitude,
+        ),
+      ).toBe(35.6702);
+    });
+
+    it("pins every activity without a point after Terapkan, and with the pin button", async () => {
+      await city();
+      await pool.query(
+        `insert into travel_itinerary_items (trip_id, activity_date, start_time, title, location) values
+       ($1,'2026-11-08','12:00','Ramen Afuri','Ebisu, Tokyo'), ($1,'2026-11-08','15:00','Tempat Misterius','')`,
+        [TRIP],
+      );
+      nominatimRows["Ramen Afuri"] = {
+        lat: "35.6466",
+        lon: "139.7104",
+        display_name: "Afuri, Ebisu, Tokyo",
+        extratags: {},
+      };
+      nextAnswer = planAnswer([
+        { ...add("Shibuya Sky", "16:30"), location: "Shibuya, Tokyo", note: "" },
+      ]);
+      nominatimRows["Shibuya Sky"] = {
+        lat: "35.6582",
+        lon: "139.7022",
+        display_name: "Shibuya Sky, Tokyo",
+        extratags: {},
+      };
+      const proposal = proposalOf(await send("buatkan itinerary", "plan"));
+      const applied = await assistantApplyHandler({ data: { proposalId: proposal.id } });
+      expect(applied.pinned).toBe(3); // Meiji Gallery (seed), Ramen Afuri, Tempat Misterius
+      expect(
+        await count("select count(*)::int n from travel_itinerary_items where latitude is null"),
+      ).toBe(0);
+      const afuri = (
+        await pool.query("select latitude from travel_itinerary_items where title='Ramen Afuri'")
+      ).rows[0];
+      expect(Number(afuri.latitude)).toBe(35.6466); // found by its own name
+      const lost = (
+        await pool.query(
+          "select latitude, longitude from travel_itinerary_items where title='Tempat Misterius'",
+        )
+      ).rows[0];
+      expect(Math.abs(lost.latitude - 35.68)).toBeLessThan(0.02); // approximate, near the city
+
+      await pool.query(
+        "update travel_itinerary_items set latitude=null, longitude=null where title='Tempat Misterius'",
+      );
+      const pinned = await assistantPinHandler({ data: { tripId: TRIP } });
+      expect(pinned).toMatchObject({ pinned: 1, approximate: 1, remaining: 0 });
+    });
+
+    it("only pins the owner's own trip", async () => {
+      holder.owner = { id: "u2", email: null, guest: false };
+      await expect(assistantPinHandler({ data: { tripId: TRIP } })).rejects.toThrow(
+        /tidak ditemukan/,
+      );
     });
 
     it("never guesses from seasonal or holiday hours", () => {

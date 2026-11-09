@@ -883,6 +883,7 @@ export function TripOverview(props: Props) {
           onChanged={props.onChanged}
           onAdd={() => setAddOpen(true)}
           intro={intro}
+          unpinned={props.itinerary.filter((item) => !itemPoint(item)).length}
           onFocusDays={(dates) => setPicked(dates.length === 1 ? dates[0]! : "all")}
           onAvailability={setAssistantState}
         >

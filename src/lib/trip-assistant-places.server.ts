@@ -142,10 +142,16 @@ export async function verifyAgendaPlaces(
     }
   }
   for (const item of items) {
-    if (item.op !== "add" || !item.title) continue;
+    // New places, and changed ones whose name or area changed (their old point would be wrong).
+    const changed = item.op === "update" && Boolean(item.title || item.place || item.location);
+    if (!(item.op === "add" && item.title) && !changed) continue;
     const inTime = () => anchor && checked < maxItems && Date.now() < deadline;
     const found = inTime()
-      ? await nominatimVenue(item.place || item.title, anchor, options.fetcher)
+      ? await nominatimVenue(
+          item.place || item.title || item.location || "",
+          anchor,
+          options.fetcher,
+        )
       : null;
     checked += 1;
     if (found && anchor && distanceKm(anchor, found) <= 60) {
@@ -193,4 +199,69 @@ function hash(text: string) {
   let h = 2166136261;
   for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
   return h >>> 0;
+}
+
+/**
+ * Gives every activity that has no map point one: looked up by its title, else by its area, else
+ * the city centre nudged so pins do not stack (approximate, and counted separately). Used after a
+ * proposal is applied and by the "Pasang pin di peta" button. Returns how many pins were added.
+ */
+export async function pinMissingPlaces(
+  tripId: string,
+  options: { budgetMs?: number; fetcher?: typeof fetch } = {},
+): Promise<{ pinned: number; approximate: number; remaining: number }> {
+  const rows = await pool.query(
+    `select id, title, location from public.travel_itinerary_items
+     where trip_id=$1 and (latitude is null or longitude is null)
+     order by activity_date, start_time nulls last limit 40`,
+    [tripId],
+  );
+  if (!rows.rows.length) return { pinned: 0, approximate: 0, remaining: 0 };
+  let anchor = await tripAnchor(tripId);
+  const deadline = Date.now() + (options.budgetMs ?? 20_000);
+  if (!anchor) {
+    const first = rows.rows.find((r) => r.location || r.title);
+    const hit = first
+      ? await nominatimVenue(String(first.location || first.title), null, options.fetcher)
+      : null;
+    if (hit) anchor = { lat: hit.lat, lng: hit.lng };
+  }
+  if (!anchor) return { pinned: 0, approximate: 0, remaining: rows.rows.length };
+  let pinned = 0;
+  let approximate = 0;
+  for (const row of rows.rows) {
+    const title = String(row.title ?? "");
+    const location = row.location ? String(row.location) : "";
+    let point: Point | null = null;
+    let label = location;
+    let exact = false;
+    if (Date.now() < deadline && title) {
+      const hit = await nominatimVenue(title, anchor, options.fetcher);
+      if (hit && distanceKm(anchor, hit) <= 60) {
+        point = hit;
+        label = label || hit.label;
+        exact = true;
+      }
+    }
+    if (!point && Date.now() < deadline && location) {
+      const area = await nominatimVenue(location, anchor, options.fetcher);
+      if (area && distanceKm(anchor, area) <= 60) point = area;
+    }
+    if (!point) {
+      const h = hash(`${title}|${String(row.id)}`);
+      point = {
+        lat: anchor.lat + ((h % 17) - 8) * 0.0006,
+        lng: anchor.lng + (((h >> 5) % 17) - 8) * 0.0006,
+      };
+    }
+    await pool.query(
+      `update public.travel_itinerary_items
+       set latitude=$2, longitude=$3, place_label=coalesce(place_label, nullif($4,'')), updated_at=now()
+       where id=$1 and trip_id=$5`,
+      [row.id, point.lat, point.lng, label, tripId],
+    );
+    pinned += 1;
+    if (!exact) approximate += 1;
+  }
+  return { pinned, approximate, remaining: 0 };
 }

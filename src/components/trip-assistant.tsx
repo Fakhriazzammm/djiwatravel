@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, Camera, Plus } from "lucide-react";
+import { ArrowUp, Camera, MapPin, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useReducedMotion } from "motion/react";
 import { FixedLayer } from "@/components/motion-primitives";
@@ -18,6 +18,7 @@ import {
   applyTripAssistantProposal,
   dismissTripAssistantProposal,
   loadTripAssistant,
+  pinTripPlaces,
   resetTripAssistant,
   sendTripAssistantMessage,
   streamTripAssistantMessage,
@@ -45,6 +46,8 @@ type Props = {
   children: ReactNode;
   /** The same cards as chat messages, revealed one by one when the chat opens. */
   intro?: IntroPart[];
+  /** Activities that have no point on the map yet (the "Pasang pin" button shows while > 0). */
+  unpinned?: number;
   /** Called after an agenda proposal is applied, with the days it touched (the map follows). */
   onFocusDays?: (dates: string[]) => void;
   /** Budget categories and totals, for the receipt scanner opened from the chat. */
@@ -351,17 +354,22 @@ export function TripAssistant(props: Props) {
   async function apply(proposalId: string) {
     setBusyProposal(proposalId);
     try {
-      await applyTripAssistantProposal({ data: { proposalId } });
+      const result = await applyTripAssistantProposal({ data: { proposalId } });
       setProposalStatus(proposalId, "applied");
       setCheer((n) => n + 1);
       const applied = messages.find((m) => m.proposal?.id === proposalId)?.proposal?.payload;
       if (applied?.kind === "agenda")
         props.onFocusDays?.([...new Set(applied.items.map((i) => i.date).filter(Boolean))].sort());
       await props.onChanged();
-      toast.success("Usulan diterapkan", {
-        action: { label: "Urungkan", onClick: () => void undo(proposalId) },
-        duration: 6000,
-      });
+      toast.success(
+        result.pinned > 0
+          ? `Usulan diterapkan · ${result.pinned} pin ditambahkan di peta`
+          : "Usulan diterapkan",
+        {
+          action: { label: "Urungkan", onClick: () => void undo(proposalId) },
+          duration: 6000,
+        },
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Usulan belum bisa diterapkan.");
     } finally {
@@ -375,6 +383,25 @@ export function TripAssistant(props: Props) {
       await dismissTripAssistantProposal({ data: { proposalId } });
     } catch {
       /* the card is already dimmed; a failed save only means it shows again next time */
+    }
+  }
+
+  const [pinning, setPinning] = useState(false);
+  async function pinPlaces() {
+    setPinning(true);
+    try {
+      const result = await pinTripPlaces({ data: { tripId } });
+      await props.onChanged();
+      toast.success(
+        result.pinned
+          ? `${result.pinned} pin ditambahkan di peta${result.approximate ? ` (${result.approximate} perkiraan)` : ""}`
+          : "Semua aktivitas sudah punya titik di peta",
+      );
+      if (result.remaining) toast.error("Lokasi belum bisa dicari. Coba lagi sebentar lagi.");
+    } catch {
+      toast.error("Pin belum bisa dipasang. Coba lagi.");
+    } finally {
+      setPinning(false);
     }
   }
 
@@ -580,6 +607,17 @@ export function TripAssistant(props: Props) {
               >
                 Catat biaya
               </button>
+              {(props.unpinned ?? 0) > 0 && (
+                <button
+                  type="button"
+                  disabled={pinning || sending}
+                  onClick={() => void pinPlaces()}
+                  className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-brand-red-soft px-3 text-xs font-semibold text-brand-red ring-1 ring-brand-red/30 disabled:opacity-50"
+                >
+                  <MapPin className="size-3.5" aria-hidden="true" />
+                  {pinning ? "Memasang pin…" : `Pasang pin (${props.unpinned})`}
+                </button>
+              )}
               {receipt?.available && (
                 <button
                   type="button"
