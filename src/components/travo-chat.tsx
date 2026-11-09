@@ -218,20 +218,7 @@ export function TravoChat({
             </button>
           ))}
         </div>
-      ) : (
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-surface px-3 py-2 text-[12px]">
-          <span className="text-muted-foreground">
-            Obrolan trip: sama dengan chat di halaman trip.
-          </span>
-          <Link
-            to="/my-trips/$tripId"
-            params={{ tripId: chatTrip }}
-            className="tap shrink-0 font-semibold text-brand-red"
-          >
-            Buka trip
-          </Link>
-        </div>
-      )}
+      ) : null}
 
       <main className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-3 [scrollbar-width:none]">
         {!ready ? (
