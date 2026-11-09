@@ -1,4 +1,4 @@
-import { AdminShopperChat } from "@/components/shopper/admin-shopper-chat";
+import { AdminShopperChat, ChatSettings } from "@/components/shopper/admin-shopper-chat";
 import { getAdminChatUnread } from "@/lib/shopper-chat.fn";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, createFileRoute, useRouter } from "@tanstack/react-router";
@@ -139,7 +139,12 @@ function AdminShopping() {
         {tab === "requests" && <AdminShopperChat />}
         {tab === "orders" && <Orders data={data} setNotice={setNotice} refresh={refresh} />}
         {tab === "catalog" && <Catalog data={data} setNotice={setNotice} refresh={refresh} />}
-        {tab === "settings" && <Settings data={data} setNotice={setNotice} refresh={refresh} />}
+        {tab === "settings" && (
+          <div className="space-y-4">
+            <Settings data={data} setNotice={setNotice} refresh={refresh} />
+            <ChatSettings />
+          </div>
+        )}
       </div>
     </AdminShell>
   );

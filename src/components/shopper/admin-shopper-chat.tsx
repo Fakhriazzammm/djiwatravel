@@ -524,7 +524,6 @@ export function AdminShopperChat() {
           )}
         </section>
       </div>
-      <ChatSettings />
       <ImageViewer
         open={viewer !== null}
         title={viewer?.label ?? ""}
@@ -740,7 +739,7 @@ function OfferForm({
 }
 
 /** Settings for the link and photo search plus the chat (hours, reply target, templates). */
-function ChatSettings() {
+export function ChatSettings() {
   const [data, setData] = useState<Awaited<ReturnType<typeof getAdminDiscovery>> | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -750,6 +749,9 @@ function ChatSettings() {
     setData(r);
     setTemplates(r.config.templates.join("\n"));
   }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
   if (!data)
     return (
       <details
@@ -759,7 +761,7 @@ function ChatSettings() {
         }}
       >
         <summary className="cursor-pointer text-sm font-semibold">
-          Pengaturan pesan, link dan foto
+          Pengaturan chat, link dan foto
         </summary>
         <p className="mt-2 text-xs text-muted-foreground">Memuat…</p>
       </details>
@@ -808,7 +810,7 @@ function ChatSettings() {
   return (
     <details className="rounded-2xl border border-border bg-surface p-3" open>
       <summary className="cursor-pointer text-sm font-semibold">
-        Pengaturan pesan, link dan foto
+        Pengaturan chat, link dan foto
       </summary>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {(
