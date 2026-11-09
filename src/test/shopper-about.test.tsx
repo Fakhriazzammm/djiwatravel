@@ -31,7 +31,7 @@ describe("ShopperAbout", () => {
     expect(screen.queryByText("Cara kerjanya")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Apa saja yang bisa dititip/ }));
     expect(screen.getByText("Cara kerjanya")).toBeTruthy();
-    expect(screen.getByText(/Tiket pesawat, eSIM, dan hotel/)).toBeTruthy();
+    expect(screen.getByText(/Biaya perjalanan tim kami ke\s+Jepang sudah termasuk/)).toBeTruthy();
     expect(screen.getByText("Tas")).toBeTruthy();
     expect(screen.getByText(DEFAULT_SHOPPER_CONFIG.prohibited[0]!)).toBeTruthy();
   });
@@ -49,5 +49,6 @@ describe("FeeExplainer", () => {
     fireEvent.click(screen.getByRole("button", { name: /Biaya ini untuk apa/ }));
     expect(screen.getByText(/Jasa titip 20%/)).toBeTruthy();
     expect(screen.getByText(/Kirim dalam Jepang/)).toBeTruthy();
+    expect(screen.getByText(/tiket pesawat, hotel, transportasi/)).toBeTruthy();
   });
 });

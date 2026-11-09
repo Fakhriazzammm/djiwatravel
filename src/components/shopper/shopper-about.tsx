@@ -28,7 +28,7 @@ const CAN = [
 
 const STEPS = [
   "Pilih barang dan bayar di aplikasi.",
-  "Tim membeli di Jepang dan memeriksa barangnya.",
+  "Tim kami berbelanja langsung di Jepang dan memeriksa barangnya.",
   "Barang dikirim ke Indonesia, nomor resi tampil di pesanan.",
   "Barang sampai di alamatmu.",
 ] as const;
@@ -63,8 +63,9 @@ export function ShopperAbout({ config }: { config: ShopperConfig }) {
           >
             <div className="space-y-3 px-3 pb-3">
               <p className="text-[12px] text-muted-foreground">
-                Titip Belanja untuk barang fisik dari Jepang. Tiket pesawat, eSIM, dan hotel ada di
-                layanan Djiwa yang lain.
+                Titip Belanja untuk barang fisik dari Jepang. Tiket pesawat, eSIM, dan hotel untuk
+                perjalananmu sendiri ada di layanan Djiwa yang lain. Biaya perjalanan tim kami ke
+                Jepang sudah termasuk di jasa titip.
               </p>
               <ul className="grid gap-2">
                 {CAN.map(({ icon: Icon, title, text }) => (
@@ -129,9 +130,9 @@ export function FeeExplainer({ config, hasMarket }: { config: ShopperConfig; has
       {open && (
         <ul className="mt-1 space-y-1 rounded-lg bg-secondary px-2.5 py-2 text-[11px] text-muted-foreground">
           <li>
-            <b className="text-foreground">Jasa titip {config.feePercent}%</b>: kami membeli
-            barangnya, memeriksa kondisi dan harganya, mengurus pembayaran di Jepang, dan
-            menghubungimu bila ada yang berubah.
+            <b className="text-foreground">Jasa titip {config.feePercent}%</b>: biaya tim kami
+            berbelanja di Jepang, yaitu tiket pesawat, hotel, transportasi, dan operasional lainnya,
+            ditambah memeriksa barang, mengurus pembayaran, dan menghubungimu bila ada yang berubah.
           </li>
           {hasMarket && (
             <li>
