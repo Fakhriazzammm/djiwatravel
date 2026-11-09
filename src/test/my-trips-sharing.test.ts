@@ -128,7 +128,9 @@ describe("My Trips sharing", () => {
   });
 
   it("creates a fresh bearer token and revokes older active links", async () => {
-    query.mockResolvedValueOnce({ rows: [{ id: tripId }] } as never);
+    query
+      .mockResolvedValueOnce({ rows: [{ id: tripId }] } as never)
+      .mockResolvedValueOnce({ rows: [{ display_name: "Rani Putri" }] } as never);
     const clientQuery = vi.fn(async (sql: string, _params?: unknown[]) => {
       if (sql.includes("insert into travel_trip_shares")) {
         return { rows: [{ token: "a".repeat(32), created_at: "2026-10-30T00:00:00.000Z" }] };
@@ -141,6 +143,7 @@ describe("My Trips sharing", () => {
     const share = await createTripShareLink(tripId);
 
     expect(share.token).toHaveLength(32);
+    expect(share.handle).toBe("rani");
     expect(clientQuery.mock.calls[0]?.[0]).toBe("begin");
     expect(clientQuery.mock.calls[1]?.[0]).toContain("revoked_at=now()");
     expect(clientQuery.mock.calls[2]?.[0]).toContain("insert into travel_trip_shares");

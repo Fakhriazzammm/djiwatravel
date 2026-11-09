@@ -6,16 +6,17 @@ import { prepareShareCardActivities, renderShareCard } from "@/lib/share-card";
 function dateLabel(value: unknown, options?: Intl.DateTimeFormatOptions) {
   const key = String(value ?? "").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return "Tanggal belum diatur";
-  return new Intl.DateTimeFormat("id-ID", options ?? { day: "numeric", month: "long" }).format(
-    new Date(`${key}T12:00:00`),
-  );
+  return new Intl.DateTimeFormat(
+    "id-ID",
+    options ?? { day: "numeric", month: "long", year: "numeric" },
+  ).format(new Date(`${key}T12:00:00`));
 }
 
 function fileSlug(value: string) {
   return value.replace(/\W+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "perjalanan";
 }
 
-/** Builds every 9:16 Story slide from the same safe, read-only public itinerary as the share page. */
+/** Refresh the token-scoped public itinerary on every export, including exports from AI and public pages. */
 export async function tripStoryImages(token: string, link: string): Promise<File[]> {
   const data = await getSharedTrip({ data: { token } });
   if (!data) throw new Error("share unavailable");
@@ -24,6 +25,7 @@ export async function tripStoryImages(token: string, link: string): Promise<File
     destination_name: string;
     departure_date: string | null;
     return_date: string | null;
+    travelers_count: number;
   };
   const owner = (data as { owner?: { firstName: string | null } }).owner?.firstName ?? null;
   const sources = (data.itinerary as Record<string, unknown>[]).map((item) => ({
@@ -33,6 +35,7 @@ export async function tripStoryImages(token: string, link: string): Promise<File
     title: item["title"] as string | null,
     location: item["location"] as string | null,
     notes: item["notes"] as string | null,
+    activity_category: item["activity_category"] as string | null,
     image: isAllowedImageUrl(item["place_image_url"]) ? (item["place_image_url"] as string) : null,
   }));
   const highlights = prepareShareCardActivities(sources, (date) =>
@@ -43,6 +46,7 @@ export async function tripStoryImages(token: string, link: string): Promise<File
     destination: trip.destination_name,
     dates: `${dateLabel(trip.departure_date)} — ${dateLabel(trip.return_date)}`,
     owner,
+    travelers: trip.travelers_count,
     link: link.replace(/^https?:\/\//, ""),
     days: new Set(
       highlights

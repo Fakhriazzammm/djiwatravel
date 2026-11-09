@@ -12,9 +12,9 @@ import {
   Utensils,
 } from "lucide-react";
 import { SocialShare } from "@/components/social-share";
-import logoUrl from "@/assets/logo.png";
 import { isAllowedImageUrl } from "@/lib/place-image";
-import { prepareShareCardActivities, renderShareCard, splitActivityNotes } from "@/lib/share-card";
+import { splitActivityNotes } from "@/lib/share-card";
+import { tripStoryImages } from "@/lib/trip-share-image";
 import { Page, Wordmark } from "@/components/shell";
 import { getSharedTrip } from "@/lib/my-trips.fn";
 
@@ -190,12 +190,8 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
         title={trip.name}
         destination={trip.destination_name}
         dates={dateRange}
-        owner={owner}
         handle={handle}
         token={token}
-        days={days.filter((day) => day.date).length}
-        activities={activityCount}
-        items={allItems}
       />
 
       <section className="mt-3" aria-labelledby="shared-itinerary-heading">
@@ -329,55 +325,20 @@ function ShareBar({
   title,
   destination,
   dates,
-  owner,
   handle,
   token,
-  days,
-  activities,
-  items,
 }: {
   title: string;
   destination: string;
   dates: string;
-  owner: string | null;
   handle: string;
   token: string;
-  days: number;
-  activities: number;
-  items: SharedItem[];
 }) {
   const url = `${window.location.origin}/share/${handle}/${token}`;
   const text = `Itinerary ${title} ke ${destination} (${dates})`;
 
   async function makeImage() {
-    const highlights = prepareShareCardActivities(
-      items.map((item) => ({
-        activity_date: item.activity_date ?? null,
-        start_time: item.start_time ?? null,
-        end_time: item.end_time ?? null,
-        title: item.title ?? null,
-        location: item.location ?? null,
-        notes: item.notes ?? null,
-        image: isAllowedImageUrl(item.place_image_url) ? item.place_image_url : null,
-      })),
-      (date) => formatDate(date, { weekday: "long", day: "numeric", month: "short" }),
-    );
-    const blobs = await renderShareCard({
-      title,
-      destination,
-      dates,
-      owner,
-      link: url.replace(/^https?:\/\//, ""),
-      days,
-      activities,
-      logoUrl,
-      highlights,
-    });
-    const slug = title.replace(/\W+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "perjalanan";
-    return blobs.map(
-      (blob, index) =>
-        new File([blob], `itinerary-${slug}-story-${index + 1}.png`, { type: "image/png" }),
-    );
+    return tripStoryImages(token, url);
   }
 
   return (

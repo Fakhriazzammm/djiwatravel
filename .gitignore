@@ -37,3 +37,6 @@ dist-ssr
 
 # Local feature worktrees
 .worktrees/
+
+# Local image verification can include public member display names.
+/artifacts/share-story/

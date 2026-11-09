@@ -1,19 +1,21 @@
 /** Client-side renderers for the 9:16 social cards shared by trips, eSIM, guides, and flights. */
+import { shareGenerationTime, shareGeneratorName } from "./share-card-attribution";
+
 export const SHARE_MASCOT_URL = "/assets/home-hero/mascot-v6.png";
 
 const W = 1080;
 const H = 1920;
-const RED = "#e5393b";
-const NAVY = "#142b49";
-const PAPER = "#f7f5f0";
+const RED = "#e92d35";
+const NAVY = "#101f3c";
+const PAPER = "#fff8ee";
 const FONT = '"Inter","SF Pro Text",system-ui,-apple-system,"Segoe UI",sans-serif';
-const PHOTO_H = 620;
-const PAGE_BOTTOM = H - 170;
+const SERIF = '"Djiwa Story Serif",Georgia,"Times New Roman",serif';
+const TOKYO_ART = "/assets/share/tokyo-illustration-v1.webp";
+const SKY_ART = "/assets/share/travel-sky-illustration-v1.webp";
+const CONTENT_BOTTOM = 1650;
 const LEFT = 64;
-const MAIN_X = 232;
-const MAIN_W = 690;
-const THUMB_X = 952;
-const THUMB_SIZE = 64;
+const MAIN_X = 300;
+const MAIN_W = W - LEFT - MAIN_X;
 
 export type ShareCardActivity = {
   time: string;
@@ -28,6 +30,8 @@ export type ShareCardActivity = {
   dayLabel?: string;
   dayNumber?: number;
   order?: number;
+  category?: string | null;
+  durationMinutes?: number | null;
 };
 
 export type ShareCardInput = {
@@ -42,6 +46,7 @@ export type ShareCardInput = {
   highlights: ShareCardActivity[];
   logoUrl: string;
   mascotUrl?: string;
+  travelers?: number;
 };
 
 export type ShareCardActivitySource = {
@@ -52,6 +57,7 @@ export type ShareCardActivitySource = {
   location?: string | null;
   notes?: string | null;
   image?: string | null;
+  activity_category?: string | null;
 };
 
 /** Prepares every public itinerary item in date/time order and numbers it within its day. */
@@ -93,6 +99,8 @@ export function prepareShareCardActivities(
       dayLabel: date ? formatDay(date) : "Tanggal belum diatur",
       dayNumber,
       order,
+      category: item.activity_category ?? null,
+      durationMinutes: activityDuration(start, end),
     };
   });
 }
@@ -165,9 +173,16 @@ function loadImage(src: string | null | undefined): Promise<HTMLImageElement | n
   if (!src) return Promise.resolve(null);
   return new Promise((resolve) => {
     const image = new Image();
+    const timer = setTimeout(() => resolve(null), 8000);
     image.crossOrigin = "anonymous";
-    image.onload = () => resolve(image);
-    image.onerror = () => resolve(null);
+    image.onload = () => {
+      clearTimeout(timer);
+      resolve(image);
+    };
+    image.onerror = () => {
+      clearTimeout(timer);
+      resolve(null);
+    };
     image.src = src;
   });
 }
@@ -283,413 +298,376 @@ function drawLines(
   return y + lines.length * lineHeight;
 }
 
-type ActivityLayout = {
-  activity: ShareCardActivity;
-  order: number;
-  title: string[];
-  location: string[];
-  details: string[];
-  hours: string[];
-  openingHoursWarning: string | null;
-  height: number;
-  continuation: boolean;
+function activityDuration(start: string, end: string): number | null {
+  if (!start || !end) return null;
+  const minutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
+  const duration = (minutes(end) - minutes(start) + 1440) % 1440;
+  return duration || null;
+}
+
+function durationLabel(minutes: number | null | undefined) {
+  if (!minutes || minutes < 0) return "";
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return [hours ? `${hours} jam` : "", remainder ? `${remainder} mnt` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+const CATEGORIES: Record<string, string> = {
+  attraction: "Wisata",
+  museum: "Wisata",
+  cafe: "Kuliner",
+  restaurant: "Kuliner",
+  food: "Kuliner",
+  shopping: "Belanja",
+  shop: "Belanja",
+  nature: "Alam",
+  park: "Alam",
+  hotel: "Hotel",
+  accommodation: "Menginap",
+  airport: "Bandara",
+  station: "Stasiun",
+  transport: "Transportasi",
+  activity: "Aktivitas",
 };
 
-function activityLayout(
+type CompactRow = {
+  activity: ShareCardActivity;
+  title: string[];
+  metadata: string[];
+  note: string[];
+  time: string[];
+  height: number;
+};
+type CompactDay = { label: string; rows: CompactRow[]; height: number };
+type PosterLayout = {
+  days: CompactDay[];
+  top: number;
+  titleSize: number;
+  metaSize: number;
+  titleLine: number;
+  metaLine: number;
+};
+
+function compactRow(
   ctx: CanvasRenderingContext2D,
   activity: ShareCardActivity,
-  order: number,
-): ActivityLayout {
+  size: number,
+): CompactRow {
   const parsed = splitActivityNotes(activity.notes);
-  const details = activity.details?.trim() || parsed.details || "Belum ada keterangan tambahan";
-  const hours = activity.openingHours?.trim() || parsed.openingHours || "Belum dicantumkan";
-  const source = activity.openingHoursSource ?? parsed.openingHoursSource;
-  const warning = activity.openingHoursWarning ?? parsed.openingHoursWarning;
-  const hoursText = [`Jam buka · ${hours}`, source, warning].filter(Boolean).join(" · ");
-  const title = wrapText(ctx, activity.title || "Aktivitas", MAIN_W, `600 22px ${FONT}`);
-  const location = wrapText(
-    ctx,
-    `Lokasi · ${activity.place || "Belum dicantumkan"}`,
-    MAIN_W,
-    `500 16px ${FONT}`,
-  );
-  const detailLines = wrapText(ctx, `Keterangan · ${details}`, MAIN_W, `400 15px ${FONT}`);
-  const hoursLines = wrapText(ctx, hoursText, MAIN_W, `500 15px ${FONT}`);
-  const height =
-    14 +
-    title.length * 28 +
-    5 +
-    location.length * 21 +
-    5 +
-    detailLines.length * 20 +
-    4 +
-    hoursLines.length * 20 +
-    14;
+  const time = activity.time || "Waktu belum diatur";
+  const clocks = time.match(/^(\d{2}:\d{2})[–—-](\d{2}:\d{2})$/);
+  const duration =
+    activity.durationMinutes ?? (clocks ? activityDuration(clocks[1]!, clocks[2]!) : null);
+  const hours = activity.openingHours?.trim() || parsed.openingHours;
+  const warning = activity.openingHoursWarning || parsed.openingHoursWarning;
+  const metaSize = size - 7;
+  const titleLine = Math.round(size * 1.14);
+  const metaLine = Math.round(metaSize * 1.3);
+  const metadata = [
+    activity.place &&
+    activity.place !== "Lokasi belum dicantumkan" &&
+    activity.place !== activity.title
+      ? activity.place
+      : "",
+    activity.category ? CATEGORIES[activity.category] || activity.category : "",
+    durationLabel(duration),
+    hours ? (/cek/i.test(hours) ? "Cek jam buka" : `Buka ${hours}`) : "",
+    warning,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const detail = (activity.details?.trim() || parsed.details || "")
+    .replace(/\s*\(Sumber:\s*[^)]+\)/gi, "")
+    .trim();
+  // Only optional prose is condensed. Activity names, locations, hours and the list stay complete.
+  const preview = detail.length > 130 ? `${detail.slice(0, 127).replace(/\s+\S*$/, "")}…` : detail;
+  const title = wrapText(ctx, activity.title || "Aktivitas", MAIN_W, `400 ${size}px ${SERIF}`);
+  const meta = metadata ? wrapText(ctx, metadata, MAIN_W, `400 ${metaSize}px ${FONT}`) : [];
+  const note = preview ? wrapText(ctx, preview, MAIN_W, `italic ${metaSize}px ${FONT}`) : [];
+  const timeLines = wrapText(ctx, time, MAIN_X - LEFT - 24, `600 ${size - 2}px ${FONT}`);
+  const textHeight = title.length * titleLine + (meta.length + note.length) * metaLine;
   return {
     activity,
-    order,
     title,
-    location,
-    details: detailLines,
-    hours: hoursLines,
-    openingHoursWarning: warning,
-    height,
-    continuation: false,
+    metadata: meta,
+    note,
+    time: timeLines,
+    height: Math.max(textHeight, timeLines.length * titleLine) + 14,
   };
 }
 
-function activityRows(
-  ctx: CanvasRenderingContext2D,
-  activity: ShareCardActivity,
-  order: number,
-  maxHeight: number,
-) {
-  const layout = activityLayout(ctx, activity, order);
-  if (layout.height <= maxHeight) return [layout];
-
-  const fixedHeight =
-    14 +
-    layout.title.length * 28 +
-    5 +
-    layout.location.length * 21 +
-    5 +
-    layout.hours.length * 20 +
-    14;
-  const linesPerPart = Math.max(1, Math.floor((maxHeight - fixedHeight - 5) / 20));
-  const chunks: string[][] = [];
-  for (let i = 0; i < layout.details.length; i += linesPerPart) {
-    chunks.push(layout.details.slice(i, i + linesPerPart));
-  }
-  return chunks.map((details, index) => {
-    const continuation = index > 0;
-    const title = continuation
-      ? wrapText(ctx, `Lanjutan · ${activity.title || "Aktivitas"}`, MAIN_W, `600 22px ${FONT}`)
-      : layout.title;
-    const height =
-      14 +
-      title.length * 28 +
-      5 +
-      layout.location.length * 21 +
-      5 +
-      details.length * 20 +
-      4 +
-      layout.hours.length * 20 +
-      14;
-    return { ...layout, title, details, height, continuation };
-  });
-}
-
-type StoryPage = {
-  dayLabel: string;
-  dayNumber: number;
-  continuation: boolean;
-  rows: ActivityLayout[];
-};
-
-function storyDays(activities: ShareCardActivity[]) {
-  const groups = new Map<
-    string,
-    { dayLabel: string; dayNumber: number; activities: ShareCardActivity[] }
-  >();
-  activities.forEach((activity, index) => {
-    const dayLabel = activity.dayLabel?.trim() || "Jadwal perjalanan";
-    const dayNumber = activity.dayNumber || 1;
-    const key = `${dayNumber}:${dayLabel}`;
-    const day = groups.get(key) ?? { dayLabel, dayNumber, activities: [] };
-    day.activities.push({ ...activity, order: activity.order || day.activities.length + 1 });
-    groups.set(key, day);
-  });
-  return [...groups.values()];
-}
-
-function storyPages(
+function posterLayout(
   ctx: CanvasRenderingContext2D,
   input: ShareCardInput,
-  heroHeight: number,
-): StoryPage[] {
-  const days = storyDays(input.highlights);
-  if (!days.length)
-    return [{ dayLabel: "Belum ada agenda", dayNumber: 1, continuation: false, rows: [] }];
-  const contentTop = heroHeight + 28 + 72;
-  const rowCapacity = PAGE_BOTTOM - contentTop;
-  const pages: StoryPage[] = [];
-
-  for (const day of days) {
-    let page: StoryPage = {
-      dayLabel: day.dayLabel,
-      dayNumber: day.dayNumber,
-      continuation: false,
-      rows: [],
-    };
-    let used = 0;
-    const pushPage = () => {
-      if (page.rows.length) pages.push(page);
-      page = { dayLabel: day.dayLabel, dayNumber: day.dayNumber, continuation: true, rows: [] };
-      used = 0;
-    };
-    for (const [index, activity] of day.activities.entries()) {
-      for (const row of activityRows(ctx, activity, index + 1, rowCapacity)) {
-        if (page.rows.length && used + row.height > rowCapacity) pushPage();
-        page.rows.push(row);
-        used += row.height;
-      }
+  minimumTop: number,
+): PosterLayout {
+  for (let size = 36; size >= 29; size--) {
+    const groups = new Map<string, CompactDay>();
+    for (const activity of input.highlights) {
+      const label = activity.dayLabel?.trim() || "Jadwal perjalanan";
+      const key = `${activity.dayNumber || 1}:${label}`;
+      const day = groups.get(key) || { label, rows: [], height: 68 };
+      const row = compactRow(ctx, activity, size);
+      day.rows.push(row);
+      day.height += row.height;
+      groups.set(key, day);
     }
-    if (page.rows.length) pages.push(page);
+    const days = [...groups.values()];
+    const height = days.reduce((sum, day) => sum + day.height + 12, 0);
+    if (height <= CONTENT_BOTTOM - minimumTop)
+      return {
+        days,
+        top: Math.max(minimumTop, Math.min(850, CONTENT_BOTTOM - Math.max(height, 180))),
+        titleSize: size,
+        metaSize: size - 7,
+        titleLine: Math.round(size * 1.14),
+        metaLine: Math.round((size - 7) * 1.3),
+      };
   }
-  return pages.length
-    ? pages
-    : [{ dayLabel: "Belum ada agenda", dayNumber: 1, continuation: false, rows: [] }];
+  throw new Error(
+    "Agenda terlalu panjang untuk satu gambar Story. Ringkas catatan atau pilih lebih sedikit agenda, lalu coba lagi.",
+  );
 }
 
-function drawBrandHeader(
-  ctx: CanvasRenderingContext2D,
-  logo: HTMLImageElement | null,
-  mascot: HTMLImageElement | null,
-) {
-  ctx.fillStyle = "rgba(255,255,255,0.94)";
-  roundRect(ctx, 48, 40, 196, 112, 22);
-  ctx.fill();
-  if (logo) containDraw(ctx, logo, 65, 51, 162, 90);
-
-  ctx.fillStyle = "rgba(255,255,255,0.94)";
-  ctx.beginPath();
-  ctx.arc(930, 102, 82, 0, Math.PI * 2);
-  ctx.fill();
-  if (mascot) containDraw(ctx, mascot, 854, 34, 152, 136);
+let serifReady: Promise<void> | undefined;
+async function prepareSerif() {
+  if (typeof FontFace === "undefined" || !document.fonts) return;
+  serifReady ??= (async () => {
+    try {
+      const face = await new FontFace(
+        "Djiwa Story Serif",
+        'url("/assets/share/dm-serif-display-v1.ttf")',
+      ).load();
+      document.fonts.add(face);
+    } catch {
+      /* A system serif keeps export available when the font cannot load. */
+    }
+  })();
+  await serifReady;
 }
 
-function titleLayout(ctx: CanvasRenderingContext2D, title: string, maxWidth: number) {
-  let size = 58;
-  let lines = wrapText(ctx, title, maxWidth, `700 ${size}px ${FONT}`);
-  while (lines.length > 2 && size > 40) {
-    size -= 3;
-    lines = wrapText(ctx, title, maxWidth, `700 ${size}px ${FONT}`);
+function titleLayout(ctx: CanvasRenderingContext2D, title: string) {
+  let size = 140;
+  let lines = wrapText(
+    ctx,
+    title.toLocaleUpperCase("id-ID"),
+    W - LEFT * 2,
+    `400 ${size}px ${SERIF}`,
+  );
+  while (lines.length > 2 && size > 65) {
+    size -= 5;
+    lines = wrapText(ctx, title.toLocaleUpperCase("id-ID"), W - LEFT * 2, `400 ${size}px ${SERIF}`);
   }
-  return { size, lines, lineHeight: Math.round(size * 1.08) };
+  return { size, lines, bottom: 184 + lines.length * Math.round(size * 1.04) };
 }
 
-function drawTripHero(
-  ctx: CanvasRenderingContext2D,
-  input: ShareCardInput,
-  logo: HTMLImageElement | null,
-  mascot: HTMLImageElement | null,
-  cover: HTMLImageElement | null,
-) {
+function drawBackdrop(ctx: CanvasRenderingContext2D, art: HTMLImageElement | null, height: number) {
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, W, H);
-  if (cover) coverDraw(ctx, cover, 0, 0, W, PHOTO_H);
+  if (art) coverDraw(ctx, art, 0, 0, W, height);
   else {
-    ctx.fillStyle = "#243b55";
-    ctx.fillRect(0, 0, W, PHOTO_H);
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    sky.addColorStop(0, "#dceaf3");
+    sky.addColorStop(0.62, "#f6ece1");
+    sky.addColorStop(1, PAPER);
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, height);
   }
-  const fade = ctx.createLinearGradient(0, 225, 0, PHOTO_H);
-  fade.addColorStop(0, "rgba(10,18,29,0.06)");
-  fade.addColorStop(0.5, "rgba(10,18,29,0.48)");
-  fade.addColorStop(1, "rgba(10,18,29,0.94)");
-  ctx.fillStyle = fade;
-  ctx.fillRect(0, 0, W, PHOTO_H);
-  drawBrandHeader(ctx, logo, mascot);
-
-  const labelY = 322;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = RED;
-  ctx.font = `700 18px ${FONT}`;
-  ctx.fillText("ITINERARY PERJALANAN", LEFT, labelY);
-
-  const title = titleLayout(ctx, input.title, W - 128);
-  const titleY = labelY + 38;
-  const titleBottom = drawLines(
-    ctx,
-    title.lines,
-    LEFT,
-    titleY,
-    `700 ${title.size}px ${FONT}`,
-    "#ffffff",
-    title.lineHeight,
-  );
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.font = `500 21px ${FONT}`;
-  ctx.fillText(
-    fitText(ctx, `${input.destination} · ${input.dates}`, W - 128, `500 21px ${FONT}`),
-    LEFT,
-    titleBottom + 10,
-  );
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.font = `500 17px ${FONT}`;
-  ctx.fillText(`${input.days} hari · ${input.activities} aktivitas`, LEFT, titleBottom + 42);
-  return Math.max(PHOTO_H, titleBottom + 78);
+  // A light paper wash gives destination photos the same quiet poster hierarchy.
+  const wash = ctx.createLinearGradient(0, 0, 0, height);
+  wash.addColorStop(0, "rgba(255,248,238,.52)");
+  wash.addColorStop(0.43, "rgba(255,248,238,.64)");
+  wash.addColorStop(0.68, "rgba(255,248,238,0)");
+  wash.addColorStop(0.86, "rgba(255,248,238,.08)");
+  wash.addColorStop(1, PAPER);
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, 0, W, height);
 }
 
-function drawActivityRow(
-  ctx: CanvasRenderingContext2D,
-  row: ActivityLayout,
-  y: number,
-  images: Map<string, HTMLImageElement | null>,
-) {
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = RED;
-  ctx.font = `700 19px ${FONT}`;
-  ctx.fillText(String(row.order).padStart(2, "0"), LEFT, y + 12);
-
-  const timeLines = wrapText(
-    ctx,
-    row.activity.time || "Waktu belum diatur",
-    150,
-    `600 15px ${FONT}`,
-  );
-  drawLines(ctx, timeLines, LEFT, y + 42, `600 15px ${FONT}`, NAVY, 20);
-
-  let textY = drawLines(ctx, row.title, MAIN_X, y + 10, `600 22px ${FONT}`, NAVY, 28) + 3;
-  textY = drawLines(ctx, row.location, MAIN_X, textY, `500 16px ${FONT}`, "#5d6470", 21) + 3;
-  textY = drawLines(ctx, row.details, MAIN_X, textY, `400 15px ${FONT}`, "#464d57", 20) + 2;
-  drawLines(
-    ctx,
-    row.hours,
-    MAIN_X,
-    textY,
-    `500 15px ${FONT}`,
-    row.openingHoursWarning ? "#9e3c39" : "#717780",
-    20,
-  );
-
-  const image = row.activity.image ? images.get(row.activity.image) : null;
-  if (image) {
-    ctx.save();
-    roundRect(ctx, THUMB_X, y + 10, THUMB_SIZE, THUMB_SIZE, 14);
-    ctx.clip();
-    coverDraw(ctx, image, THUMB_X, y + 10, THUMB_SIZE, THUMB_SIZE);
-    ctx.restore();
-  }
-  ctx.fillStyle = "#dedbd4";
-  ctx.fillRect(LEFT, y + row.height - 1, W - LEFT * 2, 1);
-}
-
-function drawTripStoryPage(
+function drawHeader(
   ctx: CanvasRenderingContext2D,
   input: ShareCardInput,
-  page: StoryPage,
-  pageIndex: number,
-  pageCount: number,
-  heroHeight: number,
   logo: HTMLImageElement | null,
-  mascot: HTMLImageElement | null,
-  cover: HTMLImageElement | null,
-  images: Map<string, HTMLImageElement | null>,
 ) {
-  drawTripHero(ctx, input, logo, mascot, cover);
-  const headerY = heroHeight + 28;
-  ctx.textAlign = "left";
+  ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillStyle = RED;
-  ctx.font = `700 14px ${FONT}`;
-  ctx.fillText(
-    `HARI ${String(page.dayNumber).padStart(2, "0")}${page.continuation ? " · LANJUTAN" : ""} · STORY ${pageIndex + 1}/${pageCount}`,
-    LEFT,
-    headerY,
+  if (logo) containDraw(ctx, logo, 425, 58, 230, 118);
+  else {
+    ctx.fillStyle = NAVY;
+    ctx.font = `600 28px ${FONT}`;
+    ctx.fillText("Djiwa Travel", W / 2, 100);
+  }
+  const title = titleLayout(ctx, input.title);
+  drawLines(
+    ctx,
+    title.lines,
+    W / 2,
+    184,
+    `400 ${title.size}px ${SERIF}`,
+    NAVY,
+    Math.round(title.size * 1.04),
   );
+  const kickerY = title.bottom + 4;
+  ctx.fillStyle = RED;
+  ctx.fillRect(235, kickerY, 610, 44);
+  ctx.font = `600 23px ${FONT}`;
+  ctx.fillStyle = "#fffaf3";
+  ctx.fillText("ITINERARY PERJALANAN", W / 2, kickerY + 8);
+  const dates = wrapText(ctx, input.dates, W - LEFT * 2, `400 30px ${SERIF}`);
+  const dateEnd = drawLines(ctx, dates, W / 2, kickerY + 54, `400 30px ${SERIF}`, NAVY, 34);
+  ctx.font = `500 24px ${FONT}`;
   ctx.fillStyle = NAVY;
-  ctx.font = `650 24px ${FONT}`;
-  ctx.fillText(page.dayLabel, LEFT, headerY + 24);
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#737984";
-  ctx.font = `500 15px ${FONT}`;
-  ctx.fillText(`${new Set(page.rows.map((row) => row.order)).size} agenda`, W - LEFT, headerY + 31);
+  const member = input.owner?.trim()
+    ? `${input.owner.trim()} · Member Djiwa Travel`
+    : "Member Djiwa Travel";
+  ctx.fillText(member, W / 2, dateEnd + 9);
+  const stats = [
+    input.travelers ? `${input.travelers} traveler` : "",
+    `${input.days} hari beragenda`,
+    `${input.highlights.length} aktivitas`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  ctx.font = `400 23px ${FONT}`;
+  ctx.fillText(stats, W / 2, dateEnd + 43);
+  return dateEnd + 90;
+}
 
-  let y = headerY + 70;
-  if (!page.rows.length) {
+function drawFooter(
+  ctx: CanvasRenderingContext2D,
+  mascot: HTMLImageElement | null,
+  generator: string,
+  generatedAt: string,
+) {
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = NAVY;
+  ctx.font = `italic 400 31px ${SERIF}`;
+  ctx.fillText("Bawa Djiwamu Lebih Jauh", 440, 1692);
+  ctx.fillStyle = RED;
+  roundRect(ctx, 230, 1738, 490, 62, 31);
+  ctx.fill();
+  ctx.fillStyle = "#fffaf3";
+  ctx.font = `600 34px ${FONT}`;
+  ctx.fillText("djiwatravel.com", 475, 1747);
+  if (mascot) containDraw(ctx, mascot, 812, 1664, 184, 154);
+  ctx.fillStyle = "#5b5c65";
+  ctx.font = `400 18px ${FONT}`;
+  ctx.fillText("Desain ini digenerate otomatis di aplikasi Djiwa Travel", W / 2, 1824);
+  ctx.fillText(`oleh ${generator} — ${generatedAt}`, W / 2, 1852);
+}
+
+function drawAgenda(ctx: CanvasRenderingContext2D, layout: PosterLayout) {
+  let y = layout.top;
+  for (const day of layout.days) {
     ctx.textAlign = "left";
-    ctx.fillStyle = "#737984";
-    ctx.font = `500 18px ${FONT}`;
-    ctx.fillText("Belum ada jadwal yang ditambahkan.", LEFT, y + 14);
-  } else {
-    for (const row of page.rows) {
-      drawActivityRow(ctx, row, y, images);
+    ctx.textBaseline = "top";
+    ctx.fillStyle = RED;
+    ctx.font = `400 37px ${SERIF}`;
+    ctx.fillText(day.label, LEFT, y);
+    ctx.font = `400 22px ${FONT}`;
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#686570";
+    ctx.fillText(`${day.rows.length} aktivitas`, W - LEFT, y + 10);
+    ctx.fillStyle = "#e6d5c6";
+    ctx.fillRect(LEFT, y + 47, W - LEFT * 2, 1);
+    y += 64;
+    for (const row of day.rows) {
+      ctx.textAlign = "left";
+      drawLines(
+        ctx,
+        row.time,
+        LEFT,
+        y + 3,
+        `600 ${layout.titleSize - 2}px ${FONT}`,
+        NAVY,
+        layout.titleLine,
+      );
+      ctx.fillStyle = RED;
+      ctx.fillRect(MAIN_X - 22, y + 3, 2, Math.min(44, row.height - 12));
+      let rowY = drawLines(
+        ctx,
+        row.title,
+        MAIN_X,
+        y,
+        `400 ${layout.titleSize}px ${SERIF}`,
+        NAVY,
+        layout.titleLine,
+      );
+      rowY = drawLines(
+        ctx,
+        row.metadata,
+        MAIN_X,
+        rowY,
+        `400 ${layout.metaSize}px ${FONT}`,
+        "#4b4c59",
+        layout.metaLine,
+      );
+      drawLines(
+        ctx,
+        row.note,
+        MAIN_X,
+        rowY,
+        `italic ${layout.metaSize}px ${FONT}`,
+        "#5e5360",
+        layout.metaLine,
+      );
       y += row.height;
     }
+    y += 16;
   }
-
-  ctx.fillStyle = "#dedbd4";
-  ctx.fillRect(LEFT, H - 148, W - LEFT * 2, 1);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = "#777d85";
-  ctx.font = `400 13px ${FONT}`;
-  ctx.fillText("Jam operasional dapat berubah; periksa kembali sebelum berangkat.", LEFT, H - 134);
-  if (input.owner) {
-    ctx.fillStyle = NAVY;
-    ctx.font = `600 16px ${FONT}`;
-    ctx.fillText(`${input.owner} · Member Djiwa Travel`, LEFT, H - 103);
-  }
-  ctx.fillStyle = RED;
-  ctx.font = `600 16px ${FONT}`;
-  ctx.fillText(fitText(ctx, input.link, W - LEFT * 2, `600 16px ${FONT}`), LEFT, H - 68);
 }
 
-function fitText(ctx: CanvasRenderingContext2D, value: string, maxWidth: number, font: string) {
-  ctx.font = font;
-  if (ctx.measureText(value).width <= maxWidth) return value;
-  let result = value;
-  while (result.length > 1 && ctx.measureText(`${result}…`).width > maxWidth)
-    result = result.slice(0, -1);
-  return `${result.trimEnd()}…`;
+async function canvasBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    try {
+      canvas.toBlob(
+        (blob) =>
+          blob ? resolve(blob) : reject(new Error("Gambar belum dapat dibuat. Coba lagi.")),
+        "image/png",
+      );
+    } catch {
+      reject(new Error("Foto tidak dapat diekspor. Coba lagi tanpa foto tersebut."));
+    }
+  });
 }
 
-/** One image per itinerary day (and continuation slides when a day's details need the space). */
+/** Every day and activity is composed into one compact illustrated Story. Never caches data or identity. */
 export async function renderShareCard(input: ShareCardInput): Promise<Blob[]> {
-  const urls = [
-    ...new Set(
-      [
-        input.logoUrl,
-        input.mascotUrl ?? SHARE_MASCOT_URL,
-        ...input.highlights.map((item) => item.image),
-      ].filter(Boolean) as string[],
-    ),
-  ];
-  const entries = await Promise.all(urls.map(async (url) => [url, await loadImage(url)] as const));
-  const images = new Map(entries);
-  const logo = images.get(input.logoUrl) ?? null;
-  const mascot = images.get(input.mascotUrl ?? SHARE_MASCOT_URL) ?? null;
-  const coverFallback = input.highlights.map((item) => item.image).find(Boolean);
-
-  const measureCanvas = document.createElement("canvas");
-  const measure = measureCanvas.getContext("2d");
-  if (!measure) throw new Error("canvas unavailable");
-  const title = titleLayout(measure, input.title, W - 128);
-  const titleBottom = 322 + 38 + title.lines.length * title.lineHeight;
-  const heroHeight = Math.max(PHOTO_H, titleBottom + 78);
-  const pages = storyPages(measure, input, heroHeight);
-
-  return Promise.all(
-    pages.map(async (page, pageIndex) => {
-      const canvas = document.createElement("canvas");
-      canvas.width = W;
-      canvas.height = H;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("canvas unavailable");
-      const coverUrl = page.rows.map((row) => row.activity.image).find(Boolean) ?? coverFallback;
-      const cover = coverUrl ? (images.get(coverUrl) ?? null) : null;
-      drawTripStoryPage(
-        ctx,
-        input,
-        page,
-        pageIndex,
-        pages.length,
-        heroHeight,
-        logo,
-        mascot,
-        cover,
-        images,
-      );
-      return new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob(
-          (blob) => (blob ? resolve(blob) : reject(new Error("render failed"))),
-          "image/png",
-        ),
-      );
-    }),
-  );
+  const artUrl = /\btokyo\b|東京/i.test(input.title)
+    ? TOKYO_ART
+    : input.highlights.find((row) => row.image)?.image;
+  const [[logo, mascot, art, fallback], generator] = await Promise.all([
+    Promise.all([
+      loadImage(input.logoUrl),
+      loadImage(input.mascotUrl ?? SHARE_MASCOT_URL),
+      loadImage(artUrl),
+      loadImage(SKY_ART),
+    ]),
+    shareGeneratorName(),
+    prepareSerif(),
+  ]);
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas unavailable");
+  // Measure header first, then give the illustration the space remaining after all agenda rows.
+  const minimumTop = drawHeader(ctx, input, null) + 30;
+  const layout = posterLayout(ctx, input, minimumTop);
+  drawBackdrop(ctx, art ?? fallback, layout.top + 10);
+  drawHeader(ctx, input, logo);
+  if (layout.days.length) drawAgenda(ctx, layout);
+  else {
+    ctx.textAlign = "center";
+    ctx.fillStyle = NAVY;
+    ctx.font = `400 30px ${SERIF}`;
+    ctx.fillText("Belum ada jadwal yang ditambahkan.", W / 2, 1150);
+  }
+  drawFooter(ctx, mascot, generator, shareGenerationTime());
+  return [await canvasBlob(canvas)];
 }
 
 export type BrandCardInput = {
@@ -702,63 +680,64 @@ export type BrandCardInput = {
   mascotUrl?: string;
 };
 
-/** Branded 9:16 Story card shared by eSIM, guide, affiliate, and flight sheets. */
+/** The same illustrated-paper identity and fresh attribution across eSIM, guides, affiliate and flights. */
 export async function renderBrandCard(input: BrandCardInput): Promise<Blob> {
-  const [logo, mascot] = await Promise.all([
-    loadImage(input.logoUrl),
-    loadImage(input.mascotUrl ?? SHARE_MASCOT_URL),
+  const [[logo, mascot, art], generator] = await Promise.all([
+    Promise.all([
+      loadImage(input.logoUrl),
+      loadImage(input.mascotUrl ?? SHARE_MASCOT_URL),
+      loadImage(SKY_ART),
+    ]),
+    shareGeneratorName(),
+    prepareSerif(),
   ]);
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas unavailable");
-  ctx.fillStyle = PAPER;
-  ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = "#ece8df";
-  ctx.fillRect(0, 0, W, 12);
-  drawBrandHeader(ctx, logo, mascot);
-
-  ctx.textAlign = "left";
+  drawBackdrop(ctx, art, 1150);
+  if (logo) containDraw(ctx, logo, 425, 78, 230, 130);
+  ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillStyle = RED;
-  ctx.font = `700 17px ${FONT}`;
-  ctx.fillText(input.kicker.toLocaleUpperCase("id-ID"), LEFT, 326);
-  const title = titleLayout(ctx, input.title, W - 128);
+  ctx.font = `600 25px ${FONT}`;
+  ctx.fillText(input.kicker.toLocaleUpperCase("id-ID"), W / 2, 330);
+  const title = titleLayout(ctx, input.title);
   let y =
-    drawLines(ctx, title.lines, LEFT, 372, `700 ${title.size}px ${FONT}`, NAVY, title.lineHeight) +
-    16;
-  if (input.subtitle) {
-    const subtitle = wrapText(ctx, input.subtitle, W - 128, `500 24px ${FONT}`);
-    y = drawLines(ctx, subtitle, LEFT, y, `500 24px ${FONT}`, "#596270", 32) + 26;
+    drawLines(
+      ctx,
+      title.lines,
+      W / 2,
+      395,
+      `400 ${title.size}px ${SERIF}`,
+      NAVY,
+      Math.round(title.size * 1.08),
+    ) + 40;
+  if (input.subtitle)
+    y =
+      drawLines(
+        ctx,
+        wrapText(ctx, input.subtitle, W - LEFT * 2, `400 32px ${FONT}`),
+        W / 2,
+        y,
+        `400 32px ${FONT}`,
+        "#4b4c59",
+        42,
+      ) + 40;
+  if (y > CONTENT_BOTTOM)
+    throw new Error("Teks terlalu panjang untuk satu gambar Story. Ringkas judul lalu coba lagi.");
+  ctx.textAlign = "left";
+  for (const line of input.lines ?? []) {
+    const wrapped = wrapText(ctx, line, W - LEFT * 2, `400 34px ${SERIF}`);
+    if (y + wrapped.length * 43 > CONTENT_BOTTOM)
+      throw new Error(
+        "Teks terlalu panjang untuk satu gambar Story. Ringkas pilihan lalu coba lagi.",
+      );
+    y = drawLines(ctx, wrapped, LEFT, y, `400 34px ${SERIF}`, NAVY, 43) + 28;
+    ctx.fillStyle = "#ddcdbb";
+    ctx.fillRect(LEFT, y - 12, W - LEFT * 2, 1);
   }
-  ctx.fillStyle = RED;
-  roundRect(ctx, LEFT, y, 68, 5, 2);
-  ctx.fill();
-  y += 34;
-
-  for (const [index, line] of (input.lines ?? []).slice(0, 6).entries()) {
-    const wrapped = wrapText(ctx, line, W - 190, `500 21px ${FONT}`);
-    ctx.fillStyle = RED;
-    ctx.font = `700 16px ${FONT}`;
-    ctx.fillText(String(index + 1).padStart(2, "0"), LEFT, y + 2);
-    const end = drawLines(ctx, wrapped, LEFT + 54, y, `500 21px ${FONT}`, NAVY, 29);
-    y = end + 14;
-    ctx.fillStyle = "#e0ddd6";
-    ctx.fillRect(LEFT + 54, y, W - LEFT * 2 - 54, 1);
-    y += 18;
-  }
-
-  ctx.fillStyle = "#dedbd4";
-  ctx.fillRect(LEFT, H - 128, W - LEFT * 2, 1);
-  ctx.fillStyle = RED;
-  ctx.font = `600 18px ${FONT}`;
-  ctx.fillText(fitText(ctx, input.link, W - LEFT * 2, `600 18px ${FONT}`), LEFT, H - 95);
-
-  return new Promise((resolve, reject) =>
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("render failed"))),
-      "image/png",
-    ),
-  );
+  drawFooter(ctx, mascot, generator, shareGenerationTime());
+  return canvasBlob(canvas);
 }

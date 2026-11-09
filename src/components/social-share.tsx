@@ -58,8 +58,12 @@ export function SocialShare({
             ? "Gambar disimpan"
             : "Gambar disimpan. Unggah ke Instagram Story.",
       );
-    } catch {
-      toast.error("Gambar belum dapat dibuat. Coba lagi.");
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error && /satu gambar Story/.test(cause.message)
+          ? cause.message
+          : "Gambar belum dapat dibuat. Coba lagi.",
+      );
     } finally {
       setBusy(false);
     }
