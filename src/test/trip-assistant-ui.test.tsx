@@ -11,6 +11,7 @@ import {
   undoTripAssistantProposal,
 } from "@/lib/trip-assistant.fn";
 import { getReceiptScanStatus } from "@/lib/receipt-scan.fn";
+import type { TripSummary } from "@/lib/trip-summary";
 import type { AssistantMessage } from "@/lib/trip-assistant";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -62,6 +63,7 @@ const assistantMsg = (over: Partial<AssistantMessage> = {}): AssistantMessage =>
   content: "Saya usul begini.",
   chips: null,
   proposal: null,
+  blocks: [],
   createdAt: "2026-11-09T01:00:00.000Z",
   ...over,
 });
@@ -170,6 +172,7 @@ describe("TripAssistant", () => {
           content: "halo",
           chips: null,
           proposal: null,
+          blocks: [],
           createdAt: "2026-11-09T01:00:00.000Z",
         },
         assistantMsg({
@@ -318,6 +321,7 @@ describe("TripAssistant", () => {
                 content: "halo",
                 chips: null,
                 proposal: null,
+                blocks: [],
                 createdAt: "2026-11-09T01:00:00.000Z",
               },
               assistantMsg({ content: "Hari ke-3 kita mulai dari Tsukiji." }),
@@ -539,5 +543,173 @@ describe("TripAssistant", () => {
     const balloon = card.parentElement!;
     expect(within(balloon).queryByRole("button", { name: "Ubah tempatnya" })).toBeNull();
     expect(within(balloon).getByRole("button", { name: "Atur anggaran" })).toBeInTheDocument();
+  });
+
+  it("renders Travo's answer as visual blocks, not flat text", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({
+      status: available,
+      messages: [
+        assistantMsg({
+          content: "Ini rencana **9 Nov** ya.",
+          blocks: [
+            {
+              kind: "steps",
+              title: "Rencana",
+              items: ["09:00 Sarapan di Tsukiji", "11:30 Museum"],
+            },
+            { kind: "facts", title: "Info", items: ["Jam buka: 09:00-17:00", "Harga: ¥1.000"] },
+            { kind: "tip", title: "Tips", items: ["Datang pagi biar sepi"] },
+            { kind: "places", title: "Opsi", items: ["Ueno", "Asakusa"] },
+          ],
+        }),
+      ],
+    });
+    vi.mocked(streamTripAssistantMessage).mockRejectedValue(new Error("no stream"));
+    vi.mocked(sendTripAssistantMessage).mockResolvedValue({
+      status: "ok",
+      remaining: 9,
+      messages: [assistantMsg({ id: "m9", content: "Oke." })],
+    });
+    setup();
+    const bold = await screen.findByText("9 Nov");
+    expect(bold.tagName).toBe("STRONG");
+    const blocks = screen.getByTestId("assistant-blocks");
+    expect(blocks.querySelector('[data-block="steps"]')).not.toBeNull();
+    expect(within(blocks).getByText("09:00")).toBeInTheDocument(); // the time becomes a pill
+    expect(within(blocks).getByText("Sarapan di Tsukiji")).toBeInTheDocument();
+    expect(blocks.querySelector("dl")).not.toBeNull();
+    expect(within(blocks).getByText("Datang pagi biar sepi")).toBeInTheDocument();
+    // A place is tappable and asks Travo about it.
+    fireEvent.click(within(blocks).getByRole("button", { name: "Ueno" }));
+    await waitFor(() =>
+      expect(sendTripAssistantMessage).toHaveBeenCalledWith({
+        data: { tripId: "trip-1", text: "Ceritakan lebih lanjut soal Ueno" },
+      }),
+    );
+  });
+
+  describe("Ringkas semua", () => {
+    const summary: TripSummary = {
+      name: "Jepang",
+      destination: "Jepang",
+      cities: ["Tokyo"],
+      travelers: 2,
+      currency: "IDR",
+      datesLabel: "Min, 8 Nov – Kam, 12 Nov",
+      countdown: "Hari ke-2 dari 5",
+      agenda: {
+        total: 2,
+        daysTotal: 5,
+        daysFilled: 1,
+        pinned: 1,
+        days: [
+          {
+            date: "2026-11-08",
+            label: "Min, 8 Nov",
+            empty: false,
+            items: [
+              {
+                id: "a",
+                time: "10:00",
+                title: "Donki",
+                place: "Donki",
+                pinned: true,
+                clash: false,
+              },
+            ],
+          },
+          { date: "2026-11-09", label: "Sen, 9 Nov", empty: true, items: [] },
+        ],
+      },
+      budget: {
+        set: true,
+        totalMinor: 1_000_000_000,
+        spentMinor: 16_600_000,
+        remainingMinor: 983_400_000,
+        percent: 2,
+        categories: [{ name: "Makan", allocatedMinor: 300_000_000, spentMinor: 16_600_000 }],
+        expenseCount: 2,
+        recent: [],
+      },
+      checklist: { done: 1, total: 3, open: [{ id: "c2", title: "Visa" }] },
+      bookings: [
+        {
+          id: "b1",
+          title: "Hotel Shinjuku",
+          category: "Akomodasi",
+          status: "confirmed",
+          pending: false,
+        },
+      ],
+      attention: [{ id: "empty", text: "3 hari belum punya agenda", action: "plan" }],
+    };
+
+    it("is the first quick action and puts the whole trip in one balloon", async () => {
+      vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+      setup({ summary });
+      const chip = await screen.findByRole("button", { name: "Ringkas semua" });
+      const row = chip.parentElement!;
+      expect(row.firstElementChild).toBe(chip); // left of "Buat itinerary"
+      fireEvent.click(chip);
+      expect(await screen.findByText("Ringkas semua perjalananku")).toBeInTheDocument();
+      const card = await screen.findByTestId("trip-summary", {}, { timeout: 3000 });
+      const inside = within(card);
+      // Every page is in it.
+      expect(inside.getByText("Min, 8 Nov – Kam, 12 Nov · 2 traveler")).toBeInTheDocument();
+      expect(inside.getByText("Hari ke-2 dari 5")).toBeInTheDocument();
+      expect(inside.getByText("Donki")).toBeInTheDocument(); // Agenda
+      expect(inside.getByText("Anggaran")).toBeInTheDocument(); // Biaya
+      expect(inside.getByText("Visa")).toBeInTheDocument(); // Checklist
+      expect(inside.getByText("Hotel Shinjuku")).toBeInTheDocument(); // Booking
+      // ...and it lives inside Travo's balloon with its sentence.
+      expect(card.parentElement!.textContent).toContain("Ini ringkasan lengkap");
+      // No AI call, no quota used.
+      expect(sendTripAssistantMessage).not.toHaveBeenCalled();
+      expect(streamTripAssistantMessage).not.toHaveBeenCalled();
+    });
+
+    it("acts on what needs attention", async () => {
+      vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+      vi.mocked(streamTripAssistantMessage).mockRejectedValue(new Error("no stream"));
+      vi.mocked(sendTripAssistantMessage).mockResolvedValue({
+        status: "ok",
+        remaining: 9,
+        messages: [assistantMsg({ content: "Siap." })],
+      });
+      setup({ summary });
+      fireEvent.click(await screen.findByRole("button", { name: "Ringkas semua" }));
+      const attention = await screen.findByTestId("summary-attention", {}, { timeout: 3000 });
+      fireEvent.click(within(attention).getByRole("button", { name: "Isi" }));
+      await waitFor(() =>
+        expect(sendTripAssistantMessage).toHaveBeenCalledWith({
+          data: {
+            tripId: "trip-1",
+            text: "Buatkan itinerary untuk hari yang masih kosong.",
+            intent: "plan",
+          },
+        }),
+      );
+    });
+
+    it("sections fold and an empty day offers to be filled", async () => {
+      vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+      setup({ summary });
+      fireEvent.click(await screen.findByRole("button", { name: "Ringkas semua" }));
+      const card = await screen.findByTestId("trip-summary", {}, { timeout: 3000 });
+      expect(
+        within(card).getByRole("button", { name: "Isi hari ini bersama Travo" }),
+      ).toBeInTheDocument();
+      const head = within(card).getByRole("button", { name: /Agenda per hari/ });
+      expect(head).toHaveAttribute("aria-expanded", "true");
+      fireEvent.click(head);
+      expect(head).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("has no button without trip data", async () => {
+      vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+      setup();
+      await screen.findByLabelText("Pesan untuk Travo");
+      expect(screen.queryByRole("button", { name: "Ringkas semua" })).toBeNull();
+    });
   });
 });

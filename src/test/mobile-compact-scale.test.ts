@@ -45,6 +45,8 @@ const COMPACT_PAGES = [
   "src/components/trip-assistant.tsx",
   "src/components/trip-assistant-cards.tsx",
   "src/components/assistant-mascot.tsx",
+  "src/components/assistant-blocks.tsx",
+  "src/components/trip-summary-card.tsx",
   "src/components/expense-detail-sheet.tsx",
   "src/components/google-consent-sheet.tsx",
   "src/components/trip-google-cards.tsx",

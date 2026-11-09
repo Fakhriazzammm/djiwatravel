@@ -148,6 +148,7 @@ async function reset() {
     "045_place_ideas",
     "048_trip_cities",
     "058_trip_assistant",
+    "059_assistant_blocks",
   ])
     await pool.query(readFileSync(resolve(`migrations/${file}.sql`), "utf8"));
   await pool.query(`create table notification_events (id uuid primary key default gen_random_uuid(), event_key text not null unique, event_type text not null);
@@ -252,6 +253,25 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
     await pool.query("delete from travel_assistant_messages");
     await pool.query("delete from travel_assistant_proposals");
     await pool.query("delete from travel_assistant_runs");
+  });
+
+  it("stores Travo's visual blocks with the message and gives them back", async () => {
+    nextAnswer = answer({
+      reply: "Ini rencananya.",
+      blocks: [
+        { kind: "steps", title: "Rencana", items: ["09:00 Sarapan", "11:00 Museum"] },
+        { kind: "bogus", title: "x", items: ["a"] },
+        { kind: "tip", title: "Tips", items: ["Datang pagi"] },
+      ],
+    });
+    const result = await send("ceritakan rencananya");
+    expect(result.status).toBe("ok");
+    const history = await assistantLoadHandler({ data: { tripId: TRIP } });
+    expect(history.messages.at(-1)!.blocks).toEqual([
+      { kind: "steps", title: "Rencana", items: ["09:00 Sarapan", "11:00 Museum"] },
+      { kind: "tip", title: "Tips", items: ["Datang pagi"] },
+    ]);
+    expect(history.messages[0]!.blocks).toEqual([]); // the traveler's own message has none
   });
 
   it("is available for the owner and loads an empty conversation", async () => {

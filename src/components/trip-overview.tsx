@@ -44,6 +44,7 @@ import { citiesBounds, type TripCity } from "@/lib/trip-cities";
 import { TripCitiesSheet } from "@/components/trip-cities-sheet";
 import { runTripMutation } from "@/lib/trip-actions";
 import { TripAssistant, type IntroPart } from "@/components/trip-assistant";
+import type { TripSummary } from "@/lib/trip-summary";
 import { getTripWeather } from "@/lib/trip-weather.fn";
 import {
   describeWeather,
@@ -81,6 +82,8 @@ type Props = {
   /** Some budget category already has an amount (the AI offers to split it when not). */
   budgetAllocated?: boolean | undefined;
   currency?: string | undefined;
+  /** The whole trip for the "Ringkas semua" balloon (built from the same rows as the pages). */
+  summary?: TripSummary | undefined;
   /** Budget categories and totals the receipt scanner opened from the chat needs. */
   categories?: { id: string; name: string }[] | undefined;
   budgetMinor?: number | undefined;
@@ -883,6 +886,7 @@ export function TripOverview(props: Props) {
           onChanged={props.onChanged}
           onAdd={() => setAddOpen(true)}
           intro={intro}
+          {...(props.summary ? { summary: props.summary } : {})}
           unpinned={props.itinerary.filter((item) => !itemPoint(item)).length}
           onFocusDays={(dates) => setPicked(dates.length === 1 ? dates[0]! : "all")}
           onAvailability={setAssistantState}

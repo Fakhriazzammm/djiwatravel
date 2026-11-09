@@ -390,6 +390,7 @@ type MessageRow = {
   role: "user" | "assistant";
   content: string;
   chips: AssistantMessage["chips"];
+  blocks: AssistantMessage["blocks"] | null;
   created_at: Date | string;
   proposal_id: string | null;
   p_kind: ProposalView["kind"] | null;
@@ -421,7 +422,7 @@ async function previousItems(tripId: string, payloads: ProposalPayload[]) {
 async function readMessages(tripId: string, limit = 60): Promise<AssistantMessage[]> {
   const result = await pool.query(
     `select * from (
-       select m.id, m.role, m.content, m.chips, m.created_at, m.proposal_id,
+       select m.id, m.role, m.content, m.chips, m.blocks, m.created_at, m.proposal_id,
               p.kind as p_kind, p.title as p_title, p.status as p_status, p.payload as p_payload
        from public.travel_assistant_messages m
        left join public.travel_assistant_proposals p on p.id = m.proposal_id
@@ -439,6 +440,7 @@ async function readMessages(tripId: string, limit = 60): Promise<AssistantMessag
     role: r.role,
     content: r.content,
     chips: r.chips ?? null,
+    blocks: Array.isArray(r.blocks) ? r.blocks : [],
     createdAt: new Date(r.created_at).toISOString(),
     proposal:
       r.proposal_id && r.p_kind && r.p_payload && r.p_status
@@ -577,7 +579,7 @@ async function runTurn(
         ),
       );
     }
-    if (!cleaned.reply && !cleaned.proposal) {
+    if (!cleaned.reply && !cleaned.proposal && !cleaned.blocks.length) {
       await recordRun(owner, data.tripId, intent, "error", model, null, outcome.usage);
       return {
         status: "error",
@@ -609,13 +611,14 @@ async function runTurn(
         );
       }
       await client.query(
-        `insert into public.travel_assistant_messages (trip_id, customer_auth_subject, role, content, chips, proposal_id, created_at)
-         values ($1,$2,'assistant',$3,$4::jsonb,$5, now() + interval '1 millisecond')`,
+        `insert into public.travel_assistant_messages (trip_id, customer_auth_subject, role, content, chips, blocks, proposal_id, created_at)
+         values ($1,$2,'assistant',$3,$4::jsonb,$5::jsonb,$6, now() + interval '1 millisecond')`,
         [
           data.tripId,
           owner.id,
           cleaned.reply || cleaned.proposal?.title || "Ini usulan saya.",
           cleaned.chips ? JSON.stringify(cleaned.chips) : null,
+          cleaned.blocks.length ? JSON.stringify(cleaned.blocks) : null,
           proposalId,
         ],
       );

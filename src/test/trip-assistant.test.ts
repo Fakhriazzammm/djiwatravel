@@ -9,6 +9,7 @@ import {
   detectIntent,
   extractReplyPrefix,
   visibleChips,
+  cleanBlocks,
   pickReminder,
   isGenerationIntent,
   normalizeTripAssistantConfig,
@@ -418,5 +419,50 @@ describe("visibleChips", () => {
       options: ["Kuliner"],
       multi: false,
     });
+  });
+});
+
+describe("cleanBlocks (visual answers)", () => {
+  it("keeps well-formed blocks and trims them", () => {
+    const out = cleanBlocks([
+      { kind: "steps", title: " Rencana ", items: ["09:00 Sarapan", "  ", "11:00 Museum"] },
+      { kind: "facts", title: "", items: ["Jam buka: 09:00-17:00"] },
+      { kind: "tip", title: "Tips", items: ["a", "b", "c", "d"] },
+      { kind: "places", title: "Opsi", items: ["Ueno", "Asakusa"] },
+    ]);
+    expect(out).toHaveLength(3); // at most three
+    expect(out[0]).toEqual({
+      kind: "steps",
+      title: "Rencana",
+      items: ["09:00 Sarapan", "11:00 Museum"],
+    });
+    expect(out[2]!.kind).toBe("tip");
+    expect(out[2]!.items).toHaveLength(3);
+  });
+  it("drops unknown kinds, empty blocks and garbage", () => {
+    expect(
+      cleanBlocks([
+        { kind: "carousel", title: "x", items: ["a"] },
+        { kind: "steps", title: "x", items: [] },
+        null,
+        "x",
+      ]),
+    ).toEqual([]);
+    expect(cleanBlocks(null)).toEqual([]);
+    expect(cleanBlocks("nope")).toEqual([]);
+  });
+  it("travels with the cleaned reply", () => {
+    const out = cleanAssistantReply(
+      {
+        reply: "Ini rencananya.",
+        chips: [],
+        multi: false,
+        kind: "none",
+        blocks: [{ kind: "tip", title: "Tips", items: ["Bawa payung"] }],
+      },
+      ctx(),
+    );
+    expect(out.blocks).toEqual([{ kind: "tip", title: "Tips", items: ["Bawa payung"] }]);
+    expect(out.reply).toBe("Ini rencananya.");
   });
 });

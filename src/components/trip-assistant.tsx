@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, Camera, MapPin, Plus } from "lucide-react";
+import { ArrowUp, Camera, MapPin, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useReducedMotion } from "motion/react";
 import { FixedLayer } from "@/components/motion-primitives";
@@ -11,9 +11,12 @@ import {
   type MascotMood,
 } from "@/components/assistant-mascot";
 import { ProposalCard } from "@/components/trip-assistant-cards";
+import { AssistantBlocks, RichText } from "@/components/assistant-blocks";
+import { TripSummaryCard } from "@/components/trip-summary-card";
 import { ReceiptScanner } from "@/components/receipt-scanner";
 import { getReceiptScanStatus } from "@/lib/receipt-scan.fn";
 import type { ReceiptScanStatus } from "@/lib/receipt-scan";
+import type { SummaryAction, TripSummary } from "@/lib/trip-summary";
 import {
   applyTripAssistantProposal,
   dismissTripAssistantProposal,
@@ -48,6 +51,8 @@ type Props = {
   children: ReactNode;
   /** The same cards as chat messages, revealed one by one when the chat opens. */
   intro?: IntroPart[];
+  /** Everything on the trip, for the one-tap "Ringkas semua" balloon. */
+  summary?: TripSummary;
   /** Activities that have no point on the map yet (the "Pasang pin" button shows while > 0). */
   unpinned?: number;
   /** Called after an agenda proposal is applied, with the days it touched (the map follows). */
@@ -108,7 +113,9 @@ function Bubble({
       <div
         className={`overflow-hidden rounded-2xl rounded-bl-md bg-surface ring-1 ring-border/50 ${footer ? "min-w-0 flex-1" : "max-w-[84%]"}`}
       >
-        <p className="whitespace-pre-wrap px-3 py-2 text-[13px] leading-[1.4]">{children}</p>
+        <p className="whitespace-pre-wrap px-3 py-2 text-[13px] leading-[1.4]">
+          {typeof children === "string" ? <RichText text={children} /> : children}
+        </p>
         {footer}
       </div>
     </div>
@@ -270,6 +277,7 @@ export function TripAssistant(props: Props) {
         content: value,
         chips: null,
         proposal: null,
+        blocks: [],
         createdAt: new Date().toISOString(),
       };
       setMessages((list) => [...list, temp]);
@@ -331,6 +339,50 @@ export function TripAssistant(props: Props) {
     },
     [sending, tripId, introLength],
   );
+
+  const [summarizing, setSummarizing] = useState(false);
+  /** "Ringkas semua": the whole trip as one balloon, built on the spot from the page data (no AI call). */
+  async function summarize() {
+    if (!props.summary || sending || summarizing) return;
+    setNotice(null);
+    setIntroShown(introLength);
+    setSummarizing(true);
+    const stamp = Date.now();
+    setMessages((list) => [
+      ...list,
+      {
+        id: `local-u-${stamp}`,
+        role: "user",
+        content: "Ringkas semua perjalananku",
+        chips: null,
+        proposal: null,
+        blocks: [],
+        local: "summary",
+        createdAt: new Date(stamp).toISOString(),
+      },
+    ]);
+    await new Promise((resolve) => window.setTimeout(resolve, 750));
+    setMessages((list) => [
+      ...list,
+      {
+        id: `local-a-${stamp}`,
+        role: "assistant",
+        content: `Ini ringkasan lengkap **${props.summary?.destination || props.summary?.name || "perjalananmu"}**. Semua datanya dari halaman Agenda, Biaya, Checklist, dan Booking.`,
+        chips: null,
+        proposal: null,
+        blocks: [],
+        local: "summary",
+        createdAt: new Date(stamp + 1).toISOString(),
+      },
+    ]);
+    setSummarizing(false);
+  }
+
+  const runSummaryAction = (action: SummaryAction) => {
+    if (action === "pin") return void pinPlaces();
+    const q = QUICK.find((item) => item.intent === (action === "plan" ? "plan" : action));
+    if (q) void send(q.text, q.intent);
+  };
 
   const setProposalStatus = (id: string, next: ProposalView["status"]) =>
     setMessages((list) =>
@@ -485,9 +537,21 @@ export function TripAssistant(props: Props) {
             !sending && m.id === messages[messages.length - 1]?.id
               ? visibleChips(m.chips, m.proposal?.status ?? null)
               : null;
+          const isSummary =
+            m.role === "assistant" && m.local === "summary" && Boolean(props.summary);
           const footer =
-            m.proposal || chips ? (
+            m.proposal || chips || m.blocks.length > 0 || isSummary ? (
               <>
+                {isSummary && props.summary && (
+                  <TripSummaryCard
+                    summary={props.summary}
+                    tripId={tripId}
+                    onAction={runSummaryAction}
+                  />
+                )}
+                {m.blocks.length > 0 && (
+                  <AssistantBlocks blocks={m.blocks} onAsk={(text) => void send(text)} />
+                )}
                 {m.proposal && (
                   <ProposalCard
                     embedded
@@ -576,6 +640,7 @@ export function TripAssistant(props: Props) {
           ) : (
             <TypingBubble label={`${ASSISTANT_NAME} sedang menjawab`} />
           ))}
+        {summarizing && <TypingBubble label={`${ASSISTANT_NAME} sedang meringkas`} />}
         {notice && (
           <p
             role="alert"
@@ -603,6 +668,17 @@ export function TripAssistant(props: Props) {
         <div className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-40">
           <div className="mx-auto max-w-md border-t border-border/60 bg-background/95 px-3 pb-2 pt-1.5 backdrop-blur-xl">
             <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1.5 [scrollbar-width:none]">
+              {props.summary && (
+                <button
+                  type="button"
+                  disabled={sending || summarizing}
+                  onClick={() => void summarize()}
+                  className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-brand-red px-3 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  <Sparkles className="size-3.5" aria-hidden="true" />
+                  Ringkas semua
+                </button>
+              )}
               {quick.map((q) => (
                 <button
                   key={q.intent}

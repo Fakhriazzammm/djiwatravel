@@ -22,6 +22,7 @@ import {
 import { ConfirmDialog, TripActionSheet, TripTabBar } from "@/components/trip-ios";
 import { ShareTripSheet } from "@/components/trip-share-sheet";
 import { TripOverview } from "@/components/trip-overview";
+import { buildTripSummary } from "@/lib/trip-summary";
 import { TripCountryPicker } from "@/components/trip-country-picker";
 import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG, type ItineraryMapConfig } from "@/lib/itinerary-map";
@@ -185,6 +186,22 @@ function TripDetail() {
   return (
     <>
       <TripOverview
+        summary={buildTripSummary({
+          today: localTodayKey(),
+          name: trip.name,
+          destination: trip.destination_name,
+          departureDate: trip.departure_date ?? null,
+          returnDate: trip.return_date ?? null,
+          travelers: Number(trip.travelers_count) || 1,
+          currency,
+          cities: ((trip as { cities?: TripCity[] }).cities ?? []).map((c) => c.name),
+          totalBudgetMinor: budget,
+          itinerary: data.itinerary as never,
+          budget: data.budget as never,
+          expenses: data.expenses as never,
+          checklist: data.checklist as never,
+          bookings: data.bookings as never,
+        })}
         tripId={trip.id}
         name={trip.name}
         destination={trip.destination_name}

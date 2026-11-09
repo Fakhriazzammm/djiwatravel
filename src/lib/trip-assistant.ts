@@ -236,6 +236,17 @@ export type ProposalView = {
   previous: Record<string, { title: string; date: string; startTime: string | null }>;
 };
 
+/** Small UI blocks that sit under Travo's sentence: not flat text. */
+export type AssistantBlockKind = "steps" | "facts" | "tip" | "warning" | "places";
+export type AssistantBlock = { kind: AssistantBlockKind; title: string; items: string[] };
+export const ASSISTANT_BLOCK_KINDS: AssistantBlockKind[] = [
+  "steps",
+  "facts",
+  "tip",
+  "warning",
+  "places",
+];
+
 export type AssistantMessage = {
   id: string;
   role: "user" | "assistant";
@@ -243,6 +254,10 @@ export type AssistantMessage = {
   /** Quick replies of this turn (the last assistant message only is shown as live chips). */
   chips: { options: string[]; multi: boolean } | null;
   proposal: ProposalView | null;
+  /** Visual blocks of the answer (steps, facts, tips, places). Empty for plain replies. */
+  blocks: AssistantBlock[];
+  /** A message the page made itself (the "Ringkas semua" card): never stored, never sent to the model. */
+  local?: "summary";
   createdAt: string;
 };
 
@@ -276,6 +291,7 @@ export const ASSISTANT_REPLY_SCHEMA = {
     "reply",
     "chips",
     "multi",
+    "blocks",
     "kind",
     "title",
     "agenda",
@@ -287,6 +303,19 @@ export const ASSISTANT_REPLY_SCHEMA = {
     reply: { type: "string" },
     chips: { type: "array", items: { type: "string" } },
     multi: { type: "boolean" },
+    blocks: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["kind", "title", "items"],
+        properties: {
+          kind: { type: "string", enum: ["steps", "facts", "tip", "warning", "places"] },
+          title: { type: "string" },
+          items: { type: "array", items: { type: "string" } },
+        },
+      },
+    },
     kind: { type: "string", enum: ["none", "agenda", "budget", "checklist", "expense"] },
     title: { type: "string" },
     agenda: {
@@ -458,6 +487,7 @@ export function buildAssistantSystemPrompt(
     "You can read the trip (JSON in the user message). Money in the context and in your output is in WHOLE units of the trip currency (not cents).",
     "You never write anything yourself. To change data you fill `kind` and its payload as a PROPOSAL; the traveler reviews it and presses Apply. Say in `reply` what you propose and why, in one or two sentences.",
     "`chips`: 0-4 short quick replies (max 28 characters each) the traveler can tap as their answer or next step. When you ask a question, chips are its answer options and `multi` says whether several may be picked; otherwise `multi` is false.",
+    "Make answers visual, not a wall of text: keep `reply` to one or two short sentences and put the details in `blocks` (up to 3). kinds: steps = an ordered plan or timeline, one line per step like '09:00 Sarapan di Tsukiji'; facts = rows written 'Label: value' like 'Jam buka: 07:00-18:30'; tip = a helpful hint (1-3 lines); warning = something to watch out for (1-3 lines); places = short place or option names the traveler can tap to ask more. Use `title` for a short heading (max 4 words). Plain greetings and one-line answers need no blocks (use an empty array). You may wrap a key term in **double asterisks** for bold, nothing else of markdown.",
     "When the request is vague (an itinerary without interests or pace, a budget without a total), ask ONE question with chips first and set `kind` to none. When there is enough to go on, propose now.",
     "Never invent facts: opening hours, prices, availability and transport times you are not sure of must be written as an estimate or left out; put `cek jam buka` in `note` for places whose hours you do not know. Prefer places from `knownPlaces`, then well-known real places in the trip cities; never made-up names. All places must be near the trip's cities.",
     "Dates are YYYY-MM-DD and must be inside the trip dates. Times are 24h HH:MM. For each new activity: `title` is a short readable label, `place` is the visited place's own official name in Latin letters (for example Hamarikyu Gardens or Tsukiji Outer Market) used to find it on the map, or an empty string when the activity is only an area or a free block; `location` is area, city (for example Tsukiji, Tokyo). Leave `start`/`end`/`location`/`note`/`id`/`place` as empty strings and `cost` as 0 when not needed.",
@@ -502,6 +532,7 @@ export type CleanedReply = {
   reply: string;
   chips: { options: string[]; multi: boolean } | null;
   proposal: { title: string; payload: ProposalPayload } | null;
+  blocks: AssistantBlock[];
   /** Why a proposal was dropped (shown to nobody; kept for tests and logs). */
   dropped: string | null;
 };
@@ -541,6 +572,26 @@ export function parseJsonLoose(raw: string): unknown {
 const inTrip = (date: string, ctx: CleanContext) =>
   (!ctx.departureDate || date >= ctx.departureDate) && (!ctx.returnDate || date <= ctx.returnDate);
 
+/** Up to three blocks of short lines; anything malformed is dropped, never shown half-broken. */
+export function cleanBlocks(value: unknown): AssistantBlock[] {
+  if (!Array.isArray(value)) return [];
+  const out: AssistantBlock[] = [];
+  for (const row of value) {
+    if (out.length >= 3) break;
+    const r = (row && typeof row === "object" ? row : {}) as Record<string, unknown>;
+    const kind = ASSISTANT_BLOCK_KINDS.find((k) => k === r["kind"]);
+    if (!kind) continue;
+    const max = kind === "tip" || kind === "warning" ? 3 : 8;
+    const items = (Array.isArray(r["items"]) ? r["items"] : [])
+      .map((i) => clean(i, 140))
+      .filter(Boolean)
+      .slice(0, max);
+    if (!items.length) continue;
+    out.push({ kind, title: clean(r["title"], 60), items });
+  }
+  return out;
+}
+
 /**
  * Turns the model's JSON into a safe reply: text capped, chips trimmed, and a proposal only when
  * it is valid for THIS trip (real ids, dates inside the trip, sane money, Admin permissions).
@@ -555,7 +606,13 @@ export function cleanAssistantReply(parsed: unknown, ctx: CleanContext): Cleaned
   const chips = options.length
     ? { options, multi: raw["multi"] === true && options.length > 1 }
     : null;
-  const out: CleanedReply = { reply, chips, proposal: null, dropped: null };
+  const out: CleanedReply = {
+    reply,
+    chips,
+    proposal: null,
+    blocks: cleanBlocks(raw["blocks"]),
+    dropped: null,
+  };
   const kind = String(raw["kind"] ?? "none");
   const title = clean(raw["title"], 80);
   const drop = (why: string): CleanedReply => ({ ...out, dropped: why });
