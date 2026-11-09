@@ -462,13 +462,13 @@ export async function getActiveTripShare(tripId: string) {
 
 /** Read the active share link of an owned trip (the trip list shows share sheets without loading the trip). */
 export async function readTripShareLink(tripId: string) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   await ownedTrip(tripId, user.id);
   return getActiveTripShare(tripId);
 }
 
 export async function createTripShareLink(tripId: string) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   await ownedTrip(tripId, user.id);
   const token = randomBytes(24).toString("base64url");
   const client = await pool.connect();
@@ -497,7 +497,7 @@ export async function createTripShareLink(tripId: string) {
 }
 
 export async function revokeTripShareLink(tripId: string) {
-  const user = await getAuthenticatedUser();
+  const user = await requireTripOwner();
   const result = await pool.query(
     `update travel_trip_shares s set revoked_at=now()
      from travel_trips t

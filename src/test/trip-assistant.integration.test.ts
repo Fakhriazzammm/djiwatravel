@@ -72,6 +72,12 @@ import {
 } from "@/lib/trip-assistant-reminders.server";
 import { hoursNote, nominatimVenue } from "@/lib/trip-assistant-places.server";
 import {
+  createTripShareLink,
+  loadSharedTrip,
+  readTripShareLink,
+  revokeTripShareLink,
+} from "@/lib/my-trips.server";
+import {
   assistantApplyHandler,
   assistantDismissHandler,
   assistantLoadHandler,
@@ -126,7 +132,10 @@ async function reset() {
   );
   for (const file of [
     "004_admin_operations",
+    "008_customer_profiles",
+    "021_customer_traveler_profile",
     "018_my_trips",
+    "022_travel_trip_shares",
     "019_google_calendar_sync",
     "020_allow_overnight_itinerary",
     "027_restore_admin_settings",
@@ -905,6 +914,41 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
         await sweepAssistantReminders(t);
         expect((await sweepAssistantReminders(t + 60_000)).skipped).toBe("throttled");
       });
+    });
+  });
+
+  describe("sharing the itinerary (members and guests)", () => {
+    beforeEach(async () => {
+      await seed();
+    });
+
+    it("lets a guest owner create, read and close a read-only share link", async () => {
+      holder.owner = { id: "guest:abc123", email: null, guest: true };
+      await pool.query("update travel_trips set customer_auth_subject='guest:abc123'");
+      expect(await readTripShareLink(TRIP)).toBeNull();
+      const link = await createTripShareLink(TRIP);
+      expect(link.token.length).toBeGreaterThan(20);
+      expect(await readTripShareLink(TRIP)).toMatchObject({ token: link.token });
+      // Anyone with the link sees the itinerary, and only that.
+      const shared = (await loadSharedTrip(link.token)) as {
+        trip?: { name?: string };
+        itinerary?: unknown[];
+      } | null;
+      expect(shared).not.toBeNull();
+      expect(JSON.stringify(shared)).toContain("Meiji Gallery");
+      expect(JSON.stringify(shared)).not.toMatch(/customer_auth_subject|guest:abc123/);
+      expect(await revokeTripShareLink(TRIP)).toEqual({ revoked: true });
+      expect(await loadSharedTrip(link.token)).toBeNull();
+    });
+
+    it("works for a member too, and never for someone else's trip", async () => {
+      holder.owner = { id: "u1", email: "a@b.c", guest: false };
+      const link = await createTripShareLink(TRIP);
+      expect(await loadSharedTrip(link.token)).not.toBeNull();
+      holder.owner = { id: "u2", email: null, guest: false };
+      await expect(createTripShareLink(TRIP)).rejects.toThrow(/tidak ditemukan/);
+      await expect(readTripShareLink(TRIP)).rejects.toThrow(/tidak ditemukan/);
+      expect(await revokeTripShareLink(TRIP)).toEqual({ revoked: false });
     });
   });
 });
