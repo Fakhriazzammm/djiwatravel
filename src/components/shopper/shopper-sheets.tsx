@@ -1,3 +1,4 @@
+import { FeeExplainer } from "./shopper-about";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
@@ -638,6 +639,7 @@ export function CartSheet({
             <Row label="Ongkir ke Indonesia" value={formatIdr(quote.shippingIdr)} />
             <Row label="Total" value={formatIdr(quote.totalIdr)} strong />
           </dl>
+          <FeeExplainer config={config} hasMarket={quote.domesticIdr > 0} />
           <p className="mt-1 text-[10px] text-muted-foreground">
             Jasa titip dihitung dari harga barang dalam Rupiah. Harga toko dicek saat barang dibeli;
             bila berubah atau habis, tim kami menghubungimu dan dana dikembalikan.

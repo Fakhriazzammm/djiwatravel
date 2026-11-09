@@ -1,3 +1,4 @@
+import { ShopperAbout } from "./shopper-about";
 import { ShopperDiscovery } from "./shopper-discovery";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -246,6 +247,7 @@ export function ShopperHome({
           </label>
 
           <ShopperDiscovery onProduct={setOpenProduct} onMarket={setOpenMarket} rate={rate} />
+          <ShopperAbout config={config} />
 
           {/* Brand stories */}
           <div className="-mx-4 mt-2 flex gap-3 overflow-x-auto px-4 pb-2 pt-1 [scrollbar-width:none]">

@@ -153,6 +153,8 @@ export type ShopperConfig = {
   catalogRefreshHours: number;
   showTrending: boolean;
   showBestSellers: boolean;
+  /** Things the team will not buy or ship, shown to customers as "Tidak bisa dititip". */
+  prohibited: string[];
   /** Mercari and Rakuten links priced from the item page (Japan only). */
   market: MarketConfig;
 };
@@ -178,6 +180,13 @@ export const DEFAULT_SHOPPER_CONFIG: ShopperConfig = {
   catalogRefreshHours: 12,
   showTrending: true,
   showBestSellers: true,
+  prohibited: [
+    "Makanan dan minuman segar atau cepat basi",
+    "Obat, suplemen, dan alat kesehatan",
+    "Rokok, vape, dan minuman beralkohol",
+    "Power bank dan baterai lithium lepasan",
+    "Barang tiruan atau yang dilarang bea cukai",
+  ],
   market: {
     enabled: false,
     sites: { mercari: true, rakuten: true },
@@ -196,6 +205,18 @@ const intIn = (value: unknown, min: number, max: number, label: string) => {
     throw new Error(`personalShopper.${label} harus bilangan bulat ${min}-${max}`);
   return value as number;
 };
+
+function parseProhibited(value: unknown, fallback: string[]): string[] {
+  if (value === undefined) return fallback;
+  if (!Array.isArray(value) || value.length > 12)
+    throw new Error("personalShopper.prohibited harus daftar berisi maksimal 12 teks");
+  return value.map((item) => {
+    const text = typeof item === "string" ? item.trim() : "";
+    if (text.length < 2 || text.length > 80)
+      throw new Error("personalShopper.prohibited: tiap baris 2-80 karakter");
+    return text;
+  });
+}
 
 function parseMarketConfig(value: unknown): MarketConfig {
   const d = DEFAULT_SHOPPER_CONFIG.market;
@@ -309,6 +330,7 @@ export function parseShopperConfig(value: unknown): ShopperConfig {
       raw["showBestSellers"] === undefined
         ? d.showBestSellers
         : bool(raw["showBestSellers"], "showBestSellers"),
+    prohibited: parseProhibited(raw["prohibited"], d.prohibited),
     market: parseMarketConfig(raw["market"]),
   };
 }

@@ -601,6 +601,7 @@ function Settings({
 }) {
   const [config, setConfig] = useState<ShopperConfig>(data.config);
   const [reason, setReason] = useState("");
+  const [prohibitedText, setProhibitedText] = useState(data.config.prohibited.join("\n"));
   const [busy, setBusy] = useState(false);
   const set = <K extends keyof ShopperConfig>(key: K, value: ShopperConfig[K]) =>
     setConfig((c) => ({ ...c, [key]: value }));
@@ -745,6 +746,24 @@ function Settings({
         {flag("Tampilkan rail Trending", config.showTrending, (v) => set("showTrending", v))}
         {flag("Tampilkan rail Terlaris", config.showBestSellers, (v) => set("showBestSellers", v))}
       </div>
+      <label className="block text-xs font-semibold">
+        Tidak bisa dititip (satu per baris, maksimal 12, tampil ke pelanggan)
+        <textarea
+          className={`${input} mt-1 min-h-28 py-2`}
+          rows={5}
+          value={prohibitedText}
+          onChange={(e) => {
+            setProhibitedText(e.target.value);
+            set(
+              "prohibited",
+              e.target.value
+                .split("\n")
+                .map((line) => line.trim())
+                .filter(Boolean),
+            );
+          }}
+        />
+      </label>
       <div>
         <p className="mb-1 text-xs font-semibold text-muted-foreground">
           Mercari dan Rakuten (tempel link, harga dibaca dari halaman)
