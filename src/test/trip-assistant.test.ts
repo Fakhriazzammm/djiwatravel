@@ -7,6 +7,7 @@ import {
   buildNudges,
   buildGeneralContext,
   cleanCards,
+  scopeFromCards,
   buildTravoGeneralPrompt,
   isTravoScope,
   TRAVO_SCOPES,
@@ -582,5 +583,12 @@ describe("Travo cards", () => {
       ctx(),
     );
     expect(reply.followUps).toEqual(["Satu tips lagi.", "Dan satu lagi."]);
+  });
+  it("takes the topic of a chat from its first product card", () => {
+    expect(scopeFromCards([])).toBeNull();
+    expect(scopeFromCards(["esim", "tiket"])).toBe("esim");
+    expect(scopeFromCards(["pesanan"])).toBe("esim");
+    expect(scopeFromCards(["buat_trip"])).toBe("trip");
+    expect(scopeFromCards(["dompet"])).toBeNull();
   });
 });

@@ -34,6 +34,7 @@ import {
   buildGeneralContext,
   buildTravoGeneralPrompt,
   isTravoScope,
+  scopeFromCards,
   type GeneralFacts,
   type TravoConversationSummary,
   type TravoCardRequest,
@@ -722,7 +723,8 @@ async function resolveConversation(
       scope: "trip",
     };
   }
-  const scope = isTravoScope(data.scope) && data.scope !== "trip" ? data.scope : "all";
+  // "trip" is allowed here: a general chat started from "Rencana trip" or "Cek trip saya".
+  const scope = isTravoScope(data.scope) ? data.scope : "all";
   return { id: null, tripId: null, scope };
 }
 
@@ -855,6 +857,7 @@ async function runTurn(
     }
     let conversationId = conv.id;
     let bubbleCount = 1;
+    let topic: TravoScope = conv.scope;
     const client = await pool.connect();
     try {
       await client.query("begin");
@@ -915,6 +918,16 @@ async function runTurn(
         );
       }
       bubbleCount = texts.length;
+      // A chat that started without a topic takes the one its first product card is about.
+      const inferred =
+        !tripId && conv.scope === "all" ? scopeFromCards(cleaned.cards.map((c) => c.kind)) : null;
+      if (inferred) {
+        topic = inferred;
+        await client.query(
+          "update public.travel_assistant_conversations set scope=$2 where id=$1 and scope='all'",
+          [conversationId, inferred],
+        );
+      }
       await client.query(
         "update public.travel_assistant_conversations set last_message_at = now() where id=$1",
         [conversationId],
@@ -929,7 +942,7 @@ async function runTurn(
     await recordRun(
       owner,
       tripId,
-      { ...conv, id: conversationId },
+      { ...conv, id: conversationId, scope: topic },
       intent,
       "ok",
       model,

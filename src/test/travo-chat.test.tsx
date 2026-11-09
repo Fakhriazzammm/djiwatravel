@@ -366,4 +366,27 @@ describe("Travo page", () => {
     expect(await screen.findByText("Halo! Aku Travo.")).toBeTruthy();
     expect(await screen.findByText("Mau dibantu apa hari ini?")).toBeTruthy();
   });
+
+  it("picks the topic from the start cards, so the Admin topic stats count it", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: null,
+      messages: [],
+    });
+    vi.mocked(streamTripAssistantMessage).mockRejectedValue(new Error("no stream"));
+    vi.mocked(sendTripAssistantMessage).mockResolvedValue({
+      status: "ok",
+      remaining: 9,
+      conversationId: "c-esim",
+      messages: [msg({ id: "u", role: "user", content: "x" }), msg({ id: "a", content: "Ok." })],
+    });
+    render(<TravoChat />);
+    fireEvent.click(await screen.findByRole("button", { name: /eSIM terbaik/i }));
+    await waitFor(() =>
+      expect(sendTripAssistantMessage).toHaveBeenCalledWith({
+        data: { text: "Carikan eSIM terbaik untuk liburan saya", scope: "esim" },
+      }),
+    );
+  });
 });

@@ -163,6 +163,21 @@ export const TRAVO_SCOPE_LINK: Record<TravoScope, { to: string; label: string } 
   titip: { to: "/titip-belanja", label: "Buka titip belanja" },
   panduan: { to: "/panduan", label: "Buka panduan" },
 };
+/** The topic an answer shows, from its first product card: how a typed-in question still lands in the Admin topic stats. */
+export function scopeFromCards(kinds: readonly TravoCardKind[]): TravoScope | null {
+  const first = kinds[0];
+  if (!first) return null;
+  const map: Partial<Record<TravoCardKind, TravoScope>> = {
+    esim: "esim",
+    pesanan: "esim",
+    tiket: "tiket",
+    panduan: "panduan",
+    titip: "titip",
+    trip: "trip",
+    buat_trip: "trip",
+  };
+  return map[first] ?? null;
+}
 export const isTravoScope = (v: unknown): v is TravoScope =>
   typeof v === "string" && (TRAVO_SCOPES as string[]).includes(v);
 

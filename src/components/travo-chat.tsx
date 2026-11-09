@@ -43,14 +43,26 @@ const STARTERS: { title: string; hint: string; scope: TravoScope; text: string }
   {
     title: "Rencana trip",
     hint: "Buat itinerary baru",
-    scope: "all",
+    scope: "trip",
     text: "Bantu saya merencanakan perjalanan.",
   },
   {
-    title: "Cek trip saya",
-    hint: "Ringkas semua trip",
-    scope: "trip",
-    text: "Ringkas trip-trip saya.",
+    title: "Titip belanja",
+    hint: "Belanja dari Jepang, Korea",
+    scope: "titip",
+    text: "Saya mau titip belanja dari luar negeri",
+  },
+  {
+    title: "Panduan",
+    hint: "Visa, tax refund, tips",
+    scope: "panduan",
+    text: "Panduan apa yang perlu saya baca sebelum berangkat?",
+  },
+  {
+    title: "Pesanan & saldo",
+    hint: "Cek eSIM dan Djiwa Pay",
+    scope: "all",
+    text: "Cek pesanan eSIM dan saldo saya",
   },
 ];
 
@@ -225,7 +237,9 @@ export function TravoChat({
                   key={s.title}
                   type="button"
                   onClick={() => {
-                    void send(s.text);
+                    // The topic is picked here, so the Admin topic stats count it.
+                    chat.setScope(s.scope);
+                    void send(s.text, undefined, s.scope);
                   }}
                   className="tap min-h-[52px] rounded-2xl bg-surface p-2.5 text-left ring-1 ring-border/50"
                 >

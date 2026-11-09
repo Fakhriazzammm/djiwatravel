@@ -345,6 +345,17 @@ export function AdminTripAssistantPanel({
               </div>
             ))}
           </div>
+          {stats.byScope.length > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground" data-testid="assistant-scopes">
+              Topik chat:{" "}
+              {stats.byScope
+                .map(
+                  (i) =>
+                    `${i.scope === "all" ? "Umum" : i.scope === "trip" ? "Trip" : (TRAVO_SCOPE_LABEL[i.scope as TravoScope] ?? i.scope)} ${i.n}`,
+                )
+                .join(" · ")}
+            </p>
+          )}
           {stats.byCard.length > 0 && (
             <p className="mt-2 text-xs text-muted-foreground" data-testid="assistant-cards">
               Kartu di chat:{" "}

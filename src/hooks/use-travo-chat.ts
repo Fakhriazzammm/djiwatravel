@@ -122,7 +122,7 @@ export function useTravoChat(options: Options) {
   }, [fetchConversation, embeddedTrip, conversationId]);
 
   const send = useCallback(
-    async (text: string, intent?: AssistantIntent) => {
+    async (text: string, intent?: AssistantIntent, topic?: TravoScope) => {
       const value = text.trim().slice(0, ASSISTANT_MAX_TEXT);
       if (!value || sending) return;
       if (latest.current.intercept?.(value)) {
@@ -150,7 +150,11 @@ export function useTravoChat(options: Options) {
         ? { tripId: embeddedTrip, text: value, ...(intent ? { intent } : {}) }
         : {
             text: value,
-            ...(convId ? { conversationId: convId } : chatTrip ? { tripId: chatTrip } : { scope }),
+            ...(convId
+              ? { conversationId: convId }
+              : chatTrip
+                ? { tripId: chatTrip }
+                : { scope: topic ?? scope }),
             ...(intent ? { intent } : {}),
           };
       const finish = async (result: Awaited<ReturnType<typeof sendTripAssistantMessage>>) => {
