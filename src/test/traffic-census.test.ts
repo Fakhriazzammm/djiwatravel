@@ -32,6 +32,20 @@ describe("traffic census", () => {
     });
   });
 
+  it("names newer AI crawlers and keeps SEO tools as unidentified-but-named", () => {
+    expect(
+      classifyUserAgent("Mozilla/5.0 (compatible; Reflectionbot/1.0; +https://reflection.ai/bot)"),
+    ).toEqual({ kind: "ai_train", bot: "Reflection AI" });
+    expect(
+      classifyUserAgent("Mozilla/5.0 (compatible; Claude-SearchBot/1.0; +claudebot@anthropic.com)"),
+    ).toEqual({ kind: "ai_crawl", bot: "Claude search" });
+    expect(
+      classifyUserAgent(
+        "Mozilla/5.0 (compatible; SemrushBot/7~bl; +http://www.semrush.com/bot.html)",
+      ),
+    ).toEqual({ kind: "unknown_bot", bot: "SemrushBot" });
+  });
+
   it("treats real browsers as browsers and unidentified automation as unknown", () => {
     expect(
       classifyUserAgent(
@@ -54,6 +68,9 @@ describe("traffic census", () => {
   it("keeps only a safe path", () => {
     expect(safeHitPath("/destination/JP?email=a@b.c")).toBe("/destination/JP");
     expect(safeHitPath("/a b")).toBe("/");
+    expect(safeHitPath("/checkout/PP87JXRB5")).toBe("/checkout/:id");
+    expect(safeHitPath("/order/3f1c")).toBe("/order/:id");
+    expect(safeHitPath("/plan/CKH278")).toBe("/plan/CKH278");
   });
 
   it("labels channels and AI click-through", () => {

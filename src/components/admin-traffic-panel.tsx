@@ -128,12 +128,12 @@ export function TrafficPanel({
         <Stat
           value={formatRupiah(s.revenue)}
           label="Pendapatan terbayar"
-          hint={<Delta now={s.revenue} before={s.previousRevenue} />}
+          hint={range === "all" ? undefined : <Delta now={s.revenue} before={s.previousRevenue} />}
         />
         <Stat
           value={id(s.orders)}
           label="Pesanan dibayar"
-          hint={<Delta now={s.orders} before={s.previousOrders} />}
+          hint={range === "all" ? undefined : <Delta now={s.orders} before={s.previousOrders} />}
         />
         <Stat value={formatRupiah(s.aov)} label="Rata-rata per pesanan" />
         <Stat

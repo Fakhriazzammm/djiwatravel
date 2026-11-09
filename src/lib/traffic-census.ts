@@ -10,6 +10,7 @@ const AI_ANSWER: [RegExp, string][] = [
   [/Perplexity-User/i, "Perplexity"],
   [/MistralAI-User/i, "Mistral"],
   [/DuckAssistBot/i, "DuckDuckGo AI"],
+  [/Meta-ExternalFetcher/i, "Meta AI"],
 ];
 /** Crawlers that build an AI search index. */
 const AI_SEARCH: [RegExp, string][] = [
@@ -18,6 +19,9 @@ const AI_SEARCH: [RegExp, string][] = [
   [/PerplexityBot/i, "Perplexity search"],
   [/Amazonbot/i, "Amazon search"],
   [/ExaBot|\bExa\b/i, "Exa"],
+  [/Claude-SearchBot/i, "Claude search"],
+  [/Kimi-SearchBot/i, "Kimi search"],
+  [/YouBot/i, "You.com"],
   [/Applebot-Extended/i, "Apple AI"],
   [/AzureAI|Azure-?AI/i, "Azure AI search"],
 ];
@@ -30,6 +34,13 @@ const AI_TRAIN: [RegExp, string][] = [
   [/Google-Extended/i, "Google AI"],
   [/meta-externalagent|FacebookBot/i, "Meta AI"],
   [/cohere-ai/i, "Cohere"],
+  [/Reflectionbot/i, "Reflection AI"],
+  [/ElevenlabsCrawler/i, "ElevenLabs"],
+  [/Qwenbot/i, "Qwen"],
+  [/ChatGLM-Spider/i, "ChatGLM"],
+  [/MoonshotBot|KimiBot/i, "Kimi"],
+  [/DeepSeekBot/i, "DeepSeek"],
+  [/Diffbot/i, "Diffbot"],
 ];
 const SEARCH_ENGINE: [RegExp, string][] = [
   [/Googlebot|Google-InspectionTool|GoogleOther/i, "Google"],
@@ -38,6 +49,9 @@ const SEARCH_ENGINE: [RegExp, string][] = [
   [/YandexBot/i, "Yandex"],
   [/DuckDuckBot/i, "DuckDuckGo"],
   [/Baiduspider/i, "Baidu"],
+  [/PetalBot/i, "Petal"],
+  [/Bravebot/i, "Brave"],
+  [/AdsBot-Google/i, "Google"],
   [/SeznamBot/i, "Seznam"],
 ];
 /** Generic automation that is not a browser and claims no known identity. */
@@ -55,13 +69,18 @@ export function classifyUserAgent(ua: string | null | undefined): UserAgentClass
   if (!agent) return { kind: "unknown_bot", bot: "Tanpa identitas" };
   let bot = match(AI_ANSWER, agent);
   if (bot) return { kind: "ai_answer", bot };
-  bot = match(AI_TRAIN, agent);
-  if (bot) return { kind: "ai_train", bot };
+  // Search bots first: "Claude-SearchBot" carries "claudebot@anthropic.com" in its contact text.
   bot = match(AI_SEARCH, agent);
   if (bot) return { kind: "ai_crawl", bot };
+  bot = match(AI_TRAIN, agent);
+  if (bot) return { kind: "ai_train", bot };
   bot = match(SEARCH_ENGINE, agent);
   if (bot) return { kind: "search_engine", bot };
-  if (GENERIC_BOT.test(agent)) return { kind: "unknown_bot", bot: "Otomatis tidak dikenal" };
+  if (GENERIC_BOT.test(agent)) {
+    const named =
+      /([A-Za-z][A-Za-z0-9_-]{2,30}(?:bot|crawler|crawlerd|spider|robot|watch))\b/i.exec(agent);
+    return { kind: "unknown_bot", bot: named?.[1] ?? "Otomatis tidak dikenal" };
+  }
   return { kind: "browser" };
 }
 
@@ -80,10 +99,28 @@ export function isCountableDocumentRequest(
   return a === "" || a.includes("text/html") || a.includes("*/*");
 }
 
-/** A path that is safe to keep: no query string, no identifiers beyond the public route. */
+const PRIVATE_ID_ROUTES = new Set([
+  "order",
+  "checkout",
+  "orders",
+  "my-orders",
+  "my-trips",
+  "bagikan-tiket",
+  "order-status",
+  "invite",
+  "ref",
+  "pay",
+]);
+
+/** A path that is safe to keep: no query string, and no order or trip identifier. */
 export function safeHitPath(pathname: string): string {
   const clean = (pathname.split(/[?#]/)[0] ?? "/").slice(0, 120);
-  return /^\/[A-Za-z0-9_/.-]*$/.test(clean) ? clean : "/";
+  if (!/^\/[A-Za-z0-9_/.-]*$/.test(clean)) return "/";
+  const parts = clean.split("/").filter(Boolean);
+  if (parts.length > 1 && PRIVATE_ID_ROUTES.has(parts[0]!)) return `/${parts[0]}/:id`;
+  if (parts[0] === "titip-belanja" && parts[1] === "pesanan" && parts.length > 2)
+    return "/titip-belanja/pesanan/:id";
+  return clean;
 }
 
 export const AI_REFERRER_HOSTS = [

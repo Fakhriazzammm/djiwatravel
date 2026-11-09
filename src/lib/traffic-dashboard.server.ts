@@ -17,7 +17,11 @@ function windowFor(range: TrafficRange) {
   const base = `(date_trunc('day', now() at time zone '${TZ}') - interval '${days} days') at time zone '${TZ}'`;
   const since =
     range === "all"
-      ? `greatest((select coalesce(min(created_at), now()) from site_events), ${base})`
+      ? `greatest(least(
+           (select coalesce(min(created_at), now()) from site_events),
+           (select coalesce(min(created_at), now()) from traffic_bot_hits),
+           (select coalesce(min(created_at), now()) from customer_orders),
+           (select coalesce(min(created_at), now()) from shopping_orders)), ${base})`
       : base;
   return { since, unit: "day", step: "1 day", fmt: "DD Mon" };
 }
