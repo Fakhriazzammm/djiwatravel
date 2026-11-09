@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { ArrowUp, ChevronLeft, History, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, History, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantMascot } from "@/components/assistant-mascot";
-import { AssistantBlocks } from "@/components/assistant-blocks";
-import { Bubble, TypingBubble, useSmoothText } from "@/components/trip-assistant";
+import { TravoComposer, TravoLive, TravoMessage } from "@/components/travo-parts";
 import { ConfirmDialog } from "@/components/trip-ios";
 import {
   Sheet,
@@ -13,22 +12,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { travoMood, useTravoChat } from "@/hooks/use-travo-chat";
+import { deleteTravoConversation, listTravoConversations } from "@/lib/trip-assistant.fn";
 import {
-  deleteTravoConversation,
-  listTravoConversations,
-  loadTravo,
-  sendTripAssistantMessage,
-  streamTripAssistantMessage,
-} from "@/lib/trip-assistant.fn";
-import {
-  ASSISTANT_MAX_TEXT,
   ASSISTANT_NAME,
+  QUICK,
   TRAVO_SCOPES,
   TRAVO_SCOPE_LABEL,
   TRAVO_SCOPE_LINK,
-  visibleChips,
-  type AssistantMessage,
-  type AssistantStatus,
   type TravoConversationSummary,
   type TravoScope,
 } from "@/lib/trip-assistant";
@@ -69,8 +60,9 @@ const dayLabel = (iso: string) => {
 };
 
 /**
- * The standalone Travo page. Same engine, same stored conversations as the trip chat: a trip chat
- * shows up in the history here, and a chat opened from here with a trip keeps working on the trip page.
+ * The standalone Travo page: the same engine (`useTravoChat`) and the same message pieces as the
+ * Ringkas chat, in a full-screen layout. A trip chat opened here keeps every trip feature (apply,
+ * undo, shortcuts) and a general chat has none, since it changes no trip.
  */
 export function TravoChat({
   conversationId,
@@ -85,130 +77,34 @@ export function TravoChat({
 }) {
   const navigate = useNavigate();
   const router = useRouter();
-  const [status, setStatus] = useState<AssistantStatus | null>(null);
-  const [loggedIn, setLoggedIn] = useState(true);
-  const [ready, setReady] = useState(false);
-  const [convId, setConvId] = useState<string | undefined>(conversationId);
-  const [tripId, setTripId] = useState<string | null>(null);
-  const [scope, setScope] = useState<TravoScope>(initialScope ?? "all");
-  const [messages, setMessages] = useState<AssistantMessage[]>([]);
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [streamText, setStreamText] = useState("");
-  const typed = useSmoothText(streamText, streamText.length > 0);
+  const chat = useTravoChat({
+    conversationId,
+    tripParam,
+    scope: initialScope,
+    // The address follows the conversation, so a refresh or a shared tab opens the same chat.
+    onConversationCreated: (id) =>
+      void navigate({ to: "/travo", search: { c: id } as never, replace: true }),
+  });
+  const { status, loggedIn, ready, messages, sending, notice, convId, chatTrip, scope } = chat;
   const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState<TravoConversationSummary[] | null>(null);
   const [deleting, setDeleting] = useState<TravoConversationSummary | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const autoSent = useRef(false);
-  const convRef = useRef<string | undefined>(conversationId);
-  convRef.current = convId;
-
-  useEffect(() => {
-    // The address just caught up with a chat that is already on screen: nothing to reload.
-    if (conversationId && conversationId === convRef.current && ready) return;
-    let cancelled = false;
-    setReady(false);
-    loadTravo({
-      data: conversationId ? { conversationId } : tripParam ? { tripId: tripParam } : {},
-    })
-      .then((r) => {
-        if (cancelled) return;
-        setStatus(r.status);
-        setLoggedIn(r.loggedIn);
-        setConvId(r.conversation?.id ?? conversationId);
-        setTripId(r.conversation?.tripId ?? null);
-        if (r.conversation) setScope(r.conversation.scope);
-        setMessages(r.messages);
-        setReady(true);
-      })
-      .catch(() => !cancelled && setReady(true));
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, tripParam]);
+  const available = status?.available === true;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, sending, typed]);
-
-  const send = useCallback(
-    async (text: string) => {
-      const value = text.trim().slice(0, ASSISTANT_MAX_TEXT);
-      if (!value || sending) return;
-      setNotice(null);
-      setSending(true);
-      setDraft("");
-      const temp: AssistantMessage = {
-        id: `tmp-${Date.now()}`,
-        role: "user",
-        content: value,
-        chips: null,
-        proposal: null,
-        blocks: [],
-        createdAt: new Date().toISOString(),
-      };
-      setMessages((list) => [...list, temp]);
-      setStreamText("");
-      const input = {
-        text: value,
-        ...(convId ? { conversationId: convId } : tripId ? { tripId } : { scope }),
-      };
-      const finish = (result: Awaited<ReturnType<typeof sendTripAssistantMessage>>) => {
-        if (result.status === "ok") {
-          setMessages((list) => [...list.filter((m) => m.id !== temp.id), ...result.messages]);
-          if (result.conversationId && !convId) {
-            setConvId(result.conversationId);
-            // The address follows the conversation, so a refresh or a shared tab opens the same chat.
-            void navigate({
-              to: "/travo",
-              search: { c: result.conversationId } as never,
-              replace: true,
-            });
-          }
-        } else {
-          setMessages((list) => list.filter((m) => m.id !== temp.id));
-          setDraft(value);
-          setNotice(result.message);
-        }
-      };
-      let started = false;
-      try {
-        try {
-          const stream = await streamTripAssistantMessage({ data: input });
-          let result: Awaited<ReturnType<typeof sendTripAssistantMessage>> | null = null;
-          for await (const event of stream) {
-            started = true;
-            if (event.type === "delta") setStreamText((t) => t + event.text);
-            else if (event.type === "done") result = event.result;
-          }
-          if (!result) throw new Error("stream_incomplete");
-          finish(result);
-        } catch (error) {
-          if (started) throw error;
-          finish(await sendTripAssistantMessage({ data: input }));
-        }
-      } catch {
-        setMessages((list) => list.filter((m) => m.id !== temp.id));
-        setDraft(value);
-        setNotice("Pesan belum terkirim. Periksa koneksi lalu coba lagi.");
-      } finally {
-        setSending(false);
-        setStreamText("");
-      }
-    },
-    [sending, convId, tripId, scope, navigate],
-  );
+  }, [messages.length, sending, chat.streamText]);
 
   // A question carried from the Home search line is sent once, when the chat is ready.
+  const { send } = chat;
   useEffect(() => {
     if (!ready || autoSent.current || !initialQuery || conversationId || tripParam) return;
-    if (status?.available !== true) return;
+    if (!available) return;
     autoSent.current = true;
     void send(initialQuery);
-  }, [ready, initialQuery, conversationId, status, send]);
+  }, [ready, initialQuery, conversationId, tripParam, available, send]);
 
   async function openHistory() {
     setHistoryOpen(true);
@@ -218,11 +114,7 @@ export function TravoChat({
 
   function startNew() {
     setHistoryOpen(false);
-    setMessages([]);
-    setConvId(undefined);
-    setTripId(null);
-    setScope("all");
-    setNotice(null);
+    chat.startNew();
     void navigate({ to: "/travo", search: {} as never });
   }
 
@@ -238,8 +130,7 @@ export function TravoChat({
     setDeleting(null);
   }
 
-  const available = status?.available === true;
-  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  const lastId = messages[messages.length - 1]?.id;
   const link = TRAVO_SCOPE_LINK[scope];
   const grouped = (history ?? []).reduce<Record<string, TravoConversationSummary[]>>((acc, c) => {
     (acc[dayLabel(c.lastMessageAt)] ||= []).push(c);
@@ -259,7 +150,7 @@ export function TravoChat({
         >
           <ChevronLeft className="size-4" aria-hidden="true" />
         </button>
-        <AssistantMascot size={34} mood={sending ? "thinking" : "idle"} />
+        <AssistantMascot size={34} mood={travoMood(chat)} cheer={chat.cheer} />
         <div className="min-w-0 flex-1">
           <h1 className="text-[14px] font-bold leading-tight">{ASSISTANT_NAME}</h1>
           <p className="truncate text-[11px] text-muted-foreground">Asisten perjalanan Djiwa</p>
@@ -282,7 +173,7 @@ export function TravoChat({
         </button>
       </header>
 
-      {!tripId && (
+      {!chatTrip ? (
         <div
           className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-border/60 bg-surface px-3 py-2 [scrollbar-width:none]"
           role="tablist"
@@ -295,7 +186,7 @@ export function TravoChat({
               role="tab"
               aria-selected={scope === s}
               disabled={Boolean(convId)}
-              onClick={() => setScope(s)}
+              onClick={() => chat.setScope(s)}
               className={`tap min-h-8 shrink-0 rounded-full px-3 text-[12px] font-semibold disabled:opacity-60 ${
                 scope === s ? "bg-brand-red text-white" : "bg-secondary"
               }`}
@@ -304,15 +195,14 @@ export function TravoChat({
             </button>
           ))}
         </div>
-      )}
-      {tripId && (
+      ) : (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-surface px-3 py-2 text-[12px]">
           <span className="text-muted-foreground">
             Obrolan trip: sama dengan chat di halaman trip.
           </span>
           <Link
             to="/my-trips/$tripId"
-            params={{ tripId }}
+            params={{ tripId: chatTrip }}
             className="tap shrink-0 font-semibold text-brand-red"
           >
             Buka trip
@@ -332,6 +222,7 @@ export function TravoChat({
             </p>
             <Link
               to="/profile"
+              search={{ returnTo: "/travo" } as never}
               className="tap mt-1 inline-flex min-h-10 items-center rounded-xl bg-brand-red px-4 text-[14px] font-semibold text-white"
             >
               Masuk
@@ -354,7 +245,7 @@ export function TravoChat({
                   key={s.title}
                   type="button"
                   onClick={() => {
-                    setScope(s.scope === "trip" ? "all" : s.scope);
+                    chat.setScope(s.scope === "trip" ? "all" : s.scope);
                     void send(s.text);
                   }}
                   className="tap min-h-[52px] rounded-2xl bg-surface p-2.5 text-left ring-1 ring-border/50"
@@ -368,38 +259,16 @@ export function TravoChat({
         ) : (
           <>
             {messages.map((m) => (
-              <Bubble
+              <TravoMessage
                 key={m.id}
-                role={m.role}
-                footer={
-                  m.role === "assistant" && (m.blocks.length > 0 || m.proposal) ? (
-                    <div className="space-y-1.5 px-3 pb-2">
-                      {m.blocks.length > 0 && (
-                        <AssistantBlocks blocks={m.blocks} onAsk={(t) => void send(t)} />
-                      )}
-                      {m.proposal && tripId && (
-                        <Link
-                          to="/my-trips/$tripId"
-                          params={{ tripId }}
-                          className="tap block rounded-xl bg-secondary px-3 py-2 text-[12px] font-semibold"
-                        >
-                          Usulan: {m.proposal.title}. Tinjau dan terapkan di halaman trip.
-                        </Link>
-                      )}
-                    </div>
-                  ) : undefined
-                }
-              >
-                {m.content}
-              </Bubble>
+                message={m}
+                last={m.id === lastId}
+                chat={chat}
+                currency={chat.tripCurrency ?? "IDR"}
+              />
             ))}
-            {sending &&
-              (typed ? (
-                <Bubble role="assistant">{typed}</Bubble>
-              ) : (
-                <TypingBubble label="Travo mengetik" />
-              ))}
-            {!sending && lastAssistant && link && messages.length > 0 && !tripId && (
+            <TravoLive chat={chat} />
+            {!sending && link && !chatTrip && messages.length > 0 && (
               <Link
                 to={link.to as never}
                 className="tap ml-8 inline-flex min-h-9 w-fit items-center rounded-xl bg-secondary px-3 text-[12px] font-semibold"
@@ -421,50 +290,23 @@ export function TravoChat({
       </main>
 
       {available && loggedIn && (
-        <footer className="shrink-0 border-t border-border/60 bg-background pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          {!sending &&
-            lastAssistant &&
-            visibleChips(lastAssistant.chips, lastAssistant.proposal?.status ?? null) && (
-              <div className="flex gap-1.5 overflow-x-auto px-3 pt-2 [scrollbar-width:none]">
-                {visibleChips(
-                  lastAssistant.chips,
-                  lastAssistant.proposal?.status ?? null,
-                )!.options.map((o) => (
-                  <button
-                    key={o}
-                    type="button"
-                    onClick={() => void send(o)}
-                    className="tap min-h-8 shrink-0 rounded-full bg-surface px-3 text-[12px] font-semibold ring-1 ring-border/60"
-                  >
-                    {o}
-                  </button>
-                ))}
-              </div>
-            )}
-          <form
-            className="flex items-center gap-2 px-3 pt-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void send(draft);
-            }}
-          >
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              maxLength={ASSISTANT_MAX_TEXT}
-              placeholder={`Tanya ${ASSISTANT_NAME} apa saja…`}
-              aria-label={`Pesan untuk ${ASSISTANT_NAME}`}
-              className="min-h-10 min-w-0 flex-1 rounded-full bg-surface px-4 text-[14px] ring-1 ring-border/60 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <button
-              type="submit"
-              aria-label="Kirim"
-              disabled={sending || !draft.trim()}
-              className="tap grid size-10 shrink-0 place-items-center rounded-full bg-brand-red text-white disabled:opacity-40"
-            >
-              <ArrowUp className="size-4" aria-hidden="true" />
-            </button>
-          </form>
+        <footer className="shrink-0 border-t border-border/60 bg-background px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
+          {chatTrip && (
+            <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1.5 [scrollbar-width:none]">
+              {QUICK.map((q) => (
+                <button
+                  key={q.intent}
+                  type="button"
+                  disabled={sending}
+                  onClick={() => void send(q.text, q.intent)}
+                  className="tap min-h-8 shrink-0 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50 disabled:opacity-50"
+                >
+                  {q.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <TravoComposer chat={chat} />
         </footer>
       )}
 
@@ -533,7 +375,7 @@ export function TravoChat({
         }
         confirmLabel="Hapus"
         destructive
-        onConfirm={() => deleting && removeConversation(deleting)}
+        onConfirm={() => (deleting ? removeConversation(deleting) : undefined)}
       />
     </div>
   );

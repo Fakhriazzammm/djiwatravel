@@ -535,6 +535,13 @@ export const travoLoadInput = (data: unknown) => conversationInput.parse(data ??
 const conversationIdInput = z.object({ conversationId: z.string().uuid() });
 export const travoConversationInput = (data: unknown) => conversationIdInput.parse(data);
 
+async function tripCurrencyOf(tripId: string): Promise<string | null> {
+  const r = await pool.query("select primary_currency from public.travel_trips where id=$1", [
+    tripId,
+  ]);
+  return (r.rows[0]?.primary_currency as string | undefined) ?? null;
+}
+
 /** One conversation (or the empty start screen) with the same status the trip chat uses. */
 export async function travoLoadHandler({ data }: { data: ReturnType<typeof travoLoadInput> }) {
   const owner = await resolveTripOwner();
@@ -571,7 +578,13 @@ export async function travoLoadHandler({ data }: { data: ReturnType<typeof travo
       loggedIn: true as const,
       // A trip without a chat yet: empty, and the first message creates its conversation.
       conversation: data.tripId
-        ? { id: null as string | null, tripId: data.tripId, title: "", scope: "trip" as TravoScope }
+        ? {
+            id: null as string | null,
+            tripId: data.tripId,
+            title: "",
+            scope: "trip" as TravoScope,
+            tripCurrency: await tripCurrencyOf(data.tripId),
+          }
         : null,
       messages: [] as AssistantMessage[],
     };
@@ -579,7 +592,13 @@ export async function travoLoadHandler({ data }: { data: ReturnType<typeof travo
   return {
     status,
     loggedIn: true as const,
-    conversation: { id: row.id as string | null, tripId: row.trip_id, title: row.title, scope },
+    conversation: {
+      id: row.id as string | null,
+      tripId: row.trip_id,
+      title: row.title,
+      scope,
+      tripCurrency: row.trip_id ? await tripCurrencyOf(row.trip_id) : null,
+    },
     messages: await readMessages(
       row.trip_id ? { tripId: row.trip_id } : { conversationId: row.id },
     ),

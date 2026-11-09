@@ -1034,3 +1034,23 @@ export function visibleChips(
   );
   return options.length ? { options, multi: chips.multi && options.length > 1 } : null;
 }
+
+/** Shortcuts for a trip chat: each asks Travo for one kind of proposal. */
+export const QUICK: { label: string; intent: AssistantIntent; text: string }[] = [
+  {
+    label: "Buat itinerary",
+    intent: "plan",
+    text: "Buatkan itinerary untuk hari yang masih kosong.",
+  },
+  { label: "Atur anggaran", intent: "budget", text: "Bantu atur anggaran perjalanan ini." },
+  {
+    label: "Rapikan agenda",
+    intent: "tidy",
+    text: "Rapikan agenda saya: cek bentrok jam, jam buka, dan urutan.",
+  },
+  {
+    label: "Cek checklist",
+    intent: "checklist",
+    text: "Apa saja persiapan yang belum ada di checklist saya?",
+  },
+];
