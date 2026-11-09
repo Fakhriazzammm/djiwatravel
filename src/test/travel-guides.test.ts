@@ -5,6 +5,26 @@ import { resolve } from "node:path";
 import { getTravelGuide, travelGuides, travelGuideSlugs } from "@/lib/travel-guides";
 
 describe("travel guide SEO registry", () => {
+  it("includes the 2026 Japan tax refund guide and its key traveler rules", () => {
+    const guide = getTravelGuide("tax-refund-jepang-2026");
+    expect(guide).toBeDefined();
+    if (!guide) return;
+
+    expect(guide.title).toContain("Tax Refund Jepang 2026");
+    expect(guide.description).toMatch(/1 November 2026/);
+    expect(guide.image).toBe("/assets/guides/tax-refund-jepang-2026.jpg");
+    expect(guide.sources?.map((source) => source.url)).toContain(
+      "https://www.mlit.go.jp/kankocho/tax-free/page01_000001_00021.html",
+    );
+
+    const copy = [...guide.paragraphs, ...guide.steps.map((step) => step.body)].join(" ");
+    expect(copy).toMatch(/90 hari/);
+    expect(copy).toMatch(/¥5\.000/);
+    expect(copy).toMatch(/nota/);
+    expect(copy).toMatch(/bagasi tercatat/);
+    expect(copy).toMatch(/barang habis pakai/);
+  });
+
   it("contains useful, unique Indonesian guides", () => {
     expect(travelGuides.length).toBeGreaterThanOrEqual(3);
     expect(new Set(travelGuideSlugs).size).toBe(travelGuides.length);
@@ -27,12 +47,17 @@ describe("travel guide SEO registry", () => {
 
   it("keeps public guide metadata, schema, and sitemap wiring explicit", () => {
     const detail = readFileSync(resolve(process.cwd(), "src/routes/panduan.$slug.tsx"), "utf8");
+    const guideIndex = readFileSync(resolve(process.cwd(), "src/routes/panduan.index.tsx"), "utf8");
     const sitemap = readFileSync(resolve(process.cwd(), "src/routes/sitemap[.]xml.ts"), "utf8");
     expect(detail).toContain('rel: "canonical"');
     expect(detail).toContain('property: "og:type", content: "article"');
     expect(detail).toContain("<GuideShareActions title={guide.title}");
     expect(detail).toContain('"@type": "Article"');
+    expect(detail).toContain(
+      "image: loaderData.image ? `${BASE_URL}${loaderData.image}` : undefined",
+    );
     expect(detail).toContain('"@type": "BreadcrumbList"');
+    expect(guideIndex).toContain("tax refund Jepang");
     expect(sitemap).toContain("travelGuideSlugs.map");
     expect(sitemap).not.toMatch(/urlEntry\(`\/(?:admin|api|checkout|order|receipt|my-esim)/);
   });

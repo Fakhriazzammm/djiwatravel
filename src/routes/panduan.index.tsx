@@ -7,16 +7,20 @@ const BASE_URL = "https://djiwatravel.com";
 export const Route = createFileRoute("/panduan/")({
   head: () => ({
     meta: [
-      { title: "Panduan Travel — Tips eSIM untuk Traveler Indonesia | Djiwa Travel" },
+      { title: "Panduan Travel: eSIM, Tax Refund Jepang & Tips Perjalanan | Djiwa Travel" },
       {
         name: "description",
         content:
-          "Panduan praktis menyiapkan eSIM, memilih kuota, dan tetap terhubung saat traveling dari Indonesia.",
+          "Panduan praktis untuk traveler Indonesia: memilih eSIM, menyiapkan internet, memahami tax refund Jepang, dan merencanakan perjalanan.",
       },
-      { property: "og:title", content: "Panduan Travel — Djiwa Travel" },
+      {
+        property: "og:title",
+        content: "Panduan Travel: eSIM, Tax Refund Jepang & Tips Perjalanan — Djiwa Travel",
+      },
       {
         property: "og:description",
-        content: "Tips praktis eSIM dan internet untuk perjalanan dari Indonesia.",
+        content:
+          "Tips praktis eSIM, internet perjalanan, tax refund Jepang, dan persiapan liburan dari Indonesia.",
       },
       { property: "og:type", content: "website" },
     ],
@@ -34,7 +38,8 @@ function TravelGuideIndex() {
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-red">Djiwa Travel</p>
       <h1 className="text-[22px] font-bold leading-tight tracking-tight mt-2">Panduan Travel</h1>
       <p className="mt-3 text-[15px] leading-7 text-muted-foreground">
-        Tips singkat dan bisa langsung dipakai untuk menyiapkan internet perjalananmu.
+        Panduan praktis untuk menyiapkan perjalanan, mulai dari internet hingga aturan belanja di
+        destinasi.
       </p>
       <section className="mt-4" aria-labelledby="guide-list-title">
         <SectionTitle>Artikel terbaru</SectionTitle>

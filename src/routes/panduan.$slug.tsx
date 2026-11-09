@@ -19,6 +19,7 @@ export const Route = createFileRoute("/panduan/$slug")({
       "@type": "Article",
       headline: loaderData.title,
       description: loaderData.description,
+      image: loaderData.image ? `${BASE_URL}${loaderData.image}` : undefined,
       datePublished: loaderData.publishedAt,
       dateModified: loaderData.updatedAt,
       inLanguage: "id-ID",
