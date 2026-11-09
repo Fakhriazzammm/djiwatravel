@@ -137,7 +137,10 @@ function SharedItinerary() {
             <ShieldCheck className="size-3" /> Baca-saja
           </span>
         </div>
-        <div className="relative mt-3 overflow-hidden rounded-2xl bg-foreground text-background">
+        <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-brand-red">
+          Itinerary dibagikan
+        </p>
+        <div className="relative mt-1.5 overflow-hidden rounded-2xl bg-foreground text-background">
           {cover && (
             <img
               src={cover}
@@ -147,9 +150,6 @@ function SharedItinerary() {
             />
           )}
           <div className="relative bg-gradient-to-t from-foreground/90 via-foreground/40 to-transparent px-3.5 pb-3 pt-14">
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-brand-red">
-              Itinerary dibagikan
-            </p>
             <h1 className="mt-0.5 text-[22px] font-bold leading-tight tracking-tight">
               {trip.name}
             </h1>
