@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ExternalLink, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
+import { trackOrderStart } from "@/lib/analytics";
 import { CustomerAuth } from "@/components/customer-auth";
 import { getBetterAuthSession } from "@/lib/better-auth-client";
 import { createShoppingOrder, getLastShoppingAddress } from "@/lib/personal-shopper.fn";
@@ -595,6 +596,7 @@ export function CartSheet({
           note: note.trim() || null,
         },
       });
+      trackOrderStart("/titip-belanja", result.orderId);
       cartActions.clear();
       onOpenChange(false);
       if (result.paymentUrl) {

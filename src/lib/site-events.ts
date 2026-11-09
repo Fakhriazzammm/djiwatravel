@@ -6,6 +6,7 @@ export const SITE_EVENT_NAMES = [
   "finder_submit",
   "checkout_start",
   "destination_view",
+  "order_start",
 ] as const;
 export type SiteEventName = (typeof SITE_EVENT_NAMES)[number];
 

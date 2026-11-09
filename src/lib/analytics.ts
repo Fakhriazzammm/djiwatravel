@@ -32,6 +32,8 @@ const PUBLIC_PATHS = [
   /^\/destination\/[a-z0-9-]+\/?$/,
   /^\/plan\/[a-z0-9-]+\/?$/i,
   /^\/panduan(?:\/.*)?$/,
+  /^\/tiket\/?$/,
+  /^\/titip-belanja\/?$/,
 ];
 
 function isBrowser() {
@@ -178,6 +180,11 @@ function sendSiteEvent(name: SiteEventName, path: string, target?: string) {
   } catch {
     // Storage or URL access can throw in private windows; measurement is best-effort.
   }
+}
+
+/** Links this browser session to the order it just created (anonymous: order id only). */
+export function trackOrderStart(path: string, orderId: string) {
+  if (/^[A-Za-z0-9-]{8,60}$/.test(orderId)) sendSiteEvent("order_start", path, orderId);
 }
 
 /** Records one click on a public page, labelled by an internal path or a short plain label. */

@@ -47,6 +47,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminShoppingRouteImport } from './routes/admin.shopping'
 import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
+import { Route as AdminTrafficRouteImport } from './routes/admin.traffic'
 import { Route as ApiCustomerNotificationsRouteImport } from './routes/api.customer-notifications'
 import { Route as ApiCustomerProfileRouteImport } from './routes/api.customer-profile'
 import { Route as ApiCustomerRefundRouteImport } from './routes/api.customer-refund'
@@ -294,6 +295,11 @@ const AdminSupportRoute = AdminSupportRouteImport.update({
 const AdminTeamRoute = AdminTeamRouteImport.update({
   id: '/admin/team',
   path: '/admin/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTrafficRoute = AdminTrafficRouteImport.update({
+  id: '/admin/traffic',
+  path: '/admin/traffic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCustomerNotificationsRoute =
@@ -633,6 +639,7 @@ export interface FileRoutesByFullPath {
   '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/admin/traffic': typeof AdminTrafficRoute
   '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
@@ -731,6 +738,7 @@ export interface FileRoutesByTo {
   '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/admin/traffic': typeof AdminTrafficRoute
   '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
@@ -830,6 +838,7 @@ export interface FileRoutesById {
   '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/admin/traffic': typeof AdminTrafficRoute
   '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
@@ -930,6 +939,7 @@ export interface FileRouteTypes {
     | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
+    | '/admin/traffic'
     | '/api/customer-notifications'
     | '/api/customer-profile'
     | '/api/customer-refund'
@@ -1028,6 +1038,7 @@ export interface FileRouteTypes {
     | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
+    | '/admin/traffic'
     | '/api/customer-notifications'
     | '/api/customer-profile'
     | '/api/customer-refund'
@@ -1126,6 +1137,7 @@ export interface FileRouteTypes {
     | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
+    | '/admin/traffic'
     | '/api/customer-notifications'
     | '/api/customer-profile'
     | '/api/customer-refund'
@@ -1225,6 +1237,7 @@ export interface RootRouteChildren {
   AdminShoppingRoute: typeof AdminShoppingRoute
   AdminSupportRoute: typeof AdminSupportRoute
   AdminTeamRoute: typeof AdminTeamRoute
+  AdminTrafficRoute: typeof AdminTrafficRoute
   ApiCustomerNotificationsRoute: typeof ApiCustomerNotificationsRoute
   ApiCustomerProfileRoute: typeof ApiCustomerProfileRoute
   ApiCustomerRefundRoute: typeof ApiCustomerRefundRoute
@@ -1548,6 +1561,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/team'
       fullPath: '/admin/team'
       preLoaderRoute: typeof AdminTeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/traffic': {
+      id: '/admin/traffic'
+      path: '/admin/traffic'
+      fullPath: '/admin/traffic'
+      preLoaderRoute: typeof AdminTrafficRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/customer-notifications': {
@@ -2034,6 +2054,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminShoppingRoute: AdminShoppingRoute,
   AdminSupportRoute: AdminSupportRoute,
   AdminTeamRoute: AdminTeamRoute,
+  AdminTrafficRoute: AdminTrafficRoute,
   ApiCustomerNotificationsRoute: ApiCustomerNotificationsRoute,
   ApiCustomerProfileRoute: ApiCustomerProfileRoute,
   ApiCustomerRefundRoute: ApiCustomerRefundRoute,

@@ -17,7 +17,7 @@ import { formatWhatsapp, isValidWhatsapp, normalizeWhatsapp } from "@/lib/phone"
 import { CUSTOMER_PROFILE_UPDATED_EVENT, loadCustomerProfile } from "@/lib/customer-profile-client";
 import { DeviceCompatibility } from "@/components/device-compatibility";
 import { nextFrame, paymentProgressLabel, type PaymentProgressStage } from "@/lib/payment-progress";
-import { trackAnalytics } from "@/lib/analytics";
+import { trackAnalytics, trackOrderStart } from "@/lib/analytics";
 import {
   mayarRedirectUrl,
   walletPaymentAvailability,
@@ -154,6 +154,7 @@ export function CheckoutForm({
         guestCheckout: !user,
         preorderRequested: Boolean(pkg.preorderAvailable && !pkg.sellable),
       });
+      trackOrderStart(`/plan/${pkg.packageCode}`, o.id);
       // Go straight to the payment page: leaving the customer on the order screen when a
       // payment link already exists is a dead end they asked us to remove.
       const redirectUrl = mayarRedirectUrl(method, o.paymentUrl);

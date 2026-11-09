@@ -74,6 +74,10 @@ export default {
         });
       }
 
+      void import("./lib/traffic-hits.server")
+        .then((m) => m.noteDocumentRequest(request))
+        .catch(() => undefined);
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
