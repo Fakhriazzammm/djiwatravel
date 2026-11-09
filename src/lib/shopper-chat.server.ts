@@ -663,15 +663,15 @@ export async function sendCustomerMessage(input: {
       }
     }
     const rate = await c.query(
-      `select count(*) filter (where m.created_at > now() - interval '1 minute')::int minute,
-              count(*) filter (where m.created_at >= date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta')::int day
+      `select count(*) filter (where m.created_at > now() - interval '1 minute')::int as per_minute,
+              count(*) filter (where m.created_at >= date_trunc('day', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta')::int as per_day
          from shopping_chat_messages m join shopping_chat_threads x on x.id = m.thread_id
         where x.customer_auth_subject = $1 and m.sender = 'CUSTOMER'`,
       [input.subject],
     );
-    const used = rate.rows[0] as { minute: number; day: number };
-    if (used.minute >= 10) throw new Error("Terlalu cepat. Tunggu sebentar lalu kirim lagi.");
-    if (used.day >= config.dailyMessages) throw new Error("Batas pesan harian tercapai.");
+    const used = rate.rows[0] as { per_minute: number; per_day: number };
+    if (used.per_minute >= 10) throw new Error("Terlalu cepat. Tunggu sebentar lalu kirim lagi.");
+    if (used.per_day >= config.dailyMessages) throw new Error("Batas pesan harian tercapai.");
     let attachmentId: string | null = null;
     if (input.photo && mime) {
       const count = await c.query(
