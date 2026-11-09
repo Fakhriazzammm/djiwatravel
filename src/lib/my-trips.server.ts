@@ -442,16 +442,40 @@ export const duplicateTrip = createServerFn({ method: "POST" })
   .handler(duplicateTripHandler);
 
 /** Return the newest active share link for an owned trip, if sharing is enabled. */
+/** Public, cosmetic URL segment naming the member who shared (the token alone grants access). */
+export function shareHandle(displayName: unknown) {
+  const first =
+    String(displayName ?? "")
+      .trim()
+      .split(/\s+/)[0] ?? "";
+  const slug = first
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 24);
+  return slug || "member";
+}
+
 export async function getActiveTripShare(tripId: string) {
   try {
     const result = await pool.query(
-      `select token, created_at from travel_trip_shares
-       where trip_id=$1 and revoked_at is null
-       order by created_at desc limit 1`,
+      `select s.token, s.created_at,
+        (select p.display_name from travel_trips t
+          join customer_profiles p on p.auth_user_id=t.customer_auth_subject
+          where t.id=s.trip_id limit 1) as owner_name
+       from travel_trip_shares s
+       where s.trip_id=$1 and s.revoked_at is null
+       order by s.created_at desc limit 1`,
       [tripId],
     );
     return result.rows[0]
-      ? { token: String(result.rows[0].token), createdAt: result.rows[0].created_at as string }
+      ? {
+          token: String(result.rows[0].token),
+          createdAt: result.rows[0].created_at as string,
+          handle: shareHandle(result.rows[0].owner_name),
+        }
       : null;
   } catch (error) {
     // Keep My Trips readable while a pre-migration deployment is rolling out.
@@ -484,9 +508,13 @@ export async function createTripShareLink(tripId: string) {
       [tripId, token, user.id],
     );
     await client.query("commit");
+    const profile = await pool
+      .query("select display_name from customer_profiles where auth_user_id=$1", [user.id])
+      .catch(() => ({ rows: [] as { display_name?: string }[] }));
     return {
       token: String(result.rows[0].token),
       createdAt: result.rows[0].created_at as string,
+      handle: shareHandle(profile.rows[0]?.display_name),
     };
   } catch (error) {
     await client.query("rollback");
@@ -545,7 +573,7 @@ export async function loadSharedTrip(token: string) {
       ?.slice(0, 40) || null;
   delete trip.owner_display_name;
   return {
-    owner: { firstName: ownerName },
+    owner: { firstName: ownerName, handle: shareHandle(ownerName) },
     trip,
     sharedAt: trip.shared_at as string,
     itinerary: itinerary.rows,

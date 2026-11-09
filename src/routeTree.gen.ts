@@ -101,6 +101,7 @@ import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhook
 import { Route as ApiWebhooksMayarForwardRouteImport } from './routes/api.webhooks.mayar-forward'
 import { Route as MyTripsTripIdSectionRouteImport } from './routes/my-trips.$tripId.$section'
 import { Route as MyTripsTripIdTravelRouteImport } from './routes/my-trips.$tripId.travel'
+import { Route as ShareHandleTokenRouteImport } from './routes/share.$handle.$token'
 import { Route as TitipBelanjaPesanIndexRouteImport } from './routes/titip-belanja.pesan.index'
 import { Route as TitipBelanjaPesanIdRouteImport } from './routes/titip-belanja.pesan.$id'
 import { Route as TitipBelanjaPesananIndexRouteImport } from './routes/titip-belanja.pesanan.index'
@@ -573,6 +574,11 @@ const MyTripsTripIdTravelRoute = MyTripsTripIdTravelRouteImport.update({
   path: '/travel',
   getParentRoute: () => MyTripsTripIdRoute,
 } as any)
+const ShareHandleTokenRoute = ShareHandleTokenRouteImport.update({
+  id: '/share/$handle/$token',
+  path: '/share/$handle/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TitipBelanjaPesanIndexRoute = TitipBelanjaPesanIndexRouteImport.update({
   id: '/titip-belanja/pesan/',
   path: '/titip-belanja/pesan/',
@@ -694,6 +700,7 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
+  '/share/$handle/$token': typeof ShareHandleTokenRoute
   '/titip-belanja/pesan/$id': typeof TitipBelanjaPesanIdRoute
   '/titip-belanja/pesanan/$id': typeof TitipBelanjaPesananIdRoute
   '/titip-belanja/pesan/': typeof TitipBelanjaPesanIndexRoute
@@ -793,6 +800,7 @@ export interface FileRoutesByTo {
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
+  '/share/$handle/$token': typeof ShareHandleTokenRoute
   '/titip-belanja/pesan/$id': typeof TitipBelanjaPesanIdRoute
   '/titip-belanja/pesanan/$id': typeof TitipBelanjaPesananIdRoute
   '/titip-belanja/pesan': typeof TitipBelanjaPesanIndexRoute
@@ -893,6 +901,7 @@ export interface FileRoutesById {
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
+  '/share/$handle/$token': typeof ShareHandleTokenRoute
   '/titip-belanja/pesan/$id': typeof TitipBelanjaPesanIdRoute
   '/titip-belanja/pesanan/$id': typeof TitipBelanjaPesananIdRoute
   '/titip-belanja/pesan/': typeof TitipBelanjaPesanIndexRoute
@@ -994,6 +1003,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
+    | '/share/$handle/$token'
     | '/titip-belanja/pesan/$id'
     | '/titip-belanja/pesanan/$id'
     | '/titip-belanja/pesan/'
@@ -1093,6 +1103,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
+    | '/share/$handle/$token'
     | '/titip-belanja/pesan/$id'
     | '/titip-belanja/pesanan/$id'
     | '/titip-belanja/pesan'
@@ -1192,6 +1203,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
+    | '/share/$handle/$token'
     | '/titip-belanja/pesan/$id'
     | '/titip-belanja/pesanan/$id'
     | '/titip-belanja/pesan/'
@@ -1288,6 +1300,7 @@ export interface RootRouteChildren {
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
   ApiWebhooksMayarForwardRoute: typeof ApiWebhooksMayarForwardRoute
+  ShareHandleTokenRoute: typeof ShareHandleTokenRoute
   TitipBelanjaPesanIdRoute: typeof TitipBelanjaPesanIdRoute
   TitipBelanjaPesananIdRoute: typeof TitipBelanjaPesananIdRoute
   TitipBelanjaPesanIndexRoute: typeof TitipBelanjaPesanIndexRoute
@@ -1941,6 +1954,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyTripsTripIdTravelRouteImport
       parentRoute: typeof MyTripsTripIdRoute
     }
+    '/share/$handle/$token': {
+      id: '/share/$handle/$token'
+      path: '/share/$handle/$token'
+      fullPath: '/share/$handle/$token'
+      preLoaderRoute: typeof ShareHandleTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/titip-belanja/pesan/': {
       id: '/titip-belanja/pesan/'
       path: '/titip-belanja/pesan'
@@ -2105,6 +2125,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
   ApiWebhooksMayarForwardRoute: ApiWebhooksMayarForwardRoute,
+  ShareHandleTokenRoute: ShareHandleTokenRoute,
   TitipBelanjaPesanIdRoute: TitipBelanjaPesanIdRoute,
   TitipBelanjaPesananIdRoute: TitipBelanjaPesananIdRoute,
   TitipBelanjaPesanIndexRoute: TitipBelanjaPesanIndexRoute,

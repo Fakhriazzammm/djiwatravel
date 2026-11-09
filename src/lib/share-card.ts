@@ -10,6 +10,7 @@ export type ShareCardInput = {
   destination: string;
   dates: string;
   owner: string | null;
+  link: string;
   days: number;
   activities: number;
   highlights: ShareCardActivity[];
@@ -101,14 +102,25 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
   ctx.fillStyle = fade;
   ctx.fillRect(0, 0, W, coverH);
 
-  // Logo pill
+  // Logo as a white silhouette (no pill) so it reads on any photo.
   if (logo) {
-    const lh = 76;
+    const lh = 84;
     const lw = (logo.width / logo.height) * lh;
-    ctx.fillStyle = "rgba(255,255,255,0.94)";
-    roundRect(ctx, 56, 64, lw + 40, lh + 24, 28);
-    ctx.fill();
-    ctx.drawImage(logo, 76, 76, lw, lh);
+    const tint = document.createElement("canvas");
+    tint.width = Math.ceil(lw);
+    tint.height = lh;
+    const tctx = tint.getContext("2d");
+    if (tctx) {
+      tctx.drawImage(logo, 0, 0, lw, lh);
+      tctx.globalCompositeOperation = "source-in";
+      tctx.fillStyle = "#fff";
+      tctx.fillRect(0, 0, tint.width, tint.height);
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.45)";
+      ctx.shadowBlur = 18;
+      ctx.drawImage(tint, 64, 64);
+      ctx.restore();
+    }
   }
 
   // Title block
@@ -164,13 +176,14 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
     ctx.fillText(`+ ${extra} aktivitas lainnya`, 64, y + 40);
   }
 
-  // Footer
+  // Footer: member + link
   ctx.fillStyle = "rgba(255,255,255,0.6)";
   ctx.font = `500 30px ${font}`;
-  if (input.owner) ctx.fillText(`Disusun oleh ${input.owner}`, 64, H - 150);
+  if (input.owner)
+    ctx.fillText(fit(ctx, `${input.owner} · Member Djiwa Travel`, W - 128), 64, H - 150);
   ctx.fillStyle = "#fff";
-  ctx.font = `700 40px ${font}`;
-  ctx.fillText("djiwatravel.com", 64, H - 96);
+  ctx.font = `700 36px ${font}`;
+  ctx.fillText(fit(ctx, input.link, W - 128), 64, H - 96);
 
   return new Promise((resolve, reject) =>
     canvas.toBlob(

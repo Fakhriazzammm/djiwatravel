@@ -13,7 +13,7 @@ import {
 import { deleteTripShare, getTripShare, postTripShare } from "@/lib/my-trips.fn";
 import { isTripAuthenticationError } from "@/lib/trip-actions";
 
-export type ShareLink = { token: string; createdAt: string } | null;
+export type ShareLink = { token: string; createdAt: string; handle?: string } | null;
 export type ShareTripInfo = { id: string; name: string; destination_name: string };
 
 export function ShareTripSheet({
@@ -34,7 +34,11 @@ export function ShareTripSheet({
   const [url, setUrl] = useState("");
 
   useEffect(() => {
-    setUrl(share ? `${window.location.origin}/share/${share.token}` : "");
+    setUrl(
+      share
+        ? `${window.location.origin}/share/${share.handle ? `${share.handle}/` : ""}${share.token}`
+        : "",
+    );
   }, [share]);
 
   async function create() {

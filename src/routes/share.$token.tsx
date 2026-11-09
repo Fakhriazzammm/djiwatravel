@@ -22,22 +22,26 @@ import { renderShareCard } from "@/lib/share-card";
 import { Page, Wordmark } from "@/components/shell";
 import { getSharedTrip } from "@/lib/my-trips.fn";
 
+export const loadShared = async ({ params }: { params: { token: string } }) => {
+  try {
+    return await getSharedTrip({ data: { token: params.token } });
+  } catch {
+    return null;
+  }
+};
+
+export const sharedHead = () => ({
+  meta: [
+    { title: "Itinerary dibagikan — Djiwa Travel" },
+    { name: "description", content: "Itinerary perjalanan yang dibagikan lewat Djiwa Travel." },
+    { name: "robots", content: "noindex, nofollow" },
+  ],
+});
+
 export const Route = createFileRoute("/share/$token")({
-  loader: async ({ params }) => {
-    try {
-      return await getSharedTrip({ data: { token: params.token } });
-    } catch {
-      return null;
-    }
-  },
-  head: () => ({
-    meta: [
-      { title: "Itinerary dibagikan — Djiwa Travel" },
-      { name: "description", content: "Itinerary perjalanan yang dibagikan lewat Djiwa Travel." },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
-  component: SharedItinerary,
+  loader: loadShared,
+  head: sharedHead,
+  component: () => <SharedItinerary data={Route.useLoaderData()} />,
 });
 
 type SharedData = NonNullable<Awaited<ReturnType<typeof getSharedTrip>>>;
@@ -93,9 +97,9 @@ function groupByDay(items: SharedItem[]) {
   return [...groups.entries()].map(([date, dayItems]) => ({ date, items: dayItems }));
 }
 
-function SharedItinerary() {
-  const data = Route.useLoaderData();
+type LoaderData = Awaited<ReturnType<typeof loadShared>>;
 
+export function SharedItinerary({ data }: { data: LoaderData }) {
   if (!data) {
     return (
       <Page tabs={false}>
@@ -119,7 +123,10 @@ function SharedItinerary() {
   }
 
   const trip = data.trip as unknown as SharedTrip;
-  const owner = (data as { owner?: { firstName: string | null } }).owner?.firstName ?? null;
+  const ownerInfo = (data as { owner?: { firstName: string | null; handle?: string } }).owner;
+  const owner = ownerInfo?.firstName ?? null;
+  const handle = ownerInfo?.handle ?? "member";
+  const token = String((data.trip as { token?: string }).token ?? "");
   const days = groupByDay(data.itinerary as SharedItem[]);
   const activityCount = days.reduce((sum, day) => sum + day.items.length, 0);
   const imageOf = (item: SharedItem) =>
@@ -161,26 +168,22 @@ function SharedItinerary() {
               <CalendarDays className="size-3.5" />
               {dateRange} · {trip.travelers_count} traveler
             </p>
+            <p className="mt-0.5 text-[12px] text-background/70">
+              {days.length} hari · {activityCount} aktivitas
+            </p>
           </div>
         </div>
-        <div className="mt-2 flex items-center justify-between gap-2 text-[12px]">
-          {owner ? (
-            <p className="flex min-w-0 items-center gap-2 text-muted-foreground">
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-red text-[11px] font-bold text-white">
-                {owner.slice(0, 1).toUpperCase()}
-              </span>
-              <span className="truncate">
-                Disusun oleh <b className="font-semibold text-foreground">{owner}</b>
-              </span>
-            </p>
-          ) : (
-            <span />
-          )}
-          <p className="shrink-0 text-muted-foreground">
-            <b className="font-semibold text-foreground">{days.length}</b> hari ·{" "}
-            <b className="font-semibold text-foreground">{activityCount}</b> aktivitas
+        {owner && (
+          <p className="mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-red text-[11px] font-bold text-white">
+              {owner.slice(0, 1).toUpperCase()}
+            </span>
+            <b className="truncate font-semibold text-foreground">{owner}</b>
+            <span className="shrink-0 rounded-full bg-brand-red/10 px-2 py-0.5 text-[10px] font-semibold text-brand-red">
+              Member Djiwa Travel
+            </span>
           </p>
-        </div>
+        )}
       </header>
 
       <ShareBar
@@ -188,6 +191,8 @@ function SharedItinerary() {
         destination={trip.destination_name}
         dates={dateRange}
         owner={owner}
+        handle={handle}
+        token={token}
         days={days.length}
         activities={activityCount}
         items={allItems}
@@ -310,6 +315,8 @@ function ShareBar({
   destination,
   dates,
   owner,
+  handle,
+  token,
   days,
   activities,
   items,
@@ -318,13 +325,15 @@ function ShareBar({
   destination: string;
   dates: string;
   owner: string | null;
+  handle: string;
+  token: string;
   days: number;
   activities: number;
   items: SharedItem[];
 }) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const url = () => window.location.href;
+  const url = () => `${window.location.origin}/share/${handle}/${token}`;
   const text = `Itinerary ${title} ke ${destination} (${dates})`;
 
   async function makeImage() {
@@ -333,6 +342,7 @@ function ShareBar({
       destination,
       dates,
       owner,
+      link: url().replace(/^https?:\/\//, ""),
       days,
       activities,
       logoUrl,
