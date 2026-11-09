@@ -278,6 +278,7 @@ export function TripAssistant(props: Props) {
               }}
             />
             <TravoComposer
+              forTrip
               chat={chat}
               inputRef={inputRef}
               leading={

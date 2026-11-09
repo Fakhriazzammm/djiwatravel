@@ -1267,3 +1267,21 @@ export const QUICK: { label: string; intent: AssistantIntent; text: string }[] =
 
 /** "bagikan itinerary", "share perjalanan", ...: opens the share sheet instead of asking the model. */
 export const SHARE_WORDS = /\b(bagikan|share|kirim)\b.*\b(itinerar\w*|perjalanan|rencana|trip)\b/i;
+
+/** The examples that type themselves into the Travo text field (placeholder), so people see what to ask. */
+export const TRAVO_HINTS_GENERAL = [
+  "eSIM paling murah ke Korea…",
+  "tiket Jakarta ke Tokyo bulan depan…",
+  "perlu visa ke Jepang?",
+  "cek pesanan eSIM saya…",
+  "buatkan trip ke Bali 3 hari…",
+  "berapa saldo Djiwa Pay saya?",
+];
+export const TRAVO_HINTS_TRIP = [
+  "buatkan itinerary hari ke-2…",
+  "atur anggaran trip ini…",
+  "rapikan agenda saya…",
+  "apa yang belum ada di checklist?",
+  "catat makan siang 1.500 yen…",
+  "eSIM untuk trip ini…",
+];

@@ -389,4 +389,18 @@ describe("Travo page", () => {
       }),
     );
   });
+
+  it("types the example questions into the empty field", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: null,
+      messages: [],
+    });
+    render(<TravoChat />);
+    const field = await screen.findByLabelText("Pesan untuk Travo");
+    await waitFor(() => expect(field.getAttribute("placeholder")).toMatch(/^Tanya Travo: \S/), {
+      timeout: 2500,
+    });
+  });
 });

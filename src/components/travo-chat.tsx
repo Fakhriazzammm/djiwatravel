@@ -303,7 +303,7 @@ export function TravoChat({
               }}
             />
           )}
-          <TravoComposer chat={chat} inputRef={inputRef} />
+          <TravoComposer chat={chat} inputRef={inputRef} forTrip={Boolean(chatTrip)} />
         </footer>
       )}
 

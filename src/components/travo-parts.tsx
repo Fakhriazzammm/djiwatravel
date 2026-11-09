@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useReducedMotion } from "motion/react";
 import { Link } from "@tanstack/react-router";
 import { ArrowUp } from "lucide-react";
 import { AssistantMascot, type MascotMood } from "@/components/assistant-mascot";
@@ -7,9 +8,12 @@ import { TravoCards } from "@/components/travo-cards";
 import { ProposalCard } from "@/components/trip-assistant-cards";
 import type { TravoChatState } from "@/hooks/use-travo-chat";
 import { useSmoothText } from "@/hooks/use-smooth-text";
+import { useTypedHint } from "@/hooks/use-typed-hint";
 import {
   ASSISTANT_MAX_TEXT,
   ASSISTANT_NAME,
+  TRAVO_HINTS_GENERAL,
+  TRAVO_HINTS_TRIP,
   visibleChips,
   type AssistantMessage,
 } from "@/lib/trip-assistant";
@@ -215,12 +219,24 @@ export function TravoComposer({
   chat,
   inputRef,
   leading,
+  forTrip = false,
 }: {
   chat: TravoChat;
   inputRef?: React.Ref<HTMLInputElement>;
   /** A button before the field (Ringkas puts its manual-add "+" here). */
   leading?: ReactNode;
+  /** A trip chat suggests trip questions; a general chat suggests eSIM, flights, orders... */
+  forTrip?: boolean;
 }) {
+  // The placeholder types the examples out while the field is empty; still text with reduced motion.
+  const reduce = useReducedMotion();
+  const placeholder = useTypedHint(
+    chat.draft === "" && !chat.sending,
+    reduce,
+    forTrip ? TRAVO_HINTS_TRIP : TRAVO_HINTS_GENERAL,
+    `Tanya ${ASSISTANT_NAME} apa saja…`,
+    `Tanya ${ASSISTANT_NAME}: `,
+  );
   return (
     <form
       className="flex items-center gap-2"
@@ -235,7 +251,7 @@ export function TravoComposer({
         value={chat.draft}
         onChange={(event) => chat.setDraft(event.target.value)}
         maxLength={ASSISTANT_MAX_TEXT}
-        placeholder={`Tanya ${ASSISTANT_NAME} apa saja…`}
+        placeholder={placeholder}
         aria-label={`Pesan untuk ${ASSISTANT_NAME}`}
         enterKeyHint="send"
         className="min-h-10 min-w-0 flex-1 rounded-full border border-border bg-surface px-3.5 text-[13px] outline-none focus:border-brand-red"
