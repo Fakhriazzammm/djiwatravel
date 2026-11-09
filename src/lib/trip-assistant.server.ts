@@ -839,7 +839,13 @@ async function runTurn(
         ),
       );
     }
-    if (!cleaned.reply && !cleaned.proposal && !cleaned.blocks.length && !cleaned.cards.length) {
+    if (
+      !cleaned.reply &&
+      !cleaned.followUps.length &&
+      !cleaned.proposal &&
+      !cleaned.blocks.length &&
+      !cleaned.cards.length
+    ) {
       await recordRun(owner, tripId, conv, intent, "error", model, null, outcome.usage);
       return {
         status: "error",
@@ -848,6 +854,7 @@ async function runTurn(
       };
     }
     let conversationId = conv.id;
+    let bubbleCount = 1;
     const client = await pool.connect();
     try {
       await client.query("begin");
@@ -886,20 +893,28 @@ async function runTurn(
           ],
         );
       }
-      await client.query(
-        `insert into public.travel_assistant_messages (trip_id, conversation_id, customer_auth_subject, role, content, chips, blocks, cards, proposal_id, created_at)
-         values ($1,$2,$3,'assistant',$4,$5::jsonb,$6::jsonb,$7::jsonb,$8, now() + interval '1 millisecond')`,
-        [
-          tripId,
-          conversationId,
-          owner.id,
-          cleaned.reply || cleaned.proposal?.title || "Ini usulan saya.",
-          cleaned.chips ? JSON.stringify(cleaned.chips) : null,
-          cleaned.blocks.length ? JSON.stringify(cleaned.blocks) : null,
-          cleaned.cards.length ? JSON.stringify(cleaned.cards) : null,
-          proposalId,
-        ],
-      );
+      // The reply may be several bubbles; chips, blocks, cards and the proposal sit on the last one.
+      const texts = [cleaned.reply, ...cleaned.followUps].filter(Boolean);
+      if (!texts.length) texts.push(cleaned.proposal?.title || "Ini usulan saya.");
+      for (let i = 0; i < texts.length; i += 1) {
+        const last = i === texts.length - 1;
+        await client.query(
+          `insert into public.travel_assistant_messages (trip_id, conversation_id, customer_auth_subject, role, content, chips, blocks, cards, proposal_id, created_at)
+           values ($1,$2,$3,'assistant',$4,$5::jsonb,$6::jsonb,$7::jsonb,$8, now() + ($9::int * interval '1 millisecond'))`,
+          [
+            tripId,
+            conversationId,
+            owner.id,
+            texts[i],
+            last && cleaned.chips ? JSON.stringify(cleaned.chips) : null,
+            last && cleaned.blocks.length ? JSON.stringify(cleaned.blocks) : null,
+            last && cleaned.cards.length ? JSON.stringify(cleaned.cards) : null,
+            last ? proposalId : null,
+            i + 1,
+          ],
+        );
+      }
+      bubbleCount = texts.length;
       await client.query(
         "update public.travel_assistant_conversations set last_message_at = now() where id=$1",
         [conversationId],
@@ -927,8 +942,12 @@ async function runTurn(
       remaining: Math.max(0, status.remaining - 1),
       conversationId: conversationId!,
       messages: (
-        await readMessages(tripId ? { tripId } : { conversationId: conversationId! }, 2, owner)
-      ).slice(-2),
+        await readMessages(
+          tripId ? { tripId } : { conversationId: conversationId! },
+          bubbleCount + 1,
+          owner,
+        )
+      ).slice(-(bubbleCount + 1)),
     };
   } finally {
     inFlight.delete(owner.id);

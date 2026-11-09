@@ -573,4 +573,14 @@ describe("Travo cards", () => {
     expect(cleanCards([row({ kind: "titip", destination: "us" })])).toEqual([]);
     expect(cleanCards([row({ kind: "titip", destination: "jp" })])).toHaveLength(1);
   });
+  it("allows up to two extra bubbles and drops repeats", () => {
+    const reply = cleanAssistantReply(
+      {
+        reply: "Ini jawabannya.",
+        followUps: ["Ini jawabannya.", "Satu tips lagi.", "Dan satu lagi.", "Terlalu banyak."],
+      },
+      ctx(),
+    );
+    expect(reply.followUps).toEqual(["Satu tips lagi.", "Dan satu lagi."]);
+  });
 });

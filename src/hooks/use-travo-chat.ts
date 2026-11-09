@@ -153,9 +153,24 @@ export function useTravoChat(options: Options) {
             ...(convId ? { conversationId: convId } : chatTrip ? { tripId: chatTrip } : { scope }),
             ...(intent ? { intent } : {}),
           };
-      const finish = (result: Awaited<ReturnType<typeof sendTripAssistantMessage>>) => {
+      const finish = async (result: Awaited<ReturnType<typeof sendTripAssistantMessage>>) => {
         if (result.status === "ok") {
-          setMessages((list) => [...list.filter((m) => m.id !== temp.id), ...result.messages]);
+          const [first, ...later] = result.messages.filter((m) => m.role === "assistant");
+          const asked = result.messages.filter((m) => m.role !== "assistant");
+          // A double chat arrives bubble by bubble, with the typing dots in between, like a person texting.
+          const staged = later.length > 0 && first !== undefined;
+          setMessages((list) => [
+            ...list.filter((m) => m.id !== temp.id),
+            ...asked,
+            ...(staged ? [first] : result.messages.filter((m) => m.role === "assistant")),
+          ]);
+          if (staged) {
+            setStreamText("");
+            for (const bubble of later) {
+              await new Promise((resolve) => window.setTimeout(resolve, 650));
+              setMessages((list) => [...list, bubble]);
+            }
+          }
           setRemaining(result.remaining);
           if (!embeddedTrip && result.conversationId && !convId) {
             setConvId(result.conversationId);
@@ -181,7 +196,7 @@ export function useTravoChat(options: Options) {
             else result = event.result;
           }
           if (!result) throw new Error("stream_incomplete");
-          finish(result);
+          await finish(result);
         } catch (streamError) {
           if (started) {
             // The connection broke mid-answer: the server may have stored it, so look before resending.
@@ -198,7 +213,7 @@ export function useTravoChat(options: Options) {
             throw streamError;
           }
           // Streaming is an extra: without it the same turn runs as one request.
-          finish(await sendTripAssistantMessage({ data: input }));
+          await finish(await sendTripAssistantMessage({ data: input }));
         }
       } catch {
         setMessages((list) => list.filter((m) => m.id !== temp.id));

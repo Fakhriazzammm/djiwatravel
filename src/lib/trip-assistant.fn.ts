@@ -155,3 +155,14 @@ export const getTravoEntry = createServerFn({ method: "GET" }).handler(async () 
   const { travoEntryHandler } = await import("./trip-assistant.server");
   return travoEntryHandler();
 });
+
+/** All plans of one country (the "Paket lain" button of an eSIM card). Public catalogue data. */
+export const listTravoEsimPlans = createServerFn({ method: "GET" })
+  .validator(async (data: unknown) => {
+    const { z } = await import("zod");
+    return z.string().trim().length(2).parse(data);
+  })
+  .handler(async ({ data }) => {
+    const { listEsimPlansHandler } = await import("./travo-cards.server");
+    return listEsimPlansHandler(data);
+  });

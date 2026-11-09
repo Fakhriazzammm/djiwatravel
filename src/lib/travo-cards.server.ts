@@ -99,6 +99,27 @@ async function esimCard(req: TravoCardRequest): Promise<TravoCard | null> {
   };
 }
 
+/** Every sellable plan of one country, shortest first: what "Paket lain" shows without asking the AI again. */
+export async function listEsimPlansHandler(code: string): Promise<EsimCard["picks"]> {
+  const dest = getDest(code);
+  if (!dest) return [];
+  const data = await getDestinationPackagesHandler(dest.code).catch(() => null);
+  if (!data) return [];
+  return countryScopedPackages(data.packages, dest.code.toUpperCase(), data.destination.region)
+    .filter((p) => p.sellable || p.preorderAvailable)
+    .sort((a, b) => a.durationDays - b.durationDays || a.priceIdr - b.priceIdr)
+    .slice(0, 16)
+    .map((p) => ({
+      packageCode: p.packageCode,
+      tag: null,
+      name: p.name,
+      dataLabel: packageDataLabel(p),
+      days: p.durationDays,
+      priceIdr: p.priceIdr,
+      preorder: !p.sellable,
+    }));
+}
+
 async function flightCard(req: TravoCardRequest): Promise<TravoCard | null> {
   const result = await searchFlightsHandler({
     data: {

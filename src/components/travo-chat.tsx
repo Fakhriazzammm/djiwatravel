@@ -160,16 +160,13 @@ export function TravoChat({
   return (
     <div className="mx-auto flex h-dvh w-full max-w-md flex-col overflow-hidden bg-background safe-top">
       <header className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-surface px-3 py-2">
-        <button
-          type="button"
-          aria-label="Kembali"
-          onClick={() =>
-            window.history.length > 1 ? router.history.back() : void navigate({ to: "/" })
-          }
+        <Link
+          to="/"
+          aria-label="Kembali ke Beranda"
           className="tap grid size-9 place-items-center rounded-full bg-secondary"
         >
           <ChevronLeft className="size-4" aria-hidden="true" />
-        </button>
+        </Link>
         <AssistantMascot size={34} mood={travoMood(chat)} cheer={chat.cheer} />
         <div className="min-w-0 flex-1">
           <h1 className="text-[14px] font-bold leading-tight">{ASSISTANT_NAME}</h1>

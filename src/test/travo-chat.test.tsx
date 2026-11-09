@@ -5,6 +5,7 @@ import { TravoChat } from "@/components/travo-chat";
 import {
   applyTripAssistantProposal,
   listTravoConversations,
+  listTravoEsimPlans,
   loadTravo,
   sendTripAssistantMessage,
   streamTripAssistantMessage,
@@ -67,6 +68,7 @@ vi.mock("@/lib/trip-assistant.fn", () => ({
   loadTravo: vi.fn(),
   loadTripAssistant: vi.fn(),
   listTravoConversations: vi.fn(),
+  listTravoEsimPlans: vi.fn(),
   deleteTravoConversation: vi.fn(),
   sendTripAssistantMessage: vi.fn(),
   streamTripAssistantMessage: vi.fn(),
@@ -255,15 +257,22 @@ describe("Travo page", () => {
     expect(screen.getByText("Rp89.000")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Beli" }));
     expect(screen.getByTestId("checkout-open").textContent).toBe("JP-7D");
-    // "Paket lain" asks Travo for more plans, in the same chat.
-    vi.mocked(streamTripAssistantMessage).mockRejectedValue(new Error("no stream"));
-    vi.mocked(sendTripAssistantMessage).mockResolvedValue({
-      status: "ok",
-      remaining: 10,
-      messages: [],
-    });
+    // "Paket lain" lists the other plans in place: no new answer, so never the same one twice.
+    vi.mocked(listTravoEsimPlans).mockResolvedValue([
+      {
+        packageCode: "JP-15D",
+        tag: null,
+        name: "Jepang 15 hari",
+        dataLabel: "2 GB/hari",
+        days: 15,
+        priceIdr: 189000,
+        preorder: false,
+      },
+    ]);
     fireEvent.click(screen.getByRole("button", { name: /paket lain \(/i }));
-    await waitFor(() => expect(sendTripAssistantMessage).toHaveBeenCalled());
+    expect(await screen.findByText("Rp189.000")).toBeTruthy();
+    expect(sendTripAssistantMessage).not.toHaveBeenCalled();
+    expect(streamTripAssistantMessage).not.toHaveBeenCalled();
   });
 
   it("does the rest in the chat: orders with install, wallet top-up and creating a trip", async () => {
@@ -330,5 +339,31 @@ describe("Travo page", () => {
       }),
     );
     expect(await screen.findByText("Lanjut di chat")).toBeTruthy();
+  });
+
+  it("shows a double chat as separate bubbles, one after the other", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: null,
+      messages: [],
+    });
+    vi.mocked(streamTripAssistantMessage).mockRejectedValue(new Error("no stream"));
+    vi.mocked(sendTripAssistantMessage).mockResolvedValue({
+      status: "ok",
+      remaining: 9,
+      conversationId: "c9",
+      messages: [
+        msg({ id: "u", role: "user", content: "halo" }),
+        msg({ id: "a1", content: "Halo! Aku Travo." }),
+        msg({ id: "a2", content: "Mau dibantu apa hari ini?" }),
+      ],
+    });
+    render(<TravoChat />);
+    await screen.findByText("Hai, aku Travo");
+    fireEvent.change(screen.getByLabelText("Pesan untuk Travo"), { target: { value: "halo" } });
+    fireEvent.click(screen.getByRole("button", { name: "Kirim" }));
+    expect(await screen.findByText("Halo! Aku Travo.")).toBeTruthy();
+    expect(await screen.findByText("Mau dibantu apa hari ini?")).toBeTruthy();
   });
 });

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { DEFAULT_MINIMUM_TOPUP, DEFAULT_TOPUP_PRESETS } from "@/lib/customer-app-config";
 import { postTrip } from "@/lib/my-trips.fn";
+import { listTravoEsimPlans } from "@/lib/trip-assistant.fn";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import type { TravoChatState } from "@/hooks/use-travo-chat";
 import type { TravoCard } from "@/lib/trip-assistant";
@@ -49,7 +50,24 @@ export function TravoCards({ cards, chat }: { cards: TravoCard[]; chat: TravoCha
   const [topupOpen, setTopupOpen] = useState(false);
   const [created, setCreated] = useState<Record<number, string>>({});
   const [busyCard, setBusyCard] = useState<number | null>(null);
+  // "Paket lain": every plan of the country, shown in place (no new answer, so never the same one twice).
+  const [allPlans, setAllPlans] = useState<
+    Record<number, Extract<TravoCard, { kind: "esim" }>["picks"]>
+  >({});
   const { user } = useBetterAuthUser();
+
+  async function showAllPlans(index: number, code: string) {
+    setBusyCard(index);
+    try {
+      const plans = await listTravoEsimPlans({ data: code });
+      if (!plans.length) toast.error("Paket lain belum tersedia.");
+      else setAllPlans((m) => ({ ...m, [index]: plans }));
+    } catch {
+      toast.error("Paket lain belum bisa dimuat. Coba lagi.");
+    } finally {
+      setBusyCard(null);
+    }
+  }
 
   async function createTripFrom(index: number, card: Extract<TravoCard, { kind: "buat_trip" }>) {
     setBusyCard(index);
@@ -111,22 +129,42 @@ export function TravoCards({ cards, chat }: { cards: TravoCard[]; chat: TravoCha
                   </button>
                 </div>
               ))}
-              {card.total > card.picks.length && (
-                <div className="border-t border-border/60 px-3 py-2">
-                  <button
-                    type="button"
-                    disabled={chat.sending}
-                    onClick={() =>
-                      void chat.send(
-                        `Tampilkan pilihan paket eSIM ${card.destination.name} yang lain`,
-                      )
-                    }
-                    className={soft}
-                  >
-                    Paket lain ({card.total - card.picks.length}+)
-                  </button>
-                </div>
-              )}
+              {allPlans[index]
+                ? allPlans[index]
+                    .filter((p) => !card.picks.some((x) => x.packageCode === p.packageCode))
+                    .map((pick) => (
+                      <div key={pick.packageCode} className={row}>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] font-semibold">
+                            {pick.dataLabel} · {pick.days} hari
+                          </p>
+                          <p className="text-[12px] font-bold text-brand-red">
+                            {rupiah(pick.priceIdr)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setBuying(pick.packageCode)}
+                          className={primary}
+                        >
+                          {pick.preorder ? "Pre-order" : "Beli"}
+                        </button>
+                      </div>
+                    ))
+                : card.total > card.picks.length && (
+                    <div className="border-t border-border/60 px-3 py-2">
+                      <button
+                        type="button"
+                        disabled={busyCard === index}
+                        onClick={() => void showAllPlans(index, card.destination.code)}
+                        className={soft}
+                      >
+                        {busyCard === index
+                          ? "Memuat…"
+                          : `Paket lain (${card.total - card.picks.length}+)`}
+                      </button>
+                    </div>
+                  )}
             </section>
           );
         if (card.kind === "tiket")
