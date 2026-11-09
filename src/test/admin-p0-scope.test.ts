@@ -73,12 +73,12 @@ describe("simplified admin P0 scope", () => {
 
   it("describes successful dashboard data as realtime database data", () => {
     const source = read("routes/admin.dashboard.tsx");
-    expect(source).toContain("Ringkasan operasional Djiwa Travel");
+    expect(source).toContain("Orang, AI, dan penjualan, dihitung terpisah");
     expect(source).not.toContain("Read model operasional belum tersedia");
   });
 
   it("requires a live customer workspace and folds analytics into the dashboard", () => {
-    expect(read("routes/admin.dashboard.tsx")).toContain("getSiteTraffic");
+    expect(read("routes/admin.dashboard.tsx")).toContain("getTrafficDashboard");
     expect(read("routes/admin.analytics.tsx")).toContain("/admin/dashboard");
     for (const [route, marker] of [["customers", "getAdminCustomers"]] as const) {
       const source = read(`routes/admin.${route}.tsx`);

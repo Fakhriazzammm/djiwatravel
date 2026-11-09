@@ -26,14 +26,14 @@ export function TrafficRows({
       {rows.map((r, i) => (
         <li key={`${r.label}-${i}`} className="relative flex justify-between gap-2 px-1.5 py-1">
           <span
-            className="absolute inset-y-0.5 left-0 rounded-r bg-brand-red/10"
+            className="absolute inset-y-0.5 left-0 bg-muted"
             style={{ width: `${Math.max(3, (r.value / max) * 100)}%` }}
             aria-hidden="true"
           />
           <span className="relative min-w-0 truncate">
             {r.label}
             {r.tag && (
-              <em className="ml-1.5 rounded-sm border border-border px-1 text-[8px] uppercase not-italic text-muted-foreground">
+              <em className="ml-1.5 border border-border px-1 text-[8px] uppercase not-italic text-muted-foreground">
                 {r.tag}
               </em>
             )}

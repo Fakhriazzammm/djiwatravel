@@ -7,6 +7,6 @@ export const Route = createFileRoute("/admin/analytics")({
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
   beforeLoad: async () => {
     await requireAdmin();
-    throw redirect({ to: "/admin/dashboard", search: { period: "daily" } });
+    throw redirect({ to: "/admin/dashboard", search: { range: "24j" } });
   },
 });
