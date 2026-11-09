@@ -419,6 +419,10 @@ async function previousItems(tripId: string, payloads: ProposalPayload[]) {
   return out;
 }
 
+/** "Ringkas semua" is stored as a marker pair; the card itself is rebuilt from live trip data on every load. */
+const SUMMARY_MARKER = "summary" as never;
+const SUMMARY_ASK = "Ringkas semua perjalananku";
+
 async function readMessages(tripId: string, limit = 60): Promise<AssistantMessage[]> {
   const result = await pool.query(
     `select * from (
@@ -440,7 +444,14 @@ async function readMessages(tripId: string, limit = 60): Promise<AssistantMessag
     role: r.role,
     content: r.content,
     chips: r.chips ?? null,
-    blocks: Array.isArray(r.blocks) ? r.blocks : [],
+    blocks: Array.isArray(r.blocks) ? r.blocks.filter((b) => b.kind !== SUMMARY_MARKER) : [],
+    ...(r.role === "assistant" &&
+    Array.isArray(r.blocks) &&
+    r.blocks.some((b) => b.kind === SUMMARY_MARKER)
+      ? { local: "summary" as const }
+      : r.role === "user" && r.content === SUMMARY_ASK
+        ? { local: "summary" as const }
+        : {}),
     createdAt: new Date(r.created_at).toISOString(),
     proposal:
       r.proposal_id && r.p_kind && r.p_payload && r.p_status
@@ -532,12 +543,14 @@ async function runTurn(
   const model = isGenerationIntent(intent) ? config.generationModel : config.model;
   try {
     const facts = await loadFacts(data.tripId, intent === "plan");
-    const history = (await readMessages(data.tripId, 8)).map((m) => ({
-      role: m.role,
-      content: m.proposal
-        ? `${m.content}\n[usulan ${m.proposal.kind}: ${m.proposal.status}]`
-        : m.content,
-    }));
+    const history = (await readMessages(data.tripId, 8))
+      .filter((m) => !m.local)
+      .map((m) => ({
+        role: m.role,
+        content: m.proposal
+          ? `${m.content}\n[usulan ${m.proposal.kind}: ${m.proposal.status}]`
+          : m.content,
+      }));
     const system = buildAssistantSystemPrompt(config, intent, facts.today);
     const userMessage = `DATA PERJALANAN (JSON):\n${buildAssistantContext(facts)}\n\nPESAN TRAVELER:\n${data.text}`;
     let outcome: Awaited<ReturnType<typeof askModel>>;
@@ -1076,6 +1089,34 @@ export async function assistantUndoHandler({
     proposal.applied ?? { created: [], updated: [], removed: [] },
   );
   return { ok: true as const, status: "undone" as const };
+}
+
+export async function assistantRecordSummaryHandler({
+  data,
+}: {
+  data: ReturnType<typeof assistantLoadInput>;
+}) {
+  const owner = await resolveTripOwner();
+  if (!owner) throw new Error("Autentikasi diperlukan");
+  await ownedTripRow(data.tripId, owner.id);
+  const now = Date.now();
+  await pool.query(
+    `insert into public.travel_assistant_messages (trip_id, customer_auth_subject, role, content, created_at)
+     values ($1,$2,'user',$3,$4)`,
+    [data.tripId, owner.id, SUMMARY_ASK, new Date(now)],
+  );
+  await pool.query(
+    `insert into public.travel_assistant_messages (trip_id, customer_auth_subject, role, content, blocks, created_at)
+     values ($1,$2,'assistant',$3,$4::jsonb,$5)`,
+    [
+      data.tripId,
+      owner.id,
+      "Ini ringkasan lengkap perjalananmu. Semua datanya dari halaman Agenda, Biaya, Checklist, dan Booking.",
+      JSON.stringify([{ kind: "summary", title: "", items: [] }]),
+      new Date(now + 1),
+    ],
+  );
+  return { ok: true as const };
 }
 
 export async function assistantDismissHandler({

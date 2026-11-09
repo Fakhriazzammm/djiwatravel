@@ -21,6 +21,7 @@ import {
   applyTripAssistantProposal,
   dismissTripAssistantProposal,
   loadTripAssistant,
+  recordTripSummary,
   pinTripPlaces,
   resetTripAssistant,
   sendTripAssistantMessage,
@@ -376,6 +377,8 @@ export function TripAssistant(props: Props) {
       },
     ]);
     setSummarizing(false);
+    // Remember the exchange so a refresh brings the (freshly built) card back.
+    void recordTripSummary({ data: { tripId } }).catch(() => undefined);
   }
 
   const runSummaryAction = (action: SummaryAction) => {

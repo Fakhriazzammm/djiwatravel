@@ -80,6 +80,7 @@ import {
 import {
   assistantApplyHandler,
   assistantDismissHandler,
+  assistantRecordSummaryHandler,
   assistantLoadHandler,
   assistantPinHandler,
   assistantResetHandler,
@@ -272,6 +273,16 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
       { kind: "tip", title: "Tips", items: ["Datang pagi"] },
     ]);
     expect(history.messages[0]!.blocks).toEqual([]); // the traveler's own message has none
+  });
+
+  it("keeps the 'Ringkas semua' exchange after a reload, and never sends it to the model", async () => {
+    await assistantRecordSummaryHandler({ data: { tripId: TRIP } });
+    const history = await assistantLoadHandler({ data: { tripId: TRIP } });
+    expect(history.messages.map((m) => [m.role, m.local])).toEqual([
+      ["user", "summary"],
+      ["assistant", "summary"],
+    ]);
+    expect(history.messages[1]!.blocks).toEqual([]);
   });
 
   it("is available for the owner and loads an empty conversation", async () => {
