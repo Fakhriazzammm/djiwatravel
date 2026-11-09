@@ -1,7 +1,7 @@
 import { ShopperNav } from "@/components/shopper/shopper-nav";
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Check, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { BackBar, Page, btnPrimary } from "@/components/shell";
 import { ProductImage } from "@/components/shopper/shopper-ui";
@@ -10,6 +10,7 @@ import {
   payShoppingOrder,
   verifyShoppingPayment,
 } from "@/lib/personal-shopper.fn";
+import { openOrderChatThread } from "@/lib/shopper-chat.fn";
 import { ORDER_STATUS_LABEL, ORDER_STEPS, formatIdr } from "@/lib/personal-shopper";
 
 export const Route = createFileRoute("/titip-belanja/pesanan/$id")({
@@ -48,7 +49,9 @@ type Line = {
 function ShopperOrder() {
   const order = Route.useLoaderData();
   const router = useRouter();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState(false);
   const pending = order.status === "PAYMENT_PENDING";
 
   // Coming back from Mayar: confirm the payment with the provider, then show the result.
@@ -214,6 +217,26 @@ function ShopperOrder() {
           Kurs {order.currency} 1 = Rp {order.rate.toLocaleString("id-ID")}
         </p>
       </dl>
+
+      <button
+        type="button"
+        disabled={asking}
+        onClick={async () => {
+          setAsking(true);
+          try {
+            const r = await openOrderChatThread({ data: { orderId: order.id } });
+            await navigate({ to: "/titip-belanja/pesan/$id", params: { id: r.threadId } });
+          } catch {
+            toast.error("Percakapan belum bisa dibuka. Coba lagi.");
+          } finally {
+            setAsking(false);
+          }
+        }}
+        className="tap ios-btn mt-3 w-full gap-1.5 border border-border/70 bg-surface text-[13px] disabled:opacity-60"
+      >
+        <MessageCircle className="size-4" aria-hidden="true" />
+        Tanya soal pesanan ini
+      </button>
 
       <p className="ios-section-label mt-4">Dikirim ke</p>
       <div className="ios-group p-3 text-[12px]">

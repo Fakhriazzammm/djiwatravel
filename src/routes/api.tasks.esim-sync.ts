@@ -136,6 +136,12 @@ async function run(request: Request) {
   // Fire and forget (single-flight inside): a slow store never delays the minute task.
   const { purgeDiscoveryPhotos } = await import("@/lib/shopper-discovery.server");
   await purgeDiscoveryPhotos().catch(() => undefined);
+  const { sweepChatThreads } = await import("@/lib/shopper-chat.server");
+  await sweepChatThreads().catch((error) => {
+    console.error("[travel] shopper chat sweep failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+  });
   void sweepShopperCatalog().catch((error) => {
     console.error("[travel] shopping catalog refresh failed", {
       reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",

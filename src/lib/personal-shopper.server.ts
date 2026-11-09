@@ -7,6 +7,7 @@ import { buildSettingAudit } from "./admin-settings";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import { readCustomerProfile } from "./customer-profile.server";
 import { createCustomerNotification } from "./push.server";
+import { chatOrderEvent } from "./shopper-chat.server";
 import {
   buildMayarInvoicePayload,
   configuredAppOrigin,
@@ -599,6 +600,7 @@ async function notifyOrder(
     eventKey: `shopping:${order.id}:${status}`,
     source: "personal-shopper",
   }).catch(() => undefined);
+  await chatOrderEvent(order.id, body);
 }
 
 /** Creates (or recovers) the Mayar invoice for an unpaid order. Never creates a second one. */

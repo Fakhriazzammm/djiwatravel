@@ -1,10 +1,18 @@
+import { useChatUnread } from "@/hooks/use-chat-unread";
 import { ShopperAbout } from "./shopper-about";
 import { ShopperDiscovery } from "./shopper-discovery";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
-import { ReceiptText, Search, ShoppingBag, SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import {
+  MessageCircle,
+  ReceiptText,
+  Search,
+  ShoppingBag,
+  SlidersHorizontal,
+  ArrowUpDown,
+} from "lucide-react";
 import { BackBar, Page } from "@/components/shell";
 import { FixedLayer } from "@/components/motion-primitives";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
@@ -69,6 +77,7 @@ export function ShopperHome({
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<ShopperFilters>(DEFAULT_SHOPPER_FILTERS);
   const [busy, setBusy] = useState(false);
+  const unread = useChatUnread();
   const [openProduct, setOpenProduct] = useState<ShopperProduct | null>(null);
   const [viewer, setViewer] = useState<{
     product: ShopperProduct;
@@ -183,13 +192,27 @@ export function ShopperHome({
         title="Titip Belanja"
         fallbackTo="/explore"
         action={
-          <Link
-            to="/titip-belanja/pesanan"
-            aria-label="Pesanan Titip Belanja"
-            className="tap flex size-9 items-center justify-center rounded-full bg-secondary"
-          >
-            <ReceiptText className="size-4" aria-hidden="true" />
-          </Link>
+          <span className="flex items-center gap-1.5">
+            <Link
+              to="/titip-belanja/pesan"
+              aria-label={unread > 0 ? `Pesan, ${unread} belum dibaca` : "Pesan"}
+              className="tap relative flex size-9 items-center justify-center rounded-full bg-secondary"
+            >
+              <MessageCircle className="size-4" aria-hidden="true" />
+              {unread > 0 && (
+                <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-brand-red px-1 text-[9px] font-bold text-white">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </Link>
+            <Link
+              to="/titip-belanja/pesanan"
+              aria-label="Pesanan Titip Belanja"
+              className="tap flex size-9 items-center justify-center rounded-full bg-secondary"
+            >
+              <ReceiptText className="size-4" aria-hidden="true" />
+            </Link>
+          </span>
         }
       />
       <p className="ios-subtitle -mt-1 mb-2">

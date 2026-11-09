@@ -4,7 +4,7 @@ import { pool } from "@/db/client.server";
 import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { getAuthenticatedUser } from "./customer-session.fn";
-import { createCustomerNotification } from "./push.server";
+import { chatRequestEvent } from "./shopper-chat.server";
 import {
   getShopperConfig,
   discoverCatalogProducts,
@@ -60,17 +60,6 @@ async function enabled() {
   if (!config.enabled || !shop.enabled || !shop.countries.JP)
     throw new Error("Pencarian barang belum tersedia.");
   return config;
-}
-async function notify(row: Row, text: string) {
-  await createCustomerNotification({
-    subject: row.customer_auth_subject,
-    type: "shopping_order",
-    title: "Permintaan Titip Belanja",
-    body: text,
-    href: "/titip-belanja/pesanan",
-    eventKey: `discovery:${row.id}:${row.version}`,
-    source: "personal-shopper",
-  }).catch(() => undefined);
 }
 async function view(rows: Row[], admin = false): Promise<DiscoveryRequest[]> {
   if (!rows.length) return [];
@@ -386,6 +375,8 @@ export async function customerDiscoveryAction(data: z.infer<typeof requestAction
       [row.id, status, discoveryEventNote(data.action, data.note), row.version + 1],
     );
     await c.query("commit");
+    if (data.action === "decline" || data.action === "cancel" || data.action === "refresh_offer")
+      await chatRequestEvent(row.id, { kind: data.action, note: data.note });
     return { ok: true };
   } catch (e) {
     await c.query("rollback");
@@ -460,7 +451,14 @@ export async function adminDiscoveryAction(data: z.infer<typeof adminAction>) {
   } finally {
     c.release();
   }
-  await notify(updated, data.note);
+  await chatRequestEvent(updated.id, {
+    kind: data.action,
+    actor,
+    note: data.note,
+    ...(data.offer ? { offer: data.offer } : {}),
+    expiresAt: updated.offer_expires_at,
+    requestVersion: updated.version,
+  });
   return { ok: true };
 }
 const address = z.object({
@@ -484,6 +482,7 @@ export async function acceptDiscoveryOffer(data: z.infer<typeof accept>) {
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
   const c = await pool.connect();
   let orderId = "";
+  let acceptedCode = "";
   try {
     await c.query("begin");
     await c.query("select pg_advisory_xact_lock(hashtext($1))", [`discovery-order:${user.id}`]);
@@ -511,6 +510,7 @@ export async function acceptDiscoveryOffer(data: z.infer<typeof accept>) {
         throw new Error("Selesaikan pesanan yang belum dibayar dulu.");
       orderId = randomUUID();
       const code = `TB-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 6).toUpperCase()}`;
+      acceptedCode = code;
       await c.query(
         `insert into shopping_orders(id,public_code,customer_auth_subject,country,currency,rate_idr,subtotal_idr,fee_idr,shipping_idr,total_idr,payment_expires_at,recipient_name,recipient_whatsapp,address_line,city,postal_code,customer_note,domestic_shipping_idr) values($1,$2,$3,'JP','JPY',$4,$5,$6,$7,$8,now()+($9||' minutes')::interval,$10,$11,$12,$13,$14,$15,$16)`,
         [
@@ -572,6 +572,8 @@ export async function acceptDiscoveryOffer(data: z.infer<typeof accept>) {
   } finally {
     c.release();
   }
+  if (acceptedCode)
+    await chatRequestEvent(data.id, { kind: "accepted", orderId, orderCode: acceptedCode });
   // Payment errors preserve the order. Existing invoice claim/recovery prevents duplicates.
   try {
     const paid = await payShoppingOrderHandler({ data: { orderId } });

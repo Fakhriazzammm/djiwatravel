@@ -7,6 +7,27 @@ export const discoveryConfigSchema = z.object({
   dailyLimit: z.number().int().min(1).max(100).default(10),
   photoDailyLimit: z.number().int().min(1).max(20).default(5),
   dailyAiRequests: z.number().int().min(1).max(200).default(20),
+  /** Chat with the team (Pesan). */
+  chatEnabled: z.boolean().default(true),
+  /** Target time to a first reply, in minutes, counted inside opening hours. */
+  replyTargetMinutes: z.number().int().min(5).max(480).default(15),
+  /** Opening hours in WIB (UTC+7): the team replies between these hours. */
+  openHour: z.number().int().min(0).max(23).default(9),
+  closeHour: z.number().int().min(1).max(24).default(21),
+  /** A thread with no message for this many days is closed; a new message reopens it. */
+  idleCloseDays: z.number().int().min(1).max(60).default(7),
+  /** Messages one customer may send per day. */
+  dailyMessages: z.number().int().min(5).max(500).default(80),
+  /** Quick answers the team can insert in one tap. */
+  templates: z
+    .array(z.string().trim().min(2).max(300))
+    .max(12)
+    .default([
+      "Sedang kami cari, kami kabari secepatnya.",
+      "Boleh kirim foto atau link barangnya yang lebih jelas?",
+      "Maaf, barang ini sudah habis di toko.",
+      "Harga berubah, kami kirim penawaran revisi ya.",
+    ]),
 });
 export type DiscoveryConfig = z.infer<typeof discoveryConfigSchema>;
 export const DEFAULT_DISCOVERY_CONFIG = discoveryConfigSchema.parse({});

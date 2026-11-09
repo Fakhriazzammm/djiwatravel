@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Camera, Link as LinkIcon, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
 import { compressReceiptPhoto } from "@/lib/receipt-image";
-import { getDiscoveryStatus, runCustomerDiscoveryAction } from "@/lib/shopper-discovery.fn";
+import { getDiscoveryStatus } from "@/lib/shopper-discovery.fn";
+import { startMyChatThread } from "@/lib/shopper-chat.fn";
 import {
   formatIdr,
   formatMinor,
@@ -35,10 +36,10 @@ export function ShopperDiscovery({
     [error, setError] = useState(""),
     [signIn, setSignIn] = useState(false),
     [result, setResult] = useState<DiscoverySearchResult | null>(null),
-    [sent, setSent] = useState(false),
     [help, setHelp] = useState(false),
     [preview, setPreview] = useState<string | null>(null);
   const key = useRef("");
+  const navigate = useNavigate();
   useEffect(() => {
     getDiscoveryStatus()
       .then((c) => setEnabled(c.enabled))
@@ -58,7 +59,6 @@ export function ShopperDiscovery({
     setHelp(false);
     setResult(null);
     setError("");
-    setSent(false);
     setSignIn(false);
     key.current = crypto.randomUUID();
   };
@@ -92,17 +92,19 @@ export function ShopperDiscovery({
       setBusy(false);
     }
   }
+  /** Hands the search to the team as a conversation and opens it. */
   async function submit() {
     if (!result) return;
     setBusy(true);
     try {
-      await runCustomerDiscoveryAction({
-        data: { id: result.requestId, expectedVersion: 1, action: "submit", note },
+      const r = await startMyChatThread({
+        data: { requestId: result.requestId, text: note, url: "", clientKey: crypto.randomUUID() },
       });
-      setSent(true);
-      toast.success("Permintaan dikirim ke tim.");
+      setOpen(null);
+      toast.success("Tim sudah diberi tahu.");
+      await navigate({ to: "/titip-belanja/pesan/$id", params: { id: r.threadId } });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Permintaan belum terkirim.");
+      setError(e instanceof Error ? e.message : "Pesan belum terkirim.");
     } finally {
       setBusy(false);
     }
@@ -134,31 +136,11 @@ export function ShopperDiscovery({
           if (!busy && !v) setOpen(null);
         }}
         title={
-          sent
-            ? "Permintaan terkirim"
-            : result
-              ? "Hasil pencarian"
-              : open === "photo"
-                ? "Cari dari foto"
-                : "Tempel link produk"
+          result ? "Hasil pencarian" : open === "photo" ? "Cari dari foto" : "Tempel link produk"
         }
         description="Barang incaran dari toko Jepang, termasuk Mercari dan toko lainnya."
       >
-        {sent ? (
-          <div className="space-y-3 py-3">
-            <p className="text-[13px]">
-              Tim akan memeriksa barang, kondisi dan harga. Kamu menyetujui penawarannya sebelum
-              membayar.
-            </p>
-            <Link
-              to="/titip-belanja/pesanan"
-              className="tap ios-btn bg-brand-red text-white"
-              onClick={() => setOpen(null)}
-            >
-              Lihat permintaan
-            </Link>
-          </div>
-        ) : (
+        {
           <div className="space-y-3 py-3">
             {!result && (
               <>
@@ -323,12 +305,12 @@ export function ShopperDiscovery({
                     onClick={() => setHelp(true)}
                     className="tap w-full text-center text-[12px] font-semibold text-muted-foreground"
                   >
-                    Bukan barang ini? Minta bantuan tim
+                    Bukan barang ini? Tanya tim Djiwa
                   </button>
                 ) : (
                   <>
                     <label className="block text-[12px]">
-                      Detail untuk tim
+                      Pesan untuk tim
                       <input
                         className={`${field} mt-1`}
                         value={note}
@@ -343,7 +325,7 @@ export function ShopperDiscovery({
                       onClick={() => void submit()}
                       className="tap ios-btn w-full bg-brand-red text-white disabled:opacity-50"
                     >
-                      {busy ? "Mengirim…" : "Minta bantuan cari"}
+                      {busy ? "Membuka percakapan…" : "Tanya tim Djiwa"}
                     </button>
                   </>
                 )}
@@ -367,7 +349,7 @@ export function ShopperDiscovery({
             )}
             {signIn && <CustomerAuth size="block" />}
           </div>
-        )}
+        }
       </ShopperSheet>
     </>
   );

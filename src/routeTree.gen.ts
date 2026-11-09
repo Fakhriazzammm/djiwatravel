@@ -57,6 +57,7 @@ import { Route as ApiHomeEsimEventsRouteImport } from './routes/api.home-esim-ev
 import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recovery'
 import { Route as ApiPwaEventsRouteImport } from './routes/api.pwa-events'
 import { Route as ApiReceiptScanRouteImport } from './routes/api.receipt-scan'
+import { Route as ApiShopperChatRouteImport } from './routes/api.shopper-chat'
 import { Route as ApiShopperSearchRouteImport } from './routes/api.shopper-search'
 import { Route as ApiSiteEventsRouteImport } from './routes/api.site-events'
 import { Route as ApiTravelWaitlistRouteImport } from './routes/api.travel-waitlist'
@@ -90,6 +91,7 @@ import { Route as ApiGoogleCalendarStatusRouteImport } from './routes/api.google
 import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api.google-calendar.sync'
 import { Route as ApiInternalMemberPurchasesRouteImport } from './routes/api.internal.member-purchases'
 import { Route as ApiReceiptPhotoIdRouteImport } from './routes/api.receipt-photo.$id'
+import { Route as ApiShopperChatPhotoIdRouteImport } from './routes/api.shopper-chat-photo.$id'
 import { Route as ApiShopperPhotoIdRouteImport } from './routes/api.shopper-photo.$id'
 import { Route as ApiTasksAffiliateSweepRouteImport } from './routes/api.tasks.affiliate-sweep'
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
@@ -98,6 +100,8 @@ import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhook
 import { Route as ApiWebhooksMayarForwardRouteImport } from './routes/api.webhooks.mayar-forward'
 import { Route as MyTripsTripIdSectionRouteImport } from './routes/my-trips.$tripId.$section'
 import { Route as MyTripsTripIdTravelRouteImport } from './routes/my-trips.$tripId.travel'
+import { Route as TitipBelanjaPesanIndexRouteImport } from './routes/titip-belanja.pesan.index'
+import { Route as TitipBelanjaPesanIdRouteImport } from './routes/titip-belanja.pesan.$id'
 import { Route as TitipBelanjaPesananIndexRouteImport } from './routes/titip-belanja.pesanan.index'
 import { Route as TitipBelanjaPesananIdRouteImport } from './routes/titip-belanja.pesanan.$id'
 import { Route as ApiWebhooksEsimAccessTokenRouteImport } from './routes/api.webhooks.esim-access.$token'
@@ -343,6 +347,11 @@ const ApiReceiptScanRoute = ApiReceiptScanRouteImport.update({
   path: '/api/receipt-scan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiShopperChatRoute = ApiShopperChatRouteImport.update({
+  id: '/api/shopper-chat',
+  path: '/api/shopper-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiShopperSearchRoute = ApiShopperSearchRouteImport.update({
   id: '/api/shopper-search',
   path: '/api/shopper-search',
@@ -512,6 +521,11 @@ const ApiReceiptPhotoIdRoute = ApiReceiptPhotoIdRouteImport.update({
   path: '/api/receipt-photo/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiShopperChatPhotoIdRoute = ApiShopperChatPhotoIdRouteImport.update({
+  id: '/api/shopper-chat-photo/$id',
+  path: '/api/shopper-chat-photo/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiShopperPhotoIdRoute = ApiShopperPhotoIdRouteImport.update({
   id: '/api/shopper-photo/$id',
   path: '/api/shopper-photo/$id',
@@ -552,6 +566,16 @@ const MyTripsTripIdTravelRoute = MyTripsTripIdTravelRouteImport.update({
   id: '/travel',
   path: '/travel',
   getParentRoute: () => MyTripsTripIdRoute,
+} as any)
+const TitipBelanjaPesanIndexRoute = TitipBelanjaPesanIndexRouteImport.update({
+  id: '/titip-belanja/pesan/',
+  path: '/titip-belanja/pesan/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TitipBelanjaPesanIdRoute = TitipBelanjaPesanIdRouteImport.update({
+  id: '/titip-belanja/pesan/$id',
+  path: '/titip-belanja/pesan/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const TitipBelanjaPesananIndexRoute =
   TitipBelanjaPesananIndexRouteImport.update({
@@ -619,6 +643,7 @@ export interface FileRoutesByFullPath {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shopper-chat': typeof ApiShopperChatRoute
   '/api/shopper-search': typeof ApiShopperSearchRoute
   '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
@@ -653,6 +678,7 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/receipt-photo/$id': typeof ApiReceiptPhotoIdRoute
+  '/api/shopper-chat-photo/$id': typeof ApiShopperChatPhotoIdRoute
   '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
@@ -661,7 +687,9 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
+  '/titip-belanja/pesan/$id': typeof TitipBelanjaPesanIdRoute
   '/titip-belanja/pesanan/$id': typeof TitipBelanjaPesananIdRoute
+  '/titip-belanja/pesan/': typeof TitipBelanjaPesanIndexRoute
   '/titip-belanja/pesanan/': typeof TitipBelanjaPesananIndexRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -713,6 +741,7 @@ export interface FileRoutesByTo {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shopper-chat': typeof ApiShopperChatRoute
   '/api/shopper-search': typeof ApiShopperSearchRoute
   '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
@@ -747,6 +776,7 @@ export interface FileRoutesByTo {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/receipt-photo/$id': typeof ApiReceiptPhotoIdRoute
+  '/api/shopper-chat-photo/$id': typeof ApiShopperChatPhotoIdRoute
   '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
@@ -755,7 +785,9 @@ export interface FileRoutesByTo {
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
+  '/titip-belanja/pesan/$id': typeof TitipBelanjaPesanIdRoute
   '/titip-belanja/pesanan/$id': typeof TitipBelanjaPesananIdRoute
+  '/titip-belanja/pesan': typeof TitipBelanjaPesanIndexRoute
   '/titip-belanja/pesanan': typeof TitipBelanjaPesananIndexRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -808,6 +840,7 @@ export interface FileRoutesById {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shopper-chat': typeof ApiShopperChatRoute
   '/api/shopper-search': typeof ApiShopperSearchRoute
   '/api/site-events': typeof ApiSiteEventsRoute
   '/api/travel-waitlist': typeof ApiTravelWaitlistRoute
@@ -842,6 +875,7 @@ export interface FileRoutesById {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/receipt-photo/$id': typeof ApiReceiptPhotoIdRoute
+  '/api/shopper-chat-photo/$id': typeof ApiShopperChatPhotoIdRoute
   '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
@@ -850,7 +884,9 @@ export interface FileRoutesById {
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
+  '/titip-belanja/pesan/$id': typeof TitipBelanjaPesanIdRoute
   '/titip-belanja/pesanan/$id': typeof TitipBelanjaPesananIdRoute
+  '/titip-belanja/pesan/': typeof TitipBelanjaPesanIndexRoute
   '/titip-belanja/pesanan/': typeof TitipBelanjaPesananIndexRoute
   '/api/webhooks/esim-access/$token': typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -904,6 +940,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shopper-chat'
     | '/api/shopper-search'
     | '/api/site-events'
     | '/api/travel-waitlist'
@@ -938,6 +975,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/internal/member-purchases'
     | '/api/receipt-photo/$id'
+    | '/api/shopper-chat-photo/$id'
     | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
@@ -946,7 +984,9 @@ export interface FileRouteTypes {
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
+    | '/titip-belanja/pesan/$id'
     | '/titip-belanja/pesanan/$id'
+    | '/titip-belanja/pesan/'
     | '/titip-belanja/pesanan/'
     | '/api/webhooks/esim-access/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -998,6 +1038,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shopper-chat'
     | '/api/shopper-search'
     | '/api/site-events'
     | '/api/travel-waitlist'
@@ -1032,6 +1073,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/internal/member-purchases'
     | '/api/receipt-photo/$id'
+    | '/api/shopper-chat-photo/$id'
     | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
@@ -1040,7 +1082,9 @@ export interface FileRouteTypes {
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
+    | '/titip-belanja/pesan/$id'
     | '/titip-belanja/pesanan/$id'
+    | '/titip-belanja/pesan'
     | '/titip-belanja/pesanan'
     | '/api/webhooks/esim-access/$token'
   id:
@@ -1092,6 +1136,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shopper-chat'
     | '/api/shopper-search'
     | '/api/site-events'
     | '/api/travel-waitlist'
@@ -1126,6 +1171,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/internal/member-purchases'
     | '/api/receipt-photo/$id'
+    | '/api/shopper-chat-photo/$id'
     | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
     | '/api/tasks/esim-sync'
@@ -1134,7 +1180,9 @@ export interface FileRouteTypes {
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/travel'
+    | '/titip-belanja/pesan/$id'
     | '/titip-belanja/pesanan/$id'
+    | '/titip-belanja/pesan/'
     | '/titip-belanja/pesanan/'
     | '/api/webhooks/esim-access/$token'
   fileRoutesById: FileRoutesById
@@ -1187,6 +1235,7 @@ export interface RootRouteChildren {
   ApiOrderRecoveryRoute: typeof ApiOrderRecoveryRoute
   ApiPwaEventsRoute: typeof ApiPwaEventsRoute
   ApiReceiptScanRoute: typeof ApiReceiptScanRoute
+  ApiShopperChatRoute: typeof ApiShopperChatRoute
   ApiShopperSearchRoute: typeof ApiShopperSearchRoute
   ApiSiteEventsRoute: typeof ApiSiteEventsRoute
   ApiTravelWaitlistRoute: typeof ApiTravelWaitlistRoute
@@ -1219,13 +1268,16 @@ export interface RootRouteChildren {
   ApiGoogleCalendarSyncRoute: typeof ApiGoogleCalendarSyncRoute
   ApiInternalMemberPurchasesRoute: typeof ApiInternalMemberPurchasesRoute
   ApiReceiptPhotoIdRoute: typeof ApiReceiptPhotoIdRoute
+  ApiShopperChatPhotoIdRoute: typeof ApiShopperChatPhotoIdRoute
   ApiShopperPhotoIdRoute: typeof ApiShopperPhotoIdRoute
   ApiTasksAffiliateSweepRoute: typeof ApiTasksAffiliateSweepRoute
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
   ApiWebhooksMayarForwardRoute: typeof ApiWebhooksMayarForwardRoute
+  TitipBelanjaPesanIdRoute: typeof TitipBelanjaPesanIdRoute
   TitipBelanjaPesananIdRoute: typeof TitipBelanjaPesananIdRoute
+  TitipBelanjaPesanIndexRoute: typeof TitipBelanjaPesanIndexRoute
   TitipBelanjaPesananIndexRoute: typeof TitipBelanjaPesananIndexRoute
   ApiWebhooksEsimAccessTokenRoute: typeof ApiWebhooksEsimAccessTokenRoute
 }
@@ -1568,6 +1620,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReceiptScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/shopper-chat': {
+      id: '/api/shopper-chat'
+      path: '/api/shopper-chat'
+      fullPath: '/api/shopper-chat'
+      preLoaderRoute: typeof ApiShopperChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/shopper-search': {
       id: '/api/shopper-search'
       path: '/api/shopper-search'
@@ -1799,6 +1858,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReceiptPhotoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/shopper-chat-photo/$id': {
+      id: '/api/shopper-chat-photo/$id'
+      path: '/api/shopper-chat-photo/$id'
+      fullPath: '/api/shopper-chat-photo/$id'
+      preLoaderRoute: typeof ApiShopperChatPhotoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/shopper-photo/$id': {
       id: '/api/shopper-photo/$id'
       path: '/api/shopper-photo/$id'
@@ -1854,6 +1920,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/my-trips/$tripId/travel'
       preLoaderRoute: typeof MyTripsTripIdTravelRouteImport
       parentRoute: typeof MyTripsTripIdRoute
+    }
+    '/titip-belanja/pesan/': {
+      id: '/titip-belanja/pesan/'
+      path: '/titip-belanja/pesan'
+      fullPath: '/titip-belanja/pesan/'
+      preLoaderRoute: typeof TitipBelanjaPesanIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/titip-belanja/pesan/$id': {
+      id: '/titip-belanja/pesan/$id'
+      path: '/titip-belanja/pesan/$id'
+      fullPath: '/titip-belanja/pesan/$id'
+      preLoaderRoute: typeof TitipBelanjaPesanIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/titip-belanja/pesanan/': {
       id: '/titip-belanja/pesanan/'
@@ -1964,6 +2044,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOrderRecoveryRoute: ApiOrderRecoveryRoute,
   ApiPwaEventsRoute: ApiPwaEventsRoute,
   ApiReceiptScanRoute: ApiReceiptScanRoute,
+  ApiShopperChatRoute: ApiShopperChatRoute,
   ApiShopperSearchRoute: ApiShopperSearchRoute,
   ApiSiteEventsRoute: ApiSiteEventsRoute,
   ApiTravelWaitlistRoute: ApiTravelWaitlistRoute,
@@ -1996,13 +2077,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoogleCalendarSyncRoute: ApiGoogleCalendarSyncRoute,
   ApiInternalMemberPurchasesRoute: ApiInternalMemberPurchasesRoute,
   ApiReceiptPhotoIdRoute: ApiReceiptPhotoIdRoute,
+  ApiShopperChatPhotoIdRoute: ApiShopperChatPhotoIdRoute,
   ApiShopperPhotoIdRoute: ApiShopperPhotoIdRoute,
   ApiTasksAffiliateSweepRoute: ApiTasksAffiliateSweepRoute,
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
   ApiWebhooksMayarForwardRoute: ApiWebhooksMayarForwardRoute,
+  TitipBelanjaPesanIdRoute: TitipBelanjaPesanIdRoute,
   TitipBelanjaPesananIdRoute: TitipBelanjaPesananIdRoute,
+  TitipBelanjaPesanIndexRoute: TitipBelanjaPesanIndexRoute,
   TitipBelanjaPesananIndexRoute: TitipBelanjaPesananIndexRoute,
   ApiWebhooksEsimAccessTokenRoute: ApiWebhooksEsimAccessTokenRoute,
 }

@@ -1,17 +1,18 @@
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
-const mock = vi.hoisted(() => ({ submit: vi.fn(), fetch: vi.fn() }));
+const mock = vi.hoisted(() => ({ submit: vi.fn(), fetch: vi.fn(), navigate: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, ...props }: { children: React.ReactNode; to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
   ),
+  useNavigate: () => mock.navigate,
 }));
 vi.mock("@/lib/shopper-discovery.fn", () => ({
   getDiscoveryStatus: async () => ({ enabled: true }),
-  runCustomerDiscoveryAction: mock.submit,
 }));
+vi.mock("@/lib/shopper-chat.fn", () => ({ startMyChatThread: mock.submit }));
 vi.mock("@/components/customer-auth", () => ({ CustomerAuth: () => <p>Masuk akun</p> }));
 vi.mock("@/lib/receipt-image", () => ({ compressReceiptPhoto: async (f: Blob) => f }));
 vi.mock("@/components/shopper/shopper-ui", () => ({
@@ -40,7 +41,10 @@ afterEach(() => {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal("fetch", mock.fetch);
-  mock.submit.mockResolvedValue({ ok: true });
+  mock.submit.mockResolvedValue({
+    threadId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    requestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  });
 });
 describe("design A discovery", () => {
   it("accepts an external store reference and submits it for team review", async () => {
@@ -66,11 +70,14 @@ describe("design A discovery", () => {
     const form = mock.fetch.mock.calls[0]?.[1].body as FormData;
     expect(form.get("url")).toBe("https://jp.mercari.com/item/m123");
     expect(form.get("customer_auth_subject")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Minta bantuan cari" }));
-    await screen.findByText("Permintaan terkirim");
+    fireEvent.click(screen.getByRole("button", { name: "Tanya tim Djiwa" }));
+    await waitFor(() => expect(mock.navigate).toHaveBeenCalled());
     expect(mock.submit.mock.calls[0]?.[0].data).toMatchObject({
-      action: "submit",
-      expectedVersion: 1,
+      requestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    });
+    expect(mock.navigate.mock.calls[0]?.[0]).toMatchObject({
+      to: "/titip-belanja/pesan/$id",
+      params: { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" },
     });
   });
   it("asks for sign-in without submitting a manual request when unauthenticated", async () => {
@@ -132,7 +139,7 @@ describe("design A discovery", () => {
     expect(card.textContent).toContain("¥2.999");
     expect(card.textContent).toContain("Rp 341.886");
     // A priced item is the main action; asking the team is tucked away until needed.
-    expect(screen.queryByRole("button", { name: "Minta bantuan cari" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Tanya tim Djiwa" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Titip barang ini" }));
     expect(onMarket).toHaveBeenCalledWith(market);
   });
@@ -167,7 +174,7 @@ describe("design A discovery", () => {
       target: { value: "https://jp.mercari.com/item/m44776908724" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Cari barang" }));
-    await screen.findByRole("button", { name: "Minta bantuan cari" });
+    await screen.findByRole("button", { name: "Tanya tim Djiwa" });
     expect(screen.queryByRole("button", { name: "Titip barang ini" })).toBeNull();
   });
 });

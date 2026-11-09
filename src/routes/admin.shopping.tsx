@@ -1,4 +1,5 @@
-import { AdminShopperDiscovery } from "@/components/shopper/admin-shopper-discovery";
+import { AdminShopperChat } from "@/components/shopper/admin-shopper-chat";
+import { getAdminChatUnread } from "@/lib/shopper-chat.fn";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, createFileRoute, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, ExternalLink, LoaderCircle, RefreshCw } from "lucide-react";
@@ -56,6 +57,20 @@ function AdminShopping() {
   const router = useRouter();
   const location = useLocation();
   const [tab, setTab] = useState<Tab>("orders");
+  const [chat, setChat] = useState({ waiting: 0, late: 0 });
+  useEffect(() => {
+    let live = true;
+    const load = () =>
+      getAdminChatUnread()
+        .then((r) => live && setChat(r))
+        .catch(() => undefined);
+    void load();
+    const timer = window.setInterval(load, 20_000);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+    };
+  }, []);
   useEffect(() => {
     setTab(
       location.hash === "requests"
@@ -94,7 +109,10 @@ function AdminShopping() {
             [
               ["orders", `Pesanan${toPay ? ` (${toPay} perlu dibeli)` : ""}`],
               ["catalog", "Katalog"],
-              ["requests", "Permintaan"],
+              [
+                "requests",
+                `Pesan${chat.waiting ? ` (${chat.waiting}${chat.late ? `, ${chat.late} terlambat` : ""})` : ""}`,
+              ],
               ["settings", "Pengaturan"],
             ] as const
           ).map(([id, label]) => (
@@ -118,7 +136,7 @@ function AdminShopping() {
             {notice.text}
           </p>
         )}
-        {tab === "requests" && <AdminShopperDiscovery />}
+        {tab === "requests" && <AdminShopperChat />}
         {tab === "orders" && <Orders data={data} setNotice={setNotice} refresh={refresh} />}
         {tab === "catalog" && <Catalog data={data} setNotice={setNotice} refresh={refresh} />}
         {tab === "settings" && <Settings data={data} setNotice={setNotice} refresh={refresh} />}
