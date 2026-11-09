@@ -8,6 +8,7 @@ import {
   cleanAssistantReply,
   detectIntent,
   extractReplyPrefix,
+  visibleChips,
   pickReminder,
   isGenerationIntent,
   normalizeTripAssistantConfig,
@@ -379,5 +380,43 @@ describe("pickReminder", () => {
     expect(pickReminder({ ...base, itemCount: 0, budgetSet: false })?.eventKey).toBe(
       "assistant:t1:budget",
     );
+  });
+});
+
+describe("visibleChips", () => {
+  const chips = {
+    options: [
+      "Terapkan",
+      "Ya, ganti",
+      "Tidak usah",
+      "Ubah tempatnya",
+      "Cari opsi lain",
+      "Atur anggaran",
+    ],
+    multi: false,
+  };
+  it("keeps every reply when there is no proposal", () => {
+    expect(visibleChips(chips, null)).toEqual(chips);
+    expect(visibleChips(null, "proposed")).toBeNull();
+  });
+  it("drops replies the proposal card already offers", () => {
+    expect(visibleChips(chips, "proposed")?.options).toEqual([
+      "Ubah tempatnya",
+      "Cari opsi lain",
+      "Atur anggaran",
+    ]);
+  });
+  it("after the proposal is applied or dismissed, only the follow-ups stay", () => {
+    expect(visibleChips(chips, "applied")?.options).toEqual(["Atur anggaran"]);
+    expect(visibleChips(chips, "dismissed")?.options).toEqual(["Atur anggaran"]);
+    expect(
+      visibleChips({ options: ["Terapkan", "Ubah tempatnya"], multi: false }, "applied"),
+    ).toBeNull();
+  });
+  it("a multi-select needs two options left", () => {
+    expect(visibleChips({ options: ["Terapkan", "Kuliner"], multi: true }, "proposed")).toEqual({
+      options: ["Kuliner"],
+      multi: false,
+    });
   });
 });

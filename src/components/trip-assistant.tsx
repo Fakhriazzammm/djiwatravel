@@ -32,6 +32,7 @@ import {
   type AssistantMessage,
   type AssistantNudge,
   type AssistantStatus,
+  visibleChips,
   type ProposalView,
 } from "@/lib/trip-assistant";
 
@@ -83,10 +84,13 @@ function Bubble({
   role,
   children,
   mood = "idle",
+  footer,
 }: {
   role: "user" | "assistant";
   children: ReactNode;
   mood?: MascotMood;
+  /** Extra content inside the assistant's balloon: a proposal card and quick replies. */
+  footer?: ReactNode;
 }) {
   if (role === "user")
     return (
@@ -101,9 +105,12 @@ function Bubble({
       <span className="mb-0.5">
         <AssistantMascot size={28} mood={mood} />
       </span>
-      <p className="max-w-[84%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-surface px-3 py-2 text-[13px] leading-[1.4] ring-1 ring-border/50">
-        {children}
-      </p>
+      <div
+        className={`overflow-hidden rounded-2xl rounded-bl-md bg-surface ring-1 ring-border/50 ${footer ? "min-w-0 flex-1" : "max-w-[84%]"}`}
+      >
+        <p className="whitespace-pre-wrap px-3 py-2 text-[13px] leading-[1.4]">{children}</p>
+        {footer}
+      </div>
     </div>
   );
 }
@@ -247,12 +254,6 @@ export function TripAssistant(props: Props) {
     const rest = QUICK.filter((q) => !first.includes(q));
     return [...new Set([...first, ...rest])] as typeof QUICK;
   }, [nudges]);
-
-  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
-  const liveChips =
-    !sending && lastAssistant && lastAssistant.id === messages[messages.length - 1]?.id
-      ? lastAssistant.chips
-      : null;
 
   const send = useCallback(
     async (text: string, intent?: AssistantIntent) => {
@@ -479,21 +480,73 @@ export function TripAssistant(props: Props) {
       </div>
 
       <div className="mt-3 space-y-2">
-        {(introDone ? messages : []).map((m) => (
-          <div key={m.id} className="space-y-2">
-            <Bubble role={m.role}>{m.content}</Bubble>
-            {m.proposal && (
-              <ProposalCard
-                proposal={m.proposal}
-                currency={props.currency}
-                busy={busyProposal === m.proposal.id}
-                onApply={() => void apply(m.proposal!.id)}
-                onUndo={() => void undo(m.proposal!.id)}
-                onDismiss={() => void dismiss(m.proposal!.id)}
-              />
-            )}
-          </div>
-        ))}
+        {(introDone ? messages : []).map((m) => {
+          const chips =
+            !sending && m.id === messages[messages.length - 1]?.id
+              ? visibleChips(m.chips, m.proposal?.status ?? null)
+              : null;
+          const footer =
+            m.proposal || chips ? (
+              <>
+                {m.proposal && (
+                  <ProposalCard
+                    embedded
+                    proposal={m.proposal}
+                    currency={props.currency}
+                    busy={busyProposal === m.proposal.id}
+                    onApply={() => void apply(m.proposal!.id)}
+                    onUndo={() => void undo(m.proposal!.id)}
+                    onDismiss={() => void dismiss(m.proposal!.id)}
+                  />
+                )}
+                {chips && (
+                  <div
+                    className="flex flex-wrap gap-1.5 border-t border-border/60 px-3 py-2"
+                    data-testid="assistant-chips"
+                  >
+                    {chips.options.map((option) => {
+                      const on = picked.includes(option);
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() =>
+                            chips.multi
+                              ? setPicked((list) =>
+                                  on ? list.filter((x) => x !== option) : [...list, option],
+                                )
+                              : void send(option)
+                          }
+                          aria-pressed={chips.multi ? on : undefined}
+                          className={`tap min-h-8 rounded-full px-3 text-xs font-semibold ring-1 ${
+                            on
+                              ? "bg-brand-red-soft text-brand-red ring-brand-red"
+                              : "bg-secondary ring-transparent"
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
+                    {chips.multi && picked.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => void send(picked.join(", "))}
+                        className="tap min-h-8 rounded-full bg-brand-red px-3 text-xs font-bold text-white"
+                      >
+                        Kirim ({picked.length})
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : undefined;
+          return (
+            <Bubble key={m.id} role={m.role} footer={footer}>
+              {m.content}
+            </Bubble>
+          );
+        })}
         {sending &&
           (streamText ? (
             <div
@@ -542,43 +595,6 @@ export function TripAssistant(props: Props) {
               </>
             )}
           </p>
-        )}
-        {liveChips && (
-          <div className="ml-8 flex flex-wrap gap-1.5" data-testid="assistant-chips">
-            {liveChips.options.map((option) => {
-              const on = picked.includes(option);
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() =>
-                    liveChips.multi
-                      ? setPicked((list) =>
-                          on ? list.filter((x) => x !== option) : [...list, option],
-                        )
-                      : void send(option)
-                  }
-                  aria-pressed={liveChips.multi ? on : undefined}
-                  className={`tap min-h-8 rounded-full px-3 text-xs font-semibold ring-1 ${
-                    on
-                      ? "bg-brand-red-soft text-brand-red ring-brand-red"
-                      : "bg-surface ring-border/50"
-                  }`}
-                >
-                  {option}
-                </button>
-              );
-            })}
-            {liveChips.multi && picked.length > 0 && (
-              <button
-                type="button"
-                onClick={() => void send(picked.join(", "))}
-                className="tap min-h-8 rounded-full bg-brand-red px-3 text-xs font-bold text-white"
-              >
-                Kirim ({picked.length})
-              </button>
-            )}
-          </div>
         )}
         <div ref={endRef} className="scroll-mb-44" />
       </div>

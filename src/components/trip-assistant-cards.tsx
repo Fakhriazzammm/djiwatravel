@@ -106,6 +106,7 @@ export function ProposalCard({
   onApply,
   onUndo,
   onDismiss,
+  embedded = false,
 }: {
   proposal: ProposalView;
   currency: string;
@@ -113,6 +114,8 @@ export function ProposalCard({
   onApply: () => void;
   onUndo: () => void;
   onDismiss: () => void;
+  /** Inside the assistant's balloon: no outer frame, just a divider. */
+  embedded?: boolean;
 }) {
   const { payload } = proposal;
   const Icon =
@@ -188,7 +191,7 @@ export function ProposalCard({
   const faded = proposal.status === "dismissed" || proposal.status === "undone";
   return (
     <div
-      className={`ml-8 overflow-hidden rounded-2xl bg-surface ring-1 ring-border/50 ${faded ? "opacity-60" : ""}`}
+      className={`${embedded ? "border-t border-border/60" : "ml-8 overflow-hidden rounded-2xl bg-surface ring-1 ring-border/50"} ${faded ? "opacity-60" : ""}`}
       data-testid="assistant-proposal"
     >
       <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">

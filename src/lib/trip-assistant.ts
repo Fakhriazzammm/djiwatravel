@@ -866,3 +866,30 @@ export function pickReminder(t: ReminderInput): Reminder | null {
     };
   return null;
 }
+
+/* ------------------------------------------------------------------------- quick replies */
+
+const APPLY_LIKE =
+  /^(ya,?\s*)?(terapkan|pakai(kan)?|setuju|oke|ok|gas|lanjut(kan)?|ganti|tambahkan|simpan)\b/i;
+const DISMISS_LIKE = /^(tidak|nggak|gak|batal)( usah| perlu)?$/i;
+const REVISE_LIKE = /^(ubah|revisi|cari (opsi|alternatif|tempat)|buat ulang|ganti (yang|tempat))/i;
+
+/**
+ * The quick replies worth showing under an assistant message. When the message carries a proposal,
+ * its card already has Terapkan / Tidak / Urungkan, so replies that only repeat those are dropped;
+ * once the proposal is applied or dismissed, "change it" style replies go too.
+ */
+export function visibleChips(
+  chips: { options: string[]; multi: boolean } | null,
+  proposalStatus: ProposalStatus | null,
+): { options: string[]; multi: boolean } | null {
+  if (!chips) return null;
+  if (!proposalStatus) return chips;
+  const options = chips.options.filter(
+    (o) =>
+      !APPLY_LIKE.test(o.trim()) &&
+      !DISMISS_LIKE.test(o.trim()) &&
+      (proposalStatus === "proposed" || !REVISE_LIKE.test(o.trim())),
+  );
+  return options.length ? { options, multi: chips.multi && options.length > 1 } : null;
+}

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, within, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TripAssistant } from "@/components/trip-assistant";
 import {
@@ -498,5 +498,46 @@ describe("TripAssistant", () => {
     setup({ unpinned: 0 });
     await screen.findByLabelText("Pesan untuk Travo");
     expect(screen.queryByRole("button", { name: /Pasang pin/ })).toBeNull();
+  });
+
+  it("puts the proposal and its quick replies inside the assistant's balloon, without repeating Terapkan", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({
+      status: available,
+      messages: [
+        assistantMsg({
+          content: "Ini usulan hari ke-3. Mau diterapkan?",
+          proposal,
+          chips: { options: ["Terapkan", "Ubah tempatnya", "Atur anggaran"], multi: false },
+        }),
+      ],
+    });
+    setup();
+    const text = await screen.findByText("Ini usulan hari ke-3. Mau diterapkan?");
+    const balloon = text.parentElement!;
+    // The card, its buttons and the remaining replies share the balloon with the words.
+    expect(balloon.querySelector('[data-testid="assistant-proposal"]')).not.toBeNull();
+    expect(balloon.querySelector('[data-testid="assistant-chips"]')).not.toBeNull();
+    // One Terapkan only (the card's); the chip that repeated it is gone.
+    const inside = within(balloon);
+    expect(inside.getAllByRole("button", { name: "Terapkan" })).toHaveLength(1);
+    expect(inside.getByRole("button", { name: "Ubah tempatnya" })).toBeInTheDocument();
+    expect(inside.getByRole("button", { name: "Atur anggaran" })).toBeInTheDocument();
+  });
+
+  it("drops the change-it reply once the proposal is applied", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({
+      status: available,
+      messages: [
+        assistantMsg({
+          proposal: { ...proposal, status: "applied" },
+          chips: { options: ["Terapkan", "Ubah tempatnya", "Atur anggaran"], multi: false },
+        }),
+      ],
+    });
+    setup();
+    const card = await screen.findByTestId("assistant-proposal");
+    const balloon = card.parentElement!;
+    expect(within(balloon).queryByRole("button", { name: "Ubah tempatnya" })).toBeNull();
+    expect(within(balloon).getByRole("button", { name: "Atur anggaran" })).toBeInTheDocument();
   });
 });
