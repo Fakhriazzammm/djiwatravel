@@ -5,5 +5,9 @@ import { loadShared, SharedItinerary, sharedHead } from "./share.$token";
 export const Route = createFileRoute("/share/$handle/$token")({
   loader: loadShared,
   head: sharedHead,
-  component: () => <SharedItinerary data={Route.useLoaderData()} />,
+  component: SharedHandleRoute,
 });
+
+function SharedHandleRoute() {
+  return <SharedItinerary data={Route.useLoaderData()} />;
+}

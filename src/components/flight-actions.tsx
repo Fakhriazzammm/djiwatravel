@@ -1,3 +1,6 @@
+import logoUrl from "@/assets/logo.png";
+import { SocialShare } from "@/components/social-share";
+import { renderBrandCard } from "@/lib/share-card";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Bell, Check, ExternalLink, Plane, Share2, Smartphone, Trash2 } from "lucide-react";
@@ -520,6 +523,7 @@ export function CompareTray({
   const { user, loading } = useBetterAuthUser();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [sharedUrl, setSharedUrl] = useState<string | null>(null);
   if (items.length === 0) return null;
 
   async function share() {
@@ -528,17 +532,14 @@ export function CompareTray({
     try {
       const { token, days } = await createFlightShare({ data: { offers: items } });
       const url = `${window.location.origin}/bagikan-tiket/${token}`;
-      let how = "Tautan disalin";
+      let how = "Tautan dibuat";
       try {
-        if (navigator.share) {
-          await navigator.share({ title: "Pilih tiket pesawat", url });
-          how = "Tautan dibagikan";
-        } else {
-          await navigator.clipboard.writeText(url);
-        }
+        await navigator.clipboard.writeText(url);
+        how = "Tautan disalin";
       } catch {
         how = `Tautan: ${url}`;
       }
+      setSharedUrl(url);
       setNote({ ok: true, text: `${how}. Berlaku ${days} hari.` });
     } catch (error) {
       setNote({ ok: false, text: errorText(error, "Belum bisa membuat tautan.") });
@@ -597,6 +598,31 @@ export function CompareTray({
         >
           {note.text}
         </p>
+      )}
+      {sharedUrl && (
+        <div className="mt-2">
+          <SocialShare
+            url={sharedUrl}
+            text="Bantu pilih tiket pesawat ini"
+            label="Bagikan pilihan tiket"
+            makeImage={async () => {
+              const blob = await renderBrandCard({
+                kicker: "Pilih tiket pesawat",
+                title: "Bantu pilih tiket",
+                subtitle: `${items.length} pilihan penerbangan`,
+                lines: items
+                  .slice(0, 3)
+                  .map(
+                    (item) =>
+                      `${item.airlineName || item.airline} · ${formatFlightPrice(item.priceIdr)}`,
+                  ),
+                link: sharedUrl.replace(/^https?:\/\//, ""),
+                logoUrl,
+              });
+              return new File([blob], "pilih-tiket-djiwa-travel.png", { type: "image/png" });
+            }}
+          />
+        </div>
       )}
     </div>
   );

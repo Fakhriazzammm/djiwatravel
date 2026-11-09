@@ -26,7 +26,8 @@ describe("TripShareDialog (My Trips list)", () => {
       expect((input as HTMLInputElement).value).toContain(`/share/fakhri/${"t".repeat(32)}`),
     );
     expect(screen.getByText("Salin")).toBeTruthy();
-    expect(screen.getByText("Bagikan")).toBeTruthy();
+    expect(screen.getByText("Bagikan ke Instagram Story")).toBeTruthy();
+    expect(screen.getByText("WhatsApp")).toBeTruthy();
   });
 
   it("creates a link when the trip has none, then reloads it", async () => {

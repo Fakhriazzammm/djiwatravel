@@ -183,3 +183,84 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
     ),
   );
 }
+
+export type BrandCardInput = {
+  kicker: string;
+  title: string;
+  subtitle?: string;
+  lines?: string[];
+  link: string;
+  logoUrl: string;
+};
+
+/** Simple 1080×1920 brand story card for things without a photo itinerary (eSIM, tickets, …). */
+export async function renderBrandCard(input: BrandCardInput): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas unavailable");
+  const font = '"Inter","SF Pro Text",system-ui,-apple-system,"Segoe UI",sans-serif';
+  const logo = await loadImage(input.logoUrl);
+
+  ctx.fillStyle = "#101114";
+  ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W / 2, 520, 40, W / 2, 520, 760);
+  glow.addColorStop(0, "rgba(229,57,59,0.35)");
+  glow.addColorStop(1, "rgba(229,57,59,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  if (logo) {
+    const lh = 150;
+    const lw = (logo.width / logo.height) * lh;
+    ctx.save();
+    ctx.shadowColor = "rgba(255,255,255,0.9)";
+    ctx.shadowBlur = 28;
+    ctx.drawImage(logo, (W - lw) / 2, 300, lw, lh);
+    ctx.drawImage(logo, (W - lw) / 2, 300, lw, lh);
+    ctx.restore();
+  }
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = RED;
+  ctx.font = `700 32px ${font}`;
+  ctx.fillText(input.kicker.toUpperCase(), W / 2, 640);
+  ctx.fillStyle = "#fff";
+  ctx.font = `800 88px ${font}`;
+  const words = input.title.split(" ");
+  const rows: string[] = [];
+  let row = "";
+  for (const word of words) {
+    const next = row ? `${row} ${word}` : word;
+    if (ctx.measureText(next).width > W - 160 && row) {
+      rows.push(row);
+      row = word;
+    } else row = next;
+  }
+  if (row) rows.push(row);
+  rows.slice(0, 3).forEach((line, index) => ctx.fillText(line, W / 2, 750 + index * 104));
+  let y = 750 + Math.min(rows.length, 3) * 104 + 20;
+  if (input.subtitle) {
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.font = `500 40px ${font}`;
+    ctx.fillText(fit(ctx, input.subtitle, W - 160), W / 2, y);
+    y += 80;
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.font = `500 34px ${font}`;
+  for (const line of (input.lines ?? []).slice(0, 4)) {
+    ctx.fillText(fit(ctx, line, W - 160), W / 2, y);
+    y += 56;
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.font = `500 22px ${font}`;
+  ctx.fillText(fit(ctx, input.link, W - 128), W / 2, H - 110);
+
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("render failed"))),
+      "image/png",
+    ),
+  );
+}

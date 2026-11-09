@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Copy, Link2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { btnRed, btnSoft } from "@/components/shell";
+import { SocialShare } from "@/components/social-share";
 import { ConfirmDialog } from "@/components/trip-ios";
+import { tripStoryImage } from "@/lib/trip-share-image";
 import {
   Sheet,
   SheetContent,
@@ -138,22 +140,12 @@ export function ShareTripSheet({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => void copy()}
-                className={`${btnSoft} min-h-10 rounded-xl`}
-              >
-                <Copy className="size-4" /> Salin
-              </button>
-              <button
-                type="button"
-                onClick={() => void shareNative()}
-                className={`${btnRed} min-h-10 rounded-xl`}
-              >
-                <Share2 className="size-4" /> Bagikan
-              </button>
-            </div>
+            <SocialShare
+              url={url}
+              text={`Itinerary ${trip.name} ke ${trip.destination_name}`}
+              label="Bagikan itinerary"
+              makeImage={() => tripStoryImage(share.token, url)}
+            />
             <p className="px-1 text-[11px] leading-5 text-muted-foreground">
               Siapa pun yang memiliki tautan dapat membuka itinerary ini. Cabut tautan jika sudah
               tidak ingin dibagikan.

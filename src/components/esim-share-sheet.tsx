@@ -1,3 +1,6 @@
+import logoUrl from "@/assets/logo.png";
+import { SocialShare } from "@/components/social-share";
+import { renderBrandCard } from "@/lib/share-card";
 import { useEffect, useState } from "react";
 import { Check, Copy, Loader2, MessageCircle, Share2, ShieldCheck, Trash2, X } from "lucide-react";
 import { FixedLayer } from "@/components/motion-primitives";
@@ -253,32 +256,22 @@ export function EsimShareSheet({
                   </button>
                 </div>
 
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="tap flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-red px-3 text-sm font-semibold text-white"
-                  >
-                    <MessageCircle className="size-4" aria-hidden="true" /> WhatsApp
-                  </a>
-                  {canNativeShare ? (
-                    <button
-                      type="button"
-                      onClick={() => void nativeShare()}
-                      className="tap flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-semibold"
-                    >
-                      <Share2 className="size-4" aria-hidden="true" /> Bagikan
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void copy()}
-                      className="tap flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-semibold"
-                    >
-                      <Copy className="size-4" aria-hidden="true" /> Salin
-                    </button>
-                  )}
+                <div className="mt-2">
+                  <SocialShare
+                    url={url}
+                    text={shareText}
+                    label="Bagikan eSIM"
+                    makeImage={async () => {
+                      const blob = await renderBrandCard({
+                        kicker: "Hadiah eSIM",
+                        title: `eSIM ${packageName}`,
+                        subtitle: "Aktifkan lewat tautan ini",
+                        link: url.replace(/^https?:\/\//, ""),
+                        logoUrl,
+                      });
+                      return new File([blob], "esim-djiwa-travel.png", { type: "image/png" });
+                    }}
+                  />
                 </div>
 
                 <p
