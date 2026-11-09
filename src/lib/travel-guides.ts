@@ -1,3 +1,6 @@
+export type GuideLink =
+  { to: "/titip-belanja" | "/my-trips/new"; label: string } | { guide: string; label: string };
+
 export type TravelGuide = {
   slug: string;
   title: string;
@@ -13,6 +16,8 @@ export type TravelGuide = {
   paragraphs: readonly string[];
   steps: readonly { title: string; body: string }[];
   relatedDestinations: readonly { code: string; label: string }[];
+  /** Internal links to other guides or product pages, shown beside the destinations. */
+  relatedLinks?: readonly GuideLink[];
 };
 
 /** Curated guides are intentionally versioned in source so every indexed page stays useful. */
@@ -437,6 +442,286 @@ export const travelGuides: readonly TravelGuide[] = [
     relatedDestinations: [
       { code: "jp", label: "Paket eSIM Jepang" },
       { code: "sg", label: "Paket eSIM Singapura" },
+    ],
+  },
+  {
+    slug: "checklist-persiapan-ke-jepang",
+    title: "Checklist Persiapan ke Jepang: Visa, Imigrasi, eSIM, dan Belanja Bebas Pajak",
+    description:
+      "Daftar persiapan sebelum ke Jepang untuk WNI: cek visa atau registrasi e-paspor, isi Visit Japan Web, siapkan eSIM, dan pahami aturan bebas pajak terbaru.",
+    eyebrow: "PANDUAN JEPANG",
+    heading: "Checklist ke Jepang: dokumen, koneksi, dan belanja dalam satu daftar",
+    publishedAt: "2026-11-09",
+    updatedAt: "2026-11-09",
+    readTime: "4 menit baca",
+    sources: [
+      {
+        label:
+          "Kedutaan Besar Jepang: bebas visa dengan registrasi pra-keberangkatan bagi pemegang e-paspor",
+        url: "https://www.id.emb-japan.go.jp/visa_waiver2018.html",
+      },
+      {
+        label: "Kedutaan Besar Jepang: informasi visa",
+        url: "https://www.id.emb-japan.go.jp/visa.html",
+      },
+      {
+        label: "Digital Agency Jepang: Visit Japan Web",
+        url: "https://services.digital.go.jp/en/visit-japan-web/",
+      },
+      {
+        label: "JNTO: sistem belanja bebas pajak baru mulai 1 November 2026",
+        url: "https://www.japan.travel/en/us/blog/everything-you-need-to-know-japans-new-tax-free-shopping-system/",
+      },
+    ],
+    paragraphs: [
+      "Persiapan ke Jepang paling aman dikerjakan berurutan: dokumen masuk lebih dulu, lalu koneksi dan pembayaran, terakhir hal-hal kecil seperti belanja dan oleh-oleh. Mulailah beberapa minggu sebelum berangkat, karena sebagian urusan, terutama visa atau registrasi paspor, tidak bisa diselesaikan dalam sehari.",
+      "Langkah pertama adalah memastikan status masuk. Menurut Kedutaan Besar Jepang di Jakarta, WNI pemegang paspor biasa tetap memerlukan visa, sedangkan pemegang e-paspor dapat mendaftar untuk skema bebas visa kunjungan singkat selama maksimal 15 hari. Registrasi itu wajib dilakukan sebelum berangkat, dan keputusan akhir untuk masuk tetap ada pada petugas imigrasi saat kamu tiba. Aturan bisa berubah, jadi cek halaman visa Kedutaan Besar Jepang dan jangan mengandalkan unggahan media sosial.",
+      "Berikutnya, daftar di Visit Japan Web, layanan resmi pemerintah Jepang untuk prosedur imigrasi dan bea cukai secara daring. Isi data sebelum terbang agar mendapat kode QR yang dipindai saat tiba. Layanan ini juga dipakai untuk prosedur belanja bebas pajak, jadi simpan akunmu sampai pulang.",
+      "Soal koneksi, tentukan apakah kamu memakai eSIM atau roaming, lalu cocokkan cakupan, masa aktif, dan aturan aktivasi paketnya. Cek dulu apakah ponselmu mendukung eSIM dan tidak terkunci operator. Pasang profil hanya pada waktu yang diizinkan petunjuk paket, dan unduh peta serta simpan alamat penginapan agar bisa dibuka tanpa internet. Kami menulis panduan terpisah untuk setiap langkah ini, tertaut di bawah.",
+      "Jika berencana berbelanja, ketahui bahwa sistem bebas pajak Jepang berubah mulai 1 November 2026. Wisatawan kini membayar harga penuh termasuk pajak konsumsi, lalu menerima pengembalian setelah barang diperiksa bea cukai saat keluar dari Jepang. Pembelian harus mencapai 5.000 yen atau lebih (sebelum pajak) per toko per hari, harus dibawa pulang sendiri, dan prosedurnya dilakukan sebelum check-in bagasi. Sisakan waktu ekstra di bandara untuk ini.",
+      "Terakhir, ingat aturan sisi Indonesia. Barang pribadi penumpang dibebaskan dari bea masuk sampai nilai pabean USD 500 per orang untuk setiap kedatangan; kelebihannya dikenai bea masuk dan pajak. Kami menjelaskan lebih lengkap di panduan oleh-oleh dan titip beli.",
+    ],
+    steps: [
+      {
+        title: "Pastikan status masuk",
+        body: "Cek apakah paspormu perlu visa atau bisa memakai registrasi bebas visa e-paspor, dan lakukan sebelum berangkat. Periksa juga masa berlaku paspor.",
+      },
+      {
+        title: "Isi Visit Japan Web",
+        body: "Daftarkan data imigrasi dan bea cukai secara daring, simpan kode QR, dan simpan akunmu untuk prosedur bebas pajak saat pulang.",
+      },
+      {
+        title: "Siapkan eSIM dan akses offline",
+        body: "Cek kompatibilitas ponsel, pilih paket sesuai rute, lalu simpan peta, tiket, dan alamat penginapan agar tetap bisa dibuka tanpa koneksi.",
+      },
+      {
+        title: "Rencanakan belanja dan kepulangan",
+        body: "Simpan struk, ketahui batas 5.000 yen per toko per hari, dan selesaikan prosedur bebas pajak sebelum check-in bagasi dengan waktu yang cukup.",
+      },
+    ],
+    relatedDestinations: [
+      { code: "jp", label: "Lihat paket eSIM Jepang" },
+      { code: "asia", label: "Bandingkan paket Asia" },
+    ],
+    relatedLinks: [
+      { guide: "cara-memilih-esim-untuk-liburan-ke-jepang", label: "Panduan memilih eSIM Jepang" },
+      { guide: "cara-memasang-esim-sebelum-berangkat", label: "Cara memasang eSIM" },
+      { to: "/my-trips/new", label: "Susun agenda perjalanan" },
+    ],
+  },
+  {
+    slug: "titip-beli-barang-dari-jepang",
+    title: "Titip Beli Barang dari Jepang: Cara Kerja, Biaya, dan Batasannya",
+    description:
+      "Cara kerja titip beli (jastip) barang dari Jepang: apa yang bisa dititip, komponen biaya, barang yang tidak diterima, dan aturan bea cukai Indonesia.",
+    eyebrow: "PANDUAN TITIP BELANJA",
+    heading: "Titip beli dari Jepang: apa yang dibayar dan apa yang perlu kamu tahu",
+    publishedAt: "2026-11-09",
+    updatedAt: "2026-11-09",
+    readTime: "4 menit baca",
+    sources: [
+      {
+        label: "Bea Cukai: ketentuan barang penumpang",
+        url: "https://www.beacukai.go.id/barang-penumpang",
+      },
+      {
+        label: "Bea Cukai: FAQ barang penumpang",
+        url: "https://www.beacukai.go.id/faq-barang-penumpang",
+      },
+      {
+        label: "Kemenkeu: ketentuan barang bawaan pribadi penumpang dan jasa titipan",
+        url: "https://klc2.kemenkeu.go.id/kms/faq/ketentuan-barang-bawaan-pribadi-penumpang-dan-jasa-titipan-jastip-8e8fdff3/detail/",
+      },
+    ],
+    paragraphs: [
+      "Titip beli berarti kamu meminta orang lain membelikan barang di tempat yang sulit kamu jangkau, lalu mengirimkannya kepadamu. Untuk Jepang, alasannya biasanya sama: barang tidak dijual resmi di Indonesia, edisinya terbatas, atau harganya lebih baik di sana. Risiko terbesarnya juga sama, yaitu barang yang berbeda dari yang kamu mau, biaya tersembunyi, dan tidak jelas siapa yang bertanggung jawab. Karena itu pahami dulu cara kerjanya sebelum memesan.",
+      "Alur yang rapi kurang lebih begini: kamu memilih barang dan membayar, tim membelinya langsung di toko di Jepang dan memeriksa kondisinya, barang dikirim ke Indonesia dengan nomor resi, lalu tiba di alamatmu. Di Titip Belanja Djiwa Travel, katalog Uniqlo, GU, Legato Largo, anello, dan Longchamp diambil dari toko resminya, dan harga serta stok dicek lagi saat barang dibeli. Untuk barang dari toko lain, kamu bisa mengirim foto atau tautan, dan tim akan memeriksanya lalu mengirim penawaran.",
+      "Perhatikan komponen biaya, bukan hanya harga barang. Biasanya ada harga barang dalam yen yang dikonversi ke rupiah dengan kurs yang berlaku saat memesan, biaya jasa titip sebagai persentase dari harga barang, ongkos kirim dalam Jepang bila barang berasal dari penjual marketplace, dan ongkos kirim ke Indonesia. Di keranjang Djiwa Travel, semua komponen ini ditampilkan sebelum kamu membayar, termasuk berapa persen biaya jasa dan untuk apa. Bandingkan total akhirnya, bukan harga satuan, dengan harga di toko resmi atau marketplace lokal.",
+      "Tidak semua barang bisa dititip. Makanan dan minuman segar, obat dan suplemen, rokok, vape, minuman beralkohol, baterai lithium lepasan, dan barang tiruan umumnya tidak diterima karena aturan pengiriman dan bea cukai. Daftar yang berlaku ditampilkan di aplikasi, jadi cek sebelum memesan.",
+      "Soal bea cukai, aturan Indonesia membedakan barang pribadi penumpang dan barang lainnya. Untuk barang pribadi yang dibawa penumpang, ada pembebasan bea masuk sampai nilai pabean USD 500 per orang untuk setiap kedatangan. Kemenkeu dan Bea Cukai menyatakan barang titipan yang bukan untuk pemakaian pribadi penumpang diperlakukan sebagai barang impor biasa, dengan bea masuk 10%, PPN 12%, dan PPh 5% sesuai FAQ Bea Cukai. Aturan ini berlaku untuk barang yang dibawa penumpang; untuk barang yang dikirim, tarif dan prosedurnya mengikuti ketentuan Bea Cukai untuk kiriman. Tanyakan kepada penyedia jasa siapa yang menanggung bea dan pajak sebelum membayar, dan baca ketentuan resmi karena angkanya dapat berubah.",
+      "Terakhir, pilih layanan yang menyediakan jejak yang jelas: pesanan tercatat di akunmu, ada nomor resi, dan ada kontak jika barang tidak sesuai. Waspada pada penawaran tanpa rincian biaya atau yang meminta pembayaran di luar aplikasi.",
+    ],
+    steps: [
+      {
+        title: "Tentukan barang dan cek apakah boleh dititip",
+        body: "Pastikan barangnya tidak termasuk daftar yang tidak diterima, lalu cek varian, ukuran, dan warna yang kamu mau.",
+      },
+      {
+        title: "Bandingkan total biaya",
+        body: "Hitung harga barang, biaya jasa, ongkos kirim dalam Jepang dan ke Indonesia. Bandingkan total akhir dengan alternatif lokal.",
+      },
+      {
+        title: "Tanyakan soal bea dan pajak",
+        body: "Pastikan siapa yang menanggung bea masuk dan pajak bila ada, dan baca ketentuan resmi Bea Cukai untuk nilai barangmu.",
+      },
+      {
+        title: "Pantau pesanan sampai tiba",
+        body: "Simpan bukti pesanan dan nomor resi, periksa barang saat diterima, dan hubungi layanan segera bila ada yang tidak sesuai.",
+      },
+    ],
+    relatedDestinations: [{ code: "jp", label: "Lihat paket eSIM Jepang" }],
+    relatedLinks: [
+      { to: "/titip-belanja", label: "Buka Titip Belanja" },
+      { guide: "tas-jepang-anello-legato-largo-longchamp", label: "Panduan tas Jepang" },
+    ],
+  },
+  {
+    slug: "tas-jepang-anello-legato-largo-longchamp",
+    title: "Tas Jepang: Mengenal anello, Legato Largo, dan Longchamp",
+    description:
+      "Kenali tiga merek tas yang populer dititip dari Jepang, anello, Legato Largo, dan Longchamp, dan cara memilih sesuai kebutuhan sebelum membeli.",
+    eyebrow: "PANDUAN TITIP BELANJA",
+    heading: "anello, Legato Largo, atau Longchamp: pilih tas Jepang sesuai kebutuhanmu",
+    publishedAt: "2026-11-09",
+    updatedAt: "2026-11-09",
+    readTime: "4 menit baca",
+    sources: [
+      { label: "Longchamp Jepang", url: "https://www.longchamp.com/jp/ja" },
+      {
+        label: "Bea Cukai: ketentuan barang penumpang",
+        url: "https://www.beacukai.go.id/barang-penumpang",
+      },
+    ],
+    paragraphs: [
+      "Tas dari Jepang sering diburu karena modelnya praktis, bahannya ringan, dan pilihan warnanya banyak. Tiga merek yang paling sering ditanyakan di Titip Belanja Djiwa Travel adalah anello, Legato Largo, dan Longchamp. Ketiganya melayani kebutuhan yang berbeda, jadi memilih lebih mudah bila kamu mulai dari cara memakainya, bukan dari nama mereknya.",
+      "anello dikenal lewat tas ransel dan tas serbaguna sehari-hari dengan banyak kantong. Merek ini cocok bila kamu butuh tas kerja, kuliah, atau perjalanan yang ringan dan rapi. Legato Largo, yang di Jepang banyak dijual lewat toko seperti Carrot Online, menawarkan tas ringan bergaya santai dengan harga umumnya lebih terjangkau. Longchamp, merek Prancis yang terkenal dengan tas lipat Le Pliage, punya toko dan situs resmi Jepang dengan katalog dan harga dalam yen yang bisa berbeda dari negara lain.",
+      "Sebelum memutuskan, bandingkan beberapa hal yang sama untuk ketiganya: ukuran dan kapasitas (apakah muat laptop atau botol minum), bobot kosong tas, jumlah dan letak kantong, bahan, serta kemudahan perawatan. Untuk tas yang sering dibawa bepergian, kantong tersembunyi dan resleting yang mudah dijangkau bisa lebih berguna daripada tampilan.",
+      "Soal harga, jangan hanya membandingkan label yen. Hitung total dalam rupiah dengan kurs yang berlaku, biaya jasa titip, dan ongkos kirim, lalu bandingkan dengan harga di toko resmi Indonesia bila ada. Model, warna, dan koleksi yang dijual di Jepang tidak selalu sama dengan yang tersedia di sini, dan itu sering menjadi alasan utama titip beli. Katalog di Titip Belanja menampilkan model dan warna dari toko resminya, dan stok serta harga dicek saat barang dibeli.",
+      "Jika kamu sendiri akan ke Jepang, ingat bahwa turis dapat membeli tanpa pajak konsumsi di toko yang berpartisipasi, dengan prosedur pengembalian yang berubah sejak 1 November 2026. Untuk sisi Indonesia, barang pribadi penumpang dibebaskan dari bea masuk sampai nilai pabean USD 500 per orang untuk setiap kedatangan. Bila membeli beberapa tas sekaligus, hitung totalnya.",
+    ],
+    steps: [
+      {
+        title: "Tentukan fungsi utama tas",
+        body: "Pilih apakah untuk kerja, kuliah, perjalanan, atau sehari-hari, lalu catat ukuran minimum yang kamu perlukan.",
+      },
+      {
+        title: "Cocokkan merek dengan kebutuhan",
+        body: "Bandingkan anello, Legato Largo, dan Longchamp berdasarkan kapasitas, bobot, bahan, dan kantong, bukan hanya nama merek.",
+      },
+      {
+        title: "Hitung total, bukan harga yen",
+        body: "Konversi ke rupiah, tambahkan biaya jasa dan ongkir, lalu bandingkan dengan harga lokal bila modelnya tersedia.",
+      },
+      {
+        title: "Pilih warna dan pesan",
+        body: "Periksa warna dan varian di katalog, lalu pesan lewat Titip Belanja. Stok dan harga dicek ulang saat barang dibeli.",
+      },
+    ],
+    relatedDestinations: [{ code: "jp", label: "Lihat paket eSIM Jepang" }],
+    relatedLinks: [
+      { to: "/titip-belanja", label: "Lihat katalog tas di Titip Belanja" },
+      { guide: "titip-beli-barang-dari-jepang", label: "Cara kerja titip beli" },
+    ],
+  },
+  {
+    slug: "itinerary-jepang-7-hari-tokyo-kyoto-osaka",
+    title: "Itinerary Jepang 7 Hari untuk Pemula: Tokyo, Kyoto, Osaka",
+    description:
+      "Contoh itinerary Jepang 7 hari untuk pertama kali: pembagian hari di Tokyo, Kyoto, dan Osaka, pengaturan transportasi, dan komponen biaya yang perlu dihitung.",
+    eyebrow: "PANDUAN JEPANG",
+    heading: "Itinerary Jepang 7 hari: Tokyo, Kyoto, dan Osaka tanpa terburu-buru",
+    publishedAt: "2026-11-09",
+    updatedAt: "2026-11-09",
+    readTime: "5 menit baca",
+    sources: [
+      {
+        label: "JNTO: informasi resmi wisata Jepang",
+        url: "https://www.japan.travel/en/",
+      },
+      {
+        label: "Digital Agency Jepang: Visit Japan Web",
+        url: "https://services.digital.go.jp/en/visit-japan-web/",
+      },
+    ],
+    paragraphs: [
+      "Rute Tokyo, Kyoto, dan Osaka sering dipilih untuk perjalanan pertama ke Jepang karena ketiganya terhubung kereta cepat Shinkansen dan menawarkan kombinasi kota modern, kuil, dan kuliner. Tujuh hari cukup untuk menikmatinya bila kamu tidak memadatkan jadwal. Contoh di bawah adalah kerangka, bukan aturan; sesuaikan dengan musim, minat, dan kecepatan jalanmu.",
+      "Hari 1 sampai 3 di Tokyo. Hari pertama biasanya habis untuk perjalanan dan check-in, jadi cukup jalan santai di sekitar penginapan. Hari kedua bisa untuk kawasan tradisional seperti Asakusa lalu area modern seperti Shibuya dan Shinjuku. Hari ketiga sisakan untuk minatmu sendiri, misalnya museum, belanja, atau perjalanan sehari ke luar kota. Menginap di dekat stasiun besar akan mengurangi waktu berpindah.",
+      "Hari 4 pindah ke Kyoto dengan Shinkansen. Perjalanan Tokyo ke Kyoto memakan waktu sekitar dua sampai tiga jam tergantung jenis kereta. Hari 4 dan 5 cocok untuk kuil dan kawasan lama; kelompokkan tempat berdasarkan area agar tidak bolak-balik. Kuil populer ramai di pagi dan sore, jadi atur waktu kunjungan bila ingin lebih tenang.",
+      "Hari 6 ke Osaka, yang dari Kyoto hanya sekitar belasan menit dengan Shinkansen atau lebih lama dengan kereta biasa. Osaka cocok untuk kuliner dan suasana malam. Hari 7 digunakan untuk kembali ke bandara. Dari Osaka biasanya lewat Kansai, tetapi bila tiketmu dari Tokyo, perhitungkan waktu kembali dan jangan menjadwalkan acara padat di hari kepulangan.",
+      "Untuk anggaran, hitung per komponen: tiket pesawat, penginapan per malam, kereta antarkota, transportasi lokal harian, makan, tiket masuk, belanja, eSIM, dan cadangan. Pesan penginapan dan tiket kereta antarkota dengan memeriksa harga terbaru di situs resmi atau agen pilihanmu, karena harga berubah menurut musim dan hari. Kami sengaja tidak menulis angka tetap di sini.",
+      "Susun juga dokumen dan koneksi: pastikan status masuk Jepang beres, isi Visit Japan Web, pilih eSIM sesuai rute, dan simpan peta offline. Di Djiwa Travel, kamu bisa menyusun agenda per hari dan mencari ide tempat di fitur Agenda, sehingga rencana dan tiketmu ada di satu tempat.",
+    ],
+    steps: [
+      {
+        title: "Bagi hari berdasarkan kota",
+        body: "Tokyo tiga hari, Kyoto dua hari, Osaka satu hari, dan satu hari untuk datang dan pulang. Ubah porsinya sesuai minat.",
+      },
+      {
+        title: "Kelompokkan tempat per area",
+        body: "Dalam satu hari, kunjungi tempat yang berdekatan agar tidak banyak waktu habis di kereta.",
+      },
+      {
+        title: "Hitung anggaran per komponen",
+        body: "Daftar pesawat, penginapan, kereta, makan, tiket masuk, belanja, eSIM, dan cadangan, lalu isi dengan harga terbaru.",
+      },
+      {
+        title: "Simpan rencana di satu tempat",
+        body: "Susun agenda, tiket, dan alamat penginapan di Agenda agar mudah dibuka saat di perjalanan.",
+      },
+    ],
+    relatedDestinations: [
+      { code: "jp", label: "Lihat paket eSIM Jepang" },
+      { code: "asia", label: "Bandingkan paket Asia" },
+    ],
+    relatedLinks: [
+      { to: "/my-trips/new", label: "Susun agenda perjalanan" },
+      { guide: "checklist-persiapan-ke-jepang", label: "Checklist persiapan ke Jepang" },
+    ],
+  },
+  {
+    slug: "oleh-oleh-jepang-boleh-dibawa-ke-indonesia",
+    title: "Oleh-oleh dari Jepang: Aturan Bawa ke Indonesia dan Barang yang Dibatasi",
+    description:
+      "Aturan membawa oleh-oleh dari Jepang ke Indonesia: batas USD 500 per orang, barang yang dibatasi, tips bebas pajak Jepang, dan alternatif titip beli.",
+    eyebrow: "PANDUAN JEPANG",
+    heading: "Oleh-oleh dari Jepang: apa yang boleh dibawa pulang dan apa yang dibatasi",
+    publishedAt: "2026-11-09",
+    updatedAt: "2026-11-09",
+    readTime: "4 menit baca",
+    sources: [
+      {
+        label: "Bea Cukai: ketentuan barang penumpang",
+        url: "https://www.beacukai.go.id/barang-penumpang",
+      },
+      {
+        label: "Bea Cukai: FAQ barang penumpang",
+        url: "https://www.beacukai.go.id/faq-barang-penumpang",
+      },
+      {
+        label: "JNTO: sistem belanja bebas pajak baru mulai 1 November 2026",
+        url: "https://www.japan.travel/en/us/blog/everything-you-need-to-know-japans-new-tax-free-shopping-system/",
+      },
+    ],
+    paragraphs: [
+      "Oleh-oleh adalah bagian yang sulit dilewatkan dari liburan ke Jepang, tetapi ada dua sisi aturan yang perlu diketahui: pajak dan syarat ekspor dari Jepang, serta ketentuan bea cukai saat tiba di Indonesia. Memahami keduanya mencegah kejutan di bandara.",
+      "Dari sisi Indonesia, Bea Cukai memberikan pembebasan bea masuk untuk barang pribadi penumpang sampai nilai pabean USD 500 per orang untuk setiap kedatangan. Jika nilainya melebihi batas itu, kelebihannya dikenai bea masuk dan pajak sesuai ketentuan; FAQ Bea Cukai menyebut tarif bea masuk 10% dan PPN 12% untuk kelebihan barang pribadi penumpang. Barang yang jelas bukan untuk pemakaian pribadi, misalnya dalam jumlah besar untuk dijual, diperlakukan berbeda dan dikenai tarif yang lebih tinggi. Selalu cek ketentuan terbaru di situs Bea Cukai sebelum pulang.",
+      "Ada juga barang yang dilarang atau dibatasi. Narkotika, senjata, dan barang berbahaya dilarang. Minuman beralkohol, rokok, dan produk tembakau dibatasi jumlah dan nilainya. Barang lain dapat dibatasi oleh kementerian atau lembaga terkait untuk melindungi kesehatan, lingkungan, atau industri dalam negeri. Untuk makanan, terutama produk hewan dan tumbuhan, persyaratan karantina dapat berlaku, jadi pilih oleh-oleh kemasan olahan yang lazim dan cek aturan karantina bila ragu.",
+      "Dari sisi Jepang, belanja bebas pajak berubah sejak 1 November 2026. Kini kamu membayar harga penuh termasuk pajak konsumsi dan menerima pengembalian setelah barang diperiksa bea cukai saat keluar dari Jepang. Syaratnya: belanja minimal 5.000 yen (sebelum pajak) per toko per hari, barang dibawa sendiri keluar Jepang, dan prosedur dilakukan di terminal bandara sebelum check-in bagasi dalam waktu 90 hari sejak pembelian. Barang konsumsi seperti makanan tidak boleh sudah dimakan atau dipakai di Jepang bila ingin direfund.",
+      "Praktisnya, simpan struk dan jangan membuka kemasan sebelum prosedur selesai. Pisahkan oleh-oleh yang akan didaftarkan agar mudah dikeluarkan dari koper untuk pemeriksaan, dan sisakan waktu ekstra di bandara.",
+      "Jika koper sudah penuh atau kamu tidak sempat berbelanja, titip beli bisa menjadi pilihan untuk barang tertentu seperti pakaian atau tas dari toko resmi. Ingat bahwa tidak semua barang dapat dititip, dan makanan segar, obat, serta barang yang dibatasi bea cukai umumnya tidak diterima.",
+    ],
+    steps: [
+      {
+        title: "Hitung nilai oleh-oleh",
+        body: "Jumlahkan nilai barang pribadi yang kamu bawa dan bandingkan dengan batas USD 500 per orang untuk setiap kedatangan.",
+      },
+      {
+        title: "Cek barang yang dibatasi",
+        body: "Hindari barang terlarang, dan cek batas serta aturan untuk alkohol, rokok, dan makanan sebelum membeli.",
+      },
+      {
+        title: "Selesaikan prosedur bebas pajak",
+        body: "Simpan struk, bawa barang, dan proses di terminal bandara sebelum check-in bagasi dengan waktu yang cukup.",
+      },
+      {
+        title: "Pertimbangkan titip beli",
+        body: "Untuk barang yang tidak muat atau tidak sempat dibeli, gunakan layanan titip beli dengan rincian biaya yang jelas.",
+      },
+    ],
+    relatedDestinations: [{ code: "jp", label: "Lihat paket eSIM Jepang" }],
+    relatedLinks: [
+      { to: "/titip-belanja", label: "Buka Titip Belanja" },
+      { guide: "checklist-persiapan-ke-jepang", label: "Checklist persiapan ke Jepang" },
     ],
   },
 ];

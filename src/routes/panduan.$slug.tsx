@@ -150,6 +150,33 @@ function TravelGuideDetail() {
             ))}
           </div>
         </section>
+        {guide.relatedLinks && guide.relatedLinks.length > 0 && (
+          <section className="mt-4" aria-labelledby="related-links-title">
+            <SectionTitle>Baca dan coba juga</SectionTitle>
+            <div className="flex flex-wrap gap-2">
+              {guide.relatedLinks.map((link) =>
+                "guide" in link ? (
+                  <Link
+                    key={link.guide}
+                    to="/panduan/$slug"
+                    params={{ slug: link.guide }}
+                    className="rounded-xl bg-secondary px-3.5 py-2.5 text-sm font-semibold"
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className="rounded-xl bg-secondary px-3.5 py-2.5 text-sm font-semibold"
+                  >
+                    {link.label}
+                  </Link>
+                ),
+              )}
+            </div>
+          </section>
+        )}
         <section className="mt-4 rounded-2xl bg-primary p-4 text-primary-foreground">
           <h2 className="text-lg font-bold">Siap tetap terhubung?</h2>
           <p className="mt-2 text-sm leading-6 text-primary-foreground/85">

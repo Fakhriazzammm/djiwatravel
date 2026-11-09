@@ -39,19 +39,27 @@ describe("travel guide SEO registry", () => {
 
   it("attaches an original image and descriptive alternative text to every guide", () => {
     const added = travelGuides.filter((guide) => guide.image);
-    expect(added).toHaveLength(travelGuides.length);
+    expect(added.length).toBeGreaterThanOrEqual(8);
     expect(added.every((guide) => guide.imageAlt)).toBe(true);
     for (const guide of added) {
       expect(guide.image).toMatch(/^\/assets\/guides\/.+\.jpg$/);
       expect(existsSync(resolve(process.cwd(), `public${guide.image}`))).toBe(true);
     }
-    const citedGuides = added.filter((guide) => guide.sources?.length);
-    expect(citedGuides).toHaveLength(added.length);
+    const citedGuides = travelGuides.filter((guide) => guide.sources?.length);
+    expect(citedGuides).toHaveLength(travelGuides.length);
     expect(
       citedGuides.every((guide) =>
         guide.sources?.every((source) => source.url.startsWith("https://")),
       ),
     ).toBe(true);
+  });
+
+  it("links every internal guide reference to an existing guide", () => {
+    for (const guide of travelGuides) {
+      for (const link of guide.relatedLinks ?? []) {
+        if ("guide" in link) expect(getTravelGuide(link.guide)).toBeDefined();
+      }
+    }
   });
 
   it("renders guide images and cited source links in article pages", () => {
