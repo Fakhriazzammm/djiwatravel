@@ -1,4 +1,4 @@
-import { ChevronDown, Gauge, LogOut, Menu, X } from "lucide-react";
+import { ChevronDown, Gauge, LogOut, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { adminNavigationGroups, isAdminNavigationActive } from "@/components/admin-navigation";
@@ -105,6 +105,25 @@ export function AdminShell({
   subtitle?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // Desktop only: hide the sidebar to give the page the full width. Remembered per browser.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem("djiwa.admin.sidebar") === "collapsed");
+    } catch {
+      // Storage can be blocked; the sidebar just stays open.
+    }
+  }, []);
+  const toggleSidebar = useCallback(() => {
+    setCollapsed((value) => {
+      try {
+        window.localStorage.setItem("djiwa.admin.sidebar", value ? "open" : "collapsed");
+      } catch {
+        // Best effort only.
+      }
+      return !value;
+    });
+  }, []);
   const [signingOut, setSigningOut] = useState(false);
   const location = useLocation();
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -163,7 +182,7 @@ export function AdminShell({
         <aside
           id="admin-mobile-drawer"
           aria-label="Navigasi admin"
-          className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-border bg-surface overflow-y-auto p-3 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+          className={`fixed inset-y-0 left-0 z-50 w-[272px] border-r border-border bg-surface overflow-y-auto p-3 pb-[max(16px,env(safe-area-inset-bottom))] transition-transform duration-200 motion-reduce:transition-none ${collapsed ? "lg:-translate-x-full" : "lg:translate-x-0"} ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex items-center justify-between px-2 py-2">
             <div>
@@ -268,7 +287,9 @@ export function AdminShell({
           />
         )}
       </FixedLayer>
-      <main className="lg:pl-[272px]">
+      <main
+        className={`transition-[padding] duration-200 motion-reduce:transition-none ${collapsed ? "lg:pl-0" : "lg:pl-[272px]"}`}
+      >
         <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-3 py-2 backdrop-blur sm:px-5 lg:py-3">
           <div className="mx-auto flex max-w-[1360px] items-center gap-3">
             <button
@@ -281,6 +302,21 @@ export function AdminShell({
               onClick={() => setOpen(true)}
             >
               <Menu className="mx-auto size-5" />
+            </button>
+            <button
+              type="button"
+              className="hidden min-h-9 min-w-9 rounded-xl border border-border bg-surface p-2 text-muted-foreground hover:bg-secondary lg:inline-flex lg:items-center lg:justify-center"
+              aria-label={collapsed ? "Tampilkan sidebar" : "Sembunyikan sidebar"}
+              aria-expanded={!collapsed}
+              aria-controls="admin-mobile-drawer"
+              title={collapsed ? "Tampilkan sidebar" : "Sembunyikan sidebar"}
+              onClick={toggleSidebar}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="size-4" />
+              ) : (
+                <PanelLeftClose className="size-4" />
+              )}
             </button>
             <div className="min-w-0">
               <p className="hidden text-[11px] text-muted-foreground sm:block">
