@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, Camera, MapPin, Plus, Sparkles } from "lucide-react";
+import { ArrowUp, Camera, MapPin, Plus, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useReducedMotion } from "motion/react";
 import { FixedLayer } from "@/components/motion-primitives";
@@ -52,6 +52,8 @@ type Props = {
   children: ReactNode;
   /** The same cards as chat messages, revealed one by one when the chat opens. */
   intro?: IntroPart[];
+  /** Opens the share sheet (link, social, Instagram story). */
+  onShare?: () => void;
   /** Everything on the trip, for the one-tap "Ringkas semua" balloon. */
   summary?: TripSummary;
   /** Activities that have no point on the map yet (the "Pasang pin" button shows while > 0). */
@@ -66,6 +68,9 @@ type Props = {
   /** Tells Ringkas whether the chat is live, so it can keep its own "+" button when it is not. */
   onAvailability: (on: boolean) => void;
 };
+
+/** "bagikan itinerary", "share perjalanan", ...: opens the share sheet instead of asking the model. */
+const SHARE_WORDS = /\b(bagikan|share|kirim)\b.*\b(itinerar\w*|perjalanan|rencana|trip)\b/i;
 
 const QUICK: { label: string; intent: AssistantIntent; text: string }[] = [
   {
@@ -263,10 +268,16 @@ export function TripAssistant(props: Props) {
     return [...new Set([...first, ...rest])] as typeof QUICK;
   }, [nudges]);
 
+  const onShare = props.onShare;
   const send = useCallback(
     async (text: string, intent?: AssistantIntent) => {
       const value = text.trim().slice(0, ASSISTANT_MAX_TEXT);
       if (!value || sending) return;
+      if (onShare && SHARE_WORDS.test(value)) {
+        setDraft("");
+        onShare();
+        return;
+      }
       setNotice(null);
       setPicked([]);
       setIntroShown(introLength);
@@ -338,7 +349,7 @@ export function TripAssistant(props: Props) {
         setStatusText(null);
       }
     },
-    [sending, tripId, introLength],
+    [sending, tripId, introLength, onShare],
   );
 
   const [summarizing, setSummarizing] = useState(false);
@@ -550,6 +561,7 @@ export function TripAssistant(props: Props) {
                     summary={props.summary}
                     tripId={tripId}
                     onAction={runSummaryAction}
+                    {...(props.onShare ? { onShare: props.onShare } : {})}
                   />
                 )}
                 {m.blocks.length > 0 && (
@@ -564,6 +576,7 @@ export function TripAssistant(props: Props) {
                     onApply={() => void apply(m.proposal!.id)}
                     onUndo={() => void undo(m.proposal!.id)}
                     onDismiss={() => void dismiss(m.proposal!.id)}
+                    {...(props.onShare ? { onShare: props.onShare } : {})}
                   />
                 )}
                 {chips && (
@@ -680,6 +693,16 @@ export function TripAssistant(props: Props) {
                 >
                   <Sparkles className="size-3.5" aria-hidden="true" />
                   Ringkas semua
+                </button>
+              )}
+              {props.onShare && (
+                <button
+                  type="button"
+                  onClick={props.onShare}
+                  className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50"
+                >
+                  <Share2 className="size-3.5 text-brand-red" aria-hidden="true" />
+                  Bagikan
                 </button>
               )}
               {quick.map((q) => (

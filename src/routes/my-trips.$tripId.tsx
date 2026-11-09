@@ -203,6 +203,7 @@ function TripDetail() {
           bookings: data.bookings as never,
         })}
         tripId={trip.id}
+        onShare={() => setShareOpen(true)}
         name={trip.name}
         destination={trip.destination_name}
         destinationCode={trip.destination_code}

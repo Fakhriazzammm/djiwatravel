@@ -66,6 +66,8 @@ type Row = { id: string } & Record<string, unknown>;
 
 type Props = {
   tripId: string;
+  /** Opens the same share sheet as the trip menu (link, social, Instagram story). */
+  onShare?: () => void;
   name: string;
   destination: string;
   /** ISO country code of the destination; frames the map before any activity has a point. */
@@ -885,6 +887,7 @@ export function TripOverview(props: Props) {
           nudgeInput={nudgeInput}
           onChanged={props.onChanged}
           onAdd={() => setAddOpen(true)}
+          {...(props.onShare ? { onShare: props.onShare } : {})}
           intro={intro}
           {...(props.summary ? { summary: props.summary } : {})}
           unpinned={props.itinerary.filter((item) => !itemPoint(item)).length}

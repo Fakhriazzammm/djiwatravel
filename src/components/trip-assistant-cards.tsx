@@ -1,4 +1,4 @@
-import { CalendarDays, CheckCircle2, ListChecks, Undo2, WalletCards } from "lucide-react";
+import { CalendarDays, CheckCircle2, ListChecks, Share2, Undo2, WalletCards } from "lucide-react";
 import { formatTripMoney } from "@/lib/trip-money";
 import type { AgendaChange, ProposalView } from "@/lib/trip-assistant";
 
@@ -107,6 +107,7 @@ export function ProposalCard({
   onUndo,
   onDismiss,
   embedded = false,
+  onShare,
 }: {
   proposal: ProposalView;
   currency: string;
@@ -116,6 +117,8 @@ export function ProposalCard({
   onDismiss: () => void;
   /** Inside the assistant's balloon: no outer frame, just a divider. */
   embedded?: boolean;
+  /** After an agenda is applied: share it right from the balloon. */
+  onShare?: () => void;
 }) {
   const { payload } = proposal;
   const Icon =
@@ -237,6 +240,16 @@ export function ProposalCard({
               <Undo2 className="size-3.5" aria-hidden="true" />
               Urungkan
             </button>
+            {onShare && payload.kind === "agenda" && (
+              <button
+                type="button"
+                onClick={onShare}
+                className="tap inline-flex min-h-9 items-center gap-1 rounded-xl bg-brand-red px-3 text-[13px] font-bold text-white"
+              >
+                <Share2 className="size-3.5" aria-hidden="true" />
+                Bagikan
+              </button>
+            )}
           </>
         )}
         {proposal.status === "undone" && (

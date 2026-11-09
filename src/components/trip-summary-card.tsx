@@ -7,6 +7,7 @@ import {
   ChevronDown,
   MapPin,
   TriangleAlert,
+  Share2,
   Ticket,
   Users,
   WalletCards,
@@ -140,10 +141,12 @@ export function TripSummaryCard({
   summary,
   tripId,
   onAction,
+  onShare,
 }: {
   summary: TripSummary;
   tripId: string;
   onAction: (action: SummaryAction) => void;
+  onShare?: () => void;
 }) {
   const [allDays, setAllDays] = useState(false);
   const money = (minor: number) => formatTripMoney(minor, summary.currency);
@@ -416,6 +419,16 @@ export function TripSummaryCard({
         className="flex gap-1.5 overflow-x-auto border-t border-border/60 px-3 py-2.5 [scrollbar-width:none]"
         aria-label="Buka halaman"
       >
+        {onShare && (
+          <button
+            type="button"
+            onClick={onShare}
+            className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-brand-red px-3 text-xs font-bold text-white"
+          >
+            <Share2 className="size-3.5" aria-hidden="true" />
+            Bagikan itinerary
+          </button>
+        )}
         {SECTION_LINKS.map((l) => (
           <Link
             key={l.section}

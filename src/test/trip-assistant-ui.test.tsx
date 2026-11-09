@@ -5,6 +5,7 @@ import {
   applyTripAssistantProposal,
   dismissTripAssistantProposal,
   loadTripAssistant,
+  recordTripSummary,
   pinTripPlaces,
   sendTripAssistantMessage,
   streamTripAssistantMessage,
@@ -32,6 +33,7 @@ vi.mock("@/lib/trip-assistant.fn", () => ({
   loadTripAssistant: vi.fn(),
   sendTripAssistantMessage: vi.fn(),
   pinTripPlaces: vi.fn(),
+  recordTripSummary: vi.fn(async () => ({ ok: true })),
   streamTripAssistantMessage: vi.fn(),
   resetTripAssistant: vi.fn(),
   applyTripAssistantProposal: vi.fn(),
@@ -588,6 +590,22 @@ describe("TripAssistant", () => {
     );
   });
 
+  describe("Bagikan itinerary", () => {
+    it("opens the share sheet from the chip, the summary card, and the words 'bagikan itinerary'", async () => {
+      vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+      const onShare = vi.fn();
+      setup({ onShare });
+      fireEvent.click(await screen.findByRole("button", { name: "Bagikan" }));
+      expect(onShare).toHaveBeenCalledTimes(1);
+      fireEvent.change(screen.getByRole("textbox", { name: /Pesan untuk/ }), {
+        target: { value: "bagikan itinerary ke temanku" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Kirim" }));
+      await waitFor(() => expect(onShare).toHaveBeenCalledTimes(2));
+      expect(sendTripAssistantMessage).not.toHaveBeenCalled(); // no AI call, no quota
+    });
+  });
+
   describe("Ringkas semua", () => {
     const summary: TripSummary = {
       name: "Jepang",
@@ -663,8 +681,9 @@ describe("TripAssistant", () => {
       expect(inside.getByText("Hotel Shinjuku")).toBeInTheDocument(); // Booking
       // ...and it lives inside Travo's balloon with its sentence.
       expect(card.parentElement!.textContent).toContain("Ini ringkasan lengkap");
-      // No AI call, no quota used.
+      // No AI call, no quota used; the exchange is remembered so a refresh brings it back.
       expect(sendTripAssistantMessage).not.toHaveBeenCalled();
+      expect(recordTripSummary).toHaveBeenCalledWith({ data: { tripId: "trip-1" } });
       expect(streamTripAssistantMessage).not.toHaveBeenCalled();
     });
 
