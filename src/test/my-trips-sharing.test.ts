@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { pool } from "@/db/client.server";
 import { getAuthenticatedUser } from "@/lib/customer-session.fn";
 import {
+  createTrip,
   createTripShareLink,
   duplicateTripRecord,
   getTripSectionData,
@@ -27,6 +28,27 @@ describe("My Trips duplication", () => {
     connect.mockReset();
     authenticate.mockReset();
     authenticate.mockResolvedValue({ id: ownerId, email: "traveler@example.test" });
+  });
+
+  it("creates a new trip completely empty: no template budget categories or checklist items", async () => {
+    const clientQuery = vi.fn(async (sql: string) =>
+      sql.includes("insert into travel_trips") ? { rows: [{ id: copyId }] } : { rows: [] },
+    );
+    connect.mockResolvedValue({ query: clientQuery, release: vi.fn() } as never);
+    await createTrip({
+      name: "Tokyo",
+      destinationCode: "JP",
+      destinationName: "Jepang",
+      departureDate: "2026-11-01",
+      returnDate: "2026-11-05",
+      travelersCount: 1,
+      primaryCurrency: "IDR",
+      totalBudgetMinor: 15_000_000,
+    });
+    const statements = clientQuery.mock.calls.map(([sql]) => String(sql));
+    expect(statements.some((sql) => sql.includes("insert into travel_trips"))).toBe(true);
+    expect(statements.some((sql) => sql.includes("travel_budget_categories"))).toBe(false);
+    expect(statements.some((sql) => sql.includes("travel_checklist_items"))).toBe(false);
   });
 
   it("copies the plan into a new owned trip without copying expenses", async () => {

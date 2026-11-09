@@ -11,25 +11,10 @@ import {
 } from "@/lib/guest-trips.server";
 import { canCreateGuestTrip, guestLimitMessage } from "@/lib/guest-trips";
 import { syncItineraryItem } from "@/lib/google-calendar.server";
-import { autoSplit } from "@/lib/budget-split";
-import { stepFor } from "@/lib/trip-budget-format";
 import { buildMyTripsHome } from "./my-trips-home";
 import { tripCitiesSchema, type TripCity } from "./trip-cities";
 
 const currencies = ["IDR", "JPY", "USD", "SGD", "KRW"] as const;
-const defaultCategories = [
-  "Penerbangan",
-  "Akomodasi",
-  "Transportasi",
-  "Makan & minum",
-  "Aktivitas",
-  "Belanja",
-  "eSIM & internet",
-  "Visa",
-  "Asuransi",
-  "Darurat",
-  "Lainnya",
-] as const;
 
 const tripSchema = z
   .object({
@@ -326,36 +311,7 @@ export async function createTrip(input: unknown) {
         data.timezone ?? null,
       ],
     );
-    // A budget entered up front is split over the categories right away, so Anggaran never opens empty.
-    const keys = defaultCategories.map((name) => name.toLowerCase().replaceAll(" ", "-"));
-    const split = autoSplit(
-      keys.map((key) => ({ id: key, key, limit: 0 })),
-      data.totalBudgetMinor,
-      stepFor(data.primaryCurrency) * 100,
-    );
-    for (const [index, name] of defaultCategories.entries()) {
-      const key = keys[index] ?? "";
-      await client.query(
-        `insert into travel_budget_categories (trip_id,name,category_key,allocated_minor,currency,sort_order) values ($1,$2,$3,$4,$5,$6)`,
-        [trip.rows[0].id, name, key, split[key] ?? 0, data.primaryCurrency, index],
-      );
-    }
-    for (const [index, title] of [
-      "Paspor",
-      "Visa",
-      "Tiket penerbangan",
-      "Pemesanan penginapan",
-      "Asuransi perjalanan",
-      "Aktifkan eSIM",
-      "Tukar mata uang",
-      "Siapkan barang bawaan",
-      "Persiapan bandara",
-    ].entries()) {
-      await client.query(
-        `insert into travel_checklist_items (trip_id,title,sort_order,is_default) values ($1,$2,$3,true)`,
-        [trip.rows[0].id, title, index],
-      );
-    }
+    // A new trip starts empty on purpose: no template budget categories or checklist items.
     await client.query("commit");
     return { ...trip.rows[0], status: statusFor(data.departureDate, data.returnDate) };
   } catch (error) {
