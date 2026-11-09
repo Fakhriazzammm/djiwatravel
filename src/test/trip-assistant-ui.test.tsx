@@ -421,4 +421,56 @@ describe("TripAssistant", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Terapkan" }));
     await waitFor(() => expect(onFocusDays).toHaveBeenCalledWith(["2026-11-09"]));
   });
+
+  it("shows the mascot as the assistant's face and opens its profile on tap", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({
+      status: available,
+      messages: [assistantMsg({ content: "Halo dari maskot." })],
+    });
+    setup();
+    expect(await screen.findByText("Halo dari maskot.")).toBeInTheDocument();
+    // Every assistant bubble carries the generated mascot photo, not an icon.
+    const faces = document.querySelectorAll('img[src="/assets/home-hero/mascot-ai-v1.png"]');
+    expect(faces.length).toBeGreaterThan(1);
+    expect(screen.getByText("Siap membantu · ketuk untuk kenalan")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Profil Asisten Djiwa" }));
+    expect(await screen.findByText(/Menyusun itinerary per hari/)).toBeInTheDocument();
+    expect(screen.getByText(/Sisa 12 dari 30 pesan hari ini/)).toBeInTheDocument();
+    // Touching the big mascot answers with a line.
+    fireEvent.click(screen.getByRole("button", { name: "Sentuh maskot" }));
+    expect(
+      await screen.findByText("Aku bisa bikin itinerary dalam hitungan detik."),
+    ).toBeInTheDocument();
+  });
+
+  it("thinks while waiting and talks while the reply streams", async () => {
+    vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    vi.mocked(streamTripAssistantMessage).mockImplementation((async () =>
+      (async function* () {
+        await gate;
+        yield { type: "delta" as const, text: "Oke, aku susun." };
+        await new Promise((r) => setTimeout(r, 600));
+        yield {
+          type: "done" as const,
+          result: {
+            status: "ok" as const,
+            remaining: 9,
+            messages: [assistantMsg({ content: "Selesai." })],
+          },
+        };
+      })()) as never);
+    setup();
+    const input = await screen.findByLabelText("Pesan untuk asisten");
+    fireEvent.change(input, { target: { value: "halo" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(await screen.findByText("Sedang berpikir…")).toBeInTheDocument();
+    expect(
+      document.querySelector('img[src="/assets/home-hero/mascot-ai-think-v1.png"]'),
+    ).not.toBeNull();
+    release();
+    expect(await screen.findByText("Sedang menjawab…")).toBeInTheDocument();
+    expect(await screen.findByText("Selesai.")).toBeInTheDocument();
+  });
 });

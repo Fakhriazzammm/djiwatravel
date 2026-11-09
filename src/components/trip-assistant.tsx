@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, Camera, Plus, Sparkles } from "lucide-react";
+import { ArrowUp, Camera, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useReducedMotion } from "motion/react";
 import { FixedLayer } from "@/components/motion-primitives";
-import { ConfirmDialog, iosHeading } from "@/components/trip-ios";
+import { ConfirmDialog } from "@/components/trip-ios";
+import {
+  AssistantMascot,
+  AssistantProfileSheet,
+  type MascotMood,
+} from "@/components/assistant-mascot";
 import { ProposalCard } from "@/components/trip-assistant-cards";
 import { ReceiptScanner } from "@/components/receipt-scanner";
 import { getReceiptScanStatus } from "@/lib/receipt-scan.fn";
@@ -69,7 +75,15 @@ const QUICK: { label: string; intent: AssistantIntent; text: string }[] = [
   },
 ];
 
-function Bubble({ role, children }: { role: "user" | "assistant"; children: ReactNode }) {
+function Bubble({
+  role,
+  children,
+  mood = "idle",
+}: {
+  role: "user" | "assistant";
+  children: ReactNode;
+  mood?: MascotMood;
+}) {
   if (role === "user")
     return (
       <div className="flex justify-end">
@@ -80,14 +94,55 @@ function Bubble({ role, children }: { role: "user" | "assistant"; children: Reac
     );
   return (
     <div className="flex items-end gap-1.5">
-      <span className="mb-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-brand-red text-white">
-        <Sparkles className="size-3" aria-hidden="true" />
+      <span className="mb-0.5">
+        <AssistantMascot size={28} mood={mood} />
       </span>
       <p className="max-w-[84%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-surface px-3 py-2 text-[13px] leading-[1.4] ring-1 ring-border/50">
         {children}
       </p>
     </div>
   );
+}
+
+/** Dots shown while the assistant is thinking or typing; the mascot thinks along. */
+function TypingBubble({ label }: { label: string }) {
+  return (
+    <div className="flex items-end gap-1.5" role="status" aria-label={label}>
+      <span className="mb-0.5">
+        <AssistantMascot size={28} mood="thinking" />
+      </span>
+      <span className="flex gap-1 rounded-2xl rounded-bl-md bg-surface px-3 py-3 ring-1 ring-border/50">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
+            style={{ animationDelay: `${i * 150}ms` }}
+          />
+        ))}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Types the streamed reply out smoothly: the model delivers text in bursts, so the screen catches
+ * up a few characters per frame instead of jumping. Reduced motion shows it as it arrives.
+ */
+function useSmoothText(target: string, active: boolean) {
+  const reduce = Boolean(useReducedMotion());
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    if (!active || reduce) return;
+    const timer = window.setInterval(() => {
+      setShown((n) => {
+        if (target.length === 0) return 0;
+        if (n >= target.length) return n;
+        return Math.min(target.length, n + Math.max(1, Math.ceil((target.length - n) / 8)));
+      });
+    }, 24);
+    return () => window.clearInterval(timer);
+  }, [target, active, reduce]);
+  return reduce || !active ? target : target.slice(0, Math.min(shown, target.length));
 }
 
 /**
@@ -108,9 +163,12 @@ export function TripAssistant(props: Props) {
   const [resetOpen, setResetOpen] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [streamText, setStreamText] = useState("");
+  const typed = useSmoothText(streamText, streamText.length > 0);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptScanStatus | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [cheer, setCheer] = useState(0);
   // How many intro messages are on screen. They arrive one by one, like the assistant talking.
   const introLength = props.intro?.length ?? 0;
   const [introShown, setIntroShown] = useState(0);
@@ -295,6 +353,7 @@ export function TripAssistant(props: Props) {
     try {
       await applyTripAssistantProposal({ data: { proposalId } });
       setProposalStatus(proposalId, "applied");
+      setCheer((n) => n + 1);
       const applied = messages.find((m) => m.proposal?.id === proposalId)?.proposal?.payload;
       if (applied?.kind === "agenda")
         props.onFocusDays?.([...new Set(applied.items.map((i) => i.date).filter(Boolean))].sort());
@@ -338,15 +397,42 @@ export function TripAssistant(props: Props) {
     ? `${nudges.map((n) => n.text).join(" ")} Mau mulai dari mana?`
     : "Tanya apa saja, atau minta saya menyusun agenda, anggaran, dan checklist.";
 
+  const mood: MascotMood = sending
+    ? streamText
+      ? "talking"
+      : "thinking"
+    : !introDone
+      ? "talking"
+      : "idle";
+  const statusLine = sending
+    ? streamText
+      ? "Sedang menjawab…"
+      : "Sedang berpikir…"
+    : !introDone
+      ? "Sedang mengetik…"
+      : "Siap membantu · ketuk untuk kenalan";
+
   return (
     <>
-      <div className="mt-3 flex items-end justify-between">
-        <h2 className={`${iosHeading} px-1`}>Asisten Djiwa</h2>
+      <div className="mt-3 flex items-center gap-2.5 px-1 pb-2" data-testid="assistant-profile-row">
+        <AssistantMascot
+          size={44}
+          mood={mood}
+          cheer={cheer}
+          label="Profil Asisten Djiwa"
+          onPress={() => setProfileOpen(true)}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-bold leading-tight">Asisten Djiwa</p>
+          <p className="truncate text-[11px] text-muted-foreground" aria-live="polite">
+            {statusLine}
+          </p>
+        </div>
         {messages.length > 0 && (
           <button
             type="button"
             onClick={() => setResetOpen(true)}
-            className="tap px-1 pb-1.5 text-xs font-semibold text-muted-foreground"
+            className="tap px-1 text-xs font-semibold text-muted-foreground"
           >
             Obrolan baru
           </button>
@@ -360,26 +446,7 @@ export function TripAssistant(props: Props) {
             <div className="ml-8 [&>*:first-child]:mt-0">{part.node}</div>
           </div>
         ))}
-        {!introDone && (
-          <div
-            className="flex items-end gap-1.5"
-            role="status"
-            aria-label="Asisten sedang mengetik"
-          >
-            <span className="mb-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-brand-red text-white">
-              <Sparkles className="size-3" aria-hidden="true" />
-            </span>
-            <span className="flex gap-1 rounded-2xl rounded-bl-md bg-surface px-3 py-3 ring-1 ring-border/50">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
-                  style={{ animationDelay: `${i * 150}ms` }}
-                />
-              ))}
-            </span>
-          </div>
-        )}
+        {!introDone && <TypingBubble label="Asisten sedang mengetik" />}
         {introDone && <Bubble role="assistant">{outro}</Bubble>}
       </div>
 
@@ -399,38 +466,35 @@ export function TripAssistant(props: Props) {
             )}
           </div>
         ))}
-        {sending && (
-          <div
-            className="flex items-end gap-1.5"
-            role="status"
-            aria-label="Asisten sedang menjawab"
-          >
-            <span className="mb-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-brand-red text-white">
-              <Sparkles className="size-3" aria-hidden="true" />
-            </span>
-            {streamText ? (
+        {sending &&
+          (streamText ? (
+            <div
+              className="flex items-end gap-1.5"
+              role="status"
+              aria-label="Asisten sedang menjawab"
+            >
+              <span className="mb-0.5">
+                <AssistantMascot size={28} mood="talking" />
+              </span>
               <p
                 className="max-w-[84%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-surface px-3 py-2 text-[13px] leading-[1.4] ring-1 ring-border/50"
                 data-testid="assistant-streaming"
               >
-                {streamText}
+                {typed}
+                {typed.length < streamText.length && (
+                  <span
+                    className="ml-0.5 inline-block h-3 w-0.5 translate-y-0.5 animate-pulse bg-brand-red"
+                    aria-hidden="true"
+                  />
+                )}
                 {statusText && (
                   <span className="mt-1 block text-[11px] text-muted-foreground">{statusText}</span>
                 )}
               </p>
-            ) : (
-              <span className="flex gap-1 rounded-2xl rounded-bl-md bg-surface px-3 py-3 ring-1 ring-border/50">
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    className="size-1.5 animate-pulse rounded-full bg-muted-foreground/60"
-                    style={{ animationDelay: `${i * 150}ms` }}
-                  />
-                ))}
-              </span>
-            )}
-          </div>
-        )}
+            </div>
+          ) : (
+            <TypingBubble label="Asisten sedang menjawab" />
+          ))}
         {notice && (
           <p
             role="alert"
@@ -585,6 +649,20 @@ export function TripAssistant(props: Props) {
           }}
         />
       )}
+
+      <AssistantProfileSheet
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        mood={mood}
+        remaining={remaining}
+        dailyLimit={status?.available ? status.dailyLimit : undefined}
+        guest={guest}
+        hasConversation={messages.length > 0}
+        onReset={() => {
+          setProfileOpen(false);
+          setResetOpen(true);
+        }}
+      />
 
       <ConfirmDialog
         open={resetOpen}
