@@ -12,6 +12,10 @@ function downloadFile(file: File) {
   setTimeout(() => URL.revokeObjectURL(href), 4000);
 }
 
+function downloadFiles(files: File[]) {
+  files.forEach((file, index) => setTimeout(() => downloadFile(file), index * 350));
+}
+
 /**
  * One share card for every share sheet: Instagram Story (a generated image through the system
  * share sheet, or a download), WhatsApp, Telegram, X, Facebook, save image, and copy link.
@@ -24,7 +28,7 @@ export function SocialShare({
 }: {
   url: string;
   text: string;
-  makeImage: () => Promise<File>;
+  makeImage: () => Promise<File | File[]>;
   label?: string;
 }) {
   const [busy, setBusy] = useState(false);
@@ -34,18 +38,26 @@ export function SocialShare({
     if (busy) return;
     setBusy(true);
     try {
-      const file = await makeImage();
-      if (!save && navigator.canShare?.({ files: [file] })) {
+      const result = await makeImage();
+      const files = Array.isArray(result) ? result : [result];
+      if (!files.length) throw new Error("No share images were created");
+      if (!save && typeof navigator.share === "function" && navigator.canShare?.({ files })) {
         try {
           // The system sheet lists Instagram Stories, WhatsApp Status, and other installed apps.
-          await navigator.share({ files: [file], text, url });
+          await navigator.share({ files, text, url });
           return;
         } catch (cause) {
           if ((cause as Error).name === "AbortError") return;
         }
       }
-      downloadFile(file);
-      toast.success(save ? "Gambar disimpan" : "Gambar disimpan. Unggah ke Instagram Story.");
+      downloadFiles(files);
+      toast.success(
+        files.length > 1
+          ? `${files.length} slide Story disimpan.`
+          : save
+            ? "Gambar disimpan"
+            : "Gambar disimpan. Unggah ke Instagram Story.",
+      );
     } catch {
       toast.error("Gambar belum dapat dibuat. Coba lagi.");
     } finally {
@@ -72,11 +84,17 @@ export function SocialShare({
 
   return (
     <section className="rounded-2xl bg-surface p-3 ring-1 ring-border/60" aria-label={label}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[12px] font-semibold text-foreground">Kartu siap dibagikan</p>
+        <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+          Story · 9:16
+        </span>
+      </div>
       <button
         type="button"
         disabled={busy}
         onClick={() => shareImage(false)}
-        className="tap flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(45deg,#f9a03a,#e1306c_55%,#7a3fd0)] text-[14px] font-semibold text-white disabled:opacity-60"
+        className="tap flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-red text-[14px] font-semibold text-white transition-colors hover:bg-brand-red/90 disabled:opacity-60"
       >
         <SiInstagram className="size-4" />
         {busy ? "Membuat gambar…" : "Bagikan ke Instagram Story"}

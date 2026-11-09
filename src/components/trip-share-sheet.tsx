@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { btnRed, btnSoft } from "@/components/shell";
 import { SocialShare } from "@/components/social-share";
 import { ConfirmDialog } from "@/components/trip-ios";
-import { tripStoryImage } from "@/lib/trip-share-image";
+import { tripStoryImages } from "@/lib/trip-share-image";
 import {
   Sheet,
   SheetContent,
@@ -144,7 +144,7 @@ export function ShareTripSheet({
               url={url}
               text={`Itinerary ${trip.name} ke ${trip.destination_name}`}
               label="Bagikan itinerary"
-              makeImage={() => tripStoryImage(share.token, url)}
+              makeImage={() => tripStoryImages(share.token, url)}
             />
             <p className="px-1 text-[11px] leading-5 text-muted-foreground">
               Siapa pun yang memiliki tautan dapat membuka itinerary ini. Cabut tautan jika sudah

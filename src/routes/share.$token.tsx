@@ -3,11 +3,8 @@ import { useState } from "react";
 import {
   BedDouble,
   CalendarDays,
-  Check,
   Coffee,
   Compass,
-  Copy,
-  Download,
   MapPin,
   Plane,
   ShieldCheck,
@@ -17,7 +14,7 @@ import {
 import { SocialShare } from "@/components/social-share";
 import logoUrl from "@/assets/logo.png";
 import { isAllowedImageUrl } from "@/lib/place-image";
-import { renderShareCard } from "@/lib/share-card";
+import { prepareShareCardActivities, renderShareCard, splitActivityNotes } from "@/lib/share-card";
 import { Page, Wordmark } from "@/components/shell";
 import { getSharedTrip } from "@/lib/my-trips.fn";
 
@@ -83,15 +80,19 @@ const formatDate = (value?: string | Date | null, options?: Intl.DateTimeFormatO
 function groupByDay(items: SharedItem[]) {
   const groups = new Map<string, SharedItem[]>();
   [...items]
-    .filter((item) => dateKey(item.activity_date))
-    .sort((a, b) =>
-      `${dateKey(a.activity_date)}T${String(a.start_time ?? "99:99")}`.localeCompare(
-        `${dateKey(b.activity_date)}T${String(b.start_time ?? "99:99")}`,
-      ),
-    )
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const aDate = dateKey(a.item.activity_date) || "9999-99-99";
+      const bDate = dateKey(b.item.activity_date) || "9999-99-99";
+      const byDate = aDate.localeCompare(bDate);
+      if (byDate) return byDate;
+      const aTime = String(a.item.start_time ?? "").slice(0, 5) || "99:99";
+      const bTime = String(b.item.start_time ?? "").slice(0, 5) || "99:99";
+      return aTime.localeCompare(bTime) || a.index - b.index;
+    })
     .forEach((item) => {
-      const date = dateKey(item.activity_date);
-      groups.set(date, [...(groups.get(date) ?? []), item]);
+      const date = dateKey(item.item.activity_date);
+      groups.set(date, [...(groups.get(date) ?? []), item.item]);
     });
   return [...groups.entries()].map(([date, dayItems]) => ({ date, items: dayItems }));
 }
@@ -192,7 +193,7 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
         owner={owner}
         handle={handle}
         token={token}
-        days={days.length}
+        days={days.filter((day) => day.date).length}
         activities={activityCount}
         items={allItems}
       />
@@ -220,14 +221,21 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
                   </span>
                 </div>
                 <div className="mt-1.5 divide-y divide-border/60">
-                  {day.items.map((item) => {
+                  {day.items.map((item, itemIndex) => {
                     const img = imageOf(item);
                     const Icon = iconFor(item);
                     const time = String(item.start_time ?? "").slice(0, 5);
                     const end = String(item.end_time ?? "").slice(0, 5);
+                    const notes = splitActivityNotes(item.notes);
                     return (
-                      <article key={item.id} className="flex items-start gap-2.5 py-2">
-                        <div className="size-11 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                      <article key={item.id} className="flex items-start gap-2 py-2">
+                        <span
+                          aria-label={`Urutan ${itemIndex + 1}`}
+                          className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-[10px] font-semibold tabular-nums text-muted-foreground"
+                        >
+                          {String(itemIndex + 1).padStart(2, "0")}
+                        </span>
+                        <div className="size-10 shrink-0 overflow-hidden rounded-xl bg-secondary">
                           {img ? (
                             <img
                               src={img}
@@ -246,22 +254,30 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
                             {item.title || "Aktivitas"}
                           </h4>
                           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
-                            {time && (
-                              <span className="font-semibold tabular-nums text-brand-red">
-                                {time}
-                                {end ? `–${end}` : ""}
+                            <span className="font-semibold tabular-nums text-brand-red">
+                              {time || end
+                                ? `${time || "Mulai belum diatur"}${end ? `–${end}` : ""}`
+                                : "Waktu belum diatur"}
+                            </span>
+                            <span className="inline-flex min-w-0 items-center gap-0.5">
+                              <MapPin className="size-3 shrink-0" />
+                              <span className="truncate">
+                                Lokasi · {item.location || "Belum dicantumkan"}
                               </span>
-                            )}
-                            {item.location && (
-                              <span className="inline-flex min-w-0 items-center gap-0.5">
-                                <MapPin className="size-3 shrink-0" />
-                                <span className="truncate">{item.location}</span>
-                              </span>
-                            )}
+                            </span>
                           </p>
-                          {item.notes && (
-                            <p className="mt-1 line-clamp-3 whitespace-pre-line text-[12px] leading-[1.35] text-muted-foreground">
-                              {item.notes}
+                          <p className="mt-1 whitespace-pre-line text-[11px] leading-[1.4] text-muted-foreground">
+                            <span className="font-medium text-foreground/75">Keterangan · </span>
+                            {notes.details || "Belum ada keterangan tambahan"}
+                          </p>
+                          <p className="mt-0.5 text-[11px] leading-[1.4] text-muted-foreground">
+                            <span className="font-medium text-foreground/75">Jam buka · </span>
+                            {notes.openingHours || "Belum dicantumkan"}
+                            {notes.openingHoursSource && ` · ${notes.openingHoursSource}`}
+                          </p>
+                          {notes.openingHoursWarning && (
+                            <p className="mt-0.5 text-[10px] leading-[1.4] text-brand-red">
+                              {notes.openingHoursWarning}
                             </p>
                           )}
                         </div>
@@ -334,7 +350,19 @@ function ShareBar({
   const text = `Itinerary ${title} ke ${destination} (${dates})`;
 
   async function makeImage() {
-    const blob = await renderShareCard({
+    const highlights = prepareShareCardActivities(
+      items.map((item) => ({
+        activity_date: item.activity_date ?? null,
+        start_time: item.start_time ?? null,
+        end_time: item.end_time ?? null,
+        title: item.title ?? null,
+        location: item.location ?? null,
+        notes: item.notes ?? null,
+        image: isAllowedImageUrl(item.place_image_url) ? item.place_image_url : null,
+      })),
+      (date) => formatDate(date, { weekday: "long", day: "numeric", month: "short" }),
+    );
+    const blobs = await renderShareCard({
       title,
       destination,
       dates,
@@ -343,16 +371,13 @@ function ShareBar({
       days,
       activities,
       logoUrl,
-      highlights: items.slice(0, 6).map((item) => ({
-        time: String(item.start_time ?? "").slice(0, 5),
-        title: item.title || "Aktivitas",
-        place: item.location ?? "",
-        image: isAllowedImageUrl(item.place_image_url) ? item.place_image_url : null,
-      })),
+      highlights,
     });
-    return new File([blob], `itinerary-${title.replace(/\W+/g, "-").toLowerCase()}.png`, {
-      type: "image/png",
-    });
+    const slug = title.replace(/\W+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "perjalanan";
+    return blobs.map(
+      (blob, index) =>
+        new File([blob], `itinerary-${slug}-story-${index + 1}.png`, { type: "image/png" }),
+    );
   }
 
   return (
