@@ -71,6 +71,7 @@ export function TripTicket({
       <Link
         to="/my-trips/$tripId"
         params={{ tripId: trip.id }}
+        draggable={false}
         className="relative flex min-h-[84px] overflow-hidden rounded-2xl bg-surface shadow-[0_1px_2px_rgba(20,24,40,0.06)] ring-1 ring-border/50"
       >
         <span

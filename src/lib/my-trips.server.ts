@@ -236,7 +236,7 @@ export const postTripCitiesInput = (data: unknown) => tripCitiesSchema.parse(dat
 export const postTripCitiesHandler = ({ data }: { data: ReturnType<typeof postTripCitiesInput> }) =>
   setTripCities(data);
 
-export async function listTrips() {
+export async function listTrips(mode: "active" | "archived" = "active") {
   const user = await requireTripOwner();
   const result = await pool.query(
     `select t.*, coalesce(sum(e.converted_amount_minor), 0) as spent_minor,
@@ -245,7 +245,8 @@ export async function listTrips() {
       (select count(*) from travel_bookings b where b.trip_id=t.id
         and lower(coalesce(b.status,'')) not in ('cancelled','canceled','dibatalkan')) as booking_count
      from travel_trips t left join travel_expenses e on e.trip_id=t.id
-     where t.customer_auth_subject=$1 group by t.id order by t.departure_date asc`,
+     where t.customer_auth_subject=$1 and t.archived_at is ${mode === "archived" ? "not null" : "null"}
+     group by t.id order by t.departure_date asc`,
     [user.id],
   );
   return result.rows.map((row) => {
@@ -964,6 +965,18 @@ export async function deleteTrip(input: unknown) {
   return result.rows[0];
 }
 
+export async function setTripArchived(input: unknown, archived: boolean) {
+  const data = itemIdSchema.parse(input);
+  const user = await requireTripOwner();
+  const result = await pool.query(
+    `update travel_trips set archived_at = ${archived ? "now()" : "null"}, updated_at=now()
+     where id=$1 and customer_auth_subject=$2 returning id`,
+    [data.id, user.id],
+  );
+  if (!result.rows[0]) throw new Error("Perjalanan tidak ditemukan");
+  return { id: String(result.rows[0].id), archived };
+}
+
 export async function deleteTripItem(input: unknown) {
   const data = itemIdSchema.parse(input);
   const removed = (await deleteOwned("travel_expenses", data.id)) as {
@@ -1158,9 +1171,9 @@ export const getMyTripsHandler = async () => {
 export const getMyTrips = createServerFn({ method: "GET" }).handler(getMyTripsHandler);
 async function loadMyTripsHome() {
   try {
-    const trips = await listTrips();
+    const [trips, archived] = await Promise.all([listTrips(), listTrips("archived")]);
     const focusId = buildMyTripsHome(trips, [], []).focusTrip?.id;
-    if (!focusId) return buildMyTripsHome(trips, [], []);
+    if (!focusId) return { ...buildMyTripsHome(trips, [], []), archived };
 
     const [agenda, checklist] = await Promise.all([
       pool.query(
@@ -1180,10 +1193,13 @@ async function loadMyTripsHome() {
         [focusId],
       ),
     ]);
-    return buildMyTripsHome(trips, agenda.rows, checklist.rows);
+    return { ...buildMyTripsHome(trips, agenda.rows, checklist.rows), archived };
   } catch (error) {
     console.error("[my-trips] failed to load home", error);
-    return buildMyTripsHome([], [], []);
+    return {
+      ...buildMyTripsHome([], [], []),
+      archived: [] as Awaited<ReturnType<typeof listTrips>>,
+    };
   }
 }
 
@@ -1220,6 +1236,16 @@ export const deleteTripRecordHandler = ({
 export const deleteTripRecord = createServerFn({ method: "POST" })
   .validator(itemIdSchema)
   .handler(deleteTripRecordHandler);
+export const archiveTripRecordHandler = ({
+  data,
+}: {
+  data: ReturnType<typeof deleteTripRecordInput>;
+}) => setTripArchived(data, true);
+export const unarchiveTripRecordHandler = ({
+  data,
+}: {
+  data: ReturnType<typeof deleteTripRecordInput>;
+}) => setTripArchived(data, false);
 export const getTripInput = (data: z.input<typeof tripIdSchema>) => tripIdSchema.parse(data);
 export const getTripHandler = ({ data }: { data: ReturnType<typeof getTripInput> }) =>
   getTripDashboard(data.tripId);

@@ -1,6 +1,8 @@
 import { glassIconButtonClass } from "@/components/shell";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import {
+  Archive,
+  ArchiveRestore,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
@@ -8,10 +10,24 @@ import {
   ListChecks,
   MapPin,
   Plus,
+  Share2,
+  Trash2,
   WalletCards,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { SwipeableTicket, useSwipeHint, type SwipeAction } from "@/components/swipeable-ticket";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FixedLayer } from "@/components/motion-primitives";
 import { Page } from "@/components/shell";
@@ -19,7 +35,12 @@ import { claimGuestTrips } from "@/lib/guest-trips.fn";
 import { TripShareDialog, type ShareTripInfo } from "@/components/trip-share-sheet";
 import { TripTicket } from "@/components/trip-ticket";
 import { getMyTripsActions } from "@/lib/my-trips-home";
-import { getMyTripsHome } from "@/lib/my-trips.fn";
+import {
+  archiveTripRecord,
+  deleteTripRecord,
+  getMyTripsHome,
+  unarchiveTripRecord,
+} from "@/lib/my-trips.fn";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { pressable, springSheet } from "@/lib/motion";
 
@@ -62,6 +83,84 @@ const formatTime = (value: string | null | undefined) => (value ? value.slice(0,
 const tripTitle = (trip: Trip) =>
   (trip.name?.trim().length ?? 0) > 2 ? trip.name.trim() : `${trip.destination_name} Trip`;
 
+type SwipeHandlers = {
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+  hint: { active: boolean; dismiss: () => void };
+  onShare: (trip: ShareTripInfo) => void;
+  onArchive: (trip: Trip) => void;
+  onRestore: (trip: Trip) => void;
+  onDelete: (trip: Trip) => void;
+};
+
+/** One swipeable ticket: share on the right swipe, archive/restore and delete on the left. */
+function SwipeTrip({
+  trip,
+  index,
+  swipe,
+  archived = false,
+  hint = false,
+}: {
+  trip: Trip;
+  index: number;
+  swipe: SwipeHandlers;
+  archived?: boolean;
+  hint?: boolean;
+}) {
+  const icon = "size-[18px]";
+  const leftActions: SwipeAction[] = [
+    {
+      key: "share",
+      label: "Bagikan",
+      icon: <Share2 className={icon} aria-hidden="true" />,
+      className: "bg-[#0a84ff]",
+      onClick: () => swipe.onShare(trip),
+    },
+  ];
+  const rightActions: SwipeAction[] = [
+    archived
+      ? {
+          key: "restore",
+          label: "Pulihkan",
+          icon: <ArchiveRestore className={icon} aria-hidden="true" />,
+          className: "bg-[#34a853]",
+          onClick: () => swipe.onRestore(trip),
+        }
+      : {
+          key: "archive",
+          label: "Arsip",
+          icon: <Archive className={icon} aria-hidden="true" />,
+          className: "bg-[#8e8e93]",
+          onClick: () => swipe.onArchive(trip),
+        },
+    {
+      key: "delete",
+      label: "Hapus",
+      icon: <Trash2 className={icon} aria-hidden="true" />,
+      className: "bg-brand-red",
+      onClick: () => swipe.onDelete(trip),
+    },
+  ];
+  return (
+    <SwipeableTicket
+      leftActions={leftActions}
+      rightActions={rightActions}
+      isOpen={swipe.openId === trip.id}
+      onOpen={() => swipe.setOpenId(trip.id)}
+      onClose={() => swipe.openId === trip.id && swipe.setOpenId(null)}
+      hint={hint && swipe.hint.active}
+      onUsed={swipe.hint.dismiss}
+    >
+      <TripTicket
+        trip={trip}
+        title={tripTitle(trip)}
+        index={index}
+        onShare={() => swipe.onShare(trip)}
+      />
+    </SwipeableTicket>
+  );
+}
+
 function MyTrips() {
   const data = Route.useLoaderData();
   const { user, loading: authLoading } = useBetterAuthUser();
@@ -89,6 +188,44 @@ function MyTrips() {
       name: tripTitle(trip as Trip),
       destination_name: trip.destination_name,
     });
+
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Trip | null>(null);
+  const hint = useSwipeHint();
+  const run = async (task: () => Promise<unknown>, done: string, undo?: () => Promise<unknown>) => {
+    try {
+      await task();
+      await router.invalidate();
+      toast.success(
+        done,
+        undo
+          ? {
+              action: {
+                label: "Urungkan",
+                onClick: () => void undo().then(() => router.invalidate()),
+              },
+            }
+          : undefined,
+      );
+    } catch {
+      toast.error("Belum berhasil. Coba lagi.");
+    }
+  };
+  const swipe: SwipeHandlers = {
+    openId,
+    setOpenId,
+    hint,
+    onShare: openShare,
+    onArchive: (trip) =>
+      void run(
+        () => archiveTripRecord({ data: { id: trip.id } }),
+        "Diarsipkan. Lihat di Riwayat.",
+        () => unarchiveTripRecord({ data: { id: trip.id } }),
+      ),
+    onRestore: (trip) =>
+      void run(() => unarchiveTripRecord({ data: { id: trip.id } }), "Perjalanan dipulihkan."),
+    onDelete: setDeleteTarget,
+  };
 
   const guestMode = !user && !authLoading;
   if (guestMode && !data.guest.enabled) return <Unauthenticated />;
@@ -123,9 +260,9 @@ function MyTrips() {
       </nav>
 
       {view === "today" ? (
-        <TodayView data={data} user={user} authLoading={authLoading} onShare={openShare} />
+        <TodayView data={data} user={user} authLoading={authLoading} swipe={swipe} />
       ) : (
-        <LogbookView trips={data.trips} onShare={openShare} />
+        <LogbookView trips={data.trips} archived={data.archived} swipe={swipe} />
       )}
 
       <ActionSheet
@@ -134,6 +271,34 @@ function MyTrips() {
         onClose={() => setSheetOpen(false)}
         onShare={openShare}
       />
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="max-w-[20rem] rounded-2xl p-5">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[16px]">Hapus perjalanan?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px]">
+              {deleteTarget ? tripTitle(deleteTarget) : ""} beserta agenda, biaya, checklist, dan
+              booking di dalamnya akan dihapus permanen. Mau disimpan saja? Pilih Arsip.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-2">
+            <AlertDialogCancel className="mt-0 flex-1">Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="flex-1 bg-brand-red text-white hover:bg-brand-red"
+              onClick={() => {
+                const trip = deleteTarget;
+                setDeleteTarget(null);
+                if (trip)
+                  void run(
+                    () => deleteTripRecord({ data: { id: trip.id } }),
+                    "Perjalanan dihapus.",
+                  );
+              }}
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <TripShareDialog trip={shareTrip} onOpenChange={(open) => !open && setShareTrip(null)} />
       <FixedLayer>
         <button
@@ -280,12 +445,12 @@ function TodayView({
   data,
   user,
   authLoading,
-  onShare,
+  swipe,
 }: {
   data: HomeData;
   user: { id: string; email?: string | null } | null;
   authLoading: boolean;
-  onShare: (trip: ShareTripInfo) => void;
+  swipe: SwipeHandlers;
 }) {
   const focusTrip = data.focusTrip;
   const upcoming = data.trips.filter((trip) => trip.status !== "past");
@@ -294,15 +459,25 @@ function TodayView({
     <div className="mt-3 space-y-3 pb-4">
       {upcoming.length ? (
         <section aria-labelledby="all-trips-heading" className="space-y-2">
-          <SectionHeading id="all-trips-heading" title="Perjalanan" count={upcoming.length} />
+          <SectionHeading
+            id="all-trips-heading"
+            title="Perjalanan"
+            count={upcoming.length}
+            action={
+              swipe.hint.active ? (
+                <motion.span
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="text-[11px] text-muted-foreground"
+                >
+                  ← Geser kartu untuk aksi
+                </motion.span>
+              ) : undefined
+            }
+          />
           {upcoming.map((trip, index) => (
-            <TripTicket
-              key={trip.id}
-              trip={trip}
-              title={tripTitle(trip)}
-              index={index}
-              onShare={() => onShare(trip)}
-            />
+            <SwipeTrip key={trip.id} trip={trip} index={index} swipe={swipe} hint={index === 0} />
           ))}
         </section>
       ) : (
@@ -401,25 +576,22 @@ function AgendaRow({ item, tripId }: { item: AgendaItem; tripId: string }) {
 
 function LogbookView({
   trips,
-  onShare,
+  archived,
+  swipe,
 }: {
   trips: Trip[];
-  onShare: (trip: ShareTripInfo) => void;
+  archived: Trip[];
+  swipe: SwipeHandlers;
 }) {
   const pastTrips = trips.filter((trip) => trip.status === "past");
+  const [showArchived, setShowArchived] = useState(false);
   return (
     <div className="mt-3 space-y-2 pb-4">
       {pastTrips.length ? (
         <>
           <SectionHeading id="past-trips-heading" title="Selesai" count={pastTrips.length} />
           {pastTrips.map((trip, index) => (
-            <TripTicket
-              key={trip.id}
-              trip={trip}
-              title={tripTitle(trip)}
-              index={index}
-              onShare={() => onShare(trip)}
-            />
+            <SwipeTrip key={trip.id} trip={trip} index={index} swipe={swipe} hint={index === 0} />
           ))}
         </>
       ) : (
@@ -428,6 +600,39 @@ function LogbookView({
           <p className="mt-1 text-[12px] text-muted-foreground">
             Perjalanan yang sudah lewat akan tersimpan di sini.
           </p>
+        </section>
+      )}
+      {archived.length > 0 && (
+        <section aria-labelledby="archived-heading" className="space-y-2 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowArchived((value) => !value)}
+            aria-expanded={showArchived}
+            className="tap flex w-full items-center justify-between px-1 text-[12px] font-medium uppercase tracking-wide text-muted-foreground"
+          >
+            <span id="archived-heading">
+              Diarsipkan <span className="ml-1.5 normal-case">{archived.length}</span>
+            </span>
+            <ChevronRight
+              className={`size-4 transition-transform ${showArchived ? "rotate-90" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+          <AnimatePresence initial={false}>
+            {showArchived && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={springSheet}
+                className="space-y-2 overflow-hidden"
+              >
+                {archived.map((trip, index) => (
+                  <SwipeTrip key={trip.id} trip={trip} index={index} swipe={swipe} archived />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
       )}
     </div>

@@ -47,7 +47,7 @@ export async function sweepAssistantReminders(now = Date.now()): Promise<Reminde
             (select count(*)::int from public.travel_itinerary_items i where i.trip_id = t.id and i.activity_date = today.d) as today_items,
             (select count(*)::int from public.travel_checklist_items c where c.trip_id = t.id and not c.is_completed) as open_check
      from public.travel_trips t, today
-     where t.customer_auth_subject not like 'guest:%'
+     where t.customer_auth_subject not like 'guest:%' and t.archived_at is null
        and t.return_date >= today.d and t.departure_date <= today.d + 14
      order by t.departure_date limit 500`,
   );

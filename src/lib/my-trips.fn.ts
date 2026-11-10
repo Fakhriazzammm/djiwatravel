@@ -53,6 +53,30 @@ export const deleteTripRecord = createServerFn({ method: "POST" })
     return deleteTripRecordHandler({ data });
   });
 
+export const archiveTripRecord = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./my-trips.server").deleteTripRecordInput>[0]) => {
+      const { deleteTripRecordInput } = await import("./my-trips.server");
+      return deleteTripRecordInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { archiveTripRecordHandler } = await import("./my-trips.server");
+    return archiveTripRecordHandler({ data });
+  });
+
+export const unarchiveTripRecord = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./my-trips.server").deleteTripRecordInput>[0]) => {
+      const { deleteTripRecordInput } = await import("./my-trips.server");
+      return deleteTripRecordInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { unarchiveTripRecordHandler } = await import("./my-trips.server");
+    return unarchiveTripRecordHandler({ data });
+  });
+
 export const getTrip = createServerFn({ method: "GET" })
   .validator(async (data: Parameters<typeof import("./my-trips.server").getTripInput>[0]) => {
     const { getTripInput } = await import("./my-trips.server");

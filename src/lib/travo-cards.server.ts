@@ -209,7 +209,7 @@ async function tripCard(owner: TripOwner): Promise<TravoCard | null> {
   const r = await pool
     .query(
       `select id, name, destination_name, to_char(departure_date,'YYYY-MM-DD') as d, to_char(return_date,'YYYY-MM-DD') as r
-       from public.travel_trips where customer_auth_subject=$1 order by departure_date desc nulls last limit 5`,
+       from public.travel_trips where customer_auth_subject=$1 and archived_at is null order by departure_date desc nulls last limit 5`,
       [owner.id],
     )
     .catch(() => null);
