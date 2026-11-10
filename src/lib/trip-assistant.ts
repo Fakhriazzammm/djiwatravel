@@ -526,7 +526,7 @@ export type AssistantStatus =
 
 export type AssistantSendResult =
   | { status: "ok"; messages: AssistantMessage[]; remaining: number; conversationId?: string }
-  | { status: "limit"; message: string; remaining: 0 }
+  | { status: "limit"; message: string; remaining: number }
   | { status: "disabled"; message: string; remaining: 0 }
   | { status: "busy"; message: string; remaining: number }
   | { status: "error"; message: string; remaining: number };

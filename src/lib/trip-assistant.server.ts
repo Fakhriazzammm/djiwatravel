@@ -1048,7 +1048,7 @@ async function runFullPlanTurn(input: {
   if (owner.guest && Number(planned.rows[0]?.n) >= config.fullPlanGuests)
     return {
       status: "limit",
-      remaining: 0,
+      remaining: status.remaining,
       message:
         config.fullPlanGuests < 1
           ? "Rencana lengkap khusus member. Masuk atau daftar dulu ya."
@@ -1058,7 +1058,7 @@ async function runFullPlanTurn(input: {
   if (status.remaining < weight)
     return {
       status: "limit",
-      remaining: 0,
+      remaining: status.remaining,
       message: `Rencana lengkap memakai ${weight} pesan dan sisa kuotamu belum cukup. Coba lagi besok.`,
     };
 

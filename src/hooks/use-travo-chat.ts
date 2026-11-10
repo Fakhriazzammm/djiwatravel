@@ -185,7 +185,7 @@ export function useTravoChat(options: Options) {
           setMessages((list) => list.filter((m) => m.id !== temp.id));
           setDraft(value);
           setNotice(result.message);
-          if (result.status === "limit") setRemaining(0);
+          if (result.status === "limit") setRemaining(result.remaining);
         }
       };
       let started = false;

@@ -470,6 +470,8 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
     const second = await plan("lagi dong");
     expect(second.status).toBe("limit");
     expect((second as { message: string }).message).toMatch(/Masuk atau daftar/);
+    // The quota shown stays real: one full plan used 1 of the guest's daily messages, not all of them.
+    expect((second as { remaining: number }).remaining).toBeGreaterThan(0);
     expect(
       await count(
         "select count(*)::int n from travel_assistant_runs where intent='full_plan' and status='ok'",
