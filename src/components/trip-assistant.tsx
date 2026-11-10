@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { FixedLayer } from "@/components/motion-primitives";
@@ -17,10 +17,12 @@ import { TripToolsBar, TripToolsOverlays } from "@/components/trip-chat-tools";
 import { travoMood, useTravoChat } from "@/hooks/use-travo-chat";
 import { useTripChatTools } from "@/hooks/use-trip-chat-tools";
 import type { TripSummary } from "@/lib/trip-summary";
-import { resetTripAssistant } from "@/lib/trip-assistant.fn";
+import { openTripGoogleLink, resetTripAssistant } from "@/lib/trip-assistant.fn";
 import {
   ASSISTANT_NAME,
   QUICK,
+  GOOGLE_DRIVE_WORDS,
+  GOOGLE_SHEET_WORDS,
   SHARE_WORDS,
   buildNudges,
   type AssistantIntent,
@@ -67,13 +69,49 @@ export function TripAssistant(props: Props) {
   // How many intro messages are on screen. They arrive one by one, like the assistant talking.
   const introLength = props.intro?.length ?? 0;
   const [introShown, setIntroShown] = useState(0);
+  const navigate = useNavigate();
+  /** "Buka Google Sheets" / "Simpan ke Drive": the link as a toast action, or what to do first. */
+  const openGoogle = async (target: "sheet" | "drive") => {
+    try {
+      const result = await openTripGoogleLink({ data: { tripId, target } });
+      if (result.status === "ok") {
+        toast.success(target === "sheet" ? "Spreadsheet siap" : "Dokumen rencana siap", {
+          action: { label: "Buka", onClick: () => window.open(result.url, "_blank", "noopener") },
+          duration: 12000,
+        });
+      } else if (result.status === "connect") {
+        toast.message(result.message, {
+          action: {
+            label: "Ke Biaya",
+            onClick: () =>
+              void navigate({
+                to: "/my-trips/$tripId/$section",
+                params: { tripId, section: "budget" },
+              }),
+          },
+          duration: 10000,
+        });
+      } else toast.message(result.message);
+    } catch {
+      toast.error("Belum bisa membuka Google. Coba lagi.");
+    }
+  };
   const chat = useTravoChat({
     tripId,
     onAvailability: props.onAvailability,
-    // "bagikan itinerary" opens the share sheet instead of asking the model.
+    // "bagikan itinerary" opens the share sheet, "buka google sheets" the spreadsheet: no model call.
     intercept: (text) => {
-      if (!props.onShare || !SHARE_WORDS.test(text)) return false;
-      props.onShare();
+      if (props.onShare && SHARE_WORDS.test(text)) {
+        props.onShare();
+        return true;
+      }
+      const target = GOOGLE_DRIVE_WORDS.test(text)
+        ? "drive"
+        : GOOGLE_SHEET_WORDS.test(text)
+          ? "sheet"
+          : null;
+      if (!target) return false;
+      void openGoogle(target);
       return true;
     },
     onSend: () => setIntroShown(introLength),

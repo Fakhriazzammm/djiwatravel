@@ -151,7 +151,8 @@ export const plainCell = (value: string) => (/^[=+\-@]/.test(value) ? `'${value}
 /** The reverse of plainCell: drops the guard when the sheet hands the text back. */
 export const unplainCell = (value: string) => (/^'[=+\-@]/.test(value) ? value.slice(1) : value);
 
-const text = (cell: Cell) => (cell === null || cell === undefined ? "" : String(cell).trim());
+export const text = (cell: Cell) =>
+  cell === null || cell === undefined ? "" : String(cell).trim();
 
 /** A number typed or pasted into a cell: real numbers, "25.000", "1.234,56", "1,234.56", "Rp 25.000". */
 export function readNumber(cell: Cell): number | null {
@@ -201,7 +202,7 @@ export function readDate(cell: Cell): string | null {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const idCell = (cell: Cell) => {
+export const idCell = (cell: Cell) => {
   const value = text(cell).toLowerCase();
   return value && UUID.test(value) ? value : null;
 };
@@ -221,7 +222,7 @@ export type ParsedSheet<T extends { row: number }> = {
   issues: SheetIssue[];
 };
 
-const blank = (row: ReadonlyArray<Cell> | undefined, from: number, to: number) =>
+export const blank = (row: ReadonlyArray<Cell> | undefined, from: number, to: number) =>
   !row || row.slice(from, to).every((cell) => text(cell) === "");
 
 export type SheetExpense = {

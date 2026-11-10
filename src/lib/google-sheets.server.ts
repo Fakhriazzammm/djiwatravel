@@ -34,6 +34,7 @@ import {
   type SheetData,
 } from "./google-sheets-pull.server";
 import { tripGoogleName, tripSheetTitle } from "./google-trip-names";
+import { planPulledAnything, syncPlanTabs, type PlanReport } from "./google-sheets-plan.server";
 
 /**
  * Two-way sync between a trip and its spreadsheet in the traveler's own Drive.
@@ -398,6 +399,13 @@ export async function syncTripSheet(subject: string, tripId: string): Promise<Sy
 
     const written = await writeSheet(subject, target.spreadsheet_id, tripId);
     await saveSnapshot(tripId, written);
+    // Plan tabs run after the budget tabs and never fail the sync.
+    let planReport: PlanReport | null = null;
+    try {
+      planReport = await syncPlanTabs(subject, tripId, target.spreadsheet_id);
+    } catch (error) {
+      console.error("[google-sheets] plan tabs failed", { error: redactError(error) });
+    }
     let formatted = target.formatted && !tabs.added;
     if (!formatted) formatted = await formatSheet(subject, target.spreadsheet_id, tabs.ids);
     const pulledRows =
@@ -417,7 +425,12 @@ export async function syncTripSheet(subject: string, tripId: string): Promise<Sy
         tripId,
         LAYOUT_VERSION,
         formatted,
-        JSON.stringify({ ...report, issues: report.issues.slice(0, 20) }),
+        JSON.stringify({
+          ...report,
+          issues: [...report.issues, ...(planReport?.issues ?? [])].slice(0, 20),
+          conflicts: report.conflicts + (planReport?.conflicts ?? 0),
+          plan: planReport,
+        }),
         pulledRows,
         report.conflicts,
       ],
@@ -426,7 +439,7 @@ export async function syncTripSheet(subject: string, tripId: string): Promise<Sy
     return {
       spreadsheetUrl: target.spreadsheet_url,
       report,
-      changed: pulledAnything(report),
+      changed: pulledAnything(report) || (planReport ? planPulledAnything(planReport) : false),
     };
   } catch (error) {
     await recordFailure(subject, tripId, error);

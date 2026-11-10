@@ -39,6 +39,10 @@ export type TripAssistantConfig = {
   fullPlanGuests: number;
   /** How many daily messages one full plan uses for a member. */
   fullPlanWeight: number;
+  /** Plan tabs (Ringkasan, Itinerary, Persiapan, Tiket & Transport) in the traveler's Google spreadsheet. */
+  sheetsPlanTabs: boolean;
+  /** A Google Doc "Rencana perjalanan" in the trip's Drive folder, refreshed when a plan is applied. */
+  driveDoc: boolean;
   /** Look each proposed place up on the map and read its OpenStreetMap opening hours. */
   verifyHours: boolean;
   /** Send an occasional push/inbox reminder about an upcoming trip (members only). */
@@ -70,6 +74,8 @@ export const DEFAULT_TRIP_ASSISTANT_CONFIG: TripAssistantConfig = {
   fullPlan: true,
   fullPlanGuests: 1,
   fullPlanWeight: 3,
+  sheetsPlanTabs: true,
+  driveDoc: true,
   verifyHours: true,
   reminders: true,
   dailyMessages: 30,
@@ -100,6 +106,8 @@ export function parseTripAssistantConfig(value: unknown): TripAssistantConfig {
     "allowBudget",
     "allowCommerce",
     "fullPlan",
+    "sheetsPlanTabs",
+    "driveDoc",
     "verifyHours",
     "reminders",
   ] as const) {
@@ -130,6 +138,8 @@ export function parseTripAssistantConfig(value: unknown): TripAssistantConfig {
     allowBudget: (raw["allowBudget"] as boolean | undefined) ?? d.allowBudget,
     allowCommerce: (raw["allowCommerce"] as boolean | undefined) ?? d.allowCommerce,
     fullPlan: (raw["fullPlan"] as boolean | undefined) ?? d.fullPlan,
+    sheetsPlanTabs: (raw["sheetsPlanTabs"] as boolean | undefined) ?? d.sheetsPlanTabs,
+    driveDoc: (raw["driveDoc"] as boolean | undefined) ?? d.driveDoc,
     fullPlanGuests: num("fullPlanGuests", 0, 5),
     fullPlanWeight: num("fullPlanWeight", 1, 10),
     verifyHours: (raw["verifyHours"] as boolean | undefined) ?? d.verifyHours,
@@ -1291,6 +1301,10 @@ export const QUICK: { label: string; intent: AssistantIntent; text: string }[] =
 ];
 
 /** "bagikan itinerary", "share perjalanan", ...: opens the share sheet instead of asking the model. */
+/** "buka google sheets", "simpan ke drive": the chat opens the spreadsheet or Drive document instead of asking the model. */
+export const GOOGLE_SHEET_WORDS = /\b(google\s+sheets?|spreadsheet|sheets)\b/i;
+export const GOOGLE_DRIVE_WORDS =
+  /\b(simpan|buat|kirim|ekspor|export)\b.*\b(google\s+drive|drive|google\s+doc|dokumen)\b/i;
 export const SHARE_WORDS = /\b(bagikan|share|kirim)\b.*\b(itinerar\w*|perjalanan|rencana|trip)\b/i;
 
 /** The examples that type themselves into the Travo text field (placeholder), so people see what to ask. */

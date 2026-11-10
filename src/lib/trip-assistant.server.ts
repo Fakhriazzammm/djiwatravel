@@ -1306,7 +1306,12 @@ async function runFullPlanTurn(input: {
       });
     const last = bubbles[bubbles.length - 1]!;
     last.chips = {
-      options: plan.chips.length ? plan.chips : ["Ganti tempat makan", "Bagikan"],
+      options: [
+        ...plan.chips.slice(0, 2),
+        "Buka Google Sheets",
+        "Simpan ke Drive",
+        "Bagikan",
+      ].filter((chip, index, all) => all.indexOf(chip) === index),
       multi: false,
     };
     const saved = await saveFullPlanMessages({
@@ -1317,6 +1322,34 @@ async function runFullPlanTurn(input: {
       userText: data.text,
       bubbles,
     });
+    await pool
+      .query(
+        `insert into public.travel_trip_plans (trip_id, city, tier, budget, research, costs, tips)
+         values ($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,$7::jsonb)
+         on conflict (trip_id) do update set city=excluded.city, tier=excluded.tier, budget=excluded.budget,
+           research=excluded.research, costs=excluded.costs, tips=excluded.tips, updated_at=now()`,
+        [
+          tripId,
+          city,
+          budgetPlan.tier,
+          JSON.stringify(budgetPlan.lines),
+          JSON.stringify({
+            ...researchResult.research,
+            originCode,
+            destinationCode: researchResult.destinationCode,
+            departureDate: facts.departureDate,
+            returnDate: facts.returnDate,
+          }),
+          JSON.stringify(costResult.costs),
+          JSON.stringify(plan.tips),
+        ],
+      )
+      .catch((error) =>
+        console.error(
+          "[trip-assistant] plan record failed",
+          error instanceof Error ? error.message : error,
+        ),
+      );
     await recordRun(
       owner,
       tripId,
@@ -1853,6 +1886,11 @@ export async function assistantApplyHandler({
     payload.kind === "agenda"
       ? await pinMissingPlaces(trip.id, { budgetMs: 8000 }).catch(() => null)
       : null;
+  // A plan changes the spreadsheet and the Drive document too (members with Google connected only).
+  if (!owner.guest) {
+    const { afterPlanChange } = await import("./google-plan-doc.server");
+    afterPlanChange(owner.id, proposal.trip_id);
+  }
   return { ok: true as const, status: "applied" as const, pinned: pins?.pinned ?? 0 };
 }
 
@@ -1876,6 +1914,10 @@ export async function assistantUndoHandler({
     proposal.kind,
     proposal.applied ?? { created: [], updated: [], removed: [] },
   );
+  if (!owner.guest) {
+    const { afterPlanChange } = await import("./google-plan-doc.server");
+    afterPlanChange(owner.id, proposal.trip_id);
+  }
   return { ok: true as const, status: "undone" as const };
 }
 
@@ -1953,6 +1995,21 @@ export async function assistantSwapPlaceHandler({
     [data.proposalId, JSON.stringify(payload)],
   );
   return { ok: true as const, payload };
+}
+
+const googleInput = z.object({ tripId: z.string().uuid(), target: z.enum(["sheet", "drive"]) });
+export const assistantGoogleInput = (data: unknown) => googleInput.parse(data);
+
+/** "Buka Google Sheets" / "Simpan ke Drive" from the chat: the link, or what to do first. */
+export async function assistantOpenGoogleHandler({
+  data,
+}: {
+  data: ReturnType<typeof assistantGoogleInput>;
+}) {
+  const owner = await resolveTripOwner();
+  if (!owner) throw new Error("Autentikasi diperlukan");
+  const { openTripGoogle } = await import("./google-plan-doc.server");
+  return openTripGoogle(owner.id, owner.guest, data.tripId, data.target);
 }
 
 export async function assistantRecordSummaryHandler({

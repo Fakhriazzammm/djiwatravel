@@ -86,6 +86,8 @@ export function AdminTripAssistantPanel({
   const [allowBudget, setAllowBudget] = useState(initial.allowBudget);
   const [allowCommerce, setAllowCommerce] = useState(initial.allowCommerce);
   const [fullPlan, setFullPlan] = useState(initial.fullPlan);
+  const [sheetsPlanTabs, setSheetsPlanTabs] = useState(initial.sheetsPlanTabs);
+  const [driveDoc, setDriveDoc] = useState(initial.driveDoc);
   const [fullPlanGuests, setFullPlanGuests] = useState(String(initial.fullPlanGuests));
   const [fullPlanWeight, setFullPlanWeight] = useState(String(initial.fullPlanWeight));
   const [verifyHours, setVerifyHours] = useState(initial.verifyHours);
@@ -117,6 +119,8 @@ export function AdminTripAssistantPanel({
         allowBudget,
         allowCommerce,
         fullPlan,
+        sheetsPlanTabs,
+        driveDoc,
         fullPlanGuests: Number(fullPlanGuests),
         fullPlanWeight: Number(fullPlanWeight),
         verifyHours,
@@ -266,6 +270,18 @@ export function AdminTripAssistantPanel({
           "Disusun dari tempat nyata di peta, harga tiket tercatat, paket eSIM, dan biaya harian kota. Tetap lewat Terapkan",
           fullPlan,
           setFullPlan,
+        )}
+        {check(
+          "Tab rencana di Google Sheets",
+          "Ringkasan, Itinerary, Persiapan, dan Tiket & Transport di spreadsheet trip milik traveler (dua arah untuk jam, judul, tanggal, biaya, dan centang persiapan). Hanya akun dengan Google terhubung",
+          sheetsPlanTabs,
+          setSheetsPlanTabs,
+        )}
+        {check(
+          "Dokumen rencana di Google Drive",
+          "Satu Google Doc “Rencana perjalanan” di folder trip, diperbarui saat usulan rencana diterapkan atau diurungkan",
+          driveDoc,
+          setDriveDoc,
         )}
         {check(
           "Cek lokasi dan jam buka di peta",

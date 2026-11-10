@@ -116,6 +116,16 @@ export const deleteAdminCityCosts = createServerFn({ method: "POST" })
     return adminDeleteCityCostsHandler({ data });
   });
 
+export const openTripGoogleLink = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { assistantGoogleInput } = await import("./trip-assistant.server");
+    return assistantGoogleInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { assistantOpenGoogleHandler } = await import("./trip-assistant.server");
+    return assistantOpenGoogleHandler({ data });
+  });
+
 export const recordTripSummary = createServerFn({ method: "POST" })
   .validator(async (data: unknown) => {
     const { assistantLoadInput } = await import("./trip-assistant.server");

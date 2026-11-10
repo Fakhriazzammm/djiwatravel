@@ -138,7 +138,11 @@ export async function saveSnapshot(tripId: string, state: BudgetState) {
   const client = await pool.connect();
   try {
     await client.query("begin");
-    await client.query("delete from travel_google_sheet_rows where trip_id=$1", [tripId]);
+    // Only the budget tabs: the plan tabs keep their own fingerprints (google-sheets-plan.server.ts).
+    await client.query(
+      "delete from travel_google_sheet_rows where trip_id=$1 and tab = any($2::text[])",
+      [tripId, [BUDGET_TAB, EXPENSE_TAB, ITEMS_TAB]],
+    );
     if (rows.length)
       await client.query(
         `insert into travel_google_sheet_rows (trip_id, tab, row_key, hash)

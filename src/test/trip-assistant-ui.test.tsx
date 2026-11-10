@@ -6,6 +6,7 @@ import {
   dismissTripAssistantProposal,
   loadTripAssistant,
   recordTripSummary,
+  openTripGoogleLink,
   pinTripPlaces,
   sendTripAssistantMessage,
   streamTripAssistantMessage,
@@ -21,6 +22,7 @@ vi.mock("@tanstack/react-router", () => ({
       {children}
     </a>
   ),
+  useNavigate: () => vi.fn(),
 }));
 vi.mock("@/lib/receipt-scan.fn", () => ({ getReceiptScanStatus: vi.fn() }));
 vi.mock("@/components/receipt-scanner", () => ({
@@ -34,6 +36,11 @@ vi.mock("@/lib/trip-assistant.fn", () => ({
   sendTripAssistantMessage: vi.fn(),
   pinTripPlaces: vi.fn(),
   recordTripSummary: vi.fn(async () => ({ ok: true })),
+  openTripGoogleLink: vi.fn(async () => ({
+    status: "ok",
+    url: "https://docs.google.com/spreadsheets/d/x",
+  })),
+  swapTripPlace: vi.fn(),
   streamTripAssistantMessage: vi.fn(),
   resetTripAssistant: vi.fn(),
   applyTripAssistantProposal: vi.fn(),
@@ -603,6 +610,30 @@ describe("TripAssistant", () => {
       fireEvent.click(screen.getByRole("button", { name: "Kirim" }));
       await waitFor(() => expect(onShare).toHaveBeenCalledTimes(2));
       expect(sendTripAssistantMessage).not.toHaveBeenCalled(); // no AI call, no quota
+    });
+  });
+
+  describe("Google Sheets and Drive from the chat", () => {
+    it("opens the spreadsheet or the Drive document without asking the model", async () => {
+      vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+      setup();
+      const box = await screen.findByRole("textbox", { name: /Pesan untuk/ });
+      fireEvent.change(box, { target: { value: "buka google sheets" } });
+      fireEvent.click(screen.getByRole("button", { name: "Kirim" }));
+      await waitFor(() =>
+        expect(openTripGoogleLink).toHaveBeenCalledWith({
+          data: { tripId: "trip-1", target: "sheet" },
+        }),
+      );
+      fireEvent.change(box, { target: { value: "simpan ke drive" } });
+      fireEvent.click(screen.getByRole("button", { name: "Kirim" }));
+      await waitFor(() =>
+        expect(openTripGoogleLink).toHaveBeenCalledWith({
+          data: { tripId: "trip-1", target: "drive" },
+        }),
+      );
+      expect(sendTripAssistantMessage).not.toHaveBeenCalled();
+      expect(streamTripAssistantMessage).not.toHaveBeenCalled();
     });
   });
 
