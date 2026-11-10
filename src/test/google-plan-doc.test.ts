@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPlanDocBody, buildPlanDocHtml } from "@/lib/google-plan-doc";
+import { buildPlanDocBody, buildPlanDocHtml, formatDocMoment } from "@/lib/google-plan-doc";
 import type { PlanSheetState } from "@/lib/google-sheets-plan";
 
 const state: PlanSheetState = {
@@ -112,6 +112,35 @@ describe("the plan document", () => {
     expect(body).toContain("ref ABC123");
     expect(body).not.toContain("<html");
     expect(buildPlanDocHtml(state, "x")).toContain("<html");
+  });
+  it("shows the logo, who made the document, when, and when the data last changed", () => {
+    const body = buildPlanDocBody(
+      {
+        ...state,
+        tripId: "613aaec6-2276-420b-9e9c-836ea762294c",
+        tripUpdatedAt: "2026-11-09T08:15:00Z",
+        plan: { ...state.plan!, updatedAt: "2026-11-10T01:42:00Z" },
+      },
+      { madeAt: "Selasa, 10 November 2026 pukul 17.42 WIB", by: "Fakhri <script>" },
+    );
+    expect(body).toContain('src="https://djiwatravel.com/assets/brand/djiwa-logo.png"');
+    expect(body).toContain('alt="Djiwa Travel"');
+    expect(body).toContain("No. DT-613AAEC6");
+    expect(body).toContain("Dibuat Selasa, 10 November 2026 pukul 17.42 WIB"); // header
+    expect(body).toContain("Dibuat oleh: Fakhri &lt;script&gt;"); // escaped
+    expect(body).toContain("Dibuat pada: Selasa, 10 November 2026 pukul 17.42 WIB");
+    expect(body).toContain(
+      "Data perjalanan terakhir diubah: Senin, 9 November 2026 pukul 15.15 WIB",
+    );
+    expect(body).toContain(
+      "Rencana Travo terakhir disusun: Selasa, 10 November 2026 pukul 08.42 WIB",
+    );
+  });
+  it("formats a moment as day, date and Jakarta clock time", () => {
+    expect(formatDocMoment("2026-11-10T10:42:00Z")).toBe(
+      "Selasa, 10 November 2026 pukul 17.42 WIB",
+    );
+    expect(formatDocMoment("nonsense")).toBe("");
   });
   it("still renders without a plan", () => {
     const bare = buildPlanDocHtml({ ...state, plan: null, items: [], prep: [] }, "x");

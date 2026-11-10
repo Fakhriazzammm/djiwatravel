@@ -114,7 +114,7 @@ const dateLabel = (from: string | null, to: string | null) => {
 export async function loadPlanState(tripId: string): Promise<PlanSheetState> {
   const [trip, cats, items, prep, plan, budgetRows, spentTotal, bookings] = await Promise.all([
     pool.query(
-      `select name, destination_name, travelers_count, primary_currency, total_budget_minor,
+      `select name, destination_name, travelers_count, primary_currency, total_budget_minor, updated_at,
               departure_date::text as d, return_date::text as r from travel_trips where id=$1`,
       [tripId],
     ),
@@ -201,6 +201,8 @@ export async function loadPlanState(tripId: string): Promise<PlanSheetState> {
       done: Boolean(p["is_completed"]),
     })),
     plan: facts,
+    tripId,
+    tripUpdatedAt: new Date(String(t["updated_at"])).toISOString(),
     budgetRows: budgetRows.rows.map((r) => ({
       name: String(r["name"]),
       allocatedMinor: Number(r["alloc"]) || 0,

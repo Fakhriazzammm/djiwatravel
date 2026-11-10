@@ -651,6 +651,24 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
     expect(out.body).toContain("Anggaran dan pengeluaran");
     expect(out.body).toContain("Hotel Shinjuku");
     expect(out.body).not.toContain("<script");
+    // The header and footer say whose document it is and when it was made.
+    expect(out.body).toContain("djiwa-logo.png");
+    expect(out.body).toContain("Dibuat oleh: a@b.c");
+    expect(out.body).toMatch(/Dibuat pada: \w+, \d+ \w+ 20\d\d pukul \d\d\.\d\d WIB/);
+    expect(out.body).toContain("Data perjalanan terakhir diubah:");
+    expect(out.body).toMatch(/No\. DT-22222222/);
+    await pool.query(
+      "insert into customer_profiles (auth_user_id, email, whatsapp, display_name) values ('u1','a@b.c','6281234567890','Fakhri') on conflict (auth_user_id) do update set display_name='Fakhri'",
+    );
+    expect((await tripExportHandler({ data: { tripId: TRIP } })).body).toContain(
+      "Dibuat oleh: Fakhri",
+    );
+    await pool.query("update travel_trips set customer_auth_subject='guest-5'");
+    holder.owner = { id: "guest-5", email: null, guest: true };
+    expect((await tripExportHandler({ data: { tripId: TRIP } })).body).toContain(
+      "Dibuat oleh: Tamu (tanpa akun)",
+    );
+    await pool.query("update travel_trips set customer_auth_subject='u1'");
     holder.owner = { id: "someone-else", email: null, guest: false };
     await expect(tripExportHandler({ data: { tripId: TRIP } })).rejects.toThrow(/tidak ditemukan/);
     holder.owner = null;

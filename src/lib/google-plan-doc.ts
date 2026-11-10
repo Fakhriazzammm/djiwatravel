@@ -18,15 +18,40 @@ const dayHeading = (date: string) =>
     timeZone: "UTC",
   }).format(new Date(`${date}T00:00:00Z`));
 
+export const DOC_LOGO_URL = "https://djiwatravel.com/assets/brand/djiwa-logo.png";
 const RED = "#D12F33";
 const th = `style="background:${RED};color:#ffffff;text-align:left;padding:6px 8px;font-size:10pt"`;
 const td = `style="padding:6px 8px;border-bottom:1px solid #e5e5ea;font-size:10pt;vertical-align:top"`;
 const tdr = `style="padding:6px 8px;border-bottom:1px solid #e5e5ea;font-size:10pt;text-align:right"`;
 
+/** Who made the document and when (the header and footer show it). */
+export type DocMeta = { madeAt: string; by: string };
+
+/** "Selasa, 10 November 2026 pukul 17.42 WIB": the day, date and clock time of a moment, in Jakarta. */
+export function formatDocMoment(date: Date | string | number): string {
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Jakarta",
+  }).format(d);
+  return `${parts} WIB`;
+}
+
 /** The page content only (no html/body), so the print page can show the very same document. */
-export function buildPlanDocBody(state: PlanSheetState, madeAt: string): string {
+export function buildPlanDocBody(state: PlanSheetState, metaInput: DocMeta | string): string {
+  const meta: DocMeta = typeof metaInput === "string" ? { madeAt: metaInput, by: "" } : metaInput;
+  const madeAt = meta.madeAt;
+  const code = state.tripId ? `DT-${state.tripId.slice(0, 8).toUpperCase()}` : "";
   const out: string[] = [];
   out.push(
+    `<table style="width:100%;border-collapse:collapse;border-bottom:3px solid ${RED};margin-bottom:14px"><tr><td style="vertical-align:middle;padding-bottom:8px"><img src="${DOC_LOGO_URL}" alt="Djiwa Travel" height="40" style="height:40px;width:auto"></td><td align="right" style="vertical-align:middle;padding-bottom:8px;font-size:9pt;color:#6b7078;line-height:1.5"><b style="color:#1a1a1f;font-size:10pt">Dokumen perjalanan</b>${code ? `<br>No. ${esc(code)}` : ""}<br>Dibuat ${esc(madeAt)}</td></tr></table>`,
     `<h1 style="color:${RED};margin-bottom:2px">${esc(state.tripName)}</h1>`,
     `<p style="color:#6b7078;margin-top:0">${esc(state.destination)} · ${esc(state.dates)} · ${state.travelers} traveler</p>`,
   );
@@ -132,11 +157,11 @@ export function buildPlanDocBody(state: PlanSheetState, madeAt: string): string 
     out.push("</ul>");
   }
   out.push(
-    `<p style="color:#9a9aa3;font-size:9pt;margin-top:24px">Dibuat dari Djiwa Travel pada ${esc(madeAt)}. Angka bertanda perkiraan adalah taksiran, bukan harga resmi. Data yang selalu terbaru ada di aplikasi.</p>`,
+    `<table style="width:100%;border-collapse:collapse;margin-top:26px;border-top:1px solid #d9dadf"><tr><td style="padding-top:8px;font-size:9pt;color:#6b7078;line-height:1.6"><b style="color:#1a1a1f">Djiwa Travel</b> · djiwatravel.com<br>${meta.by ? `Dibuat oleh: ${esc(meta.by)}<br>` : ""}Dibuat pada: ${esc(madeAt)}${state.tripUpdatedAt ? `<br>Data perjalanan terakhir diubah: ${esc(formatDocMoment(state.tripUpdatedAt))}` : ""}${plan ? `<br>Rencana Travo terakhir disusun: ${esc(formatDocMoment(plan.updatedAt))}` : ""}<br><span style="color:#9a9aa3">Angka bertanda perkiraan adalah taksiran, bukan harga resmi. Data yang selalu terbaru ada di aplikasi.</span></td>${code ? `<td align="right" style="vertical-align:top;padding-top:8px;font-size:9pt;color:#9a9aa3">${esc(code)}</td>` : ""}</tr></table>`,
   );
   return out.join("");
 }
 
-export function buildPlanDocHtml(state: PlanSheetState, madeAt: string): string {
+export function buildPlanDocHtml(state: PlanSheetState, madeAt: DocMeta | string): string {
   return `<html><head><meta charset="utf-8"><title>${esc(state.tripName)}</title></head><body style="font-family:Arial,sans-serif;color:#1a1a1f">${buildPlanDocBody(state, madeAt)}</body></html>`;
 }

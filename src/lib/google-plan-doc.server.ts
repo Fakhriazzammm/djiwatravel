@@ -1,6 +1,7 @@
 import { pool } from "@/db/client.server";
 import { connectionFor, googleFetch, hasFeature, redactError } from "./google-account.server";
 import { buildPlanDocHtml } from "./google-plan-doc";
+import { docMeta } from "./trip-doc-meta.server";
 import { ensureTripFolder, multipartBody } from "./google-drive.server";
 import { loadPlanState } from "./google-sheets-plan.server";
 import { tripGoogleName } from "./google-trip-names";
@@ -15,11 +16,6 @@ const driveDocEnabled = async () => {
   );
   return normalizeTripAssistantConfig(row.rows[0]?.value_json).driveDoc;
 };
-
-const madeAt = () =>
-  new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(
-    new Date(),
-  );
 
 export type PlanDocResult =
   | { status: "ok"; url: string }
@@ -56,7 +52,7 @@ export async function refreshPlanDoc(
       [tripId, subject],
     );
     if (!owned.rows[0]) return { status: "failed", message: "Perjalanan tidak ditemukan." };
-    const html = new TextEncoder().encode(buildPlanDocHtml(state, madeAt()));
+    const html = new TextEncoder().encode(buildPlanDocHtml(state, await docMeta(subject)));
     const label = tripGoogleName(String(owned.rows[0].name), owned.rows[0].departure_date);
     const name = `Rencana perjalanan - ${label}`.slice(0, 120);
     const known = await pool.query(

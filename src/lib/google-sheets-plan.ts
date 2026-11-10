@@ -107,6 +107,9 @@ export type PlanSheetState = {
   /** Real budget lines (allocated and spent, minor units) and bookings, for the PDF / Drive document. */
   budgetRows?: { name: string; allocatedMinor: number; spentMinor: number }[];
   spentMinor?: number;
+  /** For the document header and footer: which trip, when its data last changed. */
+  tripId?: string;
+  tripUpdatedAt?: string;
   bookings?: { title: string; category: string; status: string; reference: string }[];
   /** IDR → trip currency multiplier, to show the plan's estimates in the trip's currency. */
   fxFromIdr: number;
