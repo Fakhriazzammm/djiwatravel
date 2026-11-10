@@ -16,7 +16,7 @@ const listSchema = z.object({
     .transform((value) => value === true || value === "true"),
 });
 const mutationSchema = z.object({
-  action: z.enum(["read", "unread", "read_all", "archive", "unarchive", "delete", "restore"]),
+  action: z.enum(["read", "read_all", "archive", "unarchive", "delete", "restore"]),
   ids: z.array(z.string().uuid()).max(50).default([]),
 });
 export type CustomerNotificationCategory = "esim" | "bayar" | "trip" | "info";
@@ -98,7 +98,6 @@ export async function mutateCustomerNotifications(input: unknown) {
   const user = await getAuthenticatedUser();
   const set: Record<string, string> = {
     read: "read_at=coalesce(customer_notification_states.read_at,now())",
-    unread: "read_at=null",
     read_all: "read_at=coalesce(customer_notification_states.read_at,now())",
     archive: "archived_at=now(),read_at=coalesce(customer_notification_states.read_at,now())",
     unarchive: "archived_at=null",
@@ -107,7 +106,6 @@ export async function mutateCustomerNotifications(input: unknown) {
   };
   const insertCols: Record<string, string> = {
     read: "now(),null,null",
-    unread: "null,null,null",
     read_all: "now(),null,null",
     archive: "now(),now(),null",
     unarchive: "null,null,null",

@@ -21,9 +21,7 @@ async function receive(request: Request) {
     if (body.action === "read" && body.notification_id)
       return json(await markCustomerNotificationRead(body.notification_id));
     if (
-      ["read", "unread", "read_all", "archive", "unarchive", "delete", "restore"].includes(
-        body.action ?? "",
-      )
+      ["read", "read_all", "archive", "unarchive", "delete", "restore"].includes(body.action ?? "")
     )
       return json(
         await mutateCustomerNotifications({

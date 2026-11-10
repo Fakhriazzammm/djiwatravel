@@ -41,7 +41,7 @@ type NotificationData = {
   unread_count: number;
   next_cursor: string | null;
 };
-type Action = "read" | "unread" | "read_all" | "archive" | "unarchive" | "delete" | "restore";
+type Action = "read" | "read_all" | "archive" | "unarchive" | "delete" | "restore";
 type Filter = "all" | "unread" | Category;
 
 const CATEGORY: Record<Category, { label: string; Icon: LucideIcon; tone: string }> = {
@@ -89,6 +89,7 @@ async function fetchNotifications(view: "inbox" | "archived" = "inbox"): Promise
 async function mutate(action: Action, ids: string[]) {
   const response = await fetch("/api/customer-notifications", {
     method: "PATCH",
+    keepalive: true, // survives the page navigating away right after
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action, notification_ids: ids }),
   });
@@ -181,8 +182,6 @@ function Notifications() {
     setItems((cur) => {
       if (action === "read")
         return cur.map((n) => (idSet.has(n.id) && !n.read_at ? { ...n, read_at: now } : n));
-      if (action === "unread")
-        return cur.map((n) => (idSet.has(n.id) ? { ...n, read_at: null } : n));
       if (action === "read_all") return cur.map((n) => (n.read_at ? n : { ...n, read_at: now }));
       return cur.filter((n) => !idSet.has(n.id)); // archive/unarchive/delete leave the current view
     });
@@ -329,7 +328,7 @@ function Notifications() {
               transition={{ delay: 0.6 }}
               className="mt-2 px-1 text-[11px] text-muted-foreground"
             >
-              ↔ Geser kiri untuk Arsip atau Hapus, kanan untuk Baca
+              ↔ Geser kiri untuk Arsip atau Hapus, kanan untuk Buka detail
             </motion.p>
           )}
           {error && (
@@ -398,7 +397,6 @@ function Notifications() {
                     onToggle={() => toggleSelect(item.id)}
                     onMenu={() => setSheetFor(item)}
                     onRead={() => void run("read", [item.id])}
-                    onToggleRead={() => void run(item.read_at ? "unread" : "read", [item.id])}
                     onArchive={() =>
                       void run(archivedView ? "unarchive" : "archive", [item.id], {
                         toast: archivedView
@@ -572,7 +570,6 @@ function Row({
   onToggle,
   onMenu,
   onRead,
-  onToggleRead,
   onArchive,
   onDelete,
 }: {
@@ -588,7 +585,6 @@ function Row({
   onToggle: () => void;
   onMenu: () => void;
   onRead: () => void;
-  onToggleRead: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }) {
@@ -602,18 +598,22 @@ function Row({
   const offset = drag ?? (open ? -ACTION_W : peek);
   useEffect(() => {
     if (!hint || reduce || selecting) return;
-    // Peek left (Arsip/Hapus), rest, peek right (Baca, only when unread), rest.
+    // Peek left (Arsip/Hapus), rest, peek right (Buka detail, only when the notification has a link), rest.
     const timers = [
       window.setTimeout(() => setPeek(-ACTION_W * 0.7), 1400),
       window.setTimeout(() => setPeek(0), 2400),
-      window.setTimeout(() => setPeek(READ_W * 0.7), 3000),
-      window.setTimeout(() => setPeek(0), 4000),
+      ...(item.action_href
+        ? [
+            window.setTimeout(() => setPeek(READ_W * 0.7), 3000),
+            window.setTimeout(() => setPeek(0), 4000),
+          ]
+        : []),
     ];
     return () => {
       timers.forEach((t) => window.clearTimeout(t));
       setPeek(0);
     };
-  }, [hint, reduce, selecting]);
+  }, [hint, reduce, selecting, item.action_href]);
   const clearPress = () => {
     if (press.current) window.clearTimeout(press.current);
     press.current = null;
@@ -623,8 +623,8 @@ function Row({
     <article className="relative overflow-hidden border-b border-border/70 last:border-b-0">
       <div className="absolute inset-y-0 left-0 flex" style={{ width: READ_W }} aria-hidden="true">
         <div className="flex flex-1 items-center justify-center gap-1 bg-sky-500 text-xs font-bold text-white">
-          <Check className="size-3.5" aria-hidden="true" />
-          {item.read_at ? "Belum dibaca" : "Baca"}
+          <ExternalLink className="size-3.5" aria-hidden="true" />
+          Buka detail
         </div>
       </div>
       <div
@@ -675,15 +675,20 @@ function Row({
           }
           if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
             onUsed();
-            setDrag(Math.min(READ_W, Math.max(-ACTION_W, start.current.base + dx)));
+            setDrag(
+              Math.min(item.action_href ? READ_W : 0, Math.max(-ACTION_W, start.current.base + dx)),
+            );
           }
         }}
         onPointerUp={() => {
           clearPress();
           if (drag !== null) {
             if (drag > READ_W / 2) {
-              onToggleRead();
               onOpenChange(false);
+              if (item.action_href) {
+                if (!item.read_at) onRead();
+                window.location.assign(item.action_href);
+              }
             } else onOpenChange(drag < -ACTION_W / 2);
           }
           setDrag(null);
