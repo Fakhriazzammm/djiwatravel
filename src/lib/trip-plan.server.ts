@@ -367,6 +367,8 @@ export type ResearchInput = {
   days: number;
   flights: boolean;
   esim: boolean;
+  /** One-way: the return fare is neither looked up nor shown. */
+  oneWay?: boolean;
 };
 
 export type ResearchResult = {
@@ -409,7 +411,9 @@ export async function loadPlanResearch(input: ResearchInput): Promise<ResearchRe
         const to = destinationCode;
         const requests = [
           { ...blank("tiket"), from, to, date: input.departureDate },
-          { ...blank("tiket"), from: to, to: from, date: input.returnDate },
+          ...(input.oneWay
+            ? []
+            : [{ ...blank("tiket"), from: to, to: from, date: input.returnDate }]),
         ];
         const resolved = await within(resolveTravoCards(requests, input.owner), 12_000);
         const priced = (card: TravoCard | undefined) =>
@@ -418,9 +422,9 @@ export async function loadPlanResearch(input: ResearchInput): Promise<ResearchRe
             : null;
         const flights = (resolved ?? []).filter((c) => c.kind === "tiket");
         research.outbound = priced(flights[0]);
-        research.returnLeg = priced(flights[1]);
+        research.returnLeg = input.oneWay ? null : priced(flights[1]);
         if (!research.outbound && !research.returnLeg) down.push("tiket");
-        cards.push(requests[0]!, requests[1]!);
+        cards.push(...requests);
         const month = input.departureDate.slice(0, 7);
         const offers = await within(fetchMonthOffers(from, to, month), 8000);
         const cheapest = [...(offers ?? [])].sort((a, b) => a.priceIdr - b.priceIdr)[0];

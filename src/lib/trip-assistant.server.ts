@@ -11,6 +11,7 @@ import {
   addChecklistItem,
   addExpense,
   addItineraryItem,
+  createTrip,
   deleteChecklistItem,
   deleteItineraryItem,
   deleteTripItem,
@@ -50,6 +51,7 @@ import {
   type PlaceKind,
 } from "./trip-plan";
 import { jakartaDayStart } from "./receipt-scan";
+import { tripCurrencyFor } from "./trip-countries";
 import { hoursForDay, isOpenAt, weekdayIndex } from "./opening-hours";
 import {
   ASSISTANT_INTENTS,
@@ -82,6 +84,7 @@ import {
   type AssistantMessage,
   type AssistantSendResult,
   type AssistantStatus,
+  type ChipSet,
   type ProposalPayload,
   type ProposalView,
   type TripAssistantConfig,
@@ -726,6 +729,15 @@ const sendSchema = z.object({
   scope: z.string().optional(),
   text: z.string().trim().min(1).max(ASSISTANT_MAX_TEXT),
   intent: z.enum(ASSISTANT_INTENTS as [AssistantIntent, ...AssistantIntent[]]).optional(),
+  /** Choices from the planning wizard ("Itinerary lengkap"); only the full plan reads them. */
+  plan: z
+    .object({
+      oneWay: z.boolean().optional(),
+      style: z.enum(["hemat", "nyaman", "auto"]).optional(),
+      interests: z.array(z.string().trim().max(30)).max(7).optional(),
+      esim: z.boolean().optional(),
+    })
+    .optional(),
 });
 export const assistantSendInput = (data: unknown) => sendSchema.parse(data);
 
@@ -1055,23 +1067,18 @@ const datesBetween = (from: string, to: string) =>
  * three separate proposals the traveler applies one by one. The model only chooses among places we
  * found and writes the words; every number comes from the facts.
  */
-async function runFullPlanTurn(input: {
-  owner: TripOwner;
-  conv: Conversation;
-  tripId: string;
-  data: ReturnType<typeof assistantSendInput>;
-  status: Extract<AssistantStatus, { available: true }>;
-  config: TripAssistantConfig;
-  emit: ((event: TurnEvent) => void) | undefined;
-}): Promise<AssistantSendResult> {
-  const { owner, conv, tripId, data, status, config, emit } = input;
-  const say = (text: string, remaining = status.remaining): AssistantSendResult => ({
-    status: "error",
-    message: text,
-    remaining,
-  });
+/** Whether this traveler may make a full plan now: switched on, the guest's one, enough daily messages. */
+async function fullPlanGate(
+  owner: TripOwner,
+  status: Extract<AssistantStatus, { available: true }>,
+  config: TripAssistantConfig,
+): Promise<AssistantSendResult | null> {
   if (!config.fullPlan || !config.allowAgenda)
-    return say("Rencana lengkap sedang dimatikan. Coba “Buat itinerary” biasa.");
+    return {
+      status: "error",
+      remaining: status.remaining,
+      message: "Rencana lengkap sedang dimatikan. Coba “Buat itinerary” biasa.",
+    };
   const planned = await pool.query(
     "select count(*)::int as n from public.travel_assistant_runs where customer_auth_subject=$1 and intent='full_plan' and status='ok'",
     [owner.id],
@@ -1092,6 +1099,28 @@ async function runFullPlanTurn(input: {
       remaining: status.remaining,
       message: `Rencana lengkap memakai ${weight} pesan dan sisa kuotamu belum cukup. Coba lagi besok.`,
     };
+  return null;
+}
+
+async function runFullPlanTurn(input: {
+  owner: TripOwner;
+  conv: Conversation;
+  tripId: string;
+  data: ReturnType<typeof assistantSendInput>;
+  status: Extract<AssistantStatus, { available: true }>;
+  config: TripAssistantConfig;
+  emit: ((event: TurnEvent) => void) | undefined;
+}): Promise<AssistantSendResult> {
+  const { owner, conv, tripId, data, status, config, emit } = input;
+  const say = (text: string, remaining = status.remaining): AssistantSendResult => ({
+    status: "error",
+    message: text,
+    remaining,
+  });
+  const blocked = await fullPlanGate(owner, status, config);
+  if (blocked) return blocked;
+  const weight = owner.guest ? 1 : config.fullPlanWeight;
+  const prefs = data.plan ?? {};
 
   const facts = await loadFacts(tripId, false);
   const tripRow = await pool.query(
@@ -1184,7 +1213,8 @@ async function runFullPlanTurn(input: {
         returnDate: facts.returnDate,
         days: dates.length,
         flights: true,
-        esim: true,
+        esim: prefs.esim !== false,
+        oneWay: prefs.oneWay === true,
       }),
     ]);
     addUsage(costResult.usage);
@@ -1212,6 +1242,8 @@ async function runFullPlanTurn(input: {
       esimIdr: researchResult.research.esim?.priceIdr ?? null,
       totalBudgetIdr:
         facts.totalBudgetMinor > 0 ? Math.round(facts.totalBudgetMinor / 100 / fx) : 0,
+      ...(prefs.oneWay ? { oneWay: true } : {}),
+      ...(prefs.style === "hemat" || prefs.style === "nyaman" ? { forceTier: prefs.style } : {}),
     });
     const pools = buildDayPools(dates, candidates);
     emit?.({ type: "status", text: "Menyusun rencana harian…" });
@@ -1230,6 +1262,7 @@ async function runFullPlanTurn(input: {
             tier: budgetPlan.tier,
             pools,
             existing: facts.itinerary.map((i) => `${i.date} ${i.start ?? ""} ${i.title}`),
+            ...(prefs.interests?.length ? { interests: prefs.interests } : {}),
           })}\n\nPERMINTAAN TRAVELER:\n${data.text}`,
         },
       ],
@@ -1273,6 +1306,7 @@ async function runFullPlanTurn(input: {
     const toRequest = (request: TravoCardRequest): TravoCardRequest => request;
     const cards = researchResult.cards.map(toRequest);
     const strategy = buildStrategyRows({
+      ...(prefs.oneWay ? { oneWay: true } : {}),
       budget: budgetPlan,
       research: researchResult.research,
       travelers: facts.travelers,
@@ -1422,7 +1456,7 @@ async function runFullPlanTurn(input: {
 
 type PlanBubble = {
   content: string;
-  chips?: { options: string[]; multi: boolean } | null;
+  chips?: ChipSet | null;
   blocks?: AssistantMessage["blocks"];
   cards?: TravoCardRequest[];
   proposal?: { title: string; payload: ProposalPayload };
@@ -2026,6 +2060,107 @@ export async function assistantSwapPlaceHandler({
     [data.proposalId, JSON.stringify(payload)],
   );
   return { ok: true as const, payload };
+}
+
+const planTripSchema = z.object({
+  country: z.object({ code: z.string().trim().length(2), name: z.string().trim().min(2).max(80) }),
+  city: z.object({
+    name: z.string().trim().min(2).max(60),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
+  }),
+  origin: z
+    .object({ code: z.string().trim().length(3), name: z.string().trim().min(2).max(80) })
+    .nullable(),
+  oneWay: z.boolean(),
+  departureDate: z.string().date(),
+  days: z.number().int().min(1).max(FULL_PLAN_MAX_DAYS),
+  travelers: z.number().int().min(1).max(10),
+  budgetIdr: z.number().int().min(0).max(2_000_000_000),
+  style: z.enum(["hemat", "nyaman", "auto"]),
+  interests: z.array(z.string().trim().max(30)).max(7),
+  esim: z.boolean(),
+});
+export const assistantPlanTripInput = (data: unknown) => planTripSchema.parse(data);
+
+/**
+ * Step one of the wizard: checks that a full plan is allowed, finds the city on the map, and creates
+ * the trip (in the country's currency, the budget converted from Rupiah) with its departure city and
+ * city. The plan itself is then built by the normal streamed turn, so progress shows live.
+ */
+export async function assistantPlanTripHandler({
+  data,
+}: {
+  data: ReturnType<typeof assistantPlanTripInput>;
+}): Promise<
+  { status: "ok"; tripId: string; text: string } | { status: "limit" | "error"; message: string }
+> {
+  const owner = await resolveTripOwner();
+  if (!owner) return { status: "error", message: "Masuk dulu untuk membuat rencana." };
+  const { status, config } = await statusFor(owner);
+  if (!status.available) return { status: "error", message: "Travo sedang tidak tersedia." };
+  const blocked = await fullPlanGate(owner, status, config);
+  if (blocked && blocked.status !== "ok" && "message" in blocked)
+    return { status: blocked.status === "limit" ? "limit" : "error", message: blocked.message };
+  const today = todayJakarta();
+  if (data.departureDate < today)
+    return { status: "error", message: "Tanggal berangkat sudah lewat." };
+  let point =
+    data.city.lat != null && data.city.lng != null
+      ? { lat: data.city.lat, lng: data.city.lng }
+      : null;
+  if (!point) {
+    const hit = await nominatimVenue(`${data.city.name}, ${data.country.name}`, null);
+    point = hit ? { lat: hit.lat, lng: hit.lng } : null;
+  }
+  if (!point)
+    return {
+      status: "error",
+      message: `Aku belum menemukan kota “${data.city.name}” di ${data.country.name}. Coba tulis namanya lagi.`,
+    };
+  let currency: string = tripCurrencyFor(data.country.code);
+  let rate = 1;
+  if (currency !== "IDR") {
+    const fx = await fetchFxRate({ from: "IDR", to: currency });
+    if (fx) rate = fx.rate;
+    else currency = "IDR";
+  }
+  const returnDate = new Date(
+    Date.parse(`${data.departureDate}T00:00:00Z`) + (data.days - 1) * 86_400_000,
+  )
+    .toISOString()
+    .slice(0, 10);
+  try {
+    const trip = (await createTrip({
+      name: `${data.city.name} ${data.days} hari`.slice(0, 120),
+      destinationCode: data.country.code,
+      destinationName: data.country.name,
+      departureDate: data.departureDate,
+      returnDate,
+      travelersCount: data.travelers,
+      primaryCurrency: currency,
+      totalBudgetMinor: Math.round(data.budgetIdr * rate * 100),
+      ...(data.origin ? { originName: data.origin.name, originCode: data.origin.code } : {}),
+    })) as { id: string };
+    await pool.query(
+      "insert into public.travel_trip_cities (trip_id, name, latitude, longitude, sort_order) values ($1,$2,$3,$4,0) on conflict do nothing",
+      [trip.id, data.city.name, point.lat, point.lng],
+    );
+    const interests = data.interests.length ? ` Minatku: ${data.interests.join(", ")}.` : "";
+    return {
+      status: "ok",
+      tripId: trip.id,
+      text: `Buatkan rencana lengkap ${data.days} hari di ${data.city.name}, ${data.oneWay ? "tiket sekali jalan" : "tiket pulang-pergi"}.${interests}`.slice(
+        0,
+        ASSISTANT_MAX_TEXT,
+      ),
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Perjalanan belum bisa dibuat.",
+    };
+  }
 }
 
 const googleInput = z.object({ tripId: z.string().uuid(), target: z.enum(["sheet", "drive"]) });

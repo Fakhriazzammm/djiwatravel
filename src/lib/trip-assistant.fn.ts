@@ -126,6 +126,16 @@ export const openTripGoogleLink = createServerFn({ method: "POST" })
     return assistantOpenGoogleHandler({ data });
   });
 
+export const createPlanTrip = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { assistantPlanTripInput } = await import("./trip-assistant.server");
+    return assistantPlanTripInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { assistantPlanTripHandler } = await import("./trip-assistant.server");
+    return assistantPlanTripHandler({ data });
+  });
+
 export const recordTripSummary = createServerFn({ method: "POST" })
   .validator(async (data: unknown) => {
     const { assistantLoadInput } = await import("./trip-assistant.server");

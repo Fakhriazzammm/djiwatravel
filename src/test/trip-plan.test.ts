@@ -99,6 +99,20 @@ describe("budget from data, not guesses", () => {
     const plan = computeBudgetPlan({ ...base, outboundIdr: null, returnIdr: null });
     expect(plan.lines.find((l) => l.name === "Penerbangan")).toBeUndefined();
   });
+  it("counts a one-way fare once", () => {
+    const plan = computeBudgetPlan({ ...base, oneWay: true });
+    expect(plan.lines[0]).toMatchObject({
+      name: "Penerbangan",
+      amountIdr: 6_000_000,
+      basis: "tercatat",
+    });
+  });
+  it("keeps a chosen style even when the budget is tight, and reports the shortfall", () => {
+    const plan = computeBudgetPlan({ ...base, forceTier: "nyaman", totalBudgetIdr: 15_000_000 });
+    expect(plan.tier).toBe("nyaman");
+    expect(plan.shortfallIdr).toBeGreaterThan(0);
+    expect(computeBudgetPlan({ ...base, forceTier: "hemat" }).tier).toBe("hemat");
+  });
   it("goes frugal and reports the shortfall when the budget is tight", () => {
     const plan = computeBudgetPlan({ ...base, totalBudgetIdr: 15_000_000 });
     expect(plan.tier).toBe("hemat");

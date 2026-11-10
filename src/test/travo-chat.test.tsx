@@ -257,6 +257,60 @@ describe("Travo page", () => {
     );
   });
 
+  it("lets the traveler type the answer inside Travo's bubble, in any chat", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: { id: "c9", tripId: null, title: "x", scope: "all", tripCurrency: null },
+      messages: [
+        msg({ id: "u", role: "user", content: "tiket dong" }),
+        msg({
+          id: "a",
+          content: "Dari kota mana kamu berangkat?",
+          chips: {
+            options: ["Jakarta", "Surabaya"],
+            multi: false,
+            input: "Ketik kota keberangkatan",
+          },
+        }),
+      ],
+    });
+    vi.mocked(streamTripAssistantMessage).mockRejectedValue(new Error("no stream"));
+    vi.mocked(sendTripAssistantMessage).mockResolvedValue({
+      status: "ok",
+      remaining: 11,
+      messages: [
+        msg({ id: "u2", role: "user", content: "Bandung" }),
+        msg({ id: "a2", content: "Oke, dari Bandung." }),
+      ],
+    });
+    render(<TravoChat conversationId="c9" />);
+    await screen.findByText("Dari kota mana kamu berangkat?");
+    expect(screen.getByRole("button", { name: "Jakarta" })).toBeTruthy(); // chips stay as shortcuts
+    const box = screen.getByLabelText("Ketik kota keberangkatan");
+    fireEvent.change(box, { target: { value: "Bandung" } });
+    fireEvent.submit(box.closest("form")!);
+    expect(await screen.findByText("Oke, dari Bandung.")).toBeTruthy();
+    expect(sendTripAssistantMessage).toHaveBeenCalledWith({
+      data: expect.objectContaining({ text: "Bandung", conversationId: "c9" }),
+    });
+  });
+
+  it("offers the big 'Buat itinerary lengkap' card on the empty Travo page and opens the wizard", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: null,
+      messages: [],
+    });
+    render(<TravoChat />);
+    fireEvent.click(await screen.findByTestId("plan-hero"));
+    expect(await screen.findByTestId("plan-wizard")).toBeTruthy();
+    expect(await screen.findByText(/Mau liburan ke mana/)).toBeTruthy();
+    // The normal message box is hidden while the wizard asks.
+    expect(screen.queryByLabelText("Pesan untuk Travo")).toBeNull();
+  });
+
   it("asks a visitor without a session to sign in", async () => {
     vi.mocked(loadTravo).mockResolvedValue({
       status: { available: false, reason: "off" },

@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUp } from "lucide-react";
 import { AssistantMascot, type MascotMood } from "@/components/assistant-mascot";
 import { AssistantBlocks, RichText } from "@/components/assistant-blocks";
+import { InlineAnswer } from "@/components/inline-answer";
 import { TravoCards } from "@/components/travo-cards";
 import { ProposalCard } from "@/components/trip-assistant-cards";
 import type { TravoChatState } from "@/hooks/use-travo-chat";
@@ -133,7 +134,7 @@ export function TravoMessage({
             />
           )
         )}
-        {chips && (
+        {chips && chips.options.length > 0 && (
           <div
             className="flex flex-wrap gap-1.5 border-t border-border/60 px-3 py-2"
             data-testid="assistant-chips"
@@ -172,6 +173,9 @@ export function TravoMessage({
               </button>
             )}
           </div>
+        )}
+        {chips?.input && (
+          <InlineAnswer placeholder={chips.input} onSubmit={(value) => void send(value)} />
         )}
       </>
     ) : undefined;

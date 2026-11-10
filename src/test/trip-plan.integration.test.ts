@@ -97,6 +97,7 @@ vi.mock("@/lib/travo-cards.server", () => ({
 import {
   assistantApplyHandler,
   assistantSendHandler,
+  assistantPlanTripHandler,
   assistantSwapPlaceHandler,
   clearAssistantBurst,
   adminDeleteCityCostsHandler,
@@ -163,9 +164,12 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
       vi.fn(async (input: string | URL, init?: RequestInit) => {
         const target = String(input);
         if (target.includes("frankfurter"))
-          return new Response(JSON.stringify({ date: "2026-11-09", rates: { IDR: 105 } }), {
-            status: 200,
-          });
+          return new Response(
+            JSON.stringify({ date: "2026-11-09", rates: { IDR: 105, JPY: 0.0095 } }),
+            {
+              status: 200,
+            },
+          );
         if (target.includes("nominatim")) {
           nominatimCalls += 1;
           const q = new URL(target).searchParams.get("q") ?? "";
@@ -498,6 +502,97 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
     const texts = result.messages.map((m) => m.content).join(" ");
     expect(texts).toMatch(/Isi kota keberangkatan/);
     expect(result.messages.some((m) => m.cards?.some((c) => c.kind === "tiket"))).toBe(false);
+  });
+
+  it("wizard: creates the trip with its departure city, city point and converted budget, ready for the plan", async () => {
+    const created = await assistantPlanTripHandler({
+      data: {
+        country: { code: "JP", name: "Jepang" },
+        city: { name: "Tokyo", lat: 35.68, lng: 139.76 },
+        origin: { code: "CGK", name: "Jakarta" },
+        oneWay: false,
+        departureDate: "2026-12-14",
+        days: 3,
+        travelers: 2,
+        budgetIdr: 20_000_000,
+        style: "nyaman",
+        interests: ["Kuliner"],
+        esim: true,
+      },
+    });
+    if (created.status !== "ok") throw new Error(`failed: ${JSON.stringify(created)}`);
+    const trip = (
+      await pool.query(
+        "select name, primary_currency, total_budget_minor::bigint::text t, origin_code, to_char(return_date,'YYYY-MM-DD') r, travelers_count from travel_trips where id=$1",
+        [created.tripId],
+      )
+    ).rows[0];
+    expect(trip).toMatchObject({
+      name: "Tokyo 3 hari",
+      primary_currency: "JPY",
+      origin_code: "CGK",
+      r: "2026-12-16",
+      travelers_count: 2,
+    });
+    expect(trip.t).toBe(String(Math.round(20_000_000 * 0.0095 * 100))); // Rupiah converted to yen at the stubbed rate
+    expect(
+      await count(
+        `select count(*)::int n from travel_trip_cities where trip_id='${created.tripId}' and name='Tokyo'`,
+      ),
+    ).toBe(1);
+    expect(created.text).toContain("rencana lengkap 3 hari di Tokyo");
+    // ...and the normal streamed turn builds the plan from the wizard's choices.
+    const planned = await assistantSendHandler({
+      data: {
+        tripId: created.tripId,
+        text: created.text,
+        intent: "full_plan",
+        plan: { oneWay: true, style: "hemat", interests: ["Kuliner"], esim: false },
+      },
+    });
+    if (planned.status !== "ok") throw new Error(`plan failed: ${JSON.stringify(planned)}`);
+    const first = planned.messages.find((m) => !m.proposal && m.role === "assistant")!;
+    // One way: one fare card, no return, no eSIM card; the budget says so and keeps the chosen style.
+    expect(first.cards?.filter((c) => c.kind === "tiket")).toHaveLength(1);
+    expect(first.cards?.some((c) => c.kind === "esim")).toBe(false);
+    expect(first.blocks.flatMap((b) => b.items).some((r) => r.startsWith("Sekali jalan"))).toBe(
+      true,
+    );
+    expect(
+      first.blocks.flatMap((b) => b.items).some((r) => r.startsWith("Gaya anggaran: hemat")),
+    ).toBe(true);
+    const budget = planned.messages.find((m) => m.proposal?.kind === "budget")!.proposal!
+      .payload as {
+      kind: "budget";
+      budget: { categories: { name: string; allocatedMinor: number }[] };
+    };
+    expect(budget.budget.categories.some((c) => c.name === "eSIM & internet")).toBe(false);
+  });
+
+  it("wizard: a guest who already used the free plan is told before any trip is created", async () => {
+    holder.owner = { id: "guest-9", email: null, guest: true };
+    await pool.query("update travel_trips set customer_auth_subject='guest-9'");
+    await assistantSendHandler({
+      data: { tripId: TRIP, text: "rencana lengkap", intent: "full_plan" },
+    });
+    const before = await count("select count(*)::int n from travel_trips");
+    const blocked = await assistantPlanTripHandler({
+      data: {
+        country: { code: "JP", name: "Jepang" },
+        city: { name: "Tokyo", lat: 35.68, lng: 139.76 },
+        origin: null,
+        oneWay: true,
+        departureDate: "2026-12-14",
+        days: 3,
+        travelers: 1,
+        budgetIdr: 0,
+        style: "auto",
+        interests: [],
+        esim: false,
+      },
+    });
+    expect(blocked.status).toBe("limit");
+    expect(await count("select count(*)::int n from travel_trips")).toBe(before);
   });
 
   it("gives a guest exactly one full plan, then asks them to sign in", async () => {

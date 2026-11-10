@@ -151,6 +151,10 @@ export type BudgetPlanInput = {
   esimIdr: number | null;
   /** The traveler's own total budget in IDR (0 = none). */
   totalBudgetIdr: number;
+  /** One-way ticket: the return fare is not counted. */
+  oneWay?: boolean;
+  /** The traveler chose a style: it is kept even when the budget is tight (the shortfall is reported). */
+  forceTier?: "hemat" | "nyaman";
 };
 export type BudgetPlan = {
   tier: "hemat" | "nyaman";
@@ -170,8 +174,10 @@ function linesFor(input: BudgetPlanInput, tier: "hemat" | "nyaman"): BudgetLine[
   const hotel = tier === "hemat" ? input.costs.hotelBudget : input.costs.hotelMid;
   const lines: BudgetLine[] = [];
   const out = input.outboundIdr;
-  const back = input.returnIdr;
-  if (out !== null || back !== null) {
+  const back = input.oneWay ? null : input.returnIdr;
+  if (input.oneWay && out !== null) {
+    lines.push({ name: "Penerbangan", amountIdr: r10k(out * people), basis: "tercatat" });
+  } else if (out !== null || back !== null) {
     const both = out !== null && back !== null;
     lines.push({
       name: "Penerbangan",
@@ -210,10 +216,10 @@ function linesFor(input: BudgetPlanInput, tier: "hemat" | "nyaman"): BudgetLine[
  * money goes to shopping, never invented elsewhere.
  */
 export function computeBudgetPlan(input: BudgetPlanInput): BudgetPlan {
-  let tier: "hemat" | "nyaman" = "nyaman";
+  let tier: "hemat" | "nyaman" = input.forceTier ?? "nyaman";
   let lines = linesFor(input, tier);
   let total = lines.reduce((s, l) => s + l.amountIdr, 0);
-  if (input.totalBudgetIdr > 0 && total > input.totalBudgetIdr) {
+  if (!input.forceTier && input.totalBudgetIdr > 0 && total > input.totalBudgetIdr) {
     tier = "hemat";
     lines = linesFor(input, tier);
     total = lines.reduce((s, l) => s + l.amountIdr, 0);
@@ -624,6 +630,7 @@ export const formatIdr = (value: number) =>
 
 /** Facts the server worked out, shown as rows under Travo's sentence. Pure strings, no model. */
 export function buildStrategyRows(input: {
+  oneWay?: boolean;
   budget: BudgetPlan;
   research: PlanResearch;
   travelers: number;
@@ -636,6 +643,7 @@ export function buildStrategyRows(input: {
       `Tiket pergi: ${formatIdr(research.outbound.priceIdr)}/orang (tercatat ${research.outbound.date})`,
     );
   else rows.push("Tiket: harga belum tercatat, belum termasuk di anggaran");
+  if (input.oneWay) rows.push("Sekali jalan: tiket pulang tidak dihitung");
   const cheapest = research.cheapestOutbound;
   if (cheapest && research.outbound && cheapest.priceIdr < research.outbound.priceIdr) {
     const saving = (research.outbound.priceIdr - cheapest.priceIdr) * input.travelers;
@@ -660,7 +668,7 @@ export function buildFullPlanPrompt(today: string, tone: string): string {
     "You are Travo, the friendly trip assistant of Djiwa Travel. Answer ONLY with JSON that follows the schema. Casual, polite Indonesian, aku/kamu.",
     "Task: build the day-by-day itinerary of this trip from the offered places. You may ONLY use places listed under days[].sights and days[].food (and their `id`). Never write a place name yourself and never invent ids.",
     "Per day: 2-3 sights (sorted by closeness and opening hours), a lunch and a dinner chosen from that day's food list, optionally breakfast or a cafe. Realistic times (24h HH:MM), leave time to travel between places; first day starts later and the last day ends earlier if flights are known. Respect opening hours shown (`jam=`); when unknown, still plan but say 'cek jam buka' in `note`.",
-    "Match the traveler's interests and pace from their message and the trip. `note` is one short reason or tip per item (max 120 chars), empty when nothing to add.",
+    "Match the traveler's interests (trip.interests when given, else their message) and pace: weight the sights and the food to those interests. `note` is one short reason or tip per item (max 120 chars), empty when nothing to add.",
     "`reply`: one or two short sentences introducing the plan (no markdown, no emoji, max 400 chars). `tips`: up to 3 helpful, non-price tips about this city. `chips`: 2-4 short next-step taps. `checklist`: up to 8 preparation items specific to the destination (passport, visa, eSIM, adapter, local rules, tax-free, etc.) with `daysBefore` = how many days before departure to do it (integer).",
     "Never state prices or opening hours that are not given; the server adds the numbers.",
     `Today is ${today}.`,
@@ -678,6 +686,7 @@ export function buildFullPlanContext(input: {
   tier: "hemat" | "nyaman";
   pools: readonly DayPool[];
   existing: readonly string[];
+  interests?: readonly string[];
 }): string {
   const short = (p: PlaceCandidate) =>
     `${p.id} | ${p.name} | ${PLACE_KIND_LABEL[p.kind]} | ${p.area}${p.hours ? ` | jam=${p.hours.slice(0, 60)}` : ""}`;
@@ -688,6 +697,7 @@ export function buildFullPlanContext(input: {
       city: input.city,
       travelers: input.travelers,
       style: input.tier,
+      interests: input.interests?.length ? input.interests : undefined,
     },
     existingAgenda: input.existing,
     days: input.pools.map((pool, index) => ({

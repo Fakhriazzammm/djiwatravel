@@ -4,6 +4,7 @@ import { ChevronLeft, History, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantMascot, AssistantProfileSheet } from "@/components/assistant-mascot";
 import { TravoComposer, TravoLive, TravoMessage } from "@/components/travo-parts";
+import { TravoPlanWizard } from "@/components/travo-plan-wizard";
 import { TripToolsBar, TripToolsOverlays } from "@/components/trip-chat-tools";
 import { ShareTripSheet } from "@/components/trip-share-sheet";
 import { TripSummaryCard } from "@/components/trip-summary-card";
@@ -121,6 +122,7 @@ export function TravoChat({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [history, setHistory] = useState<TravoConversationSummary[] | null>(null);
   const [deleting, setDeleting] = useState<TravoConversationSummary | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -233,6 +235,8 @@ export function TravoChat({
           <div className="m-auto max-w-[280px] text-center text-[12px] text-muted-foreground">
             {ASSISTANT_NAME} sedang tidak tersedia. Coba lagi nanti.
           </div>
+        ) : wizardOpen ? (
+          <TravoPlanWizard onExit={() => setWizardOpen(false)} />
         ) : messages.length === 0 && !sending ? (
           <div className="m-auto flex w-full flex-col items-center gap-1 text-center">
             <AssistantMascot size={64} />
@@ -240,7 +244,27 @@ export function TravoChat({
             <p className="text-[12px] text-muted-foreground">
               Tanya soal eSIM, tiket, trip, atau titip belanja.
             </p>
-            <div className="mt-3 grid w-full grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setWizardOpen(true)}
+              data-testid="plan-hero"
+              className="tap relative mt-3 w-full overflow-hidden rounded-3xl bg-gradient-to-br from-brand-red to-[#b3222a] p-4 text-left text-white shadow-lg shadow-brand-red/25"
+            >
+              <span className="absolute -right-3 -top-3 opacity-90">
+                <AssistantMascot size={92} />
+              </span>
+              <span className="block max-w-[190px] text-[19px] font-extrabold leading-tight">
+                Buat itinerary lengkap
+              </span>
+              <span className="mt-1 block max-w-[210px] text-[12px] leading-snug text-white/90">
+                Tiket pesawat, hotel, anggaran, eSIM, dan rute per hari. Aku tanya satu-satu, lalu
+                kususun.
+              </span>
+              <span className="mt-3 inline-flex min-h-9 items-center rounded-full bg-white px-4 text-[13px] font-bold text-brand-red">
+                Mulai sekarang
+              </span>
+            </button>
+            <div className="mt-2 grid w-full grid-cols-2 gap-1.5">
               {STARTERS.map((s) => (
                 <button
                   key={s.title}
@@ -297,7 +321,7 @@ export function TravoChat({
         <div ref={endRef} />
       </main>
 
-      {available && loggedIn && (
+      {available && loggedIn && !wizardOpen && (
         <footer className="shrink-0 border-t border-border/60 bg-background px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
           {chatTrip && (
             <TripToolsBar

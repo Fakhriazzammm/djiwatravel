@@ -110,6 +110,33 @@ describe("detectIntent", () => {
   });
 });
 
+describe("typed answers inside the bubble", () => {
+  it("keeps an `input` placeholder with or without chips, and drops an empty one", () => {
+    const withBoth = cleanAssistantReply(
+      { reply: "Kota mana?", chips: ["Tokyo"], input: "Ketik kotamu" },
+      ctx(),
+    );
+    expect(withBoth.chips).toEqual({ options: ["Tokyo"], multi: false, input: "Ketik kotamu" });
+    const inputOnly = cleanAssistantReply(
+      { reply: "Anggaranmu?", chips: [], input: "  Ketik  anggaran  " },
+      ctx(),
+    );
+    expect(inputOnly.chips).toEqual({ options: [], multi: false, input: "Ketik anggaran" });
+    expect(cleanAssistantReply({ reply: "Halo", chips: [], input: "" }, ctx()).chips).toBeNull();
+    expect(cleanAssistantReply({ reply: "Halo" }, ctx()).chips).toBeNull();
+  });
+  it("shows the typed field even when every chip was filtered out by an applied proposal", () => {
+    expect(
+      visibleChips({ options: ["Terapkan"], multi: false, input: "Ketik revisi" }, "applied"),
+    ).toEqual({
+      options: [],
+      multi: false,
+      input: "Ketik revisi",
+    });
+    expect(visibleChips({ options: ["Terapkan"], multi: false }, "applied")).toBeNull();
+  });
+});
+
 describe("cleanAssistantReply", () => {
   it("turns a valid agenda answer into a proposal with minor-unit money", () => {
     const out = cleanAssistantReply(reply(), ctx());
