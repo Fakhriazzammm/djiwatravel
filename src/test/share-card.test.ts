@@ -266,7 +266,7 @@ describe("itinerary share story", () => {
     expect(drawn.join(" ")).not.toContain("Belum dicantumkan");
   });
 
-  it("rejects a huge agenda explicitly rather than silently losing activities or making multiple slides", async () => {
+  it("splits a huge agenda over several Story images without losing any activity", async () => {
     mockCanvas();
     const highlights = Array.from({ length: 100 }, (_, i) => ({
       time: "10:00–11:00",
@@ -274,7 +274,11 @@ describe("itinerary share story", () => {
       place: "Tokyo",
       image: null,
     }));
-    await expect(renderShareCard({ ...input, highlights })).rejects.toThrow(/satu.*Story/i);
+    const blobs = await renderShareCard({ ...input, highlights });
+    expect(blobs.length).toBeGreaterThan(1);
+    const text = drawn.join(" ");
+    for (const i of [0, 50, 99]) expect(text).toContain(`Agenda ${i}`);
+    expect(text).toContain(`Gambar 2 dari ${blobs.length}`);
   });
 
   it("applies the approved slogan and current generator attribution to non-itinerary cards", async () => {

@@ -398,37 +398,83 @@ function compactRow(
   };
 }
 
-function posterLayout(
+function groupDays(ctx: CanvasRenderingContext2D, input: ShareCardInput, size: number) {
+  const groups = new Map<string, CompactDay>();
+  for (const activity of input.highlights) {
+    const label = activity.dayLabel?.trim() || "Jadwal perjalanan";
+    const key = `${activity.dayNumber || 1}:${label}`;
+    const day = groups.get(key) || { label, rows: [], height: 68 };
+    const row = compactRow(ctx, activity, size);
+    day.rows.push(row);
+    day.height += row.height;
+    groups.set(key, day);
+  }
+  return [...groups.values()];
+}
+
+function layoutOf(days: CompactDay[], top: number, size: number): PosterLayout {
+  return {
+    days,
+    top,
+    titleSize: size,
+    metaSize: size - 7,
+    titleLine: Math.round(size * 1.14),
+    metaLine: Math.round((size - 7) * 1.3),
+  };
+}
+
+const MIN_SIZE = 29;
+const CONTINUED_ART = 150;
+
+/** One page when everything fits; otherwise the agenda continues over as many Story images as needed. */
+function posterLayouts(
   ctx: CanvasRenderingContext2D,
   input: ShareCardInput,
   minimumTop: number,
-): PosterLayout {
-  for (let size = 36; size >= 29; size--) {
-    const groups = new Map<string, CompactDay>();
-    for (const activity of input.highlights) {
-      const label = activity.dayLabel?.trim() || "Jadwal perjalanan";
-      const key = `${activity.dayNumber || 1}:${label}`;
-      const day = groups.get(key) || { label, rows: [], height: 68 };
-      const row = compactRow(ctx, activity, size);
-      day.rows.push(row);
-      day.height += row.height;
-      groups.set(key, day);
-    }
-    const days = [...groups.values()];
+): PosterLayout[] {
+  for (let size = 36; size >= MIN_SIZE; size--) {
+    const days = groupDays(ctx, input, size);
     const height = days.reduce((sum, day) => sum + day.height + 12, 0);
     if (height <= CONTENT_BOTTOM - minimumTop)
-      return {
-        days,
-        top: Math.max(minimumTop, Math.min(850, CONTENT_BOTTOM - Math.max(height, 180))),
-        titleSize: size,
-        metaSize: size - 7,
-        titleLine: Math.round(size * 1.14),
-        metaLine: Math.round((size - 7) * 1.3),
-      };
+      return [
+        layoutOf(
+          days,
+          Math.max(minimumTop, Math.min(850, CONTENT_BOTTOM - Math.max(height, 180))),
+          size,
+        ),
+      ];
   }
-  throw new Error(
-    "Agenda terlalu panjang untuk satu gambar Story. Ringkas catatan atau pilih lebih sedikit agenda, lalu coba lagi.",
-  );
+  const top = minimumTop + CONTINUED_ART;
+  const room = CONTENT_BOTTOM - top;
+  const pages: CompactDay[][] = [[]];
+  let used = 0;
+  for (const day of groupDays(ctx, input, MIN_SIZE)) {
+    let current: CompactDay | null = null;
+    let continued = false;
+    for (const row of day.rows) {
+      const need = row.height + (current ? 0 : 80);
+      if (used + need > room && used > 0) {
+        pages.push([]);
+        used = 0;
+        current = null;
+        continued = true;
+      }
+      if (!current) {
+        current = {
+          label: continued ? `${day.label} (lanjutan)` : day.label,
+          rows: [],
+          height: 68,
+        };
+        pages[pages.length - 1]!.push(current);
+        used += 80;
+      }
+      current.rows.push(row);
+      current.height += row.height;
+      used += row.height;
+    }
+    used += 16;
+  }
+  return pages.map((days) => layoutOf(days, top, MIN_SIZE));
 }
 
 let serifReady: Promise<void> | undefined;
@@ -634,7 +680,7 @@ async function canvasBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-/** Every day and activity is composed into one compact illustrated Story. Never caches data or identity. */
+/** Compact illustrated Story; a long itinerary continues over several images. Never caches data or identity. */
 export async function renderShareCard(input: ShareCardInput): Promise<Blob[]> {
   const artUrl = /\btokyo\b|東京/i.test(input.title)
     ? TOKYO_ART
@@ -654,20 +700,30 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob[]> {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas unavailable");
-  // Measure header first, then give the illustration the space remaining after all agenda rows.
   const minimumTop = drawHeader(ctx, input, null) + 30;
-  const layout = posterLayout(ctx, input, minimumTop);
-  drawBackdrop(ctx, art ?? fallback, layout.top + 10);
-  drawHeader(ctx, input, logo);
-  if (layout.days.length) drawAgenda(ctx, layout);
-  else {
-    ctx.textAlign = "center";
-    ctx.fillStyle = NAVY;
-    ctx.font = `400 30px ${SERIF}`;
-    ctx.fillText("Belum ada jadwal yang ditambahkan.", W / 2, 1150);
+  const layouts = posterLayouts(ctx, input, minimumTop);
+  const blobs: Blob[] = [];
+  for (const [index, layout] of layouts.entries()) {
+    drawBackdrop(ctx, art ?? fallback, layout.top + 10);
+    drawHeader(ctx, input, logo);
+    if (layout.days.length) drawAgenda(ctx, layout);
+    else {
+      ctx.textAlign = "center";
+      ctx.fillStyle = NAVY;
+      ctx.font = `400 30px ${SERIF}`;
+      ctx.fillText("Belum ada jadwal yang ditambahkan.", W / 2, 1150);
+    }
+    if (layouts.length > 1) {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#686570";
+      ctx.font = `600 24px ${FONT}`;
+      ctx.fillText(`Gambar ${index + 1} dari ${layouts.length}`, W / 2, CONTENT_BOTTOM + 14);
+    }
+    drawFooter(ctx, mascot, generator, shareGenerationTime());
+    blobs.push(await canvasBlob(canvas));
   }
-  drawFooter(ctx, mascot, generator, shareGenerationTime());
-  return [await canvasBlob(canvas)];
+  return blobs;
 }
 
 export type BrandCardInput = {
