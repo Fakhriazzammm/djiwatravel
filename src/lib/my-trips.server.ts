@@ -27,6 +27,13 @@ const tripSchema = z
     primaryCurrency: z.enum(currencies),
     totalBudgetMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
     timezone: z.string().trim().max(80).optional(),
+    originName: z.string().trim().max(120).optional(),
+    originCode: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z]{3}$/)
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
   })
   .refine((value) => value.returnDate >= value.departureDate, {
     message: "Tanggal pulang harus setelah tanggal berangkat",
@@ -45,6 +52,13 @@ const tripPatchSchema = z
     primaryCurrency: z.enum(currencies),
     totalBudgetMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
     timezone: z.string().trim().max(80).optional(),
+    originName: z.string().trim().max(120).optional(),
+    originCode: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z]{3}$/)
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
   })
   .refine((value) => value.returnDate >= value.departureDate, {
     message: "Tanggal pulang harus setelah tanggal berangkat",
@@ -168,7 +182,7 @@ function money(value: unknown) {
 
 async function ownedTrip(tripId: string, subject: string) {
   const result = await pool.query(
-    "select id, name, destination_code, destination_name, departure_date, return_date, travelers_count, primary_currency, total_budget_minor, timezone, created_at, updated_at from travel_trips where id = $1 and customer_auth_subject = $2 limit 1",
+    "select id, name, destination_code, destination_name, departure_date, return_date, travelers_count, primary_currency, total_budget_minor, timezone, origin_name, origin_code, created_at, updated_at from travel_trips where id = $1 and customer_auth_subject = $2 limit 1",
     [tripId, subject],
   );
   if (!result.rows[0]) throw new Error("Perjalanan tidak ditemukan");
@@ -255,8 +269,8 @@ export async function updateTrip(input: unknown) {
   const data = tripPatchSchema.parse(input);
   const user = await requireTripOwner();
   const result = await pool.query(
-    `update travel_trips set name=$1,destination_code=$2,destination_name=$3,departure_date=$4,return_date=$5,travelers_count=$6,primary_currency=$7,total_budget_minor=$8,timezone=$9,updated_at=now()
-     where id=$10 and customer_auth_subject=$11 returning *`,
+    `update travel_trips set name=$1,destination_code=$2,destination_name=$3,departure_date=$4,return_date=$5,travelers_count=$6,primary_currency=$7,total_budget_minor=$8,timezone=$9,origin_name=$10,origin_code=$11,updated_at=now()
+     where id=$12 and customer_auth_subject=$13 returning *`,
     [
       data.name,
       data.destinationCode,
@@ -267,6 +281,8 @@ export async function updateTrip(input: unknown) {
       data.primaryCurrency,
       data.totalBudgetMinor,
       data.timezone ?? null,
+      data.originCode ? (data.originName ?? null) : null,
+      data.originCode ? data.originCode.toUpperCase() : null,
       data.tripId,
       user.id,
     ],
@@ -296,8 +312,8 @@ export async function createTrip(input: unknown) {
         throw new Error(guestLimitMessage(limit));
     }
     const trip = await client.query(
-      `insert into travel_trips (customer_auth_subject,name,destination_code,destination_name,departure_date,return_date,travelers_count,primary_currency,total_budget_minor,timezone)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *`,
+      `insert into travel_trips (customer_auth_subject,name,destination_code,destination_name,departure_date,return_date,travelers_count,primary_currency,total_budget_minor,timezone,origin_name,origin_code)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *`,
       [
         owner.id,
         data.name,
@@ -309,6 +325,8 @@ export async function createTrip(input: unknown) {
         data.primaryCurrency,
         data.totalBudgetMinor,
         data.timezone ?? null,
+        data.originCode ? (data.originName ?? null) : null,
+        data.originCode ? data.originCode.toUpperCase() : null,
       ],
     );
     // A new trip starts empty on purpose: no template budget categories or checklist items.
@@ -335,7 +353,7 @@ export async function duplicateTripRecord(tripId: string) {
     await client.query("begin");
     const source = await client.query(
       `select name,destination_code,destination_name,departure_date::text as departure_date,
-        return_date::text as return_date,travelers_count,primary_currency,total_budget_minor,timezone
+        return_date::text as return_date,travelers_count,primary_currency,total_budget_minor,timezone,origin_name,origin_code
        from travel_trips where id=$1 and customer_auth_subject=$2`,
       [tripId, user.id],
     );
@@ -343,8 +361,8 @@ export async function duplicateTripRecord(tripId: string) {
     const t = source.rows[0];
     const copyName = `${String(t.name).slice(0, 110)} (salinan)`;
     const copied = await client.query(
-      `insert into travel_trips (customer_auth_subject,name,destination_code,destination_name,departure_date,return_date,travelers_count,primary_currency,total_budget_minor,timezone)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
+      `insert into travel_trips (customer_auth_subject,name,destination_code,destination_name,departure_date,return_date,travelers_count,primary_currency,total_budget_minor,timezone,origin_name,origin_code)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
       [
         user.id,
         copyName,
@@ -356,6 +374,8 @@ export async function duplicateTripRecord(tripId: string) {
         t.primary_currency,
         t.total_budget_minor,
         t.timezone,
+        t.origin_name,
+        t.origin_code,
       ],
     );
     const id = copied.rows[0].id as string;

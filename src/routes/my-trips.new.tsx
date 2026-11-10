@@ -8,6 +8,8 @@ import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { CustomerAuth } from "@/components/customer-auth";
 import { TripCountryPicker } from "@/components/trip-country-picker";
 import { tripCurrencyFor } from "@/lib/trip-countries";
+import { FlightPlaceField } from "@/components/flight-place-field";
+import type { FlightPlace } from "@/lib/flights";
 
 export const Route = createFileRoute("/my-trips/new")({
   loader: () => getGuestTripStatus(),
@@ -31,6 +33,7 @@ function NewTrip() {
     totalBudgetMinor: 0,
     timezone: "",
   });
+  const [origin, setOrigin] = useState<FlightPlace | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const update = (key: string, value: string | number) =>
@@ -40,7 +43,12 @@ function NewTrip() {
     setError(null);
     setSaving(true);
     try {
-      const trip = await postTrip({ data: form });
+      const trip = await postTrip({
+        data: {
+          ...form,
+          ...(origin ? { originName: origin.name, originCode: origin.code } : {}),
+        },
+      });
       await navigate({ to: "/my-trips/$tripId", params: { tripId: trip.id } });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Perjalanan belum dapat disimpan.");
@@ -104,6 +112,18 @@ function NewTrip() {
               />
             </div>
           </div>
+        </div>
+        <div>
+          <p className={label}>Berangkat dari (opsional)</p>
+          <FlightPlaceField
+            id="trip-origin"
+            label="Kota atau bandara asal"
+            value={origin}
+            onPick={setOrigin}
+          />
+          <p className="mt-1 px-1 text-[11px] text-muted-foreground">
+            Dipakai Travo untuk mencari harga tiket pesawat ke tujuanmu.
+          </p>
         </div>
         <div>
           <p className={label}>Tanggal</p>

@@ -28,6 +28,7 @@ import { getItineraryMapConfig } from "@/lib/itinerary-map.fn";
 import { DEFAULT_ITINERARY_MAP_CONFIG, type ItineraryMapConfig } from "@/lib/itinerary-map";
 import { deleteTripRecord, duplicateTrip, getTrip, patchTrip } from "@/lib/my-trips.fn";
 import { getFlightsStatus } from "@/lib/flights.fn";
+import { FlightPlaceField } from "@/components/flight-place-field";
 import { flightsPathFor, showFlightsTile } from "@/lib/flights";
 import type { TripCity } from "@/lib/trip-cities";
 import { isTripAuthenticationError } from "@/lib/trip-actions";
@@ -82,6 +83,8 @@ type Trip = {
   primary_currency: string;
   total_budget_minor: number;
   timezone?: string;
+  origin_name?: string | null;
+  origin_code?: string | null;
   status: string;
 };
 
@@ -320,6 +323,8 @@ function EditTripSheet({
     totalBudgetMinor: trip.total_budget_minor,
     timezone: trip.timezone ?? "",
     destinationCode: trip.destination_code,
+    originName: trip.origin_name ?? "",
+    originCode: trip.origin_code ?? "",
     primaryCurrency: trip.primary_currency.trim() as "IDR" | "JPY" | "USD" | "SGD" | "KRW",
   });
 
@@ -382,6 +387,32 @@ function EditTripSheet({
                 }
               />
             </div>
+          </div>
+          <div className="block">
+            <span className="mb-1 block px-1 text-[12px] font-medium text-muted-foreground">
+              Berangkat dari (opsional)
+            </span>
+            <FlightPlaceField
+              id="edit-trip-origin"
+              label="Kota atau bandara asal"
+              value={
+                form.originCode
+                  ? {
+                      code: form.originCode,
+                      name: form.originName || form.originCode,
+                      countryName: "",
+                      type: "city",
+                    }
+                  : null
+              }
+              onPick={(place) =>
+                setForm((current) => ({
+                  ...current,
+                  originCode: place?.code ?? "",
+                  originName: place?.name ?? "",
+                }))
+              }
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             {text("departureDate", "Berangkat", "date")}

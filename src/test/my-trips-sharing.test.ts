@@ -51,6 +51,33 @@ describe("My Trips duplication", () => {
     expect(statements.some((sql) => sql.includes("travel_checklist_items"))).toBe(false);
   });
 
+  it("stores the departure city (upper-cased code) and ignores a malformed code", async () => {
+    const inserts: unknown[][] = [];
+    const clientQuery = vi.fn(async (sql: string, params?: unknown[]) => {
+      if (sql.includes("insert into travel_trips")) {
+        inserts.push(params ?? []);
+        return { rows: [{ id: copyId }] };
+      }
+      return { rows: [] };
+    });
+    connect.mockResolvedValue({ query: clientQuery, release: vi.fn() } as never);
+    const base = {
+      name: "Tokyo",
+      destinationCode: "JP",
+      destinationName: "Jepang",
+      departureDate: "2026-11-01",
+      returnDate: "2026-11-05",
+      travelersCount: 1,
+      primaryCurrency: "IDR" as const,
+      totalBudgetMinor: 0,
+    };
+    await createTrip({ ...base, originName: "Jakarta", originCode: "cgk" });
+    expect(inserts[0]?.slice(-2)).toEqual(["Jakarta", "CGK"]);
+    await createTrip({ ...base, originName: "Jakarta", originCode: "" });
+    expect(inserts[1]?.slice(-2)).toEqual([null, null]);
+    await expect(createTrip({ ...base, originName: "x", originCode: "JAKARTA" })).rejects.toThrow();
+  });
+
   it("copies the plan into a new owned trip without copying expenses", async () => {
     const clientQuery = vi.fn(async (sql: string) => {
       if (sql.includes("select name,destination_code")) {
