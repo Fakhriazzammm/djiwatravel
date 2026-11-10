@@ -17,7 +17,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { FixedLayer } from "@/components/motion-primitives";
+import { useSwipeHint } from "@/components/swipeable-ticket";
 import { Page, TabBar } from "@/components/shell";
 import { getCustomerNotificationsFeed } from "@/lib/customer-notifications.fn";
 
@@ -138,6 +140,7 @@ function Notifications() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; undo: () => void } | null>(null);
   const toastTimer = useRef<number | null>(null);
+  const hint = useSwipeHint("djiwa:swipe-hint-notifications-v1");
 
   const unreadCount = useMemo(
     () => (archivedView ? 0 : items.filter((n) => !n.read_at).length),
@@ -315,6 +318,16 @@ function Notifications() {
           )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-28 [scrollbar-width:none]">
+          {hint.active && !archivedView && !selecting && visible.length > 0 && (
+            <motion.p
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6 }}
+              className="mt-2 px-1 text-[11px] text-muted-foreground"
+            >
+              ← Geser notifikasi untuk Baca, Arsip, atau Hapus
+            </motion.p>
+          )}
           {error && (
             <div
               role="alert"
@@ -351,7 +364,7 @@ function Notifications() {
             </p>
           )}
 
-          {groups.map(([label, list]) => (
+          {groups.map(([label, list], groupIndex) => (
             <section key={label} className="mt-3">
               <div className="mb-1 flex items-center justify-between px-1">
                 <h2 className="ios-section-label !mb-0 !px-0 font-bold">{label}</h2>
@@ -367,10 +380,12 @@ function Notifications() {
                 )}
               </div>
               <div className="ios-group">
-                {list.map((item) => (
+                {list.map((item, itemIndex) => (
                   <Row
                     key={item.id}
                     item={item}
+                    hint={hint.active && !archivedView && groupIndex === 0 && itemIndex === 0}
+                    onUsed={hint.dismiss}
                     archivedView={archivedView}
                     selecting={selecting}
                     checked={selected.has(item.id)}
@@ -542,6 +557,8 @@ function SheetButton({
 
 function Row({
   item,
+  hint,
+  onUsed,
   archivedView,
   selecting,
   checked,
@@ -554,6 +571,9 @@ function Row({
   onDelete,
 }: {
   item: Notification;
+  /** Plays a short peek animation so people discover the swipe actions. */
+  hint: boolean;
+  onUsed: () => void;
   archivedView: boolean;
   selecting: boolean;
   checked: boolean;
@@ -570,7 +590,20 @@ function Row({
   const start = useRef<{ x: number; y: number; base: number } | null>(null);
   const moved = useRef(false);
   const press = useRef<number | null>(null);
-  const offset = drag ?? (open ? -ACTION_W : 0);
+  const [peek, setPeek] = useState(0);
+  const reduce = useReducedMotion();
+  const offset = drag ?? (open ? -ACTION_W : peek);
+  useEffect(() => {
+    if (!hint || reduce || selecting) return;
+    const timers = [
+      window.setTimeout(() => setPeek(-ACTION_W * 0.55), 1400),
+      window.setTimeout(() => setPeek(0), 2500),
+    ];
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+      setPeek(0);
+    };
+  }, [hint, reduce, selecting]);
   const clearPress = () => {
     if (press.current) window.clearTimeout(press.current);
     press.current = null;
@@ -632,8 +665,10 @@ function Row({
             moved.current = true;
             clearPress();
           }
-          if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8)
+          if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
+            onUsed();
             setDrag(Math.min(0, Math.max(-ACTION_W, start.current.base + dx)));
+          }
         }}
         onPointerUp={() => {
           clearPress();

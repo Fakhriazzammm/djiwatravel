@@ -15,16 +15,16 @@ const ACTION_W = 76;
 const HINT_KEY = "djiwa:swipe-hint-v1";
 const HINT_MAX_PLAYS = 3;
 
-const readHint = () => {
+const readHint = (key: string) => {
   try {
-    return Number(window.localStorage.getItem(HINT_KEY) ?? 0);
+    return Number(window.localStorage.getItem(key) ?? 0);
   } catch {
     return 0;
   }
 };
-const writeHint = (value: number) => {
+const writeHint = (key: string, value: number) => {
   try {
-    window.localStorage.setItem(HINT_KEY, String(value));
+    window.localStorage.setItem(key, String(value));
   } catch {
     /* storage can be blocked; the hint then simply replays next visit */
   }
@@ -34,19 +34,19 @@ const writeHint = (value: number) => {
  * Whether the "you can swipe these cards" teaser should still play. It plays on the first
  * ticket for the first few visits and stops for good once the traveler swipes a card.
  */
-export function useSwipeHint() {
+export function useSwipeHint(key = HINT_KEY) {
   const [active, setActive] = useState(false);
   useEffect(() => {
-    const plays = readHint();
+    const plays = readHint(key);
     if (plays < HINT_MAX_PLAYS) {
       setActive(true);
-      writeHint(plays + 1);
+      writeHint(key, plays + 1);
     }
-  }, []);
+  }, [key]);
   const dismiss = useCallback(() => {
     setActive(false);
-    writeHint(HINT_MAX_PLAYS);
-  }, []);
+    writeHint(key, HINT_MAX_PLAYS);
+  }, [key]);
   return { active, dismiss };
 }
 
