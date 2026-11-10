@@ -940,7 +940,10 @@ export function cleanAssistantReply(parsed: unknown, ctx: CleanContext): Cleaned
     .map((c) => clean(c, 36))
     .filter((c, i, all) => c && all.indexOf(c) === i)
     .slice(0, 5);
-  const input = clean(raw["input"], 60);
+  // Whenever Travo ends on a question the traveler can answer by typing right there, even when the
+  // model forgot to ask for the field.
+  const lastWords = followUps[followUps.length - 1] ?? reply;
+  const input = clean(raw["input"], 60) || (/\?\s*$/.test(lastWords) ? "Ketik jawabanmu" : "");
   const chips: ChipSet | null =
     options.length || input
       ? {

@@ -123,6 +123,18 @@ describe("typed answers inside the bubble", () => {
     );
     expect(inputOnly.chips).toEqual({ options: [], multi: false, input: "Ketik anggaran" });
     expect(cleanAssistantReply({ reply: "Halo", chips: [], input: "" }, ctx()).chips).toBeNull();
+    // A question always gets a typed field, in every topic, even when the model forgot it.
+    expect(cleanAssistantReply({ reply: "Mau ke kota mana?", chips: [] }, ctx()).chips).toEqual({
+      options: [],
+      multi: false,
+      input: "Ketik jawabanmu",
+    });
+    expect(
+      cleanAssistantReply(
+        { reply: "Ini harganya.", followUps: ["Mau lanjut?"], chips: ["Ya"] },
+        ctx(),
+      ).chips?.input,
+    ).toBe("Ketik jawabanmu");
     expect(cleanAssistantReply({ reply: "Halo" }, ctx()).chips).toBeNull();
   });
   it("shows the typed field even when every chip was filtered out by an applied proposal", () => {
