@@ -9,7 +9,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Copy, Pencil, Share2, Trash2 } from "lucide-react";
+import { Copy, FileDown, Pencil, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { btnRed, btnSoft } from "@/components/shell";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { ConfirmDialog, TripActionSheet, TripTabBar } from "@/components/trip-ios";
 import { ShareTripSheet } from "@/components/trip-share-sheet";
+import { TripExportSheet } from "@/components/trip-export-sheet";
 import { TripOverview } from "@/components/trip-overview";
 import { buildTripSummary } from "@/lib/trip-summary";
 import { TripCountryPicker } from "@/components/trip-country-picker";
@@ -130,6 +131,7 @@ function TripDetail() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirm, setConfirm] = useState<"duplicate" | "delete" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -207,6 +209,7 @@ function TripDetail() {
         })}
         tripId={trip.id}
         onShare={() => setShareOpen(true)}
+        onExport={() => setExportOpen(true)}
         name={trip.name}
         destination={trip.destination_name}
         destinationCode={trip.destination_code}
@@ -253,6 +256,7 @@ function TripDetail() {
         title={trip.name}
         actions={[
           { label: "Bagikan perjalanan", icon: Share2, onSelect: () => setShareOpen(true) },
+          { label: "Ekspor PDF / Drive", icon: FileDown, onSelect: () => setExportOpen(true) },
           { label: "Edit nama & tanggal", icon: Pencil, onSelect: () => setEditOpen(true) },
           { label: "Duplikasi", icon: Copy, onSelect: () => setConfirm("duplicate") },
           {
@@ -290,6 +294,12 @@ function TripDetail() {
         onOpenChange={setEditOpen}
         trip={trip}
         onSaved={() => router.invalidate()}
+      />
+      <TripExportSheet
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        tripId={trip.id}
+        tripName={trip.name}
       />
       <ShareTripSheet
         open={shareOpen}

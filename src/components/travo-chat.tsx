@@ -7,6 +7,7 @@ import { TravoComposer, TravoLive, TravoMessage } from "@/components/travo-parts
 import { TravoPlanWizard } from "@/components/travo-plan-wizard";
 import { TripToolsBar, TripToolsOverlays } from "@/components/trip-chat-tools";
 import { ShareTripSheet } from "@/components/trip-share-sheet";
+import { TripExportSheet } from "@/components/trip-export-sheet";
 import { TripSummaryCard } from "@/components/trip-summary-card";
 import { ConfirmDialog } from "@/components/trip-ios";
 import {
@@ -123,6 +124,7 @@ export function TravoChat({
   const [profileOpen, setProfileOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [history, setHistory] = useState<TravoConversationSummary[] | null>(null);
   const [deleting, setDeleting] = useState<TravoConversationSummary | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -300,6 +302,7 @@ export function TravoChat({
                       tripId={chatTrip}
                       onAction={tools.runSummaryAction}
                       onShare={() => setShareOpen(true)}
+                      onExport={() => setExportOpen(true)}
                     />
                   ) : undefined
                 }
@@ -331,6 +334,7 @@ export function TravoChat({
               summary={tripCtx.ready ? tripCtx.summary : undefined}
               unpinned={tripCtx.ready ? tripCtx.unpinned : 0}
               onShare={tripCtx.ready ? () => setShareOpen(true) : undefined}
+              onExport={tripCtx.ready ? () => setExportOpen(true) : undefined}
               onCatat={() => {
                 chat.setDraft("Catat ");
                 inputRef.current?.focus();
@@ -350,6 +354,12 @@ export function TravoChat({
             categories={tripCtx.categories}
             budget={{ budgetMinor: tripCtx.budgetMinor, spentMinor: tripCtx.spentMinor }}
             onChanged={async () => tripCtx.reload()}
+          />
+          <TripExportSheet
+            open={exportOpen}
+            onOpenChange={setExportOpen}
+            tripId={chatTrip}
+            tripName={tripCtx.trip.name}
           />
           <ShareTripSheet
             open={shareOpen}

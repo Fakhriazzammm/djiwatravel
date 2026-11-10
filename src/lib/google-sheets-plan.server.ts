@@ -112,7 +112,7 @@ const dateLabel = (from: string | null, to: string | null) => {
 };
 
 export async function loadPlanState(tripId: string): Promise<PlanSheetState> {
-  const [trip, cats, items, prep, plan] = await Promise.all([
+  const [trip, cats, items, prep, plan, budgetRows, spentTotal, bookings] = await Promise.all([
     pool.query(
       `select name, destination_name, travelers_count, primary_currency, total_budget_minor,
               departure_date::text as d, return_date::text as r from travel_trips where id=$1`,
@@ -136,6 +136,20 @@ export async function loadPlanState(tripId: string): Promise<PlanSheetState> {
     ),
     pool.query(
       "select city, tier, budget, research, costs, updated_at from travel_trip_plans where trip_id=$1",
+      [tripId],
+    ),
+    pool.query(
+      `select c.name as name, c.allocated_minor as alloc,
+              coalesce((select sum(e.converted_amount_minor) from travel_expenses e where e.category_id=c.id),0) as spent
+         from travel_budget_categories c where c.trip_id=$1 order by c.sort_order, c.created_at`,
+      [tripId],
+    ),
+    pool.query(
+      "select coalesce(sum(converted_amount_minor),0) as spent from travel_expenses where trip_id=$1",
+      [tripId],
+    ),
+    pool.query(
+      "select title, category, status, coalesce(reference_number,'') as reference from travel_bookings where trip_id=$1 and status <> 'cancelled' order by created_at",
       [tripId],
     ),
   ]);
@@ -187,6 +201,18 @@ export async function loadPlanState(tripId: string): Promise<PlanSheetState> {
       done: Boolean(p["is_completed"]),
     })),
     plan: facts,
+    budgetRows: budgetRows.rows.map((r) => ({
+      name: String(r["name"]),
+      allocatedMinor: Number(r["alloc"]) || 0,
+      spentMinor: Number(r["spent"]) || 0,
+    })),
+    spentMinor: Number(spentTotal.rows[0]?.["spent"]) || 0,
+    bookings: bookings.rows.map((b) => ({
+      title: String(b["title"]),
+      category: String(b["category"]),
+      status: String(b["status"]),
+      reference: String(b["reference"]),
+    })),
     fxFromIdr: fx || 1,
   };
 }

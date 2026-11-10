@@ -101,6 +101,7 @@ import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
 import { Route as ApiWebhooksMayarForwardRouteImport } from './routes/api.webhooks.mayar-forward'
 import { Route as MyTripsTripIdSectionRouteImport } from './routes/my-trips.$tripId.$section'
+import { Route as MyTripsTripIdPrintRouteImport } from './routes/my-trips.$tripId.print'
 import { Route as MyTripsTripIdTravelRouteImport } from './routes/my-trips.$tripId.travel'
 import { Route as ShareHandleTokenRouteImport } from './routes/share.$handle.$token'
 import { Route as TitipBelanjaPesanIndexRouteImport } from './routes/titip-belanja.pesan.index'
@@ -575,6 +576,11 @@ const MyTripsTripIdSectionRoute = MyTripsTripIdSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => MyTripsTripIdRoute,
 } as any)
+const MyTripsTripIdPrintRoute = MyTripsTripIdPrintRouteImport.update({
+  id: '/print',
+  path: '/print',
+  getParentRoute: () => MyTripsTripIdRoute,
+} as any)
 const MyTripsTripIdTravelRoute = MyTripsTripIdTravelRouteImport.update({
   id: '/travel',
   path: '/travel',
@@ -706,6 +712,7 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
+  '/my-trips/$tripId/print': typeof MyTripsTripIdPrintRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
   '/share/$handle/$token': typeof ShareHandleTokenRoute
   '/titip-belanja/pesan/$id': typeof TitipBelanjaPesanIdRoute
@@ -807,6 +814,7 @@ export interface FileRoutesByTo {
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
+  '/my-trips/$tripId/print': typeof MyTripsTripIdPrintRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
   '/share/$handle/$token': typeof ShareHandleTokenRoute
   '/titip-belanja/pesan/$id': typeof TitipBelanjaPesanIdRoute
@@ -909,6 +917,7 @@ export interface FileRoutesById {
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
+  '/my-trips/$tripId/print': typeof MyTripsTripIdPrintRoute
   '/my-trips/$tripId/travel': typeof MyTripsTripIdTravelRoute
   '/share/$handle/$token': typeof ShareHandleTokenRoute
   '/titip-belanja/pesan/$id': typeof TitipBelanjaPesanIdRoute
@@ -1012,6 +1021,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
+    | '/my-trips/$tripId/print'
     | '/my-trips/$tripId/travel'
     | '/share/$handle/$token'
     | '/titip-belanja/pesan/$id'
@@ -1113,6 +1123,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
+    | '/my-trips/$tripId/print'
     | '/my-trips/$tripId/travel'
     | '/share/$handle/$token'
     | '/titip-belanja/pesan/$id'
@@ -1214,6 +1225,7 @@ export interface FileRouteTypes {
     | '/api/webhooks/djiwa-travel'
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
+    | '/my-trips/$tripId/print'
     | '/my-trips/$tripId/travel'
     | '/share/$handle/$token'
     | '/titip-belanja/pesan/$id'
@@ -1967,6 +1979,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyTripsTripIdSectionRouteImport
       parentRoute: typeof MyTripsTripIdRoute
     }
+    '/my-trips/$tripId/print': {
+      id: '/my-trips/$tripId/print'
+      path: '/print'
+      fullPath: '/my-trips/$tripId/print'
+      preLoaderRoute: typeof MyTripsTripIdPrintRouteImport
+      parentRoute: typeof MyTripsTripIdRoute
+    }
     '/my-trips/$tripId/travel': {
       id: '/my-trips/$tripId/travel'
       path: '/travel'
@@ -2044,11 +2063,13 @@ const AdminOrdersRouteWithChildren = AdminOrdersRoute._addFileChildren(
 
 interface MyTripsTripIdRouteChildren {
   MyTripsTripIdSectionRoute: typeof MyTripsTripIdSectionRoute
+  MyTripsTripIdPrintRoute: typeof MyTripsTripIdPrintRoute
   MyTripsTripIdTravelRoute: typeof MyTripsTripIdTravelRoute
 }
 
 const MyTripsTripIdRouteChildren: MyTripsTripIdRouteChildren = {
   MyTripsTripIdSectionRoute: MyTripsTripIdSectionRoute,
+  MyTripsTripIdPrintRoute: MyTripsTripIdPrintRoute,
   MyTripsTripIdTravelRoute: MyTripsTripIdTravelRoute,
 }
 

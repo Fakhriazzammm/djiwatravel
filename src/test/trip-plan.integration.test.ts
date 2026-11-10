@@ -94,6 +94,7 @@ vi.mock("@/lib/travo-cards.server", () => ({
     ),
 }));
 
+import { tripExportHandler } from "@/lib/trip-export.server";
 import {
   assistantApplyHandler,
   assistantSendHandler,
@@ -292,6 +293,7 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
       "062_travo_run_cards",
       "063_trip_origin",
       "064_trip_plan",
+      "065_trip_plan_sheets",
     ])
       await pool.query(readFileSync(resolve(`migrations/${file}.sql`), "utf8"));
   });
@@ -628,6 +630,31 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
     const budget = result.messages.find((m) => m.proposal?.kind === "budget")!.proposal!
       .payload as { budget: { categories: { allocatedMinor: number }[] } };
     expect(budget.budget.categories.every((c) => c.allocatedMinor > 0)).toBe(true);
+  });
+
+  it("exports the whole trip as a printable document for its owner only", async () => {
+    await pool.query(
+      "insert into travel_budget_categories (trip_id,name,category_key,allocated_minor,currency,sort_order) values ($1,'Akomodasi','akomodasi',400000000,'IDR',0)",
+      [TRIP],
+    );
+    await pool.query(
+      "insert into travel_itinerary_items (trip_id,activity_date,start_time,title,location) values ($1,'2026-12-10','09:30','Senso-ji','Asakusa')",
+      [TRIP],
+    );
+    await pool.query(
+      "insert into travel_bookings (trip_id,category,title,reference_number) values ($1,'Akomodasi','Hotel Shinjuku','ABC123')",
+      [TRIP],
+    );
+    const out = await tripExportHandler({ data: { tripId: TRIP } });
+    expect(out.title).toBe("Tokyo");
+    expect(out.body).toContain("Senso-ji");
+    expect(out.body).toContain("Anggaran dan pengeluaran");
+    expect(out.body).toContain("Hotel Shinjuku");
+    expect(out.body).not.toContain("<script");
+    holder.owner = { id: "someone-else", email: null, guest: false };
+    await expect(tripExportHandler({ data: { tripId: TRIP } })).rejects.toThrow(/tidak ditemukan/);
+    holder.owner = null;
+    await expect(tripExportHandler({ data: { tripId: TRIP } })).rejects.toThrow(/Autentikasi/);
   });
 
   it("gives a guest exactly one full plan, then asks them to sign in", async () => {

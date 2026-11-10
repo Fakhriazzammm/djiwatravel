@@ -2189,7 +2189,10 @@ export async function assistantPlanTripHandler({
   }
 }
 
-const googleInput = z.object({ tripId: z.string().uuid(), target: z.enum(["sheet", "drive"]) });
+const googleInput = z.object({
+  tripId: z.string().uuid(),
+  target: z.enum(["sheet", "drive", "pdf"]),
+});
 export const assistantGoogleInput = (data: unknown) => googleInput.parse(data);
 
 /** "Buka Google Sheets" / "Simpan ke Drive" from the chat: the link, or what to do first. */

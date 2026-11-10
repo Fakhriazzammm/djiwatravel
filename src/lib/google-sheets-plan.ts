@@ -104,6 +104,10 @@ export type PlanSheetState = {
   items: PlanItemRec[];
   prep: PrepRec[];
   plan: PlanFacts | null;
+  /** Real budget lines (allocated and spent, minor units) and bookings, for the PDF / Drive document. */
+  budgetRows?: { name: string; allocatedMinor: number; spentMinor: number }[];
+  spentMinor?: number;
+  bookings?: { title: string; category: string; status: string; reference: string }[];
   /** IDR → trip currency multiplier, to show the plan's estimates in the trip's currency. */
   fxFromIdr: number;
 };

@@ -23,10 +23,10 @@ const th = `style="background:${RED};color:#ffffff;text-align:left;padding:6px 8
 const td = `style="padding:6px 8px;border-bottom:1px solid #e5e5ea;font-size:10pt;vertical-align:top"`;
 const tdr = `style="padding:6px 8px;border-bottom:1px solid #e5e5ea;font-size:10pt;text-align:right"`;
 
-export function buildPlanDocHtml(state: PlanSheetState, madeAt: string): string {
+/** The page content only (no html/body), so the print page can show the very same document. */
+export function buildPlanDocBody(state: PlanSheetState, madeAt: string): string {
   const out: string[] = [];
   out.push(
-    `<html><head><meta charset="utf-8"><title>${esc(state.tripName)}</title></head><body style="font-family:Arial,sans-serif;color:#1a1a1f">`,
     `<h1 style="color:${RED};margin-bottom:2px">${esc(state.tripName)}</h1>`,
     `<p style="color:#6b7078;margin-top:0">${esc(state.destination)} · ${esc(state.dates)} · ${state.travelers} traveler</p>`,
   );
@@ -57,6 +57,28 @@ export function buildPlanDocHtml(state: PlanSheetState, madeAt: string): string 
         `<p style="color:#6b7078">Anggaran kamu: ${esc(money(state.totalMinor, state.currency))}</p>`,
       );
   }
+  if (state.budgetRows?.length) {
+    out.push(`<h2>Anggaran dan pengeluaran</h2>`);
+    out.push(
+      `<table style="border-collapse:collapse;width:100%"><tr><th ${th}>Kategori</th><th ${th} align="right">Anggaran</th><th ${th} align="right">Terpakai</th><th ${th} align="right">Sisa</th></tr>`,
+    );
+    let allocated = 0;
+    for (const row of state.budgetRows) {
+      allocated += row.allocatedMinor;
+      out.push(
+        `<tr><td ${td}>${esc(row.name)}</td><td ${tdr}>${esc(money(row.allocatedMinor, state.currency))}</td><td ${tdr}>${esc(money(row.spentMinor, state.currency))}</td><td ${tdr}>${esc(money(row.allocatedMinor - row.spentMinor, state.currency))}</td></tr>`,
+      );
+    }
+    const spent = state.spentMinor ?? state.budgetRows.reduce((s, r) => s + r.spentMinor, 0);
+    const total = state.totalMinor > 0 ? state.totalMinor : allocated;
+    out.push(
+      `<tr><td ${td}><b>Total</b></td><td ${tdr}><b>${esc(money(total, state.currency))}</b></td><td ${tdr}><b>${esc(money(spent, state.currency))}</b></td><td ${tdr}><b>${esc(money(total - spent, state.currency))}</b></td></tr></table>`,
+    );
+  } else if (state.totalMinor > 0 && !state.plan) {
+    out.push(
+      `<h2>Anggaran</h2><p>Total anggaran: ${esc(money(state.totalMinor, state.currency))}</p>`,
+    );
+  }
   out.push(`<h2>Itinerary</h2>`);
   if (!state.items.length) out.push(`<p>Belum ada aktivitas.</p>`);
   let current = "";
@@ -86,6 +108,14 @@ export function buildPlanDocHtml(state: PlanSheetState, madeAt: string): string 
         )
         .join("")}</ul>`,
     );
+  if (state.bookings?.length) {
+    out.push(`<h2>Booking</h2><ul>`);
+    for (const b of state.bookings)
+      out.push(
+        `<li><b>${esc(b.title)}</b> <span style="color:#6b7078">· ${esc(b.category)}${b.reference ? ` · ref ${esc(b.reference)}` : ""}</span></li>`,
+      );
+    out.push("</ul>");
+  }
   const r = plan?.research;
   if (plan && r && (r.outbound || r.returnLeg || r.esim)) {
     out.push(`<h2>Tiket dan transport</h2><ul>`);
@@ -102,7 +132,11 @@ export function buildPlanDocHtml(state: PlanSheetState, madeAt: string): string 
     out.push("</ul>");
   }
   out.push(
-    `<p style="color:#9a9aa3;font-size:9pt;margin-top:24px">Dibuat Travo dari Djiwa Travel pada ${esc(madeAt)}. Angka bertanda perkiraan adalah taksiran, bukan harga resmi. Data yang hidup ada di Google Spreadsheet perjalanan ini.</p></body></html>`,
+    `<p style="color:#9a9aa3;font-size:9pt;margin-top:24px">Dibuat dari Djiwa Travel pada ${esc(madeAt)}. Angka bertanda perkiraan adalah taksiran, bukan harga resmi. Data yang selalu terbaru ada di aplikasi.</p>`,
   );
   return out.join("");
+}
+
+export function buildPlanDocHtml(state: PlanSheetState, madeAt: string): string {
+  return `<html><head><meta charset="utf-8"><title>${esc(state.tripName)}</title></head><body style="font-family:Arial,sans-serif;color:#1a1a1f">${buildPlanDocBody(state, madeAt)}</body></html>`;
 }

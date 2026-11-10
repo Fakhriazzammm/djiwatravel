@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPlanDocHtml } from "@/lib/google-plan-doc";
+import { buildPlanDocBody, buildPlanDocHtml } from "@/lib/google-plan-doc";
 import type { PlanSheetState } from "@/lib/google-sheets-plan";
 
 const state: PlanSheetState = {
@@ -86,6 +86,32 @@ describe("the plan document", () => {
   it("labels recorded fares as 'cek lagi' and the whole page as an estimate", () => {
     expect(html).toContain("cek lagi saat membeli");
     expect(html).toContain("perkiraan adalah taksiran");
+  });
+  it("shows the real budget and spending, and the bookings, for any trip", () => {
+    const body = buildPlanDocBody(
+      {
+        ...state,
+        plan: null,
+        budgetRows: [
+          { name: "Akomodasi", allocatedMinor: 400_000_000, spentMinor: 150_000_000 },
+          { name: "Makan <b>", allocatedMinor: 100_000_000, spentMinor: 20_000_000 },
+        ],
+        spentMinor: 170_000_000,
+        bookings: [
+          { title: "Hotel Shinjuku", category: "Akomodasi", status: "manual", reference: "ABC123" },
+        ],
+      },
+      "x",
+    );
+    expect(body).toContain("Anggaran dan pengeluaran");
+    expect(body).toContain("Rp 4.000.000"); // allocated
+    expect(body).toContain("Rp 1.700.000"); // spent in total
+    expect(body).toContain("Rp 13.300.000"); // 15.000.000 budget - 1.700.000
+    expect(body).toContain("Makan &lt;b&gt;");
+    expect(body).toContain("Hotel Shinjuku");
+    expect(body).toContain("ref ABC123");
+    expect(body).not.toContain("<html");
+    expect(buildPlanDocHtml(state, "x")).toContain("<html");
   });
   it("still renders without a plan", () => {
     const bare = buildPlanDocHtml({ ...state, plan: null, items: [], prep: [] }, "x");

@@ -43,7 +43,8 @@ export async function refreshPlanDoc(
   const plan = await pool.query("select 1 from public.travel_trip_plans where trip_id=$1", [
     tripId,
   ]);
-  if (!plan.rows[0])
+  // The automatic refresh follows a Travo plan; an export asked for by hand works for any trip.
+  if (!options.force && !plan.rows[0])
     return {
       status: "no_plan",
       message: "Belum ada rencana. Minta Travo membuat Rencana lengkap.",
@@ -110,6 +111,86 @@ export async function refreshPlanDoc(
   }
 }
 
+export type PlanPdfResult =
+  | { status: "ok"; url: string; docUrl: string }
+  | { status: "no_google" | "failed" | "off" | "no_plan"; message: string };
+
+/**
+ * The trip document as a PDF in the trip's Drive folder: the Google Doc is refreshed, exported by
+ * Drive itself (so every alphabet renders), and the bytes are saved as one PDF per trip (replaced on
+ * each save). Drive file scope only.
+ */
+export async function savePlanPdf(subject: string, tripId: string): Promise<PlanPdfResult> {
+  const doc = await refreshPlanDoc(subject, tripId, { force: true });
+  if (doc.status !== "ok") return { status: doc.status, message: doc.message };
+  try {
+    const row = await pool.query(
+      "select doc_id, pdf_id from public.travel_google_plan_docs where trip_id=$1",
+      [tripId],
+    );
+    const docId = String(row.rows[0]?.doc_id ?? "");
+    let pdfId: string | null = row.rows[0]?.pdf_id ? String(row.rows[0].pdf_id) : null;
+    const exported = await googleFetch(
+      subject,
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(docId)}/export?mimeType=${encodeURIComponent("application/pdf")}`,
+    );
+    if (!exported.ok) throw new Error(`Google Drive ekspor PDF ${exported.status}`);
+    const bytes = new Uint8Array(await exported.arrayBuffer());
+    if (bytes.length < 100) throw new Error("PDF kosong");
+    const owned = await pool.query(
+      "select name, departure_date::text as departure_date from public.travel_trips where id=$1 and customer_auth_subject=$2",
+      [tripId, subject],
+    );
+    const label = tripGoogleName(
+      String(owned.rows[0]?.name ?? "Trip"),
+      owned.rows[0]?.departure_date,
+    );
+    if (pdfId) {
+      const updated = await googleFetch(
+        subject,
+        `${DRIVE_UPLOAD_API}/files/${encodeURIComponent(pdfId)}?uploadType=media&fields=id`,
+        { method: "PATCH", headers: { "content-type": "application/pdf" }, body: bytes },
+      );
+      if (!updated.ok) pdfId = null; // deleted in Drive: make a new one
+    }
+    if (!pdfId) {
+      const folderId = await ensureTripFolder(subject, tripId, label);
+      const { boundary, body } = multipartBody(
+        {
+          name: `Rencana perjalanan - ${label}.pdf`.slice(0, 120),
+          mimeType: "application/pdf",
+          parents: [folderId],
+        },
+        "application/pdf",
+        bytes,
+      );
+      const created = await googleFetch(
+        subject,
+        `${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id`,
+        {
+          method: "POST",
+          headers: { "content-type": `multipart/related; boundary=${boundary}` },
+          body: new Uint8Array(body),
+        },
+      );
+      if (!created.ok) throw new Error(`Google Drive unggah PDF ${created.status}`);
+      pdfId = String(((await created.json()) as { id: string }).id);
+    }
+    const url = `https://drive.google.com/file/d/${encodeURIComponent(pdfId)}/view`;
+    await pool.query(
+      "update public.travel_google_plan_docs set pdf_id=$2, pdf_url=$3, pdf_updated_at=now() where trip_id=$1",
+      [tripId, pdfId, url],
+    );
+    return { status: "ok", url, docUrl: doc.url };
+  } catch (error) {
+    console.error("[google-plan-doc] pdf failed", { tripId, error: redactError(error) });
+    return {
+      status: "failed",
+      message: "PDF belum bisa disimpan ke Drive. Coba lagi sebentar lagi.",
+    };
+  }
+}
+
 const lastRefresh = new Map<string, number>();
 
 /**
@@ -140,7 +221,7 @@ export async function openTripGoogle(
   subject: string,
   guest: boolean,
   tripId: string,
-  target: "sheet" | "drive",
+  target: "sheet" | "drive" | "pdf",
 ): Promise<TripGoogleLinks> {
   if (guest)
     return {
@@ -154,6 +235,21 @@ export async function openTripGoogle(
   if (!owned.rows[0]) return { status: "failed", message: "Perjalanan tidak ditemukan." };
   const connection = await connectionFor(subject).catch(() => null);
   const feature = target === "sheet" ? "sheets" : "drive";
+  if (target === "pdf") {
+    if (!connection?.refresh_token_encrypted || !hasFeature(connection, "drive"))
+      return {
+        status: "connect",
+        message: "Hubungkan Google dulu di halaman Biaya, lalu simpan lagi.",
+      };
+    const saved = await savePlanPdf(subject, tripId);
+    return saved.status === "ok"
+      ? { status: "ok", url: saved.url }
+      : {
+          status:
+            saved.status === "no_plan" ? "no_plan" : saved.status === "off" ? "off" : "failed",
+          message: saved.message,
+        };
+  }
   if (!connection?.refresh_token_encrypted || !hasFeature(connection, feature))
     return {
       status: "connect",

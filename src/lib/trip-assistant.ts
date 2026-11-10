@@ -1364,6 +1364,8 @@ export const QUICK: { label: string; intent: AssistantIntent; text: string }[] =
 /** "buka google sheets", "simpan ke drive": the chat opens the spreadsheet or Drive document instead of asking the model. */
 /** The traveler is talking about flights: a fare card is added even when the model forgot it. */
 export const FLIGHT_WORDS = /\b(tiket|pesawat|penerbangan|flight|maskapai)\b/i;
+/** "ekspor pdf", "unduh pdf", "simpan pdf ke drive": opens the PDF / Drive export sheet. */
+export const EXPORT_WORDS = /\b(pdf|ekspor|export|unduh|download)\b/i;
 export const GOOGLE_SHEET_WORDS = /\b(google\s+sheets?|spreadsheet|sheets)\b/i;
 export const GOOGLE_DRIVE_WORDS =
   /\b(simpan|buat|kirim|ekspor|export)\b.*\b(google\s+drive|drive|google\s+doc|dokumen)\b/i;

@@ -21,6 +21,7 @@ const holder = vi.hoisted(() => ({
   connected: true,
   driveCalls: [] as { method: string; path: string; type: string }[],
   patchFails: false,
+  exportFails: false,
 }));
 vi.mock("@/db/client.server", () => ({
   get pool() {
@@ -66,6 +67,16 @@ vi.mock("@/lib/google-account.server", () => ({
         path: url.pathname,
         type: String((init?.headers as Record<string, string> | undefined)?.["content-type"] ?? ""),
       });
+      if (url.pathname.endsWith("/export")) {
+        holder.driveCalls.push({
+          method: "EXPORT",
+          path: url.pathname,
+          type: url.searchParams.get("mimeType") ?? "",
+        });
+        return holder.exportFails
+          ? new Response("no", { status: 500 })
+          : new Response(new Uint8Array(400).fill(37), { status: 200 });
+      }
       if (method === "PATCH" && holder.patchFails) return new Response("gone", { status: 404 });
       return new Response(
         JSON.stringify({
@@ -125,7 +136,7 @@ vi.mock("@/lib/google-account.server", () => ({
 }));
 
 import { syncPlanTabs } from "@/lib/google-sheets-plan.server";
-import { openTripGoogle, refreshPlanDoc } from "@/lib/google-plan-doc.server";
+import { openTripGoogle, refreshPlanDoc, savePlanPdf } from "@/lib/google-plan-doc.server";
 
 const TRIP = "33333333-3333-4333-8333-333333333333";
 const SHEET = "sheet-1";
@@ -170,6 +181,7 @@ describe.skipIf(!url)("plan tabs in the spreadsheet (real Postgres, fake Sheets)
       "063_trip_origin",
       "064_trip_plan",
       "065_trip_plan_sheets",
+      "067_plan_pdf",
     ])
       await pool.query(readFileSync(resolve(`migrations/${file}.sql`), "utf8"));
   });
@@ -186,6 +198,7 @@ describe.skipIf(!url)("plan tabs in the spreadsheet (real Postgres, fake Sheets)
     holder.connected = true;
     holder.driveCalls = [];
     holder.patchFails = false;
+    holder.exportFails = false;
     await pool.query("delete from travel_trips");
     await pool.query("delete from admin_settings");
     await pool.query(
@@ -455,5 +468,61 @@ describe.skipIf(!url)("plan tabs in the spreadsheet (real Postgres, fake Sheets)
     const drive = await openTripGoogle("u1", false, TRIP, "drive");
     expect(drive.status).toBe("ok");
     expect((drive as { url: string }).url).toContain("docs.google.com/document/d/");
+  });
+
+  it("saves the trip document as a PDF in the Drive folder, then replaces the same file", async () => {
+    const first = await savePlanPdf("u1", TRIP);
+    expect(first.status).toBe("ok");
+    expect(
+      holder.driveCalls.some((c) => c.method === "EXPORT" && c.type === "application/pdf"),
+    ).toBe(true);
+    const created = holder.driveCalls.filter(
+      (c) => c.method === "POST" && c.path.includes("/upload/"),
+    );
+    expect(created.length).toBeGreaterThanOrEqual(2); // the Doc and the PDF
+    const row = (await pool.query("select doc_id, pdf_id, pdf_url from travel_google_plan_docs"))
+      .rows[0];
+    expect(row.pdf_id).toBeTruthy();
+    expect(row.pdf_url).toContain("drive.google.com/file/d/");
+    holder.driveCalls = [];
+    const second = await savePlanPdf("u1", TRIP);
+    expect(second.status).toBe("ok");
+    expect(
+      holder.driveCalls.filter((c) => c.method === "PATCH" && c.type === "application/pdf"),
+    ).toHaveLength(1);
+    expect(holder.driveCalls.some((c) => c.method === "POST" && c.path.includes("/upload/"))).toBe(
+      false,
+    );
+    expect(await count("select count(*)::int n from travel_google_plan_docs")).toBe(1);
+  });
+
+  it("works for a trip with no Travo plan, and makes a new PDF when the old one was deleted", async () => {
+    await pool.query("delete from travel_trip_plans");
+    expect((await savePlanPdf("u1", TRIP)).status).toBe("ok");
+    holder.patchFails = true;
+    holder.driveCalls = [];
+    expect((await savePlanPdf("u1", TRIP)).status).toBe("ok");
+    expect(holder.driveCalls.some((c) => c.method === "POST" && c.path.includes("/upload/"))).toBe(
+      true,
+    );
+  });
+
+  it("reports a failed export instead of saving an empty file", async () => {
+    holder.exportFails = true;
+    const result = await savePlanPdf("u1", TRIP);
+    expect(result.status).toBe("failed");
+    expect(
+      await count("select count(*)::int n from travel_google_plan_docs where pdf_id is not null"),
+    ).toBe(0);
+  });
+
+  it("answers the chat/sheet PDF tap: login for guests, connect first, the link when ready", async () => {
+    expect((await openTripGoogle("guest-1", true, TRIP, "pdf")).status).toBe("login");
+    holder.connected = false;
+    expect((await openTripGoogle("u1", false, TRIP, "pdf")).status).toBe("connect");
+    holder.connected = true;
+    const ok = await openTripGoogle("u1", false, TRIP, "pdf");
+    expect(ok.status).toBe("ok");
+    expect((ok as { url: string }).url).toContain("drive.google.com/file/d/");
   });
 });

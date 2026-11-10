@@ -21,6 +21,7 @@ import { openTripGoogleLink, resetTripAssistant } from "@/lib/trip-assistant.fn"
 import {
   ASSISTANT_NAME,
   QUICK,
+  EXPORT_WORDS,
   GOOGLE_DRIVE_WORDS,
   GOOGLE_SHEET_WORDS,
   SHARE_WORDS,
@@ -43,6 +44,8 @@ type Props = {
   intro?: IntroPart[];
   /** Opens the share sheet (link, social, Instagram story). */
   onShare?: () => void;
+  /** Opens the PDF / Drive export sheet. */
+  onExport?: () => void;
   /** Everything on the trip, for the one-tap "Ringkas semua" balloon. */
   summary?: TripSummary;
   /** Activities that have no point on the map yet (the "Pasang pin" button shows while > 0). */
@@ -103,6 +106,10 @@ export function TripAssistant(props: Props) {
     intercept: (text) => {
       if (props.onShare && SHARE_WORDS.test(text)) {
         props.onShare();
+        return true;
+      }
+      if (props.onExport && EXPORT_WORDS.test(text)) {
+        props.onExport();
         return true;
       }
       const target = GOOGLE_DRIVE_WORDS.test(text)
@@ -270,6 +277,7 @@ export function TripAssistant(props: Props) {
                   tripId={tripId}
                   onAction={tools.runSummaryAction}
                   {...(props.onShare ? { onShare: props.onShare } : {})}
+                  {...(props.onExport ? { onExport: props.onExport } : {})}
                 />
               ) : undefined
             }
@@ -310,6 +318,7 @@ export function TripAssistant(props: Props) {
               unpinned={props.unpinned ?? 0}
               quick={quick}
               onShare={props.onShare}
+              onExport={props.onExport}
               onCatat={() => {
                 chat.setDraft("Catat ");
                 inputRef.current?.focus();

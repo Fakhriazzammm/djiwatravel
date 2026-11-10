@@ -643,6 +643,22 @@ describe("TripAssistant", () => {
     });
   });
 
+  describe("Export from the chat", () => {
+    it("opens the PDF / Drive export for 'ekspor pdf' without asking the model", async () => {
+      vi.mocked(loadTripAssistant).mockResolvedValue({ status: available, messages: [] });
+      const onExport = vi.fn();
+      setup({ onExport });
+      fireEvent.click(await screen.findByRole("button", { name: "Ekspor PDF" }));
+      expect(onExport).toHaveBeenCalledTimes(1);
+      const box = screen.getByRole("textbox", { name: /Pesan untuk/ });
+      fireEvent.change(box, { target: { value: "unduh pdf itinerary" } });
+      fireEvent.click(screen.getByRole("button", { name: "Kirim" }));
+      await waitFor(() => expect(onExport).toHaveBeenCalledTimes(2));
+      expect(sendTripAssistantMessage).not.toHaveBeenCalled();
+      expect(streamTripAssistantMessage).not.toHaveBeenCalled();
+    });
+  });
+
   describe("Ringkas semua", () => {
     const summary: TripSummary = {
       name: "Jepang",

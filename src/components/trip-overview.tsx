@@ -68,6 +68,8 @@ type Props = {
   tripId: string;
   /** Opens the same share sheet as the trip menu (link, social, Instagram story). */
   onShare?: () => void;
+  /** Opens the PDF / Drive export sheet. */
+  onExport?: () => void;
   name: string;
   destination: string;
   /** ISO country code of the destination; frames the map before any activity has a point. */
@@ -888,6 +890,7 @@ export function TripOverview(props: Props) {
           onChanged={props.onChanged}
           onAdd={() => setAddOpen(true)}
           {...(props.onShare ? { onShare: props.onShare } : {})}
+          {...(props.onExport ? { onExport: props.onExport } : {})}
           intro={intro}
           {...(props.summary ? { summary: props.summary } : {})}
           unpinned={props.itinerary.filter((item) => !itemPoint(item)).length}

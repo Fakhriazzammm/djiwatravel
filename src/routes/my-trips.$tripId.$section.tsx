@@ -29,6 +29,7 @@ import {
   MapPin,
   Plane,
   Plus,
+  FileDown,
   Share2,
   Ticket,
   Utensils,
@@ -36,6 +37,7 @@ import {
 } from "lucide-react";
 import { AgendaMascotBubble } from "@/components/agenda-mascot-bubble";
 import { ShareTripSheet, type ShareLink } from "@/components/trip-share-sheet";
+import { TripExportSheet } from "@/components/trip-export-sheet";
 import { CalendarConnectBanner } from "@/components/calendar-connect-banner";
 import ItineraryMap, { type PickedPoi } from "@/components/itinerary-map";
 import { PlaceSearchField, type PickedPlace } from "@/components/place-search-field";
@@ -215,14 +217,32 @@ function TripSection() {
     total_budget_minor: number;
   };
   const refresh = () => router.invalidate();
+  const [exportOpen, setExportOpen] = useState(false);
   const summary = data.summary as BudgetSummary | null;
   const categories = data.categories as CategoryOption[];
   return (
     <Page tabs={false}>
       {section !== "itinerary" && (
-        <h1 className="px-1 pb-2 pt-1 text-[22px] font-bold leading-tight tracking-tight">
-          {labels[section] ?? "Perjalanan"}
-        </h1>
+        <div className="flex items-center gap-2 px-1 pb-2 pt-1">
+          <h1 className="min-w-0 flex-1 text-[22px] font-bold leading-tight tracking-tight">
+            {labels[section] ?? "Perjalanan"}
+          </h1>
+          <button
+            type="button"
+            onClick={() => setExportOpen(true)}
+            aria-label="Ekspor PDF"
+            className="tap inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-brand-red-soft px-3 text-[12px] font-semibold text-brand-red"
+          >
+            <FileDown className="size-3.5" aria-hidden="true" />
+            PDF
+          </button>
+          <TripExportSheet
+            open={exportOpen}
+            onOpenChange={setExportOpen}
+            tripId={tripId}
+            tripName={trip.name}
+          />
+        </div>
       )}
       {(section === "budget" || section === "expenses") && (
         <div
@@ -367,6 +387,7 @@ export function ItineraryEditor({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [mapBroken, setMapBroken] = useState(false);
   const [poiOn, setPoiOn] = useState<PoiCategoryId[]>(() =>
     POI_CATEGORIES.filter((category) => category.defaultOn).map((category) => category.id),
@@ -891,6 +912,18 @@ export function ItineraryEditor({
             {trip && (
               <button
                 type="button"
+                onClick={() => setExportOpen(true)}
+                aria-label="Ekspor PDF"
+                className="tap grid size-11 shrink-0 place-items-center rounded-full text-brand-red"
+              >
+                <span className="grid size-9 place-items-center rounded-full bg-brand-red-soft">
+                  <FileDown className="size-4" aria-hidden="true" />
+                </span>
+              </button>
+            )}
+            {trip && (
+              <button
+                type="button"
                 onClick={() => setShareOpen(true)}
                 aria-label="Bagikan itinerary"
                 className="tap grid size-11 shrink-0 place-items-center rounded-full text-brand-red"
@@ -1306,6 +1339,14 @@ export function ItineraryEditor({
           )}
         </section>
       </LayoutGroup>
+      {trip && (
+        <TripExportSheet
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          tripId={tripId}
+          tripName={trip.name}
+        />
+      )}
       {trip && (
         <ShareTripSheet
           open={shareOpen}

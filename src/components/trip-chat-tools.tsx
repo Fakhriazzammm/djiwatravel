@@ -1,4 +1,4 @@
-import { Camera, MapPin, Share2, Sparkles } from "lucide-react";
+import { Camera, MapPin, FileDown, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { ReceiptScanner } from "@/components/receipt-scanner";
 import type { TravoChatState } from "@/hooks/use-travo-chat";
@@ -14,6 +14,7 @@ export function TripToolsBar({
   unpinned,
   quick = QUICK,
   onShare,
+  onExport,
   onCatat,
 }: {
   chat: TravoChatState;
@@ -23,6 +24,7 @@ export function TripToolsBar({
   /** The shortcuts, in the order the page wants them first. */
   quick?: typeof QUICK;
   onShare?: (() => void) | undefined;
+  onExport?: (() => void) | undefined;
   /** "Catat biaya" fills the field and focuses it. */
   onCatat: () => void;
 }) {
@@ -48,6 +50,16 @@ export function TripToolsBar({
         >
           <Share2 className="size-3.5 text-brand-red" aria-hidden="true" />
           Bagikan
+        </button>
+      )}
+      {onExport && (
+        <button
+          type="button"
+          onClick={onExport}
+          className="tap inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full bg-surface px-3 text-xs font-semibold ring-1 ring-border/50"
+        >
+          <FileDown className="size-3.5 text-brand-red" aria-hidden="true" />
+          Ekspor PDF
         </button>
       )}
       {quick.map((q) => (
