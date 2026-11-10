@@ -8,6 +8,10 @@ vi.mock("@/lib/my-trips.fn", () => ({
   postTripShare: vi.fn(),
   deleteTripShare: vi.fn(),
 }));
+vi.mock("@/lib/trip-assistant.fn", () => ({ openTripGoogleLink: vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const trip = { id: "t1", name: "spring", destination_name: "Jepang" };
@@ -19,7 +23,11 @@ afterEach(() => {
 
 describe("TripShareDialog (My Trips list)", () => {
   it("shows the trip's active link with copy and share actions", async () => {
-    vi.mocked(getTripShare).mockResolvedValue({ token: "t".repeat(32), createdAt: "2026-11-04", handle: "fakhri" });
+    vi.mocked(getTripShare).mockResolvedValue({
+      token: "t".repeat(32),
+      createdAt: "2026-11-04",
+      handle: "fakhri",
+    });
     render(<TripShareDialog trip={trip} onOpenChange={() => undefined} />);
     const input = await screen.findByLabelText("Tautan itinerary");
     await waitFor(() =>
@@ -30,11 +38,35 @@ describe("TripShareDialog (My Trips list)", () => {
     expect(screen.getByText("WhatsApp")).toBeTruthy();
   });
 
+  it("puts the PDF download and the Drive save in the share sheet, with or without a link", async () => {
+    vi.mocked(getTripShare).mockResolvedValue({
+      token: "t".repeat(32),
+      createdAt: "2026-11-04",
+      handle: "fakhri",
+    });
+    render(<TripShareDialog trip={trip} onOpenChange={() => undefined} />);
+    await screen.findByLabelText("Tautan itinerary");
+    expect(screen.getByLabelText("Dokumen PDF")).toBeTruthy();
+    expect(screen.getByTestId("export-download").getAttribute("href")).toBe(
+      "/my-trips/t1/print?auto=1",
+    );
+    expect(screen.getByRole("button", { name: /Simpan PDF ke Google Drive/ })).toBeTruthy();
+    cleanup();
+    vi.mocked(getTripShare).mockResolvedValue(null);
+    render(<TripShareDialog trip={trip} onOpenChange={() => undefined} />);
+    await screen.findByText("Buat tautan bagikan");
+    expect(screen.getByTestId("export-download")).toBeTruthy();
+  });
+
   it("creates a link when the trip has none, then reloads it", async () => {
     vi.mocked(getTripShare)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ token: "u".repeat(32), createdAt: "2026-11-04", handle: "fakhri" });
-    vi.mocked(postTripShare).mockResolvedValue({ token: "u".repeat(32), createdAt: "2026-11-04", handle: "fakhri" });
+    vi.mocked(postTripShare).mockResolvedValue({
+      token: "u".repeat(32),
+      createdAt: "2026-11-04",
+      handle: "fakhri",
+    });
     render(<TripShareDialog trip={trip} onOpenChange={() => undefined} />);
     fireEvent.click(await screen.findByText("Buat tautan bagikan"));
     await waitFor(() => expect(postTripShare).toHaveBeenCalledWith({ data: { tripId: "t1" } }));

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { btnRed, btnSoft } from "@/components/shell";
 import { SocialShare } from "@/components/social-share";
 import { ConfirmDialog } from "@/components/trip-ios";
+import { TripExportActions } from "@/components/trip-export-sheet";
 import { tripStoryImages } from "@/lib/trip-share-image";
 import {
   Sheet,
@@ -174,6 +175,16 @@ export function ShareTripSheet({
             </button>
           </div>
         )}
+        <section className="mt-5 border-t border-border/60 pt-4" aria-label="Dokumen PDF">
+          <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Dokumen PDF
+          </p>
+          <TripExportActions
+            tripId={trip.id}
+            tripName={trip.name}
+            onNavigate={() => onOpenChange(false)}
+          />
+        </section>
       </SheetContent>
       <ConfirmDialog
         open={confirmRevoke}
