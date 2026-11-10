@@ -41,7 +41,7 @@ type NotificationData = {
   unread_count: number;
   next_cursor: string | null;
 };
-type Action = "read" | "read_all" | "archive" | "unarchive" | "delete" | "restore";
+type Action = "read" | "unread" | "read_all" | "archive" | "unarchive" | "delete" | "restore";
 type Filter = "all" | "unread" | Category;
 
 const CATEGORY: Record<Category, { label: string; Icon: LucideIcon; tone: string }> = {
@@ -127,7 +127,7 @@ function NotificationsLoading() {
 
 /** Width of Arsip + Hapus revealed by a left swipe, and of Baca revealed by a right swipe. */
 const ACTION_W = 112;
-const READ_W = 80;
+const READ_W = 96;
 
 function Notifications() {
   const initial = Route.useLoaderData();
@@ -181,6 +181,8 @@ function Notifications() {
     setItems((cur) => {
       if (action === "read")
         return cur.map((n) => (idSet.has(n.id) && !n.read_at ? { ...n, read_at: now } : n));
+      if (action === "unread")
+        return cur.map((n) => (idSet.has(n.id) ? { ...n, read_at: null } : n));
       if (action === "read_all") return cur.map((n) => (n.read_at ? n : { ...n, read_at: now }));
       return cur.filter((n) => !idSet.has(n.id)); // archive/unarchive/delete leave the current view
     });
@@ -396,6 +398,7 @@ function Notifications() {
                     onToggle={() => toggleSelect(item.id)}
                     onMenu={() => setSheetFor(item)}
                     onRead={() => void run("read", [item.id])}
+                    onToggleRead={() => void run(item.read_at ? "unread" : "read", [item.id])}
                     onArchive={() =>
                       void run(archivedView ? "unarchive" : "archive", [item.id], {
                         toast: archivedView
@@ -569,6 +572,7 @@ function Row({
   onToggle,
   onMenu,
   onRead,
+  onToggleRead,
   onArchive,
   onDelete,
 }: {
@@ -584,6 +588,7 @@ function Row({
   onToggle: () => void;
   onMenu: () => void;
   onRead: () => void;
+  onToggleRead: () => void;
   onArchive: () => void;
   onDelete: () => void;
 }) {
@@ -601,18 +606,14 @@ function Row({
     const timers = [
       window.setTimeout(() => setPeek(-ACTION_W * 0.7), 1400),
       window.setTimeout(() => setPeek(0), 2400),
-      ...(item.read_at
-        ? []
-        : [
-            window.setTimeout(() => setPeek(READ_W * 0.7), 3000),
-            window.setTimeout(() => setPeek(0), 4000),
-          ]),
+      window.setTimeout(() => setPeek(READ_W * 0.7), 3000),
+      window.setTimeout(() => setPeek(0), 4000),
     ];
     return () => {
       timers.forEach((t) => window.clearTimeout(t));
       setPeek(0);
     };
-  }, [hint, reduce, selecting, item.read_at]);
+  }, [hint, reduce, selecting]);
   const clearPress = () => {
     if (press.current) window.clearTimeout(press.current);
     press.current = null;
@@ -623,7 +624,7 @@ function Row({
       <div className="absolute inset-y-0 left-0 flex" style={{ width: READ_W }} aria-hidden="true">
         <div className="flex flex-1 items-center justify-center gap-1 bg-sky-500 text-xs font-bold text-white">
           <Check className="size-3.5" aria-hidden="true" />
-          Baca
+          {item.read_at ? "Belum dibaca" : "Baca"}
         </div>
       </div>
       <div
@@ -674,16 +675,14 @@ function Row({
           }
           if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
             onUsed();
-            setDrag(
-              Math.min(item.read_at ? 0 : READ_W, Math.max(-ACTION_W, start.current.base + dx)),
-            );
+            setDrag(Math.min(READ_W, Math.max(-ACTION_W, start.current.base + dx)));
           }
         }}
         onPointerUp={() => {
           clearPress();
           if (drag !== null) {
             if (drag > READ_W / 2) {
-              onRead();
+              onToggleRead();
               onOpenChange(false);
             } else onOpenChange(drag < -ACTION_W / 2);
           }
