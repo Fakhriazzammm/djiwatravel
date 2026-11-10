@@ -129,7 +129,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content:
+      {
+        name: "viewport",
+        content:
           "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
       },
       { name: "theme-color", content: "#1f2d5c" },
@@ -152,9 +154,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/manifest.webmanifest?v=logo-20261110" },
+      { rel: "icon", type: "image/x-icon", href: "/favicon.ico?v=logo-20261110" },
+      { rel: "icon", type: "image/png", sizes: "16x16", href: "/favicon-16.png?v=logo-20261110" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32.png?v=logo-20261110" },
+      { rel: "icon", type: "image/png", sizes: "64x64", href: "/favicon.png?v=logo-20261110" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png?v=logo-20261110" },
     ],
   }),
   shellComponent: RootShell,
