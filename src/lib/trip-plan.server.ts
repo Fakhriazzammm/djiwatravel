@@ -219,7 +219,7 @@ async function queryNominatim(
     addressdetails: "1",
     "accept-language": "en",
     bounded: "1",
-    viewbox: `${anchor.lng - 0.22},${anchor.lat + 0.18},${anchor.lng + 0.22},${anchor.lat - 0.18}`,
+    viewbox: `${anchor.lng - 0.12},${anchor.lat + 0.1},${anchor.lng + 0.12},${anchor.lat - 0.1}`,
     q,
   }).toString();
   const response = await fetcher(url, {
@@ -293,7 +293,7 @@ export async function getPlaceCandidates(
     if (Date.now() - new Date(String(row.fetched_at)).getTime() < PLACE_TTL_MS)
       fresh.set(String(row.kind), row.places as RawPlace[]);
   for (const query of QUERIES) {
-    const cacheKey = query.q;
+    const cacheKey = `v2:${query.q}`;
     if (fresh.has(cacheKey)) continue;
     if (Date.now() + 1500 > deadline) break;
     try {
@@ -326,9 +326,10 @@ export async function alternativesNear(
   excludeNames: readonly string[],
   limit = 3,
 ): Promise<PlaceCandidate[]> {
-  const rows = await pool.query("select places from travel_place_cache where city_key=$1", [
-    cityKey,
-  ]);
+  const rows = await pool.query(
+    "select places from travel_place_cache where city_key=$1 and kind like 'v2:%'",
+    [cityKey],
+  );
   const all = dedupe(rows.rows.flatMap((r) => r.places as RawPlace[]));
   const { haversineKm } = await import("./trip-plan");
   const taken = new Set(excludeNames.map((n) => n.toLowerCase()));

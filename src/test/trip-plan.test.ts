@@ -240,6 +240,24 @@ describe("cleaning the model's plan", () => {
     expect(out.checklist).toEqual([{ title: "Beli eSIM", dueDate: "2026-12-07" }]);
     expect(out.tips).toEqual(["Bawa uang tunai"]);
   });
+  it("labels meals by the real hour and place type, not the model's slot word", () => {
+    const cafe = place("c1", "kafe", 35.7, 139.7);
+    const out = cleanFullPlan(
+      {
+        days: [
+          {
+            date: "2026-12-10",
+            items: [
+              { id: "c1", slot: "makan_malam", start: "13:00", end: "14:00", note: "" },
+              { id: "f1", slot: "makan_malam", start: "08:30", end: "09:15", note: "" },
+            ],
+          },
+        ],
+      },
+      { ...ctx, candidates: [...candidates, cafe] },
+    );
+    expect(out.agenda.map((i) => i.title)).toEqual(["Sarapan: Tempat f1", "Ngopi: Tempat c1"]);
+  });
   it("flags a place the map says is closed at that hour instead of hiding it", () => {
     const out = cleanFullPlan(
       {

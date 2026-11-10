@@ -362,10 +362,13 @@ export function buildDayPools(
   for (const pool of pools) {
     const center = pool.center ?? candidates[0] ?? null;
     if (!center) continue;
-    const near = food
-      .filter((f) => !used.has(f.id))
-      .sort((a, b) => haversineKm(a, center) - haversineKm(b, center))
-      .slice(0, perDayFood);
+    const nearest = (kind: PlaceKind, count: number) =>
+      food
+        .filter((f) => f.kind === kind && !used.has(f.id))
+        .sort((a, b) => haversineKm(a, center) - haversineKm(b, center))
+        .slice(0, count);
+    // Meals first (restaurants), then a couple of cafes, so lunch and dinner are not cafes.
+    const near = [...nearest("makan", Math.max(1, perDayFood - 2)), ...nearest("kafe", 2)];
     for (const f of near) used.add(f.id);
     pool.food = near;
   }
@@ -383,14 +386,6 @@ export const PLAN_SLOTS = [
   "malam",
 ] as const;
 export type PlanSlot = (typeof PLAN_SLOTS)[number];
-const SLOT_LABEL: Record<PlanSlot, string> = {
-  sarapan: "Sarapan",
-  pagi: "Pagi",
-  makan_siang: "Makan siang",
-  sore: "Sore",
-  makan_malam: "Makan malam",
-  malam: "Malam",
-};
 const SLOT_DEFAULT_START: Record<PlanSlot, string> = {
   sarapan: "08:00",
   pagi: "09:30",
@@ -546,7 +541,17 @@ export function cleanFullPlan(parsed: unknown, ctx: FullPlanContext): FullPlanRe
           ? 0
           : ctx.costs.attractionsDay / 2;
       const costIdr = perPerson * ctx.travelers;
-      const label = isFoodKind(place.kind) ? `${SLOT_LABEL[slot]}: ${place.name}` : place.name;
+      // The label follows the real hour and place type, not the model's slot word.
+      const hour = minutes(start) / 60;
+      const meal =
+        place.kind === "kafe"
+          ? "Ngopi"
+          : hour < 10.5
+            ? "Sarapan"
+            : hour < 16
+              ? "Makan siang"
+              : "Makan malam";
+      const label = isFoodKind(place.kind) ? `${meal}: ${place.name}` : place.name;
       const noteText = clean(r["note"], 240);
       usedIds.add(place.id);
       items.push({
