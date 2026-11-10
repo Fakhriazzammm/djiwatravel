@@ -323,6 +323,11 @@ export function useTravoChat(options: Options) {
     ready,
     convId,
     chatTrip,
+    tripId: embeddedTrip ?? chatTrip,
+    /** Tells the page the trip changed (agenda, budget...) so it reloads. */
+    changed: async () => {
+      await latest.current.onChanged?.();
+    },
     tripCurrency,
     scope,
     setScope,

@@ -30,6 +30,7 @@ import {
 import {
   alternativesNear,
   deleteCityCosts,
+  iataFor,
   getCityCosts,
   listCityCosts,
   saveCityCosts,
@@ -71,6 +72,7 @@ import {
   cleanAssistantReply,
   detectIntent,
   extractReplyPrefix,
+  FLIGHT_WORDS,
   isGenerationIntent,
   normalizeTripAssistantConfig,
   parseJsonLoose,
@@ -239,6 +241,9 @@ async function loadFacts(tripId: string, withPlaces: boolean): Promise<TripFacts
     totalBudgetMinor: Number(dash.trip.total_budget_minor) || 0,
     spentMinor: dash.totals.spentMinor,
     cities: cityNames,
+    originCode:
+      (await pool.query("select origin_code from public.travel_trips where id=$1", [tripId]))
+        .rows[0]?.origin_code ?? null,
     itinerary: (dash.itinerary as Record<string, unknown>[]).map((i) => ({
       id: String(i["id"]),
       date: String(i["activity_date"] ?? ""),
@@ -873,6 +878,32 @@ async function runTurn(
       budgetNames: facts?.budget.map((b) => b.name) ?? [],
       today: facts?.today ?? general!.today,
     });
+    // The traveler asked about flights: show the live fares even when the model forgot the card.
+    if (
+      facts &&
+      config.allowCommerce &&
+      FLIGHT_WORDS.test(data.text) &&
+      !cleaned.cards.some((c) => c.kind === "tiket")
+    ) {
+      if (!facts.originCode)
+        cleaned.followUps.push(
+          "Isi kota keberangkatan di Edit perjalanan, supaya aku bisa carikan harga tiketnya.",
+        );
+      else if (facts.departureDate && (facts.cities[0] || facts.destination)) {
+        const to = await iataFor(facts.cities[0] || facts.destination);
+        if (to)
+          cleaned.cards.push({
+            kind: "tiket",
+            destination: "",
+            query: "",
+            from: facts.originCode,
+            to,
+            date: facts.departureDate,
+            returnDate: "",
+            days: 0,
+          });
+      }
+    }
     if (facts && tripId && cleaned.proposal?.payload.kind === "agenda" && config.verifyHours) {
       emit?.({ type: "status", text: "Mengecek lokasi dan jam buka…" });
       await verifyAgendaPlaces(cleaned.proposal.payload.items, tripId, facts).catch((error) =>

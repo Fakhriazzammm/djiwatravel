@@ -350,7 +350,7 @@ const within = <T>(promise: Promise<T>, ms: number): Promise<T | null> =>
     new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
   ]);
 
-async function iataFor(cityName: string): Promise<string | null> {
+export async function iataFor(cityName: string): Promise<string | null> {
   const result = await within(searchFlightPlacesHandler({ data: { term: cityName } }), 5000);
   const place = result?.places.find((p) => p.type === "city") ?? result?.places[0];
   return place?.code ?? null;
@@ -420,7 +420,7 @@ export async function loadPlanResearch(input: ResearchInput): Promise<ResearchRe
         research.outbound = priced(flights[0]);
         research.returnLeg = priced(flights[1]);
         if (!research.outbound && !research.returnLeg) down.push("tiket");
-        cards.push(requests[0]!);
+        cards.push(requests[0]!, requests[1]!);
         const month = input.departureDate.slice(0, 7);
         const offers = await within(fetchMonthOffers(from, to, month), 8000);
         const cheapest = [...(offers ?? [])].sort((a, b) => a.priceIdr - b.priceIdr)[0];

@@ -98,6 +98,7 @@ import {
   assistantApplyHandler,
   assistantSendHandler,
   assistantSwapPlaceHandler,
+  clearAssistantBurst,
   adminDeleteCityCostsHandler,
   adminListCityCostsHandler,
   adminSaveCityCostsHandler,
@@ -193,6 +194,21 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
             hotelMid: 1_300_000,
           });
         }
+        if (!body.includes('"name":"full_plan"'))
+          return reply({
+            reply: "Oke.",
+            chips: [],
+            multi: false,
+            followUps: [],
+            blocks: [],
+            cards: [],
+            kind: "none",
+            title: "",
+            agenda: [],
+            budget: { total: 0, categories: [] },
+            checklist: [],
+            expense: { description: "", amount: 0, currency: "", date: "", category: "" },
+          });
         planCalls += 1;
         const data = JSON.parse(
           JSON.parse(body)
@@ -270,6 +286,7 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
   });
   beforeEach(async () => {
     holder.owner = { id: "u1", email: "a@b.c", guest: false };
+    clearAssistantBurst();
     costsCalls = 0;
     planCalls = 0;
     nominatimCalls = 0;
@@ -332,7 +349,8 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
         (b) => b.kind === "facts" && b.items.some((row) => row.startsWith("Hemat tiket")),
       ),
     ).toBe(true);
-    expect(first.cards?.some((c) => c.kind === "tiket")).toBe(true);
+    // Fares both ways, so the traveler sees the outbound and the return price.
+    expect(first.cards?.filter((c) => c.kind === "tiket")).toHaveLength(2);
     expect(first.cards?.some((c) => c.kind === "esim")).toBe(true);
     expect(result.remaining).toBe(30 - 3); // weighs 3 messages
   });
@@ -460,6 +478,26 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
         "select count(*)::int n from admin_audit_logs where action='assistant.city_costs_deleted'",
       ),
     ).toBe(1);
+  });
+
+  it("adds the live fare card when the traveler talks about tickets, even if the model forgot it", async () => {
+    const result = await assistantSendHandler({
+      data: { tripId: TRIP, text: "ada tiket pesawat murah?", intent: "chat" },
+    });
+    if (result.status !== "ok") throw new Error("failed");
+    const card = result.messages.at(-1)!.cards?.find((c) => c.kind === "tiket");
+    expect(card).toMatchObject({ kind: "tiket", from: "CGK", to: "TYO", date: "2026-12-10" });
+  });
+
+  it("asks for the departure city instead when the trip has none", async () => {
+    await pool.query("update travel_trips set origin_code=null, origin_name=null");
+    const result = await assistantSendHandler({
+      data: { tripId: TRIP, text: "cari tiket pesawat", intent: "chat" },
+    });
+    if (result.status !== "ok") throw new Error("failed");
+    const texts = result.messages.map((m) => m.content).join(" ");
+    expect(texts).toMatch(/Isi kota keberangkatan/);
+    expect(result.messages.some((m) => m.cards?.some((c) => c.kind === "tiket"))).toBe(false);
   });
 
   it("gives a guest exactly one full plan, then asks them to sign in", async () => {

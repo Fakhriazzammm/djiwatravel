@@ -6,7 +6,7 @@ import { getMemberOrdersHandler } from "./member-orders.server";
 import { getShopperCatalogHandler, listMyShoppingOrdersHandler } from "./personal-shopper.server";
 import { destinations, getDest, search as searchDestinations } from "./catalog";
 import { getDestinationPackagesHandler } from "./destination-packages.server";
-import { searchFlightsHandler } from "./flights.server";
+import { fetchMonthOffers, searchFlightsHandler } from "./flights.server";
 import { getHomeQuickPackagesHandler } from "./home-quick-packages.server";
 import { countryScopedPackages } from "./home-quick-packages";
 import { packageDataLabel } from "./package-copy";
@@ -150,8 +150,33 @@ async function flightCard(req: TravoCardRequest): Promise<TravoCard | null> {
         transfers: o.transfers,
         priceIdr: o.priceIdr,
         url: o.bookingUrl,
+        id: o.id,
+        airlineCode: o.airline,
+        durationMinutes: o.durationMinutes,
+        returnAt: o.returnAt,
       })),
+    cheapDates: await cheapestDays(req.from, req.to, req.date),
   };
+}
+
+/** The four cheapest days of the departure month from the recorded fares (empty when none or unavailable). */
+async function cheapestDays(from: string, to: string, date: string) {
+  try {
+    const offers = await fetchMonthOffers(from, to, date.slice(0, 7));
+    const best = new Map<string, number>();
+    for (const o of offers) {
+      const day = String(o.departureAt).slice(0, 10);
+      if (day < new Date().toISOString().slice(0, 10)) continue;
+      if (!best.has(day) || o.priceIdr < best.get(day)!) best.set(day, o.priceIdr);
+    }
+    return [...best]
+      .map(([day, priceIdr]) => ({ date: day, priceIdr }))
+      .sort((a, b) => a.priceIdr - b.priceIdr)
+      .slice(0, 4)
+      .sort((a, b) => a.date.localeCompare(b.date));
+  } catch {
+    return [];
+  }
 }
 
 function guideCard(req: TravoCardRequest): TravoCard | null {

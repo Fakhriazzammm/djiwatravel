@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { DEFAULT_MINIMUM_TOPUP, DEFAULT_TOPUP_PRESETS } from "@/lib/customer-app-config";
 import { postTrip } from "@/lib/my-trips.fn";
+import { saveFlightToTrip } from "@/lib/flights.fn";
 import { listTravoEsimPlans } from "@/lib/trip-assistant.fn";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import type { TravoChatState } from "@/hooks/use-travo-chat";
@@ -55,6 +56,38 @@ export function TravoCards({ cards, chat }: { cards: TravoCard[]; chat: TravoCha
     Record<number, Extract<TravoCard, { kind: "esim" }>["picks"]>
   >({});
   const { user } = useBetterAuthUser();
+
+  /** "Simpan ke Agenda": the fare becomes itinerary items (the same action as on the results page). */
+  async function saveFlight(
+    card: Extract<TravoCard, { kind: "tiket" }>,
+    offer: Extract<TravoCard, { kind: "tiket" }>["offers"][number],
+  ) {
+    if (!chat.tripId) return;
+    try {
+      const result = await saveFlightToTrip({
+        data: {
+          tripId: chat.tripId,
+          offer: {
+            id: offer.id ?? "",
+            origin: card.from,
+            destination: card.to,
+            airlineName: offer.airline,
+            airline: offer.airlineCode ?? "",
+            flightNumber: offer.flightNumber,
+            departureAt: offer.departureAt,
+            returnAt: offer.returnAt ?? null,
+            transfers: offer.transfers,
+            durationMinutes: offer.durationMinutes ?? null,
+            priceIdr: offer.priceIdr,
+          },
+        },
+      });
+      toast.success(`Tersimpan di Agenda ${result.dates.join(" dan ")}.`);
+      await chat.changed();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Belum bisa menyimpan ke Agenda.");
+    }
+  }
 
   async function showAllPlans(index: number, code: string) {
     setBusyCard(index);
@@ -200,6 +233,16 @@ export function TravoCards({ cards, chat }: { cards: TravoCard[]; chat: TravoCha
                       </p>
                       <p className="text-[12px] font-bold text-brand-red">{rupiah(o.priceIdr)}</p>
                     </div>
+                    {user && chat.tripId && (
+                      <button
+                        type="button"
+                        onClick={() => void saveFlight(card, o)}
+                        className={soft}
+                        aria-label={`Simpan ${o.airline} ${o.flightNumber} ke Agenda`}
+                      >
+                        Simpan ke Agenda
+                      </button>
+                    )}
                     {o.url && (
                       <a
                         href={o.url}
@@ -212,6 +255,27 @@ export function TravoCards({ cards, chat }: { cards: TravoCard[]; chat: TravoCha
                     )}
                   </div>
                 ))
+              )}
+              {card.cheapDates && card.cheapDates.length > 0 && (
+                <div
+                  className="flex flex-wrap items-center gap-1.5 border-t border-border/60 px-3 py-2"
+                  data-testid="travo-cheap-dates"
+                >
+                  <span className="text-[11px] font-semibold text-muted-foreground">
+                    Tanggal hemat
+                  </span>
+                  {card.cheapDates.map((d) => (
+                    <Link
+                      key={d.date}
+                      to={
+                        `/tiket?${new URLSearchParams({ dari: card.from, ke: card.to, berangkat: d.date }).toString()}` as never
+                      }
+                      className={soft}
+                    >
+                      {dayTime(`${d.date}T12:00:00`).split(",")[0]} · {rupiah(d.priceIdr)}
+                    </Link>
+                  ))}
+                </div>
               )}
               <div className="border-t border-border/60 px-3 py-2">
                 <Link to={card.searchPath as never} className={soft}>

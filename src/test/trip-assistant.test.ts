@@ -265,6 +265,7 @@ describe("helpers", () => {
       currency: "IDR",
       totalBudgetMinor: 1_000_000_000,
       spentMinor: 0,
+      originCode: null,
       cities: ["Tokyo"],
       itinerary: [
         {

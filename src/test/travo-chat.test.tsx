@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { postTrip } from "@/lib/my-trips.fn";
+import { saveFlightToTrip } from "@/lib/flights.fn";
 import { TravoChat } from "@/components/travo-chat";
 import {
   applyTripAssistantProposal,
@@ -62,6 +63,9 @@ vi.mock("@/components/esim-install", () => ({
   EsimQr: () => <div data-testid="qr" />,
   ManualDetails: () => <div>MANUAL</div>,
   InstallGuide: () => <div>PANDUAN</div>,
+}));
+vi.mock("@/lib/flights.fn", () => ({
+  saveFlightToTrip: vi.fn(async () => ({ ok: true, itemIds: ["i1", "i2"], dates: ["2026-12-10"] })),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/trip-assistant.fn", () => ({
@@ -186,6 +190,70 @@ describe("Travo page", () => {
     fireEvent.click(screen.getByRole("button", { name: /terapkan/i }));
     await waitFor(() =>
       expect(applyTripAssistantProposal).toHaveBeenCalledWith({ data: { proposalId: "p1" } }),
+    );
+  });
+
+  it("shows fares with 'Simpan ke Agenda' and cheap dates in a trip chat, and saves the flight", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: { id: "c1", tripId: "t1", title: "Jepang", scope: "trip", tripCurrency: "IDR" },
+      messages: [
+        msg({ id: "u", role: "user", content: "ada tiket?" }),
+        msg({
+          id: "a",
+          content: "Ini harga tiketnya.",
+          cards: [
+            {
+              kind: "tiket",
+              status: "ok",
+              from: "CGK",
+              to: "TYO",
+              date: "2026-12-10",
+              returnDate: null,
+              searchPath: "/tiket?dari=CGK&ke=TYO&berangkat=2026-12-10",
+              offers: [
+                {
+                  airline: "Batik Air",
+                  flightNumber: "ID7",
+                  departureAt: "2026-12-10T09:00:00",
+                  transfers: 0,
+                  priceIdr: 3_000_000,
+                  url: null,
+                  id: "o1",
+                  airlineCode: "ID",
+                  durationMinutes: 420,
+                  returnAt: null,
+                },
+              ],
+              cheapDates: [{ date: "2026-12-08", priceIdr: 2_400_000 }],
+            },
+          ],
+        }),
+      ],
+    });
+    render(<TravoChat conversationId="c1" />);
+    await screen.findByText("Ini harga tiketnya.");
+    const cheap = screen.getByTestId("travo-cheap-dates");
+    expect(cheap.textContent).toContain("Rp2.400.000");
+    expect(cheap.querySelector("a")?.getAttribute("to")).toBe(
+      "/tiket?dari=CGK&ke=TYO&berangkat=2026-12-08",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Simpan Batik Air ID7 ke Agenda" }));
+    await waitFor(() =>
+      expect(saveFlightToTrip).toHaveBeenCalledWith({
+        data: {
+          tripId: "t1",
+          offer: expect.objectContaining({
+            origin: "CGK",
+            destination: "TYO",
+            airline: "ID",
+            airlineName: "Batik Air",
+            flightNumber: "ID7",
+            priceIdr: 3_000_000,
+          }),
+        },
+      }),
     );
   });
 
