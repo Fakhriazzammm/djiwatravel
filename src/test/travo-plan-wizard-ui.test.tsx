@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TravoPlanWizard } from "@/components/travo-plan-wizard";
+import { addTravoMemory } from "@/lib/travo-docs.fn";
 import {
   applyTripAssistantProposal,
   createPlanTrip,
@@ -12,6 +13,9 @@ const navigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
   Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+}));
+vi.mock("@/lib/travo-docs.fn", () => ({
+  addTravoMemory: vi.fn(async () => ({ ok: true, items: [] })),
 }));
 vi.mock("@/lib/trip-assistant.fn", () => ({
   createPlanTrip: vi.fn(),
@@ -147,6 +151,15 @@ describe("planning wizard", () => {
     expect(screen.getByText(/9 aktivitas, anggaran, dan persiapan/)).toBeTruthy();
     expect(applyTripAssistantProposal).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
+    // Memory is offered, and nothing is saved until the traveler taps "Ingat".
+    expect(addTravoMemory).not.toHaveBeenCalled();
+    fireEvent.click(within(ready).getByRole("button", { name: "Ingat" }));
+    await waitFor(() =>
+      expect(addTravoMemory).toHaveBeenCalledWith({
+        data: { text: "Biasanya berangkat dari Jakarta (CGK)", source: "wizard" },
+      }),
+    );
+    expect(await within(ready).findByText(/kuingat untuk rencana berikutnya/)).toBeTruthy();
     fireEvent.click(within(ready).getByRole("button", { name: "Terapkan semua & buka" }));
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({ to: "/my-trips/$tripId", params: { tripId: "t-1" } }),

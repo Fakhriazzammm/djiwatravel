@@ -5,6 +5,7 @@ import { ArrowUp } from "lucide-react";
 import { AssistantMascot, type MascotMood } from "@/components/assistant-mascot";
 import { AssistantBlocks, RichText } from "@/components/assistant-blocks";
 import { InlineAnswer } from "@/components/inline-answer";
+import { MemoryOffer } from "@/components/travo-memory";
 import { TravoCards } from "@/components/travo-cards";
 import { ProposalCard } from "@/components/trip-assistant-cards";
 import type { TravoChatState } from "@/hooks/use-travo-chat";
@@ -193,6 +194,9 @@ export function TravoMessage({
                 : `Terapkan semua (${applyAllIds.length})`}
             </button>
           </div>
+        )}
+        {chips?.remember && !(chat.status?.available && chat.status.guest) && (
+          <MemoryOffer key={`${m.id}-mem`} text={chips.remember} />
         )}
         {chips?.input && (
           <InlineAnswer placeholder={chips.input} onSubmit={(value) => void send(value)} />

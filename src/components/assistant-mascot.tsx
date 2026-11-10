@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TravoMemoryPanel } from "@/components/travo-memory";
 import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from "motion/react";
 import {
   Sheet,
@@ -304,6 +305,7 @@ export function AssistantProfileSheet({
             ? "AI bisa keliru. Harga dan paket diambil langsung dari katalog; cek lagi sebelum membayar."
             : "AI bisa keliru. Usulan baru tersimpan setelah kamu menekan Terapkan."}
         </p>
+        {!guest && <TravoMemoryPanel />}
         {hasConversation && (
           <button
             type="button"

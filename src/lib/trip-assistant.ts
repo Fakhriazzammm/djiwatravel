@@ -9,6 +9,7 @@ import type { EsimProfile } from "./providers";
  */
 
 import { estimateCostIdr } from "./receipt-scan";
+import { checkMemoryText } from "./travo-docs";
 
 export const TRIP_ASSISTANT_SETTING_KEY = "tripAssistant";
 
@@ -33,6 +34,10 @@ export type TripAssistantConfig = {
   allowBudget: boolean;
   /** The AI may show live product cards in the chat: eSIM plans (with checkout), flights, guides, trips. */
   allowCommerce: boolean;
+  /** The team guide (agent and skill documents from Admin) is added to the prompt. */
+  teamGuide: boolean;
+  /** Travo remembers what a signed-in traveler agreed to share (and uses it). */
+  memory: boolean;
   /** "Rencana lengkap": itinerary + budget + preparation from our own data (fares, eSIM, map places). */
   fullPlan: boolean;
   /** Full plans a guest may make, ever (0 = members only). */
@@ -72,6 +77,8 @@ export const DEFAULT_TRIP_ASSISTANT_CONFIG: TripAssistantConfig = {
   allowBudget: true,
   allowCommerce: true,
   fullPlan: true,
+  teamGuide: true,
+  memory: true,
   fullPlanGuests: 1,
   fullPlanWeight: 3,
   sheetsPlanTabs: true,
@@ -106,6 +113,8 @@ export function parseTripAssistantConfig(value: unknown): TripAssistantConfig {
     "allowBudget",
     "allowCommerce",
     "fullPlan",
+    "teamGuide",
+    "memory",
     "sheetsPlanTabs",
     "driveDoc",
     "verifyHours",
@@ -138,6 +147,8 @@ export function parseTripAssistantConfig(value: unknown): TripAssistantConfig {
     allowBudget: (raw["allowBudget"] as boolean | undefined) ?? d.allowBudget,
     allowCommerce: (raw["allowCommerce"] as boolean | undefined) ?? d.allowCommerce,
     fullPlan: (raw["fullPlan"] as boolean | undefined) ?? d.fullPlan,
+    teamGuide: (raw["teamGuide"] as boolean | undefined) ?? d.teamGuide,
+    memory: (raw["memory"] as boolean | undefined) ?? d.memory,
     sheetsPlanTabs: (raw["sheetsPlanTabs"] as boolean | undefined) ?? d.sheetsPlanTabs,
     driveDoc: (raw["driveDoc"] as boolean | undefined) ?? d.driveDoc,
     fullPlanGuests: num("fullPlanGuests", 0, 5),
@@ -255,7 +266,7 @@ export function buildTravoGeneralPrompt(
     "Language: casual, polite Indonesian. `reply` is at most 450 characters, no markdown, no emoji. Ask at most ONE question per turn.",
     `This conversation is not tied to one trip. Focus: ${focus[scope]} The traveler's own data is in the user message (JSON).`,
     "You cannot change trip data from a general chat: always set `kind` to none and leave agenda, budget, checklist and expense empty. To work on a trip, show the `trip` card so the traveler continues in that trip's chat.",
-    "Make answers visual: one or two short sentences in `reply`, details in `blocks` (up to 3; kinds steps, facts, tip, warning, places; `title` max 4 words; items are short lines, facts are 'Label: value'). `chips`: 0-4 short quick replies (max 28 characters). Typed answers: when you ask an open question (a city, a date, a budget, a name, an amount), set `input` to a short placeholder such as 'Ketik kotamu' so the traveler can type the answer right inside your bubble; you may also give `chips` as shortcuts. Leave `input` empty when no typed answer is needed.",
+    "Make answers visual: one or two short sentences in `reply`, details in `blocks` (up to 3; kinds steps, facts, tip, warning, places; `title` max 4 words; items are short lines, facts are 'Label: value'). `chips`: 0-4 short quick replies (max 28 characters). Typed answers: when you ask an open question (a city, a date, a budget, a name, an amount), set `input` to a short placeholder such as 'Ketik kotamu' so the traveler can type the answer right inside your bubble; you may also give `chips` as shortcuts. Leave `input` empty when no typed answer is needed. Memory: when the traveler states a lasting preference or fact (usual departure city, food they avoid, travel style, usual budget, who they travel with), set `remember` to ONE short Indonesian sentence about it so they can tap to keep it; never for passports, cards, health or passwords; otherwise leave `remember` empty.",
     "Never invent prices, availability, visa rules or opening hours.",
     "You act inside the chat, you do not send people elsewhere. Use `cards` to show live products: esim (destination = country name or 2-letter code, days = trip length or 0; the card lists real plans with prices and a Buy button that opens checkout right here), tiket (from and to = 3-letter IATA, date and returnDate = YYYY-MM-DD or empty; shows real fares), panduan (query = search words; shows guides), trip (shows the traveler's trips; tapping one continues in that trip's chat with full trip tools), pesanan (the traveler's eSIM orders: status, usage, QR and install right here), dompet (Djiwa Pay balance with a top-up button), buat_trip (a confirm card that creates a trip: destination = country, query = trip name, date and returnDate = YYYY-MM-DD both required, days = number of travelers; ask for missing dates first), titip (shopping service: destination = JP, KR, TH or SG, shows popular items and the traveler's shopping orders). Fill the other card fields with empty strings or 0. Never say 'buka halaman Home' or 'buka menu eSIM': put the card instead. Never write prices yourself. Double chat: you may send up to two extra bubbles in `followUps`, each a separate short message with a different point (for example first the answer, then a tip or one question). Use them only when they add something new, never to repeat yourself. Never repeat your previous answer or the same cards: when asked for other or more options (lainnya, lagi), give different ones.",
     "Every answer is interactive: end with 2-4 `chips` that are the natural next taps (for example 'Beli yang 5 hari', 'Bandingkan paket', 'Tiket ke sana'), and use `blocks` for steps or facts. When asked to buy, show the card and say the Buy button opens checkout.",
@@ -505,7 +516,13 @@ export type TravoCard =
     };
 
 /** Quick replies, plus an optional typed answer field shown inside the bubble (`input` = its placeholder). */
-export type ChipSet = { options: string[]; multi: boolean; input?: string };
+export type ChipSet = {
+  options: string[];
+  multi: boolean;
+  input?: string;
+  /** A lasting fact Travo offers to remember (the traveler taps "Ingat"). */
+  remember?: string;
+};
 
 export type AssistantMessage = {
   id: string;
@@ -554,6 +571,7 @@ export const ASSISTANT_REPLY_SCHEMA = {
     "chips",
     "multi",
     "input",
+    "remember",
     "followUps",
     "blocks",
     "cards",
@@ -570,6 +588,7 @@ export const ASSISTANT_REPLY_SCHEMA = {
     chips: { type: "array", items: { type: "string" } },
     multi: { type: "boolean" },
     input: { type: "string" },
+    remember: { type: "string" },
     blocks: {
       type: "array",
       items: {
@@ -780,7 +799,7 @@ export function buildAssistantSystemPrompt(
     "`chips`: 0-4 short quick replies (max 28 characters each) the traveler can tap as their answer or next step. When you ask a question, chips are its answer options and `multi` says whether several may be picked; otherwise `multi` is false.",
     "Make answers visual, not a wall of text: keep `reply` to one or two short sentences and put the details in `blocks` (up to 3). kinds: steps = an ordered plan or timeline, one line per step like '09:00 Sarapan di Tsukiji'; facts = rows written 'Label: value' like 'Jam buka: 07:00-18:30'; tip = a helpful hint (1-3 lines); warning = something to watch out for (1-3 lines); places = short place or option names the traveler can tap to ask more. Use `title` for a short heading (max 4 words). Plain greetings and one-line answers need no blocks (use an empty array). You may wrap a key term in **double asterisks** for bold, nothing else of markdown.",
     "Interactive answers: when the traveler wants an eSIM, flights, a guide or to pick a trip, add a `cards` entry instead of telling them to open another page: the app shows live prices and a Buy button right in the chat. cards kinds: esim (destination = country name or 2-letter code, days = trip length or 0), tiket (from and to = 3-letter IATA, date and returnDate = YYYY-MM-DD or empty), panduan (query = search words), trip (no fields), pesanan (the traveler's eSIM orders with status, usage, QR and install), dompet (Djiwa Pay balance with top-up), buat_trip (confirm card that creates a trip: destination = country, query = trip name, date and returnDate both required, days = travelers; ask for missing dates first), titip (shopping service: destination = JP, KR, TH or SG). Never write prices yourself. Leave `cards` empty when no product fits. Double chat: you may send up to two extra bubbles in `followUps`, each a separate short message with a different point (for example first the answer, then a tip or one question). Use them only when they add something new, never to repeat yourself. Never repeat your previous answer or the same cards: when asked for other or more options (lainnya, lagi), give different ones.",
-    "Always end with 2-4 `chips` that are the natural next taps (never an empty chips list unless you only greet). Typed answers: when you ask an open question (a city, a date, a budget, a name, an amount), set `input` to a short placeholder such as 'Ketik kotamu' so the traveler can type the answer right inside your bubble; you may also give `chips` as shortcuts. Leave `input` empty when no typed answer is needed. Flights: when the traveler talks about plane tickets, add a tiket card with from = trip.originCode (when it is empty, ask which city they depart from, chips of cities, no card yet), to = the 3-letter IATA code of the trip city, date = the trip departure date (returnDate empty).",
+    "Always end with 2-4 `chips` that are the natural next taps (never an empty chips list unless you only greet). Typed answers: when you ask an open question (a city, a date, a budget, a name, an amount), set `input` to a short placeholder such as 'Ketik kotamu' so the traveler can type the answer right inside your bubble; you may also give `chips` as shortcuts. Leave `input` empty when no typed answer is needed. Memory: when the traveler states a lasting preference or fact (usual departure city, food they avoid, travel style, usual budget, who they travel with), set `remember` to ONE short Indonesian sentence about it so they can tap to keep it; never for passports, cards, health or passwords; otherwise leave `remember` empty. Flights: when the traveler talks about plane tickets, add a tiket card with from = trip.originCode (when it is empty, ask which city they depart from, chips of cities, no card yet), to = the 3-letter IATA code of the trip city, date = the trip departure date (returnDate empty).",
     "When the request is vague (an itinerary without interests or pace, a budget without a total), ask ONE question with chips first and set `kind` to none. When there is enough to go on, propose now.",
     "Never invent facts: opening hours, prices, availability and transport times you are not sure of must be written as an estimate or left out; put `cek jam buka` in `note` for places whose hours you do not know. Prefer places from `knownPlaces`, then well-known real places in the trip cities; never made-up names. All places must be near the trip's cities.",
     "Dates are YYYY-MM-DD and must be inside the trip dates. Times are 24h HH:MM. For each new activity: `title` is a short readable label, `place` is the visited place's own official name in Latin letters (for example Hamarikyu Gardens or Tsukiji Outer Market) used to find it on the map, or an empty string when the activity is only an area or a free block; `location` is area, city (for example Tsukiji, Tokyo). Leave `start`/`end`/`location`/`note`/`id`/`place` as empty strings and `cost` as 0 when not needed.",
@@ -944,12 +963,15 @@ export function cleanAssistantReply(parsed: unknown, ctx: CleanContext): Cleaned
   // model forgot to ask for the field.
   const lastWords = followUps[followUps.length - 1] ?? reply;
   const input = clean(raw["input"], 60) || (/\?\s*$/.test(lastWords) ? "Ketik jawabanmu" : "");
+  const rememberRaw = clean(raw["remember"], 160);
+  const remember = rememberRaw && checkMemoryText(rememberRaw).ok ? rememberRaw : "";
   const chips: ChipSet | null =
-    options.length || input
+    options.length || input || remember
       ? {
           options,
           multi: raw["multi"] === true && options.length > 1,
           ...(input ? { input } : {}),
+          ...(remember ? { remember } : {}),
         }
       : null;
   const out: CleanedReply = {
@@ -1301,8 +1323,16 @@ export function visibleChips(
       options,
       multi: chips.multi && options.length > 1,
       ...(chips.input ? { input: chips.input } : {}),
+      ...(chips.remember ? { remember: chips.remember } : {}),
     };
-  return chips.input ? { options: [], multi: false, input: chips.input } : null;
+  return chips.input || chips.remember
+    ? {
+        options: [],
+        multi: false,
+        ...(chips.input ? { input: chips.input } : {}),
+        ...(chips.remember ? { remember: chips.remember } : {}),
+      }
+    : null;
 }
 
 /** Shortcuts for a trip chat: each asks Travo for one kind of proposal. */

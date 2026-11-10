@@ -10,6 +10,8 @@ import {
   createPlanTrip,
   streamTripAssistantMessage,
 } from "@/lib/trip-assistant.fn";
+import { addTravoMemory } from "@/lib/travo-docs.fn";
+import { memoryFromWizard } from "@/lib/travo-docs";
 import type { AssistantMessage } from "@/lib/trip-assistant";
 import type { FlightPlace } from "@/lib/flights";
 import {
@@ -59,6 +61,7 @@ export function TravoPlanWizard({ onExit }: { onExit: () => void }) {
     null,
   );
   const [applying, setApplying] = useState(false);
+  const [remembered, setRemembered] = useState<"idle" | "saved" | "no">("idle");
   const counter = useRef(0);
   const endRef = useRef<HTMLDivElement | null>(null);
 
@@ -175,6 +178,18 @@ export function TravoPlanWizard({ onExit }: { onExit: () => void }) {
     }
   }
 
+  /** "Ingat pilihanku": the wizard's lasting choices become memory, only when the traveler taps. */
+  async function rememberChoices() {
+    let saved = 0;
+    for (const line of memoryFromWizard(answers)) {
+      const result = await addTravoMemory({ data: { text: line, source: "wizard" } }).catch(
+        () => null,
+      );
+      if (result?.ok) saved += 1;
+    }
+    setRemembered(saved > 0 ? "saved" : "no");
+  }
+
   /** One tap: the whole plan is applied (agenda with map pins, budget, checklist), then the trip opens. */
   async function applyAndOpen() {
     if (!ready) return;
@@ -269,28 +284,45 @@ export function TravoPlanWizard({ onExit }: { onExit: () => void }) {
         <Bubble
           role="assistant"
           footer={
-            <div
-              className="flex gap-2 border-t border-border/60 px-3 py-2"
-              data-testid="plan-ready"
-            >
-              <button
-                type="button"
-                disabled={applying}
-                className="tap min-h-9 rounded-xl bg-secondary px-3 text-[13px] font-semibold disabled:opacity-50"
-                onClick={() =>
-                  void navigate({ to: "/my-trips/$tripId", params: { tripId: ready.tripId } })
-                }
-              >
-                Lihat dulu
-              </button>
-              <button
-                type="button"
-                disabled={applying}
-                className="tap min-h-9 flex-1 rounded-xl bg-brand-red px-3 text-[13px] font-bold text-white disabled:opacity-50"
-                onClick={() => void applyAndOpen()}
-              >
-                {applying ? "Menerapkan…" : "Terapkan semua & buka"}
-              </button>
+            <div data-testid="plan-ready">
+              {remembered !== "no" && memoryFromWizard(answers).length > 0 && (
+                <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2">
+                  <span className="min-w-0 flex-1 text-[12px]">
+                    {remembered === "saved"
+                      ? "Oke, pilihanmu kuingat untuk rencana berikutnya."
+                      : "Mau kuingat pilihanmu (kota asal, minat, gaya) untuk rencana berikutnya?"}
+                  </span>
+                  {remembered === "idle" && (
+                    <button
+                      type="button"
+                      className={chip(false)}
+                      onClick={() => void rememberChoices()}
+                    >
+                      Ingat
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="flex gap-2 border-t border-border/60 px-3 py-2">
+                <button
+                  type="button"
+                  disabled={applying}
+                  className="tap min-h-9 rounded-xl bg-secondary px-3 text-[13px] font-semibold disabled:opacity-50"
+                  onClick={() =>
+                    void navigate({ to: "/my-trips/$tripId", params: { tripId: ready.tripId } })
+                  }
+                >
+                  Lihat dulu
+                </button>
+                <button
+                  type="button"
+                  disabled={applying}
+                  className="tap min-h-9 flex-1 rounded-xl bg-brand-red px-3 text-[13px] font-bold text-white disabled:opacity-50"
+                  onClick={() => void applyAndOpen()}
+                >
+                  {applying ? "Menerapkan…" : "Terapkan semua & buka"}
+                </button>
+              </div>
             </div>
           }
         >

@@ -53,6 +53,7 @@ import {
 } from "./trip-plan";
 import { jakartaDayStart } from "./receipt-scan";
 import { tripCurrencyFor } from "./trip-countries";
+import { buildTravoGuide, memoryStats } from "./travo-docs.server";
 import { hoursForDay, isOpenAt, weekdayIndex } from "./opening-hours";
 import {
   ASSISTANT_INTENTS,
@@ -854,9 +855,15 @@ async function runTurn(
           ? `${m.content}\n[usulan ${m.proposal.kind}: ${m.proposal.status}]`
           : m.content,
       }));
-    const system = facts
+    const guide = await buildTravoGuide(
+      owner,
+      { intent, scope: conv.scope, text: data.text },
+      config,
+    );
+    const base = facts
       ? buildAssistantSystemPrompt(config, intent, facts.today)
       : buildTravoGeneralPrompt(config, conv.scope, general!.today);
+    const system = guide ? `${base}\n\n${guide}` : base;
     const userMessage = facts
       ? `DATA PERJALANAN (JSON):\n${buildAssistantContext(facts)}\n\nPESAN TRAVELER:\n${data.text}`
       : `DATA PENGGUNA (JSON):\n${buildGeneralContext(general!)}\n\nPESAN TRAVELER:\n${data.text}`;
@@ -1258,9 +1265,14 @@ async function runFullPlanTurn(input: {
     });
     const pools = buildDayPools(dates, candidates);
     emit?.({ type: "status", text: "Menyusun rencana harian…" });
+    const planGuide = await buildTravoGuide(
+      owner,
+      { intent: "full_plan", scope: "trip", text: data.text },
+      config,
+    );
     const outcome = await askModel(
       config.generationModel,
-      buildFullPlanPrompt(facts.today, config.tone),
+      `${buildFullPlanPrompt(facts.today, config.tone)}${planGuide ? `\n\n${planGuide}` : ""}`,
       [
         {
           role: "user",

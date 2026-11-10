@@ -1,7 +1,13 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { postTrip } from "@/lib/my-trips.fn";
 import { saveFlightToTrip } from "@/lib/flights.fn";
+import {
+  addTravoMemory,
+  clearTravoMemory,
+  deleteTravoMemory,
+  listTravoMemory,
+} from "@/lib/travo-docs.fn";
 import { TravoChat } from "@/components/travo-chat";
 import {
   applyTripAssistantProposal,
@@ -63,6 +69,12 @@ vi.mock("@/components/esim-install", () => ({
   EsimQr: () => <div data-testid="qr" />,
   ManualDetails: () => <div>MANUAL</div>,
   InstallGuide: () => <div>PANDUAN</div>,
+}));
+vi.mock("@/lib/travo-docs.fn", () => ({
+  listTravoMemory: vi.fn(async () => ({ guest: false, items: [] })),
+  addTravoMemory: vi.fn(async () => ({ ok: true, items: [] })),
+  deleteTravoMemory: vi.fn(async () => ({ items: [] })),
+  clearTravoMemory: vi.fn(async () => ({ items: [] })),
 }));
 vi.mock("@/lib/flights.fn", () => ({
   saveFlightToTrip: vi.fn(async () => ({ ok: true, itemIds: ["i1", "i2"], dates: ["2026-12-10"] })),
@@ -359,6 +371,115 @@ describe("Travo page", () => {
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: /Terapkan semua/ })).toBeNull(),
     );
+  });
+
+  it("offers to remember a lasting fact under the answer, and saves only when tapped", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: { id: "c9", tripId: null, title: "x", scope: "all", tripCurrency: null },
+      messages: [
+        msg({ id: "u", role: "user", content: "aku suka kuliner" }),
+        msg({
+          id: "a",
+          content: "Siap, kuliner ya.",
+          chips: { options: [], multi: false, remember: "Suka kuliner" },
+        }),
+      ],
+    });
+    render(<TravoChat conversationId="c9" />);
+    const offer = await screen.findByTestId("memory-offer");
+    expect(addTravoMemory).not.toHaveBeenCalled();
+    fireEvent.click(within(offer).getByRole("button", { name: "Ingat" }));
+    await waitFor(() =>
+      expect(addTravoMemory).toHaveBeenCalledWith({
+        data: { text: "Suka kuliner", source: "chat" },
+      }),
+    );
+    expect(await screen.findByText("Oke, aku ingat.")).toBeTruthy();
+  });
+
+  it("shows no memory offer to a guest, and 'Tidak usah' dismisses it", async () => {
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: { ...available, guest: true },
+      loggedIn: true,
+      conversation: { id: "c9", tripId: null, title: "x", scope: "all", tripCurrency: null },
+      messages: [
+        msg({
+          id: "a",
+          content: "Siap.",
+          chips: { options: [], multi: false, remember: "Suka kuliner" },
+        }),
+      ],
+    });
+    render(<TravoChat conversationId="c9" />);
+    await screen.findByText("Siap.");
+    expect(screen.queryByTestId("memory-offer")).toBeNull();
+    cleanup();
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: { id: "c9", tripId: null, title: "x", scope: "all", tripCurrency: null },
+      messages: [
+        msg({
+          id: "a",
+          content: "Siap lagi.",
+          chips: { options: [], multi: false, remember: "Suka santai" },
+        }),
+      ],
+    });
+    render(<TravoChat conversationId="c9" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Tidak usah" }));
+    expect(screen.queryByTestId("memory-offer")).toBeNull();
+    expect(addTravoMemory).not.toHaveBeenCalled();
+  });
+
+  it("shows what Travo remembers in the profile, with delete, clear and add by hand", async () => {
+    vi.mocked(listTravoMemory).mockResolvedValue({
+      guest: false,
+      items: [
+        { id: "m1", text: "Suka kuliner", source: "chat", createdAt: "2026-11-10T00:00:00Z" },
+        {
+          id: "m2",
+          text: "Berangkat dari Jakarta (CGK)",
+          source: "wizard",
+          createdAt: "2026-11-10T00:00:00Z",
+        },
+      ],
+    });
+    const kept = [
+      {
+        id: "m2",
+        text: "Berangkat dari Jakarta (CGK)",
+        source: "wizard" as const,
+        createdAt: "2026-11-10T00:00:00Z",
+      },
+    ];
+    vi.mocked(deleteTravoMemory).mockResolvedValueOnce({ items: kept });
+    vi.mocked(addTravoMemory).mockResolvedValue({ ok: true, items: kept });
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: null,
+      messages: [],
+    });
+    render(<TravoChat />);
+    fireEvent.click(await screen.findByRole("button", { name: "Profil Travo" }));
+    const panel = await screen.findByTestId("travo-memory");
+    expect(await within(panel).findByText("Suka kuliner")).toBeTruthy();
+    fireEvent.click(within(panel).getByRole("button", { name: "Hapus: Suka kuliner" }));
+    await waitFor(() => expect(deleteTravoMemory).toHaveBeenCalledWith({ data: { id: "m1" } }));
+    fireEvent.change(within(panel).getByLabelText("Tambah catatan untuk Travo"), {
+      target: { value: "Alergi udang" },
+    });
+    fireEvent.submit(within(panel).getByLabelText("Tambah catatan untuk Travo").closest("form")!);
+    await waitFor(() =>
+      expect(addTravoMemory).toHaveBeenCalledWith({
+        data: { text: "Alergi udang", source: "manual" },
+      }),
+    );
+    fireEvent.click(within(panel).getByRole("button", { name: "Hapus semua" }));
+    await waitFor(() => expect(clearTravoMemory).toHaveBeenCalled());
   });
 
   it("asks a visitor without a session to sign in", async () => {

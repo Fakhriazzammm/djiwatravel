@@ -86,6 +86,8 @@ export function AdminTripAssistantPanel({
   const [allowBudget, setAllowBudget] = useState(initial.allowBudget);
   const [allowCommerce, setAllowCommerce] = useState(initial.allowCommerce);
   const [fullPlan, setFullPlan] = useState(initial.fullPlan);
+  const [teamGuide, setTeamGuide] = useState(initial.teamGuide);
+  const [memory, setMemory] = useState(initial.memory);
   const [sheetsPlanTabs, setSheetsPlanTabs] = useState(initial.sheetsPlanTabs);
   const [driveDoc, setDriveDoc] = useState(initial.driveDoc);
   const [fullPlanGuests, setFullPlanGuests] = useState(String(initial.fullPlanGuests));
@@ -119,6 +121,8 @@ export function AdminTripAssistantPanel({
         allowBudget,
         allowCommerce,
         fullPlan,
+        teamGuide,
+        memory,
         sheetsPlanTabs,
         driveDoc,
         fullPlanGuests: Number(fullPlanGuests),
@@ -270,6 +274,18 @@ export function AdminTripAssistantPanel({
           "Disusun dari tempat nyata di peta, harga tiket tercatat, paket eSIM, dan biaya harian kota. Tetap lewat Terapkan",
           fullPlan,
           setFullPlan,
+        )}
+        {check(
+          "Panduan tim (agent dan skill)",
+          "Dokumen persona dan keahlian di bawah ditambahkan ke prompt Travo. Tidak pernah bisa melonggarkan aturan inti (hanya mengusulkan, tidak mengarang harga)",
+          teamGuide,
+          setTeamGuide,
+        )}
+        {check(
+          "Memori traveler",
+          "Travo menawarkan mengingat pilihan (kota asal, minat, gaya) dan memakainya. Hanya akun, hanya yang disetujui traveler, bisa dilihat dan dihapus traveler",
+          memory,
+          setMemory,
         )}
         {check(
           "Tab rencana di Google Sheets",

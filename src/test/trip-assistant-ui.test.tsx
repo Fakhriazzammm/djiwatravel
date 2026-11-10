@@ -31,6 +31,12 @@ vi.mock("@/components/receipt-scanner", () => ({
   ),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/lib/travo-docs.fn", () => ({
+  listTravoMemory: vi.fn(async () => ({ guest: false, items: [] })),
+  addTravoMemory: vi.fn(async () => ({ ok: true, items: [] })),
+  deleteTravoMemory: vi.fn(async () => ({ items: [] })),
+  clearTravoMemory: vi.fn(async () => ({ items: [] })),
+}));
 vi.mock("@/lib/trip-assistant.fn", () => ({
   loadTripAssistant: vi.fn(),
   sendTripAssistantMessage: vi.fn(),

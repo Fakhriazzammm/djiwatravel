@@ -23,6 +23,7 @@ import { getAdminReceiptScan } from "@/lib/receipt-scan.fn";
 import { AdminPlaceIdeasPanel } from "@/components/admin-place-ideas-panel";
 import { AdminTripAssistantPanel } from "@/components/admin-trip-assistant-panel";
 import { AdminCityCosts } from "@/components/admin-city-costs";
+import { AdminTravoDocs } from "@/components/admin-travo-docs";
 import { getAdminTripAssistant } from "@/lib/trip-assistant.fn";
 import { AdminFlightsPanel } from "@/components/admin-flights-panel";
 import { getAdminFlights } from "@/lib/flights.fn";
@@ -119,6 +120,9 @@ function AdminSettings() {
         />
         <div className="mt-3">
           <AdminCityCosts />
+        </div>
+        <div className="mt-3">
+          <AdminTravoDocs />
         </div>
       </section>
       <section id="guests" className="scroll-mt-24">
