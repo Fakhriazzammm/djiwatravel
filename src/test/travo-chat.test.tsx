@@ -311,6 +311,56 @@ describe("Travo page", () => {
     expect(screen.queryByLabelText("Pesan untuk Travo")).toBeNull();
   });
 
+  it("applies a whole plan with one 'Terapkan semua' on the last proposal", async () => {
+    const prop = (id: string, kind: "agenda" | "budget" | "checklist", payload: unknown) => ({
+      ...proposal,
+      id,
+      kind,
+      title: kind,
+      payload: payload as never,
+    });
+    vi.mocked(loadTravo).mockResolvedValue({
+      status: available,
+      loggedIn: true,
+      conversation: { id: "c1", tripId: "t1", title: "Jepang", scope: "trip", tripCurrency: "IDR" },
+      messages: [
+        msg({ id: "a1", content: "Itinerary.", proposal: prop("p1", "agenda", proposal.payload) }),
+        msg({
+          id: "a2",
+          content: "Anggaran.",
+          proposal: prop("p2", "budget", {
+            kind: "budget",
+            budget: { totalMinor: null, categories: [{ name: "Akomodasi", allocatedMinor: 100 }] },
+          }),
+        }),
+        msg({
+          id: "a3",
+          content: "Persiapan.",
+          proposal: prop("p3", "checklist", {
+            kind: "checklist",
+            checklist: { items: [{ title: "Visa", dueDate: null }] },
+          }),
+        }),
+      ],
+    });
+    vi.mocked(applyTripAssistantProposal).mockResolvedValue({ ok: true, pinned: 4 } as never);
+    render(<TravoChat conversationId="c1" />);
+    await screen.findByText("Persiapan.");
+    const all = screen.getAllByRole("button", { name: /Terapkan semua/ });
+    expect(all).toHaveLength(1); // only on the last open proposal
+    expect(all[0]!.textContent).toBe("Terapkan semua (3)");
+    fireEvent.click(all[0]!);
+    await waitFor(() => expect(applyTripAssistantProposal).toHaveBeenCalledTimes(3));
+    expect(
+      vi
+        .mocked(applyTripAssistantProposal)
+        .mock.calls.map((c) => (c[0] as { data: { proposalId: string } }).data.proposalId),
+    ).toEqual(["p1", "p2", "p3"]);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /Terapkan semua/ })).toBeNull(),
+    );
+  });
+
   it("asks a visitor without a session to sign in", async () => {
     vi.mocked(loadTravo).mockResolvedValue({
       status: { available: false, reason: "off" },

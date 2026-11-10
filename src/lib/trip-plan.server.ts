@@ -277,10 +277,113 @@ const dedupe = (places: RawPlace[]) => {
  * Places around a city, from the cache or the map. Fresh rows are reused for a week; missing
  * queries are fetched one per second until the time budget is spent (what was found is kept).
  */
+const MUST_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["places"],
+  properties: {
+    places: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "kind"],
+        properties: {
+          name: { type: "string" },
+          kind: { type: "string", enum: ["atraksi", "taman", "belanja", "makan"] },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * The city's well-known places: the model names them (it knows what people come for), then each is
+ * found on the map (a name that is not found is dropped, so nothing invented reaches a plan). Kept
+ * for a week like the other map places; the first plan for a city is a little slower because of it.
+ */
+export async function getMustSeePlaces(
+  cityKey: string,
+  city: { name: string; countryName: string },
+  anchor: { lat: number; lng: number },
+  ask: Ask | null,
+  options: { budgetMs?: number; max?: number } = {},
+): Promise<{ places: RawPlace[]; usage: { input: number; output: number } }> {
+  const usage = { input: 0, output: 0 };
+  const key = "v2:must-see";
+  const cached = await pool.query(
+    "select places, fetched_at from travel_place_cache where city_key=$1 and kind=$2",
+    [cityKey, key],
+  );
+  if (
+    cached.rows[0] &&
+    Date.now() - new Date(String(cached.rows[0].fetched_at)).getTime() < PLACE_TTL_MS
+  )
+    return { places: cached.rows[0].places as RawPlace[], usage };
+  if (!ask) return { places: [], usage };
+  const deadline = Date.now() + (options.budgetMs ?? 14_000);
+  let names: { name: string; kind: PlaceKind }[] = [];
+  try {
+    const out = await ask(
+      "You know travel destinations well. List the most famous places a first-time visitor should not miss in the given city: landmarks, famous sights, big parks and gardens, iconic markets or shopping streets, and 3 iconic local food places. Use their official English names as written on a map. Answer ONLY with JSON following the schema. At most 12 places, no hotels, no tours.",
+      `City: ${city.name}, ${city.countryName}`,
+      { name: "must_see", schema: MUST_SCHEMA },
+    );
+    usage.input += out.usage.input;
+    usage.output += out.usage.output;
+    const list =
+      (out.parsed as { places?: { name?: unknown; kind?: unknown }[] } | null)?.places ?? [];
+    names = list
+      .map((p) => ({
+        name: String(p.name ?? "")
+          .trim()
+          .slice(0, 80),
+        kind: p.kind as PlaceKind,
+      }))
+      .filter((p) => p.name && ["atraksi", "taman", "belanja", "makan"].includes(p.kind))
+      .slice(0, options.max ?? 9);
+  } catch (error) {
+    console.error("[trip-plan] must-see failed", error instanceof Error ? error.message : error);
+    return { places: [], usage };
+  }
+  const { nominatimVenue } = await import("./trip-assistant-places.server");
+  const { haversineKm } = await import("./trip-plan");
+  const found: RawPlace[] = [];
+  for (const item of names) {
+    if (Date.now() + 1500 > deadline) break;
+    const hit = await nominatimVenue(`${item.name}, ${city.name}`, anchor).catch(() => null);
+    if (!hit || haversineKm(hit, anchor) > 40) continue;
+    found.push({
+      name: item.name,
+      kind: item.kind,
+      lat: hit.lat,
+      lng: hit.lng,
+      hours: hit.hours,
+      area: city.name,
+      popular: true,
+    });
+  }
+  if (found.length)
+    await pool
+      .query(
+        `insert into travel_place_cache (city_key, kind, places, fetched_at) values ($1,$2,$3::jsonb,now())
+         on conflict (city_key, kind) do update set places=excluded.places, fetched_at=now()`,
+        [cityKey, key, JSON.stringify(found)],
+      )
+      .catch(() => undefined);
+  return { places: found, usage };
+}
+
 export async function getPlaceCandidates(
   cityKey: string,
   anchor: { lat: number; lng: number },
-  options: { budgetMs?: number; fetcher?: typeof fetch; onStatus?: (text: string) => void } = {},
+  options: {
+    budgetMs?: number;
+    fetcher?: typeof fetch;
+    onStatus?: (text: string) => void;
+    /** Well-known places found on the map; they win over a duplicate from the category queries. */
+    extra?: RawPlace[];
+  } = {},
 ): Promise<PlaceCandidate[]> {
   const fetcher = options.fetcher ?? fetch;
   const deadline = Date.now() + (options.budgetMs ?? 16_000);
@@ -312,7 +415,10 @@ export async function getPlaceCandidates(
       );
     }
   }
-  const all = dedupe([...fresh.values()].flat());
+  const all = dedupe([
+    ...(options.extra ?? []),
+    ...[...fresh.entries()].filter(([k]) => k !== "v2:must-see").flatMap(([, v]) => v),
+  ]);
   // Stable ids: sorted by kind then name, so a re-read gives the same ids.
   all.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
   return all.map((p, index) => ({ ...p, id: `p${index + 1}` }));

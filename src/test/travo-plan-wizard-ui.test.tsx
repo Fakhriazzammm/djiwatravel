@@ -1,7 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TravoPlanWizard } from "@/components/travo-plan-wizard";
-import { createPlanTrip, streamTripAssistantMessage } from "@/lib/trip-assistant.fn";
+import {
+  applyTripAssistantProposal,
+  createPlanTrip,
+  streamTripAssistantMessage,
+} from "@/lib/trip-assistant.fn";
 
 vi.setConfig({ testTimeout: 30_000 });
 const navigate = vi.fn();
@@ -12,6 +16,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/lib/trip-assistant.fn", () => ({
   createPlanTrip: vi.fn(),
   streamTripAssistantMessage: vi.fn(),
+  applyTripAssistantProposal: vi.fn(async () => ({ ok: true, pinned: 3 })),
 }));
 vi.mock("@/components/flight-place-field", () => ({
   FlightPlaceField: ({ onPick }: { onPick: (p: unknown) => void }) => (
@@ -57,7 +62,39 @@ describe("planning wizard", () => {
       yield { type: "status", text: "Mengumpulkan harga tiket…" };
       yield { type: "status", text: "Mencari tempat di peta Tokyo…" };
       yield { type: "status", text: "Menyusun rencana harian…" };
-      yield { type: "done", result: { status: "ok", remaining: 8, messages: [] } };
+      const prop = (id: string, kind: string, payload: unknown) => ({
+        id: `m-${id}`,
+        role: "assistant",
+        content: "x",
+        chips: null,
+        blocks: [],
+        createdAt: "",
+        proposal: { id, kind, title: kind, status: "proposed", previous: {}, payload },
+      });
+      yield {
+        type: "done",
+        result: {
+          status: "ok",
+          remaining: 8,
+          messages: [
+            {
+              id: "u",
+              role: "user",
+              content: "x",
+              chips: null,
+              blocks: [],
+              proposal: null,
+              createdAt: "",
+            },
+            prop("p-agenda", "agenda", { kind: "agenda", items: new Array(9).fill({}) }),
+            prop("p-budget", "budget", {
+              kind: "budget",
+              budget: { totalMinor: null, categories: [] },
+            }),
+            prop("p-check", "checklist", { kind: "checklist", checklist: { items: [] } }),
+          ],
+        },
+      };
     }
     vi.mocked(streamTripAssistantMessage).mockResolvedValue(events() as never);
     render(<TravoPlanWizard onExit={vi.fn()} />);
@@ -105,9 +142,20 @@ describe("planning wizard", () => {
         }),
       }),
     );
+    // The plan is ready but nothing is applied until the traveler says so.
+    const ready = await screen.findByTestId("plan-ready", {}, { timeout: 3000 });
+    expect(screen.getByText(/9 aktivitas, anggaran, dan persiapan/)).toBeTruthy();
+    expect(applyTripAssistantProposal).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.click(within(ready).getByRole("button", { name: "Terapkan semua & buka" }));
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({ to: "/my-trips/$tripId", params: { tripId: "t-1" } }),
     );
+    expect(
+      vi
+        .mocked(applyTripAssistantProposal)
+        .mock.calls.map((c) => (c[0] as { data: { proposalId: string } }).data.proposalId),
+    ).toEqual(["p-agenda", "p-budget", "p-check"]);
   });
 
   it("tells the traveler when the plan cannot be made and does not leave", async () => {

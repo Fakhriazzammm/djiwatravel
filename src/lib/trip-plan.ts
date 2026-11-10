@@ -265,6 +265,8 @@ export type PlaceCandidate = {
   /** OpenStreetMap opening_hours, when the map has them. */
   hours: string | null;
   area: string;
+  /** A well-known place of the city (named by the model, then found on the map): offered first. */
+  popular?: boolean;
 };
 
 export const isFoodKind = (kind: PlaceKind) => kind === "makan" || kind === "kafe";
@@ -357,7 +359,10 @@ export function buildDayPools(
     pool.sights.push(...members);
   });
   for (const pool of pools) {
-    pool.sights = pool.sights.slice(0, perDaySights);
+    // Well-known places first, so the day's few slots go to the sights people come for.
+    pool.sights = [...pool.sights]
+      .sort((a, b) => Number(Boolean(b.popular)) - Number(Boolean(a.popular)))
+      .slice(0, perDaySights);
     if (pool.sights.length)
       pool.center = {
         lat: pool.sights.reduce((s, p) => s + p.lat, 0) / pool.sights.length,
@@ -508,7 +513,7 @@ export function cleanFullPlan(parsed: unknown, ctx: FullPlanContext): FullPlanRe
       continue;
     }
     const rows = Array.isArray(d["items"]) ? (d["items"] as unknown[]) : [];
-    const items: { start: number; change: AgendaChange }[] = [];
+    const items: { start: number; meal?: string; change: AgendaChange }[] = [];
     for (const row of rows) {
       if (agenda.length + items.length >= ctx.maxItems) break;
       const r = (row && typeof row === "object" ? row : {}) as Record<string, unknown>;
@@ -557,11 +562,19 @@ export function cleanFullPlan(parsed: unknown, ctx: FullPlanContext): FullPlanRe
             : hour < 16
               ? "Makan siang"
               : "Makan malam";
+      // One breakfast, lunch and dinner a day: a second one of the same meal is dropped.
+      if (isFoodKind(place.kind) && place.kind !== "kafe") {
+        const taken = items.some((i) => i.change.placeKind === "makan" && i.meal === meal);
+        if (taken) {
+          continue;
+        }
+      }
       const label = isFoodKind(place.kind) ? `${meal}: ${place.name}` : place.name;
       const noteText = clean(r["note"], 240);
       usedIds.add(place.id);
       items.push({
         start: minutes(start),
+        meal,
         change: {
           op: "add",
           itemId: null,
@@ -667,7 +680,7 @@ export function buildFullPlanPrompt(today: string, tone: string): string {
   const lines = [
     "You are Travo, the friendly trip assistant of Djiwa Travel. Answer ONLY with JSON that follows the schema. Casual, polite Indonesian, aku/kamu.",
     "Task: build the day-by-day itinerary of this trip from the offered places. You may ONLY use places listed under days[].sights and days[].food (and their `id`). Never write a place name yourself and never invent ids.",
-    "Per day: 2-3 sights (sorted by closeness and opening hours), a lunch and a dinner chosen from that day's food list, optionally breakfast or a cafe. Realistic times (24h HH:MM), leave time to travel between places; first day starts later and the last day ends earlier if flights are known. Respect opening hours shown (`jam=`); when unknown, still plan but say 'cek jam buka' in `note`.",
+    "Per day: 2-3 sights (sorted by closeness and opening hours; prefer places marked ★, they are the well-known ones), exactly ONE lunch and ONE dinner chosen from that day's food list, optionally one breakfast and a cafe stop. Realistic times (24h HH:MM), leave time to travel between places; first day starts later and the last day ends earlier if flights are known. Respect opening hours shown (`jam=`); when unknown, still plan but say 'cek jam buka' in `note`.",
     "Match the traveler's interests (trip.interests when given, else their message) and pace: weight the sights and the food to those interests. `note` is one short reason or tip per item (max 120 chars), empty when nothing to add.",
     "`reply`: one or two short sentences introducing the plan (no markdown, no emoji, max 400 chars). `tips`: up to 3 helpful, non-price tips about this city. `chips`: 2-4 short next-step taps. `checklist`: up to 8 preparation items specific to the destination (passport, visa, eSIM, adapter, local rules, tax-free, etc.) with `daysBefore` = how many days before departure to do it (integer).",
     "Never state prices or opening hours that are not given; the server adds the numbers.",
@@ -689,7 +702,7 @@ export function buildFullPlanContext(input: {
   interests?: readonly string[];
 }): string {
   const short = (p: PlaceCandidate) =>
-    `${p.id} | ${p.name} | ${PLACE_KIND_LABEL[p.kind]} | ${p.area}${p.hours ? ` | jam=${p.hours.slice(0, 60)}` : ""}`;
+    `${p.id} | ${p.name}${p.popular ? " ★" : ""} | ${PLACE_KIND_LABEL[p.kind]} | ${p.area}${p.hours ? ` | jam=${p.hours.slice(0, 60)}` : ""}`;
   return JSON.stringify({
     trip: {
       name: input.name,

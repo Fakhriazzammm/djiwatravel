@@ -5,7 +5,12 @@ import { AssistantMascot } from "@/components/assistant-mascot";
 import { FlightPlaceField } from "@/components/flight-place-field";
 import { InlineAnswer } from "@/components/inline-answer";
 import { Bubble } from "@/components/travo-parts";
-import { createPlanTrip, streamTripAssistantMessage } from "@/lib/trip-assistant.fn";
+import {
+  applyTripAssistantProposal,
+  createPlanTrip,
+  streamTripAssistantMessage,
+} from "@/lib/trip-assistant.fn";
+import type { AssistantMessage } from "@/lib/trip-assistant";
 import type { FlightPlace } from "@/lib/flights";
 import {
   nextStep,
@@ -50,6 +55,10 @@ export function TravoPlanWizard({ onExit }: { onExit: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [building, setBuilding] = useState<{ step: number; text: string } | null>(null);
   const [failure, setFailure] = useState<{ message: string; tripId?: string } | null>(null);
+  const [ready, setReady] = useState<{ tripId: string; proposals: string[]; items: number } | null>(
+    null,
+  );
+  const [applying, setApplying] = useState(false);
   const counter = useRef(0);
   const endRef = useRef<HTMLDivElement | null>(null);
 
@@ -143,7 +152,16 @@ export function TravoPlanWizard({ onExit }: { onExit: () => void }) {
           outcome = event.result as { status: string; message?: string };
       }
       if (outcome?.status === "ok") {
-        await navigate({ to: "/my-trips/$tripId", params: { tripId: created.tripId } });
+        const messages = ((outcome as { messages?: AssistantMessage[] }).messages ?? []).filter(
+          (m) => m.proposal?.status === "proposed",
+        );
+        const agenda = messages.find((m) => m.proposal?.payload.kind === "agenda")?.proposal;
+        setBuilding(null);
+        setReady({
+          tripId: created.tripId,
+          proposals: messages.map((m) => m.proposal!.id),
+          items: agenda?.payload.kind === "agenda" ? agenda.payload.items.length : 0,
+        });
         return;
       }
       setBuilding(null);
@@ -155,6 +173,23 @@ export function TravoPlanWizard({ onExit }: { onExit: () => void }) {
       setBuilding(null);
       setFailure({ message: "Koneksi terputus. Coba lagi sebentar lagi." });
     }
+  }
+
+  /** One tap: the whole plan is applied (agenda with map pins, budget, checklist), then the trip opens. */
+  async function applyAndOpen() {
+    if (!ready) return;
+    setApplying(true);
+    try {
+      for (const id of ready.proposals)
+        await applyTripAssistantProposal({ data: { proposalId: id } });
+    } catch {
+      setApplying(false);
+      setError(
+        "Sebagian rencana belum bisa diterapkan. Buka perjalanannya, lalu terapkan satu per satu.",
+      );
+      return;
+    }
+    await navigate({ to: "/my-trips/$tripId", params: { tripId: ready.tripId } });
   }
 
   const q = asked;
@@ -228,6 +263,40 @@ export function TravoPlanWizard({ onExit }: { onExit: () => void }) {
               </span>
             ))}
           </span>
+        </Bubble>
+      )}
+      {ready && (
+        <Bubble
+          role="assistant"
+          footer={
+            <div
+              className="flex gap-2 border-t border-border/60 px-3 py-2"
+              data-testid="plan-ready"
+            >
+              <button
+                type="button"
+                disabled={applying}
+                className="tap min-h-9 rounded-xl bg-secondary px-3 text-[13px] font-semibold disabled:opacity-50"
+                onClick={() =>
+                  void navigate({ to: "/my-trips/$tripId", params: { tripId: ready.tripId } })
+                }
+              >
+                Lihat dulu
+              </button>
+              <button
+                type="button"
+                disabled={applying}
+                className="tap min-h-9 flex-1 rounded-xl bg-brand-red px-3 text-[13px] font-bold text-white disabled:opacity-50"
+                onClick={() => void applyAndOpen()}
+              >
+                {applying ? "Menerapkan…" : "Terapkan semua & buka"}
+              </button>
+            </div>
+          }
+        >
+          Rencananya siap{ready.items ? `: ${ready.items} aktivitas, anggaran, dan persiapan` : ""}.
+          Terapkan semua supaya masuk ke Agenda, peta, Biaya, dan Checklist, atau lihat dulu satu
+          per satu.
         </Bubble>
       )}
       {failure && (

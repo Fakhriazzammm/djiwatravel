@@ -108,6 +108,7 @@ import {
 const TRIP = "22222222-2222-4222-8222-222222222222";
 let pool: pg.Pool;
 let costsCalls = 0;
+let mustSeeCalls = 0;
 let planCalls = 0;
 let nominatimCalls = 0;
 const count = async (sql: string) => Number((await pool.query(sql)).rows[0].n);
@@ -196,6 +197,16 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
             attractionsDay: 90_000,
             hotelBudget: 600_000,
             hotelMid: 1_300_000,
+          });
+        }
+        if (body.includes('"name":"must_see"')) {
+          mustSeeCalls += 1;
+          return reply({
+            places: [
+              { name: "Tokyo Tower", kind: "atraksi" },
+              { name: "Meiji Jingu", kind: "taman" },
+              { name: "Imaginary Palace", kind: "atraksi" },
+            ],
           });
         }
         if (!body.includes('"name":"full_plan"'))
@@ -292,6 +303,7 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
     holder.owner = { id: "u1", email: "a@b.c", guest: false };
     clearAssistantBurst();
     costsCalls = 0;
+    mustSeeCalls = 0;
     planCalls = 0;
     nominatimCalls = 0;
     await pool.query("delete from travel_trips");
@@ -593,6 +605,29 @@ describe.skipIf(!url)("Rencana lengkap (real Postgres, stubbed AI and map)", () 
     });
     expect(blocked.status).toBe("limit");
     expect(await count("select count(*)::int n from travel_trips")).toBe(before);
+  });
+
+  it("puts the city's well-known places (found on the map) into the plan, once per city", async () => {
+    const result = await plan();
+    if (result.status !== "ok") throw new Error("failed");
+    const agenda = result.messages.find((m) => m.proposal?.kind === "agenda")!.proposal!
+      .payload as { items: { place: string }[] };
+    const names = agenda.items.map((i) => i.place);
+    expect(names.some((n) => n === "Tokyo Tower" || n === "Meiji Jingu")).toBe(true);
+    expect(
+      await count("select count(*)::int n from travel_place_cache where kind='v2:must-see'"),
+    ).toBe(1);
+    expect(mustSeeCalls).toBe(1);
+    await plan("lagi");
+    expect(mustSeeCalls).toBe(1); // cached for the week
+  });
+
+  it("drops zero lines from the budget and never rounds a small amount to nothing", async () => {
+    const result = await plan();
+    if (result.status !== "ok") throw new Error("failed");
+    const budget = result.messages.find((m) => m.proposal?.kind === "budget")!.proposal!
+      .payload as { budget: { categories: { allocatedMinor: number }[] } };
+    expect(budget.budget.categories.every((c) => c.allocatedMinor > 0)).toBe(true);
   });
 
   it("gives a guest exactly one full plan, then asks them to sign in", async () => {

@@ -184,6 +184,15 @@ describe("grouping places by day", () => {
     expect(new Set(a.slice(3)).size).toBe(1);
     expect(a[0]).not.toBe(a[3]);
   });
+  it("offers the well-known places first when a day has few slots", () => {
+    const sights = [
+      place("a", "atraksi", 35.71, 139.8),
+      place("b", "atraksi", 35.711, 139.801),
+      { ...place("star", "atraksi", 35.712, 139.802), popular: true },
+    ];
+    const [day] = buildDayPools(["2026-12-10"], sights, 2, 2);
+    expect(day!.sights.map((s) => s.id)).toEqual(["star", "a"]);
+  });
   it("gives each day its own area and the food nearest to it, each place once", () => {
     const pools = buildDayPools(["2026-12-10", "2026-12-11"], [...east, ...west, ...food]);
     expect(pools).toHaveLength(2);
@@ -271,6 +280,35 @@ describe("cleaning the model's plan", () => {
       { ...ctx, candidates: [...candidates, cafe] },
     );
     expect(out.agenda.map((i) => i.title)).toEqual(["Sarapan: Tempat f1", "Ngopi: Tempat c1"]);
+  });
+  it("keeps one lunch and one dinner a day, but allows several cafe stops", () => {
+    const more = [
+      ...candidates,
+      place("f2", "makan", 35.712, 139.801),
+      place("c1", "kafe", 35.7, 139.7),
+      place("c2", "kafe", 35.701, 139.701),
+    ];
+    const out = cleanFullPlan(
+      {
+        days: [
+          {
+            date: "2026-12-10",
+            items: [
+              { id: "f1", slot: "makan_malam", start: "18:00", end: "19:00", note: "" },
+              { id: "f2", slot: "makan_malam", start: "19:30", end: "20:30", note: "" },
+              { id: "c1", slot: "sore", start: "15:00", end: "15:45", note: "" },
+              { id: "c2", slot: "sore", start: "16:00", end: "16:45", note: "" },
+            ],
+          },
+        ],
+      },
+      { ...ctx, candidates: more },
+    );
+    expect(out.agenda.map((i) => i.title)).toEqual([
+      "Ngopi: Tempat c1",
+      "Ngopi: Tempat c2",
+      "Makan malam: Tempat f1",
+    ]);
   });
   it("flags a place the map says is closed at that hour instead of hiding it", () => {
     const out = cleanFullPlan(

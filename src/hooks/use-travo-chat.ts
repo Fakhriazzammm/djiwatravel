@@ -279,6 +279,41 @@ export function useTravoChat(options: Options) {
     }
   };
 
+  /** One tap for a whole plan: every open proposal is applied in order (agenda, budget, checklist). */
+  const applyAll = async (proposalIds: string[]) => {
+    setBusyProposal(proposalIds[0] ?? null);
+    let done = 0;
+    let pinned = 0;
+    try {
+      for (const id of proposalIds) {
+        setBusyProposal(id);
+        const result = await applyTripAssistantProposal({ data: { proposalId: id } });
+        pinned += result.pinned;
+        done += 1;
+        setProposalStatus(id, "applied");
+        const applied = messages.find((m) => m.proposal?.id === id)?.proposal;
+        if (applied) latest.current.onApplied?.(applied);
+      }
+      setCheer((n) => n + 1);
+      await latest.current.onChanged?.();
+      toast.success(
+        pinned > 0
+          ? `Rencana diterapkan · ${pinned} pin ditambahkan di peta`
+          : "Rencana diterapkan",
+        { duration: 6000 },
+      );
+    } catch (error) {
+      if (done > 0) await latest.current.onChanged?.();
+      toast.error(
+        error instanceof Error
+          ? `${error.message}${done ? ` (${done} dari ${proposalIds.length} sudah diterapkan)` : ""}`
+          : "Rencana belum bisa diterapkan.",
+      );
+    } finally {
+      setBusyProposal(null);
+    }
+  };
+
   const dismiss = async (proposalId: string) => {
     setProposalStatus(proposalId, "dismissed");
     try {
@@ -349,6 +384,7 @@ export function useTravoChat(options: Options) {
     apply,
     undo,
     dismiss,
+    applyAll,
     swapPlace,
     startNew,
   };

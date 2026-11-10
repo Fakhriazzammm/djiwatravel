@@ -31,6 +31,7 @@ import {
 import {
   alternativesNear,
   deleteCityCosts,
+  getMustSeePlaces,
   iataFor,
   getCityCosts,
   listCityCosts,
@@ -1219,7 +1220,17 @@ async function runFullPlanTurn(input: {
     ]);
     addUsage(costResult.usage);
     emit?.({ type: "status", text: `Mencari tempat di peta ${city}…` });
-    const candidates = await getPlaceCandidates(cityKey, anchor, { budgetMs: 16_000 });
+    const must = await getMustSeePlaces(
+      cityKey,
+      { name: city, countryName: facts.destination },
+      anchor,
+      ask,
+    );
+    addUsage(must.usage);
+    const candidates = await getPlaceCandidates(cityKey, anchor, {
+      budgetMs: 16_000,
+      extra: must.places,
+    });
     const sights = candidates.filter((c) => c.kind !== "makan" && c.kind !== "kafe").length;
     if (candidates.length < 8 || sights < 3)
       return finish(
@@ -1325,17 +1336,20 @@ async function runFullPlanTurn(input: {
           "Kota keberangkatan belum diisi, jadi harga tiket belum dihitung. Isi di Edit perjalanan.",
         ],
       });
+    // Whole units of the trip currency without the coarse "round to 5" of free-form amounts: a small
+    // line (an eSIM of Rp 96.000 is about S$ 7) must not round down to nothing.
+    const lineMinor = (idr: number) => Math.round(idr * fx) * 100;
+    const budgetLines = budgetPlan.lines
+      .map((l) => ({ name: l.name, allocatedMinor: lineMinor(l.amountIdr) }))
+      .filter((l) => l.allocatedMinor > 0);
     const budgetPayload: ProposalPayload = {
       kind: "budget",
       budget: {
         totalMinor:
           facts.totalBudgetMinor > 0
             ? null
-            : budgetPlan.lines.reduce((sum, l) => sum + toMinorIdr(l.amountIdr), 0),
-        categories: budgetPlan.lines.map((l) => ({
-          name: l.name,
-          allocatedMinor: toMinorIdr(l.amountIdr),
-        })),
+            : budgetLines.reduce((sum, l) => sum + l.allocatedMinor, 0),
+        categories: budgetLines,
       },
     };
     const bubbles: Parameters<typeof saveFullPlanMessages>[0]["bubbles"] = [

@@ -103,8 +103,14 @@ export function TravoMessage({
 }) {
   const chips = !chat.sending && last ? visibleChips(m.chips, m.proposal?.status ?? null) : null;
   const { picked, setPicked, send } = chat;
+  // A plan comes as several proposals: the last one carries "Terapkan semua".
+  const openProposals = chat.messages.filter((x) => x.proposal?.status === "proposed");
+  const applyAllIds =
+    openProposals.length >= 2 && openProposals[openProposals.length - 1]?.id === m.id
+      ? openProposals.map((x) => x.proposal!.id)
+      : null;
   const footer =
-    m.proposal || chips || m.blocks.length > 0 || extra || m.cards?.length ? (
+    m.proposal || chips || m.blocks.length > 0 || extra || m.cards?.length || applyAllIds ? (
       <>
         {extra}
         {m.cards?.length ? <TravoCards cards={m.cards} chat={chat} /> : null}
@@ -172,6 +178,20 @@ export function TravoMessage({
                 Kirim ({picked.length})
               </button>
             )}
+          </div>
+        )}
+        {applyAllIds && !proposalHref && (
+          <div className="border-t border-border/60 px-3 py-2">
+            <button
+              type="button"
+              disabled={chat.busyProposal !== null}
+              onClick={() => void chat.applyAll(applyAllIds)}
+              className="tap min-h-10 w-full rounded-xl bg-brand-red px-3 text-[13px] font-bold text-white disabled:opacity-50"
+            >
+              {chat.busyProposal !== null
+                ? "Menerapkan…"
+                : `Terapkan semua (${applyAllIds.length})`}
+            </button>
           </div>
         )}
         {chips?.input && (
