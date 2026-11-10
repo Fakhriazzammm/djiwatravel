@@ -248,20 +248,21 @@ export function TravoChat({
               type="button"
               onClick={() => setWizardOpen(true)}
               data-testid="plan-hero"
-              className="tap relative mt-3 w-full overflow-hidden rounded-3xl bg-gradient-to-br from-brand-red to-[#b3222a] p-4 text-left text-white shadow-lg shadow-brand-red/25"
+              className="tap relative mt-2 flex w-full items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-red to-[#b3222a] p-3 text-left text-white"
             >
-              <span className="absolute -right-3 -top-3 opacity-90">
-                <AssistantMascot size={92} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-bold leading-tight">
+                  Buat itinerary lengkap
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-white/90">
+                  Tiket, anggaran, eSIM, dan rute per hari. Aku tanya satu-satu.
+                </span>
+                <span className="mt-2 inline-flex min-h-8 items-center rounded-full bg-white px-3 text-[12px] font-bold text-brand-red">
+                  Mulai
+                </span>
               </span>
-              <span className="block max-w-[190px] text-[19px] font-extrabold leading-tight">
-                Buat itinerary lengkap
-              </span>
-              <span className="mt-1 block max-w-[210px] text-[12px] leading-snug text-white/90">
-                Tiket pesawat, hotel, anggaran, eSIM, dan rute per hari. Aku tanya satu-satu, lalu
-                kususun.
-              </span>
-              <span className="mt-3 inline-flex min-h-9 items-center rounded-full bg-white px-4 text-[13px] font-bold text-brand-red">
-                Mulai sekarang
+              <span className="shrink-0">
+                <AssistantMascot size={52} />
               </span>
             </button>
             <div className="mt-2 grid w-full grid-cols-2 gap-1.5">
