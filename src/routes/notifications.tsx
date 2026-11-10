@@ -125,7 +125,9 @@ function NotificationsLoading() {
   );
 }
 
-const ACTION_W = 168;
+/** Width of Arsip + Hapus revealed by a left swipe, and of Baca revealed by a right swipe. */
+const ACTION_W = 112;
+const READ_W = 80;
 
 function Notifications() {
   const initial = Route.useLoaderData();
@@ -325,7 +327,7 @@ function Notifications() {
               transition={{ delay: 0.6 }}
               className="mt-2 px-1 text-[11px] text-muted-foreground"
             >
-              ← Geser notifikasi untuk Baca, Arsip, atau Hapus
+              ↔ Geser kiri untuk Arsip atau Hapus, kanan untuk Baca
             </motion.p>
           )}
           {error && (
@@ -595,15 +597,22 @@ function Row({
   const offset = drag ?? (open ? -ACTION_W : peek);
   useEffect(() => {
     if (!hint || reduce || selecting) return;
+    // Peek left (Arsip/Hapus), rest, peek right (Baca, only when unread), rest.
     const timers = [
-      window.setTimeout(() => setPeek(-ACTION_W * 0.55), 1400),
-      window.setTimeout(() => setPeek(0), 2500),
+      window.setTimeout(() => setPeek(-ACTION_W * 0.7), 1400),
+      window.setTimeout(() => setPeek(0), 2400),
+      ...(item.read_at
+        ? []
+        : [
+            window.setTimeout(() => setPeek(READ_W * 0.7), 3000),
+            window.setTimeout(() => setPeek(0), 4000),
+          ]),
     ];
     return () => {
       timers.forEach((t) => window.clearTimeout(t));
       setPeek(0);
     };
-  }, [hint, reduce, selecting]);
+  }, [hint, reduce, selecting, item.read_at]);
   const clearPress = () => {
     if (press.current) window.clearTimeout(press.current);
     press.current = null;
@@ -611,19 +620,17 @@ function Row({
 
   return (
     <article className="relative overflow-hidden border-b border-border/70 last:border-b-0">
+      <div className="absolute inset-y-0 left-0 flex" style={{ width: READ_W }} aria-hidden="true">
+        <div className="flex flex-1 items-center justify-center gap-1 bg-sky-500 text-xs font-bold text-white">
+          <Check className="size-3.5" aria-hidden="true" />
+          Baca
+        </div>
+      </div>
       <div
         className="absolute inset-y-0 right-0 flex"
         style={{ width: ACTION_W }}
         aria-hidden={!open}
       >
-        <button
-          type="button"
-          tabIndex={open ? 0 : -1}
-          onClick={onRead}
-          className="flex-1 bg-sky-500 text-xs font-bold text-white"
-        >
-          Baca
-        </button>
         <button
           type="button"
           tabIndex={open ? 0 : -1}
@@ -667,12 +674,19 @@ function Row({
           }
           if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
             onUsed();
-            setDrag(Math.min(0, Math.max(-ACTION_W, start.current.base + dx)));
+            setDrag(
+              Math.min(item.read_at ? 0 : READ_W, Math.max(-ACTION_W, start.current.base + dx)),
+            );
           }
         }}
         onPointerUp={() => {
           clearPress();
-          if (drag !== null) onOpenChange(drag < -ACTION_W / 2);
+          if (drag !== null) {
+            if (drag > READ_W / 2) {
+              onRead();
+              onOpenChange(false);
+            } else onOpenChange(drag < -ACTION_W / 2);
+          }
           setDrag(null);
           start.current = null;
         }}
