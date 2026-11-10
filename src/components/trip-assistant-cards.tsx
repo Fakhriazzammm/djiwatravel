@@ -1,4 +1,13 @@
-import { CalendarDays, CheckCircle2, ListChecks, Share2, Undo2, WalletCards } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ListChecks,
+  RefreshCw,
+  Share2,
+  Undo2,
+  WalletCards,
+} from "lucide-react";
+import { PLACE_KIND_LABEL, type PlaceKind } from "@/lib/trip-plan";
 import { formatTripMoney } from "@/lib/trip-money";
 import type { AgendaChange, ProposalView } from "@/lib/trip-assistant";
 
@@ -16,9 +25,11 @@ const OP_LABEL = { add: "Baru", update: "Diubah", remove: "Dihapus" } as const;
 function AgendaRows({
   items,
   previous,
+  onSwap,
 }: {
   items: AgendaChange[];
   previous: ProposalView["previous"];
+  onSwap?: ((index: number) => void) | undefined;
 }) {
   const groups: { date: string; rows: AgendaChange[] }[] = [];
   for (const change of items) {
@@ -70,6 +81,9 @@ function AgendaRows({
                     prev.startTime !== change.startTime
                       ? `${prev.startTime} → ${time}`
                       : time || "Tanpa jam"}
+                    {change.placeKind && PLACE_KIND_LABEL[change.placeKind as PlaceKind]
+                      ? ` · ${PLACE_KIND_LABEL[change.placeKind as PlaceKind]}`
+                      : ""}
                     {change.location ? ` · ${change.location}` : ""}
                   </span>
                   {change.note && (
@@ -89,6 +103,16 @@ function AgendaRows({
                     </span>
                   )}
                 </span>
+                {onSwap && change.placeKind && (
+                  <button
+                    type="button"
+                    onClick={() => onSwap(items.indexOf(change))}
+                    aria-label={`Ganti tempat: ${title}`}
+                    className="tap mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground"
+                  >
+                    <RefreshCw className="size-3.5" aria-hidden="true" />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -108,6 +132,7 @@ export function ProposalCard({
   onDismiss,
   embedded = false,
   onShare,
+  onSwap,
 }: {
   proposal: ProposalView;
   currency: string;
@@ -119,6 +144,8 @@ export function ProposalCard({
   embedded?: boolean;
   /** After an agenda is applied: share it right from the balloon. */
   onShare?: () => void;
+  /** "Ganti tempat ini" on one place of a still-open itinerary (index in the proposal). */
+  onSwap?: (index: number) => void;
 }) {
   const { payload } = proposal;
   const Icon =
@@ -130,7 +157,13 @@ export function ProposalCard({
   const money = (minor: number) => formatTripMoney(minor, currency);
   let body: React.ReactNode = null;
   if (payload.kind === "agenda")
-    body = <AgendaRows items={payload.items} previous={proposal.previous} />;
+    body = (
+      <AgendaRows
+        items={payload.items}
+        previous={proposal.previous}
+        onSwap={proposal.status === "proposed" ? onSwap : undefined}
+      />
+    );
   else if (payload.kind === "budget") {
     const sum = payload.budget.categories.reduce((s, c) => s + c.allocatedMinor, 0);
     const total = payload.budget.totalMinor ?? sum;

@@ -22,6 +22,7 @@ import { AdminReceiptScanPanel } from "@/components/admin-receipt-scan-panel";
 import { getAdminReceiptScan } from "@/lib/receipt-scan.fn";
 import { AdminPlaceIdeasPanel } from "@/components/admin-place-ideas-panel";
 import { AdminTripAssistantPanel } from "@/components/admin-trip-assistant-panel";
+import { AdminCityCosts } from "@/components/admin-city-costs";
 import { getAdminTripAssistant } from "@/lib/trip-assistant.fn";
 import { AdminFlightsPanel } from "@/components/admin-flights-panel";
 import { getAdminFlights } from "@/lib/flights.fn";
@@ -116,6 +117,9 @@ function AdminSettings() {
           keyConfigured={tripAssistant.keyConfigured}
           reminderSent={tripAssistant.reminders.sent30d}
         />
+        <div className="mt-3">
+          <AdminCityCosts />
+        </div>
       </section>
       <section id="guests" className="scroll-mt-24">
         <AdminGuestTripsPanel

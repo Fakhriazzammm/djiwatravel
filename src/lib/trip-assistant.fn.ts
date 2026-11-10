@@ -81,6 +81,41 @@ export const dismissTripAssistantProposal = createServerFn({ method: "POST" })
     return assistantDismissHandler({ data });
   });
 
+export const swapTripPlace = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { assistantSwapInput } = await import("./trip-assistant.server");
+    return assistantSwapInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { assistantSwapPlaceHandler } = await import("./trip-assistant.server");
+    return assistantSwapPlaceHandler({ data });
+  });
+
+export const getAdminCityCosts = createServerFn({ method: "GET" }).handler(async () => {
+  const { adminListCityCostsHandler } = await import("./trip-assistant.server");
+  return adminListCityCostsHandler();
+});
+
+export const saveAdminCityCosts = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { adminSaveCityCostsInput } = await import("./trip-assistant.server");
+    return adminSaveCityCostsInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { adminSaveCityCostsHandler } = await import("./trip-assistant.server");
+    return adminSaveCityCostsHandler({ data });
+  });
+
+export const deleteAdminCityCosts = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { adminDeleteCityCostsInput } = await import("./trip-assistant.server");
+    return adminDeleteCityCostsInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { adminDeleteCityCostsHandler } = await import("./trip-assistant.server");
+    return adminDeleteCityCostsHandler({ data });
+  });
+
 export const recordTripSummary = createServerFn({ method: "POST" })
   .validator(async (data: unknown) => {
     const { assistantLoadInput } = await import("./trip-assistant.server");

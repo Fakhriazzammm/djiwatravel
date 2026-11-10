@@ -4,6 +4,7 @@ import type { MascotMood } from "@/components/assistant-mascot";
 import {
   applyTripAssistantProposal,
   dismissTripAssistantProposal,
+  swapTripPlace,
   loadTravo,
   loadTripAssistant,
   sendTripAssistantMessage,
@@ -287,6 +288,25 @@ export function useTravoChat(options: Options) {
     }
   };
 
+  /** "Ganti tempat ini": the server picks the nearest other place; the card shows the new one. */
+  const swapPlace = async (proposalId: string, index: number) => {
+    setBusyProposal(proposalId);
+    try {
+      const result = await swapTripPlace({ data: { proposalId, index } });
+      setMessages((list) =>
+        list.map((m) =>
+          m.proposal?.id === proposalId
+            ? { ...m, proposal: { ...m.proposal, payload: result.payload } }
+            : m,
+        ),
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Belum bisa mengganti tempat.");
+    } finally {
+      setBusyProposal(null);
+    }
+  };
+
   /** A fresh empty chat on the standalone page (the history keeps the old one). */
   const startNew = () => {
     setMessages([]);
@@ -324,6 +344,7 @@ export function useTravoChat(options: Options) {
     apply,
     undo,
     dismiss,
+    swapPlace,
     startNew,
   };
 }

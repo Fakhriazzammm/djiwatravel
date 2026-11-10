@@ -156,6 +156,8 @@ async function reset() {
     "060_travo_conversations",
     "061_travo_cards",
     "062_travo_run_cards",
+    "063_trip_origin",
+    "064_trip_plan",
   ])
     await pool.query(readFileSync(resolve(`migrations/${file}.sql`), "utf8"));
   await pool.query(`create table notification_events (id uuid primary key default gen_random_uuid(), event_key text not null unique, event_type text not null);

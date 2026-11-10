@@ -20,8 +20,36 @@ import {
   updateTrip,
 } from "./my-trips.server";
 import { fetchFxRate } from "./receipt-scan.server";
-import { pinMissingPlaces, verifyAgendaPlaces } from "./trip-assistant-places.server";
+import {
+  hoursNote,
+  nominatimVenue,
+  pinMissingPlaces,
+  tripAnchor,
+  verifyAgendaPlaces,
+} from "./trip-assistant-places.server";
+import {
+  alternativesNear,
+  deleteCityCosts,
+  getCityCosts,
+  listCityCosts,
+  saveCityCosts,
+  getPlaceCandidates,
+  loadPlanResearch,
+} from "./trip-plan.server";
+import {
+  FULL_PLAN_SCHEMA,
+  buildDayPools,
+  buildFullPlanContext,
+  buildFullPlanPrompt,
+  buildStrategyRows,
+  cleanFullPlan,
+  computeBudgetPlan,
+  costKey,
+  sanitizeCityCosts,
+  type PlaceKind,
+} from "./trip-plan";
 import { jakartaDayStart } from "./receipt-scan";
+import { hoursForDay, isOpenAt, weekdayIndex } from "./opening-hours";
 import {
   ASSISTANT_INTENTS,
   ASSISTANT_MAX_TEXT,
@@ -35,6 +63,7 @@ import {
   buildTravoGeneralPrompt,
   isTravoScope,
   scopeFromCards,
+  toMinor,
   type GeneralFacts,
   type TravoConversationSummary,
   type TravoCardRequest,
@@ -88,7 +117,7 @@ const dailyLimitFor = (config: TripAssistantConfig, guest: boolean) =>
 
 async function usedToday(subject: string, now = new Date()) {
   const result = await pool.query(
-    "select count(*)::int as n from public.travel_assistant_runs where customer_auth_subject=$1 and created_at >= $2 and status <> 'blocked'",
+    "select coalesce(sum(units),0)::int as n from public.travel_assistant_runs where customer_auth_subject=$1 and created_at >= $2 and status <> 'blocked'",
     [subject, jakartaDayStart(now)],
   );
   return Number(result.rows[0]?.n) || 0;
@@ -304,6 +333,7 @@ async function askModel(
   messages: { role: string; content: string }[],
   maxTokens: number,
   onReply?: (delta: string) => void,
+  schema?: { name: string; schema: object },
 ): Promise<ModelOutcome> {
   const key = process.env["HELIPOD_AI_KEY"];
   if (!key) throw new Error("not_configured");
@@ -319,7 +349,11 @@ async function askModel(
         ? {
             response_format: {
               type: "json_schema",
-              json_schema: { name: "trip_assistant", strict: true, schema: ASSISTANT_REPLY_SCHEMA },
+              json_schema: {
+                name: schema?.name ?? "trip_assistant",
+                strict: true,
+                schema: schema?.schema ?? ASSISTANT_REPLY_SCHEMA,
+              },
             },
           }
         : {}),
@@ -778,6 +812,13 @@ async function runTurn(
     };
   inFlight.add(owner.id);
   const intent = tripId ? (data.intent ?? detectIntent(data.text)) : "chat";
+  if (intent === "full_plan" && tripId) {
+    try {
+      return await runFullPlanTurn({ owner, conv, tripId, data, status, config, emit });
+    } finally {
+      inFlight.delete(owner.id);
+    }
+  }
   const model = isGenerationIntent(intent) ? config.generationModel : config.model;
   const filter: MessageFilter | null = tripId
     ? { tripId }
@@ -967,6 +1008,441 @@ async function runTurn(
   }
 }
 
+/* ------------------------------------------------------------------------ Rencana lengkap */
+
+const FULL_PLAN_MAX_DAYS = 10;
+const daysInclusive = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+const datesBetween = (from: string, to: string) =>
+  Array.from({ length: daysInclusive(from, to) }, (_, i) =>
+    new Date(Date.parse(`${from}T00:00:00Z`) + i * 86_400_000).toISOString().slice(0, 10),
+  );
+
+/**
+ * "Rencana lengkap": one conversation turn that proposes an itinerary (from real map places), a
+ * budget (from recorded fares, eSIM prices and the city's daily costs) and preparation items, as
+ * three separate proposals the traveler applies one by one. The model only chooses among places we
+ * found and writes the words; every number comes from the facts.
+ */
+async function runFullPlanTurn(input: {
+  owner: TripOwner;
+  conv: Conversation;
+  tripId: string;
+  data: ReturnType<typeof assistantSendInput>;
+  status: Extract<AssistantStatus, { available: true }>;
+  config: TripAssistantConfig;
+  emit: ((event: TurnEvent) => void) | undefined;
+}): Promise<AssistantSendResult> {
+  const { owner, conv, tripId, data, status, config, emit } = input;
+  const say = (text: string, remaining = status.remaining): AssistantSendResult => ({
+    status: "error",
+    message: text,
+    remaining,
+  });
+  if (!config.fullPlan || !config.allowAgenda)
+    return say("Rencana lengkap sedang dimatikan. Coba “Buat itinerary” biasa.");
+  const planned = await pool.query(
+    "select count(*)::int as n from public.travel_assistant_runs where customer_auth_subject=$1 and intent='full_plan' and status='ok'",
+    [owner.id],
+  );
+  if (owner.guest && Number(planned.rows[0]?.n) >= config.fullPlanGuests)
+    return {
+      status: "limit",
+      remaining: 0,
+      message:
+        config.fullPlanGuests < 1
+          ? "Rencana lengkap khusus member. Masuk atau daftar dulu ya."
+          : "Rencana lengkap gratis untuk tamu sudah terpakai. Masuk atau daftar untuk membuat lagi.",
+    };
+  const weight = owner.guest ? 1 : config.fullPlanWeight;
+  if (status.remaining < weight)
+    return {
+      status: "limit",
+      remaining: 0,
+      message: `Rencana lengkap memakai ${weight} pesan dan sisa kuotamu belum cukup. Coba lagi besok.`,
+    };
+
+  const facts = await loadFacts(tripId, false);
+  const tripRow = await pool.query(
+    "select origin_code, destination_code from travel_trips where id=$1",
+    [tripId],
+  );
+  const originCode = (tripRow.rows[0]?.origin_code as string | null) ?? null;
+  const countryCode = String(tripRow.rows[0]?.destination_code ?? "");
+  const finish = async (reply: string, chips: string[], intentStatus: "ok" | "error" = "ok") => {
+    const saved = await saveFullPlanMessages({
+      owner,
+      conv,
+      tripId,
+      facts,
+      userText: data.text,
+      bubbles: [{ content: reply, chips: chips.length ? { options: chips, multi: false } : null }],
+    });
+    await recordRun(
+      owner,
+      tripId,
+      conv,
+      "full_plan",
+      intentStatus === "ok" ? "ok" : "error",
+      config.model,
+      null,
+      { input: 0, output: 0 },
+      [],
+      1,
+    );
+    return {
+      status: "ok" as const,
+      remaining: Math.max(0, status.remaining - 1),
+      conversationId: saved.conversationId,
+      messages: saved.messages,
+    };
+  };
+  if (!facts.departureDate || !facts.returnDate)
+    return finish(
+      "Isi dulu tanggal berangkat dan pulang di perjalananmu, lalu aku bisa menyusun rencana lengkapnya.",
+      [],
+    );
+  const dates = datesBetween(facts.departureDate, facts.returnDate);
+  if (dates.length > FULL_PLAN_MAX_DAYS)
+    return finish(
+      `Rencana lengkap saat ini sampai ${FULL_PLAN_MAX_DAYS} hari. Perjalananmu ${dates.length} hari, jadi coba minta aku menyusun per beberapa hari lewat “Buat itinerary”.`,
+      ["Buat itinerary"],
+    );
+  const city = facts.cities[0];
+  if (!city)
+    return finish(
+      `Kota mana di ${facts.destination} yang mau jadi basis rencananya? Ketik nama kotanya, atau pilih kota di Ringkas dulu.`,
+      [],
+    );
+
+  let tokens = { input: 0, output: 0 };
+  const addUsage = (u: { input: number; output: number }) => {
+    tokens = { input: tokens.input + u.input, output: tokens.output + u.output };
+  };
+  const ask = (system: string, user: string, schema: { name: string; schema: object }) =>
+    askModel(
+      config.generationModel,
+      system,
+      [{ role: "user", content: user }],
+      700,
+      undefined,
+      schema,
+    );
+  try {
+    emit?.({ type: "status", text: "Mengumpulkan harga tiket, eSIM, dan biaya harian…" });
+    const anchor =
+      (await tripAnchor(tripId)) ??
+      (await nominatimVenue(`${city}, ${facts.destination}`, null).then((hit) =>
+        hit ? { lat: hit.lat, lng: hit.lng } : null,
+      ));
+    if (!anchor)
+      return finish(
+        `Aku belum menemukan titik peta untuk ${city}. Coba pilih kotanya lagi di Ringkas.`,
+        [],
+      );
+    const cityKey = costKey(city, countryCode);
+    const [costResult, researchResult] = await Promise.all([
+      getCityCosts({ name: city, countryCode }, ask),
+      loadPlanResearch({
+        owner,
+        originCode,
+        cityName: city,
+        countryName: facts.destination,
+        countryCode,
+        departureDate: facts.departureDate,
+        returnDate: facts.returnDate,
+        days: dates.length,
+        flights: true,
+        esim: true,
+      }),
+    ]);
+    addUsage(costResult.usage);
+    emit?.({ type: "status", text: `Mencari tempat di peta ${city}…` });
+    const candidates = await getPlaceCandidates(cityKey, anchor, { budgetMs: 16_000 });
+    const sights = candidates.filter((c) => c.kind !== "makan" && c.kind !== "kafe").length;
+    if (candidates.length < 8 || sights < 3)
+      return finish(
+        `Data tempat di peta untuk ${city} masih tipis, jadi aku tidak mau mengarang. Coba “Buat itinerary” biasa, atau pilih kota yang lebih besar.`,
+        ["Buat itinerary"],
+      );
+
+    const fx =
+      facts.currency === "IDR"
+        ? 1
+        : ((await fetchFxRate({ from: "IDR", to: facts.currency }))?.rate ?? 0);
+    if (!fx) return say("Kurs belum bisa diambil. Coba lagi sebentar lagi.");
+    const toMinorIdr = (idr: number) => toMinor(idr * fx, facts.currency);
+    const budgetPlan = computeBudgetPlan({
+      days: dates.length,
+      travelers: facts.travelers,
+      costs: costResult.costs,
+      outboundIdr: researchResult.research.outbound?.priceIdr ?? null,
+      returnIdr: researchResult.research.returnLeg?.priceIdr ?? null,
+      esimIdr: researchResult.research.esim?.priceIdr ?? null,
+      totalBudgetIdr:
+        facts.totalBudgetMinor > 0 ? Math.round(facts.totalBudgetMinor / 100 / fx) : 0,
+    });
+    const pools = buildDayPools(dates, candidates);
+    emit?.({ type: "status", text: "Menyusun rencana harian…" });
+    const outcome = await askModel(
+      config.generationModel,
+      buildFullPlanPrompt(facts.today, config.tone),
+      [
+        {
+          role: "user",
+          content: `DATA (JSON):\n${buildFullPlanContext({
+            name: facts.name,
+            destination: facts.destination,
+            city,
+            dates,
+            travelers: facts.travelers,
+            tier: budgetPlan.tier,
+            pools,
+            existing: facts.itinerary.map((i) => `${i.date} ${i.start ?? ""} ${i.title}`),
+          })}\n\nPERMINTAAN TRAVELER:\n${data.text}`,
+        },
+      ],
+      6000,
+      undefined,
+      { name: "full_plan", schema: FULL_PLAN_SCHEMA },
+    );
+    addUsage(outcome.usage);
+    const plan = cleanFullPlan(outcome.parsed, {
+      dates,
+      candidates,
+      costs: costResult.costs,
+      tier: budgetPlan.tier,
+      travelers: facts.travelers,
+      fxFromIdr: fx,
+      toMinor: (major) => toMinor(major, facts.currency),
+      departureDate: facts.departureDate,
+      maxItems: Math.min(dates.length * 6, 48),
+      today: facts.today,
+    });
+    if (plan.agenda.length < Math.min(3, dates.length * 2)) {
+      await recordRun(
+        owner,
+        tripId,
+        conv,
+        "full_plan",
+        "error",
+        config.generationModel,
+        null,
+        tokens,
+        [],
+        1,
+      );
+      return say("Rencana lengkap belum berhasil disusun. Coba kirim lagi.");
+    }
+    for (const item of plan.agenda) {
+      const day = item.hours;
+      const dayHours = day?.raw ?? null;
+      item.note = hoursNote(item.note, day, dayHours);
+    }
+    const toRequest = (request: TravoCardRequest): TravoCardRequest => request;
+    const cards = researchResult.cards.map(toRequest);
+    const strategy = buildStrategyRows({
+      budget: budgetPlan,
+      research: researchResult.research,
+      travelers: facts.travelers,
+      totalBudgetIdr:
+        facts.totalBudgetMinor > 0 ? Math.round(facts.totalBudgetMinor / 100 / fx) : 0,
+    });
+    const blocks: AssistantMessage["blocks"] = [
+      { kind: "facts", title: "Strategi uang", items: strategy.slice(0, 8) },
+    ];
+    if (plan.tips.length) blocks.push({ kind: "tip", title: `Tips ${city}`, items: plan.tips });
+    if (!originCode)
+      blocks.push({
+        kind: "warning",
+        title: "Kota asal",
+        items: [
+          "Kota keberangkatan belum diisi, jadi harga tiket belum dihitung. Isi di Edit perjalanan.",
+        ],
+      });
+    const budgetPayload: ProposalPayload = {
+      kind: "budget",
+      budget: {
+        totalMinor:
+          facts.totalBudgetMinor > 0
+            ? null
+            : budgetPlan.lines.reduce((sum, l) => sum + toMinorIdr(l.amountIdr), 0),
+        categories: budgetPlan.lines.map((l) => ({
+          name: l.name,
+          allocatedMinor: toMinorIdr(l.amountIdr),
+        })),
+      },
+    };
+    const bubbles: Parameters<typeof saveFullPlanMessages>[0]["bubbles"] = [
+      {
+        content:
+          plan.reply ||
+          `Ini rencana ${dates.length} hari di ${city}, disusun dari tempat nyata di peta, harga tiket tercatat, dan biaya harian kota ini.`,
+        blocks,
+        cards,
+      },
+      {
+        content: "Itinerary hari demi hari. Titiknya langsung masuk peta setelah kamu terapkan.",
+        proposal: {
+          title: `Itinerary ${dates.length} hari di ${city}`,
+          payload: { kind: "agenda", items: plan.agenda },
+        },
+      },
+      {
+        content:
+          budgetPlan.shortfallIdr > 0
+            ? "Anggaran perkiraan. Ini sedikit di atas anggaranmu, lihat saran hemat di atas."
+            : "Anggaran perkiraan dari harga tercatat dan biaya harian kota ini.",
+        proposal: { title: `Anggaran ${budgetPlan.tier}`, payload: budgetPayload },
+      },
+    ];
+    if (plan.checklist.length)
+      bubbles.push({
+        content: "Terakhir, persiapan sebelum berangkat.",
+        proposal: {
+          title: `Persiapan ke ${facts.destination}`,
+          payload: { kind: "checklist", checklist: { items: plan.checklist } },
+        },
+      });
+    const last = bubbles[bubbles.length - 1]!;
+    last.chips = {
+      options: plan.chips.length ? plan.chips : ["Ganti tempat makan", "Bagikan"],
+      multi: false,
+    };
+    const saved = await saveFullPlanMessages({
+      owner,
+      conv,
+      tripId,
+      facts,
+      userText: data.text,
+      bubbles,
+    });
+    await recordRun(
+      owner,
+      tripId,
+      { ...conv, id: saved.conversationId },
+      "full_plan",
+      "ok",
+      config.generationModel,
+      "agenda",
+      tokens,
+      cards.map((c) => c.kind),
+      weight,
+    );
+    return {
+      status: "ok",
+      remaining: Math.max(0, status.remaining - weight),
+      conversationId: saved.conversationId,
+      messages: saved.messages,
+    };
+  } catch (error) {
+    console.error(
+      "[trip-assistant] full plan failed",
+      error instanceof Error ? error.message : error,
+    );
+    await recordRun(
+      owner,
+      tripId,
+      conv,
+      "full_plan",
+      "error",
+      config.generationModel,
+      null,
+      tokens,
+      [],
+      1,
+    );
+    return say("Travo sedang sibuk menyusun rencana. Coba kirim lagi sebentar lagi.");
+  }
+}
+
+type PlanBubble = {
+  content: string;
+  chips?: { options: string[]; multi: boolean } | null;
+  blocks?: AssistantMessage["blocks"];
+  cards?: TravoCardRequest[];
+  proposal?: { title: string; payload: ProposalPayload };
+};
+
+/** Stores the traveler's message and the planner's bubbles (each proposal on its own bubble). */
+async function saveFullPlanMessages(input: {
+  owner: TripOwner;
+  conv: Conversation;
+  tripId: string;
+  facts: TripFacts;
+  userText: string;
+  bubbles: PlanBubble[];
+}) {
+  const { owner, conv, tripId, facts, userText, bubbles } = input;
+  const client = await pool.connect();
+  let conversationId = conv.id;
+  try {
+    await client.query("begin");
+    if (!conversationId) {
+      const created = await client.query(
+        `insert into public.travel_assistant_conversations (customer_auth_subject, trip_id, title, scope)
+         values ($1,$2,$3,'trip')
+         on conflict (customer_auth_subject, trip_id) where trip_id is not null
+         do update set last_message_at = now() returning id`,
+        [owner.id, tripId, facts.name],
+      );
+      conversationId = String(created.rows[0].id);
+    }
+    await client.query(
+      "insert into public.travel_assistant_messages (trip_id, conversation_id, customer_auth_subject, role, content) values ($1,$2,$3,'user',$4)",
+      [tripId, conversationId, owner.id, userText],
+    );
+    for (let i = 0; i < bubbles.length; i += 1) {
+      const bubble = bubbles[i]!;
+      let proposalId: string | null = null;
+      if (bubble.proposal) {
+        proposalId = randomUUID();
+        await client.query(
+          `insert into public.travel_assistant_proposals (id, trip_id, customer_auth_subject, kind, title, payload)
+           values ($1,$2,$3,$4,$5,$6::jsonb)`,
+          [
+            proposalId,
+            tripId,
+            owner.id,
+            bubble.proposal.payload.kind,
+            bubble.proposal.title,
+            JSON.stringify(bubble.proposal.payload),
+          ],
+        );
+      }
+      await client.query(
+        `insert into public.travel_assistant_messages (trip_id, conversation_id, customer_auth_subject, role, content, chips, blocks, cards, proposal_id, created_at)
+         values ($1,$2,$3,'assistant',$4,$5::jsonb,$6::jsonb,$7::jsonb,$8, now() + ($9::int * interval '1 millisecond'))`,
+        [
+          tripId,
+          conversationId,
+          owner.id,
+          bubble.content,
+          bubble.chips ? JSON.stringify(bubble.chips) : null,
+          bubble.blocks?.length ? JSON.stringify(bubble.blocks) : null,
+          bubble.cards?.length ? JSON.stringify(bubble.cards) : null,
+          proposalId,
+          i + 1,
+        ],
+      );
+    }
+    await client.query(
+      "update public.travel_assistant_conversations set last_message_at = now() where id=$1",
+      [conversationId],
+    );
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+  const messages = (await readMessages({ tripId }, bubbles.length + 1, owner)).slice(
+    -(bubbles.length + 1),
+  );
+  return { conversationId: conversationId!, messages };
+}
+
 export async function assistantSendHandler({
   data,
 }: {
@@ -1029,12 +1505,13 @@ async function recordRun(
   proposalKind: string | null,
   usage: { input: number; output: number },
   cardKinds: string[] = [],
+  units = 1,
 ) {
   await pool
     .query(
       `insert into public.travel_assistant_runs
-         (customer_auth_subject, guest, trip_id, conversation_id, scope, intent, status, model, proposal_kind, tokens_in, tokens_out, cost_idr, cards)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+         (customer_auth_subject, guest, trip_id, conversation_id, scope, intent, status, model, proposal_kind, tokens_in, tokens_out, cost_idr, cards, units)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
       [
         owner.id,
         owner.guest,
@@ -1049,6 +1526,7 @@ async function recordRun(
         usage.output,
         assistantCostIdr(model, usage),
         cardKinds.length ? cardKinds.join(",") : null,
+        units,
       ],
     )
     .catch((error) =>
@@ -1401,6 +1879,82 @@ export async function assistantUndoHandler({
   return { ok: true as const, status: "undone" as const };
 }
 
+const swapSchema = z.object({
+  proposalId: z.string().uuid(),
+  index: z.number().int().min(0).max(80),
+});
+export const assistantSwapInput = (data: unknown) => swapSchema.parse(data);
+
+/**
+ * "Ganti tempat ini": replaces one place of a still-open itinerary proposal with the nearest other
+ * place of the same kind from the cached map places. The proposal stays server-trusted: only the
+ * owner, only while it is `proposed`, only with places we found on the map.
+ */
+export async function assistantSwapPlaceHandler({
+  data,
+}: {
+  data: ReturnType<typeof assistantSwapInput>;
+}) {
+  const owner = await resolveTripOwner();
+  if (!owner) throw new Error("Autentikasi diperlukan");
+  const proposal = await ownedProposal(data.proposalId, owner.id);
+  if (proposal.kind !== "agenda" || proposal.status !== "proposed")
+    throw new Error("Usulan ini sudah tidak bisa diubah");
+  const payload = proposal.payload as Extract<ProposalPayload, { kind: "agenda" }>;
+  const item = payload.items[data.index];
+  if (!item || !item.placeKind || item.lat == null || item.lng == null)
+    throw new Error("Tempat ini tidak bisa diganti");
+  const trip = await pool.query(
+    `select t.destination_code, (select c.name from public.travel_trip_cities c where c.trip_id=t.id order by c.sort_order, c.created_at limit 1) as city
+     from public.travel_trips t where t.id=$1 and t.customer_auth_subject=$2`,
+    [proposal.trip_id, owner.id],
+  );
+  const city = String(trip.rows[0]?.city ?? "");
+  if (!city) throw new Error("Kota perjalanan belum dipilih");
+  const alternatives = await alternativesNear(
+    costKey(city, String(trip.rows[0]?.destination_code ?? "")),
+    item.placeKind as PlaceKind,
+    { lat: item.lat, lng: item.lng },
+    payload.items.map((i) => i.place ?? "").filter(Boolean),
+    1,
+  );
+  const next = alternatives[0];
+  if (!next)
+    throw new Error("Belum ada tempat lain yang dekat. Coba minta Travo mencari opsi lain.");
+  const prefix = /^[^:]{3,16}: /.exec(item.title)?.[0] ?? "";
+  let hours: AgendaChange["hours"] = null;
+  let dayHours: string | null = null;
+  if (next.hours && item.startTime) {
+    const weekday = weekdayIndex(item.date);
+    if (weekday !== null) {
+      dayHours = hoursForDay(next.hours, weekday);
+      hours = {
+        raw: dayHours ?? next.hours,
+        open: isOpenAt(
+          next.hours,
+          weekday,
+          Number(item.startTime.slice(0, 2)) * 60 + Number(item.startTime.slice(3)),
+        ),
+      };
+    }
+  }
+  payload.items[data.index] = {
+    ...item,
+    title: `${prefix}${next.name}`.slice(0, 160),
+    place: next.name,
+    lat: next.lat,
+    lng: next.lng,
+    location: next.area || item.location,
+    hours,
+    note: hoursNote(null, hours, dayHours),
+  };
+  await pool.query(
+    "update public.travel_assistant_proposals set payload=$2::jsonb where id=$1 and status='proposed'",
+    [data.proposalId, JSON.stringify(payload)],
+  );
+  return { ok: true as const, payload };
+}
+
 export async function assistantRecordSummaryHandler({
   data,
 }: {
@@ -1671,6 +2225,92 @@ export async function saveTripAssistantConfigHandler({
 }
 
 /** Admin: delete every stored conversation (privacy request or a prompt change). Audited. */
+const cityCostsSchema = z.object({
+  cityName: z.string().trim().min(1).max(80),
+  countryCode: z.string().trim().max(2).default(""),
+  costs: z.object({
+    foodBudget: z.number(),
+    foodMid: z.number(),
+    transportDay: z.number(),
+    attractionsDay: z.number(),
+    hotelBudget: z.number(),
+    hotelMid: z.number(),
+  }),
+  reason: z.string().trim().min(4).max(200),
+});
+export const adminSaveCityCostsInput = (data: unknown) => cityCostsSchema.parse(data);
+const cityKeyInput = z.object({
+  cityKey: z.string().trim().min(1).max(120),
+  reason: z.string().trim().min(4).max(200),
+});
+export const adminDeleteCityCostsInput = (data: unknown) => cityKeyInput.parse(data);
+
+async function auditCityCosts(
+  action: string,
+  entity: string,
+  reason: string,
+  before: unknown,
+  after: unknown,
+) {
+  const actor = (await getAdminEmailHandler()) ?? "admin";
+  await pool.query(
+    `insert into public.admin_audit_logs (id, action, entity_type, entity_id, reason, before_json, after_json)
+     values ($1, $2, 'trip_city_costs', $3, $4, $5::jsonb, $6::jsonb)`,
+    [
+      randomUUID(),
+      action,
+      entity,
+      `${actor}: ${reason}`,
+      JSON.stringify(before ?? {}),
+      JSON.stringify(after ?? {}),
+    ],
+  );
+}
+
+export async function adminListCityCostsHandler() {
+  await requireAdmin();
+  return listCityCosts();
+}
+
+export async function adminSaveCityCostsHandler({
+  data,
+}: {
+  data: ReturnType<typeof adminSaveCityCostsInput>;
+}) {
+  await requireAdmin();
+  const costs = sanitizeCityCosts(data.costs);
+  if (!costs) throw new Error("Angka biaya tidak valid");
+  const key = costKey(data.cityName, data.countryCode);
+  const before = (await listCityCosts()).find((row) => row.cityKey === key) ?? null;
+  await saveCityCosts(
+    { name: data.cityName, countryCode: data.countryCode },
+    costs,
+    "admin",
+    (await getAdminEmailHandler()) ?? null,
+  );
+  await auditCityCosts("assistant.city_costs_saved", key, data.reason, before?.costs, costs);
+  return { ok: true as const, costs, cityKey: key };
+}
+
+/** Deleting a table makes Travo generate a fresh one the next time that city is planned. */
+export async function adminDeleteCityCostsHandler({
+  data,
+}: {
+  data: ReturnType<typeof adminDeleteCityCostsInput>;
+}) {
+  await requireAdmin();
+  const before = (await listCityCosts()).find((row) => row.cityKey === data.cityKey) ?? null;
+  await deleteCityCosts(data.cityKey);
+  await auditCityCosts(
+    "assistant.city_costs_deleted",
+    data.cityKey,
+    data.reason,
+    before?.costs,
+    {},
+  );
+  return { ok: true as const };
+}
+
 export async function adminClearAssistantHistoryHandler() {
   await requireAdmin();
   const actor = (await getAdminEmailHandler()) ?? "admin";

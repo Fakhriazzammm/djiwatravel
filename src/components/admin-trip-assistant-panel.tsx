@@ -85,6 +85,9 @@ export function AdminTripAssistantPanel({
   const [allowAgenda, setAllowAgenda] = useState(initial.allowAgenda);
   const [allowBudget, setAllowBudget] = useState(initial.allowBudget);
   const [allowCommerce, setAllowCommerce] = useState(initial.allowCommerce);
+  const [fullPlan, setFullPlan] = useState(initial.fullPlan);
+  const [fullPlanGuests, setFullPlanGuests] = useState(String(initial.fullPlanGuests));
+  const [fullPlanWeight, setFullPlanWeight] = useState(String(initial.fullPlanWeight));
   const [verifyHours, setVerifyHours] = useState(initial.verifyHours);
   const [reminders, setReminders] = useState(initial.reminders);
   const [dailyMessages, setDailyMessages] = useState(String(initial.dailyMessages));
@@ -113,6 +116,9 @@ export function AdminTripAssistantPanel({
         allowAgenda,
         allowBudget,
         allowCommerce,
+        fullPlan,
+        fullPlanGuests: Number(fullPlanGuests),
+        fullPlanWeight: Number(fullPlanWeight),
         verifyHours,
         reminders,
         dailyMessages: Number(dailyMessages),
@@ -256,6 +262,12 @@ export function AdminTripAssistantPanel({
         )}
 
         {check(
+          "Rencana lengkap (itinerary + anggaran + persiapan)",
+          "Disusun dari tempat nyata di peta, harga tiket tercatat, paket eSIM, dan biaya harian kota. Tetap lewat Terapkan",
+          fullPlan,
+          setFullPlan,
+        )}
+        {check(
           "Cek lokasi dan jam buka di peta",
           "Tempat baru dicari di OpenStreetMap; kartu menandai yang mungkin tutup. Mati: hanya catatan “cek jam buka”",
           verifyHours,
@@ -275,6 +287,18 @@ export function AdminTripAssistantPanel({
             "0 = tamu tidak bisa",
             guestDailyMessages,
             setGuestDailyMessages,
+          )}
+          {number(
+            "Rencana lengkap per tamu",
+            "Seumur hidup tamu. 0 = khusus akun",
+            fullPlanGuests,
+            setFullPlanGuests,
+          )}
+          {number(
+            "Bobot rencana lengkap (pesan)",
+            "Memakai berapa pesan harian akun",
+            fullPlanWeight,
+            setFullPlanWeight,
           )}
           {number("Aktivitas maks per usulan", "3-15", maxAgendaItems, setMaxAgendaItems)}
           {number(

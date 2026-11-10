@@ -128,6 +128,7 @@ export function TravoMessage({
               onApply={() => void chat.apply(m.proposal!.id)}
               onUndo={() => void chat.undo(m.proposal!.id)}
               onDismiss={() => void chat.dismiss(m.proposal!.id)}
+              onSwap={(index) => void chat.swapPlace(m.proposal!.id, index)}
               {...(onShare ? { onShare } : {})}
             />
           )
