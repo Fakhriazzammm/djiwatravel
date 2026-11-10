@@ -12,8 +12,8 @@ export type SwipeAction = {
 };
 
 const ACTION_W = 76;
-const HINT_KEY = "djiwa:swipe-hint-v1";
-const HINT_MAX_PLAYS = 3;
+const HINT_KEY = "djiwa:swipe-hint-v2";
+const HINT_MAX_PLAYS = 10;
 
 const readHint = (key: string) => {
   try {

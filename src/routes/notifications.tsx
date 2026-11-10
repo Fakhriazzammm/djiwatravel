@@ -142,7 +142,7 @@ function Notifications() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; undo: () => void } | null>(null);
   const toastTimer = useRef<number | null>(null);
-  const hint = useSwipeHint("djiwa:swipe-hint-notifications-v1");
+  const hint = useSwipeHint("djiwa:swipe-hint-notifications-v2");
 
   const unreadCount = useMemo(
     () => (archivedView ? 0 : items.filter((n) => !n.read_at).length),
