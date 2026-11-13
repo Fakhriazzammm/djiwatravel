@@ -35,6 +35,7 @@ import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as AdminCatalogRouteImport } from './routes/admin.catalog'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
+import { Route as AdminFeedsRouteImport } from './routes/admin.feeds'
 import { Route as AdminFinanceRouteImport } from './routes/admin.finance'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
@@ -53,6 +54,7 @@ import { Route as ApiCustomerNotificationsRouteImport } from './routes/api.custo
 import { Route as ApiCustomerProfileRouteImport } from './routes/api.customer-profile'
 import { Route as ApiCustomerRefundRouteImport } from './routes/api.customer-refund'
 import { Route as ApiCustomerSupportRouteImport } from './routes/api.customer-support'
+import { Route as ApiFeedsPostRouteImport } from './routes/api.feeds-post'
 import { Route as ApiGoogleDriveRouteImport } from './routes/api.google-drive'
 import { Route as ApiGoogleSheetsRouteImport } from './routes/api.google-sheets'
 import { Route as ApiHomeEsimEventsRouteImport } from './routes/api.home-esim-events'
@@ -68,6 +70,8 @@ import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
 import { Route as ETokenRouteImport } from './routes/e.$token'
 import { Route as EsimFinderRouteImport } from './routes/esim.finder'
+import { Route as FeedsIndexRouteImport } from './routes/feeds.index'
+import { Route as FeedsIdRouteImport } from './routes/feeds.$id'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
 import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as MyTripsIndexRouteImport } from './routes/my-trips.index'
@@ -86,6 +90,7 @@ import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiDjiwaPayBridgeRouteImport } from './routes/api.djiwa-pay.bridge'
 import { Route as ApiDjiwaPayTopupRouteImport } from './routes/api.djiwa-pay.topup'
+import { Route as ApiFeedPhotoIdRouteImport } from './routes/api.feed-photo.$id'
 import { Route as ApiGoogleCalendarCallbackRouteImport } from './routes/api.google-calendar.callback'
 import { Route as ApiGoogleCalendarConnectRouteImport } from './routes/api.google-calendar.connect'
 import { Route as ApiGoogleCalendarDisconnectRouteImport } from './routes/api.google-calendar.disconnect'
@@ -240,6 +245,11 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
   path: '/admin/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminFeedsRoute = AdminFeedsRouteImport.update({
+  id: '/admin/feeds',
+  path: '/admin/feeds',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminFinanceRoute = AdminFinanceRouteImport.update({
   id: '/admin/finance',
   path: '/admin/finance',
@@ -331,6 +341,11 @@ const ApiCustomerSupportRoute = ApiCustomerSupportRouteImport.update({
   path: '/api/customer-support',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFeedsPostRoute = ApiFeedsPostRouteImport.update({
+  id: '/api/feeds-post',
+  path: '/api/feeds-post',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGoogleDriveRoute = ApiGoogleDriveRouteImport.update({
   id: '/api/google-drive',
   path: '/api/google-drive',
@@ -404,6 +419,16 @@ const ETokenRoute = ETokenRouteImport.update({
 const EsimFinderRoute = EsimFinderRouteImport.update({
   id: '/esim/finder',
   path: '/esim/finder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedsIndexRoute = FeedsIndexRouteImport.update({
+  id: '/feeds/',
+  path: '/feeds/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedsIdRoute = FeedsIdRouteImport.update({
+  id: '/feeds/$id',
+  path: '/feeds/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyEsimIndexRoute = MyEsimIndexRouteImport.update({
@@ -494,6 +519,11 @@ const ApiDjiwaPayBridgeRoute = ApiDjiwaPayBridgeRouteImport.update({
 const ApiDjiwaPayTopupRoute = ApiDjiwaPayTopupRouteImport.update({
   id: '/api/djiwa-pay/topup',
   path: '/api/djiwa-pay/topup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFeedPhotoIdRoute = ApiFeedPhotoIdRouteImport.update({
+  id: '/api/feed-photo/$id',
+  path: '/api/feed-photo/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGoogleCalendarCallbackRoute =
@@ -645,6 +675,7 @@ export interface FileRoutesByFullPath {
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/feeds': typeof AdminFeedsRoute
   '/admin/finance': typeof AdminFinanceRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -663,6 +694,7 @@ export interface FileRoutesByFullPath {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/feeds-post': typeof ApiFeedsPostRoute
   '/api/google-drive': typeof ApiGoogleDriveRoute
   '/api/google-sheets': typeof ApiGoogleSheetsRoute
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
@@ -678,6 +710,7 @@ export interface FileRoutesByFullPath {
   '/destination/$code': typeof DestinationCodeRoute
   '/e/$token': typeof ETokenRoute
   '/esim/finder': typeof EsimFinderRoute
+  '/feeds/$id': typeof FeedsIdRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -689,6 +722,7 @@ export interface FileRoutesByFullPath {
   '/share/$token': typeof ShareTokenRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
+  '/feeds/': typeof FeedsIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
@@ -697,6 +731,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/feed-photo/$id': typeof ApiFeedPhotoIdRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
@@ -747,6 +782,7 @@ export interface FileRoutesByTo {
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/feeds': typeof AdminFeedsRoute
   '/admin/finance': typeof AdminFinanceRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -765,6 +801,7 @@ export interface FileRoutesByTo {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/feeds-post': typeof ApiFeedsPostRoute
   '/api/google-drive': typeof ApiGoogleDriveRoute
   '/api/google-sheets': typeof ApiGoogleSheetsRoute
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
@@ -780,6 +817,7 @@ export interface FileRoutesByTo {
   '/destination/$code': typeof DestinationCodeRoute
   '/e/$token': typeof ETokenRoute
   '/esim/finder': typeof EsimFinderRoute
+  '/feeds/$id': typeof FeedsIdRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -791,6 +829,7 @@ export interface FileRoutesByTo {
   '/share/$token': typeof ShareTokenRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin': typeof AdminIndexRoute
+  '/feeds': typeof FeedsIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
   '/my-trips': typeof MyTripsIndexRoute
   '/panduan': typeof PanduanIndexRoute
@@ -799,6 +838,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/feed-photo/$id': typeof ApiFeedPhotoIdRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
@@ -850,6 +890,7 @@ export interface FileRoutesById {
   '/admin/catalog': typeof AdminCatalogRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/admin/feeds': typeof AdminFeedsRoute
   '/admin/finance': typeof AdminFinanceRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -868,6 +909,7 @@ export interface FileRoutesById {
   '/api/customer-profile': typeof ApiCustomerProfileRoute
   '/api/customer-refund': typeof ApiCustomerRefundRoute
   '/api/customer-support': typeof ApiCustomerSupportRoute
+  '/api/feeds-post': typeof ApiFeedsPostRoute
   '/api/google-drive': typeof ApiGoogleDriveRoute
   '/api/google-sheets': typeof ApiGoogleSheetsRoute
   '/api/home-esim-events': typeof ApiHomeEsimEventsRoute
@@ -883,6 +925,7 @@ export interface FileRoutesById {
   '/destination/$code': typeof DestinationCodeRoute
   '/e/$token': typeof ETokenRoute
   '/esim/finder': typeof EsimFinderRoute
+  '/feeds/$id': typeof FeedsIdRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -894,6 +937,7 @@ export interface FileRoutesById {
   '/share/$token': typeof ShareTokenRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
+  '/feeds/': typeof FeedsIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
@@ -902,6 +946,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
   '/api/djiwa-pay/topup': typeof ApiDjiwaPayTopupRoute
+  '/api/feed-photo/$id': typeof ApiFeedPhotoIdRoute
   '/api/google-calendar/callback': typeof ApiGoogleCalendarCallbackRoute
   '/api/google-calendar/connect': typeof ApiGoogleCalendarConnectRoute
   '/api/google-calendar/disconnect': typeof ApiGoogleCalendarDisconnectRoute
@@ -954,6 +999,7 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/customers'
     | '/admin/dashboard'
+    | '/admin/feeds'
     | '/admin/finance'
     | '/admin/login'
     | '/admin/notifications'
@@ -972,6 +1018,7 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/feeds-post'
     | '/api/google-drive'
     | '/api/google-sheets'
     | '/api/home-esim-events'
@@ -987,6 +1034,7 @@ export interface FileRouteTypes {
     | '/destination/$code'
     | '/e/$token'
     | '/esim/finder'
+    | '/feeds/$id'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -998,6 +1046,7 @@ export interface FileRouteTypes {
     | '/share/$token'
     | '/wallet/pay'
     | '/admin/'
+    | '/feeds/'
     | '/my-esim/'
     | '/my-trips/'
     | '/panduan/'
@@ -1006,6 +1055,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/djiwa-pay/bridge'
     | '/api/djiwa-pay/topup'
+    | '/api/feed-photo/$id'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/connect'
     | '/api/google-calendar/disconnect'
@@ -1056,6 +1106,7 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/customers'
     | '/admin/dashboard'
+    | '/admin/feeds'
     | '/admin/finance'
     | '/admin/login'
     | '/admin/notifications'
@@ -1074,6 +1125,7 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/feeds-post'
     | '/api/google-drive'
     | '/api/google-sheets'
     | '/api/home-esim-events'
@@ -1089,6 +1141,7 @@ export interface FileRouteTypes {
     | '/destination/$code'
     | '/e/$token'
     | '/esim/finder'
+    | '/feeds/$id'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -1100,6 +1153,7 @@ export interface FileRouteTypes {
     | '/share/$token'
     | '/wallet/pay'
     | '/admin'
+    | '/feeds'
     | '/my-esim'
     | '/my-trips'
     | '/panduan'
@@ -1108,6 +1162,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/djiwa-pay/bridge'
     | '/api/djiwa-pay/topup'
+    | '/api/feed-photo/$id'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/connect'
     | '/api/google-calendar/disconnect'
@@ -1158,6 +1213,7 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/customers'
     | '/admin/dashboard'
+    | '/admin/feeds'
     | '/admin/finance'
     | '/admin/login'
     | '/admin/notifications'
@@ -1176,6 +1232,7 @@ export interface FileRouteTypes {
     | '/api/customer-profile'
     | '/api/customer-refund'
     | '/api/customer-support'
+    | '/api/feeds-post'
     | '/api/google-drive'
     | '/api/google-sheets'
     | '/api/home-esim-events'
@@ -1191,6 +1248,7 @@ export interface FileRouteTypes {
     | '/destination/$code'
     | '/e/$token'
     | '/esim/finder'
+    | '/feeds/$id'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -1202,6 +1260,7 @@ export interface FileRouteTypes {
     | '/share/$token'
     | '/wallet/pay'
     | '/admin/'
+    | '/feeds/'
     | '/my-esim/'
     | '/my-trips/'
     | '/panduan/'
@@ -1210,6 +1269,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/djiwa-pay/bridge'
     | '/api/djiwa-pay/topup'
+    | '/api/feed-photo/$id'
     | '/api/google-calendar/callback'
     | '/api/google-calendar/connect'
     | '/api/google-calendar/disconnect'
@@ -1261,6 +1321,7 @@ export interface RootRouteChildren {
   AdminCatalogRoute: typeof AdminCatalogRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminFeedsRoute: typeof AdminFeedsRoute
   AdminFinanceRoute: typeof AdminFinanceRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
@@ -1279,6 +1340,7 @@ export interface RootRouteChildren {
   ApiCustomerProfileRoute: typeof ApiCustomerProfileRoute
   ApiCustomerRefundRoute: typeof ApiCustomerRefundRoute
   ApiCustomerSupportRoute: typeof ApiCustomerSupportRoute
+  ApiFeedsPostRoute: typeof ApiFeedsPostRoute
   ApiGoogleDriveRoute: typeof ApiGoogleDriveRoute
   ApiGoogleSheetsRoute: typeof ApiGoogleSheetsRoute
   ApiHomeEsimEventsRoute: typeof ApiHomeEsimEventsRoute
@@ -1294,6 +1356,7 @@ export interface RootRouteChildren {
   DestinationCodeRoute: typeof DestinationCodeRoute
   ETokenRoute: typeof ETokenRoute
   EsimFinderRoute: typeof EsimFinderRoute
+  FeedsIdRoute: typeof FeedsIdRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
   MyTripsTripIdRoute: typeof MyTripsTripIdRouteWithChildren
   MyTripsNewRoute: typeof MyTripsNewRoute
@@ -1304,6 +1367,7 @@ export interface RootRouteChildren {
   RefundOrderRoute: typeof RefundOrderRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  FeedsIndexRoute: typeof FeedsIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   MyTripsIndexRoute: typeof MyTripsIndexRoute
   PanduanIndexRoute: typeof PanduanIndexRoute
@@ -1311,6 +1375,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDjiwaPayBridgeRoute: typeof ApiDjiwaPayBridgeRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
+  ApiFeedPhotoIdRoute: typeof ApiFeedPhotoIdRoute
   ApiGoogleCalendarCallbackRoute: typeof ApiGoogleCalendarCallbackRoute
   ApiGoogleCalendarConnectRoute: typeof ApiGoogleCalendarConnectRoute
   ApiGoogleCalendarDisconnectRoute: typeof ApiGoogleCalendarDisconnectRoute
@@ -1517,6 +1582,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/feeds': {
+      id: '/admin/feeds'
+      path: '/admin/feeds'
+      fullPath: '/admin/feeds'
+      preLoaderRoute: typeof AdminFeedsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/finance': {
       id: '/admin/finance'
       path: '/admin/finance'
@@ -1643,6 +1715,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCustomerSupportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/feeds-post': {
+      id: '/api/feeds-post'
+      path: '/api/feeds-post'
+      fullPath: '/api/feeds-post'
+      preLoaderRoute: typeof ApiFeedsPostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/google-drive': {
       id: '/api/google-drive'
       path: '/api/google-drive'
@@ -1746,6 +1825,20 @@ declare module '@tanstack/react-router' {
       path: '/esim/finder'
       fullPath: '/esim/finder'
       preLoaderRoute: typeof EsimFinderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feeds/': {
+      id: '/feeds/'
+      path: '/feeds'
+      fullPath: '/feeds/'
+      preLoaderRoute: typeof FeedsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feeds/$id': {
+      id: '/feeds/$id'
+      path: '/feeds/$id'
+      fullPath: '/feeds/$id'
+      preLoaderRoute: typeof FeedsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-esim/': {
@@ -1872,6 +1965,13 @@ declare module '@tanstack/react-router' {
       path: '/api/djiwa-pay/topup'
       fullPath: '/api/djiwa-pay/topup'
       preLoaderRoute: typeof ApiDjiwaPayTopupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/feed-photo/$id': {
+      id: '/api/feed-photo/$id'
+      path: '/api/feed-photo/$id'
+      fullPath: '/api/feed-photo/$id'
+      preLoaderRoute: typeof ApiFeedPhotoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/google-calendar/callback': {
@@ -2103,6 +2203,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCatalogRoute: AdminCatalogRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDashboardRoute: AdminDashboardRoute,
+  AdminFeedsRoute: AdminFeedsRoute,
   AdminFinanceRoute: AdminFinanceRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
@@ -2121,6 +2222,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCustomerProfileRoute: ApiCustomerProfileRoute,
   ApiCustomerRefundRoute: ApiCustomerRefundRoute,
   ApiCustomerSupportRoute: ApiCustomerSupportRoute,
+  ApiFeedsPostRoute: ApiFeedsPostRoute,
   ApiGoogleDriveRoute: ApiGoogleDriveRoute,
   ApiGoogleSheetsRoute: ApiGoogleSheetsRoute,
   ApiHomeEsimEventsRoute: ApiHomeEsimEventsRoute,
@@ -2136,6 +2238,7 @@ const rootRouteChildren: RootRouteChildren = {
   DestinationCodeRoute: DestinationCodeRoute,
   ETokenRoute: ETokenRoute,
   EsimFinderRoute: EsimFinderRoute,
+  FeedsIdRoute: FeedsIdRoute,
   MyEsimIdRoute: MyEsimIdRoute,
   MyTripsTripIdRoute: MyTripsTripIdRouteWithChildren,
   MyTripsNewRoute: MyTripsNewRoute,
@@ -2146,6 +2249,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefundOrderRoute: RefundOrderRoute,
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
+  FeedsIndexRoute: FeedsIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
   MyTripsIndexRoute: MyTripsIndexRoute,
   PanduanIndexRoute: PanduanIndexRoute,
@@ -2153,6 +2257,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDjiwaPayBridgeRoute: ApiDjiwaPayBridgeRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,
+  ApiFeedPhotoIdRoute: ApiFeedPhotoIdRoute,
   ApiGoogleCalendarCallbackRoute: ApiGoogleCalendarCallbackRoute,
   ApiGoogleCalendarConnectRoute: ApiGoogleCalendarConnectRoute,
   ApiGoogleCalendarDisconnectRoute: ApiGoogleCalendarDisconnectRoute,

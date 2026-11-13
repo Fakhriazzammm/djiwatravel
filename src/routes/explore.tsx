@@ -11,6 +11,10 @@ import {
 } from "@/components/explore/service-category-grid";
 import { getListableDestinations } from "@/lib/destination-availability.fn";
 import { exploreAvailability } from "@/lib/explore-availability";
+import { FeedComposer } from "@/components/feeds/feed-composer";
+import { FeedPosts, FeedSkeleton } from "@/components/feeds/feed-timeline";
+import { useFeedList } from "@/components/feeds/use-feed-list";
+import { useFeedsStatus } from "@/hooks/use-feeds-status";
 
 export const Route = createFileRoute("/explore")({
   // The resolver reuses the provider cache, handles regional coverage, and falls back to the
@@ -58,6 +62,8 @@ function Explore() {
   const [searchMessage, setSearchMessage] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const reduceMotion = useReducedMotion();
+  const feeds = useFeedsStatus();
+  const feedList = useFeedList({ limit: 3, active: feeds.enabled });
   const [placeholderText, setPlaceholderText] = useState("Cari negara atau kota");
   const res = search(q).filter((destination) =>
     available.destinations.some((item) => item.code === destination.code),
@@ -207,18 +213,24 @@ function Explore() {
           {searchMessage}
         </p>
       )}
-      <Link
-        to="/esim/finder"
-        className="tap mt-3 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-3"
-      >
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold">Bingung pilih paket eSIM?</p>
-          <p className="truncate text-[12px] text-muted-foreground">
-            Temukan paket yang cocok untuk perjalananmu.
-          </p>
+      {feeds.enabled ? (
+        <div className="mt-3">
+          <FeedComposer status={feeds} onPosted={feedList.addPosted} />
         </div>
-        <ChevronRight className="size-5 shrink-0 text-brand-red" />
-      </Link>
+      ) : (
+        <Link
+          to="/esim/finder"
+          className="tap mt-3 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-3"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-semibold">Bingung pilih paket eSIM?</p>
+            <p className="truncate text-[12px] text-muted-foreground">
+              Temukan paket yang cocok untuk perjalananmu.
+            </p>
+          </div>
+          <ChevronRight className="size-5 shrink-0 text-brand-red" />
+        </Link>
+      )}
       {available.source === "error" && (
         <div role="alert" className="mt-4 rounded-2xl bg-surface p-4 text-center shadow-sm">
           <p className="font-semibold">Explore belum dapat dimuat</p>
@@ -234,10 +246,84 @@ function Explore() {
           </button>
         </div>
       )}
-      <section className="mt-4">
+      <section className={feeds.enabled ? "mt-3 rounded-2xl bg-surface p-3" : "mt-4"}>
         <ServiceSectionHeading title="Kebutuhan perjalanan" detail="Layanan" />
         <ServiceCategoryGrid />
       </section>
+      {feeds.enabled && (
+        <>
+          <Link
+            to="/esim/finder"
+            className="tap mt-3 block rounded-2xl bg-brand-red-soft p-3"
+            aria-label="Bingung pilih paket eSIM? Cari paket"
+          >
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-red text-[12px] font-bold text-white"
+              >
+                D
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold">Djiwa Travel</p>
+                <p className="text-[11px] text-muted-foreground">Untuk perjalananmu</p>
+              </div>
+              <span className="rounded-lg bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-brand-red">
+                eSIM
+              </span>
+            </div>
+            <p className="mt-2 text-[14px] font-semibold">Bingung pilih paket eSIM?</p>
+            <p className="text-[12px] text-muted-foreground">
+              Temukan paket yang cocok untuk perjalananmu.
+            </p>
+            <span className="mt-2 flex items-center justify-between text-[12px] font-semibold text-brand-red">
+              Cari paket
+              <ChevronRight className="size-4" aria-hidden="true" />
+            </span>
+          </Link>
+          <section className="mt-3" aria-label="Feeds traveler">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Feeds traveler
+              </h2>
+              <Link
+                to="/feeds"
+                className="tap flex min-h-8 items-center text-[12px] font-semibold text-brand-red"
+              >
+                Lihat semua
+              </Link>
+            </div>
+            {feedList.loading ? (
+              <FeedSkeleton />
+            ) : feedList.error ? (
+              <div role="alert" className="rounded-2xl bg-surface p-3 text-center">
+                <p className="text-[13px] text-muted-foreground">Feeds belum dapat dimuat.</p>
+                <button
+                  type="button"
+                  onClick={() => void feedList.reload()}
+                  className="tap mt-2 min-h-9 rounded-xl bg-secondary px-4 text-[13px] font-semibold"
+                >
+                  Coba lagi
+                </button>
+              </div>
+            ) : feedList.posts.length === 0 && feedList.pending.length === 0 ? (
+              <p className="rounded-2xl bg-surface p-3 text-center text-[13px] text-muted-foreground">
+                Belum ada postingan. Jadilah yang pertama berbagi tips.
+              </p>
+            ) : (
+              <FeedPosts posts={feedList.posts} pending={feedList.pending} status={feeds} />
+            )}
+            {feedList.hasMore && (
+              <Link
+                to="/feeds"
+                className="tap mt-2 flex min-h-9 items-center justify-center rounded-xl bg-surface text-[13px] font-semibold"
+              >
+                Lihat semua postingan
+              </Link>
+            )}
+          </section>
+        </>
+      )}
       {res.length === 0 && available.source !== "error" && (
         <p className="mb-4 text-center text-sm text-muted-foreground">
           Belum ada destinasi untuk “{q}”. Coba nama negara lain.

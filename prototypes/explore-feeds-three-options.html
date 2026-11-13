@@ -1,0 +1,75 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Feeds antar traveler — 3 opsi</title><style>
+:root{--bg:#f3f4f6;--card:#fff;--fg:#15171b;--mut:#666a73;--bd:#e3e4e7;--red:#ed2935;--redsoft:#fbe5e4;--r:16px}
+*{box-sizing:border-box}body{margin:0;background:#e8e9ec;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:16px}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.top{max-width:470px;margin:0 auto 10px}.top h1{font-size:18px;margin:0 0 4px}.top p{font-size:12px;color:var(--mut);margin:0 0 10px;line-height:1.5}
+.tabs,.mini{display:flex;gap:6px}.tabs button{flex:1;border-radius:12px;padding:9px 4px;background:#fff;font-size:12px;font-weight:650}.tabs button[aria-selected=true]{background:var(--fg);color:#fff}
+.note{max-width:470px;margin:0 auto 12px;font-size:12px;line-height:1.55;color:var(--mut);min-height:54px}
+.phone{position:relative;width:390px;max-width:100%;height:760px;margin:auto;background:var(--bg);border:1px solid var(--bd);border-radius:26px;overflow:hidden}
+.scroll{height:100%;overflow:auto;padding:14px 16px 110px;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}
+.brand{font-size:10px;letter-spacing:.2em;font-weight:700;color:var(--red)}h2.t{font-size:22px;margin:2px 0 0}.sub{font-size:12px;color:var(--mut);margin:2px 0 10px}
+.search{display:flex;align-items:center;gap:8px;height:36px;border:1px solid var(--bd);background:#fff;border-radius:18px;padding:0 12px;font-size:12px;color:var(--mut)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 14px}.tile{background:#fff;border-radius:12px;padding:8px 2px;text-align:center;font-size:10px;font-weight:650}.tile i{display:block;width:26px;height:26px;border-radius:8px;background:var(--redsoft);margin:0 auto 4px}
+.lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);font-weight:650;margin:0 0 7px;display:flex;justify-content:space-between;align-items:center}.lbl b{font-size:11px;color:var(--red);text-transform:none;letter-spacing:0}
+.chips{display:flex;gap:6px;overflow:auto;margin:0 -16px 10px;padding:0 16px;scrollbar-width:none}.chip{flex-shrink:0;min-height:30px;padding:0 11px;border-radius:15px;background:#fff;border:1px solid var(--bd);font-size:12px;font-weight:600;display:inline-flex;align-items:center}.chip.on{background:var(--fg);color:#fff;border-color:var(--fg)}
+.av{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
+.post{background:#fff;border-radius:var(--r);padding:12px;margin-bottom:10px}.ph{display:flex;gap:8px;align-items:center}.ph div{flex:1;min-width:0}.ph strong{font-size:13px;display:block}.ph small{font-size:11px;color:var(--mut)}
+.badge{font-size:10px;font-weight:650;background:var(--redsoft);color:var(--red);border-radius:8px;padding:2px 7px}
+.img{border-radius:12px;margin:9px 0;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:600}
+.post p{font-size:13px;line-height:1.45;margin:6px 0}.acts{display:flex;gap:16px;font-size:12px;color:var(--mut);margin-top:6px}.acts span{display:flex;gap:4px;align-items:center;min-height:28px}
+.fab{position:absolute;right:16px;bottom:96px;height:40px;border-radius:20px;background:var(--red);color:#fff;font-size:13px;font-weight:650;padding:0 16px;box-shadow:0 4px 14px #ed293555}
+.tabbar{position:absolute;left:14px;right:14px;bottom:12px;height:58px;background:#fff;border-radius:28px;display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--mut);box-shadow:0 2px 12px #0001}.tabbar span.on{color:var(--red);font-weight:700}
+.sheet{position:absolute;inset:0;background:#0006;display:none;align-items:flex-end}.sheet.open{display:flex}.sheet>div{background:#fff;width:100%;border-radius:24px 24px 0 0;padding:14px 16px 24px;max-height:88%;overflow:auto}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--bd);margin:0 auto 12px}.sheet h3{font-size:16px;margin:0 0 10px}
+.field{border:1px solid var(--bd);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--mut);margin-bottom:8px;min-height:40px}.field.big{min-height:76px}
+.btn{width:100%;min-height:40px;border-radius:12px;background:var(--red);color:#fff;font-size:14px;font-weight:650;margin-top:6px}.btn.sec{background:var(--bg);color:var(--fg);min-height:36px;font-size:13px}
+.kinds{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px}.kind{border:1px solid var(--bd);border-radius:12px;padding:9px 10px;font-size:12px;font-weight:650}.kind small{display:block;font-weight:400;color:var(--mut);font-size:11px;margin-top:2px}.kind.on{border-color:var(--red);background:var(--redsoft)}
+.grid{columns:2;column-gap:8px}.cell{break-inside:avoid;background:#fff;border-radius:14px;overflow:hidden;margin-bottom:8px}.cell .img{margin:0;border-radius:0}.cell .b{padding:8px 9px 9px}.cell .b strong{font-size:12px;line-height:1.3;display:block}.cell .m{display:flex;align-items:center;gap:5px;margin-top:6px;font-size:10px;color:var(--mut)}.cell .av{width:16px;height:16px;font-size:8px}
+.story{display:flex;gap:10px;overflow:auto;margin:0 -16px 14px;padding:0 16px;scrollbar-width:none}.story div{flex-shrink:0;text-align:center;font-size:10px;font-weight:600;width:54px}.story i{display:block;width:50px;height:50px;border-radius:50%;margin:0 auto 4px;outline:2px solid var(--red);outline-offset:2px}
+.q{background:#fff;border-radius:14px;padding:11px 12px;margin-bottom:8px;display:flex;gap:10px}.q .n{width:38px;flex-shrink:0;text-align:center;background:var(--bg);border-radius:10px;padding:5px 0;font-size:15px;font-weight:750;line-height:1}.q .n small{display:block;font-size:9px;font-weight:500;color:var(--mut);margin-top:2px}.q.ok .n{background:#e2f4e8;color:#17803d}.q strong{font-size:13px;line-height:1.35;display:block}.q span.m{font-size:11px;color:var(--mut);display:block;margin-top:4px}
+.trip{background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center}.trip .img{margin:0;width:48px;height:48px;flex-shrink:0;border-radius:10px}.trip strong{font-size:13px;display:block}.trip small{font-size:11px;color:var(--mut)}.trip .go{margin-left:auto;font-size:12px;font-weight:650;color:var(--red)}
+.screen{display:none}.screen.show{display:block}
+.plan{max-width:470px;margin:22px auto 0;background:#fff;border-radius:16px;padding:14px 16px;font-size:12.5px;line-height:1.55}.plan h3{font-size:14px;margin:12px 0 4px}.plan h3:first-child{margin-top:0}.plan ul{margin:0;padding-left:18px}
+</style></head><body>
+<div class="top"><h1>Feeds antar traveler di Explore</h1><p>Letaknya di bawah “Kebutuhan perjalanan”. Pilih opsi, lalu ketuk “+ Posting” untuk melihat alur membuat post.</p>
+<div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-o="0">A · Aliran</button><button role="tab" aria-selected="false" data-o="1">B · Galeri</button><button role="tab" aria-selected="false" data-o="2">C · Tanya &amp; Trip</button></div></div>
+<div class="note" id="note"></div>
+<div class="phone"><div class="scroll" id="scroll"></div>
+<button class="fab" id="fab">+ Posting</button>
+<div class="tabbar"><span>Beranda</span><span class="on">Jelajah</span><span>Perjalanan</span><span>Dompet</span><span>Profil</span></div>
+<div class="sheet" id="sheet"><div><div class="grab"></div><h3>Posting ke Feeds</h3>
+<div class="kinds"><div class="kind on">Cerita &amp; foto<small>Pengalaman di jalan</small></div><div class="kind">Tips tempat<small>Dari Agenda/Ide tempat</small></div><div class="kind">Tanya<small>Minta saran traveler</small></div><div class="kind">Bagikan trip<small>Itinerary dari My Trips</small></div></div>
+<div class="field">Tujuan: Jepang ▾</div><div class="field big">Tulis ceritamu… (maks 500 karakter)</div><div class="field">Lampirkan: foto (maks 4) · trip · tempat</div>
+<div class="field" style="font-size:11px">Tampil sebagai <b style="color:var(--fg)">Rani · Jakarta</b>. Lokasi tepat dan tanggal berangkat tidak ditampilkan.</div>
+<button class="btn" id="post">Kirim</button><button class="btn sec" id="close">Batal</button></div></div></div>
+
+<div class="plan"><h3>Rencana singkat</h3>
+<ul><li><b>Isi feed:</b> cerita &amp; foto, tips tempat (dari Ide tempat/Agenda), tanya-jawab, dan trip yang dibagikan. Trip yang dibagikan bisa “Salin ke Agenda saya”.</li>
+<li><b>Identitas:</b> nama panggilan + kota + avatar saja. Tanpa nomor, tanpa lokasi tepat, tanggal berangkat dikaburkan jadi bulan. Tanpa DM di fase 1.</li>
+<li><b>Interaksi:</b> suka, simpan, komentar satu tingkat, ikuti tujuan (bukan orang). Ikut tujuan memberi notifikasi lewat sistem notifikasi yang ada.</li>
+<li><b>Keamanan:</b> posting perlu akun; antrean tinjau untuk 3 post pertama tiap akun; tombol lapor; filter kata; batas posting per hari.</li>
+<li><b>Admin:</b> saklar fitur (awal: mati), antrean moderasi, laporan, sembunyikan/hapus, blokir pengirim, kata terlarang, statistik. Semua tercatat di audit log.</li>
+<li><b>Tahap:</b> 1) baca + posting + lapor + Admin; 2) komentar, simpan, ikuti tujuan; 3) salin trip ke Agenda, tautan eSIM/Tiket/Titip Belanja kontekstual di post.</li></ul></div>
+<script>
+const C=['#c2410c','#0f766e','#4338ca','#a16207','#be185d','#334155'];
+const av=(n,i)=>`<span class="av" style="background:${C[i%6]}">${n[0]}</span>`;
+const img=(h,t,c)=>`<div class="img" style="height:${h}px;background:${c}">${t}</div>`;
+const head=`<div class="brand">DJIWA TRAVEL</div><h2 class="t">Explore</h2><div class="sub">Mau pergi ke mana?</div><div class="search">⌕ Cari Jepang</div>
+<div class="tiles"><div class="tile"><i></i>eSIM</div><div class="tile"><i></i>Tiket</div><div class="tile"><i></i>Titip</div><div class="tile"><i></i>Lainnya</div></div>`;
+const post=(n,i,w,t,kind,body,h,c,x)=>`<div class="post"><div class="ph">${av(n,i)}<div><strong>${n}</strong><small>${w} · ${t}</small></div><span class="badge">${kind}</span></div><p>${body}</p>${h?img(h,'Foto',c):''}${x||''}<div class="acts"><span>♡ 48</span><span>💬 12</span><span>Simpan</span></div></div>`;
+const A=head+`<div class="lbl">Feeds traveler <b>Aturan</b></div><div class="chips"><span class="chip on">Untuk kamu</span><span class="chip">Jepang</span><span class="chip">Korea</span><span class="chip">Tips</span><span class="chip">Tanya</span></div>`+
+post('Rani',0,'Jakarta','2 jam lalu','Jepang','Ramen Ichiran Shibuya antre 40 menit jam 19.00, datang jam 15.00 langsung masuk.',150,'#c2410c',`<div style="font-size:11px;color:var(--mut)">📍 Ichiran Shibuya · <b style="color:var(--red)">Simpan ke Agenda</b></div>`)+
+post('Dimas',1,'Surabaya','5 jam lalu','Tanya','Tiket Kyoto–Osaka lebih enak JR Pass atau beli satuan untuk 5 hari?',0,'',`<div style="font-size:11px;color:var(--mut);margin-top:4px">8 jawaban · terjawab</div>`)+
+post('Sari',2,'Bandung','Kemarin','Trip','Itinerary 6 hari Seoul – Busan, budget Rp 12 jt per orang.',110,'#0f766e');
+const B=head+`<div class="lbl">Tujuan populer</div><div class="story"><div><i style="background:#c2410c"></i>Tokyo</div><div><i style="background:#0f766e"></i>Seoul</div><div><i style="background:#4338ca"></i>Bangkok</div><div><i style="background:#a16207"></i>Osaka</div><div><i style="background:#be185d"></i>Singapura</div></div>
+<div class="lbl">Dari traveler <b>Lihat semua</b></div><div class="grid">`+[['Shibuya sebelum ramai',130,'#c2410c','Rani'],['Kuil tenang di Kyoto',90,'#0f766e','Dimas'],['Budget 6 hari Seoul',100,'#4338ca','Sari'],['Kereta malam Bangkok',150,'#a16207','Tia'],['Kopi Osaka favorit',110,'#be185d','Bayu'],['Sakura Maruyama',80,'#334155','Lina']].map((c,i)=>`<div class="cell">${img(c[1],'Foto',c[2])}<div class="b"><strong>${c[0]}</strong><div class="m">${av(c[3],i)} ${c[3]} · ♡ ${20+i*7}</div></div></div>`).join('')+`</div>`;
+const Cc=head+`<div class="lbl">Tanya traveler <b>Tanya</b></div>`+[['JR Pass 7 hari masih worth it?','Jepang · 8 jawaban',8,1],['Wi-Fi atau eSIM di Korea untuk 2 orang?','Korea · 5 jawaban',5,1],['Taksi bandara Bangkok aman jam 2 pagi?','Thailand · 3 jawaban',3,0]].map(q=>`<div class="q ${q[3]?'ok':''}"><div class="n">${q[2]}<small>jawab</small></div><div><strong>${q[0]}</strong><span class="m">${q[1]}${q[3]?' · ✓ terjawab':''}</span></div></div>`).join('')+
+`<div class="lbl" style="margin-top:14px">Trip dari traveler <b>Lihat semua</b></div>`+[['Tokyo 5 hari','Rani · 2 orang · Rp 9 jt','#c2410c'],['Seoul – Busan 6 hari','Sari · 3 orang · Rp 12 jt','#0f766e'],['Bangkok 4 hari','Tia · 2 orang · Rp 5 jt','#a16207']].map(t=>`<div class="trip">${img(48,'',t[2])}<div><strong>${t[0]}</strong><small>${t[1]}</small></div><span class="go">Salin</span></div>`).join('')+
+`<div class="lbl" style="margin-top:14px">Cerita terbaru</div>`+post('Rani',0,'Jakarta','2 jam lalu','Jepang','Ramen Ichiran antre 40 menit, datang jam 15.00 langsung masuk.',0,'');
+const V=[A,B,Cc];const N=['<b>A · Aliran.</b> Kartu vertikal seperti linimasa: paling kaya, cocok untuk cerita. Filter chip per tujuan/jenis. Risiko: Explore jadi panjang, harus dibatasi (3 post lalu “Lihat semua” ke halaman /feeds).','<b>B · Galeri.</b> Rak tujuan di atas + grid dua kolom foto. Paling visual dan mengajak menjelajah. Kekurangan: kurang cocok untuk teks panjang dan tanya-jawab.','<b>C · Tanya &amp; Trip.</b> Paling berguna untuk pelancong: tanya-jawab dan itinerary yang bisa disalin ke Agenda. Paling hemat moderasi karena foto sedikit. Kurang “sosial”.'];
+let o=0;const s=document.getElementById('scroll');
+function show(i){o=i;s.innerHTML=V[i];document.getElementById('note').innerHTML=N[i];document.querySelectorAll('.tabs button').forEach((b,j)=>b.setAttribute('aria-selected',j==i))}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>show(+b.dataset.o));
+const sh=document.getElementById('sheet'),g=id=>document.getElementById(id);g('fab').onclick=()=>sh.classList.add('open');g('close').onclick=g('post').onclick=()=>sh.classList.remove('open');
+show(0);
+</script></body></html>

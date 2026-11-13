@@ -6,6 +6,7 @@ import {
   Handshake,
   Gauge,
   LifeBuoy,
+  Newspaper,
   ListChecks,
   RotateCcw,
   Settings,
@@ -56,6 +57,15 @@ export const adminNavigationGroups = [
       ["Pesan", "/admin/shopping#requests", MessageCircle],
       ["Katalog Produk", "/admin/shopping#catalog", Tags],
       ["Pengaturan", "/admin/shopping#settings", Settings],
+    ],
+  },
+  {
+    label: "Feeds",
+    items: [
+      ["Tinjauan", "/admin/feeds", Newspaper],
+      ["Laporan", "/admin/feeds#reports", LifeBuoy],
+      ["Semua post", "/admin/feeds#posts", ListChecks],
+      ["Pengaturan", "/admin/feeds#settings", Settings],
     ],
   },
   {

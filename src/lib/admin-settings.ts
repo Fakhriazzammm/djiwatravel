@@ -1,3 +1,4 @@
+import { parseFeedsConfig } from "./feeds";
 import { parseFlightsConfig } from "./flights";
 import { parseShopperConfig } from "./personal-shopper";
 import { parseEsimSharingConfig } from "./esim-share";
@@ -32,7 +33,8 @@ export type AdminSettingKey =
   | "tripAssistant"
   | "guestTrips"
   | "flights"
-  | "personalShopper";
+  | "personalShopper"
+  | "feeds";
 export type AdminSettings = Record<AdminSettingKey, unknown>;
 export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "retryPolicy",
@@ -57,6 +59,7 @@ export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "guestTrips",
   "flights",
   "personalShopper",
+  "feeds",
 ];
 export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (
@@ -97,6 +100,7 @@ export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (key === "guestTrips") parseGuestTripsConfig(value);
   if (key === "flights") parseFlightsConfig(value);
   if (key === "personalShopper") parseShopperConfig(value);
+  if (key === "feeds") parseFeedsConfig(value);
   return true;
 }
 export function buildSettingAudit(
