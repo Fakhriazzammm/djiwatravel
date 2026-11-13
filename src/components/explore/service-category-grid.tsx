@@ -38,15 +38,12 @@ const WAITLIST_FEATURE: Record<string, "bagasi" | "shopper"> = {
   "personal-shopper": "shopper",
 };
 
-/** `waitlist` turns the Bagasi / Titip Belanja tiles into waitlist sign-ups (Home); Explore omits it. */
-export function ServiceCategoryGrid({ waitlist = false }: { waitlist?: boolean } = {}) {
-  const reduceMotion = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
+function useExploreServices() {
   const flights = useFlightsStatus();
   const flightsTile = flights.available && showFlightsTile(flights.config);
   const shopper = useShopperStatus();
   const shopperOpen = shopper.available && shopper.config.enabled;
-  const services = useMemo(
+  return useMemo(
     () =>
       visibleTravelServices()
         .filter((service) => service.id !== "flights" || flightsTile)
@@ -58,6 +55,13 @@ export function ServiceCategoryGrid({ waitlist = false }: { waitlist?: boolean }
         ),
     [flightsTile, shopperOpen],
   );
+}
+
+/** `waitlist` turns the Bagasi / Titip Belanja tiles into waitlist sign-ups (Home); Explore omits it. */
+export function ServiceCategoryGrid({ waitlist = false }: { waitlist?: boolean } = {}) {
+  const reduceMotion = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  const services = useExploreServices();
 
   useEffect(() => setMounted(true), []);
 
@@ -180,4 +184,61 @@ export function ServiceSectionHeading({ title, detail }: { title: string; detail
 
 export function ServiceCardArrow() {
   return <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />;
+}
+
+/** One horizontal row of the service icons (Explore with Feeds): sits under the search and stays in view. */
+export function ServiceShelf() {
+  const services = useExploreServices();
+  return (
+    <div
+      role="list"
+      aria-label="Kebutuhan perjalanan"
+      className="-mx-4 mt-2 flex gap-0.5 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {services.map((service) => {
+        const asset = assetForService(service.icon);
+        const Icon = asset.fallback;
+        const href = serviceHref(service);
+        const content = (
+          <>
+            {asset.src ? (
+              <img
+                src={asset.src}
+                alt=""
+                className="mx-auto size-[30px] object-contain"
+                loading="eager"
+                decoding="async"
+              />
+            ) : (
+              <Icon className="mx-auto size-[26px] text-brand-red" aria-hidden="true" />
+            )}
+            <span className="mt-0.5 block line-clamp-1 text-[10.5px] font-semibold leading-tight">
+              {service.label}
+            </span>
+          </>
+        );
+        const cell = "w-[62px] shrink-0 rounded-xl py-1 text-center";
+        return (
+          <div key={service.id} role="listitem">
+            {href ? (
+              <Link
+                to={href}
+                aria-label={`${service.label}: buka halaman layanan`}
+                className={`${cell} tap block`}
+              >
+                {content}
+              </Link>
+            ) : (
+              <div
+                aria-label={`${service.label}: ${serviceStatusLabel[service.status]}`}
+                className={`${cell} opacity-50`}
+              >
+                {content}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }

@@ -8,6 +8,7 @@ import { destinations, search } from "@/lib/catalog";
 import {
   ServiceCategoryGrid,
   ServiceSectionHeading,
+  ServiceShelf,
 } from "@/components/explore/service-category-grid";
 import { getListableDestinations } from "@/lib/destination-availability.fn";
 import { exploreAvailability } from "@/lib/explore-availability";
@@ -106,118 +107,123 @@ function Explore() {
   }, [q, reduceMotion, searchFocused]);
   return (
     <Page>
-      <header className="pt-4">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-red">Djiwa Travel</p>
-        <h1 className="mt-1 text-[22px] font-bold leading-tight tracking-tight">Explore</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Mau pergi ke mana?</p>
-      </header>
-      <div className="relative">
-        <form
-          className="mt-4 flex h-12 items-center gap-2 rounded-2xl border border-border/70 bg-surface px-3 focus-within:ring-2 focus-within:ring-ring"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!q.trim()) {
-              setSearchMessage("Masukkan nama negara atau kota terlebih dahulu.");
-              return;
-            }
-            const destination = res[0];
-            if (!destination) {
-              setSearchMessage(`Destinasi “${q.trim()}” belum tersedia di katalog.`);
-              return;
-            }
-            setSearchMessage("");
-            void router.navigate({
-              to: "/destination/$code",
-              params: { code: destination.code.toLowerCase() },
-            });
-          }}
-        >
-          <Search className="size-5 text-muted-foreground" aria-hidden="true" />
-          <input
-            value={q}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
-            onChange={(e) => {
-              setQ(e.target.value);
+      <div
+        className={feeds.enabled ? "sticky top-0 z-30 -mx-4 bg-background px-4 pb-2" : undefined}
+      >
+        <header className="pt-4">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-red">
+            Djiwa Travel
+          </p>
+          <h1 className="mt-1 text-[22px] font-bold leading-tight tracking-tight">Explore</h1>
+          {!feeds.enabled && (
+            <p className="mt-2 text-sm text-muted-foreground">Mau pergi ke mana?</p>
+          )}
+        </header>
+        <div className="relative">
+          <form
+            className="mt-4 flex h-12 items-center gap-2 rounded-2xl border border-border/70 bg-surface px-3 focus-within:ring-2 focus-within:ring-ring"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!q.trim()) {
+                setSearchMessage("Masukkan nama negara atau kota terlebih dahulu.");
+                return;
+              }
+              const destination = res[0];
+              if (!destination) {
+                setSearchMessage(`Destinasi “${q.trim()}” belum tersedia di katalog.`);
+                return;
+              }
               setSearchMessage("");
+              void router.navigate({
+                to: "/destination/$code",
+                params: { code: destination.code.toLowerCase() },
+              });
             }}
-            placeholder={placeholderText}
-            aria-label="Cari destinasi"
-            className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
-          />
-          {q && (
-            <button
-              type="button"
-              onClick={() => {
-                setQ("");
+          >
+            <Search className="size-5 text-muted-foreground" aria-hidden="true" />
+            <input
+              value={q}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
+              onChange={(e) => {
+                setQ(e.target.value);
                 setSearchMessage("");
               }}
-              aria-label="Hapus pencarian"
-              className="rounded-full px-2 text-lg text-muted-foreground"
-            >
-              ×
-            </button>
-          )}
-        </form>
-        <AnimatePresence>
-          {searchFocused && q.trim() && (
-            <motion.div
-              key="destination-search-results"
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: reduceMotion ? 0 : -4 }}
-              transition={
-                reduceMotion ? { duration: 0.1 } : { duration: 0.18, ease: [0.32, 0.72, 0, 1] }
-              }
-              className="absolute inset-x-0 top-[calc(100%+8px)] z-20 max-h-72 overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-md"
-            >
-              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Hasil pencarian
-              </p>
-              {searchOptions.length > 0 ? (
-                searchOptions.map((destination) => (
-                  <motion.button
-                    layout={!reduceMotion}
-                    key={destination.code}
-                    type="button"
-                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm hover:bg-secondary"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      setQ(destination.nameId);
-                      setSearchFocused(false);
-                      setSearchMessage("");
-                      void router.navigate({
-                        to: "/destination/$code",
-                        params: { code: destination.code.toLowerCase() },
-                      });
-                    }}
-                  >
-                    <span aria-hidden="true">{destination.flag}</span>
-                    <span className="font-medium">{destination.nameId}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {destination.region}
-                    </span>
-                  </motion.button>
-                ))
-              ) : (
-                <p className="px-3 py-3 text-sm text-muted-foreground" role="status">
-                  Tidak ada destinasi yang cocok.
+              placeholder={placeholderText}
+              aria-label="Cari destinasi"
+              className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
+            />
+            {q && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQ("");
+                  setSearchMessage("");
+                }}
+                aria-label="Hapus pencarian"
+                className="rounded-full px-2 text-lg text-muted-foreground"
+              >
+                ×
+              </button>
+            )}
+          </form>
+          <AnimatePresence>
+            {searchFocused && q.trim() && (
+              <motion.div
+                key="destination-search-results"
+                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.99 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: reduceMotion ? 0 : -4 }}
+                transition={
+                  reduceMotion ? { duration: 0.1 } : { duration: 0.18, ease: [0.32, 0.72, 0, 1] }
+                }
+                className="absolute inset-x-0 top-[calc(100%+8px)] z-20 max-h-72 overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-md"
+              >
+                <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Hasil pencarian
                 </p>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-      {searchMessage && (
-        <p className="mt-2 text-sm text-muted-foreground" role="status">
-          {searchMessage}
-        </p>
-      )}
-      {feeds.enabled ? (
-        <div className="mt-3">
-          <FeedComposer status={feeds} onPosted={feedList.addPosted} />
+                {searchOptions.length > 0 ? (
+                  searchOptions.map((destination) => (
+                    <motion.button
+                      layout={!reduceMotion}
+                      key={destination.code}
+                      type="button"
+                      className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm hover:bg-secondary"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setQ(destination.nameId);
+                        setSearchFocused(false);
+                        setSearchMessage("");
+                        void router.navigate({
+                          to: "/destination/$code",
+                          params: { code: destination.code.toLowerCase() },
+                        });
+                      }}
+                    >
+                      <span aria-hidden="true">{destination.flag}</span>
+                      <span className="font-medium">{destination.nameId}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {destination.region}
+                      </span>
+                    </motion.button>
+                  ))
+                ) : (
+                  <p className="px-3 py-3 text-sm text-muted-foreground" role="status">
+                    Tidak ada destinasi yang cocok.
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      ) : (
+        {searchMessage && (
+          <p className="mt-2 text-sm text-muted-foreground" role="status">
+            {searchMessage}
+          </p>
+        )}
+        {feeds.enabled && <ServiceShelf />}
+      </div>
+      {!feeds.enabled && (
         <Link
           to="/esim/finder"
           className="tap mt-3 flex items-center gap-3 rounded-2xl bg-brand-red-soft p-3"
@@ -246,10 +252,12 @@ function Explore() {
           </button>
         </div>
       )}
-      <section className={feeds.enabled ? "mt-3 rounded-2xl bg-surface p-3" : "mt-4"}>
-        <ServiceSectionHeading title="Kebutuhan perjalanan" detail="Layanan" />
-        <ServiceCategoryGrid />
-      </section>
+      {!feeds.enabled && (
+        <section className="mt-4">
+          <ServiceSectionHeading title="Kebutuhan perjalanan" detail="Layanan" />
+          <ServiceCategoryGrid />
+        </section>
+      )}
       {feeds.enabled && (
         <>
           <Link
@@ -281,6 +289,9 @@ function Explore() {
               <ChevronRight className="size-4" aria-hidden="true" />
             </span>
           </Link>
+          <div className="mt-3">
+            <FeedComposer status={feeds} onPosted={feedList.addPosted} />
+          </div>
           <section className="mt-3" aria-label="Feeds traveler">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
