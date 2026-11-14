@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, Heart, MapPin, MessageCircle } from "lucide-react";
+import { BadgeCheck, ChevronRight, Heart, MapPin, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { toggleFeedLike } from "@/lib/feeds.fn";
 import {
@@ -65,9 +65,18 @@ export function FeedCard({
       <div className="flex items-center gap-2">
         <FeedAvatar name={post.authorName} guide={post.source === "guide"} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold">
-            {post.authorName}
-            {post.mine ? " · kamu" : ""}
+          <p className="flex items-center gap-1 text-[13px] font-semibold">
+            <span className="truncate">
+              {post.authorName}
+              {post.mine ? " · kamu" : ""}
+            </span>
+            {post.source === "guide" && (
+              <BadgeCheck
+                className="size-4 shrink-0 fill-amber-400 text-white"
+                role="img"
+                aria-label="Akun resmi Djiwa Travel, terverifikasi"
+              />
+            )}
           </p>
           <p className="truncate text-[11px] text-muted-foreground">
             {feedRelativeTime(post.publishedAt ?? post.createdAt)}
