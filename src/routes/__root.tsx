@@ -19,6 +19,7 @@ import { reloadOnceForStaleChunk } from "../lib/stale-chunk";
 import { PageTransition } from "../components/motion-primitives";
 import { NavProgress } from "../components/nav-progress";
 import { AppSplash } from "../components/app-splash";
+import { ConsentPrompt } from "@/components/consent-prompt";
 import { CookieConsent } from "@/components/cookie-consent";
 import { CustomerOnboardingGate } from "../components/customer-onboarding-gate";
 import { easeIos } from "../lib/motion";
@@ -199,6 +200,7 @@ function RootComponent() {
         <CustomerOnboardingGate />
         <AffiliateReferralCapture />
         <CookieConsent />
+        <ConsentPrompt />
         <Toaster />
       </MotionConfig>
     </QueryClientProvider>

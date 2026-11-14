@@ -1,3 +1,4 @@
+import { assertConsent } from "./consent.server";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { pool } from "@/db/client.server";
@@ -169,6 +170,7 @@ export async function searchDiscovery(input: {
   photo?: Uint8Array;
 }): Promise<DiscoverySearchResult> {
   const config = await enabled();
+  await assertConsent(input.subject, "ai");
   const key = z.string().uuid().parse(input.clientKey);
   const note = z.string().trim().max(1000).parse(input.note);
   const reference = input.url.trim()

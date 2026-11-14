@@ -20,6 +20,7 @@ import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OrderStatusRouteImport } from './routes/order-status'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PrivasiAkunRouteImport } from './routes/privasi-akun'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -43,6 +44,7 @@ import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
 import { Route as AdminPreordersRouteImport } from './routes/admin.preorders'
+import { Route as AdminPrivasiRouteImport } from './routes/admin.privasi'
 import { Route as AdminProvisioningRouteImport } from './routes/admin.provisioning'
 import { Route as AdminRefundsRouteImport } from './routes/admin.refunds'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -170,6 +172,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivasiAkunRoute = PrivasiAkunRouteImport.update({
+  id: '/privasi-akun',
+  path: '/privasi-akun',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -283,6 +290,11 @@ const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
 const AdminPreordersRoute = AdminPreordersRouteImport.update({
   id: '/admin/preorders',
   path: '/admin/preorders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPrivasiRoute = AdminPrivasiRouteImport.update({
+  id: '/admin/privasi',
+  path: '/admin/privasi',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
@@ -661,6 +673,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/privacy': typeof PrivacyRoute
+  '/privasi-akun': typeof PrivasiAkunRoute
   '/profile': typeof ProfileRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -683,6 +696,7 @@ export interface FileRoutesByFullPath {
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/preorders': typeof AdminPreordersRoute
+  '/admin/privasi': typeof AdminPrivasiRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -768,6 +782,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/privacy': typeof PrivacyRoute
+  '/privasi-akun': typeof PrivasiAkunRoute
   '/profile': typeof ProfileRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -790,6 +805,7 @@ export interface FileRoutesByTo {
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/preorders': typeof AdminPreordersRoute
+  '/admin/privasi': typeof AdminPrivasiRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -876,6 +892,7 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/privacy': typeof PrivacyRoute
+  '/privasi-akun': typeof PrivasiAkunRoute
   '/profile': typeof ProfileRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -898,6 +915,7 @@ export interface FileRoutesById {
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/preorders': typeof AdminPreordersRoute
+  '/admin/privasi': typeof AdminPrivasiRoute
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -985,6 +1003,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/order-status'
     | '/privacy'
+    | '/privasi-akun'
     | '/profile'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -1007,6 +1026,7 @@ export interface FileRouteTypes {
     | '/admin/overview'
     | '/admin/payments'
     | '/admin/preorders'
+    | '/admin/privasi'
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
@@ -1092,6 +1112,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/order-status'
     | '/privacy'
+    | '/privasi-akun'
     | '/profile'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -1114,6 +1135,7 @@ export interface FileRouteTypes {
     | '/admin/overview'
     | '/admin/payments'
     | '/admin/preorders'
+    | '/admin/privasi'
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
@@ -1199,6 +1221,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/order-status'
     | '/privacy'
+    | '/privasi-akun'
     | '/profile'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -1221,6 +1244,7 @@ export interface FileRouteTypes {
     | '/admin/overview'
     | '/admin/payments'
     | '/admin/preorders'
+    | '/admin/privasi'
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
@@ -1307,6 +1331,7 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   OrderStatusRoute: typeof OrderStatusRoute
   PrivacyRoute: typeof PrivacyRoute
+  PrivasiAkunRoute: typeof PrivasiAkunRoute
   ProfileRoute: typeof ProfileRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -1329,6 +1354,7 @@ export interface RootRouteChildren {
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminPreordersRoute: typeof AdminPreordersRoute
+  AdminPrivasiRoute: typeof AdminPrivasiRoute
   AdminProvisioningRoute: typeof AdminProvisioningRoute
   AdminRefundsRoute: typeof AdminRefundsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -1475,6 +1501,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privasi-akun': {
+      id: '/privasi-akun'
+      path: '/privasi-akun'
+      fullPath: '/privasi-akun'
+      preLoaderRoute: typeof PrivasiAkunRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -1636,6 +1669,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/preorders'
       fullPath: '/admin/preorders'
       preLoaderRoute: typeof AdminPreordersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/privasi': {
+      id: '/admin/privasi'
+      path: '/admin/privasi'
+      fullPath: '/admin/privasi'
+      preLoaderRoute: typeof AdminPrivasiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/provisioning': {
@@ -2189,6 +2229,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   OrderStatusRoute: OrderStatusRoute,
   PrivacyRoute: PrivacyRoute,
+  PrivasiAkunRoute: PrivasiAkunRoute,
   ProfileRoute: ProfileRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
@@ -2211,6 +2252,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminOverviewRoute: AdminOverviewRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminPreordersRoute: AdminPreordersRoute,
+  AdminPrivasiRoute: AdminPrivasiRoute,
   AdminProvisioningRoute: AdminProvisioningRoute,
   AdminRefundsRoute: AdminRefundsRoute,
   AdminSettingsRoute: AdminSettingsRoute,

@@ -28,6 +28,7 @@ import {
   type FeedsStatus,
 } from "./feeds";
 import { addItineraryItem } from "./my-trips.server";
+import { assertConsent, hasConsent } from "./consent.server";
 import { createCustomerNotification } from "./push.server";
 import { travelGuides } from "./travel-guides";
 
@@ -100,6 +101,7 @@ export async function getFeedsStatusHandler(): Promise<FeedsStatus> {
     reviewsNewPosts: config.reviewFirstPosts > 0,
     signedIn: Boolean(user),
     banned: user ? await isBanned(user.id) : false,
+    communityConsent: user ? await hasConsent(user.id, "community") : false,
   };
 }
 
@@ -399,6 +401,7 @@ export async function createFeedPost(input: CreateFeedPostInput) {
     throw new Error(parsed.error.issues[0]?.message || "Isi postingan belum valid.");
   const data = parsed.data;
   if (await isBanned(input.subject)) throw new Error("Akunmu tidak dapat memposting di Feeds.");
+  await assertConsent(input.subject, "community");
   let mime: string | null = null;
   if (input.photo && input.photo.length) {
     if (!config.allowPhotos) throw new Error("Foto belum diizinkan di Feeds.");
@@ -536,6 +539,7 @@ export async function addFeedCommentHandler({
   if (!config.allowComments) throw new Error("Komentar sedang dimatikan.");
   const user = await requireViewer();
   if (await isBanned(user.id)) throw new Error("Akunmu tidak dapat berkomentar di Feeds.");
+  await assertConsent(user.id, "community");
   const post = await pool.query(
     "select status, customer_auth_subject, author_name from feed_posts where id = $1",
     [data.postId],

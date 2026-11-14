@@ -328,7 +328,8 @@ export const UNAVAILABLE_RECEIPT_SCAN: ReceiptScanStatus = {
   remaining: 0,
 };
 
-export type ReceiptScanFailure = "limit" | "disabled" | "too_large" | "bad_image" | "unavailable";
+export type ReceiptScanFailure =
+  "limit" | "disabled" | "consent" | "too_large" | "bad_image" | "unavailable";
 
 export type ReceiptScanResponse =
   | {

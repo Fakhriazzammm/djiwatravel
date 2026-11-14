@@ -1,3 +1,4 @@
+import { consentBlock } from "./consent.server";
 import { randomUUID } from "node:crypto";
 import { expenseItemStats, insertLineItems, lineItemsSchema } from "./expense-items.server";
 import { z } from "zod";
@@ -280,6 +281,8 @@ export async function scanReceipt(input: {
   const { config } = await readReceiptScanConfig();
   if (!config.enabled || !aiConfigured())
     return { ok: false, code: "disabled", message: "Scan struk sedang tidak tersedia." };
+  const consentMessage = await consentBlock(input.userId, "ai");
+  if (consentMessage) return { ok: false, code: "consent", message: consentMessage };
   const mime = sniffImageMime(input.bytes);
   if (!mime) return { ok: false, code: "bad_image", message: "File bukan foto yang didukung." };
   if (input.bytes.length > config.maxMb * 1024 * 1024)

@@ -1,0 +1,84 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Persetujuan data setelah masuk — semua fitur</title><style>
+:root{--bg:#f3f4f6;--fg:#15171b;--mut:#666a73;--bd:#e3e4e7;--red:#d32f2f;--soft:#fbe5e4;--ok:#17803d}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--fg);padding:8px}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer;text-align:inherit}button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.top{max-width:470px;margin:0 auto 10px}.top h1{font-size:17px;margin:0 0 4px}.top p{font-size:12px;opacity:.7;margin:0 0 10px;line-height:1.5}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button{flex:1;min-width:84px;border-radius:12px;padding:9px 4px;background:#fff;color:var(--fg);font-size:12px;font-weight:650;text-align:center;border:1px solid var(--bd)}.tabs button[aria-selected=true]{background:var(--fg);color:#fff}
+.note{max-width:470px;margin:10px auto 12px;font-size:12px;line-height:1.55;opacity:.85;min-height:92px}
+.phone{position:relative;width:390px;max-width:100%;height:780px;margin:auto;background:var(--bg);border:1px solid var(--bd);border-radius:26px;overflow:hidden;color:var(--fg)}
+.pg{position:absolute;inset:0;padding:14px 16px;overflow:hidden}
+.brand{font-size:10px;letter-spacing:.22em;font-weight:700;color:var(--red)}h2.t{font-size:22px;font-weight:750;margin:1px 0 8px}
+.search{height:38px;border:1px solid var(--bd);background:#fff;border-radius:19px;padding:0 14px;font-size:13px;color:var(--mut);display:flex;align-items:center}
+.card{background:#fff;border-radius:16px;padding:12px;margin-top:10px;font-size:13px}
+.skel{height:10px;border-radius:5px;background:#e9eaee;margin-top:8px}
+.tab{position:absolute;left:14px;right:14px;bottom:12px;height:58px;background:#fff;border-radius:28px;display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--mut);box-shadow:0 2px 12px #0001}.tab .on{color:var(--red);font-weight:700}
+.scrim{position:absolute;inset:0;background:#15171b66;opacity:0;pointer-events:none;transition:opacity .25s;z-index:8}.scrim.on{opacity:1}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:90%;overflow:auto;background:#fff;border-radius:22px 22px 0 0;padding:8px 16px 18px;z-index:9;transform:translateY(105%);transition:transform .3s cubic-bezier(.32,.72,0,1);box-shadow:0 -8px 30px #0003;scrollbar-width:none}.sheet.on{transform:none}.sheet::-webkit-scrollbar{display:none}
+.grab{width:36px;height:4px;border-radius:2px;background:#d4d6db;margin:0 auto 10px}
+.sheet h3{font-size:17px;margin:0 0 4px;font-weight:750}.sheet .lead{font-size:12.5px;color:var(--mut);line-height:1.5;margin:0 0 6px}
+.pt{display:flex;gap:10px;align-items:flex-start;padding:6px 0}.ic{width:30px;height:30px;border-radius:50%;background:var(--soft);display:grid;place-items:center;flex-shrink:0;font-size:14px}.pt b,.row b{display:block;font-size:13px}.pt span.s,.row span.s{font-size:11.5px;color:var(--mut);line-height:1.4;display:block}
+.feat{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.feat i{font-style:normal;font-size:10px;font-weight:650;background:#eceef1;color:#4a4e57;border-radius:8px;padding:2px 7px}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;border-radius:22px;font-size:14px;font-weight:700;text-align:center}.pri{background:var(--red);color:#fff}.sec{background:#eceef1;margin-top:8px}.lnk{min-height:38px;font-size:12.5px;font-weight:650;color:var(--mut);text-align:center;justify-content:center;display:flex;align-items:center;width:100%}
+.fine{font-size:10.5px;color:var(--mut);line-height:1.45;margin:8px 2px 0;text-align:center}.fine a{color:var(--red);font-weight:650}
+.row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--bd)}.row.first{border-top:0}.row .tx{flex:1}
+.sw{width:46px;height:28px;border-radius:14px;background:#d4d6db;position:relative;flex-shrink:0;transition:background .2s;margin-top:2px}.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform .2s}.sw[aria-checked=true]{background:var(--ok)}.sw[aria-checked=true]::after{transform:translateX(18px)}
+.tag{font-size:9.5px;font-weight:700;border-radius:6px;padding:1px 6px;background:#eceef1;color:var(--mut);margin-left:6px;vertical-align:1px}.tag.g{background:#e3f4e9;color:var(--ok)}
+.ess{background:var(--bg);border-radius:14px;padding:10px 12px;margin-top:8px}.ess summary{font-size:12.5px;font-weight:700;cursor:pointer}.ess ul{margin:6px 0 0;padding-left:16px;font-size:11.5px;color:var(--mut);line-height:1.55}
+.inl{border:1.5px solid var(--red);margin-top:10px}.inl h4{margin:0 0 3px;font-size:14px}.inl p{margin:0 0 10px;font-size:12px;color:var(--mut);line-height:1.45}.inl .two{display:flex;gap:8px;align-items:center}.inl .btn{min-height:38px;font-size:13px;margin:0}
+.toast{position:absolute;left:50%;top:14px;transform:translate(-50%,-80px);background:#15171b;color:#fff;font-size:12px;padding:8px 14px;border-radius:16px;z-index:12;transition:transform .3s;white-space:nowrap}.toast.on{transform:translate(-50%,0)}
+.replay{display:block;margin:10px auto 0;font-size:12px;font-weight:650;padding:8px 14px;border-radius:14px;background:#fff;color:var(--fg);border:1px solid var(--bd);text-align:center}
+.map{padding:14px 12px}.map h3{margin:0 0 4px;font-size:16px}.map p.l{font-size:11.5px;color:var(--mut);margin:0 0 8px;line-height:1.45}
+.map table{width:100%;border-collapse:collapse;font-size:11px}.map th{text-align:left;font-size:10px;color:var(--mut);padding:4px 3px;border-bottom:1px solid var(--bd);font-weight:650}.map td{padding:5px 3px;border-bottom:1px solid var(--bd);vertical-align:top;line-height:1.35}.map td:first-child{font-weight:650;width:38%}
+.pill{display:inline-block;font-size:9.5px;font-weight:700;border-radius:8px;padding:1px 7px;background:var(--soft);color:var(--red)}.pill.e{background:#e3f4e9;color:var(--ok)}.pill.g{background:#eceef1;color:#4a4e57}
+</style></head><body>
+<div class="top"><h1>Persetujuan data setelah masuk — untuk semua fitur</h1><p>Terpisah dari banner cookie pengunjung (perangkat, sekali). Popup ini muncul sekali setelah login atau daftar, tersimpan di akun, dan bisa diubah di Profil › Privasi. Ketuk untuk mencoba; tab D memetakan tiap fitur ke persetujuannya.</p>
+<div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-o="0">A · Satu ketukan</button><button role="tab" aria-selected="false" data-o="1">B · Pilih sendiri</button><button role="tab" aria-selected="false" data-o="2">C · Kartu</button><button role="tab" aria-selected="false" data-o="3">D · Peta fitur</button></div></div>
+<div class="note" id="note"></div>
+<div class="phone" id="phone"></div>
+<button class="replay" id="replay">↻ Ulangi simulasi setelah login</button>
+<script>
+const $=id=>document.getElementById(id);
+const N=['<b>A · Satu ketukan.</b> Sheet ringkas dengan lima manfaat. "Setuju semua" menyalakan kelimanya; "Atur sendiri" membuka B; "Nanti saja" menutup dan menanyakan lagi paling cepat 7 hari. Tercepat, tetapi satu tombol untuk lima tujuan.','<b>B · Pilih sendiri (saya sarankan).</b> Lima saklar, semuanya mati secara bawaan, tiap baris menyebut fitur yang memakainya. Layanan inti tetap jalan tanpa persetujuan (daftar "Selalu aktif" di bawah). Analitik mengikuti pilihan banner cookie. Sambungan Google (Kalender, Drive, Sheets) tetap diminta per fitur lewat izin Google.','<b>C · Kartu di Explore.</b> Tanpa menutup layar. "Aktifkan" menyalakan Komunitas, Travo dan Personalisasi (bukan Kabar dan Analitik); "Atur" membuka B. Paling halus tetapi mudah terlewat, jadi tiap fitur tetap meminta izinnya saat dipakai pertama kali.','<b>D · Peta fitur.</b> Daftar semua fitur Djiwa: mana yang berjalan tanpa persetujuan, dan mana yang meminta tujuan tertentu. Tanpa persetujuan, fitur bersangkutan menampilkan ajakan "Aktifkan di Profil › Privasi", bukan error.'];
+const P=[
+['👥','Komunitas','Nama depan, postingan, foto, suka, dan komentarmu tampil ke traveler lain.',['Feeds','Bagikan titipan'],'Wajib untuk memposting'],
+['🤖','Asisten Travo (AI)','Pertanyaan, Agenda, dan foto yang kamu kirim diproses penyedia AI pihak ketiga, dengan data pesanan disamarkan.',['Travo','Rencana lengkap','Ide tempat','Scan struk','Cari barang dari foto'],''],
+['✨','Personalisasi','Tujuan, Agenda, dan riwayat pesananmu dipakai untuk saran dan ingatan Travo.',['Explore','Feeds','Memori Travo'],''],
+['🔔','Kabar & promo','Promo dan panduan baru lewat notifikasi dan email. Notifikasi pesanan tetap terkirim.',['Notifikasi','Email'],'Opsional'],
+['📊','Analitik & mitra','Statistik penggunaan (Google Analytics, internal) dan skrip mitra tiket. Mengikuti banner cookie.',['Tiket','Semua halaman'],'Dari banner cookie']];
+const ESS=['Masuk dan akun, profil traveler','Beli eSIM, pesanan, pembayaran (Mayar), struk','Titip Belanja: pesanan, pesan dengan tim, pencarian barang dari tautan','Tiket pesawat: pencarian dan tautan pemesanan','Agenda, peta, dan Dompet','Notifikasi pesanan dan keamanan akun'];
+let st={o:0,on:[false,false,false,false,false],view:'sheet'};
+const sw=(i)=>`<button class="sw" role="switch" aria-checked="${st.on[i]}" aria-label="${P[i][1]}" data-sw="${i}"></button>`;
+const feat=a=>`<div class="feat">${a.map(x=>`<i>${x}</i>`).join('')}</div>`;
+const base=`<div class="pg"><div class="brand">DJIWA TRAVEL</div><h2 class="t">Explore</h2><div class="search">⌕ Cari Singapura</div>`;
+const tab=`<div class="tab"><span>Beranda</span><span class="on">Jelajah</span><span>Perjalanan</span><span>Dompet</span><span>Profil</span></div>`;
+const skel=`<div class="card"><div class="skel" style="width:40%"></div><div class="skel"></div><div class="skel" style="width:80%"></div></div><div class="card"><div class="skel" style="width:55%"></div><div class="skel"></div></div>`;
+const fine=`<p class="fine">Ubah kapan saja di Profil › Privasi. Layanan inti tetap jalan tanpa persetujuan ini. <a href="#">Kebijakan privasi</a></p>`;
+const A=()=>`<div class="grab"></div><h3>Biar Djiwa makin pas buat kamu</h3><p class="lead">Izinkan kami memakai datamu untuk lima hal ini. Kamu yang memilih.</p>${P.map(p=>`<div class="pt"><span class="ic">${p[0]}</span><div><b>${p[1]}</b><span class="s">${p[2]}</span></div></div>`).join('')}<button class="btn pri" data-act="all" style="margin-top:8px">Setuju semua</button><button class="btn sec" data-act="manual">Atur sendiri</button><button class="lnk" data-act="later">Nanti saja</button>${fine}`;
+const B=()=>`<div class="grab"></div><h3>Pilih data yang boleh kami pakai</h3><p class="lead">Semua mati sampai kamu menyalakannya.</p>${P.map((p,i)=>`<div class="row ${i?'':'first'}"><span class="ic">${p[0]}</span><div class="tx"><b>${p[1]}${p[4]?`<span class="tag ${i==4?'g':''}">${p[4]}</span>`:''}</b><span class="s">${p[2]}</span>${feat(p[3])}</div>${sw(i)}</div>`).join('')}<details class="ess"><summary>Selalu aktif untuk layanan inti</summary><ul>${ESS.map(e=>`<li>${e}</li>`).join('')}</ul></details><button class="btn pri" data-act="save" style="margin-top:12px">${st.on.some(Boolean)?'Simpan pilihan':'Simpan, semua tetap mati'}</button><button class="lnk" data-act="all">Setujui semua</button>${fine}`;
+const Cc=()=>`<div class="card inl"><h4>Aktifkan Feeds, Travo, dan saran yang lebih pas?</h4><p>Dengan "Aktifkan", nama depanmu bisa tampil di Feeds, Travo boleh memakai AI untuk datamu, dan kami memakai tujuan tripmu untuk saran. Tanpa promo. Bisa diubah di Profil › Privasi.</p><div class="two"><button class="btn pri" data-act="c-on">Aktifkan</button><button class="btn sec" data-act="manual" style="margin-top:0">Atur</button><button class="lnk" data-act="later" style="width:auto;padding:0 6px">Nanti</button></div></div>`;
+const MAP=[
+['Masuk, profil, akun','e','Tanpa persetujuan'],['eSIM, pesanan, Mayar, struk','e','Tanpa persetujuan'],['Dompet / Djiwa Pay','e','Tanpa persetujuan'],['Agenda dan peta','e','Tanpa persetujuan'],['Tiket pesawat (cari, bandingkan)','e','Tanpa persetujuan; skrip mitra = Analitik'],
+['Titip Belanja: pesan, chat, tautan','e','Tanpa persetujuan'],['Titip Belanja: cari dari foto','a','Asisten (AI)'],['Travo, Rencana lengkap','a','Asisten (AI)'],['Ide tempat, Scan struk','a','Asisten (AI)'],['Memori dan saran Travo','p','Personalisasi'],
+['Feeds: membaca','e','Tanpa persetujuan'],['Feeds: posting, suka, komentar','c','Komunitas'],['Bagikan titipan ke Feeds','c','Komunitas'],['Saran Explore / Feeds','p','Personalisasi'],['Notifikasi promo, email','k','Kabar & promo'],['Statistik, mitra tiket, afiliasi','n','Analitik & mitra'],['Kalender, Drive, Sheets Google','g','Izin Google per fitur']];
+const pill={e:'e',a:'',p:'',c:'',k:'',n:'g',g:'g'};
+const D=()=>`<div class="pg" style="background:var(--bg);overflow:auto"><div class="card map" style="margin-top:0"><h3>Peta fitur ↔ persetujuan</h3><p class="l">Tanpa persetujuan terkait, fitur menampilkan ajakan mengaktifkan, bukan pesan error.</p><table><tr><th>Fitur</th><th>Perlu</th></tr>${MAP.map(m=>`<tr><td>${m[0]}</td><td><span class="pill ${pill[m[1]]}">${m[2]}</span></td></tr>`).join('')}</table></div></div>`;
+function render(){const ph=$('phone');
+ if(st.o==3){ph.innerHTML=D();return}
+ const showSheet=(st.o<2&&st.view=='sheet')||st.view=='sheetB';
+ const isB=(st.o==1&&st.view=='sheet')||st.view=='sheetB';
+ let body=base;if(st.o==2&&!showSheet&&st.view!=='done'&&st.view!=='later')body+=Cc();
+ body+=skel+`</div>`+tab+`<div class="scrim ${showSheet?'on':''}"></div><div class="sheet ${showSheet?'on':''}" role="dialog" aria-modal="true">${showSheet?(isB?B():A()):''}</div><div class="toast" id="toast"></div>`;
+ ph.innerHTML=body;
+ ph.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>{const sc=ph.querySelector('.sheet').scrollTop;st.on[+b.dataset.sw]=!st.on[+b.dataset.sw];render();ph.querySelector('.sheet').scrollTop=sc});
+ ph.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>act(b.dataset.act));}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e&&e.classList.remove('on'),2200)}
+function act(a){
+ if(a=='all'){st.on=[true,true,true,true,true];st.view='done';render();toast('Tersimpan: semua aktif')}
+ else if(a=='c-on'){st.on=[true,true,true,false,false];st.view='done';render();toast('Komunitas, Travo, personalisasi aktif')}
+ else if(a=='manual'){st.view='sheetB';render()}
+ else if(a=='save'){st.view='done';render();toast(st.on.some(Boolean)?'Pilihan tersimpan':'Tersimpan: semua mati')}
+ else if(a=='later'){st.view='later';render();toast('Kami tanya lagi 7 hari lagi')}}
+function reset(){st.on=[false,false,false,false,false];st.view='sheet';render()}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{st.o=+b.dataset.o;document.querySelectorAll('.tabs button').forEach((x,j)=>x.setAttribute('aria-selected',j==st.o));$('note').innerHTML=N[st.o];reset()});
+$('replay').onclick=reset;$('note').innerHTML=N[0];render();
+</script></body></html>

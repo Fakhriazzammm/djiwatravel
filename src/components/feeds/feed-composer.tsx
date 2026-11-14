@@ -1,3 +1,5 @@
+import { ConsentGate } from "@/components/consent-gate";
+import { useConsent } from "@/hooks/use-consent";
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
@@ -38,7 +40,9 @@ export function FeedComposer({
 }) {
   const { user } = useBetterAuthUser();
   const [open, setOpen] = useState(false);
-  const [gate, setGate] = useState<"signin" | "banned" | null>(null);
+  const [gate, setGate] = useState<"signin" | "banned" | "consent" | null>(null);
+  const consent = useConsent();
+  const communityOk = consent.state ? consent.state.purposes.community : status.communityConsent;
   const [body, setBody] = useState("");
   const [kind, setKind] = useState<FeedKind | null>(null);
   const [showPlace, setShowPlace] = useState(false);
@@ -67,6 +71,7 @@ export function FeedComposer({
     if (!startKind) return;
     if (!status.signedIn) return setGate("signin");
     if (status.banned) return setGate("banned");
+    if (!communityOk) return setGate("consent");
     setKind(startKind);
     setOpen(true);
     // Only on arrival: later changes to the session must not reopen a closed composer.
@@ -76,6 +81,7 @@ export function FeedComposer({
   function begin(action?: "photo" | "place" | "tanya") {
     if (!status.signedIn) return setGate("signin");
     if (status.banned) return setGate("banned");
+    if (!communityOk) return setGate("consent");
     setGate(null);
     setOpen(true);
     if (action === "place") setShowPlace(true);
@@ -190,6 +196,16 @@ export function FeedComposer({
             <p className="text-[12px] text-muted-foreground">Masuk untuk memposting di Feeds.</p>
             <CustomerAuth size="compact" />
           </div>
+        )}
+        {gate === "consent" && (
+          <ConsentGate
+            purpose="community"
+            text="Nama depan dan postinganmu akan tampil ke traveler lain. Aktifkan “Komunitas” untuk memposting."
+            onGranted={() => {
+              setGate(null);
+              setOpen(true);
+            }}
+          />
         )}
         {gate === "banned" && (
           <p role="alert" className="mt-3 rounded-xl bg-secondary p-3 text-[12px] text-destructive">

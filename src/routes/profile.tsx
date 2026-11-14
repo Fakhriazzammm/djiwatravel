@@ -622,6 +622,7 @@ function Profile() {
       <h2 className={capClass}>Tentang</h2>
       <nav aria-label="Kebijakan" className={groupClass}>
         {[
+          { label: "Privasi & data", to: "/privasi-akun" as const },
           { label: "Syarat & Ketentuan", to: "/terms" as const },
           { label: "Kebijakan Privasi", to: "/privacy" as const },
         ].map(({ label: linkLabel, to }, index) => (

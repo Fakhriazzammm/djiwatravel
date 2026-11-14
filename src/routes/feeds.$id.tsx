@@ -1,3 +1,5 @@
+import { ConsentGate } from "@/components/consent-gate";
+import { useConsent } from "@/hooks/use-consent";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { EllipsisVertical, Heart } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -38,6 +40,8 @@ function FeedPostPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const feeds = useFeedsStatus();
+  const consent = useConsent();
+  const communityOk = consent.state ? consent.state.purposes.community : feeds.communityConsent;
   const [post, setPost] = useState<FeedPostView | null>(null);
   const [comments, setComments] = useState<FeedCommentView[]>([]);
   const [reported, setReported] = useState(false);
@@ -260,6 +264,11 @@ function FeedPostPage() {
                 <p role="alert" className="mt-3 text-[12px] text-destructive">
                   Akunmu tidak dapat berkomentar di Feeds.
                 </p>
+              ) : !communityOk ? (
+                <ConsentGate
+                  purpose="community"
+                  text="Namamu akan tampil di komentar. Aktifkan “Komunitas” untuk berkomentar."
+                />
               ) : (
                 <form onSubmit={sendComment} className="mt-3 flex items-center gap-2">
                   <input

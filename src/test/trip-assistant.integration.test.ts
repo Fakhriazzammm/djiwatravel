@@ -172,6 +172,7 @@ async function reset() {
     "063_trip_origin",
     "064_trip_plan",
     "066_travo_docs_memory",
+    "073_data_consents",
   ])
     await pool.query(readFileSync(resolve(`migrations/${file}.sql`), "utf8"));
   await pool.query(`create table notification_events (id uuid primary key default gen_random_uuid(), event_key text not null unique, event_type text not null);
@@ -276,6 +277,12 @@ describe.skipIf(!url)("trip assistant (real Postgres, stubbed AI)", () => {
     for (const k of Object.keys(nominatimRows)) delete nominatimRows[k];
     await pool.query("delete from customer_notifications");
     await pool.query("delete from notification_events");
+    // Members use Travo only after agreeing to "ai" (and Travo's memory after "personalization").
+    await pool.query("delete from customer_data_consents");
+    await pool.query(
+      `insert into customer_data_consents (customer_auth_subject, purpose, granted, policy_version, source)
+       select s, p, true, 'test', 'settings' from unnest(array['u1','u2']) s, unnest(array['ai','personalization']) p`,
+    );
     clearAssistantBurst();
     await seed();
     await pool.query("delete from travel_assistant_messages");

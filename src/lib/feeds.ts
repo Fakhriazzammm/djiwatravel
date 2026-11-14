@@ -236,6 +236,8 @@ export type FeedsStatus = {
   reviewsNewPosts: boolean;
   signedIn: boolean;
   banned: boolean;
+  /** The member agreed to "Komunitas" (needed to post and comment). */
+  communityConsent: boolean;
 };
 
 export const FEEDS_DISABLED_STATUS: FeedsStatus = {
@@ -245,4 +247,5 @@ export const FEEDS_DISABLED_STATUS: FeedsStatus = {
   reviewsNewPosts: false,
   signedIn: false,
   banned: false,
+  communityConsent: false,
 };

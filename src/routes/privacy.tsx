@@ -29,6 +29,34 @@ function Privacy() {
           </p>
         </section>
         <section className="border-t border-border px-4 py-3">
+          <h2 className="font-bold">Cookie dan penyimpanan di perangkat</h2>
+          <p className="mt-1 text-muted-foreground">
+            Selalu aktif: cookie sesi masuk, akses pesanan, dan pilihan banner cookie (1 tahun),
+            serta preferensi seperti asal penerbangan dan tampilan yang sudah kamu tutup. Hanya
+            setelah kamu menekan “Setuju” di banner: Google Analytics 4 (tanpa personalisasi iklan),
+            analitik internal untuk sesi dan asal kampanye, dan skrip mitra tiket pesawat
+            (Travelpayouts). Pilihan ini berlaku per perangkat dan bisa diubah di Profil › Privasi &
+            data.
+          </p>
+        </section>
+        <section className="border-t border-border px-4 py-3">
+          <h2 className="font-bold">Persetujuan data akun</h2>
+          <p className="mt-1 text-muted-foreground">
+            Setelah masuk, kamu memilih apakah datamu boleh dipakai untuk empat tujuan, semuanya
+            mati sampai kamu menyalakannya: Komunitas (nama depan, postingan, dan komentar di Feeds
+            tampil ke traveler lain), Asisten Travo (AI) (pertanyaan, Agenda, dan foto diproses
+            penyedia AI pihak ketiga, dengan data pesanan disamarkan), Personalisasi (tujuan,
+            Agenda, dan riwayat pesanan untuk saran dan ingatan Travo), serta Kabar & promo. Layanan
+            inti seperti eSIM, pesanan, tiket, Dompet, dan Agenda tidak bergantung pada persetujuan
+            ini. Setiap perubahan dicatat dengan waktu dan versi teksnya, dan bisa kamu ubah kapan
+            saja di{" "}
+            <Link className="font-semibold text-brand-red" to="/privasi-akun">
+              Profil › Privasi & data
+            </Link>
+            . Mematikan Komunitas menyembunyikan postinganmu dari Feeds.
+          </p>
+        </section>
+        <section className="border-t border-border px-4 py-3">
           <h2 className="font-bold">Data sensitif</h2>
           <p className="mt-1 text-muted-foreground">
             Jangan kirim password, OTP, nomor kartu, CVC, atau rahasia QR melalui chat maupun

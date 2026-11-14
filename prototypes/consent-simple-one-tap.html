@@ -1,0 +1,51 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Persetujuan satu ketukan — simpel</title><style>
+:root{--bg:#f3f4f6;--fg:#15171b;--mut:#666a73;--bd:#e3e4e7;--red:#d32f2f;--soft:#fbe5e4;--ok:#17803d}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--fg);padding:8px}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer;text-align:inherit}button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.top{max-width:470px;margin:0 auto 10px}.top h1{font-size:17px;margin:0 0 4px}.top p{font-size:12px;opacity:.7;margin:0 0 10px;line-height:1.5}
+.tabs{display:flex;gap:6px}.tabs button{flex:1;border-radius:12px;padding:9px 4px;background:#fff;color:var(--fg);font-size:12px;font-weight:650;text-align:center;border:1px solid var(--bd)}.tabs button[aria-selected=true]{background:var(--fg);color:#fff}
+.note{max-width:470px;margin:10px auto 12px;font-size:12px;line-height:1.55;opacity:.85;min-height:64px}
+.phone{position:relative;width:390px;max-width:100%;height:700px;margin:auto;background:var(--bg);border:1px solid var(--bd);border-radius:26px;overflow:hidden;color:var(--fg)}
+.pg{position:absolute;inset:0;padding:14px 16px;overflow:hidden}
+.brand{font-size:10px;letter-spacing:.22em;font-weight:700;color:var(--red)}h2.t{font-size:22px;font-weight:750;margin:1px 0 8px}
+.search{height:38px;border:1px solid var(--bd);background:#fff;border-radius:19px;padding:0 14px;font-size:13px;color:var(--mut);display:flex;align-items:center}
+.card{background:#fff;border-radius:16px;padding:12px;margin-top:10px}.skel{height:10px;border-radius:5px;background:#e9eaee;margin-top:8px}
+.tab{position:absolute;left:14px;right:14px;bottom:12px;height:58px;background:#fff;border-radius:28px;display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--mut);box-shadow:0 2px 12px #0001}.tab .on{color:var(--red);font-weight:700}
+.scrim{position:absolute;inset:0;background:#15171b55;opacity:0;pointer-events:none;transition:opacity .25s;z-index:8}.scrim.on{opacity:1}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:8px 18px 18px;z-index:9;transform:translateY(105%);transition:transform .3s cubic-bezier(.32,.72,0,1);box-shadow:0 -8px 30px #0003;text-align:center}.sheet.on{transform:none}
+.grab{width:36px;height:4px;border-radius:2px;background:#d4d6db;margin:0 auto 14px}
+.badge{width:46px;height:46px;border-radius:50%;background:var(--soft);display:grid;place-items:center;margin:0 auto 10px;font-size:22px}
+.sheet h3{font-size:18px;margin:0 0 6px;font-weight:750;letter-spacing:-.01em}.sheet .lead{font-size:13px;color:var(--mut);line-height:1.5;margin:0 auto 14px;max-width:300px}
+.chips{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:-4px 0 14px}.chips i{font-style:normal;font-size:11.5px;font-weight:650;background:#eceef1;border-radius:12px;padding:4px 10px}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;border-radius:23px;font-size:15px;font-weight:700}.pri{background:var(--red);color:#fff}
+.two{display:flex;justify-content:space-between;align-items:center;margin-top:4px}.lnk{min-height:40px;font-size:12.5px;font-weight:650;color:var(--mut);padding:0 8px;display:flex;align-items:center}.lnk.r{color:var(--red)}
+.fine{font-size:10.5px;color:var(--mut);margin:4px 0 0}.fine a{color:var(--red);font-weight:650}
+.mini{position:absolute;left:12px;right:12px;bottom:84px;background:#fff;border-radius:18px;padding:12px;z-index:9;box-shadow:0 8px 28px #0003;transform:translateY(160%);visibility:hidden;transition:transform .3s cubic-bezier(.32,.72,0,1),visibility 0s .3s}.mini.on{transform:none;visibility:visible;transition:transform .3s cubic-bezier(.32,.72,0,1)}
+.mini h4{margin:0 0 2px;font-size:14px}.mini p{margin:0 0 10px;font-size:12px;color:var(--mut);line-height:1.4}.mini .row{display:flex;gap:8px;align-items:center}.mini .btn{min-height:38px;font-size:13px;width:auto;flex:1}.mini .lnk{min-height:38px}
+.toast{position:absolute;left:50%;top:14px;transform:translate(-50%,-80px);background:#15171b;color:#fff;font-size:12px;padding:8px 14px;border-radius:16px;z-index:12;transition:transform .3s;white-space:nowrap}.toast.on{transform:translate(-50%,0)}
+.replay{display:block;margin:10px auto 0;font-size:12px;font-weight:650;padding:8px 14px;border-radius:14px;background:#fff;color:var(--fg);border:1px solid var(--bd);text-align:center}
+</style></head><body>
+<div class="top"><h1>Persetujuan satu ketukan — versi simpel</h1><p>Muncul sekali setelah login atau daftar. Satu tombol "Setuju", pilihan terperinci disimpan di "Atur pilihan" dan Profil › Privasi.</p>
+<div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-o="0">1 · Sheet polos</button><button role="tab" aria-selected="false" data-o="1">2 · Sheet + chip</button><button role="tab" aria-selected="false" data-o="2">3 · Kartu kecil</button></div></div>
+<div class="note" id="note"></div>
+<div class="phone" id="phone"></div>
+<button class="replay" id="replay">↻ Ulangi simulasi setelah login</button>
+<script>
+const $=id=>document.getElementById(id);
+const N=['<b>1 · Sheet polos.</b> Satu ikon, satu judul, satu kalimat. Dua aksi: "Setuju" dan "Nanti saja", dengan tautan kecil "Atur pilihan". Paling bersih.','<b>2 · Sheet + chip.</b> Sama seperti 1, ditambah tiga chip yang menyebut hal yang terbuka (Feeds, Travo AI, Saran) tanpa penjelasan panjang. Cukup informatif tanpa daftar.','<b>3 · Kartu kecil.</b> Bukan sheet: kartu pendek melayang di atas tab bar, layar tetap bisa dipakai. Paling tidak mengganggu, tetapi mudah terlewat.'];
+let st={o:0,view:'ask'};
+const fine=`<p class="fine">Ubah kapan saja di Profil › Privasi · <a href="#">Kebijakan privasi</a></p>`;
+const lead='Boleh kami memakai datamu untuk fitur komunitas dan asisten supaya pengalamanmu lebih pas?';
+const S1=()=>`<div class="grab"></div><div class="badge">🤝</div><h3>Biar Djiwa makin pas buat kamu</h3><p class="lead">${lead}</p><button class="btn pri" data-act="ok">Setuju</button><div class="two"><button class="lnk" data-act="later">Nanti saja</button><button class="lnk r" data-act="set">Atur pilihan</button></div>${fine}`;
+const S2=()=>`<div class="grab"></div><div class="badge">🤝</div><h3>Biar Djiwa makin pas buat kamu</h3><p class="lead">Boleh kami memakai datamu agar ini terbuka untukmu?</p><div class="chips"><i>👥 Feeds</i><i>🤖 Travo AI</i><i>✨ Saran pribadi</i></div><button class="btn pri" data-act="ok">Setuju</button><div class="two"><button class="lnk" data-act="later">Nanti saja</button><button class="lnk r" data-act="set">Atur pilihan</button></div>${fine}`;
+const M=()=>`<h4>Aktifkan Feeds dan saran pribadi?</h4><p>Boleh kami memakai datamu untuk fitur komunitas dan asisten Travo.</p><div class="row"><button class="btn pri" data-act="ok">Setuju</button><button class="lnk" data-act="later">Nanti</button><button class="lnk" style="color:var(--red)" data-act="set">Atur</button></div>`;
+const base=`<div class="pg"><div class="brand">DJIWA TRAVEL</div><h2 class="t">Explore</h2><div class="search">⌕ Cari Singapura</div><div class="card"><div class="skel" style="width:40%"></div><div class="skel"></div><div class="skel" style="width:80%"></div></div><div class="card"><div class="skel" style="width:55%"></div><div class="skel"></div></div></div><div class="tab"><span>Beranda</span><span class="on">Jelajah</span><span>Perjalanan</span><span>Dompet</span><span>Profil</span></div>`;
+function render(){const ph=$('phone');const on=st.view==='ask';const sheet=st.o<2;
+ ph.innerHTML=base+`<div class="scrim ${on&&sheet?'on':''}"></div><div class="sheet ${on&&sheet?'on':''}" role="dialog" aria-modal="true">${on&&sheet?(st.o==0?S1():S2()):''}</div><div class="mini ${on&&!sheet?'on':''}" role="dialog">${!sheet?M():''}</div><div class="toast" id="toast"></div>`;
+ ph.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>act(b.dataset.act));}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e&&e.classList.remove('on'),2200)}
+function act(a){st.view='done';render();toast(a=='ok'?'Terima kasih! Tersimpan':a=='later'?'Kami tanya lagi 7 hari lagi':'Membuka Profil › Privasi…')}
+function reset(){st.view='ask';render()}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{st.o=+b.dataset.o;document.querySelectorAll('.tabs button').forEach((x,j)=>x.setAttribute('aria-selected',j==st.o));$('note').innerHTML=N[st.o];reset()});
+$('replay').onclick=reset;$('note').innerHTML=N[0];render();
+</script></body></html>

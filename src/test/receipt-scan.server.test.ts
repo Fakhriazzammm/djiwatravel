@@ -11,6 +11,8 @@ import {
 
 vi.mock("@/db/client.server", () => ({ pool: { query: vi.fn(), connect: vi.fn() } }));
 vi.mock("@/lib/admin-guard", () => ({ requireAdmin: vi.fn() }));
+const consent = vi.hoisted(() => ({ block: null as string | null }));
+vi.mock("@/lib/consent.server", () => ({ consentBlock: async () => consent.block }));
 vi.mock("@/lib/admin-guard.server", () => ({
   getAdminEmailHandler: vi.fn(async () => "admin@x.test"),
 }));
@@ -85,6 +87,7 @@ beforeEach(() => {
   config = null;
   used = 0;
   sql = [];
+  consent.block = null;
   wireDb();
   vi.stubEnv("HELIPOD_AI_KEY", "hel_ai_test");
 });
@@ -94,6 +97,15 @@ afterEach(() => {
 });
 
 describe("scanReceipt", () => {
+  it("does not read the photo until the member agreed to the AI helper", async () => {
+    consent.block =
+      "Aktifkan “Asisten Travo (AI)” di Profil › Privasi & data untuk memakai fitur ini.";
+    expect(await scanReceipt({ userId: USER, tripId: TRIP, bytes: JPEG })).toMatchObject({
+      ok: false,
+      code: "consent",
+    });
+  });
+
   it("stays unavailable without the AI key or when Admin turns it off", async () => {
     vi.stubEnv("HELIPOD_AI_KEY", "");
     expect(await scanReceipt({ userId: USER, tripId: TRIP, bytes: JPEG })).toMatchObject({

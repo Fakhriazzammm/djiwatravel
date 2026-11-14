@@ -1,3 +1,4 @@
+import { consentBlock } from "./consent.server";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { pool } from "../db/client.server";
@@ -809,6 +810,10 @@ async function runTurn(
 ): Promise<AssistantSendResult> {
   const owner = await resolveTripOwner();
   if (!owner) throw new Error("Autentikasi diperlukan");
+  if (!owner.guest) {
+    const blockedBy = await consentBlock(owner.id, "ai");
+    if (blockedBy) return { status: "error", message: blockedBy, remaining: 0 };
+  }
   const conv = await resolveConversation(owner, data);
   const tripId = conv.tripId;
   if (tripId) await ownedTripRow(tripId, owner.id);

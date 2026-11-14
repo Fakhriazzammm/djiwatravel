@@ -1,3 +1,4 @@
+import { consentBlock } from "./consent.server";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { pool } from "../db/client.server";
@@ -485,6 +486,8 @@ export async function getPlaceIdeas(
   const { config } = await readPlaceIdeasConfig();
   if (!config.enabled || !placeIdeasConfigured())
     return { status: "disabled", message: "Ide tempat sedang tidak tersedia.", remaining: 0 };
+  const consentMessage = await consentBlock(userId, "ai");
+  if (consentMessage) return { status: "disabled", message: consentMessage, remaining: 0 };
   const destination = await ownedTrip(input.tripId, userId);
   if (!destination)
     return {

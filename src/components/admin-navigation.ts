@@ -102,6 +102,7 @@ export const adminNavigationGroups = [
     label: "Sistem",
     items: [
       ["Tim & Akses", "/admin/team", UserRound],
+      ["Privasi", "/admin/privasi", ShieldCheck],
       adminNavigation[13],
       ["PWA", "/admin/settings#pwa", Settings],
       ["Status Integrasi", "/admin/settings", Settings],

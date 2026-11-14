@@ -1,3 +1,4 @@
+import { hasConsent } from "./consent.server";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { pool } from "../db/client.server";
@@ -124,7 +125,7 @@ export async function buildTravoGuide(
       const block = buildGuideBlock(agent, selectSkills(docs, ctx));
       if (block) parts.push(block);
     }
-    if (flags.memory && !owner.guest) {
+    if (flags.memory && !owner.guest && (await hasConsent(owner.id, "personalization"))) {
       const block = buildMemoryBlock(await listMemory(owner.id));
       if (block) parts.push(block);
     }

@@ -93,6 +93,13 @@ describeDb("feeds against a real database", () => {
     await pool.query(
       "delete from admin_audit_logs where action like 'feeds.%' or entity_id = 'feeds'",
     );
+    // Posting and commenting need "community"; every test user has agreed unless a test says otherwise.
+    await pool.query("truncate customer_data_consents, customer_consent_prompts");
+    await pool.query(
+      `insert into customer_data_consents (customer_auth_subject, purpose, granted, policy_version, source)
+       select s, 'community', true, 'test', 'settings'
+         from unnest(array['u-rani','u-dimas','u-lain']) s`,
+    );
     server.setGuideSyncClock(Date.now());
     holder.notifications.length = 0;
     holder.agenda.length = 0;
@@ -505,5 +512,84 @@ describeDb("feeds against a real database", () => {
       kind: "titip",
     });
     expect(made.post.kind).toBe("titip");
+  });
+
+  it("posting and commenting wait for the Komunitas consent; withdrawing hides posts, agreeing again restores them", async () => {
+    const consent = await import("@/lib/consent.server");
+    as("u-rani");
+    const made = await post("Tips dari Rani");
+    await pool.query("update feed_posts set status='PUBLISHED', published_at=now() where id=$1", [
+      made.post.id,
+    ]);
+
+    await pool.query("delete from customer_data_consents where customer_auth_subject='u-rani'");
+    await expect(post("Tanpa izin")).rejects.toThrow(/Komunitas/);
+    await expect(
+      server.addFeedCommentHandler({ data: { postId: made.post.id, body: "halo" } }),
+    ).rejects.toThrow(/Komunitas/);
+    expect((await server.getFeedsStatusHandler()).communityConsent).toBe(false);
+
+    await consent.saveMyConsentHandler({
+      data: { purposes: { community: true }, source: "just_in_time" },
+    });
+    expect((await server.getFeedsStatusHandler()).communityConsent).toBe(true);
+    await expect(post("Dengan izin")).resolves.toBeDefined();
+
+    await consent.saveMyConsentHandler({
+      data: { purposes: { community: false }, source: "settings" },
+    });
+    expect(
+      (await server.listFeedHandler({ data: { limit: 10 } })).posts.map((p) => p.id),
+    ).not.toContain(made.post.id);
+    await consent.saveMyConsentHandler({
+      data: { purposes: { community: true }, source: "settings" },
+    });
+    expect(
+      (await server.listFeedHandler({ data: { limit: 10 } })).posts.map((p) => p.id),
+    ).toContain(made.post.id);
+  });
+
+  it("records each change once, snoozes the prompt, and Admin sees counts without identities", async () => {
+    const consent = await import("@/lib/consent.server");
+    as("u-newbie");
+    let state = await consent.readConsentState("u-newbie");
+    expect(state).toMatchObject({ needsPrompt: true, answered: false });
+    expect(state.purposes).toEqual({
+      community: false,
+      ai: false,
+      personalization: false,
+      promo: false,
+    });
+
+    state = await consent.snoozeConsentPromptHandler();
+    expect(state.needsPrompt).toBe(false);
+    expect(state.snoozedUntil).not.toBeNull();
+
+    await consent.saveMyConsentHandler({
+      data: { purposes: { community: true, ai: true, personalization: true }, source: "prompt" },
+    });
+    // The same answer again writes nothing new.
+    await consent.saveMyConsentHandler({
+      data: { purposes: { community: true, ai: true }, source: "settings" },
+    });
+    const rows = await pool.query(
+      "select purpose, granted, source from customer_data_consents where customer_auth_subject='u-newbie' order by purpose",
+    );
+    expect(rows.rows).toEqual([
+      { purpose: "ai", granted: true, source: "prompt" },
+      { purpose: "community", granted: true, source: "prompt" },
+      { purpose: "personalization", granted: true, source: "prompt" },
+    ]);
+    state = await consent.readConsentState("u-newbie");
+    expect(state).toMatchObject({ answered: true, needsPrompt: false });
+    expect(await consent.hasConsent("u-newbie", "ai")).toBe(true);
+    expect(await consent.hasConsent("u-newbie", "promo")).toBe(false);
+    await expect(consent.assertConsent("u-newbie", "promo")).rejects.toThrow(/Kabar & promo/);
+    expect(await consent.consentBlock("u-newbie", "ai")).toBeNull();
+
+    const admin = await consent.getAdminConsentHandler();
+    expect(admin.purposes.find((p) => p.purpose === "ai")?.granted).toBeGreaterThanOrEqual(1);
+    expect(JSON.stringify(admin)).not.toContain("u-newbie");
+    expect(admin.prompts.answered).toBeGreaterThanOrEqual(1);
   });
 });
