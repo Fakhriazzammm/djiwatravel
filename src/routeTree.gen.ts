@@ -92,6 +92,7 @@ import { Route as RefundOrderRouteImport } from './routes/refund.$order'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as TitipBelanjaIndexRouteImport } from './routes/titip-belanja.index'
 import { Route as WalletPayRouteImport } from './routes/wallet.pay'
+import { Route as AdminCustomerIdRouteImport } from './routes/admin.customer.$id'
 import { Route as AdminOrdersIdRouteImport } from './routes/admin.orders.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiDjiwaPayBridgeRouteImport } from './routes/api.djiwa-pay.bridge'
@@ -537,6 +538,11 @@ const WalletPayRoute = WalletPayRouteImport.update({
   path: '/pay',
   getParentRoute: () => WalletRoute,
 } as any)
+const AdminCustomerIdRoute = AdminCustomerIdRouteImport.update({
+  id: '/admin/customer/$id',
+  path: '/admin/customer/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminOrdersIdRoute = AdminOrdersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -769,6 +775,7 @@ export interface FileRoutesByFullPath {
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
   '/titip-belanja/': typeof TitipBelanjaIndexRoute
+  '/admin/customer/$id': typeof AdminCustomerIdRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
@@ -882,6 +889,7 @@ export interface FileRoutesByTo {
   '/my-trips': typeof MyTripsIndexRoute
   '/panduan': typeof PanduanIndexRoute
   '/titip-belanja': typeof TitipBelanjaIndexRoute
+  '/admin/customer/$id': typeof AdminCustomerIdRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
@@ -996,6 +1004,7 @@ export interface FileRoutesById {
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
   '/titip-belanja/': typeof TitipBelanjaIndexRoute
+  '/admin/customer/$id': typeof AdminCustomerIdRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/djiwa-pay/bridge': typeof ApiDjiwaPayBridgeRoute
@@ -1111,6 +1120,7 @@ export interface FileRouteTypes {
     | '/my-trips/'
     | '/panduan/'
     | '/titip-belanja/'
+    | '/admin/customer/$id'
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/bridge'
@@ -1224,6 +1234,7 @@ export interface FileRouteTypes {
     | '/my-trips'
     | '/panduan'
     | '/titip-belanja'
+    | '/admin/customer/$id'
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/bridge'
@@ -1337,6 +1348,7 @@ export interface FileRouteTypes {
     | '/my-trips/'
     | '/panduan/'
     | '/titip-belanja/'
+    | '/admin/customer/$id'
     | '/admin/orders/$id'
     | '/api/auth/$'
     | '/api/djiwa-pay/bridge'
@@ -1448,6 +1460,7 @@ export interface RootRouteChildren {
   MyTripsIndexRoute: typeof MyTripsIndexRoute
   PanduanIndexRoute: typeof PanduanIndexRoute
   TitipBelanjaIndexRoute: typeof TitipBelanjaIndexRoute
+  AdminCustomerIdRoute: typeof AdminCustomerIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiDjiwaPayBridgeRoute: typeof ApiDjiwaPayBridgeRoute
   ApiDjiwaPayTopupRoute: typeof ApiDjiwaPayTopupRoute
@@ -2057,6 +2070,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalletPayRouteImport
       parentRoute: typeof WalletRoute
     }
+    '/admin/customer/$id': {
+      id: '/admin/customer/$id'
+      path: '/admin/customer/$id'
+      fullPath: '/admin/customer/$id'
+      preLoaderRoute: typeof AdminCustomerIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/orders/$id': {
       id: '/admin/orders/$id'
       path: '/$id'
@@ -2389,6 +2409,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyTripsIndexRoute: MyTripsIndexRoute,
   PanduanIndexRoute: PanduanIndexRoute,
   TitipBelanjaIndexRoute: TitipBelanjaIndexRoute,
+  AdminCustomerIdRoute: AdminCustomerIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiDjiwaPayBridgeRoute: ApiDjiwaPayBridgeRoute,
   ApiDjiwaPayTopupRoute: ApiDjiwaPayTopupRoute,

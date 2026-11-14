@@ -1,5 +1,5 @@
 import { Search, UsersRound } from "lucide-react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminCustomers } from "@/lib/admin-customers.fn";
@@ -58,13 +58,13 @@ function AdminCustomers() {
   return (
     <AdminShell
       title="Customers"
-      subtitle="Semua orang yang dikenal sistem: member (dengan atau tanpa profil) dan tamu. Kontak tetap ter-mask."
+      subtitle="Semua orang yang dikenal sistem: member (dengan atau tanpa profil) dan tamu. Ketuk satu untuk melihat semua datanya."
     >
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <SectionHeading
             title="Customer"
-            detail="Email, WhatsApp, dan akun tidak pernah ditampilkan utuh."
+            detail="Data kontak ditampilkan utuh; membuka detail tercatat di audit log."
           />
           <StatusPill tone={total ? "good" : "neutral"}>
             {rows.length} dari {total} tampil
@@ -116,7 +116,12 @@ function AdminCustomers() {
           ) : (
             <div className="divide-y divide-border">
               {rows.map((customer) => (
-                <article key={customer.ref} className="flex flex-wrap items-center gap-3 py-3">
+                <Link
+                  key={customer.ref}
+                  to="/admin/customer/$id"
+                  params={{ id: customer.id }}
+                  className="flex flex-wrap items-center gap-3 py-3 hover:bg-secondary/40"
+                >
                   <span className="rounded-xl bg-secondary p-2">
                     <UsersRound className="size-4 text-brand-red" />
                   </span>
@@ -150,7 +155,7 @@ function AdminCustomers() {
                       </p>
                     )}
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           )}

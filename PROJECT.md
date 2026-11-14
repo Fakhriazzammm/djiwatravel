@@ -207,9 +207,16 @@ system knows, not only `customer_profiles`: members (a profile or any activity i
 orders, trips, Titip Belanja, Feeds or data consents, so a member who never filled
 the profile still shows as "Profil belum lengkap") and guests (orders without an
 account, grouped by `guest_order_access.email`). Seed and `system:` Feeds authors are
-excluded. Search, a Semua/Member/Tamu/Tanpa profil filter with counts, and paging up
-to 200; e-mail and WhatsApp are masked and the auth subject is never returned (a
-hashed `#ref` identifies a row). Read-only.
+excluded. Search (name, e-mail, WhatsApp), a Semua/Member/Tamu/Tanpa profil filter with
+counts, and paging up to 200. **E-mail and WhatsApp are shown in full** (an owner
+decision; the older masking helpers stay in use on the Orders pages). A member
+without a profile shows the contact left on their latest order. Tapping a row opens
+`/admin/customer/$id` (`getAdminCustomerDetail`): contact, account id, profile
+(nationality, birth date, gender), eSIM orders, trips, Titip Belanja orders with
+recipient details, Feeds posts and counts, and the latest data-consent answers.
+Opening a detail page writes `customer.view` to `admin_audit_logs` (actor e-mail and a
+hashed customer reference, never the raw account id). Read-only; never shows tokens,
+payment secrets or eSIM codes.
 
 Tests are under [`src/test/`](src/test/), with server, route-auth, wallet,
 Calendar, profile, and UI coverage. `routeTree.gen.ts` and build output are
