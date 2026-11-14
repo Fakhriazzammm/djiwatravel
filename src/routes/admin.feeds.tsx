@@ -247,6 +247,8 @@ function PostCard({
         <span className="text-muted-foreground">akun #{post.authorRef}</span>
         <StatusPill tone={statusTone(post.status)}>{FEED_STATUS_LABEL[post.status]}</StatusPill>
         <StatusPill>{FEED_KIND_LABEL[post.kind]}</StatusPill>
+        {post.source === "seed" && <StatusPill tone="warn">Contoh (bukan akun asli)</StatusPill>}
+        {post.source === "guide" && <StatusPill>Travo Guide</StatusPill>}
         {post.banned && <StatusPill tone="danger">Diblokir</StatusPill>}
         {post.flag && (
           <StatusPill tone="warn">

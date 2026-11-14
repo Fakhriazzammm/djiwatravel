@@ -93,6 +93,7 @@ describeDb("feeds against a real database", () => {
     await pool.query(
       "delete from admin_audit_logs where action like 'feeds.%' or entity_id = 'feeds'",
     );
+    server.setGuideSyncClock(Date.now());
     holder.notifications.length = 0;
     holder.agenda.length = 0;
     as("u-rani");
@@ -393,5 +394,38 @@ describeDb("feeds against a real database", () => {
       "select count(*)::int as n from admin_audit_logs where entity_id='feeds' and action='settings.change'",
     );
     expect(audit.rows[0].n).toBeGreaterThanOrEqual(2);
+  });
+
+  it("publishes every guide once as Travo Guide, never notifies synthetic authors", async () => {
+    server.setGuideSyncClock(0);
+    const first = await server.listFeedHandler({ data: { limit: 30 } });
+    const { travelGuides } = await import("@/lib/travel-guides");
+    const due = travelGuides.filter((g) => g.publishedAt <= new Date().toISOString().slice(0, 10));
+    const guides = first.posts.filter((p) => p.source === "guide");
+    expect(guides).toHaveLength(due.length);
+    expect(guides[0]).toMatchObject({ authorName: "Travo Guide", mine: false });
+    expect(guides[0]?.linkPath).toMatch(/^\/panduan\//);
+
+    server.setGuideSyncClock(0);
+    await server.listFeedHandler({ data: { limit: 30 } });
+    const count = await pool.query(
+      "select count(*)::int as n from feed_posts where source='guide'",
+    );
+    expect(count.rows[0].n).toBe(due.length);
+
+    await server.addFeedCommentHandler({ data: { postId: guides[0]!.id, body: "Terima kasih!" } });
+    expect(holder.notifications).toHaveLength(0);
+  });
+
+  it("migration 070 ships seven example posts that Admin can recognise", async () => {
+    // The migration seeds rows with fixed ids; truncate in beforeEach removed them, so re-run it.
+    const fs = await import("node:fs");
+    await pool.query(fs.readFileSync("migrations/070_feeds_sources.sql", "utf8"));
+    const rows = await pool.query(
+      "select count(*)::int as n from feed_posts where source='seed' and status='PUBLISHED'",
+    );
+    expect(rows.rows[0].n).toBe(7);
+    const admin = await server.getAdminFeedsHandler();
+    expect(JSON.stringify(admin)).toContain('"source":"seed"');
   });
 });

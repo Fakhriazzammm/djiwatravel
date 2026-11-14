@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Heart, MapPin, MessageCircle } from "lucide-react";
+import { ChevronRight, Heart, MapPin, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { toggleFeedLike } from "@/lib/feeds.fn";
 import {
@@ -12,11 +12,11 @@ import {
 import { destinationLabel, useRequireSignIn } from "./feed-helpers";
 import { FeedSaveSheet } from "./feed-sheets";
 
-export function FeedAvatar({ name }: { name: string }) {
+export function FeedAvatar({ name, guide = false }: { name: string; guide?: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-red-soft text-[12px] font-bold text-brand-red"
+      className={`flex size-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${guide ? "bg-brand-red text-white" : "bg-brand-red-soft text-brand-red"}`}
     >
       {name.charAt(0).toUpperCase()}
     </span>
@@ -63,7 +63,7 @@ export function FeedCard({
       aria-label={`Postingan ${post.authorName}`}
     >
       <div className="flex items-center gap-2">
-        <FeedAvatar name={post.authorName} />
+        <FeedAvatar name={post.authorName} guide={post.source === "guide"} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold">
             {post.authorName}
@@ -98,11 +98,21 @@ export function FeedCard({
       {post.photoUrl && (
         <img
           src={post.photoUrl}
-          alt="Foto dari traveler"
+          alt={post.source === "guide" ? "" : "Foto dari traveler"}
           loading="lazy"
           decoding="async"
           className={`mt-2 w-full rounded-xl bg-secondary object-cover ${detail ? "max-h-96" : "max-h-64"}`}
         />
+      )}
+      {post.linkPath && (
+        <a
+          href={post.linkPath}
+          className="tap mt-2 flex min-h-10 items-center gap-2 rounded-xl bg-secondary px-3 text-[12px] font-semibold"
+        >
+          <span className="min-w-0 flex-1 truncate">{post.linkLabel ?? "Baca selengkapnya"}</span>
+          <span className="shrink-0 text-brand-red">Baca</span>
+          <ChevronRight className="size-4 shrink-0 text-brand-red" aria-hidden="true" />
+        </a>
       )}
       {post.placeName && (
         <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">

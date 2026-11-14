@@ -13,6 +13,9 @@ export const FEED_KIND_LABEL: Record<FeedKind, string> = {
   tanya: "Tanya",
 };
 
+export const GUIDE_AUTHOR_NAME = "Travo Guide";
+export const GUIDE_AUTHOR_SUBJECT = "system:travo-guide";
+
 export const FEED_BODY_MAX = 500;
 export const FEED_COMMENT_MAX = 300;
 export const FEED_PLACE_MAX = 80;
@@ -199,6 +202,10 @@ export type FeedPostView = {
   destinationCode: string | null;
   placeName: string | null;
   photoUrl: string | null;
+  /** "guide" posts come from Travo Guide and carry a link card; "seed" posts are example content. */
+  source: "member" | "seed" | "guide";
+  linkPath: string | null;
+  linkLabel: string | null;
   status: FeedStatus;
   likeCount: number;
   commentCount: number;

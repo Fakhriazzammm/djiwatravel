@@ -9,6 +9,8 @@ import { readCustomerProfile } from "./customer-profile.server";
 import {
   FEEDS_SETTING_KEY,
   FEED_BODY_MAX,
+  GUIDE_AUTHOR_NAME,
+  GUIDE_AUTHOR_SUBJECT,
   FEED_COMMENT_MAX,
   FEED_KINDS,
   FEED_PLACE_MAX,
@@ -27,6 +29,7 @@ import {
 } from "./feeds";
 import { addItineraryItem } from "./my-trips.server";
 import { createCustomerNotification } from "./push.server";
+import { travelGuides } from "./travel-guides";
 
 /* ------------------------------------------------------------------ config */
 
@@ -100,6 +103,44 @@ export async function getFeedsStatusHandler(): Promise<FeedsStatus> {
   };
 }
 
+/** Seed and Travo Guide posts have no real account behind them: never notify them. */
+const isSyntheticSubject = (subject: string) =>
+  subject.startsWith("seed:") || subject.startsWith("system:");
+
+let guideSyncedAt = 0;
+
+/** Tests only: pin (Date.now()) or clear (0) the throttle so guide sync runs when expected. */
+export function setGuideSyncClock(value: number) {
+  guideSyncedAt = value;
+}
+
+/** Turns every published guide into a "Travo Guide" post once (idempotent, at most every 10 minutes). */
+export async function syncGuidePosts() {
+  if (Date.now() - guideSyncedAt < 10 * 60_000) return;
+  guideSyncedAt = Date.now();
+  const today = new Date().toISOString().slice(0, 10);
+  for (const guide of travelGuides) {
+    if (guide.publishedAt > today) continue;
+    await pool
+      .query(
+        `insert into feed_posts (customer_auth_subject, author_name, source, kind, body, link_path, link_label,
+                               image_url, status, created_at, published_at)
+       values ($1, $2, 'guide', 'tips', $3, $4, $5, $6, 'PUBLISHED', $7::timestamptz, $7::timestamptz)
+       on conflict (link_path) where source = 'guide' do nothing`,
+        [
+          GUIDE_AUTHOR_SUBJECT,
+          GUIDE_AUTHOR_NAME,
+          guide.description.slice(0, FEED_BODY_MAX),
+          `/panduan/${guide.slug}`,
+          guide.title.slice(0, 160),
+          guide.image ?? null,
+          `${guide.publishedAt}T09:00:00+07:00`,
+        ],
+      )
+      .catch(() => undefined);
+  }
+}
+
 /* ------------------------------------------------------------------ mapping */
 
 type PostRow = {
@@ -111,6 +152,10 @@ type PostRow = {
   destination_code: string | null;
   place_name: string | null;
   photo_mime: string | null;
+  source: FeedPostView["source"];
+  link_path: string | null;
+  link_label: string | null;
+  image_url: string | null;
   status: FeedStatus;
   like_count: number;
   comment_count: number;
@@ -119,8 +164,8 @@ type PostRow = {
   liked?: boolean | null;
 };
 
-const photoUrl = (row: Pick<PostRow, "id" | "photo_mime">) =>
-  row.photo_mime ? `/api/feed-photo/${row.id}` : null;
+const photoUrl = (row: Pick<PostRow, "id" | "photo_mime" | "image_url">) =>
+  row.image_url ?? (row.photo_mime ? `/api/feed-photo/${row.id}` : null);
 
 function toPostView(row: PostRow, viewerId: string | null): FeedPostView {
   return {
@@ -132,6 +177,9 @@ function toPostView(row: PostRow, viewerId: string | null): FeedPostView {
     destinationCode: row.destination_code?.toUpperCase() ?? null,
     placeName: row.place_name,
     photoUrl: photoUrl(row),
+    source: row.source,
+    linkPath: row.link_path,
+    linkLabel: row.link_label,
     status: row.status,
     likeCount: Number(row.like_count),
     commentCount: Number(row.comment_count),
@@ -142,7 +190,7 @@ function toPostView(row: PostRow, viewerId: string | null): FeedPostView {
 }
 
 const POST_COLUMNS = `p.id, p.customer_auth_subject, p.author_name, p.kind, p.body, p.destination_code,
-  p.place_name, p.photo_mime, p.status, p.like_count, p.comment_count, p.created_at, p.published_at`;
+  p.place_name, p.photo_mime, p.source, p.link_path, p.link_label, p.image_url, p.status, p.like_count, p.comment_count, p.created_at, p.published_at`;
 
 /* ------------------------------------------------------------------ list */
 
@@ -168,6 +216,7 @@ export async function listFeedHandler({ data }: { data: ReturnType<typeof feedLi
       facets: [] as { code: string; count: number }[],
     };
   }
+  await syncGuidePosts();
   const user = await optionalViewer();
   const viewerId = user?.id ?? "";
   const [cursorAt, cursorId] = data.cursor ? data.cursor.split("|") : [null, null];
@@ -460,7 +509,10 @@ export async function addFeedCommentHandler({
     [data.postId],
   );
   const row = inserted.rows[0] as { id: string; created_at: Date };
-  if (target.customer_auth_subject !== user.id) {
+  if (
+    target.customer_auth_subject !== user.id &&
+    !isSyntheticSubject(target.customer_auth_subject)
+  ) {
     await createCustomerNotification({
       subject: target.customer_auth_subject,
       type: "feed_comment",
@@ -663,7 +715,8 @@ const adminPostView = (row: AdminPostRow) => ({
   body: row.body,
   destinationCode: row.destination_code?.toUpperCase() ?? null,
   placeName: row.place_name,
-  photoUrl: row.photo_mime ? `/api/feed-photo/${row.id}?admin=1` : null,
+  photoUrl: row.image_url ?? (row.photo_mime ? `/api/feed-photo/${row.id}?admin=1` : null),
+  source: row.source,
   status: row.status,
   statusReason: row.status_reason,
   flag: row.flag,
@@ -759,6 +812,7 @@ async function notifyAuthor(
   body: string,
   postId: string,
 ) {
+  if (isSyntheticSubject(subject)) return;
   await createCustomerNotification({
     subject,
     type: "feed_post",
