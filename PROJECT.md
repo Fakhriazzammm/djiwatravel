@@ -202,6 +202,15 @@ order is READY and its share link is claimed, the owner's `/my-esim/$id` shows
 "Sudah diklaim penerima, belum dipasang" (`owner-share-notice.tsx`, read through
 the owner-scoped `getEsimShareState`) and a "Dibagikan" row in Ringkasan.
 
+Admin Customers (`/admin/customers`, `admin-customers.server.ts`) lists everyone the
+system knows, not only `customer_profiles`: members (a profile or any activity in
+orders, trips, Titip Belanja, Feeds or data consents, so a member who never filled
+the profile still shows as "Profil belum lengkap") and guests (orders without an
+account, grouped by `guest_order_access.email`). Seed and `system:` Feeds authors are
+excluded. Search, a Semua/Member/Tamu/Tanpa profil filter with counts, and paging up
+to 200; e-mail and WhatsApp are masked and the auth subject is never returned (a
+hashed `#ref` identifies a row). Read-only.
+
 Tests are under [`src/test/`](src/test/), with server, route-auth, wallet,
 Calendar, profile, and UI coverage. `routeTree.gen.ts` and build output are
 generated artifacts. Do not hand-edit them to fix a route.
