@@ -195,6 +195,13 @@ opacity animate; reduced motion shows everything at rest (no bob, no confetti,
 instant numbers). The consent prompt stays quiet on `/e/*` so a recipient is
 never interrupted mid-claim.
 
+"Claimed" is not "installed": a claim only saves the eSIM to the recipient's
+account, and the order becomes INSTALLED only when eSIM Access reports the
+profile downloaded onto a phone (`smdpStatus`/`installationTime`). While the
+order is READY and its share link is claimed, the owner's `/my-esim/$id` shows
+"Sudah diklaim penerima, belum dipasang" (`owner-share-notice.tsx`, read through
+the owner-scoped `getEsimShareState`) and a "Dibagikan" row in Ringkasan.
+
 Tests are under [`src/test/`](src/test/), with server, route-auth, wallet,
 Calendar, profile, and UI coverage. `routeTree.gen.ts` and build output are
 generated artifacts. Do not hand-edit them to fix a route.

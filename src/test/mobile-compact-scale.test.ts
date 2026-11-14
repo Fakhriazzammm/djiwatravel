@@ -92,6 +92,7 @@ const COMPACT_PAGES = [
   "src/components/esim-share/share-mascot.tsx",
   "src/components/esim-share/share-motion.tsx",
   "src/components/esim-share/claim-steps.tsx",
+  "src/components/esim-share/owner-share-notice.tsx",
   "src/components/esim-status-badge.tsx",
   "src/components/esim-status-card.tsx",
   "src/components/explore/ai-trip-planner-card.tsx",

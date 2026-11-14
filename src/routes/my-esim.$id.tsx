@@ -15,6 +15,8 @@ import { TravelChecklist } from "@/components/travel-checklist";
 import { TravelUsageCard } from "@/components/travel-usage-card";
 import { TravelSupportDialog } from "@/components/travel-support-dialog";
 import { EsimShareSheet } from "@/components/esim-share-sheet";
+import { OwnerShareNotice } from "@/components/esim-share/owner-share-notice";
+import { useClaimedShareLink } from "@/hooks/use-claimed-share-link";
 import { OfflineSnapshotBanner } from "@/components/offline-snapshot-banner";
 import {
   readTripPlan,
@@ -68,10 +70,17 @@ function Detail() {
   const [snapshot, setSnapshot] = useState<TravelSnapshot | null>(() => readTravelSnapshot(id));
   const [supportOpen, setSupportOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareRefresh, setShareRefresh] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncFailed, setSyncFailed] = useState(false);
   const o = orders?.find(
     (x) => x.id === id && (x.fromMemberAccount === true || hasGuestOrderAccess(id)),
+  );
+
+  const claimedLink = useClaimedShareLink(
+    id,
+    o?.fromMemberAccount === true && o.status !== "INSTALLED",
+    shareRefresh,
   );
 
   // The route parameter can change without remounting, so re-read the device-scoped data.
@@ -223,6 +232,8 @@ function Detail() {
         {cardActions}
       </EsimDetailCard>
 
+      {claimedLink && status === "READY" && <OwnerShareNotice link={claimedLink} />}
+
       <div className="mt-2.5 flex rounded-2xl bg-surface py-2.5" data-testid="esim-detail-stats">
         {[
           ["Paket", quotaLabel],
@@ -248,6 +259,9 @@ function Detail() {
             {[
               ["Destinasi", locationLabel],
               ["Status", ORDER_STATUS_LABEL[status]],
+              ...(claimedLink && status === "READY"
+                ? [["Dibagikan", "Diklaim, belum dipasang"]]
+                : []),
               ...(o.publicOrderCode ? [["Kode pesanan", o.publicOrderCode]] : []),
             ].map(([k, v]) => (
               <div key={k} className={row}>
@@ -355,7 +369,10 @@ function Detail() {
         orderId={o.id}
         packageName={packageName}
         open={shareOpen}
-        onClose={() => setShareOpen(false)}
+        onClose={() => {
+          setShareOpen(false);
+          setShareRefresh((value) => value + 1);
+        }}
       />
       <Link to="/my-esim" className="sr-only">
         My eSIM
