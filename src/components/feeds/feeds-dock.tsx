@@ -13,8 +13,8 @@ const items = [
   { id: "home", to: "/", label: "Beranda", icon: Home },
   { id: "feeds", to: "/explore", label: "Feeds", icon: Newspaper },
   { id: "cari", to: "/explore", label: "Cari", icon: Search },
-  { id: "aktivitas", to: "/feeds/aktivitas", label: "Aktivitas", icon: Bell },
-  { id: "aku", to: "/feeds/aku", label: "Aku", icon: User },
+  { id: "aktivitas", to: "/explore/aktivitas", label: "Aktivitas", icon: Bell },
+  { id: "aku", to: "/explore/aku", label: "Aku", icon: User },
 ] as const;
 
 /** Hides while the page scrolls down and comes back on the way up, so reading gets the whole screen. */
@@ -44,9 +44,9 @@ export function FeedsDock() {
   const unread = useFeedsUnread();
   const hidden = useDockHidden();
   const activeId =
-    pathname === "/feeds/aktivitas"
+    pathname === "/explore/aktivitas"
       ? "aktivitas"
-      : pathname === "/feeds/aku"
+      : pathname === "/explore/aku"
         ? "aku"
         : pathname === "/explore" || pathname.startsWith("/feeds")
           ? "feeds"

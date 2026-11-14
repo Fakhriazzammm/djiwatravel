@@ -106,4 +106,21 @@ describe("feeds surfaces", () => {
     // Ownership comes from the verified session, never from the browser.
     expect(server).not.toMatch(/data\.subject|input\.data\.customer/);
   });
+
+  it("uses Explore routes for activity and personal feeds while redirecting old paths", () => {
+    const activity = readFileSync(
+      resolve(process.cwd(), "src/routes/explore.aktivitas.tsx"),
+      "utf8",
+    );
+    const me = readFileSync(resolve(process.cwd(), "src/routes/explore.aku.tsx"), "utf8");
+    const oldActivity = readFileSync(
+      resolve(process.cwd(), "src/routes/feeds.aktivitas.tsx"),
+      "utf8",
+    );
+    const oldMe = readFileSync(resolve(process.cwd(), "src/routes/feeds.aku.tsx"), "utf8");
+    expect(activity).toContain('createFileRoute("/explore/aktivitas")');
+    expect(me).toContain('createFileRoute("/explore/aku")');
+    expect(oldActivity).toContain('redirect({ to: "/explore/aktivitas", replace: true })');
+    expect(oldMe).toContain('redirect({ to: "/explore/aku", replace: true })');
+  });
 });

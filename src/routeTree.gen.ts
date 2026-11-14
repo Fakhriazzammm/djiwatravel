@@ -72,6 +72,8 @@ import { Route as CheckoutIdRouteImport } from './routes/checkout.$id'
 import { Route as DestinationCodeRouteImport } from './routes/destination.$code'
 import { Route as ETokenRouteImport } from './routes/e.$token'
 import { Route as EsimFinderRouteImport } from './routes/esim.finder'
+import { Route as ExploreAktivitasRouteImport } from './routes/explore.aktivitas'
+import { Route as ExploreAkuRouteImport } from './routes/explore.aku'
 import { Route as FeedsIndexRouteImport } from './routes/feeds.index'
 import { Route as FeedsIdRouteImport } from './routes/feeds.$id'
 import { Route as FeedsAktivitasRouteImport } from './routes/feeds.aktivitas'
@@ -435,6 +437,16 @@ const EsimFinderRoute = EsimFinderRouteImport.update({
   path: '/esim/finder',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExploreAktivitasRoute = ExploreAktivitasRouteImport.update({
+  id: '/aktivitas',
+  path: '/aktivitas',
+  getParentRoute: () => ExploreRoute,
+} as any)
+const ExploreAkuRoute = ExploreAkuRouteImport.update({
+  id: '/aku',
+  path: '/aku',
+  getParentRoute: () => ExploreRoute,
+} as any)
 const FeedsIndexRoute = FeedsIndexRouteImport.update({
   id: '/feeds/',
   path: '/feeds/',
@@ -677,7 +689,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/affiliate': typeof AffiliateRoute
   '/catalog': typeof CatalogRoute
-  '/explore': typeof ExploreRoute
+  '/explore': typeof ExploreRouteWithChildren
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/llms.txt': typeof LlmsDottxtRoute
@@ -736,6 +748,8 @@ export interface FileRoutesByFullPath {
   '/destination/$code': typeof DestinationCodeRoute
   '/e/$token': typeof ETokenRoute
   '/esim/finder': typeof EsimFinderRoute
+  '/explore/aktivitas': typeof ExploreAktivitasRoute
+  '/explore/aku': typeof ExploreAkuRoute
   '/feeds/$id': typeof FeedsIdRoute
   '/feeds/aktivitas': typeof FeedsAktivitasRoute
   '/feeds/aku': typeof FeedsAkuRoute
@@ -788,7 +802,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/affiliate': typeof AffiliateRoute
   '/catalog': typeof CatalogRoute
-  '/explore': typeof ExploreRoute
+  '/explore': typeof ExploreRouteWithChildren
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/llms.txt': typeof LlmsDottxtRoute
@@ -847,6 +861,8 @@ export interface FileRoutesByTo {
   '/destination/$code': typeof DestinationCodeRoute
   '/e/$token': typeof ETokenRoute
   '/esim/finder': typeof EsimFinderRoute
+  '/explore/aktivitas': typeof ExploreAktivitasRoute
+  '/explore/aku': typeof ExploreAkuRoute
   '/feeds/$id': typeof FeedsIdRoute
   '/feeds/aktivitas': typeof FeedsAktivitasRoute
   '/feeds/aku': typeof FeedsAkuRoute
@@ -900,7 +916,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/affiliate': typeof AffiliateRoute
   '/catalog': typeof CatalogRoute
-  '/explore': typeof ExploreRoute
+  '/explore': typeof ExploreRouteWithChildren
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
   '/llms.txt': typeof LlmsDottxtRoute
@@ -959,6 +975,8 @@ export interface FileRoutesById {
   '/destination/$code': typeof DestinationCodeRoute
   '/e/$token': typeof ETokenRoute
   '/esim/finder': typeof EsimFinderRoute
+  '/explore/aktivitas': typeof ExploreAktivitasRoute
+  '/explore/aku': typeof ExploreAkuRoute
   '/feeds/$id': typeof FeedsIdRoute
   '/feeds/aktivitas': typeof FeedsAktivitasRoute
   '/feeds/aku': typeof FeedsAkuRoute
@@ -1072,6 +1090,8 @@ export interface FileRouteTypes {
     | '/destination/$code'
     | '/e/$token'
     | '/esim/finder'
+    | '/explore/aktivitas'
+    | '/explore/aku'
     | '/feeds/$id'
     | '/feeds/aktivitas'
     | '/feeds/aku'
@@ -1183,6 +1203,8 @@ export interface FileRouteTypes {
     | '/destination/$code'
     | '/e/$token'
     | '/esim/finder'
+    | '/explore/aktivitas'
+    | '/explore/aku'
     | '/feeds/$id'
     | '/feeds/aktivitas'
     | '/feeds/aku'
@@ -1294,6 +1316,8 @@ export interface FileRouteTypes {
     | '/destination/$code'
     | '/e/$token'
     | '/esim/finder'
+    | '/explore/aktivitas'
+    | '/explore/aku'
     | '/feeds/$id'
     | '/feeds/aktivitas'
     | '/feeds/aku'
@@ -1347,7 +1371,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AffiliateRoute: typeof AffiliateRoute
   CatalogRoute: typeof CatalogRoute
-  ExploreRoute: typeof ExploreRoute
+  ExploreRoute: typeof ExploreRouteWithChildren
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
@@ -1893,6 +1917,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EsimFinderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/explore/aktivitas': {
+      id: '/explore/aktivitas'
+      path: '/aktivitas'
+      fullPath: '/explore/aktivitas'
+      preLoaderRoute: typeof ExploreAktivitasRouteImport
+      parentRoute: typeof ExploreRoute
+    }
+    '/explore/aku': {
+      id: '/explore/aku'
+      path: '/aku'
+      fullPath: '/explore/aku'
+      preLoaderRoute: typeof ExploreAkuRouteImport
+      parentRoute: typeof ExploreRoute
+    }
     '/feeds/': {
       id: '/feeds/'
       path: '/feeds'
@@ -2218,6 +2256,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ExploreRouteChildren {
+  ExploreAktivitasRoute: typeof ExploreAktivitasRoute
+  ExploreAkuRoute: typeof ExploreAkuRoute
+}
+
+const ExploreRouteChildren: ExploreRouteChildren = {
+  ExploreAktivitasRoute: ExploreAktivitasRoute,
+  ExploreAkuRoute: ExploreAkuRoute,
+}
+
+const ExploreRouteWithChildren =
+  ExploreRoute._addFileChildren(ExploreRouteChildren)
+
 interface WalletRouteChildren {
   WalletPayRoute: typeof WalletPayRoute
 }
@@ -2261,7 +2312,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AffiliateRoute: AffiliateRoute,
   CatalogRoute: CatalogRoute,
-  ExploreRoute: ExploreRoute,
+  ExploreRoute: ExploreRouteWithChildren,
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
