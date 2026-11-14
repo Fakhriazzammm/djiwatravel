@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { getCookie, setCookie } from "@tanstack/react-start/server";
+import { getCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { pool } from "../db/client.server";
 import { requireAdmin } from "./admin-guard";
@@ -98,6 +98,7 @@ type ShareRow = OrderStateRow & {
   revoked_at: string | Date | null;
   claimed_at: string | Date | null;
   claim_hash: string | null;
+  claimed_by_subject: string | null;
   view_count: number | string | null;
   last_opened_at: string | Date | null;
 };
@@ -195,7 +196,7 @@ function shareLinkSummary(row: ShareRow, token: string): ShareLinkSummary {
   return {
     token,
     createdAt: toIso(row.share_created_at) ?? "",
-    claimed: Boolean(row.claim_hash),
+    claimed: Boolean(row.claimed_at),
     claimedAt: toIso(row.claimed_at),
     viewCount: Number(row.view_count ?? 0),
     lastOpenedAt: toIso(row.last_opened_at),
@@ -205,7 +206,7 @@ function shareLinkSummary(row: ShareRow, token: string): ShareLinkSummary {
 function adminLinkSummary(row: ShareRow): Omit<ShareLinkSummary, "token"> {
   return {
     createdAt: toIso(row.share_created_at) ?? "",
-    claimed: Boolean(row.claim_hash),
+    claimed: Boolean(row.claimed_at),
     claimedAt: toIso(row.claimed_at),
     viewCount: Number(row.view_count ?? 0),
     lastOpenedAt: toIso(row.last_opened_at),
@@ -268,7 +269,8 @@ async function readShareByToken(token: string) {
        ${ORDER_STATE_CTE}
      )
      select os.*, s.id as share_id, s.token_encrypted, s.created_at as share_created_at,
-            s.revoked_at, s.claimed_at, s.claim_hash, s.view_count, s.last_opened_at
+            s.revoked_at, s.claimed_at, s.claim_hash, s.claimed_by_subject,
+            s.view_count, s.last_opened_at
      from public.esim_share_links s
      join order_state os on os.order_id = s.order_id
      where s.token_hash = $1
@@ -415,18 +417,6 @@ function claimCookieValue(token: string) {
   }
 }
 
-function setClaimCookie(token: string, value: string) {
-  setCookie(claimCookieName(token), value, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env["NODE_ENV"] === "production",
-    path: "/",
-    // The link lives as long as the package; a 30-day cookie would lock a long package out of its
-    // own QR. Eligibility is still re-checked on every read, so an ended package stays closed.
-    maxAge: 60 * 60 * 24 * 365,
-  });
-}
-
 function availablePreview(row: ShareRow, state: ReturnType<typeof orderShareState>) {
   return {
     packageName: state.packageName,
@@ -493,9 +483,22 @@ export async function loadSharedEsim(
   const state = orderShareState(row);
   if (state.eligibility !== "ok") return { state: "unavailable" };
 
-  if (row.claim_hash) {
-    if (!claimValue || !hashesMatch(hashToken(claimValue), row.claim_hash))
+  if (row.claimed_at) {
+    if (row.claimed_by_subject) {
+      let subject: string | null = null;
+      try {
+        subject = (await getAuthenticatedUser()).id;
+      } catch {
+        // A missing or temporarily unreadable session never grants access to account-bound secrets.
+      }
+      if (subject !== row.claimed_by_subject) return { state: "claimed_elsewhere" };
+    } else if (row.claim_hash) {
+      if (!claimValue || !hashesMatch(hashToken(claimValue), row.claim_hash))
+        return { state: "claimed_elsewhere" };
+    } else {
+      // A claim without verified account or legacy cookie proof is malformed; fail closed.
       return { state: "claimed_elsewhere" };
+    }
     // Counting a read is useful for the owner but must never block the QR itself.
     await pool
       .query(
@@ -507,6 +510,8 @@ export async function loadSharedEsim(
       .catch(() => undefined);
     return { state: "open", view: await openView(row) };
   }
+
+  if (row.claimed_by_subject || row.claim_hash) return { state: "claimed_elsewhere" };
 
   return { state: "available", preview: availablePreview(row, state) };
 }
@@ -530,17 +535,16 @@ export async function claimSharedEsimHandler({
 }) {
   const config = await readEsimSharingConfig();
   if (!config.config.enabled) return { state: "unavailable" } as const;
-  const claimValue = randomBytes(32).toString("base64url");
+  const user = await getAuthenticatedUser();
   const claimed = await pool.query(
     `update public.esim_share_links
-     set claimed_at = now(), claim_hash = $2
+     set claimed_at = now(), claimed_by_subject = $2
      where token_hash = $1 and revoked_at is null
-       and claimed_at is null and claim_hash is null
+       and claimed_at is null and claim_hash is null and claimed_by_subject is null
      returning id`,
-    [hashToken(data.token), hashToken(claimValue)],
+    [hashToken(data.token), user.id],
   );
-  if (claimed.rows[0]) setClaimCookie(data.token, claimValue);
-  return loadSharedEsim(data.token, claimed.rows[0] ? claimValue : claimCookieValue(data.token));
+  return loadSharedEsim(data.token);
 }
 
 /* ------------------------------------------------------------------ admin */

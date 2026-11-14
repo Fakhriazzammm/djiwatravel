@@ -40,6 +40,8 @@ const readCookie = vi.mocked(getCookie);
 const writeCookie = vi.mocked(setCookie);
 
 const ownerId = "better-auth-owner";
+const recipientId = "better-auth-recipient";
+const otherRecipientId = "different-recipient";
 const orderId = "11111111-1111-4111-8111-111111111111";
 const token = "a".repeat(32);
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -95,6 +97,7 @@ function shareRow(overrides: Record<string, unknown> = {}) {
     revoked_at: null,
     claimed_at: null,
     claim_hash: null,
+    claimed_by_subject: null,
     view_count: 0,
     last_opened_at: null,
     ...overrides,
@@ -126,7 +129,7 @@ function routeQueries(handlers: {
     if (isSql(sql, "where o.id = $1 and o.customer_auth_subject = $2"))
       return { rows: handlers.owner ? handlers.owner() : [] };
     if (isSql(sql, "where o.id = $1")) return { rows: handlers.admin ? handlers.admin() : [] };
-    if (isSql(sql, "set claimed_at = now(), claim_hash = $2"))
+    if (isSql(sql, "set claimed_at = now(), claimed_by_subject = $2"))
       return { rows: handlers.claim ? handlers.claim(params ?? []) : [] };
     if (isSql(sql, "set revoked_at = now(), revoked_by = $2, revoke_reason = 'owner'"))
       return { rows: handlers.revoke ? handlers.revoke(params ?? []) : [] };
@@ -157,6 +160,9 @@ describe("eSIM share owner contract", () => {
           share_id: "share-1",
           token_encrypted: `enc:${token}`,
           share_created_at: "2026-11-01T00:00:00.000Z",
+          claimed_at: "2026-11-03T00:00:00.000Z",
+          claim_hash: null,
+          claimed_by_subject: recipientId,
         }),
       ],
     });
@@ -165,6 +171,8 @@ describe("eSIM share owner contract", () => {
 
     expect(state).toMatchObject({ enabled: true, eligible: true });
     expect(state.link?.token).toBe(token);
+    expect(state.link?.claimed).toBe(true);
+    expect(state.link).not.toHaveProperty("claimed_by_subject");
     const ownerCall = query.mock.calls.find(([sql]) => isSql(String(sql), "s.id as share_id"));
     expect(ownerCall?.[1]).toEqual([orderId, ownerId]);
   });
@@ -247,6 +255,8 @@ describe("public eSIM share landing", () => {
   beforeEach(() => {
     query.mockReset();
     storedUsage.mockReset();
+    authenticate.mockReset();
+    authenticate.mockResolvedValue({ id: recipientId, email: "recipient@example.test" });
     readCookie.mockReset();
     writeCookie.mockReset();
     readCookie.mockReturnValue(undefined);
@@ -333,15 +343,21 @@ describe("public eSIM share landing", () => {
     await expect(loadSharedEsim(token)).resolves.toEqual({ state: "unavailable" });
   });
 
-  it("claims once, stores only the cookie hash, and sets an HttpOnly cookie", async () => {
-    let storedHash = "";
+  it("claims once for the verified account without creating a browser cookie", async () => {
+    let storedSubject = "";
     routeQueries({
       config: () => [{ value_json: { enabled: true } }],
       claim: (params) => {
-        storedHash = String(params[1] ?? "");
+        storedSubject = String(params[1] ?? "");
         return [{ id: "share-1" }];
       },
-      share: () => [shareRow({ claimed_at: "2026-11-01T01:00:00.000Z", claim_hash: storedHash })],
+      share: () => [
+        shareRow({
+          claimed_at: "2026-11-01T01:00:00.000Z",
+          claimed_by_subject: storedSubject || recipientId,
+          claim_hash: null,
+        }),
+      ],
       touch: () => [],
     });
     storedUsage.mockResolvedValue(new Map());
@@ -349,27 +365,75 @@ describe("public eSIM share landing", () => {
     const landing = await claimSharedEsimHandler({ data: { token } });
 
     expect(landing.state).toBe("open");
-    expect(storedHash).toMatch(/^[0-9a-f]{64}$/);
-    expect(storedHash).not.toBe("a".repeat(64));
-    expect(writeCookie).toHaveBeenCalledOnce();
-    expect(writeCookie.mock.calls[0]?.[0]).toMatch(/^djiwa_esim_share_[0-9a-f]{12}$/);
-    expect(writeCookie.mock.calls[0]?.[2]).toMatchObject({
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-    });
+    expect(storedSubject).toBe(recipientId);
+    expect(writeCookie).not.toHaveBeenCalled();
     const claimCall = query.mock.calls.find(([sql]) =>
-      isSql(String(sql), "set claimed_at = now(), claim_hash = $2"),
+      isSql(String(sql), "set claimed_at = now(), claimed_by_subject = $2"),
     );
-    expect(String(claimCall?.[0])).toContain("claim_hash is null");
+    expect(claimCall?.[1]).toEqual([hash(token), recipientId]);
+    expect(String(claimCall?.[0])).toContain("claimed_at is null");
   });
 
-  it("does not claim a link a second browser opens", async () => {
+  it("opens an account claim in another browser without its original claim cookie", async () => {
+    routeQueries({
+      config: () => [{ value_json: { enabled: true } }],
+      share: () => [
+        shareRow({
+          claimed_at: "2026-11-01T01:00:00.000Z",
+          claimed_by_subject: recipientId,
+          claim_hash: null,
+        }),
+      ],
+      touch: () => [],
+    });
+    storedUsage.mockResolvedValue(new Map());
+
+    const landing = await loadSharedEsim(token);
+
+    expect(landing.state).toBe("open");
+    expect(readCookie).toHaveBeenCalled();
+    expect(storedUsage).toHaveBeenCalledWith(["PO-1"]);
+    expect(writeCookie).not.toHaveBeenCalled();
+  });
+
+  it("does not reveal an account claim to another or signed-out account", async () => {
+    routeQueries({
+      config: () => [{ value_json: { enabled: true } }],
+      share: () => [
+        shareRow({
+          claimed_at: "2026-11-01T01:00:00.000Z",
+          claimed_by_subject: recipientId,
+          claim_hash: null,
+        }),
+      ],
+    });
+    authenticate.mockResolvedValue({ id: otherRecipientId, email: "other@example.test" });
+
+    await expect(loadSharedEsim(token)).resolves.toEqual({ state: "claimed_elsewhere" });
+    authenticate.mockRejectedValue(new Error("Autentikasi diperlukan"));
+    await expect(loadSharedEsim(token)).resolves.toEqual({ state: "claimed_elsewhere" });
+    expect(storedUsage).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for an already-claimed row with no account or legacy cookie proof", async () => {
+    routeQueries({
+      config: () => [{ value_json: { enabled: true } }],
+      share: () => [shareRow({ claimed_at: "2026-11-01T01:00:00.000Z" })],
+    });
+
+    await expect(loadSharedEsim(token)).resolves.toEqual({ state: "claimed_elsewhere" });
+  });
+
+  it("returns the winner state when this account loses the atomic claim race", async () => {
     routeQueries({
       config: () => [{ value_json: { enabled: true } }],
       claim: () => [],
       share: () => [
-        shareRow({ claimed_at: "2026-11-01T01:00:00.000Z", claim_hash: hash("other") }),
+        shareRow({
+          claimed_at: "2026-11-01T01:00:00.000Z",
+          claimed_by_subject: otherRecipientId,
+          claim_hash: null,
+        }),
       ],
     });
 
@@ -397,6 +461,9 @@ describe("admin eSIM share operations", () => {
           share_id: "share-1",
           token_encrypted: `enc:${token}`,
           share_created_at: "2026-11-01T00:00:00.000Z",
+          claimed_at: "2026-11-03T00:00:00.000Z",
+          claim_hash: null,
+          claimed_by_subject: recipientId,
           view_count: 3,
         }),
       ],
@@ -406,7 +473,9 @@ describe("admin eSIM share operations", () => {
 
     expect(state).toMatchObject({ enabled: true, eligible: true });
     expect(state?.link?.viewCount).toBe(3);
+    expect(state?.link?.claimed).toBe(true);
     expect(state?.link).not.toHaveProperty("token");
+    expect(state?.link).not.toHaveProperty("claimed_by_subject");
     const call = query.mock.calls.find(([sql]) => isSql(String(sql), "s.id as share_id"));
     expect(call?.[1]).toEqual([orderId]);
   });
