@@ -212,9 +212,14 @@ export function ServiceShelf() {
             ) : (
               <Icon className="mx-auto size-[26px] text-brand-red" aria-hidden="true" />
             )}
-            <span className="mt-0.5 block line-clamp-1 text-[10.5px] font-semibold leading-tight">
+            <span className="mt-0.5 block whitespace-nowrap text-[10.5px] font-semibold leading-tight">
               {service.label}
             </span>
+            {!href && (
+              <span className="mt-0.5 inline-block rounded-full bg-secondary px-1.5 py-px text-[8px] font-bold uppercase tracking-wide text-muted-foreground">
+                Soon
+              </span>
+            )}
           </>
         );
         const cell = "w-[62px] shrink-0 rounded-xl py-1 text-center";
@@ -231,7 +236,7 @@ export function ServiceShelf() {
             ) : (
               <div
                 aria-label={`${service.label}: ${serviceStatusLabel[service.status]}`}
-                className={`${cell} opacity-50`}
+                className={`${cell} [&>img]:opacity-50 [&>svg]:opacity-50`}
               >
                 {content}
               </div>
