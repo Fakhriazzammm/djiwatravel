@@ -10,7 +10,8 @@ import { CUSTOMER_PROFILE_UPDATED_EVENT, loadCustomerProfile } from "@/lib/custo
 import { isLocalDevelopmentHost } from "@/lib/local-development";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 
-const QUIET_PATHS = ["/admin", "/privacy", "/terms", "/privasi-akun"];
+// "/e" is a shared-eSIM link: the recipient is there to claim and install, never to be asked about data.
+const QUIET_PATHS = ["/admin", "/privacy", "/terms", "/privasi-akun", "/e"];
 
 /**
  * The one-time "Biar Djiwa makin pas buat kamu" sheet after sign-in or registration. It waits for

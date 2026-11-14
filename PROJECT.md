@@ -182,6 +182,19 @@ is the admin kill switch and admin order detail can see claim time/views and
 revoke a link, but never the claimant identity. Never expose the owner, order
 code, price, token, or QR before an authorized claim.
 
+The recipient screens live in `src/components/esim-share/` (`share-views.tsx`
+composes them; `/e/$token` only holds the claim logic): before the claim a
+ticket with Travo (the mascot; tap it for the next tip), regions with flags,
+duration/quota tiles that count up, a tappable Klaim → Pasang → Pakai stepper
+and a claim button; after the claim a drawn check, a one-time confetti and a
+mascot hop when the claim just happened (not on a plain reopen), the stepper
+on step 2, the install panel with the QR, the manual codes behind "Atau
+masukkan manual", the numbers and the days left. Calm states (unavailable,
+claimed elsewhere, check failed) use Travo's thinking pose. Only transform and
+opacity animate; reduced motion shows everything at rest (no bob, no confetti,
+instant numbers). The consent prompt stays quiet on `/e/*` so a recipient is
+never interrupted mid-claim.
+
 Tests are under [`src/test/`](src/test/), with server, route-auth, wallet,
 Calendar, profile, and UI coverage. `routeTree.gen.ts` and build output are
 generated artifacts. Do not hand-edit them to fix a route.

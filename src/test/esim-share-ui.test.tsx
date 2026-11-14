@@ -126,7 +126,7 @@ beforeEach(() => {
 });
 
 describe("shared eSIM recipient experience", () => {
-  it("shows a compact pre-claim preview, account CTA, mascot, and interactive Travo tip", () => {
+  it("shows a compact pre-claim preview, account CTA, mascot, and interactive Travo tips", async () => {
     renderRoute();
 
     expect(screen.getByTestId("shared-esim-preview")).toBeTruthy();
@@ -136,10 +136,37 @@ describe("shared eSIM recipient experience", () => {
       "src",
       "/assets/home-hero/mascot-v6.png",
     );
-    const mascot = screen.getByRole("button", { name: "Tanya Travo" });
-    fireEvent.click(mascot);
-    expect(mascot).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText(/akun yang kamu pakai untuk masuk/i)).toBeTruthy();
+    expect(screen.getByText(/ada esim titipan untukmu/i)).toBeTruthy();
+    // Tapping Travo moves to the next tip.
+    fireEvent.click(screen.getByRole("button", { name: "Tanya Travo" }));
+    expect(await screen.findByText(/akun yang kamu pakai untuk masuk/i)).toBeTruthy();
+  });
+
+  it("shows where the eSIM works and the package numbers before the claim", async () => {
+    renderRoute({
+      state: "available",
+      preview: { ...(preview as { preview: object }).preview, locationCodes: ["JP", "QA"] },
+    } as SharedEsimLanding);
+
+    const regions = screen.getByRole("list", { name: "Wilayah berlaku" });
+    expect(regions).toHaveTextContent("Jepang");
+    expect(regions).toHaveTextContent("QA");
+    expect(screen.getByText("Durasi")).toBeTruthy();
+    expect(screen.getByText("Kuota")).toBeTruthy();
+    // The numbers end on their real values once the count-up has run.
+    expect(await screen.findByText("10.0", {}, { timeout: 3000 })).toBeTruthy();
+  });
+
+  it("walks through Klaim, Pasang and Pakai, and explains each step on tap", async () => {
+    renderRoute();
+
+    const steps = screen.getByRole("group", { name: "Langkah memakai eSIM" });
+    expect(steps).toHaveTextContent(/simpan esim ini ke akun/i);
+    const install = screen.getByRole("button", { name: /Pasang/ });
+    fireEvent.click(install);
+    expect(install).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => expect(steps).toHaveTextContent(/scan qr atau masukkan kodenya/i));
+    expect(screen.getByRole("button", { name: /Klaim$/ })).toHaveAttribute("aria-current", "step");
   });
 
   it("returns Google sign-in to the exact shared link", async () => {
@@ -239,6 +266,22 @@ describe("shared eSIM recipient experience", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Periksa koneksi lalu coba lagi");
     expect(screen.getByRole("button", { name: "Klaim eSIM ini" })).toBeEnabled();
+  });
+
+  it("celebrates a fresh claim: step 2 is current, manual codes open on demand", async () => {
+    state.auth.user = { id: "verified-user" };
+    state.fns.claimSharedEsim.mockResolvedValue(openLanding("account"));
+    renderRoute();
+    fireEvent.click(screen.getByRole("button", { name: "Klaim eSIM ini" }));
+
+    expect(await screen.findByTestId("shared-esim-open")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "eSIM siap dipasang" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Pasang/ })).toHaveAttribute("aria-current", "step");
+    // Step 1 is done; the manual details are collapsed until asked for.
+    expect(screen.queryByTestId("manual-details")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Atau masukkan manual" }));
+    expect(await screen.findByTestId("manual-details")).toBeTruthy();
+    expect(screen.getByRole("img", { name: /maskot djiwa travel/i })).toBeTruthy();
   });
 
   it("uses accurate instructions for legacy browser claims", () => {
