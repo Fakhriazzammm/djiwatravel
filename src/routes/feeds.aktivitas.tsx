@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FeedSkeleton } from "@/components/feeds/feed-timeline";
-import { FeedsFrame } from "@/components/feeds/feeds-dock";
-import { BackBar } from "@/components/shell";
+import { Page, BackBar } from "@/components/shell";
 import { useFeedsStatus } from "@/hooks/use-feeds-status";
 import { FEEDS_UNREAD_EVENT } from "@/hooks/use-feeds-unread";
 import { getFeedActivity, markFeedActivityRead } from "@/lib/feeds.fn";
@@ -55,9 +54,9 @@ function FeedsActivityPage() {
   const shown = (items ?? []).filter((item) => segment === "all" || item.type === segment);
 
   return (
-    <FeedsFrame>
+    <Page>
       <div className="pt-4">
-        <BackBar title="Aktivitas" fallbackTo="/feeds" />
+        <BackBar title="Aktivitas" fallbackTo="/explore" />
       </div>
       {!feeds.loaded || (feeds.enabled && items === null && !failed && signedIn) ? (
         <FeedSkeleton />
@@ -156,6 +155,6 @@ function FeedsActivityPage() {
           </p>
         </>
       )}
-    </FeedsFrame>
+    </Page>
   );
 }

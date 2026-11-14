@@ -76,7 +76,6 @@ import { Route as FeedsIndexRouteImport } from './routes/feeds.index'
 import { Route as FeedsIdRouteImport } from './routes/feeds.$id'
 import { Route as FeedsAktivitasRouteImport } from './routes/feeds.aktivitas'
 import { Route as FeedsAkuRouteImport } from './routes/feeds.aku'
-import { Route as FeedsCariRouteImport } from './routes/feeds.cari'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
 import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as MyTripsIndexRouteImport } from './routes/my-trips.index'
@@ -456,11 +455,6 @@ const FeedsAkuRoute = FeedsAkuRouteImport.update({
   path: '/feeds/aku',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FeedsCariRoute = FeedsCariRouteImport.update({
-  id: '/feeds/cari',
-  path: '/feeds/cari',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const MyEsimIndexRoute = MyEsimIndexRouteImport.update({
   id: '/my-esim/',
   path: '/my-esim/',
@@ -745,7 +739,6 @@ export interface FileRoutesByFullPath {
   '/feeds/$id': typeof FeedsIdRoute
   '/feeds/aktivitas': typeof FeedsAktivitasRoute
   '/feeds/aku': typeof FeedsAkuRoute
-  '/feeds/cari': typeof FeedsCariRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -857,7 +850,6 @@ export interface FileRoutesByTo {
   '/feeds/$id': typeof FeedsIdRoute
   '/feeds/aktivitas': typeof FeedsAktivitasRoute
   '/feeds/aku': typeof FeedsAkuRoute
-  '/feeds/cari': typeof FeedsCariRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -970,7 +962,6 @@ export interface FileRoutesById {
   '/feeds/$id': typeof FeedsIdRoute
   '/feeds/aktivitas': typeof FeedsAktivitasRoute
   '/feeds/aku': typeof FeedsAkuRoute
-  '/feeds/cari': typeof FeedsCariRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -1084,7 +1075,6 @@ export interface FileRouteTypes {
     | '/feeds/$id'
     | '/feeds/aktivitas'
     | '/feeds/aku'
-    | '/feeds/cari'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -1196,7 +1186,6 @@ export interface FileRouteTypes {
     | '/feeds/$id'
     | '/feeds/aktivitas'
     | '/feeds/aku'
-    | '/feeds/cari'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -1308,7 +1297,6 @@ export interface FileRouteTypes {
     | '/feeds/$id'
     | '/feeds/aktivitas'
     | '/feeds/aku'
-    | '/feeds/cari'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -1421,7 +1409,6 @@ export interface RootRouteChildren {
   FeedsIdRoute: typeof FeedsIdRoute
   FeedsAktivitasRoute: typeof FeedsAktivitasRoute
   FeedsAkuRoute: typeof FeedsAkuRoute
-  FeedsCariRoute: typeof FeedsCariRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
   MyTripsTripIdRoute: typeof MyTripsTripIdRouteWithChildren
   MyTripsNewRoute: typeof MyTripsNewRoute
@@ -1934,13 +1921,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedsAkuRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/feeds/cari': {
-      id: '/feeds/cari'
-      path: '/feeds/cari'
-      fullPath: '/feeds/cari'
-      preLoaderRoute: typeof FeedsCariRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/my-esim/': {
       id: '/my-esim/'
       path: '/my-esim'
@@ -2343,7 +2323,6 @@ const rootRouteChildren: RootRouteChildren = {
   FeedsIdRoute: FeedsIdRoute,
   FeedsAktivitasRoute: FeedsAktivitasRoute,
   FeedsAkuRoute: FeedsAkuRoute,
-  FeedsCariRoute: FeedsCariRoute,
   MyEsimIdRoute: MyEsimIdRoute,
   MyTripsTripIdRoute: MyTripsTripIdRouteWithChildren,
   MyTripsNewRoute: MyTripsNewRoute,

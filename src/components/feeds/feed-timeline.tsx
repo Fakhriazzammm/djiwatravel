@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from "react";
 import { FeedCard } from "@/components/feeds/feed-card";
 import type { FeedPostView, FeedsStatus } from "@/lib/feeds";
 
@@ -29,12 +30,15 @@ export function FeedPosts({
   pending,
   status,
   flush = false,
+  promo,
 }: {
   posts: FeedPostView[];
   pending: FeedPostView[];
   status: FeedsStatus;
   /** Edge to edge rows (the Feeds page); otherwise one rounded group (inside Explore). */
   flush?: boolean;
+  /** One extra row (the Djiwa eSIM card) shown after the third post, or last when there are fewer. */
+  promo?: ReactNode;
 }) {
   return (
     <div
@@ -43,8 +47,11 @@ export function FeedPosts({
       {pending.map((post) => (
         <FeedCard key={`p-${post.id}`} post={post} status={status} />
       ))}
-      {posts.map((post) => (
-        <FeedCard key={post.id} post={post} status={status} />
+      {posts.map((post, index) => (
+        <Fragment key={post.id}>
+          <FeedCard post={post} status={status} />
+          {promo && index === Math.min(2, posts.length - 1) ? promo : null}
+        </Fragment>
       ))}
     </div>
   );

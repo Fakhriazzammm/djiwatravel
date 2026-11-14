@@ -4,9 +4,13 @@ import { getFeedsUnreadCount } from "@/lib/feeds.fn";
 export const FEEDS_UNREAD_EVENT = "djiwa:feeds-unread-refresh";
 
 /** The number on the Feeds dock's Aktivitas item: unread comments and decisions on the member's posts. */
-export function useFeedsUnread(): number {
+export function useFeedsUnread(enabled = true): number {
   const [count, setCount] = useState(0);
   useEffect(() => {
+    if (!enabled) {
+      setCount(0);
+      return;
+    }
     let live = true;
     const load = () => {
       if (document.visibilityState === "hidden") return;
@@ -24,6 +28,6 @@ export function useFeedsUnread(): number {
       document.removeEventListener("visibilitychange", load);
       window.removeEventListener(FEEDS_UNREAD_EVENT, load);
     };
-  }, []);
+  }, [enabled]);
   return count;
 }

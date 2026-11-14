@@ -619,6 +619,15 @@ function Profile() {
         </Link>
       </nav>
 
+      <h2 className={capClass}>Feeds</h2>
+      <nav aria-label="Feeds" className={groupClass}>
+        <Link to="/feeds/aku" className={rowClass}>
+          <span className="flex-1">Feeds saya</span>
+          <span className="text-[13px] text-muted-foreground">Post, tersimpan, menunggu</span>
+          <RowChevron />
+        </Link>
+      </nav>
+
       <h2 className={capClass}>Tentang</h2>
       <nav aria-label="Kebijakan" className={groupClass}>
         {[

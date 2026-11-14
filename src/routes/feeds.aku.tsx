@@ -3,8 +3,7 @@ import { useEffect, useState } from "react";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FeedAvatar } from "@/components/feeds/feed-card";
 import { FeedPosts, FeedSkeleton } from "@/components/feeds/feed-timeline";
-import { FeedsFrame } from "@/components/feeds/feeds-dock";
-import { BackBar } from "@/components/shell";
+import { Page, BackBar } from "@/components/shell";
 import { useFeedsStatus } from "@/hooks/use-feeds-status";
 import { getMyFeedProfile } from "@/lib/feeds.fn";
 import { feedAuthorName } from "@/lib/feeds";
@@ -50,15 +49,15 @@ function FeedsMePage() {
         ? profile?.pending
         : profile?.posts;
   const empty = {
-    posts: "Belum ada postingan yang tayang. Tulis yang pertama dari kartu di atas Feeds.",
+    posts: "Belum ada postingan yang tayang. Tulis yang pertama dari kartu di atas Explore.",
     saved: "Belum ada yang disimpan. Ketuk ikon penanda di sebuah postingan untuk menyimpannya.",
     pending: "Tidak ada postingan yang menunggu tinjauan.",
   }[segment];
 
   return (
-    <FeedsFrame>
+    <Page>
       <div className="pt-4">
-        <BackBar title="Aku" fallbackTo="/feeds" />
+        <BackBar title="Aku" fallbackTo="/explore" />
       </div>
       {!feeds.loaded || (feeds.enabled && !profile && !failed) ? (
         <FeedSkeleton />
@@ -147,6 +146,6 @@ function FeedsMePage() {
           </p>
         </>
       ) : null}
-    </FeedsFrame>
+    </Page>
   );
 }

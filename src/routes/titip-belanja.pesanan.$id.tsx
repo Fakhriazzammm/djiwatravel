@@ -122,7 +122,7 @@ function ShopperOrder() {
           </p>
         )}
         {(order.status === "ARRIVED" || order.status === "DELIVERED") && (
-          <Link to="/feeds" search={{ tulis: "titip" }} className={`${btnPrimary} mt-2 w-full`}>
+          <Link to="/explore" search={{ tulis: "titip" }} className={`${btnPrimary} mt-2 w-full`}>
             Bagikan ke Feeds
           </Link>
         )}

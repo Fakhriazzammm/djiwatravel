@@ -8,8 +8,7 @@ import { CustomerAuth } from "@/components/customer-auth";
 import { FeedAvatar, FeedCard } from "@/components/feeds/feed-card";
 import { FeedReportSheet } from "@/components/feeds/feed-sheets";
 import { FeedSkeleton } from "@/components/feeds/feed-timeline";
-import { FeedsFrame } from "@/components/feeds/feeds-dock";
-import { BackBar, glassIconButtonClass } from "@/components/shell";
+import { Page, BackBar, glassIconButtonClass } from "@/components/shell";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useFeedsStatus } from "@/hooks/use-feeds-status";
 import {
@@ -124,7 +123,7 @@ function FeedPostPage() {
     try {
       await deleteFeedPost({ data: { id } });
       toast.success("Postingan dihapus.");
-      void navigate({ to: "/feeds" });
+      void navigate({ to: "/explore" });
     } catch {
       toast.error("Postingan belum bisa dihapus.");
     }
@@ -166,9 +165,9 @@ function FeedPostPage() {
     ) : null;
 
   return (
-    <FeedsFrame>
+    <Page>
       <div className="pt-4">
-        <BackBar title="Postingan" fallbackTo="/feeds" action={action} />
+        <BackBar title="Postingan" fallbackTo="/explore" action={action} />
       </div>
       {state === "loading" || !feeds.loaded ? (
         <FeedSkeleton />
@@ -371,6 +370,6 @@ function FeedPostPage() {
           });
         }}
       />
-    </FeedsFrame>
+    </Page>
   );
 }

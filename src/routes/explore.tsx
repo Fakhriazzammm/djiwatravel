@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { Search, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Search, ChevronRight, Bell, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Page } from "@/components/shell";
 import { SkeletonCards } from "@/components/route-loading";
@@ -12,12 +12,15 @@ import {
 } from "@/components/explore/service-category-grid";
 import { getListableDestinations } from "@/lib/destination-availability.fn";
 import { exploreAvailability } from "@/lib/explore-availability";
-import { FeedComposer } from "@/components/feeds/feed-composer";
-import { FeedPosts, FeedSkeleton } from "@/components/feeds/feed-timeline";
-import { useFeedList } from "@/components/feeds/use-feed-list";
+import { FeedTimelineSection } from "@/components/feeds/feed-timeline-section";
 import { useFeedsStatus } from "@/hooks/use-feeds-status";
+import { useFeedsUnread } from "@/hooks/use-feeds-unread";
+import { getFeed } from "@/lib/feeds.fn";
+import type { FeedPostView } from "@/lib/feeds";
 
 export const Route = createFileRoute("/explore")({
+  validateSearch: (search: Record<string, unknown>): { tulis?: "titip" } =>
+    search["tulis"] === "titip" ? { tulis: "titip" } : {},
   // The resolver reuses the provider cache, handles regional coverage, and falls back to the
   // seeded display list during a transient provider outage. Re-run when returning to Explore so a
   // transient error from another route is never kept as the page's only state.
@@ -64,7 +67,41 @@ function Explore() {
   const [searchFocused, setSearchFocused] = useState(false);
   const reduceMotion = useReducedMotion();
   const feeds = useFeedsStatus();
-  const feedList = useFeedList({ limit: 3, active: feeds.enabled });
+  const searchParams = Route.useSearch();
+  const unread = useFeedsUnread(feeds.enabled);
+  const headRef = useRef<HTMLDivElement>(null);
+  const [headH, setHeadH] = useState(0);
+  const [postHits, setPostHits] = useState<FeedPostView[]>([]);
+
+  // The timeline tabs stick right under Explore's own sticky header, whatever its height.
+  useEffect(() => {
+    const node = headRef.current;
+    if (!feeds.enabled || !node) return;
+    const measure = () => setHeadH(Math.round(node.getBoundingClientRect().height));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [feeds.enabled]);
+
+  // One search for the whole page: destinations and the traveler posts that mention the words.
+  useEffect(() => {
+    const text = q.trim();
+    if (!feeds.enabled || text.length < 2) {
+      setPostHits([]);
+      return;
+    }
+    let live = true;
+    const timer = window.setTimeout(() => {
+      void getFeed({ data: { q: text, limit: 3 } })
+        .then((result) => live && setPostHits(result.posts))
+        .catch(() => live && setPostHits([]));
+    }, 300);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+    };
+  }, [q, feeds.enabled]);
   const [placeholderText, setPlaceholderText] = useState("Cari negara atau kota");
   const res = search(q).filter((destination) =>
     available.destinations.some((item) => item.code === destination.code),
@@ -108,13 +145,41 @@ function Explore() {
   return (
     <Page>
       <div
+        ref={headRef}
         className={feeds.enabled ? "sticky top-0 z-30 -mx-4 bg-background px-4 pb-2" : undefined}
       >
         <header className="pt-4">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-red">
             Djiwa Travel
           </p>
-          <h1 className="mt-1 text-[22px] font-bold leading-tight tracking-tight">Explore</h1>
+          <div className="mt-1 flex items-center justify-between">
+            <h1 className="text-[22px] font-bold leading-tight tracking-tight">Explore</h1>
+            {feeds.enabled && (
+              <div className="flex items-center gap-1.5">
+                <Link
+                  to="/feeds/aktivitas"
+                  aria-label={
+                    unread > 0 ? `Aktivitas Feeds, ${unread} belum dibaca` : "Aktivitas Feeds"
+                  }
+                  className="tap relative flex size-9 items-center justify-center rounded-full bg-surface"
+                >
+                  <Bell className="size-[18px]" aria-hidden="true" />
+                  {unread > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-red px-1 text-[9px] font-bold text-white">
+                      {unread >= 99 ? "99+" : unread}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  to="/feeds/aku"
+                  aria-label="Post dan simpananku"
+                  className="tap flex size-9 items-center justify-center rounded-full bg-surface"
+                >
+                  <User className="size-[18px]" aria-hidden="true" />
+                </Link>
+              </div>
+            )}
+          </div>
           {!feeds.enabled && (
             <p className="mt-2 text-sm text-muted-foreground">Mau pergi ke mana?</p>
           )}
@@ -212,6 +277,27 @@ function Explore() {
                     Tidak ada destinasi yang cocok.
                   </p>
                 )}
+                {postHits.length > 0 && (
+                  <>
+                    <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Post traveler
+                    </p>
+                    {postHits.map((post) => (
+                      <Link
+                        key={post.id}
+                        to="/feeds/$id"
+                        params={{ id: post.id }}
+                        onMouseDown={(event) => event.preventDefault()}
+                        className="block rounded-xl px-3 py-2 text-left hover:bg-secondary"
+                      >
+                        <span className="text-[12px] font-semibold">{post.authorName}</span>
+                        <span className="line-clamp-2 block text-[13px] text-muted-foreground">
+                          {post.body}
+                        </span>
+                      </Link>
+                    ))}
+                  </>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -259,81 +345,10 @@ function Explore() {
         </section>
       )}
       {feeds.enabled && (
-        <>
-          <Link
-            to="/esim/finder"
-            className="tap mt-3 block rounded-2xl bg-brand-red-soft p-3"
-            aria-label="Bingung pilih paket eSIM? Cari paket"
-          >
-            <div className="flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-red text-[12px] font-bold text-white"
-              >
-                D
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold">Djiwa Travel</p>
-                <p className="text-[11px] text-muted-foreground">Untuk perjalananmu</p>
-              </div>
-              <span className="rounded-lg bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-brand-red">
-                eSIM
-              </span>
-            </div>
-            <p className="mt-2 text-[14px] font-semibold">Bingung pilih paket eSIM?</p>
-            <p className="text-[12px] text-muted-foreground">
-              Temukan paket yang cocok untuk perjalananmu.
-            </p>
-            <span className="mt-2 flex items-center justify-between text-[12px] font-semibold text-brand-red">
-              Cari paket
-              <ChevronRight className="size-4" aria-hidden="true" />
-            </span>
-          </Link>
-          <div className="mt-3">
-            <FeedComposer status={feeds} onPosted={feedList.addPosted} />
-          </div>
-          <section className="mt-3" aria-label="Feeds traveler">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Feeds traveler
-              </h2>
-              <Link
-                to="/feeds"
-                className="tap flex min-h-8 items-center text-[12px] font-semibold text-brand-red"
-              >
-                Lihat semua
-              </Link>
-            </div>
-            {feedList.loading ? (
-              <FeedSkeleton />
-            ) : feedList.error ? (
-              <div role="alert" className="rounded-2xl bg-surface p-3 text-center">
-                <p className="text-[13px] text-muted-foreground">Feeds belum dapat dimuat.</p>
-                <button
-                  type="button"
-                  onClick={() => void feedList.reload()}
-                  className="tap mt-2 min-h-9 rounded-xl bg-secondary px-4 text-[13px] font-semibold"
-                >
-                  Coba lagi
-                </button>
-              </div>
-            ) : feedList.posts.length === 0 && feedList.pending.length === 0 ? (
-              <p className="rounded-2xl bg-surface p-3 text-center text-[13px] text-muted-foreground">
-                Belum ada postingan. Jadilah yang pertama berbagi tips.
-              </p>
-            ) : (
-              <FeedPosts posts={feedList.posts} pending={feedList.pending} status={feeds} />
-            )}
-            {feedList.hasMore && (
-              <Link
-                to="/feeds"
-                className="tap mt-2 flex min-h-9 items-center justify-center rounded-xl bg-surface text-[13px] font-semibold"
-              >
-                Lihat semua postingan
-              </Link>
-            )}
-          </section>
-        </>
+        <FeedTimelineSection
+          startKind={searchParams.tulis === "titip" ? "titip" : undefined}
+          stickyTop={headH}
+        />
       )}
       {res.length === 0 && available.source !== "error" && (
         <p className="mb-4 text-center text-sm text-muted-foreground">

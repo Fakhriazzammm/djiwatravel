@@ -77,7 +77,7 @@ export function FeedCard({
       const result = await toggleFeedBookmark({ data: { id: post.id } });
       setBookmarked(result.bookmarked);
       toast.success(
-        result.bookmarked ? "Disimpan. Lihat di Feeds › Aku." : "Dihapus dari tersimpan.",
+        result.bookmarked ? "Disimpan. Lihat di Profil › Feeds saya." : "Dihapus dari tersimpan.",
       );
     } catch {
       setBookmarked(was);
