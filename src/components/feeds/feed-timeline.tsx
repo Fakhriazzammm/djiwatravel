@@ -20,13 +20,18 @@ export function FeedPosts({
   posts,
   pending,
   status,
+  flush = false,
 }: {
   posts: FeedPostView[];
   pending: FeedPostView[];
   status: FeedsStatus;
+  /** Edge to edge rows (the Feeds page); otherwise one rounded group (inside Explore). */
+  flush?: boolean;
 }) {
   return (
-    <div className="space-y-2">
+    <div
+      className={`divide-y divide-border/60 overflow-hidden bg-surface ${flush ? "-mx-4 border-y border-border/60" : "rounded-2xl"}`}
+    >
       {pending.map((post) => (
         <FeedCard key={`p-${post.id}`} post={post} status={status} />
       ))}

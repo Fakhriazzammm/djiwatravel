@@ -1,0 +1,93 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Feeds ala Threads dan X — 3 opsi</title><style>
+:root{--bg:#f3f4f6;--fg:#15171b;--mut:#666a73;--bd:#e3e4e7;--red:#d32f2f;--soft:#fbe5e4;--ok:#17803d;--gold:#f5b301}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--fg);padding:8px}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer;text-align:inherit}button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.top{max-width:470px;margin:0 auto 10px}.top h1{font-size:17px;margin:0 0 4px}.top p{font-size:12px;opacity:.7;margin:0 0 10px;line-height:1.5}
+.tabs{display:flex;gap:6px}.tabs button{flex:1;border-radius:12px;padding:9px 4px;background:#fff;color:var(--fg);font-size:12px;font-weight:650;text-align:center;border:1px solid var(--bd)}.tabs button[aria-selected=true]{background:var(--fg);color:#fff}
+.note{max-width:470px;margin:10px auto 12px;font-size:12px;line-height:1.55;opacity:.88;min-height:118px}
+.phone{position:relative;width:390px;max-width:100%;height:790px;margin:auto;background:var(--bg);border:1px solid var(--bd);border-radius:26px;overflow:hidden;color:var(--fg)}
+.scr{position:absolute;inset:0;overflow:auto;scrollbar-width:none}.scr::-webkit-scrollbar{display:none}
+.hdr{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 16px 0}
+.hr{display:flex;align-items:center;justify-content:space-between}.hr h2{margin:0;font-size:22px;font-weight:750}.ib{width:34px;height:34px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:15px}
+.tb{display:flex;margin:6px -16px 0;border-bottom:1px solid var(--bd)}.tb button{flex:1;text-align:center;font-size:13px;font-weight:650;color:var(--mut);padding:10px 0;position:relative}.tb button.on{color:var(--fg)}.tb button.on::after{content:"";position:absolute;left:28%;right:28%;bottom:-1px;height:2.5px;border-radius:2px;background:var(--fg)}
+.newpill{display:block;margin:6px auto;background:var(--fg);color:#fff;font-size:12px;font-weight:650;padding:6px 14px;border-radius:16px;text-align:center}
+.stories{display:flex;gap:12px;overflow:auto;padding:10px 16px 8px;margin:0 -16px;scrollbar-width:none}.stories::-webkit-scrollbar{display:none}
+.st{flex-shrink:0;width:58px;text-align:center;font-size:10.5px;font-weight:650}.ring{width:54px;height:54px;border-radius:50%;padding:2.5px;background:linear-gradient(135deg,#d32f2f,#f5b301);margin:0 auto 3px}.ring.off{background:var(--bd)}.ring.sel{background:var(--fg)}.ring i{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:#fff;border:2px solid #fff;font-style:normal;font-size:22px}
+.row{display:flex;gap:10px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--bd)}
+.col{display:flex;flex-direction:column;align-items:center;flex-shrink:0}.line{flex:1;width:2px;background:var(--bd);border-radius:1px;margin:4px 0}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}.av.dj{background:var(--red)}.av.s{width:18px;height:18px;font-size:8px}
+.body{flex:1;min-width:0}.nm{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:700}.nm small{font-weight:500;color:var(--mut);font-size:12px}.nm .more{margin-left:auto;color:var(--mut)}
+.vf{width:15px;height:15px;border-radius:50%;background:var(--gold);color:#fff;font-size:9px;display:inline-grid;place-items:center}
+.trav{font-size:10px;font-weight:650;color:var(--ok);background:#e3f4e9;border-radius:7px;padding:1px 6px}
+.txt{font-size:14px;line-height:1.42;margin:3px 0 6px}.img{border-radius:14px;height:170px;margin:4px 0 6px}
+.acts{display:flex;gap:2px;margin:2px -8px 0;color:var(--mut);font-size:12.5px}.acts button{display:flex;align-items:center;gap:4px;padding:8px;border-radius:14px}.acts button.on{color:var(--red);font-weight:700}.acts .sp{margin-left:auto}
+.rep{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut);margin-top:2px}.stack{display:flex}.stack .av{margin-left:-5px;border:2px solid #fff}.stack .av:first-child{margin-left:0}
+.fab{position:absolute;right:16px;bottom:88px;width:52px;height:52px;border-radius:50%;background:var(--red);color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 6px 18px #d32f2f66;z-index:7;text-align:center}
+.tab{position:absolute;left:14px;right:14px;bottom:12px;height:58px;background:#fff;border-radius:28px;display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--mut);box-shadow:0 2px 12px #0001;z-index:7}.tab .on{color:var(--red);font-weight:700}
+.hub{background:#fff;margin:0 -16px;padding:14px 16px;border-bottom:1px solid var(--bd)}.hub h3{margin:0;font-size:18px}.hub p{margin:2px 0 8px;font-size:12px;color:var(--mut)}.hub .go{display:inline-flex;align-items:center;min-height:32px;border-radius:16px;padding:0 14px;font-size:12.5px;font-weight:700;background:var(--fg);color:#fff}.hub .go.f{background:#eceef1;color:var(--fg)}
+.lk{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}.lk span{font-size:11px;font-weight:650;background:var(--bg);border-radius:10px;padding:5px 9px}
+.card{background:#fff;border-radius:16px;padding:12px;margin:8px 12px}
+.place{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:12px;padding:8px 10px;margin:4px 0 6px;font-size:12px}.place b{display:block;font-size:12.5px}.place .go2{margin-left:auto;font-weight:700;color:var(--red);font-size:12px}
+.best{border:1.5px solid var(--ok);background:#f3fbf6;border-radius:12px;padding:8px 10px;margin:4px 0 6px;font-size:12.5px;line-height:1.4}.best .k{font-size:10px;font-weight:700;color:var(--ok);letter-spacing:.04em;text-transform:uppercase}
+.prod{display:flex;gap:10px;align-items:center;background:var(--bg);border-radius:12px;padding:8px;margin:4px 0 6px}.prod .pi{width:44px;height:44px;border-radius:10px}.prod b{display:block;font-size:12.5px}.prod small{color:var(--mut);font-size:11px}.prod .go2{margin-left:auto;font-weight:700;color:var(--red);font-size:12px}
+.chip{font-size:10px;font-weight:700;border-radius:7px;padding:1px 7px;background:var(--soft);color:var(--red)}.chip.g{background:#e3f4e9;color:var(--ok)}.chip.n{background:#eceef1;color:var(--mut)}
+.promo{background:var(--soft)}
+.toast{position:absolute;left:50%;top:14px;transform:translate(-50%,-80px);background:#15171b;color:#fff;font-size:12px;padding:8px 14px;border-radius:16px;z-index:12;transition:transform .3s;white-space:nowrap}.toast.on{transform:translate(-50%,0)}
+</style></head><body>
+<div class="top"><h1>Feeds ala Threads dan X — disesuaikan untuk Djiwa</h1><p>Tiga arah untuk halaman <b>/feeds</b>. Semuanya bisa digulir dan diketuk: tab atas, suka, "Membantu", simpan, ikuti, dan tombol +.</p>
+<div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-o="0">A · Garis benang</button><button role="tab" aria-selected="false" data-o="1">B · Rak tujuan</button><button role="tab" aria-selected="false" data-o="2">C · Kartu pintar</button></div></div>
+<div class="note" id="note"></div>
+<div class="phone" id="phone"></div>
+<script>
+const $=id=>document.getElementById(id);
+const N=['<b>A · Garis benang (gaya Threads).</b> Tanpa kotak kartu: baris datar dengan avatar dan garis balasan, jadi dua kali lebih padat. Tab atas <i>Untuk kamu / Terbaru / Tujuanku</i> (Tujuanku = tujuan di Agenda). Ikon aksi satu baris, termasuk Simpan ke Agenda dan Bagikan. Tombol + melayang menggantikan kartu tulis di atas. Pil "2 post baru" ala X untuk menyegarkan.','<b>B · Rak tujuan (gaya Stories + hub).</b> Baris lingkaran tujuan di atas, seperti Stories: ketuk Jepang dan Feeds berubah menjadi hub Jepang dengan tombol Ikuti, panduan, eSIM, dan Titip Belanja Jepang di satu tempat. Cocok karena orang Djiwa datang dengan tujuan, bukan dengan akun yang diikuti.','<b>C · Kartu pintar (gaya X + Q&A).</b> Jenis post punya bentuknya sendiri: Tips punya kartu tempat dan tombol "Membantu", Tanya punya jawaban terbaik yang dipilih penanya, Titip Belanja punya kartu produk dan "Pesan serupa". Lencana "Pernah ke Jepang" dari riwayat pesanan sebagai tanda kepercayaan.'];
+const C=['#c0765a','#5a8fc0','#7a6ac0','#4aa08a','#b85a8a'];
+const av=(n,i,cls='')=>`<span class="av ${cls}" style="background:${C[i%5]}">${n[0]}</span>`;
+const vf='<span class="vf" title="Akun resmi Djiwa">✓</span>';
+const IMG={sw:'linear-gradient(135deg,#8a6a52,#e9dcc6 60%,#7d8fa8)',sky:'linear-gradient(160deg,#ff9a62,#8e6bbf 60%,#2b3a67)',pk:'linear-gradient(135deg,#c9a06e,#ead9bd)'};
+let st={o:0,tab:0,dest:null,liked:{},help:{},saved:{},follow:{},sel:null};
+const P=[
+ {id:'ramen',n:'Rani',i:0,t:'2 jam',k:'tips',dest:'JP',trav:'Pernah ke Jepang',body:'Datang 30 menit sebelum sunset ke Shibuya Sky. Antreannya jauh lebih pendek dan kamu dapat pemandangan siang sampai malam sekaligus.',img:IMG.sky,place:'Shibuya Sky · Tokyo',likes:24,rep:['Tia','Putri','Dimas'],reps:3},
+ {id:'tanya',n:'Dimas',i:1,t:'5 jam',k:'tanya',dest:'JP',body:'Ada yang pernah pakai eSIM di Shinkansen? Sinyalnya stabil nggak ya sepanjang Tokyo–Kyoto?',likes:3,rep:['Rani','Bayu'],reps:2,best:{n:'Rani',b:'Aman, aku pakai eSIM waktu naik Shinkansen dan sinyalnya hampir tidak putus. Sempat lemot sebentar di terowongan.',l:8}},
+ {id:'guide',n:'Travo Guide',dj:1,t:'1 hari',k:'panduan',dest:'JP',body:'Tax refund Jepang 2026: pahami proses toko, batas 90 hari, dan cara menerima pengembalian.',img:IMG.pk,link:'Baca panduan',likes:41,rep:[],reps:0},
+ {id:'titip',n:'Maya',i:2,t:'3 jam',k:'titip',dest:'JP',trav:'Pernah titip belanja',body:'Pertama kali titip Uniqlo lewat Djiwa. Empat potong sweter dan fleece sampai dengan rapi, ukurannya pas semua.',img:IMG.sw,prod:['Sweter & fleece Uniqlo','4 barang · dari Jepang'],likes:11,rep:['Rina'],reps:1},
+ {id:'seoul',n:'Sari',i:3,t:'9 jam',k:'tips',dest:'KR',body:'Hari ketiga di Seoul akhirnya ketemu kedai tteokbokki kecil di dalam pasar. Antre sebentar, tapi worth it buat sarapan.',place:'Gwangjang Market · Seoul',likes:6,rep:['Lina'],reps:1}];
+const ORDER=[['ramen','titip','tanya','guide','seoul'],['tanya','ramen','titip','seoul','guide']];
+const TAGS={tips:['Tips','n'],tanya:['Tanya','n'],titip:['Titip Belanja','n'],panduan:['Panduan','g']};
+const get=id=>P.find(p=>p.id==id);
+const ico={like:'♡',liked:'♥'};
+const hdr=(sub)=>`<div class="hdr"><div class="hr"><h2>Feeds</h2><div style="display:flex;gap:8px"><span class="ib">⌕</span><span class="ib">🔖</span></div></div><div class="tb">${['Untuk kamu','Terbaru','Tujuanku'].map((t,i)=>`<button class="${st.tab==i?'on':''}" data-tab="${i}">${t}</button>`).join('')}</div>${sub||''}</div>`;
+const tabbar=`<div class="tab"><span>Beranda</span><span class="on">Jelajah</span><span>Perjalanan</span><span>Dompet</span><span>Profil</span></div>`;
+function list(){let ids=st.tab==0?ORDER[0]:st.tab==1?ORDER[1]:ORDER[0].filter(i=>get(i).dest=='JP');if(st.dest&&st.o==1)ids=ORDER[0].filter(i=>get(i).dest==st.dest);return ids.map(get)}
+const actA=p=>`<div class="acts"><button data-like="${p.id}" class="${st.liked[p.id]?'on':''}">${st.liked[p.id]?ico.liked:ico.like} ${p.likes+(st.liked[p.id]?1:0)}</button><button>💬 ${p.reps}</button>${p.place||p.k=='tips'?`<button data-save="${p.id}" class="${st.saved[p.id]?'on':''}">${st.saved[p.id]?'✓ Di Agenda':'＋ Agenda'}</button>`:''}<button class="sp">➤</button></div>`;
+function rowA(p){const rep=p.rep.length?`<div class="rep"><span class="stack">${p.rep.slice(0,3).map((n,i)=>av(n,i+1,'s')).join('')}</span>${p.rep[0]}${p.reps>1?` dan ${p.reps-1} lainnya`:''} membalas</div>`:'';
+ return `<div class="row"><div class="col">${av(p.n,p.i||0,p.dj?'dj':'')}${p.rep.length?'<span class="line"></span>':''}</div><div class="body"><div class="nm">${p.n}${p.dj?vf:''}${p.trav?`<span class="trav">✈ ${p.trav}</span>`:''}<small>· ${p.t}</small><span class="more">⋯</span></div><div class="txt">${p.body}</div>${p.img?`<div class="img" style="background:${p.img}"></div>`:''}${p.place?`<div class="rep" style="margin:0 0 4px">📍 ${p.place}</div>`:''}${actA(p)}${rep}</div></div>`}
+function viewA(){const l=list();return `<div class="scr">${hdr('<button class="newpill" data-new>↑ 2 post baru</button>')}${st.tab==2?`<div class="hub" style="margin:0"><h3>Dari Agendamu</h3><p>Tokyo 5 hari · 14–18 Des · post tentang Jepang</p></div>`:''}${l.map(rowA).join('')}<div style="height:110px"></div></div><div class="fab" data-fab>＋</div>${tabbar}`}
+const DEST=[['Semua','✦',null],['Jepang','🇯🇵','JP',1],['Korea','🇰🇷','KR',1],['Singapura','🇸🇬','SG'],['Thailand','🇹🇭','TH'],['Malaysia','🇲🇾','MY']];
+function card(p){return `<div class="card"><div class="nm" style="margin-bottom:2px">${av(p.n,p.i||0,p.dj?'dj':'')}<span style="display:flex;flex-direction:column;line-height:1.2">${p.n}${p.dj?vf:''}<small>${p.t} lalu</small></span><span class="chip ${TAGS[p.k][1]}" style="margin-left:auto">${TAGS[p.k][0]}</span></div><div class="txt">${p.body}</div>${p.img?`<div class="img" style="background:${p.img};height:130px"></div>`:''}${actA(p)}</div>`}
+function viewB(){const hub=st.dest?`<div class="hub"><h3>${DEST.find(d=>d[2]==st.dest)[1]} ${DEST.find(d=>d[2]==st.dest)[0]}</h3><p>${st.dest=='JP'?'128 traveler membahas · 4 panduan':'42 traveler membahas · 1 panduan'}</p><button class="go ${st.follow[st.dest]?'f':''}" data-follow>${st.follow[st.dest]?'✓ Mengikuti':'Ikuti tujuan'}</button><div class="lk"><span>📖 Panduan</span><span>📶 eSIM</span><span>🛍 Titip Belanja</span><span>📍 Tempat</span></div></div>`:'';
+ const l=st.dest?ORDER[0].filter(i=>get(i).dest==st.dest).map(get):ORDER[0].map(get);
+ const stories=`<div class="stories">${DEST.map(d=>`<button class="st" data-dest="${d[2]||''}"><div class="ring ${d[2]==st.dest?'sel':d[3]?'':'off'}"><i>${d[1]}</i></div>${d[0]}</button>`).join('')}</div>`;
+ return `<div class="scr"><div class="hdr" style="padding-bottom:0"><div class="hr"><h2>Feeds</h2><div style="display:flex;gap:8px"><span class="ib">⌕</span><span class="ib">🔖</span></div></div>${stories}</div>${hub}<div style="padding-top:4px">${l.map(card).join('')}<div class="card promo"><div class="nm">${av('D',0,'dj')}<span style="display:flex;flex-direction:column;line-height:1.2">Djiwa Travel${vf}<small>Untuk perjalananmu</small></span></div><div class="txt" style="margin-bottom:0"><b>Bingung pilih paket eSIM?</b><br><span style="color:var(--mut)">Temukan paket yang cocok untuk perjalananmu.</span></div></div></div><div style="height:110px"></div></div><div class="fab" data-fab>＋</div>${tabbar}`}
+function rowC(p){const hd=`<div class="nm">${p.n}${p.dj?vf:''}${p.trav?`<span class="trav">✈ ${p.trav}</span>`:''}<small>· ${p.t}</small><span class="chip ${TAGS[p.k][1]}" style="margin-left:auto">${TAGS[p.k][0]}</span></div>`;
+ let mid='';
+ if(p.k=='tips')mid=`${p.img?`<div class="img" style="background:${p.img};height:140px"></div>`:''}<div class="place">📍<div><b>${p.place}</b><span style="color:var(--mut)">Dekat Agendamu: Hari 2</span></div><button class="go2" data-save="${p.id}">${st.saved[p.id]?'✓ Tersimpan':'＋ Agenda'}</button></div>`;
+ if(p.k=='tanya')mid=`<div class="rep" style="margin:0 0 4px"><span class="chip g">Terjawab</span> ${p.reps} jawaban</div><div class="best"><div class="k">✓ Jawaban terbaik · ${p.best.n}</div>${p.best.b}<div style="color:var(--mut);font-size:11px;margin-top:3px">▲ ${p.best.l} membantu</div></div>`;
+ if(p.k=='titip')mid=`${p.img?`<div class="img" style="background:${p.img};height:130px"></div>`:''}<div class="prod"><div class="pi" style="background:${p.img}"></div><div><b>${p.prod[0]}</b><small>${p.prod[1]}</small></div><button class="go2">Pesan serupa ›</button></div>`;
+ if(p.k=='panduan')mid=`${p.img?`<div class="img" style="background:${p.img};height:110px"></div>`:''}<div class="prod"><div><b>Tax Refund Jepang 2026</b><small>Panduan · 4 menit baca</small></div><button class="go2">Baca ›</button></div>`;
+ const help=p.k=='tips'||p.k=='tanya';
+ return `<div class="row">${av(p.n,p.i||0,p.dj?'dj':'')}<div class="body">${hd}<div class="txt">${p.body}</div>${mid}<div class="acts">${help?`<button data-help="${p.id}" class="${st.help[p.id]?'on':''}">▲ Membantu ${p.likes+(st.help[p.id]?1:0)}</button>`:`<button data-like="${p.id}" class="${st.liked[p.id]?'on':''}">${st.liked[p.id]?'♥':'♡'} ${p.likes+(st.liked[p.id]?1:0)}</button>`}<button>💬 ${p.reps}</button><button class="sp">🔖</button><button>➤</button></div></div></div>`}
+function viewC(){return `<div class="scr">${hdr()}${list().map(rowC).join('')}<div style="height:110px"></div></div><div class="fab" data-fab>＋</div>${tabbar}`}
+function render(){const ph=$('phone');const sc=ph.querySelector('.scr');const top=sc?sc.scrollTop:0;ph.innerHTML=[viewA,viewB,viewC][st.o]()+'<div class="toast" id="toast"></div>';const n=ph.querySelector('.scr');if(n)n.scrollTop=top;
+ ph.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{st.tab=+b.dataset.tab;render();ph.querySelector('.scr').scrollTop=0});
+ ph.querySelectorAll('[data-like]').forEach(b=>b.onclick=()=>{st.liked[b.dataset.like]=!st.liked[b.dataset.like];render()});
+ ph.querySelectorAll('[data-help]').forEach(b=>b.onclick=()=>{st.help[b.dataset.help]=!st.help[b.dataset.help];render()});
+ ph.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{st.saved[b.dataset.save]=!st.saved[b.dataset.save];render();toast(st.saved[b.dataset.save]?'Disimpan ke Agenda Tokyo 5 hari':'Dihapus dari Agenda')});
+ ph.querySelectorAll('[data-dest]').forEach(b=>b.onclick=()=>{st.dest=b.dataset.dest||null;render()});
+ ph.querySelectorAll('[data-follow]').forEach(b=>b.onclick=()=>{st.follow[st.dest]=!st.follow[st.dest];render();toast(st.follow[st.dest]?'Kamu mengikuti tujuan ini':'Berhenti mengikuti')});
+ ph.querySelectorAll('[data-fab]').forEach(b=>b.onclick=()=>toast('Membuka kartu tulis: Cerita · Tips · Tanya · Titip'));
+ ph.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>{b.remove();toast('Feeds disegarkan')})}
+function toast(t){const e=$('toast');if(!e)return;e.textContent=t;e.classList.add('on');setTimeout(()=>e&&e.classList.remove('on'),2200)}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{st.o=+b.dataset.o;st.tab=0;st.dest=null;document.querySelectorAll('.tabs button').forEach((x,j)=>x.setAttribute('aria-selected',j==st.o));$('note').innerHTML=N[st.o];render()});
+$('note').innerHTML=N[0];render();
+</script></body></html>

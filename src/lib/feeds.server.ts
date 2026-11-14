@@ -212,12 +212,33 @@ const listSchema = z.object({
     .string()
     .regex(/^[A-Za-z]{2}$/)
     .optional(),
+  /** new = newest first; foryou = ranked (boosted by the viewer's trips); mine = posts about the viewer's trips. */
+  sort: z.enum(["new", "foryou", "mine"]).default("new"),
   cursor: z.string().max(120).optional(),
   limit: z.number().int().min(1).max(30).default(10),
 });
 export const feedListInput = (data: unknown) => listSchema.parse(data ?? {});
 
-export async function listFeedHandler({ data }: { data: ReturnType<typeof feedListInput> }) {
+export type FeedListBlocked = "signin" | "consent" | "notrips";
+
+/** Destination codes (upper-case, 2 letters) of the viewer's active trips. */
+async function viewerTripDestinations(subject: string): Promise<string[]> {
+  const result = await pool.query(
+    `select distinct upper(destination_code) as code from travel_trips
+      where customer_auth_subject = $1 and archived_at is null and char_length(destination_code) = 2`,
+    [subject],
+  );
+  return (result.rows as { code: string }[]).map((row) => row.code);
+}
+
+const FORYOU_SCORE = `(
+  (p.like_count + 2 * p.comment_count + 3)
+  / power(greatest(extract(epoch from (now() - p.published_at)) / 3600, 0) + 2, 1.4)
+  * (case when p.destination_code = any($7::text[]) then 2.0 else 1.0 end)
+)`;
+
+export async function listFeedHandler({ data: input }: { data: z.input<typeof listSchema> }) {
+  const data = listSchema.parse(input);
   const config = await getFeedsConfig();
   if (!config.enabled) {
     return {
@@ -226,13 +247,48 @@ export async function listFeedHandler({ data }: { data: ReturnType<typeof feedLi
       pending: [] as FeedPostView[],
       nextCursor: null as string | null,
       facets: [] as { code: string; count: number }[],
+      serverTime: new Date().toISOString(),
+      blocked: null as FeedListBlocked | null,
+      tripDestinations: [] as string[],
     };
   }
   await syncGuidePosts();
   const user = await optionalViewer();
   const viewerId = user?.id ?? "";
-  const [cursorAt, cursorId] = data.cursor ? data.cursor.split("|") : [null, null];
-  if (data.cursor && (!cursorAt || !cursorId || !/^[0-9a-f-]{36}$/i.test(cursorId)))
+  const first = !data.cursor;
+
+  // The viewer's trip destinations personalise the ranking and drive the "Tujuanku" tab,
+  // and only with the "Personalisasi" consent.
+  let tripDestinations: string[] = [];
+  let blocked: FeedListBlocked | null = null;
+  if (user && data.sort !== "new") {
+    if (await hasConsent(user.id, "personalization"))
+      tripDestinations = await viewerTripDestinations(user.id);
+    else if (data.sort === "mine") blocked = "consent";
+  }
+  if (data.sort === "mine") {
+    if (!user) blocked = "signin";
+    else if (!blocked && tripDestinations.length === 0) blocked = "notrips";
+  }
+  const serverTime = new Date().toISOString();
+  if (blocked) {
+    return {
+      enabled: true as const,
+      posts: [] as FeedPostView[],
+      pending: [] as FeedPostView[],
+      nextCursor: null as string | null,
+      facets: [] as { code: string; count: number }[],
+      serverTime,
+      blocked,
+      tripDestinations,
+    };
+  }
+
+  const ranked = data.sort === "foryou";
+  const offset = ranked && data.cursor ? Number(data.cursor) : 0;
+  if (ranked && (!Number.isInteger(offset) || offset < 0)) throw new Error("Kursor tidak valid.");
+  const [cursorAt, cursorId] = !ranked && data.cursor ? data.cursor.split("|") : [null, null];
+  if (!ranked && data.cursor && (!cursorAt || !cursorId || !/^[0-9a-f-]{36}$/i.test(cursorId)))
     throw new Error("Kursor tidak valid.");
   const rows = await pool.query(
     `select ${POST_COLUMNS}, p.published_at::text as published_text,
@@ -249,15 +305,25 @@ export async function listFeedHandler({ data }: { data: ReturnType<typeof feedLi
         and ($2::text is null or p.kind = $2)
         and ($3::text is null or p.destination_code = upper($3))
         and ($4::timestamptz is null or (p.published_at, p.id) < ($4::timestamptz, $5::uuid))
+        and ($9::boolean is false or p.destination_code = any($7::text[]))
         and not exists (select 1 from feed_reports r where r.post_id = p.id and r.reporter_subject = $1)
-      order by p.published_at desc, p.id desc
-      limit $6`,
-    [viewerId, data.kind ?? null, data.destination ?? null, cursorAt, cursorId, data.limit + 1],
+      order by ${ranked ? `${FORYOU_SCORE} desc, p.id desc` : "p.published_at desc, p.id desc"}
+      offset $8 limit $6`,
+    [
+      viewerId,
+      data.kind ?? null,
+      data.destination ?? null,
+      cursorAt,
+      cursorId,
+      data.limit + 1,
+      tripDestinations,
+      offset,
+      data.sort === "mine",
+    ],
   );
   const page = rows.rows.slice(0, data.limit) as (PostRow & { published_text: string })[];
   const hasMore = rows.rows.length > data.limit;
   const last = page[page.length - 1];
-  const first = !data.cursor;
   let pending: FeedPostView[] = [];
   let facets: { code: string; count: number }[] = [];
   if (first && user) {
@@ -280,13 +346,53 @@ export async function listFeedHandler({ data }: { data: ReturnType<typeof feedLi
       count: Number(r.count),
     }));
   }
+  const nextCursor = !hasMore
+    ? null
+    : ranked
+      ? String(offset + data.limit)
+      : last
+        ? `${last.published_text}|${last.id}`
+        : null;
   return {
     enabled: true as const,
     posts: page.map((row) => toPostView(row, user?.id ?? null)),
     pending,
-    nextCursor: hasMore && last ? `${last.published_text}|${last.id}` : null,
+    nextCursor,
     facets,
+    serverTime,
+    blocked,
+    tripDestinations,
   };
+}
+
+const newCountSchema = z.object({
+  since: z.string().datetime(),
+  kind: z.enum(FEED_KINDS).optional(),
+  destination: z
+    .string()
+    .regex(/^[A-Za-z]{2}$/)
+    .optional(),
+});
+export const feedNewCountInput = (data: unknown) => newCountSchema.parse(data);
+
+/** How many posts by other members were published since the timeline was loaded ("N post baru"). */
+export async function countNewFeedPostsHandler({
+  data,
+}: {
+  data: ReturnType<typeof feedNewCountInput>;
+}) {
+  const config = await getFeedsConfig();
+  if (!config.enabled) return { count: 0 };
+  const user = await optionalViewer();
+  const result = await pool.query(
+    `select count(*)::int as n from feed_posts p
+      where p.status = 'PUBLISHED' and p.published_at > $1::timestamptz
+        and p.customer_auth_subject <> $2
+        and ($3::text is null or p.kind = $3)
+        and ($4::text is null or p.destination_code = upper($4))`,
+    [data.since, user?.id ?? "", data.kind ?? null, data.destination ?? null],
+  );
+  return { count: Math.min(Number(result.rows[0]?.n ?? 0), 99) };
 }
 
 /* ------------------------------------------------------------------ detail */

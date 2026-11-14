@@ -592,4 +592,111 @@ describeDb("feeds against a real database", () => {
     expect(JSON.stringify(admin)).not.toContain("u-newbie");
     expect(admin.prompts.answered).toBeGreaterThanOrEqual(1);
   });
+
+  describe("tabs: Untuk kamu, Terbaru, Tujuanku", () => {
+    const seed = async () => {
+      const row = (id: string, body: string, dest: string, hoursAgo: number, likes: number) =>
+        pool.query(
+          `insert into feed_posts (id, customer_auth_subject, author_name, source, kind, body, destination_code,
+                                   status, like_count, created_at, published_at)
+           values ($1, 'u-lain', 'Lain', 'member', 'tips', $2, $3, 'PUBLISHED', $4,
+                   now() - make_interval(hours => $5), now() - make_interval(hours => $5))`,
+          [id, body, dest, likes, hoursAgo],
+        );
+      await row("00000000-0000-4000-8000-0000000000a1", "Jepang dua jam lalu", "JP", 2, 0);
+      await row("00000000-0000-4000-8000-0000000000a2", "Korea sejam lalu", "KR", 1, 0);
+      await row("00000000-0000-4000-8000-0000000000a3", "Jepang tiga jam lalu", "JP", 3, 0);
+    };
+    const trip = (subject: string, code: string, archived = false) =>
+      pool.query(
+        `insert into travel_trips (customer_auth_subject, name, destination_code, destination_name,
+                                   departure_date, return_date, archived_at)
+         values ($1, 'Trip', $2, 'Tujuan', '2026-12-14', '2026-12-18', ${archived ? "now()" : "null"})`,
+        [subject, code],
+      );
+    const grant = (subject: string) =>
+      pool.query(
+        `insert into customer_data_consents (customer_auth_subject, purpose, granted, policy_version, source)
+         values ($1, 'personalization', true, 'test', 'settings')`,
+        [subject],
+      );
+    const bodies = async (sort: "new" | "foryou" | "mine", limit = 10, cursor?: string) =>
+      (
+        await server.listFeedHandler({ data: { sort, limit, ...(cursor ? { cursor } : {}) } })
+      ).posts.map((p) => p.body);
+
+    beforeEach(async () => {
+      await pool.query("delete from travel_trips");
+      await seed();
+      as("u-dimas");
+    });
+
+    it("Terbaru is newest first", async () => {
+      expect(await bodies("new")).toEqual([
+        "Korea sejam lalu",
+        "Jepang dua jam lalu",
+        "Jepang tiga jam lalu",
+      ]);
+    });
+
+    it("Untuk kamu favours the destinations of the member's trips, but only with Personalisasi", async () => {
+      await trip("u-dimas", "JP");
+      // No consent: plain ranking, the newer Korea post leads.
+      expect((await bodies("foryou"))[0]).toBe("Korea sejam lalu");
+      await grant("u-dimas");
+      expect((await bodies("foryou"))[0]).toBe("Jepang dua jam lalu");
+    });
+
+    it("Untuk kamu pages by offset without repeating posts", async () => {
+      const first = await server.listFeedHandler({ data: { sort: "foryou", limit: 2 } });
+      expect(first.nextCursor).toBe("2");
+      const second = await server.listFeedHandler({
+        data: { sort: "foryou", limit: 2, cursor: first.nextCursor! },
+      });
+      const ids = [...first.posts, ...second.posts].map((p) => p.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(second.nextCursor).toBeNull();
+    });
+
+    it("Tujuanku shows only the destinations of the member's active trips", async () => {
+      await grant("u-dimas");
+      await trip("u-dimas", "JP");
+      await trip("u-dimas", "KR", true);
+      const result = await server.listFeedHandler({ data: { sort: "mine", limit: 10 } });
+      expect(result.blocked).toBeNull();
+      expect(result.tripDestinations).toEqual(["JP"]);
+      expect(result.posts.map((p) => p.body)).toEqual([
+        "Jepang dua jam lalu",
+        "Jepang tiga jam lalu",
+      ]);
+    });
+
+    it("Tujuanku explains why it is empty: signed out, no consent, no trips", async () => {
+      as(null);
+      expect((await server.listFeedHandler({ data: { sort: "mine", limit: 10 } })).blocked).toBe(
+        "signin",
+      );
+      as("u-dimas");
+      await trip("u-dimas", "JP");
+      expect((await server.listFeedHandler({ data: { sort: "mine", limit: 10 } })).blocked).toBe(
+        "consent",
+      );
+      await pool.query("delete from travel_trips");
+      await grant("u-dimas");
+      expect((await server.listFeedHandler({ data: { sort: "mine", limit: 10 } })).blocked).toBe(
+        "notrips",
+      );
+    });
+
+    it("counts posts by others published since the list loaded, never the member's own", async () => {
+      const since = new Date(Date.now() - 30 * 60_000).toISOString();
+      expect((await server.countNewFeedPostsHandler({ data: { since } })).count).toBe(0);
+      await pool.query(
+        `insert into feed_posts (customer_auth_subject, author_name, source, kind, body, status, published_at)
+         values ('u-lain', 'Lain', 'member', 'tips', 'baru dari orang lain', 'PUBLISHED', now()),
+                ('u-dimas', 'Dimas', 'member', 'tips', 'baru dari saya', 'PUBLISHED', now())`,
+      );
+      expect((await server.countNewFeedPostsHandler({ data: { since } })).count).toBe(1);
+    });
+  });
 });

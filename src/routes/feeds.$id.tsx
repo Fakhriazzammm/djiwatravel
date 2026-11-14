@@ -202,7 +202,7 @@ function FeedPostPage() {
         </div>
       ) : (
         <>
-          <FeedCard post={post} status={feeds} detail />
+          <FeedCard post={post} status={feeds} detail standalone />
           {post.status === "PUBLISHED" && (
             <section className="mt-3" aria-label="Komentar">
               <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

@@ -18,6 +18,16 @@ export const getFeed = createServerFn({ method: "GET" })
     return listFeedHandler({ data });
   });
 
+export const countNewFeedPosts = createServerFn({ method: "GET" })
+  .validator(async (data: unknown) => {
+    const { feedNewCountInput } = await import("./feeds.server");
+    return feedNewCountInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { countNewFeedPostsHandler } = await import("./feeds.server");
+    return countNewFeedPostsHandler({ data });
+  });
+
 export const getFeedPost = createServerFn({ method: "GET" })
   .validator(async (data: unknown) => {
     const { feedIdInput } = await import("./feeds.server");

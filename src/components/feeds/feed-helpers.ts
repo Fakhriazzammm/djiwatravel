@@ -22,3 +22,19 @@ export function useRequireSignIn(signedIn: boolean) {
     return false;
   };
 }
+
+/** Opens the phone's share sheet, or copies the link when there is none. */
+export async function shareFeedPost(post: { id: string; body: string }) {
+  const url = `${window.location.origin}/feeds/${post.id}`;
+  try {
+    if (typeof navigator.share === "function") {
+      await navigator.share({ title: "Feeds Djiwa Travel", text: post.body.slice(0, 100), url });
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    toast.success("Tautan disalin.");
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return;
+    toast.message(url);
+  }
+}
