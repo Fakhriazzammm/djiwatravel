@@ -170,12 +170,17 @@ therefore identical. No migration: the pins live in the existing JSON setting.
 eSIM sharing contract: a signed-in owner creates a link from `/my-esim/$id`
 through `esim-share.fn.ts`; `esim_share_links` stores only the SHA-256 token
 hash plus an encrypted copy for re-copy. `/e/$token` shows a package preview
-until the recipient presses **Buka eSIM**, which binds the link to an HttpOnly
-claim cookie (`claim_hash`). Eligibility is READY/INSTALLED until the profile or
-package expires; refunded, cancelled, failed, exhausted and disabled profiles
-end the link. `admin_settings.esimSharing` is the admin kill switch and admin
-order detail can revoke a link. Never expose the owner, order code, price, token,
-or QR before a claim.
+until the recipient signs in and claims it. Migration 075 adds nullable
+`claimed_by_subject`, set only from the verified Better Auth session in the
+atomic first-claim update. The same account can reopen a claimed link from any
+browser; a different or signed-out account never receives the QR. Earlier
+cookie-only claims (`claim_hash`) remain bound to their original HttpOnly
+browser cookie, with no identity backfill or transfer. Eligibility is
+READY/INSTALLED until the profile or package expires; refunded, cancelled,
+failed, exhausted and disabled profiles end the link. `admin_settings.esimSharing`
+is the admin kill switch and admin order detail can see claim time/views and
+revoke a link, but never the claimant identity. Never expose the owner, order
+code, price, token, or QR before an authorized claim.
 
 Tests are under [`src/test/`](src/test/), with server, route-auth, wallet,
 Calendar, profile, and UI coverage. `routeTree.gen.ts` and build output are

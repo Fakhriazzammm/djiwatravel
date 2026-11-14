@@ -316,6 +316,7 @@ describe("public eSIM share landing", () => {
       smdp: "smdp.example",
       activationCode: "ABC123",
     });
+    expect(landing.view.claimMode).toBe("browser");
     expect(landing.view.usage).toEqual({
       totalBytes: 10_000_000_000,
       usedBytes: 2_000_000_000,
@@ -365,6 +366,8 @@ describe("public eSIM share landing", () => {
     const landing = await claimSharedEsimHandler({ data: { token } });
 
     expect(landing.state).toBe("open");
+    if (landing.state !== "open") return;
+    expect(landing.view.claimMode).toBe("account");
     expect(storedSubject).toBe(recipientId);
     expect(writeCookie).not.toHaveBeenCalled();
     const claimCall = query.mock.calls.find(([sql]) =>
@@ -391,6 +394,8 @@ describe("public eSIM share landing", () => {
     const landing = await loadSharedEsim(token);
 
     expect(landing.state).toBe("open");
+    if (landing.state !== "open") return;
+    expect(landing.view.claimMode).toBe("account");
     expect(readCookie).toHaveBeenCalled();
     expect(storedUsage).toHaveBeenCalledWith(["PO-1"]);
     expect(writeCookie).not.toHaveBeenCalled();

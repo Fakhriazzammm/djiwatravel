@@ -57,7 +57,7 @@ export function AdminEsimSharePanel({
     : !state.enabled
       ? "Nonaktif"
       : link?.claimed
-        ? "Sudah dibuka"
+        ? "Sudah diklaim"
         : link
           ? "Aktif"
           : "Belum ada link";
@@ -104,8 +104,8 @@ export function AdminEsimSharePanel({
                 <dt className="text-muted-foreground">Status klaim</dt>
                 <dd className="font-medium">
                   {link.claimed
-                    ? `Dibuka ${link.claimedAt ? formatAdminDateTime(link.claimedAt) : ""}`
-                    : "Belum dibuka"}
+                    ? `Diklaim ${link.claimedAt ? formatAdminDateTime(link.claimedAt) : ""}`
+                    : "Belum diklaim"}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">

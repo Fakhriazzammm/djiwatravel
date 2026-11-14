@@ -427,7 +427,10 @@ function availablePreview(row: ShareRow, state: ReturnType<typeof orderShareStat
   };
 }
 
-async function openView(row: ShareRow): Promise<SharedEsimView> {
+async function openView(
+  row: ShareRow,
+  claimMode: SharedEsimView["claimMode"],
+): Promise<SharedEsimView> {
   const state = orderShareState(row);
   const usageMap = row.provider_order_no
     ? await readStoredUsageForOrders([row.provider_order_no])
@@ -464,6 +467,7 @@ async function openView(row: ShareRow): Promise<SharedEsimView> {
         }
       : null,
     esim: { lpa, smdp, activationCode },
+    claimMode,
   };
 }
 
@@ -484,6 +488,7 @@ export async function loadSharedEsim(
   if (state.eligibility !== "ok") return { state: "unavailable" };
 
   if (row.claimed_at) {
+    let claimMode: SharedEsimView["claimMode"];
     if (row.claimed_by_subject) {
       let subject: string | null = null;
       try {
@@ -492,9 +497,11 @@ export async function loadSharedEsim(
         // A missing or temporarily unreadable session never grants access to account-bound secrets.
       }
       if (subject !== row.claimed_by_subject) return { state: "claimed_elsewhere" };
+      claimMode = "account";
     } else if (row.claim_hash) {
       if (!claimValue || !hashesMatch(hashToken(claimValue), row.claim_hash))
         return { state: "claimed_elsewhere" };
+      claimMode = "browser";
     } else {
       // A claim without verified account or legacy cookie proof is malformed; fail closed.
       return { state: "claimed_elsewhere" };
@@ -508,7 +515,7 @@ export async function loadSharedEsim(
         [row.share_id],
       )
       .catch(() => undefined);
-    return { state: "open", view: await openView(row) };
+    return { state: "open", view: await openView(row, claimMode) };
   }
 
   if (row.claimed_by_subject || row.claim_hash) return { state: "claimed_elsewhere" };

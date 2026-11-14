@@ -12,14 +12,20 @@ import { ACTION_STAGES, useStagedLabel } from "@/lib/progress-stages";
 const button = "tap min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50";
 
 /** `compact` is the header slot: never full width, so it cannot stretch a nav bar. */
-export function CustomerAuth({ size = "block" }: { size?: "block" | "compact" }) {
+export function CustomerAuth({
+  size = "block",
+  label = "Masuk atau daftar",
+}: {
+  size?: "block" | "compact";
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   const layout = size === "compact" ? "shrink-0 px-3 py-2 text-[13px]" : "w-full sm:w-auto";
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button type="button" className={`${button} ${layout} bg-brand-red text-white`}>
-          Masuk atau daftar
+          {label}
         </button>
       </DialogTrigger>
       {open && <AuthChoice />}

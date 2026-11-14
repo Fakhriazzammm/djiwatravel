@@ -96,11 +96,13 @@ describe("eSIM share copy", () => {
     expect(shareUrl("https://djiwatravel.com", "abc123")).toBe("https://djiwatravel.com/e/abc123");
   });
 
-  it("tells the recipient to open the link on the phone that will use the eSIM", () => {
+  it("tells the recipient to claim with an account and install on the intended phone", () => {
     const message = shareMessage("Jepang 10GB", "https://djiwatravel.com/e/abc123");
     expect(message).toContain("Jepang 10GB");
     expect(message).toContain("https://djiwatravel.com/e/abc123");
     expect(message).toContain("Wi-Fi");
     expect(message).toContain("HP");
+    expect(message).toContain("akun Djiwa Travel");
+    expect(message).toContain("browser lain");
   });
 });

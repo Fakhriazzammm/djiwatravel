@@ -1,12 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { ArrowRight, CircleAlert, Loader2, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  ArrowRight,
+  Check,
+  CircleAlert,
+  Loader2,
+  LogOut,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+} from "lucide-react";
 import { Page, Wordmark, btnRed, btnSoft, group, row } from "@/components/shell";
+import { CustomerAuth } from "@/components/customer-auth";
 import { EsimInstallPanel, ManualDetails } from "@/components/esim-install";
 import { TravelUsageCard } from "@/components/travel-usage-card";
 import { claimSharedEsim, getSharedEsim } from "@/lib/esim-share.fn";
 import type { SharedEsimLanding, SharedEsimView } from "@/lib/esim-share";
 import { formatGb, usageView } from "@/lib/travel-journey";
+import { signOutBetterAuth } from "@/lib/better-auth-client";
+import { clearTravelLocalData } from "@/lib/travel-local-data";
+import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 
 export const Route = createFileRoute("/e/$token")({
   loader: async ({ params }) => {
@@ -49,11 +63,16 @@ const quotaLabel = (quotaBytes: number | null, unlimited: boolean) => {
 function SharedEsimPage() {
   const { token } = Route.useParams();
   const initial = Route.useLoaderData();
+  const { user, setUser, loading: authLoading } = useBetterAuthUser();
+  const reduceMotion = Boolean(useReducedMotion());
   const [landing, setLanding] = useState<SharedEsimLanding>(initial);
   const [claiming, setClaiming] = useState(false);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tipOpen, setTipOpen] = useState(false);
 
   async function claim() {
+    if (!user || authLoading) return;
     setClaiming(true);
     setError(null);
     try {
@@ -66,6 +85,28 @@ function SharedEsimPage() {
     }
   }
 
+  async function switchAccount() {
+    setSwitchingAccount(true);
+    setError(null);
+    try {
+      await signOutBetterAuth();
+      clearTravelLocalData();
+      setUser(null);
+    } catch {
+      setError("Akun belum bisa diganti. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setSwitchingAccount(false);
+    }
+  }
+
+  const motionDuration = reduceMotion ? 0 : 0.22;
+  const entrance = {
+    initial: { opacity: 0, y: reduceMotion ? 0 : 8 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: reduceMotion ? 0 : -4 },
+    transition: { duration: motionDuration, ease: "easeOut" as const },
+  };
+
   return (
     <Page tabs={false}>
       <div className="flex items-center justify-between gap-3 pb-5 pt-4">
@@ -75,35 +116,95 @@ function SharedEsimPage() {
         </span>
       </div>
 
-      {landing.state === "unavailable" && (
-        <StateCard
-          icon={<CircleAlert className="size-5 text-brand-red" aria-hidden="true" />}
-          title="Link tidak tersedia"
-          detail="Link mungkin sudah dicabut, sudah dibuka di perangkat lain, atau masa aktif eSIM sudah berakhir. Minta pengirim membuat link baru."
-        />
-      )}
+      <AnimatePresence initial={false} mode="wait">
+        {landing.state === "unavailable" && (
+          <motion.div key="unavailable" {...entrance}>
+            <StateCard
+              icon={<CircleAlert className="size-5 text-brand-red" aria-hidden="true" />}
+              title="Link tidak tersedia"
+              detail="Link mungkin sudah dicabut atau masa aktif eSIM sudah berakhir. Minta pengirim membuat link baru."
+            />
+          </motion.div>
+        )}
 
-      {landing.state === "claimed_elsewhere" && (
-        <StateCard
-          icon={<ShieldCheck className="size-5 text-brand-red" aria-hidden="true" />}
-          title="Link sudah dibuka di perangkat lain"
-          detail="Demi keamanan, satu link hanya bisa dibuka di satu browser. Minta pengirim mengirim link baru kalau kamu belum sempat memasang eSIM ini."
-        />
-      )}
+        {landing.state === "claimed_elsewhere" && (
+          <motion.div key="claimed" {...entrance}>
+            <StateCard
+              icon={<ShieldCheck className="size-5 text-brand-red" aria-hidden="true" />}
+              title="eSIM ini sudah diklaim akun lain"
+              detail={
+                user
+                  ? "Masuklah dengan akun Djiwa Travel yang pertama kali mengklaim eSIM ini. Klaim lama yang masih terikat ke browser mungkin perlu link baru dari pengirim."
+                  : "Masuk dengan akun Djiwa Travel milik penerima. Jika link lama masih terikat ke browser, minta pengirim membuat link baru."
+              }
+            >
+              <TravoGuide
+                open={tipOpen}
+                onToggle={() => setTipOpen((value) => !value)}
+                tip="Hanya akun yang mengklaim eSIM ini yang bisa melihat QR dan kode pemasangan."
+                reduceMotion={reduceMotion}
+              />
+              {authLoading ? (
+                <button type="button" disabled className={`${btnSoft} mt-3 w-full`}>
+                  Memeriksa akun…
+                </button>
+              ) : user ? (
+                <button
+                  type="button"
+                  onClick={() => void switchAccount()}
+                  disabled={switchingAccount}
+                  className={`${btnSoft} mt-3 w-full`}
+                >
+                  {switchingAccount ? (
+                    <Loader2
+                      className={`size-4 ${reduceMotion ? "" : "animate-spin"}`}
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <LogOut className="size-4" aria-hidden="true" />
+                  )}
+                  Pakai akun lain
+                </button>
+              ) : (
+                <div className="mt-3">
+                  <CustomerAuth label="Masuk dengan akun penerima" />
+                </div>
+              )}
+              {error && (
+                <p role="alert" className="mt-3 text-sm text-brand-red">
+                  {error}
+                </p>
+              )}
+            </StateCard>
+          </motion.div>
+        )}
 
-      {landing.state === "available" && (
-        <>
-          <section className="rounded-2xl bg-surface p-4" data-testid="shared-esim-preview">
-            <span className="inline-flex items-center gap-2 rounded-full bg-brand-red-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-red">
-              <Sparkles className="size-3.5" aria-hidden="true" /> Hadiah eSIM
-            </span>
-            <h1 className="mt-4 text-[26px] font-bold leading-tight">
-              {landing.preview.packageName}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Seseorang mengirimimu paket ini. Buka di HP yang akan memakai eSIM, lalu pasang dengan
-              Wi-Fi.
-            </p>
+        {landing.state === "available" && (
+          <motion.section
+            key="available"
+            {...entrance}
+            className="rounded-2xl bg-surface p-4"
+            data-testid="shared-esim-preview"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <span className="inline-flex items-center gap-2 rounded-full bg-brand-red-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-red">
+                  <Sparkles className="size-3.5" aria-hidden="true" /> eSIM khusus untukmu
+                </span>
+                <h1 className="mt-3 text-[22px] font-bold leading-tight">
+                  {landing.preview.packageName}
+                </h1>
+                <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+                  Klaim ke akunmu, lalu pasang di HP yang akan memakai eSIM dengan Wi-Fi.
+                </p>
+              </div>
+              <TravoGuide
+                open={tipOpen}
+                onToggle={() => setTipOpen((value) => !value)}
+                tip="Akun yang kamu pakai untuk masuk akan menyimpan akses eSIM ini. QR muncul setelah klaim berhasil."
+                reduceMotion={reduceMotion}
+              />
+            </div>
 
             <dl className={`${group} mt-4`}>
               <div className={row}>
@@ -128,42 +229,63 @@ function SharedEsimPage() {
               </div>
             </dl>
 
-            <button
-              type="button"
-              onClick={() => void claim()}
-              disabled={claiming}
-              className={`${btnRed} mt-4`}
-            >
-              {claiming ? (
-                <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Smartphone className="size-5" aria-hidden="true" />
-              )}
-              {claiming ? "Membuka eSIM…" : "Buka eSIM di perangkat ini"}
-            </button>
+            {authLoading ? (
+              <button type="button" disabled className={`${btnSoft} mt-4 w-full`}>
+                <Loader2
+                  className={`size-4 ${reduceMotion ? "" : "animate-spin"}`}
+                  aria-hidden="true"
+                />{" "}
+                Memeriksa akun…
+              </button>
+            ) : user ? (
+              <button
+                type="button"
+                onClick={() => void claim()}
+                disabled={claiming}
+                className={`${btnRed} mt-4 w-full`}
+              >
+                {claiming ? (
+                  <Loader2
+                    className={`size-5 ${reduceMotion ? "" : "animate-spin"}`}
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Smartphone className="size-5" aria-hidden="true" />
+                )}
+                {claiming ? "Menyimpan ke akun…" : "Klaim eSIM ini"}
+              </button>
+            ) : (
+              <div className="mt-4">
+                <CustomerAuth label="Masuk untuk klaim" />
+              </div>
+            )}
             {error && (
               <p
                 role="alert"
                 className="mt-3 rounded-xl bg-brand-red-soft p-3 text-sm text-brand-red"
               >
-                {error}
+                eSIM belum bisa diklaim. Periksa koneksi lalu coba lagi.
               </p>
             )}
-            <p className="mt-3 text-center text-[12px] leading-5 text-muted-foreground">
-              Tekan tombol ini di HP tujuan. Setelah dibuka, link terikat ke browser ini dan tidak
-              bisa dibuka di perangkat lain.
+            <p className="mt-3 flex items-start gap-2 px-1 text-[12px] leading-5 text-muted-foreground">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
+              Pratinjau ini tidak menampilkan QR atau data pesanan. Setelah diklaim, akun yang sama
+              bisa membuka link ini dari browser lain.
             </p>
-          </section>
+          </motion.section>
+        )}
 
-          <p className="mt-3 flex items-start gap-2 px-1 text-[12px] leading-5 text-muted-foreground">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
-            Djiwa Travel tidak menampilkan data pesanan, harga, atau identitas pengirim di halaman
-            ini.
-          </p>
-        </>
-      )}
-
-      {landing.state === "open" && <OpenEsim view={landing.view} />}
+        {landing.state === "open" && (
+          <motion.div key="open" {...entrance}>
+            <OpenEsim
+              view={landing.view}
+              tipOpen={tipOpen}
+              onToggleTip={() => setTipOpen((value) => !value)}
+              reduceMotion={reduceMotion}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="mt-4 flex flex-col gap-2">
         <Link to="/" className={`${btnSoft} text-center`}>
@@ -177,7 +299,17 @@ function SharedEsimPage() {
   );
 }
 
-function StateCard({ icon, title, detail }: { icon: ReactNode; title: string; detail: string }) {
+function StateCard({
+  icon,
+  title,
+  detail,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail: string;
+  children?: ReactNode;
+}) {
   return (
     <section className="rounded-2xl bg-surface p-4">
       <div className="flex items-center gap-2">
@@ -185,11 +317,73 @@ function StateCard({ icon, title, detail }: { icon: ReactNode; title: string; de
         <h1 className="text-lg font-bold">{title}</h1>
       </div>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
+      {children}
     </section>
   );
 }
 
-function OpenEsim({ view }: { view: SharedEsimView }) {
+function TravoGuide({
+  open,
+  onToggle,
+  tip,
+  reduceMotion,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  tip: string;
+  reduceMotion: boolean;
+}) {
+  const duration = reduceMotion ? 0 : 0.18;
+  return (
+    <div className="relative z-10 shrink-0">
+      <motion.button
+        type="button"
+        aria-label="Tanya Travo"
+        aria-expanded={open}
+        aria-controls="travo-esim-tip"
+        onClick={onToggle}
+        whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+        animate={open && !reduceMotion ? { rotate: [0, -4, 3, 0] } : { rotate: 0 }}
+        transition={{ duration: reduceMotion ? 0 : 0.28, ease: "easeOut" }}
+        className="flex min-h-11 min-w-[64px] flex-col items-center justify-center rounded-xl px-1 text-[10px] font-semibold text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <img
+          src="/assets/home-hero/mascot-v6.png"
+          alt="Maskot Djiwa Travel Travo"
+          className="h-10 w-14 object-contain"
+          loading="eager"
+        />
+        Tanya Travo
+      </motion.button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.p
+            id="travo-esim-tip"
+            initial={{ opacity: 0, y: reduceMotion ? 0 : -3, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: reduceMotion ? 0 : -3, height: 0 }}
+            transition={{ duration }}
+            className="absolute right-0 top-full mt-1 w-[min(18rem,calc(100vw-3rem))] overflow-hidden rounded-xl border border-border bg-surface p-3 text-[12px] leading-5 text-foreground shadow-lg"
+          >
+            {tip}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function OpenEsim({
+  view,
+  tipOpen,
+  onToggleTip,
+  reduceMotion,
+}: {
+  view: SharedEsimView;
+  tipOpen: boolean;
+  onToggleTip: () => void;
+  reduceMotion: boolean;
+}) {
   const usage = view.usage;
   const usageReport = usageView({
     volumeBytes: usage?.totalBytes ?? view.quotaBytes,
@@ -203,13 +397,46 @@ function OpenEsim({ view }: { view: SharedEsimView }) {
 
   return (
     <>
-      <section className="rounded-2xl bg-surface p-4" data-testid="shared-esim-open">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="size-5 text-success" aria-hidden="true" />
-          <h1 className="text-xl font-bold">eSIM siap dipasang</h1>
+      <section
+        className="rounded-2xl bg-surface p-4"
+        data-testid="shared-esim-open"
+        aria-live="polite"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="size-5 text-success" aria-hidden="true" />
+              <h1 className="text-xl font-bold">eSIM siap dipasang</h1>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {view.packageName} · {view.locationCodes.join(" · ") || "Regional"}
+            </p>
+          </div>
+          <TravoGuide
+            open={tipOpen}
+            onToggle={onToggleTip}
+            tip={
+              view.claimMode === "account"
+                ? "Akses eSIM ini tersimpan di akunmu. Buka link yang sama dari browser lain dengan akun yang sama."
+                : "Link lama ini tersimpan di browser ini. Untuk memasang di perangkat lain, minta pengirim membuat link baru."
+            }
+            reduceMotion={reduceMotion}
+          />
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {view.packageName} · {view.locationCodes.join(" · ") || "Regional"}
+
+        <div
+          className="mt-3 flex items-center gap-2 rounded-xl bg-secondary/70 px-3 py-2.5"
+          role="status"
+        >
+          <Check className="size-4 shrink-0 text-success" aria-hidden="true" />
+          <p className="text-[13px] font-semibold">
+            {view.claimMode === "account" ? "Tersimpan di akunmu" : "Tersimpan di browser ini"}
+          </p>
+        </div>
+        <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+          {view.claimMode === "account"
+            ? "Bisa dibuka kembali dengan akun yang sama dari browser lain."
+            : "Link ini terikat ke browser ini. Minta pengirim membuat link baru untuk perangkat lain."}
         </p>
 
         <div className="mt-4">
@@ -258,8 +485,8 @@ function OpenEsim({ view }: { view: SharedEsimView }) {
 
       <p className="mt-3 flex items-start gap-2 px-1 text-[12px] leading-5 text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
-        Link ini terikat ke browser ini. Jangan bagikan halaman ini ke orang lain; QR dan kode
-        aktivasi hanya untuk perangkat yang akan memakai eSIM.
+        Jangan bagikan halaman ini ke orang lain. QR dan kode aktivasi hanya untuk perangkat yang
+        akan memakai eSIM.
       </p>
     </>
   );

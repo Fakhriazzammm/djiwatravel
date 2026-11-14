@@ -119,7 +119,7 @@ export function EsimShareSheet({
   async function revoke() {
     const confirmed = window.confirm(
       link?.claimed
-        ? "Link ini sudah dibuka penerima. Mencabutnya akan menghentikan akses mereka. Lanjutkan?"
+        ? "Link ini sudah diklaim penerima. Mencabutnya akan menghentikan akses mereka. Lanjutkan?"
         : "Cabut link berbagi ini? Penerima tidak bisa membukanya lagi.",
     );
     if (!confirmed) return;
@@ -159,8 +159,8 @@ export function EsimShareSheet({
 
   const statusLine = link
     ? link.claimed
-      ? `Sudah dibuka penerima${link.claimedAt ? ` pada ${formatMoment(link.claimedAt)}` : ""} · ${link.viewCount}× dibuka`
-      : "Belum dibuka. Link masih bisa dipakai satu kali."
+      ? `Sudah diklaim penerima${link.claimedAt ? ` pada ${formatMoment(link.claimedAt)}` : ""} · ${link.viewCount}× dibuka`
+      : "Belum diklaim. Penerima perlu masuk agar akses tersimpan di akunnya."
     : null;
 
   return (
@@ -197,8 +197,9 @@ export function EsimShareSheet({
 
           <div className="flex-1 overflow-y-auto px-4 py-3">
             <p className="text-[13px] leading-5 text-muted-foreground">
-              Kirim link ke orang yang akan memakai eSIM ini. Mereka membukanya di HP masing-masing,
-              menekan <b>Buka eSIM</b> sekali, lalu memasangnya. Kamu tidak perlu mengirim foto QR.
+              Kirim link ke orang yang akan memakai eSIM. Penerima masuk ke akun Djiwa Travel, klaim
+              link di HP tujuan, lalu pasang dengan Wi-Fi. Setelah itu, link yang sama bisa dibuka
+              dari browser lain dengan akun yang sama. Kamu tidak perlu mengirim foto QR.
             </p>
 
             {busy === "load" ? (

@@ -91,6 +91,8 @@ export type SharedEsimView = {
     measuredAt: number | null;
   } | null;
   esim: { lpa: string; smdp: string; activationCode: string };
+  /** Whether access is stored on the recipient account or remains on a legacy browser cookie. */
+  claimMode: "account" | "browser";
 };
 
 /** Admin read model: same lifecycle signals as the owner sheet, without the bearer token. */
@@ -122,5 +124,5 @@ export function shareUrl(origin: string, token: string): string {
 }
 
 export function shareMessage(packageName: string, url: string): string {
-  return `Aku kirim eSIM ${packageName} untukmu. Buka linknya di HP yang akan memakai eSIM ini, dan pasang dengan Wi-Fi:\n${url}`;
+  return `Aku kirim eSIM ${packageName} untukmu. Klaim dengan akun Djiwa Travel agar link yang sama bisa dibuka lagi dari browser lain dengan akun yang sama. Buka di HP yang akan memakai eSIM dan pasang dengan Wi-Fi:\n${url}`;
 }
