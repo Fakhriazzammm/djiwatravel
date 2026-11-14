@@ -38,6 +38,16 @@ export const toggleFeedLike = createServerFn({ method: "POST" })
     return toggleFeedLikeHandler({ data });
   });
 
+export const toggleFeedCommentLike = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { feedIdInput } = await import("./feeds.server");
+    return feedIdInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { toggleFeedCommentLikeHandler } = await import("./feeds.server");
+    return toggleFeedCommentLikeHandler({ data });
+  });
+
 export const addFeedComment = createServerFn({ method: "POST" })
   .validator(async (data: unknown) => {
     const { feedCommentInput } = await import("./feeds.server");

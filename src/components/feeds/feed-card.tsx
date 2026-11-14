@@ -168,6 +168,29 @@ export function FeedCard({
           )}
         </div>
       )}
+      {!detail && !pending && post.topComment && (
+        <Link
+          to="/feeds/$id"
+          params={{ id: post.id }}
+          className="tap mt-1 flex items-start gap-2 rounded-xl bg-secondary px-3 py-2 text-[12px]"
+          aria-label="Lihat komentar"
+        >
+          <p className="min-w-0 flex-1 line-clamp-2">
+            <span className="font-semibold">{post.topComment.authorName}</span>{" "}
+            <span className="text-muted-foreground">{post.topComment.body}</span>
+          </p>
+          <span className="flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-muted-foreground">
+            {post.topComment.likeCount > 0 ? (
+              <>
+                <Heart className="size-3" aria-hidden="true" />
+                {post.topComment.likeCount}
+              </>
+            ) : (
+              "Terbaru"
+            )}
+          </span>
+        </Link>
+      )}
       {post.placeName && (
         <FeedSaveSheet
           postId={post.id}

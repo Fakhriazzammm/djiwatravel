@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { EllipsisVertical } from "lucide-react";
+import { EllipsisVertical, Heart } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
@@ -12,6 +12,7 @@ import { useFeedsStatus } from "@/hooks/use-feeds-status";
 import {
   addFeedComment,
   deleteFeedComment,
+  toggleFeedCommentLike,
   deleteFeedPost,
   getFeedPost,
   undoFeedReport,
@@ -82,6 +83,25 @@ function FeedPostPage() {
       toast.error(error instanceof Error ? error.message : "Komentar belum terkirim.");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function likeComment(comment: FeedCommentView) {
+    if (!feeds.signedIn) {
+      toast.error("Masuk dulu untuk menyukai komentar.");
+      return;
+    }
+    const apply = (liked: boolean, likeCount: number) =>
+      setComments((current) =>
+        current.map((c) => (c.id === comment.id ? { ...c, liked, likeCount } : c)),
+      );
+    apply(!comment.liked, Math.max(0, comment.likeCount + (comment.liked ? -1 : 1)));
+    try {
+      const result = await toggleFeedCommentLike({ data: { id: comment.id } });
+      apply(result.liked, result.likeCount);
+    } catch {
+      apply(comment.liked, comment.likeCount);
+      toast.error("Belum bisa menyukai komentar.");
     }
   }
 
@@ -201,6 +221,20 @@ function FeedPostPage() {
                       </p>
                       <p className="mt-0.5 flex items-center gap-3 text-[11px] text-muted-foreground">
                         {feedRelativeTime(comment.createdAt)}
+                        <button
+                          type="button"
+                          onClick={() => void likeComment(comment)}
+                          aria-pressed={comment.liked}
+                          aria-label={comment.liked ? "Batal suka komentar" : "Suka komentar"}
+                          className={`tap flex min-h-8 items-center gap-1 font-semibold ${comment.liked ? "text-brand-red" : ""}`}
+                        >
+                          <Heart
+                            className="size-3.5"
+                            fill={comment.liked ? "currentColor" : "none"}
+                            aria-hidden="true"
+                          />
+                          {comment.likeCount > 0 ? comment.likeCount : "Suka"}
+                        </button>
                         {comment.mine && (
                           <button
                             type="button"

@@ -156,6 +156,9 @@ type PostRow = {
   link_path: string | null;
   link_label: string | null;
   image_url: string | null;
+  tc_author?: string | null;
+  tc_body?: string | null;
+  tc_likes?: number | null;
   status: FeedStatus;
   like_count: number;
   comment_count: number;
@@ -180,6 +183,13 @@ function toPostView(row: PostRow, viewerId: string | null): FeedPostView {
     source: row.source,
     linkPath: row.link_path,
     linkLabel: row.link_label,
+    topComment: row.tc_body
+      ? {
+          authorName: row.tc_author ?? "Traveler",
+          body: row.tc_body,
+          likeCount: Number(row.tc_likes ?? 0),
+        }
+      : null,
     status: row.status,
     likeCount: Number(row.like_count),
     commentCount: Number(row.comment_count),
@@ -224,9 +234,15 @@ export async function listFeedHandler({ data }: { data: ReturnType<typeof feedLi
     throw new Error("Kursor tidak valid.");
   const rows = await pool.query(
     `select ${POST_COLUMNS}, p.published_at::text as published_text,
-            (l.customer_auth_subject is not null) as liked
+            (l.customer_auth_subject is not null) as liked,
+            tc.author_name as tc_author, tc.body as tc_body, tc.like_count as tc_likes
        from feed_posts p
        left join feed_likes l on l.post_id = p.id and l.customer_auth_subject = $1
+       left join lateral (
+         select c.author_name, c.body, c.like_count from feed_comments c
+          where c.post_id = p.id and c.status = 'PUBLISHED'
+          order by c.like_count desc, c.created_at desc limit 1
+       ) tc on true
       where p.status = 'PUBLISHED'
         and ($2::text is null or p.kind = $2)
         and ($3::text is null or p.destination_code = upper($3))
@@ -297,9 +313,12 @@ export async function getFeedPostHandler({ data }: { data: ReturnType<typeof fee
   if (!row || !visible)
     return { enabled: true as const, post: null, comments: [], reported: false };
   const comments = await pool.query(
-    `select id, customer_auth_subject, author_name, body, created_at from feed_comments
-      where post_id = $1 and status = 'PUBLISHED' order by created_at asc limit 200`,
-    [data.id],
+    `select c.id, c.customer_auth_subject, c.author_name, c.body, c.created_at, c.like_count,
+            (cl.customer_auth_subject is not null) as liked
+       from feed_comments c
+       left join feed_comment_likes cl on cl.comment_id = c.id and cl.customer_auth_subject = $2
+      where c.post_id = $1 and c.status = 'PUBLISHED' order by c.created_at asc limit 200`,
+    [data.id, viewerId],
   );
   return {
     enabled: true as const,
@@ -312,12 +331,16 @@ export async function getFeedPostHandler({ data }: { data: ReturnType<typeof fee
         author_name: string;
         body: string;
         created_at: Date;
+        like_count: number;
+        liked: boolean;
       }[]
     ).map((c): FeedCommentView => ({
       id: c.id,
       authorName: c.author_name,
       mine: Boolean(user) && c.customer_auth_subject === user!.id,
       body: c.body,
+      likeCount: Number(c.like_count),
+      liked: Boolean(c.liked),
       createdAt: new Date(c.created_at).toISOString(),
     })),
   };
@@ -457,10 +480,43 @@ export async function toggleFeedLikeHandler({ data }: { data: ReturnType<typeof 
       data.id,
       user.id,
     ]);
+  // Step the stored counter (instead of recounting rows) so example posts keep their base count.
   const count = await pool.query(
-    `update feed_posts set like_count = (select count(*) from feed_likes where post_id = $1)
-      where id = $1 returning like_count`,
+    `update feed_posts set like_count = greatest(like_count + $2, 0) where id = $1 returning like_count`,
+    [data.id, liked ? 1 : -1],
+  );
+  return { liked, likeCount: Number(count.rows[0]?.like_count ?? 0) };
+}
+
+export async function toggleFeedCommentLikeHandler({
+  data,
+}: {
+  data: ReturnType<typeof feedIdInput>;
+}) {
+  await requireOn();
+  const user = await requireViewer();
+  const target = await pool.query(
+    `select c.status, p.status as post_status from feed_comments c
+       join feed_posts p on p.id = c.post_id where c.id = $1`,
     [data.id],
+  );
+  const row = target.rows[0] as { status: string; post_status: string } | undefined;
+  if (!row || row.status !== "PUBLISHED" || row.post_status !== "PUBLISHED")
+    throw new Error("Komentar tidak ditemukan.");
+  const inserted = await pool.query(
+    `insert into feed_comment_likes (comment_id, customer_auth_subject) values ($1, $2)
+     on conflict do nothing returning 1`,
+    [data.id, user.id],
+  );
+  const liked = (inserted.rowCount ?? 0) > 0;
+  if (!liked)
+    await pool.query(
+      "delete from feed_comment_likes where comment_id = $1 and customer_auth_subject = $2",
+      [data.id, user.id],
+    );
+  const count = await pool.query(
+    `update feed_comments set like_count = greatest(like_count + $2, 0) where id = $1 returning like_count`,
+    [data.id, liked ? 1 : -1],
   );
   return { liked, likeCount: Number(count.rows[0]?.like_count ?? 0) };
 }
@@ -528,6 +584,8 @@ export async function addFeedCommentHandler({
     authorName: author,
     mine: true,
     body: data.body,
+    likeCount: 0,
+    liked: false,
     createdAt: new Date(row.created_at).toISOString(),
   };
   return { comment };

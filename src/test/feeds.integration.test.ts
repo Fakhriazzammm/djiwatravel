@@ -428,4 +428,59 @@ describeDb("feeds against a real database", () => {
     const admin = await server.getAdminFeedsHandler();
     expect(JSON.stringify(admin)).toContain('"source":"seed"');
   });
+
+  it("previews the most liked comment (else the newest) and lets members like comments", async () => {
+    as("u-rani");
+    const post = await server.createFeedPost({
+      subject: "u-rani",
+      body: "Tips tiket kereta",
+      kind: "tips",
+      destinationCode: "JP",
+    });
+    await pool.query("update feed_posts set status='PUBLISHED', published_at=now() where id=$1", [
+      post.post.id,
+    ]);
+    as("u-dimas");
+    const first = await server.addFeedCommentHandler({
+      data: { postId: post.post.id, body: "Pertama" },
+    });
+    const second = await server.addFeedCommentHandler({
+      data: { postId: post.post.id, body: "Kedua" },
+    });
+    let feed = await server.listFeedHandler({ data: { limit: 10 } });
+    expect(feed.posts.find((p) => p.id === post.post.id)?.topComment).toMatchObject({
+      body: "Kedua",
+      likeCount: 0,
+    });
+
+    as("u-rani");
+    const liked = await server.toggleFeedCommentLikeHandler({ data: { id: first.comment.id } });
+    expect(liked).toEqual({ liked: true, likeCount: 1 });
+    feed = await server.listFeedHandler({ data: { limit: 10 } });
+    expect(feed.posts.find((p) => p.id === post.post.id)?.topComment).toMatchObject({
+      body: "Pertama",
+      likeCount: 1,
+    });
+    const detail = await server.getFeedPostHandler({ data: { id: post.post.id } });
+    expect(detail.enabled && detail.comments.find((c) => c.id === first.comment.id)).toMatchObject({
+      liked: true,
+      likeCount: 1,
+    });
+    const undone = await server.toggleFeedCommentLikeHandler({ data: { id: first.comment.id } });
+    expect(undone).toEqual({ liked: false, likeCount: 0 });
+    expect(second.comment.id).not.toBe(first.comment.id);
+  });
+
+  it("migration 071 adds ten example comments and keeps the counts consistent", async () => {
+    const fs = await import("node:fs");
+    await pool.query(fs.readFileSync("migrations/070_feeds_sources.sql", "utf8"));
+    await pool.query(fs.readFileSync("migrations/071_feed_comment_likes.sql", "utf8"));
+    const rows = await pool.query(
+      `select count(*)::int as n,
+              (select count(*)::int from feed_posts p where p.source='seed' and p.comment_count <>
+                (select count(*) from feed_comments c where c.post_id=p.id and c.status='PUBLISHED')) as off
+         from feed_comments where source='seed'`,
+    );
+    expect(rows.rows[0]).toEqual({ n: 10, off: 0 });
+  });
 });

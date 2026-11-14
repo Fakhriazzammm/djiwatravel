@@ -206,6 +206,8 @@ export type FeedPostView = {
   source: "member" | "seed" | "guide";
   linkPath: string | null;
   linkLabel: string | null;
+  /** The comment previewed under the post: most liked, else newest. */
+  topComment: { authorName: string; body: string; likeCount: number } | null;
   status: FeedStatus;
   likeCount: number;
   commentCount: number;
@@ -219,6 +221,8 @@ export type FeedCommentView = {
   authorName: string;
   mine: boolean;
   body: string;
+  likeCount: number;
+  liked: boolean;
   createdAt: string;
 };
 
