@@ -1,9 +1,10 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { ConsentGate } from "@/components/consent-gate";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FeedAvatar } from "@/components/feeds/feed-card";
+import { FEEDS_REFRESH_EVENT } from "@/components/feeds/feeds-dock";
 import { FeedComposer } from "@/components/feeds/feed-composer";
 import { destinationLabel } from "@/components/feeds/feed-helpers";
 import { FeedPosts, FeedSkeleton } from "@/components/feeds/feed-timeline";
@@ -61,16 +62,10 @@ function DjiwaPromoRow() {
 
 /**
  * The traveler timeline that lives on Explore: the composer, the sticky tabs (Untuk kamu, Terbaru,
- * Tujuanku), the kind and destination filters, the "N post baru" pill and the list. `stickyTop` is
- * how far below the top the tabs stick (the height of Explore's own sticky header).
+ * Tujuanku), the kind and destination filters, the "N post baru" pill and the list. The composer, tabs
+ * and filters stick to the top together while the list scrolls (not while the composer is open).
  */
-export function FeedTimelineSection({
-  startKind,
-  stickyTop,
-}: {
-  startKind?: FeedKind | undefined;
-  stickyTop: number;
-}) {
+export function FeedTimelineSection({ startKind }: { startKind?: FeedKind | undefined }) {
   const feeds = useFeedsStatus();
   const [kind, setKind] = useState<FeedKind | undefined>();
   const [destination, setDestination] = useState<string | undefined>();
@@ -82,35 +77,76 @@ export function FeedTimelineSection({
     destination,
     active: feeds.enabled && sort !== "mine",
   });
-  const stuck: CSSProperties = { top: stickyTop };
+  useEffect(() => {
+    const refresh = () => void list.reload();
+    window.addEventListener(FEEDS_REFRESH_EVENT, refresh);
+    return () => window.removeEventListener(FEEDS_REFRESH_EVENT, refresh);
+  }, [list]);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   if (!feeds.loaded) return <FeedSkeleton />;
   if (!feeds.enabled) return null;
   return (
     <>
-      <FeedComposer status={feeds} onPosted={list.addPosted} flush startKind={startKind} />
-      <div className="sticky z-20 -mx-4 bg-surface px-4" style={stuck}>
+      <div className={composerOpen ? "" : "sticky top-0 z-20"}>
+        <FeedComposer
+          status={feeds}
+          onPosted={list.addPosted}
+          flush
+          onOpenChange={setComposerOpen}
+          startKind={startKind}
+        />
+        <div className="-mx-4 bg-surface px-4">
+          <div
+            role="tablist"
+            aria-label="Urutan Feeds"
+            className="-mx-4 flex border-b border-border/70"
+          >
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={sort === tab.id}
+                onClick={() => setSort(tab.id)}
+                className={`tap relative flex min-h-10 flex-1 items-center justify-center text-[13px] font-semibold ${sort === tab.id ? "text-foreground" : "text-muted-foreground"}`}
+              >
+                {tab.label}
+                {sort === tab.id && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-[28%] bottom-[-1px] h-0.5 rounded-full bg-foreground"
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
         <div
-          role="tablist"
-          aria-label="Urutan Feeds"
-          className="-mx-4 flex border-b border-border/70"
+          className="-mx-4 flex gap-1.5 overflow-x-auto border-b border-border/60 bg-surface px-4 py-2"
+          role="group"
+          aria-label="Filter Feeds"
         >
-          {TABS.map((tab) => (
+          {FEED_KINDS.map((value) => (
             <button
-              key={tab.id}
+              key={value}
               type="button"
-              role="tab"
-              aria-selected={sort === tab.id}
-              onClick={() => setSort(tab.id)}
-              className={`tap relative flex min-h-10 flex-1 items-center justify-center text-[13px] font-semibold ${sort === tab.id ? "text-foreground" : "text-muted-foreground"}`}
+              className={chip(kind === value)}
+              aria-pressed={kind === value}
+              onClick={() => setKind(kind === value ? undefined : value)}
             >
-              {tab.label}
-              {sort === tab.id && (
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-x-[28%] bottom-[-1px] h-0.5 rounded-full bg-foreground"
-                />
-              )}
+              {FEED_KIND_LABEL[value]}
+            </button>
+          ))}
+          {list.facets.map((facet) => (
+            <button
+              key={facet.code}
+              type="button"
+              className={chip(destination === facet.code)}
+              aria-pressed={destination === facet.code}
+              onClick={() => setDestination(destination === facet.code ? undefined : facet.code)}
+            >
+              {destinationLabel(facet.code)}
             </button>
           ))}
         </div>
@@ -121,39 +157,11 @@ export function FeedTimelineSection({
               window.scrollTo({ top: 0 });
               void list.reload();
             }}
-            className="tap mx-auto mb-2 flex min-h-8 items-center rounded-full bg-foreground px-3.5 text-[12px] font-semibold text-background"
+            className="tap mx-auto mt-2 flex min-h-8 items-center rounded-full bg-foreground px-3.5 text-[12px] font-semibold text-background"
           >
             ↑ {newPosts >= 99 ? "99+" : newPosts} post baru
           </button>
         )}
-      </div>
-      <div
-        className="-mx-4 flex gap-1.5 overflow-x-auto border-b border-border/60 bg-surface px-4 py-2"
-        role="group"
-        aria-label="Filter Feeds"
-      >
-        {FEED_KINDS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            className={chip(kind === value)}
-            aria-pressed={kind === value}
-            onClick={() => setKind(kind === value ? undefined : value)}
-          >
-            {FEED_KIND_LABEL[value]}
-          </button>
-        ))}
-        {list.facets.map((facet) => (
-          <button
-            key={facet.code}
-            type="button"
-            className={chip(destination === facet.code)}
-            aria-pressed={destination === facet.code}
-            onClick={() => setDestination(destination === facet.code ? undefined : facet.code)}
-          >
-            {destinationLabel(facet.code)}
-          </button>
-        ))}
       </div>
       <div className="mt-0">
         {sort === "mine" && !list.loading && !list.error && list.tripDestinations.length > 0 && (

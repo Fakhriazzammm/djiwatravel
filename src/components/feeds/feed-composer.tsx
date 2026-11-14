@@ -33,6 +33,7 @@ export function FeedComposer({
   onPosted,
   startKind,
   flush = false,
+  onOpenChange,
 }: {
   status: FeedsStatus;
   onPosted: (post: FeedPostView, pending: boolean) => void;
@@ -40,6 +41,8 @@ export function FeedComposer({
   startKind?: FeedKind | undefined;
   /** Edge to edge, as the first row of the Feeds page timeline (instead of a rounded card). */
   flush?: boolean | undefined;
+  /** Tells the page when the composer is open (a tall, writing state) or collapsed. */
+  onOpenChange?: ((open: boolean) => void) | undefined;
 }) {
   const shell = flush
     ? "-mx-4 border-y border-border/60 bg-surface px-3 py-3"
@@ -70,6 +73,10 @@ export function FeedComposer({
   useEffect(() => {
     if (open) textRef.current?.focus();
   }, [open]);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   const effectiveKind = kind ?? inferFeedKind(body, showPlace ? place : "");
 

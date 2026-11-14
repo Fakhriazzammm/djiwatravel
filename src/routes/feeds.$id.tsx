@@ -1,3 +1,4 @@
+import { FeedsFrame } from "@/components/feeds/feeds-dock";
 import { ConsentGate } from "@/components/consent-gate";
 import { useConsent } from "@/hooks/use-consent";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -8,7 +9,7 @@ import { CustomerAuth } from "@/components/customer-auth";
 import { FeedAvatar, FeedCard } from "@/components/feeds/feed-card";
 import { FeedReportSheet } from "@/components/feeds/feed-sheets";
 import { FeedSkeleton } from "@/components/feeds/feed-timeline";
-import { Page, BackBar, glassIconButtonClass } from "@/components/shell";
+import { BackBar, glassIconButtonClass } from "@/components/shell";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useFeedsStatus } from "@/hooks/use-feeds-status";
 import {
@@ -165,7 +166,7 @@ function FeedPostPage() {
     ) : null;
 
   return (
-    <Page>
+    <FeedsFrame>
       <div className="pt-4">
         <BackBar title="Postingan" fallbackTo="/explore" action={action} />
       </div>
@@ -370,6 +371,6 @@ function FeedPostPage() {
           });
         }}
       />
-    </Page>
+    </FeedsFrame>
   );
 }

@@ -18,6 +18,7 @@ const COMPACT_PAGES = [
   "src/routes/feeds.aktivitas.tsx",
   "src/routes/feeds.aku.tsx",
   "src/components/feeds/feed-timeline-section.tsx",
+  "src/components/feeds/feeds-dock.tsx",
   "src/routes/feeds.$id.tsx",
   "src/components/feeds/feed-card.tsx",
   "src/components/feeds/feed-composer.tsx",

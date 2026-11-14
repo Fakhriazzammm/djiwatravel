@@ -1,9 +1,10 @@
+import { FeedsFrame } from "@/components/feeds/feeds-dock";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FeedAvatar } from "@/components/feeds/feed-card";
 import { FeedPosts, FeedSkeleton } from "@/components/feeds/feed-timeline";
-import { Page, BackBar } from "@/components/shell";
+import { BackBar } from "@/components/shell";
 import { useFeedsStatus } from "@/hooks/use-feeds-status";
 import { getMyFeedProfile } from "@/lib/feeds.fn";
 import { feedAuthorName } from "@/lib/feeds";
@@ -55,7 +56,7 @@ function FeedsMePage() {
   }[segment];
 
   return (
-    <Page>
+    <FeedsFrame>
       <div className="pt-4">
         <BackBar title="Aku" fallbackTo="/explore" />
       </div>
@@ -146,6 +147,6 @@ function FeedsMePage() {
           </p>
         </>
       ) : null}
-    </Page>
+    </FeedsFrame>
   );
 }

@@ -1,10 +1,11 @@
+import { FeedsFrame } from "@/components/feeds/feeds-dock";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageCircle, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
 import { FeedSkeleton } from "@/components/feeds/feed-timeline";
-import { Page, BackBar } from "@/components/shell";
+import { BackBar } from "@/components/shell";
 import { useFeedsStatus } from "@/hooks/use-feeds-status";
 import { FEEDS_UNREAD_EVENT } from "@/hooks/use-feeds-unread";
 import { getFeedActivity, markFeedActivityRead } from "@/lib/feeds.fn";
@@ -54,7 +55,7 @@ function FeedsActivityPage() {
   const shown = (items ?? []).filter((item) => segment === "all" || item.type === segment);
 
   return (
-    <Page>
+    <FeedsFrame>
       <div className="pt-4">
         <BackBar title="Aktivitas" fallbackTo="/explore" />
       </div>
@@ -155,6 +156,6 @@ function FeedsActivityPage() {
           </p>
         </>
       )}
-    </Page>
+    </FeedsFrame>
   );
 }
