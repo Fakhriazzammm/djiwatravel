@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { BadgeCheck, ChevronRight, Heart, MapPin, MessageCircle } from "lucide-react";
+import { BadgeCheck, CalendarPlus, ChevronRight, Heart, MapPin, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { toggleFeedLike } from "@/lib/feeds.fn";
 import {
@@ -127,17 +127,6 @@ export function FeedCard({
         <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
           <span className="min-w-0 truncate">{post.placeName}</span>
-          {!pending && (
-            <button
-              type="button"
-              onClick={() => {
-                if (requireSignIn("Masuk dulu untuk menyimpan ke Agenda.")) setSaveOpen(true);
-              }}
-              className="tap ml-auto flex min-h-8 shrink-0 items-center font-semibold text-brand-red"
-            >
-              Simpan ke Agenda
-            </button>
-          )}
         </div>
       )}
       {pending ? (
@@ -165,6 +154,18 @@ export function FeedCard({
             <MessageCircle className="size-4" aria-hidden="true" />
             {post.commentCount}
           </Link>
+          {post.placeName && (
+            <button
+              type="button"
+              onClick={() => {
+                if (requireSignIn("Masuk dulu untuk menyimpan ke Agenda.")) setSaveOpen(true);
+              }}
+              aria-label="Simpan ke Agenda"
+              className="tap ml-auto flex size-9 items-center justify-center text-brand-red"
+            >
+              <CalendarPlus className="size-[18px]" aria-hidden="true" />
+            </button>
+          )}
         </div>
       )}
       {post.placeName && (
