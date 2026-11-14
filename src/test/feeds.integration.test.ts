@@ -483,4 +483,27 @@ describeDb("feeds against a real database", () => {
     );
     expect(rows.rows[0]).toEqual({ n: 10, off: 0 });
   });
+
+  it("migration 072 allows the Titip Belanja kind and ships four photo posts", async () => {
+    const fs = await import("node:fs");
+    for (const f of ["070_feeds_sources", "071_feed_comment_likes", "072_feeds_titip"])
+      await pool.query(fs.readFileSync(`migrations/${f}.sql`, "utf8"));
+    const titip = await pool.query(
+      "select count(*)::int as n, count(image_url)::int as photos from feed_posts where kind='titip' and source='seed'",
+    );
+    expect(titip.rows[0]).toEqual({ n: 4, photos: 4 });
+    for (const row of (await pool.query("select image_url from feed_posts where kind='titip'"))
+      .rows)
+      expect(fs.existsSync(`public${row.image_url}`)).toBe(true);
+    const feed = await server.listFeedHandler({ data: { kind: "titip", limit: 10 } });
+    expect(feed.posts).toHaveLength(4);
+    expect(feed.posts[0]?.photoUrl).toMatch(/^\/assets\/feeds\//);
+    // A member can post it too.
+    const made = await server.createFeedPost({
+      subject: "u-rani",
+      body: "Titipanku sampai!",
+      kind: "titip",
+    });
+    expect(made.post.kind).toBe("titip");
+  });
 });

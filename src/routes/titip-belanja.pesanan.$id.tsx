@@ -121,6 +121,11 @@ function ShopperOrder() {
             Bila sudah membayar, refund diproses tim kami.
           </p>
         )}
+        {(order.status === "ARRIVED" || order.status === "DELIVERED") && (
+          <Link to="/feeds" search={{ tulis: "titip" }} className={`${btnPrimary} mt-2 w-full`}>
+            Bagikan ke Feeds
+          </Link>
+        )}
         {order.status === "EXPIRED" && (
           <Link to="/titip-belanja" className={`${btnPrimary} mt-2 w-full`}>
             Belanja lagi

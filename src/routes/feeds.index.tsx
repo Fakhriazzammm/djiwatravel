@@ -9,6 +9,8 @@ import { useFeedsStatus } from "@/hooks/use-feeds-status";
 import { FEED_KINDS, FEED_KIND_LABEL, type FeedKind } from "@/lib/feeds";
 
 export const Route = createFileRoute("/feeds/")({
+  validateSearch: (search: Record<string, unknown>): { tulis?: "titip" } =>
+    search["tulis"] === "titip" ? { tulis: "titip" } : {},
   head: () => ({
     meta: [
       { title: "Feeds traveler — Djiwa Travel" },
@@ -26,6 +28,7 @@ const chip = (on: boolean) =>
   `tap flex min-h-8 shrink-0 items-center rounded-full border px-3 text-[12px] font-semibold ${on ? "border-foreground bg-foreground text-background" : "border-border/70 bg-surface"}`;
 
 function FeedsPage() {
+  const search = Route.useSearch();
   const feeds = useFeedsStatus();
   const [kind, setKind] = useState<FeedKind | undefined>();
   const [destination, setDestination] = useState<string | undefined>();
@@ -86,7 +89,11 @@ function FeedsPage() {
               </button>
             ))}
           </div>
-          <FeedComposer status={feeds} onPosted={list.addPosted} />
+          <FeedComposer
+            status={feeds}
+            onPosted={list.addPosted}
+            startKind={search.tulis === "titip" ? "titip" : undefined}
+          />
           <div className="mt-3">
             {list.loading ? (
               <FeedSkeleton />

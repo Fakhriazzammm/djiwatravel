@@ -5,12 +5,13 @@
 
 export const FEEDS_SETTING_KEY = "feeds";
 
-export const FEED_KINDS = ["cerita", "tips", "tanya"] as const;
+export const FEED_KINDS = ["cerita", "tips", "tanya", "titip"] as const;
 export type FeedKind = (typeof FEED_KINDS)[number];
 export const FEED_KIND_LABEL: Record<FeedKind, string> = {
   cerita: "Cerita",
   tips: "Tips",
   tanya: "Tanya",
+  titip: "Titip Belanja",
 };
 
 export const GUIDE_AUTHOR_NAME = "Travo Guide";

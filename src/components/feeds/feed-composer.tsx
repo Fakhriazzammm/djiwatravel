@@ -29,9 +29,12 @@ const quick =
 export function FeedComposer({
   status,
   onPosted,
+  startKind,
 }: {
   status: FeedsStatus;
   onPosted: (post: FeedPostView, pending: boolean) => void;
+  /** Opens the composer straight away with this kind (e.g. "Bagikan ke Feeds" from a delivered order). */
+  startKind?: FeedKind | undefined;
 }) {
   const { user } = useBetterAuthUser();
   const [open, setOpen] = useState(false);
@@ -59,6 +62,16 @@ export function FeedComposer({
   }, [open]);
 
   const effectiveKind = kind ?? inferFeedKind(body, showPlace ? place : "");
+
+  useEffect(() => {
+    if (!startKind) return;
+    if (!status.signedIn) return setGate("signin");
+    if (status.banned) return setGate("banned");
+    setKind(startKind);
+    setOpen(true);
+    // Only on arrival: later changes to the session must not reopen a closed composer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startKind]);
 
   function begin(action?: "photo" | "place" | "tanya") {
     if (!status.signedIn) return setGate("signin");
