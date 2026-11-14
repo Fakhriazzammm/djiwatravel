@@ -32,12 +32,18 @@ export function FeedComposer({
   status,
   onPosted,
   startKind,
+  flush = false,
 }: {
   status: FeedsStatus;
   onPosted: (post: FeedPostView, pending: boolean) => void;
   /** Opens the composer straight away with this kind (e.g. "Bagikan ke Feeds" from a delivered order). */
   startKind?: FeedKind | undefined;
+  /** Edge to edge, as the first row of the Feeds page timeline (instead of a rounded card). */
+  flush?: boolean | undefined;
 }) {
+  const shell = flush
+    ? "-mx-4 border-y border-border/60 bg-surface px-3 py-3"
+    : "rounded-2xl bg-surface p-3";
   const { user } = useBetterAuthUser();
   const [open, setOpen] = useState(false);
   const [gate, setGate] = useState<"signin" | "banned" | "consent" | null>(null);
@@ -164,7 +170,7 @@ export function FeedComposer({
 
   if (!open) {
     return (
-      <section className="rounded-2xl bg-surface p-3" aria-label="Buat postingan">
+      <section className={shell} aria-label="Buat postingan">
         <div className="flex items-center gap-2">
           {avatar}
           <button
@@ -217,7 +223,7 @@ export function FeedComposer({
   }
 
   return (
-    <section className="rounded-2xl bg-surface p-3" aria-label="Buat postingan">
+    <section className={shell} aria-label="Buat postingan">
       <div className="flex items-center gap-2">
         {avatar}
         <div className="min-w-0 flex-1">

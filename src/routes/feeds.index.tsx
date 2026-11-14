@@ -27,7 +27,7 @@ export const Route = createFileRoute("/feeds/")({
 });
 
 const chip = (on: boolean) =>
-  `tap flex min-h-8 shrink-0 items-center rounded-full border px-3 text-[12px] font-semibold ${on ? "border-foreground bg-foreground text-background" : "border-border/70 bg-surface"}`;
+  `tap flex min-h-8 shrink-0 items-center rounded-full border px-3 text-[12px] font-semibold ${on ? "border-foreground bg-foreground text-background" : "border-transparent bg-secondary"}`;
 
 const TABS: { id: FeedSort; label: string }[] = [
   { id: "foryou", label: "Untuk kamu" },
@@ -68,9 +68,10 @@ function FeedsPage() {
           <FeedComposer
             status={feeds}
             onPosted={list.addPosted}
+            flush
             startKind={search.tulis === "titip" ? "titip" : undefined}
           />
-          <div className="sticky top-0 z-20 -mx-4 mt-3 bg-background px-4">
+          <div className="sticky top-0 z-20 -mx-4 bg-surface px-4">
             <div
               role="tablist"
               aria-label="Urutan Feeds"
@@ -109,7 +110,7 @@ function FeedsPage() {
             )}
           </div>
           <div
-            className="-mx-4 flex gap-1.5 overflow-x-auto px-4 py-2"
+            className="-mx-4 flex gap-1.5 overflow-x-auto border-b border-border/60 bg-surface px-4 py-2"
             role="group"
             aria-label="Filter Feeds"
           >
@@ -149,7 +150,7 @@ function FeedsPage() {
                 </p>
               )}
             {list.loading ? (
-              <FeedSkeleton />
+              <FeedSkeleton flush />
             ) : list.blocked === "signin" ? (
               <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-surface p-3">
                 <p className="text-[12px] text-muted-foreground">
