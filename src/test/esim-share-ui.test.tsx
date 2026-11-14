@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "@/routes/e.$token";
 import { AdminEsimSharePanel } from "@/components/admin-esim-share-panel";
 import { EsimShareSheet } from "@/components/esim-share-sheet";
-import { claimSharedEsim, getEsimShareState } from "@/lib/esim-share.fn";
+import { claimSharedEsim, getEsimShareState, getSharedEsim } from "@/lib/esim-share.fn";
 import { signInGoogle, signOutBetterAuth } from "@/lib/better-auth-client";
 import { clearTravelLocalData } from "@/lib/travel-local-data";
 import type { SharedEsimLanding } from "@/lib/esim-share";
@@ -19,6 +19,7 @@ const state = vi.hoisted(() => ({
   adminState: null as unknown,
   fns: {
     claimSharedEsim: vi.fn(),
+    getSharedEsim: vi.fn(),
     getEsimShareState: vi.fn(),
     createEsimShareLink: vi.fn(),
     revokeEsimShareLink: vi.fn(),
@@ -108,7 +109,7 @@ function openLanding(claimMode: "account" | "browser"): SharedEsimLanding {
 
 function renderRoute(landing: SharedEsimLanding = preview) {
   state.landing = landing;
-  const Component = Route.component as React.ComponentType;
+  const Component = (Route as unknown as { component: React.ComponentType }).component;
   return render(<Component />);
 }
 
@@ -121,6 +122,7 @@ beforeEach(() => {
   state.adminState = null;
   state.fns.signInGoogle.mockResolvedValue(undefined);
   state.fns.signOutBetterAuth.mockResolvedValue(undefined);
+  state.fns.getSharedEsim.mockResolvedValue({ state: "claimed_elsewhere" });
 });
 
 describe("shared eSIM recipient experience", () => {
@@ -170,6 +172,53 @@ describe("shared eSIM recipient experience", () => {
     expect(screen.getByRole("button", { name: "Masuk dengan akun penerima" })).toBeTruthy();
     expect(screen.queryByTestId("install-panel")).toBeNull();
     expect(screen.queryByText(/activation code/i)).toBeNull();
+  });
+
+  it("rechecks a conflict when the signed-in recipient session becomes available", async () => {
+    state.auth.user = { id: "verified-user" };
+    state.fns.getSharedEsim.mockResolvedValue(openLanding("account"));
+    renderRoute({ state: "claimed_elsewhere" });
+
+    expect(await screen.findByTestId("shared-esim-open")).toBeTruthy();
+    expect(getSharedEsim).toHaveBeenCalledWith({ data: { token: "shared-token" } });
+  });
+
+  it("offers a retry that reloads the server access state", async () => {
+    state.auth.user = { id: "verified-user" };
+    state.fns.getSharedEsim
+      .mockResolvedValueOnce({ state: "claimed_elsewhere" })
+      .mockResolvedValueOnce(openLanding("account"));
+    renderRoute({ state: "claimed_elsewhere" });
+    await waitFor(() => expect(getSharedEsim).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getByRole("button", { name: "Coba periksa lagi" }));
+
+    expect(await screen.findByTestId("shared-esim-open")).toBeTruthy();
+    expect(getSharedEsim).toHaveBeenCalledTimes(2);
+  });
+
+  it("rechecks a retryable access state when the signed-in session becomes available", async () => {
+    state.auth.user = { id: "verified-user" };
+    state.fns.getSharedEsim.mockResolvedValue(openLanding("account"));
+    renderRoute({ state: "claim_check_failed" } as SharedEsimLanding);
+
+    expect(await screen.findByTestId("shared-esim-open")).toBeTruthy();
+    expect(getSharedEsim).toHaveBeenCalledWith({ data: { token: "shared-token" } });
+  });
+
+  it("lets the recipient manually retry an unverified claim without forcing account switch", async () => {
+    state.auth.user = { id: "verified-user" };
+    state.fns.getSharedEsim
+      .mockResolvedValueOnce({ state: "claim_check_failed" })
+      .mockResolvedValueOnce(openLanding("account"));
+    renderRoute({ state: "claim_check_failed" } as SharedEsimLanding);
+    await waitFor(() => expect(getSharedEsim).toHaveBeenCalledOnce());
+
+    expect(screen.queryByRole("button", { name: "Pakai akun lain" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Coba periksa lagi" }));
+
+    expect(await screen.findByTestId("shared-esim-open")).toBeTruthy();
+    expect(getSharedEsim).toHaveBeenCalledTimes(2);
   });
 
   it("offers an explicit account switch without losing the shared link", async () => {

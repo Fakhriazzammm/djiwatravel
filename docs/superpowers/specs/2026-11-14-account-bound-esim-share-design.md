@@ -19,6 +19,7 @@ Add a nullable `claimed_by_subject` column in migration `075_esim_share_claim_ac
 - The open view includes only a non-identifying access mode (`account` or `browser`) so older cookie-bound links receive accurate instructions instead of being described as account-saved.
 - A viewer with another account sees “eSIM ini sudah diklaim akun lain,” no installation data, and recovery guidance to use the recipient account or ask the sender for a fresh link. Do not reveal claimant details.
 - Show visible pending, retryable network error, unavailable/revoked/expired, and concurrent-claim-lost states. Recheck server state on retry.
+- Authentication-service outages return a safe retry state rather than a verified account conflict. After the browser session resolves, recheck access; keep a manual retry available without requiring sign-out.
 
 ## Motion and accessibility
 

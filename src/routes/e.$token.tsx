@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowRight,
@@ -68,7 +68,9 @@ function SharedEsimPage() {
   const [landing, setLanding] = useState<SharedEsimLanding>(initial);
   const [claiming, setClaiming] = useState(false);
   const [switchingAccount, setSwitchingAccount] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const [tipOpen, setTipOpen] = useState(false);
 
   async function claim() {
@@ -98,6 +100,28 @@ function SharedEsimPage() {
       setSwitchingAccount(false);
     }
   }
+
+  const recheckAccess = useCallback(async () => {
+    setCheckingAccess(true);
+    setAccessError(null);
+    try {
+      setLanding(await getSharedEsim({ data: { token } }));
+    } catch {
+      setAccessError("Akses belum bisa diperiksa. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setCheckingAccess(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (
+      (landing.state === "claim_check_failed" || landing.state === "claimed_elsewhere") &&
+      !authLoading &&
+      user
+    ) {
+      void recheckAccess();
+    }
+  }, [landing.state, authLoading, user, recheckAccess]);
 
   const motionDuration = reduceMotion ? 0 : 0.22;
   const entrance = {
@@ -144,6 +168,24 @@ function SharedEsimPage() {
                 tip="Hanya akun yang mengklaim eSIM ini yang bisa melihat QR dan kode pemasangan."
                 reduceMotion={reduceMotion}
               />
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => void recheckAccess()}
+                  disabled={checkingAccess}
+                  className={`${btnSoft} mt-3 w-full`}
+                >
+                  {checkingAccess ? (
+                    <Loader2
+                      className={`size-4 ${reduceMotion ? "" : "animate-spin"}`}
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <ShieldCheck className="size-4" aria-hidden="true" />
+                  )}
+                  Coba periksa lagi
+                </button>
+              )}
               {authLoading ? (
                 <button type="button" disabled className={`${btnSoft} mt-3 w-full`}>
                   Memeriksa akun…
@@ -173,6 +215,48 @@ function SharedEsimPage() {
               {error && (
                 <p role="alert" className="mt-3 text-sm text-brand-red">
                   {error}
+                </p>
+              )}
+              {accessError && (
+                <p role="alert" className="mt-3 text-sm text-brand-red">
+                  {accessError}
+                </p>
+              )}
+            </StateCard>
+          </motion.div>
+        )}
+
+        {landing.state === "claim_check_failed" && (
+          <motion.div key="claim-check-failed" {...entrance}>
+            <StateCard
+              icon={<CircleAlert className="size-5 text-brand-red" aria-hidden="true" />}
+              title="Akses eSIM belum bisa diperiksa"
+              detail="Layanan sesi sedang tidak stabil. QR dan kode pemasangan tetap terlindungi; coba periksa lagi sebentar."
+            >
+              {!authLoading && !user && (
+                <div className="mt-3">
+                  <CustomerAuth label="Masuk untuk memeriksa akses" />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => void recheckAccess()}
+                disabled={checkingAccess}
+                className={`${btnSoft} mt-3 w-full`}
+              >
+                {checkingAccess ? (
+                  <Loader2
+                    className={`size-4 ${reduceMotion ? "" : "animate-spin"}`}
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <ShieldCheck className="size-4" aria-hidden="true" />
+                )}
+                Coba periksa lagi
+              </button>
+              {accessError && (
+                <p role="alert" className="mt-3 text-sm text-brand-red">
+                  {accessError}
                 </p>
               )}
             </StateCard>
@@ -342,7 +426,7 @@ function TravoGuide({
         aria-expanded={open}
         aria-controls="travo-esim-tip"
         onClick={onToggle}
-        whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+        whileTap={reduceMotion ? {} : { scale: 0.96 }}
         animate={open && !reduceMotion ? { rotate: [0, -4, 3, 0] } : { rotate: 0 }}
         transition={{ duration: reduceMotion ? 0 : 0.28, ease: "easeOut" }}
         className="flex min-h-11 min-w-[64px] flex-col items-center justify-center rounded-xl px-1 text-[10px] font-semibold text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

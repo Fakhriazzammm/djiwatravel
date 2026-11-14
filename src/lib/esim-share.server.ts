@@ -8,6 +8,7 @@ import { buildSettingAudit } from "./admin-settings";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import { decryptEsimSecret, encryptEsimSecret } from "./esim-secret-crypto";
 import { readStoredUsageForOrders } from "./esim-stored-usage.server";
+import { CustomerSessionUnavailableError } from "./customer-session.server";
 import {
   DEFAULT_ESIM_SHARING_CONFIG,
   ESIM_SHARING_SETTING_KEY,
@@ -493,8 +494,11 @@ export async function loadSharedEsim(
       let subject: string | null = null;
       try {
         subject = (await getAuthenticatedUser()).id;
-      } catch {
+      } catch (error) {
         // A missing or temporarily unreadable session never grants access to account-bound secrets.
+        if (error instanceof CustomerSessionUnavailableError) {
+          return { state: "claim_check_failed" };
+        }
       }
       if (subject !== row.claimed_by_subject) return { state: "claimed_elsewhere" };
       claimMode = "account";

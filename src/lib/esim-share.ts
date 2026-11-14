@@ -106,6 +106,7 @@ export type AdminEsimShareState = {
 export type SharedEsimLanding =
   | { state: "unavailable" }
   | { state: "claimed_elsewhere" }
+  | { state: "claim_check_failed" }
   | {
       state: "available";
       preview: Pick<

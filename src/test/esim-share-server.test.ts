@@ -4,6 +4,7 @@ import { pool } from "@/db/client.server";
 import { getAuthenticatedUser } from "@/lib/customer-session.fn";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminEmailHandler } from "@/lib/admin-guard.server";
+import { CustomerSessionUnavailableError } from "@/lib/customer-session.server";
 import { readStoredUsageForOrders } from "@/lib/esim-stored-usage.server";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
 import {
@@ -417,6 +418,23 @@ describe("public eSIM share landing", () => {
     await expect(loadSharedEsim(token)).resolves.toEqual({ state: "claimed_elsewhere" });
     authenticate.mockRejectedValue(new Error("Autentikasi diperlukan"));
     await expect(loadSharedEsim(token)).resolves.toEqual({ state: "claimed_elsewhere" });
+    expect(storedUsage).not.toHaveBeenCalled();
+  });
+
+  it("returns a retryable access-check state when the auth service is unavailable", async () => {
+    routeQueries({
+      config: () => [{ value_json: { enabled: true } }],
+      share: () => [
+        shareRow({
+          claimed_at: "2026-11-01T01:00:00.000Z",
+          claimed_by_subject: recipientId,
+          claim_hash: null,
+        }),
+      ],
+    });
+    authenticate.mockRejectedValue(new CustomerSessionUnavailableError());
+
+    await expect(loadSharedEsim(token)).resolves.toEqual({ state: "claim_check_failed" });
     expect(storedUsage).not.toHaveBeenCalled();
   });
 

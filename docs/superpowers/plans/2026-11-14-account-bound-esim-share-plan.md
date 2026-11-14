@@ -110,3 +110,14 @@ Expected: UI/pure contracts pass; all `/e/` route scale checks pass. The complet
 - [ ] **Step 4: Push the approved commits to `main` without force-pushing.** If remote `main` advanced, fetch and integrate it before retrying.
 - [ ] **Step 5: Run `scripts/deploy-vps.sh` with the standard migration/build/rollback behavior.** Do not skip migrations or source sync.
 - [ ] **Step 6: Verify deployed SHA/artifact, active `djiwatravel.service`, listener `127.0.0.1:3000`, localhost and public share routes, and the migration record separately.**
+
+## Verification and review record
+
+- Customer/owner/Admin surface matrix: see the approved design spec above. Customer QR access is session-owned; owner/Admin lifecycle status uses `claimed_at` without recipient identity.
+- Focused session/eSIM server, UI, and helper checks: 40/40 passed. Share-route compact scale: 5/5 passed. Changed-file ESLint passed.
+- Full Vitest was attempted and interrupted after approximately 11 minutes. Recorded failures were in unchanged flight search/features, wallet, Admin UI contracts, home event contracts, and two trip mobile-scale checks. The full suite is not claimed green.
+- Repository TypeScript has existing failures in unrelated modules. The new route motion optional-prop and test route-mock typing errors were corrected.
+- Fresh whole-branch review found a temporary auth outage could appear to be an account mismatch. Added failing tests, then a distinct safe retry state, automatic session recheck, and manual retry; focused checks returned green.
+- Deferred minor: owner instructions and generated share messages describe account cross-browser access even for historical cookie-only claims. The recipient view retains accurate legacy-browser instructions and sender recovery.
+- Rollback limitation: the prior application cannot open new account-bound claims. Keep migration 075 in place and roll forward to restore those claims; legacy cookie claims remain compatible.
+- Rulings: release is explicitly authorized; `claimMode` is a non-identifying enum needed for accurate recipient legacy copy; the two unchanged trip mobile-scale failures remain outside this release.
