@@ -1,0 +1,74 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Navbar bawah khusus Feeds — 3 opsi</title><style>
+:root{--bg:#f3f4f6;--fg:#15171b;--mut:#666a73;--bd:#e3e4e7;--red:#d32f2f;--soft:#fbe5e4;--ok:#17803d}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--fg);padding:8px}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer;text-align:inherit}button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.top{max-width:470px;margin:0 auto 10px}.top h1{font-size:17px;margin:0 0 4px}.top p{font-size:12px;opacity:.7;margin:0 0 10px;line-height:1.5}
+.tabs{display:flex;gap:6px}.tabs button{flex:1;border-radius:12px;padding:9px 4px;background:#fff;color:var(--fg);font-size:12px;font-weight:650;text-align:center;border:1px solid var(--bd)}.tabs button[aria-selected=true]{background:var(--fg);color:#fff}
+.note{max-width:470px;margin:10px auto 12px;font-size:12px;line-height:1.55;opacity:.88;min-height:100px}
+.phone{position:relative;width:390px;max-width:100%;height:760px;margin:auto;background:var(--bg);border:1px solid var(--bd);border-radius:26px;overflow:hidden;color:var(--fg)}
+.scr{position:absolute;inset:0;overflow:auto;scrollbar-width:none;padding-bottom:110px}.scr::-webkit-scrollbar{display:none}
+.hd{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--bd);padding:12px 16px 0}.hd h2{margin:0 0 6px;font-size:20px;font-weight:750}
+.tb{display:flex;margin:0 -16px}.tb button{flex:1;text-align:center;font-size:13px;font-weight:650;color:var(--mut);padding:9px 0;position:relative}.tb button.on{color:var(--fg)}.tb button.on::after{content:"";position:absolute;left:28%;right:28%;bottom:-1px;height:2.5px;border-radius:2px;background:var(--fg)}
+.row{display:flex;gap:10px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--bd)}.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}.av.dj{background:var(--red)}
+.b{flex:1;min-width:0}.nm{font-size:13.5px;font-weight:700}.nm small{font-weight:500;color:var(--mut);font-size:12px}.txt{font-size:13.5px;line-height:1.42;margin:2px 0 4px}.meta{font-size:12px;color:var(--mut)}
+.chip{font-size:10px;font-weight:700;border-radius:7px;padding:1px 7px;background:var(--soft);color:var(--red);float:right}
+.sec{padding:14px 16px 6px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.srch{margin:12px 16px;height:40px;border-radius:20px;background:#fff;border:1px solid var(--bd);padding:0 14px;display:flex;align-items:center;font-size:13px;color:var(--mut)}
+.dl{display:flex;gap:10px;align-items:center;padding:10px 16px;background:#fff;border-bottom:1px solid var(--bd);font-size:13.5px}.dl b{flex:1}.dl small{color:var(--mut)}
+.act{display:flex;gap:10px;align-items:center;padding:11px 16px;background:#fff;border-bottom:1px solid var(--bd);font-size:13px;line-height:1.35}.act.un{background:#fff8f7}.act i{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0}.act .ic{font-size:18px}.act small{display:block;color:var(--mut);font-size:11.5px}
+.seg{display:flex;gap:6px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--bd)}.seg button{flex:1;text-align:center;border-radius:12px;padding:8px 0;font-size:12px;font-weight:650;background:var(--bg)}.seg button.on{background:var(--fg);color:#fff}
+.me{background:#fff;padding:16px;text-align:center;border-bottom:1px solid var(--bd)}.me .av{width:56px;height:56px;font-size:22px;margin:0 auto 6px}.me b{font-size:16px;display:block}.me .st{display:flex;justify-content:center;gap:22px;margin-top:10px;font-size:11.5px;color:var(--mut)}.me .st b{font-size:16px;color:var(--fg)}
+.pend{background:#fffaf0;border-bottom:1px dashed #f1d9a8;padding:10px 16px;font-size:12.5px;color:#78520b}
+/* dock A: flat bar, Threads/X style */
+.dockA{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--bd);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 4px 22px;z-index:9}
+.dockA button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:600;color:var(--mut);padding:4px 0;position:relative;text-align:center}.dockA button.on{color:var(--fg)}.dockA .ic{font-size:21px;line-height:1.1}.dockA .on .ic{transform:scale(1.1)}
+.bdg{position:absolute;top:0;left:56%;min-width:16px;height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:9.5px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.dockA .dj{color:var(--red)}
+/* dock B: compact floating, hides on scroll */
+.dockB{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:#15171bf2;color:#fff;border-radius:30px;display:flex;gap:2px;padding:6px;z-index:9;transition:transform .3s,opacity .3s;box-shadow:0 8px 24px #0004}
+.dockB.hide{transform:translate(-50%,90px);opacity:0}.dockB button{display:flex;align-items:center;gap:6px;height:42px;padding:0 14px;border-radius:21px;font-size:12.5px;font-weight:650;color:#c8cad0;position:relative}.dockB button.on{background:#ffffff22;color:#fff}.dockB .ic{font-size:18px}.dockB .bdg{top:3px;left:auto;right:4px}
+.up{position:absolute;right:14px;bottom:20px;width:42px;height:42px;border-radius:50%;background:#fff;box-shadow:0 4px 14px #0003;display:grid;place-items:center;font-size:18px;z-index:8;transition:opacity .3s,transform .3s}.up.hide{opacity:0;transform:translateY(20px);pointer-events:none}
+/* dock C: kind filters */
+.dockC{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--bd);padding:8px 10px 22px;z-index:9;display:flex;gap:6px;align-items:center}
+.dockC .out{width:42px;height:42px;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800;flex-shrink:0;text-align:center}
+.dockC .k{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;border-radius:14px;padding:6px 0;font-size:10.5px;font-weight:650;color:var(--mut);text-align:center}.dockC .k .ic{font-size:19px}.dockC .k.on{background:var(--soft);color:var(--red)}
+.toast{position:absolute;left:50%;top:14px;transform:translate(-50%,-80px);background:#15171b;color:#fff;font-size:12px;padding:8px 14px;border-radius:16px;z-index:12;transition:transform .3s;white-space:nowrap}.toast.on{transform:translate(-50%,0)}
+</style></head><body>
+<div class="top"><h1>Navbar bawah khusus Feeds — 3 opsi</h1><p>Di <b>/feeds</b> bar bawah tidak lagi sama dengan halaman lain (Beranda, Jelajah, Perjalanan, Dompet, Profil). Ketuk ikonnya untuk berpindah layar; di opsi B gulir daftar untuk melihat bar bersembunyi.</p>
+<div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-o="0">A · Dock Feeds</button><button role="tab" aria-selected="false" data-o="1">B · Dock ringkas</button><button role="tab" aria-selected="false" data-o="2">C · Dock jenis post</button></div></div>
+<div class="note" id="note"></div>
+<div class="phone" id="phone"></div>
+<script>
+const $=id=>document.getElementById(id);
+const N=['<b>A · Dock Feeds (gaya Threads/X).</b> Bar penuh lebar bergaris tipis, bukan pil melayang, jadi terlihat sebagai "mode Feeds". Lima slot: <i>Djiwa</i> (jalan keluar ke Beranda), <i>Feeds</i> (ketuk lagi = ke atas + segarkan), <i>Cari</i> (post, tujuan, pertanyaan belum terjawab), <i>Aktivitas</i> (balasan, suka, post disetujui; lencana angka), <i>Aku</i> (postinganku, tersimpan, menunggu tinjauan).','<b>B · Dock ringkas (hilang saat gulir).</b> Pil gelap kecil dengan empat slot: Feeds, Cari, Aktivitas, Aku. Bersembunyi saat menggulir ke bawah dan muncul saat menggulir ke atas, jadi ruang baca penuh; tombol ↑ kecil muncul untuk kembali ke atas. Jalan keluar lewat tombol kembali di kiri atas yang sudah ada.','<b>C · Dock jenis post.</b> Bar bawah menjadi saringan jenis post yang terjangkau ibu jari: Semua, Cerita, Tips, Tanya, Titip. Tombol bulat merah "Djiwa" di kiri untuk keluar. Chip saringan di atas dipindah ke bawah. Paling fokus pada isi, tetapi tidak ada slot untuk Aktivitas atau Aku.'];
+const C=['#c0765a','#5a8fc0','#7a6ac0','#4aa08a','#b85a8a'];
+const av=(n,i,c='')=>`<span class="av ${c}" style="background:${C[i%5]}">${n[0]}</span>`;
+const POSTS=[['Rani',0,'2 jam','Tips','Datang 30 menit sebelum sunset ke Shibuya Sky. Antreannya jauh lebih pendek.'],['Dimas',1,'5 jam','Tanya','Ada yang pernah pakai eSIM di Shinkansen? Sinyalnya stabil nggak?'],['Maya',2,'3 jam','Titip','Pertama kali titip Uniqlo lewat Djiwa. Sampai dengan rapi, ukurannya pas semua.'],['Sari',3,'9 jam','Cerita','Hari ketiga di Seoul akhirnya ketemu kedai tteokbokki kecil di dalam pasar.'],['Tia',4,'1 hari','Tips','Di Singapura cukup tap kartu kontaktless di gerbang MRT, tidak perlu top up dulu.']];
+let st={o:0,s:'feed',kind:'Semua',actSeg:'Semua',meSeg:'Postinganku',tab:0,hide:false,lastY:0};
+const post=p=>`<div class="row">${av(p[0],p[1])}<div class="b"><div class="nm">${p[0]} <small>· ${p[2]}</small><span class="chip">${p[3]}</span></div><div class="txt">${p[4]}</div><div class="meta">♡ 12 &nbsp; 💬 3</div></div></div>`;
+function feedScreen(){let l=POSTS;if(st.o==2&&st.kind!='Semua')l=POSTS.filter(p=>p[3]==st.kind);return `<div class="hd"><h2>Feeds</h2><div class="tb">${['Untuk kamu','Terbaru','Tujuanku'].map((t,i)=>`<button class="${st.tab==i?'on':''}" data-tab="${i}">${t}</button>`).join('')}</div></div>${l.map(post).join('')||'<div class="sec">Belum ada post untuk jenis ini</div>'}`}
+const cariScreen=()=>`<div class="hd"><h2>Cari</h2></div><div class="srch">⌕ Cari post, tujuan, atau pertanyaan</div><div class="sec">Tujuan ramai</div>${[['🇯🇵','Jepang','128 post'],['🇰🇷','Korea Selatan','64 post'],['🇸🇬','Singapura','41 post'],['🇹🇭','Thailand','37 post']].map(d=>`<div class="dl"><span style="font-size:22px">${d[0]}</span><b>${d[1]}</b><small>${d[2]}</small></div>`).join('')}<div class="sec">Belum terjawab</div>${post(POSTS[1])}`;
+const ACT=[['💬','<b>Rina</b> membalas komentarmu','2 menit lalu',1,'Balasan'],['❤️','<b>12 orang</b> menyukai postinganmu','1 jam lalu',1,'Suka'],['✅','Postinganmu <b>sudah tayang</b>','3 jam lalu',1,'Semua'],['💬','<b>Dimas</b> berkomentar di postinganmu','Kemarin',0,'Balasan']];
+const actScreen=()=>`<div class="hd"><h2>Aktivitas</h2></div><div class="seg">${['Semua','Balasan','Suka'].map(s=>`<button class="${st.actSeg==s?'on':''}" data-aseg="${s}">${s}</button>`).join('')}</div>${ACT.filter(a=>st.actSeg=='Semua'||a[4]==st.actSeg||(st.actSeg!='Semua'&&a[4]=='Semua'&&false)).map(a=>`<div class="act ${a[3]?'un':''}"><span class="ic">${a[0]}</span><div style="flex:1">${a[1]}<small>${a[2]}</small></div>${a[3]?'<i></i>':''}</div>`).join('')}`;
+const meScreen=()=>`<div class="hd"><h2>Aku</h2></div><div class="me">${av('A',0)}<b>Azzam</b><span class="meta">Pernah ke Jepang ✈</span><div class="st"><span><b>3</b><br>Post</span><span><b>12</b><br>Komentar</span><span><b>5</b><br>Tersimpan</span></div></div><div class="seg">${['Postinganku','Tersimpan','Menunggu'].map(s=>`<button class="${st.meSeg==s?'on':''}" data-mseg="${s}">${s}${s=='Menunggu'?' (1)':''}</button>`).join('')}</div>${st.meSeg=='Menunggu'?'<div class="pend">⏳ Postinganmu sedang ditinjau tim, biasanya kurang dari 1 jam.</div>'+post(['Azzam',0,'10 menit','Tips','Cobain naik kereta pagi dari Kyoto ke Nara, masih sepi sekali.']):st.meSeg=='Tersimpan'?post(POSTS[0])+post(POSTS[3]):post(['Azzam',0,'2 hari','Cerita','Akhirnya sampai Tokyo! Hari pertama jalan-jalan di Asakusa.'])+post(['Azzam',0,'5 hari','Tanya','Ada saran ryokan murah di Hakone?'])}`;
+const SCR={feed:feedScreen,cari:cariScreen,akt:actScreen,aku:meScreen};
+const items=[['dj','🏠','Djiwa'],['feed','📰','Feeds'],['cari','🔎','Cari'],['akt','🔔','Aktivitas'],['aku','👤','Aku']];
+const dockA=()=>`<div class="dockA">${items.map(i=>`<button class="${st.s==i[0]?'on':''} ${i[0]=='dj'?'dj':''}" data-s="${i[0]}"><span class="ic">${i[1]}</span>${i[2]}${i[0]=='akt'?'<span class="bdg">3</span>':''}</button>`).join('')}</div>`;
+const dockB=()=>`<div class="dockB ${st.hide?'hide':''}">${items.slice(1).map(i=>`<button class="${st.s==i[0]?'on':''}" data-s="${i[0]}"><span class="ic">${i[1]}</span>${st.s==i[0]?i[2]:''}${i[0]=='akt'?'<span class="bdg">3</span>':''}</button>`).join('')}</div><button class="up ${st.hide?'':'hide'}" data-up>↑</button>`;
+const KINDS=[['Semua','✦'],['Cerita','📖'],['Tips','💡'],['Tanya','❓'],['Titip','🛍']];
+const dockC=()=>`<div class="dockC"><button class="out" data-s="dj">Djiwa</button>${KINDS.map(k=>`<button class="k ${st.kind==k[0]?'on':''}" data-k="${k[0]}"><span class="ic">${k[1]}</span>${k[0]}</button>`).join('')}</div>`;
+function render(){const ph=$('phone');const old=ph.querySelector('.scr');const top=old?old.scrollTop:0;
+ const screen=st.o==2?'feed':st.s;
+ ph.innerHTML=`<div class="scr" id="scr">${SCR[screen]()}</div>${[dockA,dockB,dockC][st.o]()}<div class="toast" id="toast"></div>`;
+ const sc=ph.querySelector('.scr');sc.scrollTop=top;
+ if(st.o==1){sc.addEventListener('scroll',()=>{const y=sc.scrollTop;const h=y>st.lastY&&y>60;if(h!==st.hide){st.hide=h;ph.querySelector('.dockB').classList.toggle('hide',h);ph.querySelector('.up').classList.toggle('hide',!h)}st.lastY=y},{passive:true})}
+ ph.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const s=b.dataset.s;if(s=='dj'){toast('Keluar ke Beranda Djiwa');return}if(s==st.s&&s=='feed'){sc.scrollTo({top:0,behavior:'smooth'});toast('Ke atas · menyegarkan Feeds');return}st.s=s;st.hide=false;render();ph.querySelector('.scr').scrollTop=0});
+ ph.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{st.tab=+b.dataset.tab;render()});
+ ph.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{st.kind=b.dataset.k;render();ph.querySelector('.scr').scrollTop=0});
+ ph.querySelectorAll('[data-aseg]').forEach(b=>b.onclick=()=>{st.actSeg=b.dataset.aseg;render()});
+ ph.querySelectorAll('[data-mseg]').forEach(b=>b.onclick=()=>{st.meSeg=b.dataset.mseg;render()});
+ ph.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{sc.scrollTo({top:0,behavior:'smooth'})})}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e&&e.classList.remove('on'),2000)}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{st.o=+b.dataset.o;st.s='feed';st.kind='Semua';st.hide=false;document.querySelectorAll('.tabs button').forEach((x,j)=>x.setAttribute('aria-selected',j==st.o));$('note').innerHTML=N[st.o];render()});
+$('note').innerHTML=N[0];render();
+</script></body></html>

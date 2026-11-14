@@ -9,6 +9,7 @@ import { readCustomerProfile } from "./customer-profile.server";
 import {
   FEEDS_SETTING_KEY,
   FEED_BODY_MAX,
+  type FeedActivityItem,
   GUIDE_AUTHOR_NAME,
   GUIDE_AUTHOR_SUBJECT,
   FEED_COMMENT_MAX,
@@ -167,6 +168,7 @@ type PostRow = {
   created_at: Date;
   published_at: Date | null;
   liked?: boolean | null;
+  bookmarked?: boolean | null;
 };
 
 const photoUrl = (row: Pick<PostRow, "id" | "photo_mime" | "image_url">) =>
@@ -196,6 +198,7 @@ function toPostView(row: PostRow, viewerId: string | null): FeedPostView {
     likeCount: Number(row.like_count),
     commentCount: Number(row.comment_count),
     liked: Boolean(row.liked),
+    bookmarked: Boolean(row.bookmarked),
     createdAt: new Date(row.created_at).toISOString(),
     publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null,
   };
@@ -214,6 +217,10 @@ const listSchema = z.object({
     .optional(),
   /** new = newest first; foryou = ranked (boosted by the viewer's trips); mine = posts about the viewer's trips. */
   sort: z.enum(["new", "foryou", "mine"]).default("new"),
+  /** Text search over the post, its place and the author's first name. */
+  q: z.string().trim().min(2).max(60).optional(),
+  /** Questions nobody answered yet. */
+  unanswered: z.boolean().optional(),
   cursor: z.string().max(120).optional(),
   limit: z.number().int().min(1).max(30).default(10),
 });
@@ -293,9 +300,11 @@ export async function listFeedHandler({ data: input }: { data: z.input<typeof li
   const rows = await pool.query(
     `select ${POST_COLUMNS}, p.published_at::text as published_text,
             (l.customer_auth_subject is not null) as liked,
+            (bm.post_id is not null) as bookmarked,
             tc.author_name as tc_author, tc.body as tc_body, tc.like_count as tc_likes
        from feed_posts p
        left join feed_likes l on l.post_id = p.id and l.customer_auth_subject = $1
+       left join feed_bookmarks bm on bm.post_id = p.id and bm.customer_auth_subject = $1
        left join lateral (
          select c.author_name, c.body, c.like_count from feed_comments c
           where c.post_id = p.id and c.status = 'PUBLISHED'
@@ -306,6 +315,10 @@ export async function listFeedHandler({ data: input }: { data: z.input<typeof li
         and ($3::text is null or p.destination_code = upper($3))
         and ($4::timestamptz is null or (p.published_at, p.id) < ($4::timestamptz, $5::uuid))
         and ($9::boolean is false or p.destination_code = any($7::text[]))
+        and ($10::text is null or strpos(lower(p.body), lower($10)) > 0
+             or strpos(lower(coalesce(p.place_name, '')), lower($10)) > 0
+             or strpos(lower(p.author_name), lower($10)) > 0)
+        and ($11::boolean is false or (p.kind = 'tanya' and p.comment_count = 0))
         and not exists (select 1 from feed_reports r where r.post_id = p.id and r.reporter_subject = $1)
       order by ${ranked ? `${FORYOU_SCORE} desc, p.id desc` : "p.published_at desc, p.id desc"}
       offset $8 limit $6`,
@@ -319,6 +332,8 @@ export async function listFeedHandler({ data: input }: { data: z.input<typeof li
       tripDestinations,
       offset,
       data.sort === "mine",
+      data.q ?? null,
+      data.unanswered === true,
     ],
   );
   const page = rows.rows.slice(0, data.limit) as (PostRow & { published_text: string })[];
@@ -395,6 +410,190 @@ export async function countNewFeedPostsHandler({
   return { count: Math.min(Number(result.rows[0]?.n ?? 0), 99) };
 }
 
+/* ------------------------------------------------------------------ dock: Aku, Aktivitas, Tersimpan */
+
+/** Full post views (liked, bookmarked, top comment) for the given ids, in the given order. */
+async function loadPostViews(ids: string[], viewerId: string): Promise<FeedPostView[]> {
+  if (!ids.length) return [];
+  const rows = await pool.query(
+    `select ${POST_COLUMNS}, (l.customer_auth_subject is not null) as liked,
+            (bm.post_id is not null) as bookmarked,
+            tc.author_name as tc_author, tc.body as tc_body, tc.like_count as tc_likes
+       from feed_posts p
+       left join feed_likes l on l.post_id = p.id and l.customer_auth_subject = $2
+       left join feed_bookmarks bm on bm.post_id = p.id and bm.customer_auth_subject = $2
+       left join lateral (
+         select c.author_name, c.body, c.like_count from feed_comments c
+          where c.post_id = p.id and c.status = 'PUBLISHED'
+          order by c.like_count desc, c.created_at desc limit 1
+       ) tc on true
+      where p.id = any($1::uuid[])`,
+    [ids, viewerId],
+  );
+  const byId = new Map((rows.rows as PostRow[]).map((row) => [row.id, row]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((row): row is PostRow => Boolean(row))
+    .map((row) => toPostView(row, viewerId));
+}
+
+export async function toggleFeedBookmarkHandler({
+  data,
+}: {
+  data: ReturnType<typeof feedIdInput>;
+}) {
+  await requireOn();
+  const user = await requireViewer();
+  const post = await pool.query("select status from feed_posts where id = $1", [data.id]);
+  if (post.rows[0]?.status !== "PUBLISHED") throw new Error("Postingan tidak ditemukan.");
+  const inserted = await pool.query(
+    `insert into feed_bookmarks (post_id, customer_auth_subject) values ($1, $2)
+     on conflict do nothing returning 1`,
+    [data.id, user.id],
+  );
+  const bookmarked = (inserted.rowCount ?? 0) > 0;
+  if (!bookmarked)
+    await pool.query(
+      "delete from feed_bookmarks where post_id = $1 and customer_auth_subject = $2",
+      [data.id, user.id],
+    );
+  return { bookmarked };
+}
+
+/** "Aku": the member's counts, posts (with the ones waiting for review) and bookmarks. */
+export async function getMyFeedProfileHandler() {
+  const config = await getFeedsConfig();
+  const user = await optionalViewer();
+  if (!config.enabled || !user) {
+    return {
+      enabled: config.enabled,
+      signedIn: Boolean(user),
+      counts: { posts: 0, comments: 0, bookmarks: 0 },
+      posts: [] as FeedPostView[],
+      pending: [] as FeedPostView[],
+      bookmarks: [] as FeedPostView[],
+    };
+  }
+  const [counts, own, saved] = await Promise.all([
+    pool.query(
+      `select (select count(*) from feed_posts where customer_auth_subject = $1
+                  and status in ('PENDING','PUBLISHED'))::int as posts,
+              (select count(*) from feed_comments where customer_auth_subject = $1
+                  and status = 'PUBLISHED')::int as comments,
+              (select count(*) from feed_bookmarks b join feed_posts p on p.id = b.post_id
+                where b.customer_auth_subject = $1 and p.status = 'PUBLISHED')::int as bookmarks`,
+      [user.id],
+    ),
+    pool.query(
+      `select id, status from feed_posts where customer_auth_subject = $1
+          and status in ('PENDING','PUBLISHED') order by created_at desc limit 50`,
+      [user.id],
+    ),
+    pool.query(
+      `select b.post_id as id from feed_bookmarks b join feed_posts p on p.id = b.post_id
+        where b.customer_auth_subject = $1 and p.status = 'PUBLISHED'
+        order by b.created_at desc limit 50`,
+      [user.id],
+    ),
+  ]);
+  const ownRows = own.rows as { id: string; status: string }[];
+  const [ownViews, savedViews] = await Promise.all([
+    loadPostViews(
+      ownRows.map((row) => row.id),
+      user.id,
+    ),
+    loadPostViews(
+      (saved.rows as { id: string }[]).map((row) => row.id),
+      user.id,
+    ),
+  ]);
+  const c = counts.rows[0] as { posts: number; comments: number; bookmarks: number };
+  return {
+    enabled: true,
+    signedIn: true,
+    counts: {
+      posts: Number(c.posts),
+      comments: Number(c.comments),
+      bookmarks: Number(c.bookmarks),
+    },
+    posts: ownViews.filter((post) => post.status === "PUBLISHED"),
+    pending: ownViews.filter((post) => post.status === "PENDING"),
+    bookmarks: savedViews,
+  };
+}
+
+const FEED_NOTIFICATION_TYPES = ["feed_comment", "feed_post"];
+
+/** "Aktivitas": comments on the member's posts and the team's decisions, newest first. */
+export async function getFeedActivityHandler() {
+  const config = await getFeedsConfig();
+  const user = await optionalViewer();
+  if (!config.enabled || !user)
+    return { signedIn: Boolean(user), items: [] as FeedActivityItem[], unread: 0 };
+  const rows = await pool.query(
+    `select n.id, n.type, n.title, n.body, n.action_href, n.created_at,
+            (s.read_at is null) as unread
+       from customer_notifications n
+       left join customer_notification_states s
+         on s.notification_id = n.id and s.recipient_customer_auth_subject = n.recipient_customer_auth_subject
+      where n.recipient_customer_auth_subject = $1 and n.type = any($2::text[])
+        and (n.expires_at is null or n.expires_at > now())
+      order by n.created_at desc limit 60`,
+    [user.id, FEED_NOTIFICATION_TYPES],
+  );
+  const items = (
+    rows.rows as {
+      id: string;
+      type: FeedActivityItem["type"];
+      title: string;
+      body: string;
+      action_href: string | null;
+      created_at: Date;
+      unread: boolean;
+    }[]
+  ).map((row): FeedActivityItem => ({
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    body: row.body,
+    href: row.action_href,
+    at: new Date(row.created_at).toISOString(),
+    unread: row.unread,
+  }));
+  return { signedIn: true, items, unread: items.filter((item) => item.unread).length };
+}
+
+export async function markFeedActivityReadHandler() {
+  const user = await optionalViewer();
+  if (!user) return { marked: 0 };
+  const result = await pool.query(
+    `insert into customer_notification_states (notification_id, recipient_customer_auth_subject, read_at)
+     select n.id, n.recipient_customer_auth_subject, now() from customer_notifications n
+      where n.recipient_customer_auth_subject = $1 and n.type = any($2::text[])
+     on conflict (notification_id, recipient_customer_auth_subject)
+     do update set read_at = coalesce(customer_notification_states.read_at, now())
+        where customer_notification_states.read_at is null`,
+    [user.id, FEED_NOTIFICATION_TYPES],
+  );
+  return { marked: result.rowCount ?? 0 };
+}
+
+/** The red number on the dock's Aktivitas item. */
+export async function getFeedsUnreadCountHandler() {
+  const config = await getFeedsConfig();
+  const user = await optionalViewer();
+  if (!config.enabled || !user) return { unread: 0 };
+  const result = await pool.query(
+    `select count(*)::int as n from customer_notifications n
+       left join customer_notification_states s
+         on s.notification_id = n.id and s.recipient_customer_auth_subject = n.recipient_customer_auth_subject
+      where n.recipient_customer_auth_subject = $1 and n.type = any($2::text[])
+        and s.read_at is null and (n.expires_at is null or n.expires_at > now())`,
+    [user.id, FEED_NOTIFICATION_TYPES],
+  );
+  return { unread: Math.min(Number(result.rows[0]?.n ?? 0), 99) };
+}
+
 /* ------------------------------------------------------------------ detail */
 
 const idSchema = z.object({ id: z.string().uuid() });
@@ -407,9 +606,11 @@ export async function getFeedPostHandler({ data }: { data: ReturnType<typeof fee
   const viewerId = user?.id ?? "";
   const result = await pool.query(
     `select ${POST_COLUMNS}, (l.customer_auth_subject is not null) as liked,
+            (bm.post_id is not null) as bookmarked,
             exists (select 1 from feed_reports r where r.post_id = p.id and r.reporter_subject = $2) as reported
        from feed_posts p
        left join feed_likes l on l.post_id = p.id and l.customer_auth_subject = $2
+       left join feed_bookmarks bm on bm.post_id = p.id and bm.customer_auth_subject = $2
       where p.id = $1`,
     [data.id, viewerId],
   );

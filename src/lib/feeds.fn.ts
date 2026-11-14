@@ -118,6 +118,36 @@ export const saveFeedPostToAgenda = createServerFn({ method: "POST" })
     return saveFeedPostToAgendaHandler({ data });
   });
 
+export const toggleFeedBookmark = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { feedIdInput } = await import("./feeds.server");
+    return feedIdInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { toggleFeedBookmarkHandler } = await import("./feeds.server");
+    return toggleFeedBookmarkHandler({ data });
+  });
+
+export const getMyFeedProfile = createServerFn({ method: "GET" }).handler(async () => {
+  const { getMyFeedProfileHandler } = await import("./feeds.server");
+  return getMyFeedProfileHandler();
+});
+
+export const getFeedActivity = createServerFn({ method: "GET" }).handler(async () => {
+  const { getFeedActivityHandler } = await import("./feeds.server");
+  return getFeedActivityHandler();
+});
+
+export const markFeedActivityRead = createServerFn({ method: "POST" }).handler(async () => {
+  const { markFeedActivityReadHandler } = await import("./feeds.server");
+  return markFeedActivityReadHandler();
+});
+
+export const getFeedsUnreadCount = createServerFn({ method: "GET" }).handler(async () => {
+  const { getFeedsUnreadCountHandler } = await import("./feeds.server");
+  return getFeedsUnreadCountHandler();
+});
+
 /* Admin */
 
 export const getAdminFeeds = createServerFn({ method: "GET" }).handler(async () => {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   BadgeCheck,
+  Bookmark,
   CalendarPlus,
   ChevronRight,
   Heart,
@@ -10,7 +11,7 @@ import {
   Share2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { toggleFeedLike } from "@/lib/feeds.fn";
+import { toggleFeedBookmark, toggleFeedLike } from "@/lib/feeds.fn";
 import {
   FEED_KIND_LABEL,
   feedRelativeTime,
@@ -46,6 +47,7 @@ export function FeedCard({
 }) {
   const [liked, setLiked] = useState(post.liked);
   const [likes, setLikes] = useState(post.likeCount);
+  const [bookmarked, setBookmarked] = useState(post.bookmarked);
   const [saveOpen, setSaveOpen] = useState(false);
   const requireSignIn = useRequireSignIn(status.signedIn);
   const pending = post.status === "PENDING";
@@ -64,6 +66,22 @@ export function FeedCard({
       setLiked(wasLiked);
       setLikes((n) => n + (wasLiked ? 1 : -1));
       toast.error("Belum bisa menyukai postingan.");
+    }
+  }
+
+  async function bookmark() {
+    if (!requireSignIn("Masuk dulu untuk menyimpan postingan.")) return;
+    const was = bookmarked;
+    setBookmarked(!was);
+    try {
+      const result = await toggleFeedBookmark({ data: { id: post.id } });
+      setBookmarked(result.bookmarked);
+      toast.success(
+        result.bookmarked ? "Disimpan. Lihat di Feeds › Aku." : "Dihapus dari tersimpan.",
+      );
+    } catch {
+      setBookmarked(was);
+      toast.error("Belum bisa menyimpan postingan.");
     }
   }
 
@@ -181,6 +199,19 @@ export function FeedCard({
                   <CalendarPlus className="size-[18px]" aria-hidden="true" />
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => void bookmark()}
+                aria-pressed={bookmarked}
+                aria-label={bookmarked ? "Hapus dari tersimpan" : "Simpan postingan"}
+                className={`tap flex size-9 items-center justify-center ${bookmarked ? "text-foreground" : ""}`}
+              >
+                <Bookmark
+                  className="size-[17px]"
+                  fill={bookmarked ? "currentColor" : "none"}
+                  aria-hidden="true"
+                />
+              </button>
               <button
                 type="button"
                 onClick={() => void shareFeedPost(post)}

@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ConsentGate } from "@/components/consent-gate";
 import { CustomerAuth } from "@/components/customer-auth";
-import { BackBar, Page } from "@/components/shell";
+import { BackBar } from "@/components/shell";
+import { FEEDS_REFRESH_EVENT, FeedsFrame } from "@/components/feeds/feeds-dock";
 import { FeedComposer } from "@/components/feeds/feed-composer";
 import { destinationLabel } from "@/components/feeds/feed-helpers";
 import { FeedPosts, FeedSkeleton } from "@/components/feeds/feed-timeline";
@@ -42,6 +43,11 @@ function FeedsPage() {
   const [destination, setDestination] = useState<string | undefined>();
   const [sort, setSort] = useState<FeedSort>("foryou");
   const list = useFeedList({ kind, destination, sort, limit: 10, active: feeds.enabled });
+  useEffect(() => {
+    const refresh = () => void list.reload();
+    window.addEventListener(FEEDS_REFRESH_EVENT, refresh);
+    return () => window.removeEventListener(FEEDS_REFRESH_EVENT, refresh);
+  }, [list]);
   const newPosts = useNewFeedPostCount({
     since: list.serverTime,
     kind,
@@ -50,7 +56,7 @@ function FeedsPage() {
   });
 
   return (
-    <Page>
+    <FeedsFrame>
       <div className="pt-4">
         <BackBar title="Feeds traveler" fallbackTo="/explore" />
       </div>
@@ -210,6 +216,6 @@ function FeedsPage() {
           </div>
         </>
       )}
-    </Page>
+    </FeedsFrame>
   );
 }

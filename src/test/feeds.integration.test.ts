@@ -699,4 +699,126 @@ describeDb("feeds against a real database", () => {
       expect((await server.countNewFeedPostsHandler({ data: { since } })).count).toBe(1);
     });
   });
+
+  describe("dock: Cari, Aktivitas, Aku and Tersimpan", () => {
+    const publish = async (id: string, body: string, extra: Record<string, unknown> = {}) =>
+      pool.query(
+        `insert into feed_posts (id, customer_auth_subject, author_name, source, kind, body, place_name,
+                                 destination_code, status, comment_count, published_at)
+         values ($1, $2, $3, 'member', $4, $5, $6, 'JP', 'PUBLISHED', $7, now())`,
+        [
+          id,
+          (extra["subject"] as string) ?? "u-lain",
+          (extra["author"] as string) ?? "Lain",
+          (extra["kind"] as string) ?? "tips",
+          body,
+          (extra["place"] as string) ?? null,
+          (extra["comments"] as number) ?? 0,
+        ],
+      );
+    const A = "00000000-0000-4000-8000-0000000000b1";
+    const B = "00000000-0000-4000-8000-0000000000b2";
+    const C = "00000000-0000-4000-8000-0000000000b3";
+
+    beforeEach(async () => {
+      await publish(A, "Antre Ichiran Shibuya cuma sebentar", { place: "Ichiran Shibuya" });
+      await publish(B, "Ada ryokan murah di Hakone?", { kind: "tanya" });
+      await publish(C, "Jawaban sudah ada di sini?", { kind: "tanya", comments: 2 });
+      as("u-dimas");
+    });
+
+    it("Cari finds posts by text, place or author, and lists unanswered questions", async () => {
+      const find = async (q: string) =>
+        (await server.listFeedHandler({ data: { q, limit: 10 } })).posts.map((p) => p.id);
+      expect(await find("ichiran")).toEqual([A]);
+      expect(await find("hakone")).toEqual([B]);
+      expect(await find("lain")).toHaveLength(3); // the author's first name
+      expect(await find("%%")).toEqual([]); // wildcards are plain text
+      const open = await server.listFeedHandler({ data: { unanswered: true, limit: 10 } });
+      expect(open.posts.map((p) => p.id)).toEqual([B]);
+    });
+
+    it("Tersimpan is private, toggles, and only lists published posts", async () => {
+      expect(await server.toggleFeedBookmarkHandler({ data: { id: A } })).toEqual({
+        bookmarked: true,
+      });
+      let profile = await server.getMyFeedProfileHandler();
+      expect(profile.bookmarks.map((p) => p.id)).toEqual([A]);
+      expect(profile.bookmarks[0]?.bookmarked).toBe(true);
+      expect(profile.counts.bookmarks).toBe(1);
+      const feed = await server.listFeedHandler({ data: { limit: 10 } });
+      expect(feed.posts.find((p) => p.id === A)?.bookmarked).toBe(true);
+
+      as("u-lain"); // someone else sees none of it
+      expect((await server.getMyFeedProfileHandler()).bookmarks).toEqual([]);
+      expect(
+        (await server.listFeedHandler({ data: { limit: 10 } })).posts.find((p) => p.id === A)
+          ?.bookmarked,
+      ).toBe(false);
+
+      as("u-dimas");
+      await pool.query("update feed_posts set status = 'HIDDEN' where id = $1", [A]);
+      profile = await server.getMyFeedProfileHandler();
+      expect(profile.bookmarks).toEqual([]);
+      await expect(server.toggleFeedBookmarkHandler({ data: { id: A } })).rejects.toThrow(
+        /tidak ditemukan/,
+      );
+      expect(await server.toggleFeedBookmarkHandler({ data: { id: B } })).toEqual({
+        bookmarked: true,
+      });
+      expect(await server.toggleFeedBookmarkHandler({ data: { id: B } })).toEqual({
+        bookmarked: false,
+      });
+    });
+
+    it("Aku shows the member's counts, posts and the ones waiting for review", async () => {
+      await pool.query(
+        `insert into feed_posts (customer_auth_subject, author_name, source, kind, body, status)
+         values ('u-dimas', 'Dimas', 'member', 'tips', 'Sedang menunggu', 'PENDING'),
+                ('u-dimas', 'Dimas', 'member', 'cerita', 'Sudah tayang', 'PUBLISHED'),
+                ('u-dimas', 'Dimas', 'member', 'cerita', 'Disembunyikan tim', 'HIDDEN')`,
+      );
+      const profile = await server.getMyFeedProfileHandler();
+      expect(profile.counts.posts).toBe(2);
+      expect(profile.pending.map((p) => p.body)).toEqual(["Sedang menunggu"]);
+      expect(profile.posts.map((p) => p.body)).toEqual(["Sudah tayang"]);
+      as(null);
+      expect((await server.getMyFeedProfileHandler()).signedIn).toBe(false);
+    });
+
+    it("Aktivitas lists the member's Feeds notifications, counts unread and marks them read", async () => {
+      const notify = async (type: string, title: string, subject: string) => {
+        const event = await pool.query(
+          "insert into notification_events (event_key, event_type, authoritative_source) values ($1, $2, 'feeds') returning id",
+          [`t-${Math.random()}`, type],
+        );
+        await pool.query(
+          `insert into customer_notifications (event_id, recipient_customer_auth_subject, type, title, body, action_href)
+           values ($1, $2, $3, $4, 'isi', '/feeds/x')`,
+          [event.rows[0].id, subject, type, title],
+        );
+      };
+      await pool.query("delete from customer_notification_states");
+      await pool.query("delete from customer_notifications");
+      await notify("feed_comment", "Komentar baru di postinganmu", "u-dimas");
+      await notify("feed_post", "Postinganmu sudah tayang", "u-dimas");
+      await notify("order_paid", "Pesanan dibayar", "u-dimas"); // not a Feeds notification
+      await notify("feed_comment", "Untuk orang lain", "u-lain");
+
+      const before = await server.getFeedActivityHandler();
+      expect(before.items.map((i) => i.title).sort()).toEqual([
+        "Komentar baru di postinganmu",
+        "Postinganmu sudah tayang",
+      ]);
+      expect(before.unread).toBe(2);
+      expect((await server.getFeedsUnreadCountHandler()).unread).toBe(2);
+
+      expect((await server.markFeedActivityReadHandler()).marked).toBe(2);
+      expect((await server.getFeedsUnreadCountHandler()).unread).toBe(0);
+      expect((await server.getFeedActivityHandler()).unread).toBe(0);
+      // The other member and the order notification were left alone.
+      const state = await pool.query("select count(*)::int as n from customer_notification_states");
+      expect(state.rows[0].n).toBe(2);
+    });
+  });
 });

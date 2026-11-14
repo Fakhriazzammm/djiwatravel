@@ -8,7 +8,8 @@ import { CustomerAuth } from "@/components/customer-auth";
 import { FeedAvatar, FeedCard } from "@/components/feeds/feed-card";
 import { FeedReportSheet } from "@/components/feeds/feed-sheets";
 import { FeedSkeleton } from "@/components/feeds/feed-timeline";
-import { BackBar, Page, glassIconButtonClass } from "@/components/shell";
+import { FeedsFrame } from "@/components/feeds/feeds-dock";
+import { BackBar, glassIconButtonClass } from "@/components/shell";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useFeedsStatus } from "@/hooks/use-feeds-status";
 import {
@@ -165,7 +166,7 @@ function FeedPostPage() {
     ) : null;
 
   return (
-    <Page>
+    <FeedsFrame>
       <div className="pt-4">
         <BackBar title="Postingan" fallbackTo="/feeds" action={action} />
       </div>
@@ -370,6 +371,6 @@ function FeedPostPage() {
           });
         }}
       />
-    </Page>
+    </FeedsFrame>
   );
 }

@@ -213,6 +213,7 @@ export type FeedPostView = {
   likeCount: number;
   commentCount: number;
   liked: boolean;
+  bookmarked: boolean;
   createdAt: string;
   publishedAt: string | null;
 };
@@ -225,6 +226,17 @@ export type FeedCommentView = {
   likeCount: number;
   liked: boolean;
   createdAt: string;
+};
+
+/** One line in "Aktivitas": a comment on or a decision about the member's own post. */
+export type FeedActivityItem = {
+  id: string;
+  type: "feed_comment" | "feed_post";
+  title: string;
+  body: string;
+  href: string | null;
+  at: string;
+  unread: boolean;
 };
 
 /** Customer-safe status the Explore section and the composer read. */

@@ -11,12 +11,16 @@ export function useFeedList({
   kind,
   destination,
   sort = "new",
+  q,
+  unanswered,
   limit,
   active,
 }: {
   kind?: FeedKind | undefined;
   destination?: string | undefined;
   sort?: FeedSort;
+  q?: string | undefined;
+  unanswered?: boolean | undefined;
   limit: number;
   active: boolean;
 }) {
@@ -35,7 +39,7 @@ export function useFeedList({
     setLoading(true);
     setError(false);
     try {
-      const result = await getFeed({ data: { kind, destination, sort, limit } });
+      const result = await getFeed({ data: { kind, destination, sort, q, unanswered, limit } });
       setPosts(result.posts);
       setPending(result.pending);
       setFacets(result.facets);
@@ -48,7 +52,7 @@ export function useFeedList({
     } finally {
       setLoading(false);
     }
-  }, [kind, destination, sort, limit]);
+  }, [kind, destination, sort, q, unanswered, limit]);
 
   useEffect(() => {
     if (active) void load();
@@ -58,7 +62,9 @@ export function useFeedList({
     if (!cursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const result = await getFeed({ data: { kind, destination, sort, limit, cursor } });
+      const result = await getFeed({
+        data: { kind, destination, sort, q, unanswered, limit, cursor },
+      });
       setPosts((current) => {
         const seen = new Set(current.map((p) => p.id));
         return [...current, ...result.posts.filter((p) => !seen.has(p.id))];
@@ -69,7 +75,7 @@ export function useFeedList({
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, kind, destination, sort, limit, loadingMore]);
+  }, [cursor, kind, destination, sort, q, unanswered, limit, loadingMore]);
 
   /** A post the viewer just wrote: shown at once (pending ones in the "ditinjau" slot). */
   const addPosted = useCallback(
