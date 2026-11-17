@@ -32,6 +32,7 @@ import {
   packageDataLabel,
   packageDestinationLabel,
   packageDisplayedGb,
+  packageIsUnlimited,
 } from "@/lib/package-copy";
 
 /** Cards rendered on the first paint; the rest are revealed on demand (see below). */
@@ -191,6 +192,7 @@ export const Route = createFileRoute("/destination/$code")({
 });
 
 function shortData(pkg: ViewPackage) {
+  if (packageIsUnlimited(pkg)) return "Unlimited";
   return packageDataLabel(pkg).replace(/ data$/, "");
 }
 
@@ -853,8 +855,13 @@ function Destination() {
           <div className="flex items-center gap-3 pb-2">
             <div className="min-w-0 flex-1">
               <p className="truncate text-[11.5px] text-muted-foreground">
-                {shortData(selected)} · {isDailyQuota(selected) ? "harian" : "total"} ·{" "}
-                {selected.durationDays} hari ·{" "}
+                {shortData(selected)} ·{" "}
+                {isDailyQuota(selected)
+                  ? "harian"
+                  : packageIsUnlimited(selected)
+                    ? "unlimited"
+                    : "total"}{" "}
+                · {selected.durationDays} hari ·{" "}
                 <Link
                   to="/plan/$id"
                   params={{ id: selected.packageCode }}

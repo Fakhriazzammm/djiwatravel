@@ -1,4 +1,5 @@
 import type { OrderStatus } from "./orders";
+import { isUnlimitedVolume } from "./data-allowance";
 
 /* ------------------------------------------------------------------ *
  * Activation timeline
@@ -189,9 +190,11 @@ export type UsageView = {
 
 export const LOW_QUOTA_PERCENT = 20;
 
+/** Usage reporting stays decimal; the catalogue's sold quotas are GiB (see data-allowance.ts). */
 const BYTES_PER_GB = 1_000_000_000;
 
 export function formatGb(bytes: number): string {
+  if (isUnlimitedVolume(bytes)) return "Unlimited";
   return `${(bytes / BYTES_PER_GB).toFixed(1)} GB`;
 }
 

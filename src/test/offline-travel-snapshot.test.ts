@@ -24,7 +24,7 @@ function order(overrides: Partial<Order> = {}): Order {
     packageName: "Jepang 5GB",
     locationCodes: ["JP"],
     durationDays: 7,
-    volumeBytes: 5_000_000_000,
+    volumeBytes: 5 * 1024 ** 3,
     amount: 125_000,
     method: "qris",
     status: "READY",

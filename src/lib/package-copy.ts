@@ -1,4 +1,5 @@
 import type { ResellerCatalogPackage } from "@/lib/esim-access-catalog";
+import { BYTES_PER_GB, BYTES_PER_MB, isUnlimitedPlan, isUnlimitedVolume } from "./data-allowance";
 const regionNames =
   typeof Intl !== "undefined" && Intl.DisplayNames
     ? new Intl.DisplayNames(["id-ID"], { type: "region" })
@@ -54,17 +55,27 @@ function trimPrefix(name: string) {
 export function packageDataLabel(
   pkg: Pick<ResellerCatalogPackage, "name" | "volumeBytes" | "unlimited">,
 ) {
-  if (pkg.unlimited === true) return "Data unlimited";
+  if (packageIsUnlimited(pkg)) return "Data unlimited";
   if (!Number.isFinite(pkg.volumeBytes) || pkg.volumeBytes <= 0) return "Kuota belum tersedia";
   const gb = packageDisplayedGb(pkg.volumeBytes);
   return gb >= 1
     ? `${Math.round(gb)} GB data`
-    : `${Math.max(1, Math.round(pkg.volumeBytes / 1_000_000))} MB data`;
+    : `${Math.max(1, Math.round(pkg.volumeBytes / BYTES_PER_MB))} MB data`;
+}
+
+/**
+ * Unmetered plans arrive either with the provider flag, an "Unlimited" name, or only the 999 GiB
+ * volume sentinel (older cached records), so all three count.
+ */
+export function packageIsUnlimited(
+  pkg: Pick<ResellerCatalogPackage, "name" | "volumeBytes"> & { unlimited?: boolean },
+): boolean {
+  return isUnlimitedPlan(pkg) || isUnlimitedVolume(pkg.volumeBytes);
 }
 
 /** GB quantity used in the catalog label, rounded to the same whole-GB amount customers see. */
 export function packageDisplayedGb(volumeBytes: number): number {
-  const gb = volumeBytes / 1_000_000_000;
+  const gb = volumeBytes / BYTES_PER_GB;
   return gb >= 1 ? Math.max(1, Math.round(gb)) : gb;
 }
 

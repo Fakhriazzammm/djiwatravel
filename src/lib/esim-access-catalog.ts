@@ -1,4 +1,5 @@
 import { queryEsimAccessPackages } from "./esim-access";
+import { isUnlimitedPlan, isUnlimitedVolume } from "./data-allowance";
 import { getPriceRuleSnapshot } from "./price-rules-snapshot";
 import { resolvePricingRule } from "./price-rules";
 import { calculateSellingPrice, type PriceBreakdown } from "./reseller-pricing";
@@ -56,6 +57,11 @@ export function normalizeEsimAccessPackage(pkg: ProviderPackage): ResellerCatalo
     .map((v) => v.trim().toUpperCase())
     .filter(Boolean);
   const providerPriceUnits = pkg.price ?? 0;
+  // The provider sometimes sends no `unlimited` flag and marks an unmetered plan only with its
+  // 999 GiB volume sentinel, so both signals are read before the raw payload leaves this module.
+  const unlimited =
+    isUnlimitedPlan({ name: pkg.name ?? null, unlimited: pkg["unlimited"] }) ||
+    isUnlimitedVolume(pkg.volume);
   // Every catalogue price follows the operator's active price rules. With no rule loaded this is
   // exactly the previous behaviour: the reseller defaults answer and the numbers do not move.
   const pricing = resolvePricingRule(
@@ -79,7 +85,7 @@ export function normalizeEsimAccessPackage(pkg: ProviderPackage): ResellerCatalo
     pricingSource: pricing.source,
     ...(pkg.speed == null ? {} : { speed: pkg.speed }),
     supportsTopUp: (pkg.supportTopUpType ?? 1) > 1,
-    ...(typeof pkg["unlimited"] === "boolean" ? { unlimited: pkg["unlimited"] } : {}),
+    ...(typeof pkg["unlimited"] === "boolean" || unlimited ? { unlimited } : {}),
     ...(typeof pkg["available"] === "boolean" ? { available: pkg["available"] } : {}),
     ...(typeof pkg["reliabilityScore"] === "number" &&
     Number.isFinite(pkg["reliabilityScore"]) &&

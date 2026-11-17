@@ -23,6 +23,7 @@ import { AdminPendingScreen } from "@/components/admin-loading";
 import { FixedLayer } from "@/components/motion-primitives";
 import { useTypingPlaceholder } from "@/hooks/use-typing-placeholder";
 import { formatAdminDateTime } from "@/lib/admin-display";
+import { BYTES_PER_GB, BYTES_PER_MB, isUnlimitedVolume } from "@/lib/data-allowance";
 import { readAdminCatalogPage } from "@/lib/admin-catalog.fn";
 import { validatePriceRuleInput } from "@/lib/price-rules";
 import {
@@ -85,9 +86,10 @@ const percent = (value: number): string => `${value >= 0 ? "+" : ""}${value.toFi
 
 function dataLabel(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "—";
-  const gb = bytes / 1024 ** 3;
+  if (isUnlimitedVolume(bytes)) return "Unlimited";
+  const gb = bytes / BYTES_PER_GB;
   if (gb >= 1) return `${Number.isInteger(gb) ? gb : gb.toFixed(1)} GB`;
-  return `${Math.round(bytes / 1024 ** 2)} MB`;
+  return `${Math.round(bytes / BYTES_PER_MB)} MB`;
 }
 
 function AdminCatalogPage() {

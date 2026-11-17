@@ -3,6 +3,7 @@ import { effectiveOrderStatus } from "./esim-status";
 import { maskSensitive } from "./sensitive-data";
 import type { StoredPaymentMethod } from "./travel-payment-method";
 import { locationCodesLabel } from "./package-copy";
+import { BYTES_PER_GB, isUnlimitedVolume } from "./data-allowance";
 
 /**
  * Offline snapshot for the eSIM QR and the receipt.
@@ -53,7 +54,8 @@ function storage(): Storage | null {
 
 export function quotaLabelFor(volumeBytes: number | null | undefined): string {
   if (volumeBytes === null || volumeBytes === undefined) return "Unlimited";
-  return `${(volumeBytes / 1_000_000_000).toFixed(1)} GB`;
+  if (isUnlimitedVolume(volumeBytes)) return "Unlimited";
+  return `${(volumeBytes / BYTES_PER_GB).toFixed(1)} GB`;
 }
 
 /** Derives the snapshot shape from an authorized order read. */

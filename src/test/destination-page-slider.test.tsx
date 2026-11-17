@@ -34,7 +34,7 @@ const pkg = (code: string, name: string, gb: number, days: number, price: number
   packageCode: code,
   name,
   locationCodes: ["JP"],
-  volumeBytes: gb * 1e9,
+  volumeBytes: gb * 1024 ** 3,
   unlimited: false,
   durationDays: days,
   priceIdr: price,
