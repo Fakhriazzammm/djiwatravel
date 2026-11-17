@@ -334,4 +334,44 @@ describe("brand request sheet", () => {
     render(<NewMessageSheet open onClose={() => undefined} />);
     expect((screen.getByLabelText("Barang yang dicari") as HTMLTextAreaElement).value).toBe("");
   });
+
+  it("attaches a product photo to the request as its own message", async () => {
+    Object.assign(URL, { createObjectURL: () => "blob:foto", revokeObjectURL: () => undefined });
+    mock.start.mockResolvedValue({ threadId: THREAD_ID, requestId: REQUEST_ID });
+    render(
+      <NewMessageSheet open onClose={() => undefined} initialText={brandRequestDraft("Coach")} />,
+    );
+    const photo = new File([new Uint8Array([0xff, 0xd8, 0xff])], "tas.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText(/Pilih foto/), { target: { files: [photo] } });
+    expect(screen.getByAltText("Foto barang yang dipilih")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Kirim ke tim" }));
+    await waitFor(() => expect(mock.fetch).toHaveBeenCalled());
+    const [url, init] = mock.fetch.mock.calls[0]!;
+    expect(url).toBe("/api/shopper-chat");
+    const form = init.body as FormData;
+    expect(form.get("threadId")).toBe(THREAD_ID);
+    expect(form.get("body")).toBe("");
+    expect(String(form.get("clientKey"))).toMatch(/^[0-9a-f-]{36}$/);
+    const sent = form.get("photo") as File;
+    expect(sent.name).toBe("produk.jpg");
+    expect(sent.type).toBe("image/jpeg");
+    expect(mock.start.mock.calls[0]?.[0].data.text).toContain("Coach");
+  });
+
+  it("rejects a photo that is not JPG, PNG or WebP", () => {
+    render(<NewMessageSheet open onClose={() => undefined} />);
+    const doc = new File(["catatan"], "catatan.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByLabelText(/Pilih foto/), { target: { files: [doc] } });
+    expect(screen.getByRole("alert").textContent).toBe("Pilih JPG, PNG atau WebP.");
+    expect(screen.queryByAltText("Foto barang yang dipilih")).toBeNull();
+  });
+
+  it("rejects a photo over 5 MB", () => {
+    render(<NewMessageSheet open onClose={() => undefined} />);
+    const big = new File(["x"], "besar.jpg", { type: "image/jpeg" });
+    Object.defineProperty(big, "size", { value: 6 * 1024 * 1024 });
+    fireEvent.change(screen.getByLabelText(/Pilih foto/), { target: { files: [big] } });
+    expect(screen.getByRole("alert").textContent).toBe("Foto maksimal 5 MB.");
+    expect(screen.queryByAltText("Foto barang yang dipilih")).toBeNull();
+  });
 });
