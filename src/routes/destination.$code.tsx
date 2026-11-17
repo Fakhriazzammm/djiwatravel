@@ -294,7 +294,7 @@ function PlanRow({
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block whitespace-nowrap text-[13.5px] font-semibold">
+          <span className="block break-words text-[13.5px] font-semibold leading-snug">
             {showCoverage ? packageCoverageLabel(pkg) : isDailyQuota(pkg) ? "Harian" : "Total"}
             {tag === "best_seller" && (
               <span className="ml-1.5 rounded-full bg-brand-red px-1.5 py-0.5 align-[1px] text-[9.5px] font-bold text-white">

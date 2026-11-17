@@ -50,10 +50,10 @@ const packages = [
   pkg("e30", "Japan 20GB 30Days", 20, 30, 189000),
 ];
 
-function setup(daySlider: boolean) {
+function setup(daySlider: boolean, extra: ViewPackage[] = []) {
   vi.spyOn(Route, "useLoaderData").mockReturnValue({
     destination: { code: "jp", nameId: "Jepang", flag: "🇯🇵", region: "Asia" },
-    packages,
+    packages: [...packages, ...extra],
     picks: [{ tag: "best_seller", pkg: packages[1]! }],
     switcher: [],
     network: "SoftBank",
@@ -104,6 +104,20 @@ describe("destination page (day slider)", () => {
     expect(rows).toHaveLength(1);
     const buy = within(screen.getByTestId("cta")).getByRole("link", { name: "Beli" });
     expect(buy.getAttribute("href")).toContain("d7");
+  });
+
+  it("wraps long multi-country labels instead of running into the price", () => {
+    const regional: ViewPackage = {
+      ...pkg("r30", "Asia 3GB 30Days", 3, 30, 76000),
+      locationCodes: ["MO", "HK", "JP"],
+    };
+    setup(true, [regional]);
+    const group = screen.getByRole("radiogroup", { name: "Paket multi-negara" });
+    const row = within(group).getAllByRole("radio")[0]!;
+    const label = within(row).getByText("Makau, Hong Kong, Jepang");
+    expect(label.className).not.toContain("whitespace-nowrap");
+    expect(label.className).toContain("break-words");
+    expect(within(row).getByText("Rp76.000")).toBeTruthy();
   });
 
   it("falls back to range tabs when Admin turns the slider off", () => {
