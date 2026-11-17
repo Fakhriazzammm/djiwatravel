@@ -30,6 +30,8 @@ export type HomeEsimConfig = {
   myTripsWidgetEnabled: boolean;
   /** Shows provider multi-country bundles (Asia, Eropa, Global…) on Home, Finder and destination pages. */
   multiCountryEnabled: boolean;
+  /** Destination pages pick the trip length with a day slider (1–60); off falls back to the range tabs. */
+  daySliderEnabled: boolean;
   /** Home hero sky: `auto` follows the device clock; a phase name pins that sky for everyone. */
   heroSky: HeroSkyMode;
   /** Shows the small "pembelian terbaru" toast above the tab bar on Home. Admin-controlled; defaults on. */
@@ -52,6 +54,7 @@ export const DEFAULT_HOME_ESIM_CONFIG: HomeEsimConfig = {
   quickBuyEnabled: true,
   myTripsWidgetEnabled: true,
   multiCountryEnabled: true,
+  daySliderEnabled: true,
   heroSky: "auto",
   recentPurchasesEnabled: true,
   destinationOrder: [],
@@ -117,6 +120,7 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
     quickBuyEnabled?: unknown;
     myTripsWidgetEnabled?: unknown;
     multiCountryEnabled?: unknown;
+    daySliderEnabled?: unknown;
     heroSky?: unknown;
     recentPurchasesEnabled?: unknown;
     destinationOrder?: unknown;
@@ -133,6 +137,10 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
   }
   if (input.multiCountryEnabled !== undefined && typeof input.multiCountryEnabled !== "boolean") {
     throw new Error("multiCountryEnabled harus boolean");
+  }
+  // Records saved before the day slider existed omit the flag; treat that as enabled.
+  if (input.daySliderEnabled !== undefined && typeof input.daySliderEnabled !== "boolean") {
+    throw new Error("daySliderEnabled harus boolean");
   }
   if (
     input.recentPurchasesEnabled !== undefined &&
@@ -195,6 +203,7 @@ export function parseHomeEsimConfig(value: unknown): HomeEsimConfig {
     quickBuyEnabled: input.quickBuyEnabled,
     myTripsWidgetEnabled: input.myTripsWidgetEnabled ?? true,
     multiCountryEnabled: input.multiCountryEnabled ?? true,
+    daySliderEnabled: input.daySliderEnabled ?? true,
     heroSky: input.heroSky ?? "auto",
     recentPurchasesEnabled: input.recentPurchasesEnabled ?? true,
     destinationOrder,

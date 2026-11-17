@@ -135,6 +135,21 @@ export function AdminHomeEsimPanel({
         <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
           <input
             type="checkbox"
+            checked={draft.daySliderEnabled}
+            onChange={(event) => setDraft({ ...draft, daySliderEnabled: event.target.checked })}
+            className="size-5 accent-primary"
+          />
+          Slider hari di halaman destinasi
+        </label>
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Pembeli menggeser lama perjalanan (1–60 hari) dan daftar menampilkan paket yang masa
+          aktifnya cukup. Jika dimatikan, halaman destinasi memakai tab rentang hari (≤3, 4–7, 8–15,
+          16–30, 30+). Label Terlaris dan Best Deal tetap mengikuti pin paket di bawah.
+        </p>
+
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
             checked={draft.recentPurchasesEnabled}
             onChange={(event) =>
               setDraft({ ...draft, recentPurchasesEnabled: event.target.checked })

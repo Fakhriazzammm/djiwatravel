@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Destinasi eSIM: Travo planner v3</title>
+<style>
+:root{--bg:#f3f4f7;--fg:#17181c;--mut:#7a7f8e;--bd:#e7e9ef;--red:#c8333a;--soft:#fcebec;--ok:#15803d;--sec:#eceef3}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font:13px/1.35 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--fg);background:#e4e5ea}
+.wrap{max-width:900px;margin:0 auto;padding:10px}
+.ctry{display:flex;gap:6px;margin-bottom:8px}
+.ctry button{border:0;border-radius:999px;padding:7px 12px;background:#fff;font:600 12px inherit;cursor:pointer}.ctry .on{background:var(--fg);color:#fff}
+.stage{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.note{flex:1;min-width:220px;font-size:12px;color:var(--mut)}.note h2{font-size:15px;color:var(--fg);margin-bottom:4px}.note li{margin:0 0 5px 16px}.note b{color:var(--fg)}
+.phone{width:372px;height:760px;border-radius:38px;border:7px solid #17181c;background:var(--bg);overflow:hidden;position:relative}
+.scroll{height:100%;overflow-y:auto;padding:14px 16px 150px;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}
+.top{display:flex;align-items:center;margin-bottom:12px}
+.ib{width:36px;height:36px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0001;display:grid;place-items:center;font-size:18px;flex:none}
+.head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.flag{font-size:30px;line-height:1}
+h1{font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.1}.sub{font-size:12px;color:var(--mut);margin-top:2px}
+.lab{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);margin:16px 4px 6px}
+.panel{background:#fff;border-radius:18px;padding:4px 14px}
+.line{display:flex;align-items:center;justify-content:space-between;min-height:56px}
+.line+.line{border-top:1px solid var(--bd)}
+.line .k{font-size:14px;font-weight:600}.line .k small{display:block;font-weight:400;font-size:11px;color:var(--mut)}
+.st{display:flex;align-items:center;gap:6px}
+.st b{min-width:74px;text-align:center;font-size:17px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.st button{width:34px;height:34px;border-radius:50%;border:0;background:var(--sec);font-size:19px;color:var(--fg);cursor:pointer}
+.st button:active{background:#dfe2ea}
+.seg{display:flex;background:var(--sec);border-radius:10px;padding:2px}
+.seg button{border:0;background:none;padding:5px 10px;border-radius:8px;font:600 12px inherit;color:var(--mut);cursor:pointer}.seg .on{background:#fff;color:var(--fg);box-shadow:0 1px 2px #0002}
+.chips{display:flex;gap:6px;padding:0 0 12px}
+.chips button{flex:1;border:0;background:var(--sec);border-radius:12px;padding:7px 4px;font:600 12px inherit;cursor:pointer;color:var(--fg)}
+.chips button small{display:block;font-weight:400;font-size:10.5px;color:var(--mut)}
+.chips .on{background:var(--soft);color:var(--red);box-shadow:inset 0 0 0 1.5px var(--red)}.chips .on small{color:var(--red)}
+.res{background:var(--red);color:#fff;border-radius:18px;padding:14px}
+.res .k{font-size:11px;font-weight:600;opacity:.85;letter-spacing:.03em}
+.res .big{font-size:30px;font-weight:700;letter-spacing:-.025em;margin:2px 0 0;line-height:1.1}
+.res .big span{font-size:15px;font-weight:600;opacity:.9;margin-left:4px}
+.bar{height:6px;border-radius:6px;background:#ffffff3a;margin:12px 0 6px;overflow:hidden}.bar i{display:block;height:100%;background:#fff;border-radius:6px}
+.res .ft{display:flex;justify-content:space-between;font-size:12px;opacity:.92}
+.warn{background:#fff6e5;color:#7a5200;border-radius:14px;padding:10px 12px;font-size:12px;margin-top:8px}
+.opt{display:flex;align-items:center;gap:12px;padding:11px 0;min-height:60px;cursor:pointer}
+.opt+.opt{border-top:1px solid var(--bd)}
+.rd{width:22px;height:22px;border-radius:50%;border:2px solid #c6cad5;flex:none;display:grid;place-items:center}
+.opt.sel .rd{border-color:var(--red)}.opt.sel .rd:after{content:"";width:11px;height:11px;border-radius:50%;background:var(--red)}
+.opt .l{flex:1;min-width:0}.opt .t{font-size:14px;font-weight:600}.opt .m{font-size:11.5px;color:var(--mut);margin-top:1px}
+.opt .p{text-align:right;font-weight:700;font-size:14px}.opt .p small{display:block;font-weight:400;font-size:10.5px;color:var(--mut)}
+.pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:1px;background:var(--sec);color:var(--mut)}
+.pill.r{background:var(--soft);color:var(--red)}
+details.f{background:#fff;border-radius:18px;margin-top:10px;padding:0 14px}
+details.f summary{list-style:none;min-height:50px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:600;cursor:pointer}
+details.f summary::-webkit-details-marker{display:none}details.f summary span{color:var(--mut)}
+.all{border-top:1px solid var(--bd)}.all div{display:flex;justify-content:space-between;padding:10px 0;font-size:13px}.all div+div{border-top:1px solid var(--bd)}
+.all .y{color:var(--ok);font-weight:600}.all .n{color:var(--mut)}
+.cta{position:absolute;left:12px;right:12px;bottom:82px;background:#17181cf2;color:#fff;border-radius:20px;padding:9px 9px 9px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px #0003}
+.cta .tt{flex:1;font-size:11.5px;color:#b9bdc9;line-height:1.25}.cta .tt b{display:block;color:#fff;font-size:15px}
+.cta button{border:0;background:var(--red);color:#fff;border-radius:14px;padding:11px 22px;font:700 14px inherit;cursor:pointer}
+.tab{position:absolute;left:0;right:0;bottom:0;height:68px;background:#fffc;backdrop-filter:blur(12px);border-top:1px solid var(--bd);display:flex;justify-content:space-around;align-items:flex-start;padding-top:12px;font-size:10px;color:var(--mut)}.tab .on{color:var(--red);font-weight:700}
+</style></head><body><div class="wrap">
+<div class="ctry" id="ctry"></div>
+<div class="stage"><div class="phone"><div class="scroll" id="scr"></div><div id="fixed"></div></div>
+<div class="note"><h2>Travo planner v3</h2><ul>
+<li><b>Dua input,</b> satu panel: lama perjalanan dan kebutuhan data, keduanya dengan tombol − / +.</li>
+<li>Kebutuhan data bisa <b>per hari</b> atau <b>total</b>; MB ↔ GB otomatis. Preset Ringan / Sedang / Berat sebagai jalan pintas.</li>
+<li>Kartu merah polos = paket pilihanmu + bar “terpakai dari kuota”.</li>
+<li>Tiga pilihan (Hemat / Pas / Lega) dalam satu daftar, tinggal ketuk. Bar beli menyesuaikan.</li>
+<li>Tanpa slider, tanpa gradien; mengikuti gaya iOS yang sudah dipakai di app.</li></ul></div></div></div>
+<script>
+const D={
+jp:{n:"Jepang",f:"🇯🇵",net:"SoftBank / KDDI",plans:[[1,3,9000,"t"],[1,7,15000,"t"],[3,7,32000,"t"],[5,7,45000,"t"],[10,15,95000,"t"],[20,30,189000,"t"],[1,7,52000,"d"],[1,15,98000,"d"],[2,15,150000,"d"]]},
+th:{n:"Thailand",f:"🇹🇭",net:"AIS / TrueMove",plans:[[1,3,7000,"t"],[1,7,13000,"t"],[3,7,28000,"t"],[5,15,52000,"t"],[10,15,80000,"t"],[20,30,160000,"t"],[1,7,45000,"d"],[1,15,85000,"d"]]},
+asia:{n:"Asia regional",f:"🌏",net:"20 negara",plans:[[1,7,29000,"t"],[3,15,72000,"t"],[5,15,98000,"t"],[10,30,175000,"t"],[1,15,140000,"d"]]}};
+const DAYS=[100,150,200,300,500,750,1024,1536,2048,3072];
+const TOT=[500,1024,2048,3072,5120,7168,10240,15360,20480,30720];
+let cur="jp",days=7,mode="d",vi=3,pick="pas";
+const steps=()=>mode=="d"?DAYS:TOT;
+const val=()=>steps()[vi];
+const rp=n=>"Rp"+n.toLocaleString("id-ID");
+const fmt=mb=>mb>=1024?(mb/1024).toFixed(mb%1024?1:0).replace(".",",")+" GB":Math.round(mb)+" MB";
+const cap=(p,d)=>p[3]=="d"?p[0]*1024*Math.min(d,p[1]):p[0]*1024;
+const lab=p=>p[3]=="d"?p[0]+" GB/hari":p[0]+" GB total";
+const need=()=>mode=="d"?val()*days:val();
+function setMode(m){const t=need();mode=m;const a=steps();let b=0;a.forEach((x,i)=>{const v=m=="d"?x*days:x;if(Math.abs(v-t)<Math.abs((m=="d"?a[b]*days:a[b])-t))b=i});vi=b;pick="pas";render()}
+function sol(){const d=D[cur],n=need();
+const ok=d.plans.filter(p=>p[1]>=days&&cap(p,days)>=n).sort((a,b)=>a[2]-b[2]);
+const pas=ok[0]||null;
+const hemat=d.plans.filter(p=>p[1]>=days&&cap(p,days)<n&&cap(p,days)>=n*.6&&(!pas||p[2]<pas[2])).sort((a,b)=>b[2]-a[2])[0]||null;
+const lega=ok.find(p=>p!==pas&&cap(p,days)>=n*1.5)||ok.find(p=>p!==pas)||null;
+const near=!pas?d.plans.filter(p=>p[1]>=days).sort((a,b)=>cap(b,days)-cap(a,days))[0]:null;
+return{d,n,pas,hemat,lega,near}}
+function html(){const s=sol(),d=s.d;
+const map={pas:s.pas||s.near,hemat:s.hemat,lega:s.lega};let ch=map[pick]||map.pas;if(!ch){ch=d.plans[d.plans.length-1]}
+const c=cap(ch,days),use=Math.min(100,s.n/c*100);
+const title={pas:s.pas?"Paling pas":"Terbesar yang ada",hemat:"Hemat",lega:"Lega"}[map[pick]?pick:"pas"];
+const row=(k,t,p,m)=>p?`<div class="opt ${ch==p?"sel":""}" onclick="pick='${k}';render()"><span class="rd"></span><div class="l"><div class="t">${lab(p)}${k=="pas"&&s.pas?'<span class="pill r">Disarankan</span>':""}</div><div class="m">${t} · ${p[1]} hari · ${m}</div></div><div class="p">${rp(p[2])}<small>≈ ${rp(Math.round(p[2]/p[1]))}/hari</small></div></div>`:"";
+const pre=[["Ringan",150,1024],["Sedang",500,3072],["Berat",1536,10240]];
+return{s:`<div class="top"><div class="ib">‹</div></div>
+<div class="head"><div class="flag">${d.f}</div><div><h1>eSIM ${d.n}</h1><div class="sub">${d.net} · Aktif otomatis</div></div></div>
+<div class="lab">Rencana perjalanan</div>
+<div class="panel"><div class="line"><div class="k">Lama perjalanan<small>hari</small></div><div class="st"><button onclick="days=Math.max(1,days-1);pick='pas';render()">−</button><b>${days} hari</b><button onclick="days=Math.min(60,days+1);pick='pas';render()">+</button></div></div>
+<div class="line"><div class="k">Kebutuhan data<small>${mode=="d"?"per hari":"selama "+days+" hari"}</small></div><div class="st"><button onclick="vi=Math.max(0,vi-1);pick='pas';render()">−</button><b>${fmt(val())}</b><button onclick="vi=Math.min(steps().length-1,vi+1);pick='pas';render()">+</button></div></div>
+<div class="line" style="min-height:48px"><div class="k" style="font-size:12px;font-weight:500;color:var(--mut)">Hitung berdasarkan</div><div class="seg"><button class="${mode=="d"?"on":""}" onclick="setMode('d')">Per hari</button><button class="${mode=="t"?"on":""}" onclick="setMode('t')">Total</button></div></div>
+<div class="line" style="padding:2px 0 0;border-top:1px solid var(--bd);display:block"><div class="chips" style="padding-top:10px">${pre.map(p=>{const v=mode=="d"?p[1]:p[2];return `<button class="${val()==v?"on":""}" onclick="vi=steps().indexOf(${v});pick='pas';render()">${p[0]}<small>${fmt(v)}</small></button>`}).join("")}</div></div></div>
+<div class="lab">Total kebutuhanmu ≈ ${fmt(s.n)}${mode=="t"?" · "+fmt(s.n/days)+"/hari":""}</div>
+<div class="res"><div class="k">${title.toUpperCase()} · REKOMENDASI TRAVO</div><div class="big">${ch[0]} GB<span>${ch[3]=="d"?"per hari":"total"} · ${ch[1]} hari</span></div>
+<div class="bar"><i style="width:${use}%"></i></div><div class="ft"><span>Terpakai ≈ ${fmt(s.n)} dari ${fmt(c)}</span><b>${rp(ch[2])}</b></div></div>
+${!s.pas?`<div class="warn">Tidak ada satu paket yang cukup untuk ${fmt(s.n)} selama ${days} hari. Kurangi kebutuhan, atau beli dua paket.</div>`:""}
+<div class="lab">Pilihan paket</div><div class="panel">${row("hemat","Lebih mepet",s.hemat,s.hemat?"menutup ±"+Math.round(cap(s.hemat,days)/s.n*100)+"%":"")}${row("pas","Pas kebutuhan",s.pas||s.near,s.pas?"sisa "+fmt(cap(s.pas,days)-s.n):"")}${row("lega","Lebih longgar",s.lega,s.lega?"sisa "+fmt(cap(s.lega,days)-s.n):"")}</div>
+<details class="f"><summary>Semua paket ${d.n} (${d.plans.length})<span>⌄</span></summary><div class="all">${d.plans.map(p=>{const f=p[1]>=days&&cap(p,days)>=s.n;return `<div><span>${lab(p)} · ${p[1]} hari</span><span class="${f?"y":"n"}">${f?"✓ ":""}${rp(p[2])}</span></div>`}).join("")}</div></details>`,
+f:`<div class="cta"><div class="tt">${lab(ch)} · ${ch[1]} hari<b>${rp(ch[2])}</b></div><button>Beli</button></div><div class="tab"><span>Beranda</span><span>Jelajah</span><span class="on">Perjalanan</span><span>Dompet</span><span>Profil</span></div>`}}
+function render(){document.getElementById("ctry").innerHTML=Object.keys(D).map(k=>`<button class="${k==cur?"on":""}" onclick="cur='${k}';pick='pas';render()">${D[k].f} ${D[k].n}</button>`).join("");
+const sc=document.getElementById("scr"),y=sc.scrollTop,h=html();sc.innerHTML=h.s;sc.scrollTop=y;document.getElementById("fixed").innerHTML=h.f}
+render();
+</script></body></html>

@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  durationFilterOf,
-  isDailyQuota,
-  isMultiCountry,
-  packageDeckCardClass,
-  sampleDeck,
-} from "@/routes/destination.$code";
+import { durationFilterOf, isDailyQuota, isMultiCountry } from "@/routes/destination.$code";
 import { pickFastPackages } from "@/lib/home-quick-packages";
 import type { ViewPackage } from "@/lib/package-view";
 
@@ -47,26 +41,5 @@ describe("destination redesign helpers", () => {
     expect(picks.map((x) => x.pkg.priceIdr)).toEqual(
       [...picks.map((x) => x.pkg.priceIdr)].sort((a, b) => a - b),
     );
-  });
-  it("samples a long deck evenly, keeping cheapest and priciest", () => {
-    const list = Array.from({ length: 20 }, (_, i) => i);
-    const deck = sampleDeck(list, 6);
-    expect(deck).toHaveLength(6);
-    expect(deck[0]).toBe(0);
-    expect(deck[5]).toBe(19);
-    expect(sampleDeck([1, 2], 6)).toEqual([1, 2]);
-  });
-  it("keeps the destination package deck compact", () => {
-    const selected = packageDeckCardClass(true);
-    const unselected = packageDeckCardClass(false);
-
-    for (const cardClass of [selected, unselected]) {
-      expect(cardClass).toContain("w-[48%] max-w-[188px]");
-      expect(cardClass).toContain("rounded-2xl p-3");
-      expect(cardClass).not.toContain("bg-gradient");
-      expect(cardClass).not.toContain("shadow");
-    }
-    expect(selected).toContain("bg-[#a60f2a] text-white");
-    expect(unselected).toContain("bg-surface ring-1 ring-border/60");
   });
 });

@@ -191,6 +191,23 @@ as a bottom sheet. Never show more than these two picks there; the full catalogu
 stays on the destination page. Admin pins override each slot per destination
 (Admin → Settings → eSIM Beranda).
 
+### Destination page (`/destination/$code`)
+
+One trip-length control sits above the package list and stays sticky while the
+list scrolls. With the day slider on (default), it shows a 1–60 day slider
+(maximum follows the longest live validity, never below 7), the chosen day count
+in large tabular numerals, quick-jump marks 1 / 7 / 14 / 30 / 60, and a coverage
+line "Masa aktif paket terdekat: N hari · X pilihan". The list shows only
+packages whose validity covers the chosen days, cheapest first; the closest
+covering validity is the "Cocok untuk N hari" tier, the rest fold under "Masa
+aktif lebih lama", and multi-country bundles stay under "Ke lebih dari satu
+negara?". Rows keep the big quota number, kind and validity, and price with
+≈ Rp/hari. One selected row drives the fixed CTA (package, price, Detail, Beli).
+Admin → Settings → eSIM Beranda → "Slider hari di halaman destinasi" turns the
+slider off for everyone; the page then uses range tabs (≤3, 4–7, 8–15, 16–30,
+30+ hari) with per-bucket counts and the same rows, CTA, and empty state.
+Terlaris and Best Deal tags always follow the Admin pins.
+
 ### Status, empty, loading, and error states
 
 Every async surface needs explicit loading, ready, empty, and error states.

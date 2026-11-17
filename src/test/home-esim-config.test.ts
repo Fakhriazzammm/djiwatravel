@@ -14,6 +14,7 @@ import { buildEsimHomeSummary } from "../lib/esim-home-summary";
 const valid: HomeEsimConfig = {
   quickBuyEnabled: true,
   multiCountryEnabled: true,
+  daySliderEnabled: true,
   myTripsWidgetEnabled: true,
   heroSky: "auto",
   recentPurchasesEnabled: true,
@@ -38,6 +39,14 @@ describe("home eSIM config", () => {
     ).toBe(false);
     expect(() => parseHomeEsimConfig({ ...valid, myTripsWidgetEnabled: "no" })).toThrow();
     expect(DEFAULT_HOME_ESIM_CONFIG.myTripsWidgetEnabled).toBe(true);
+  });
+
+  it("defaults the day slider on for older records and rejects non-booleans", () => {
+    const { daySliderEnabled: _omit, ...legacy } = valid;
+    expect(parseHomeEsimConfig(legacy).daySliderEnabled).toBe(true);
+    expect(parseHomeEsimConfig({ ...valid, daySliderEnabled: false }).daySliderEnabled).toBe(false);
+    expect(() => parseHomeEsimConfig({ ...valid, daySliderEnabled: "no" })).toThrow();
+    expect(DEFAULT_HOME_ESIM_CONFIG.daySliderEnabled).toBe(true);
   });
 
   it("accepts records saved before package highlights existed", () => {
@@ -172,7 +181,9 @@ describe("recent purchases toggle", () => {
   it("defaults on, accepts false, and rejects non-booleans", () => {
     const { recentPurchasesEnabled: _omit, ...legacy } = valid;
     expect(parseHomeEsimConfig(legacy).recentPurchasesEnabled).toBe(true);
-    expect(parseHomeEsimConfig({ ...valid, recentPurchasesEnabled: false }).recentPurchasesEnabled).toBe(false);
+    expect(
+      parseHomeEsimConfig({ ...valid, recentPurchasesEnabled: false }).recentPurchasesEnabled,
+    ).toBe(false);
     expect(() => parseHomeEsimConfig({ ...valid, recentPurchasesEnabled: "no" })).toThrow();
   });
 });

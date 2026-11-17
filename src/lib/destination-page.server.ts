@@ -37,5 +37,6 @@ export async function getDestinationPageHandler(code: string) {
     picks: pickFastPackages(data.packages, sales, pin),
     switcher,
     network: data.destination.network ?? null,
+    daySlider: record.config.daySliderEnabled,
   };
 }

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Destinasi eSIM: geser hari</title>
+<style>
+:root{--bg:#f3f4f7;--fg:#17181c;--mut:#7a7f8e;--bd:#e7e9ef;--red:#c8333a;--soft:#fcebec;--ok:#15803d;--sec:#e4e6ed}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font:13px/1.35 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--fg);background:#e4e5ea}
+.wrap{max-width:900px;margin:0 auto;padding:10px}
+.ctry{display:flex;gap:6px;margin-bottom:8px}
+.ctry button{border:0;border-radius:999px;padding:7px 12px;background:#fff;font:600 12px inherit;cursor:pointer}.ctry .on{background:var(--fg);color:#fff}
+.stage{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.note{flex:1;min-width:220px;font-size:12px;color:var(--mut)}.note h2{font-size:15px;color:var(--fg);margin-bottom:4px}.note li{margin:0 0 5px 16px}.note b{color:var(--fg)}
+.phone{width:372px;height:780px;border-radius:38px;border:7px solid #17181c;background:var(--bg);overflow:hidden;position:relative}
+.scroll{height:100%;overflow-y:auto;padding:0 16px 150px;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}
+.top{display:flex;align-items:center;justify-content:space-between;padding-top:14px}
+.ib{width:36px;height:36px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0001;display:grid;place-items:center;font-size:18px}
+.cp{background:#fff;box-shadow:0 1px 2px #0001;border-radius:999px;padding:8px 14px;font-weight:600;font-size:13px}.sp{width:36px}
+.head{margin:14px 0 4px}
+h1{font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.sub{font-size:12px;color:var(--mut);margin-top:4px}.sub b{color:var(--fg)}
+.sticky{position:sticky;top:0;z-index:5;background:var(--bg);margin:0 -16px;padding:10px 16px 6px}
+.dc{background:#fff;border-radius:20px;padding:12px 16px 10px;box-shadow:0 1px 3px #0000000f}
+.dh{display:flex;align-items:baseline;justify-content:space-between}
+.dh .q{font-size:12px;font-weight:600;color:var(--mut)}
+.dh .v{font-size:30px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.dh .v span{font-size:14px;font-weight:600;color:var(--mut);margin-left:3px}
+.sl{position:relative;height:44px;margin-top:2px}
+.sl input{position:absolute;inset:0;width:100%;height:44px;opacity:0;margin:0;cursor:pointer;z-index:3;touch-action:pan-y}
+.tr{position:absolute;left:0;right:0;top:19px;height:6px;border-radius:6px;background:var(--sec)}
+.fl{position:absolute;left:0;top:19px;height:6px;border-radius:6px;background:var(--red)}
+.th{position:absolute;top:8px;width:28px;height:28px;margin-left:-14px;border-radius:50%;background:#fff;box-shadow:0 1px 6px #0004,0 0 0 1px #0000000d;z-index:2}
+.th:after{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--red)}
+.tk{display:flex;justify-content:space-between;position:relative;height:16px;font-size:10.5px;color:var(--mut)}
+.tk span{position:absolute;transform:translateX(-50%);cursor:pointer;padding:0 4px}
+.tk span.on{color:var(--red);font-weight:700}
+.cov{font-size:11.5px;color:var(--mut);margin-top:6px}.cov b{color:var(--fg)}
+.chips{display:flex;gap:6px;margin-top:8px}
+.chip{border:0;background:#fff;border-radius:999px;padding:6px 12px;font:600 12px inherit;cursor:pointer;color:var(--fg)}.chip.on{background:var(--fg);color:#fff}
+.lab{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);margin:14px 4px 6px;display:flex;justify-content:space-between}
+.list{background:#fff;border-radius:18px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:0 14px;min-height:68px;cursor:pointer}
+.row+.row{border-top:1px solid var(--bd)}
+.gb{width:64px;flex:none}.gb b{font-size:21px;letter-spacing:-.02em;font-weight:700}.gb span{font-size:12px;font-weight:600;color:var(--mut);margin-left:2px}
+.mid{flex:1;min-width:0}.mid .t{font-size:13.5px;font-weight:600;white-space:nowrap}.mid .m{font-size:11.5px;color:var(--mut);margin-top:1px}
+.pr{text-align:right}.pr b{font-size:14.5px;display:block}.pr small{font-size:10.5px;color:var(--mut)}
+.rd{width:22px;height:22px;border-radius:50%;border:2px solid #c6cad5;flex:none;display:grid;place-items:center}
+.row.sel{background:var(--soft)}.row.sel .rd{border-color:var(--red)}.row.sel .rd:after{content:"";width:11px;height:11px;border-radius:50%;background:var(--red)}
+.tag{font-size:9.5px;font-weight:700;border-radius:999px;padding:2px 7px;margin-left:6px;vertical-align:1px;background:var(--red);color:#fff}.tag.g{background:#dcfce7;color:var(--ok)}
+.empty{background:#fff;border-radius:18px;padding:20px 16px;text-align:center;color:var(--mut)}.empty b{display:block;color:var(--fg);font-size:14px;margin-bottom:4px}
+details.f{background:#fff;border-radius:18px;margin-top:10px}
+details.f summary{list-style:none;min-height:52px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:600;cursor:pointer}
+details.f summary::-webkit-details-marker{display:none}details.f summary small{display:block;font-weight:400;font-size:11px;color:var(--mut)}details.f summary>span{color:var(--mut)}
+details.f .list{border-radius:0;border-top:1px solid var(--bd)}
+.cta{position:absolute;left:12px;right:12px;bottom:84px;background:#17181cf2;color:#fff;border-radius:20px;padding:9px 9px 9px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px #0003}
+.cta .tt{flex:1;font-size:11.5px;color:#b9bdc9;line-height:1.25}.cta .tt b{display:block;color:#fff;font-size:15px}
+.cta button{border:0;background:var(--red);color:#fff;border-radius:14px;padding:11px 22px;font:700 14px inherit;cursor:pointer}
+.tab{position:absolute;left:0;right:0;bottom:0;height:70px;background:#fffc;backdrop-filter:blur(12px);border-top:1px solid var(--bd);display:flex;justify-content:space-around;padding-top:12px;font-size:10px;color:var(--mut)}.tab .on{color:var(--red);font-weight:700}
+</style></head><body><div class="wrap">
+<div class="ctry" id="ctry"></div>
+<div class="stage"><div class="phone"><div class="scroll" id="scr"></div><div id="fixed"></div></div>
+<div class="note"><h2>Geser hari · v5</h2><ul>
+<li><b>Geser 1–60 hari</b> di slider besar; angka hari tampil jumbo dan berubah langsung saat digeser.</li>
+<li>Ketuk penanda 1 / 7 / 14 / 30 / 60 untuk lompat cepat.</li>
+<li>Daftar langsung menampilkan paket yang <b>masa aktifnya cukup</b> untuk jumlah hari itu, termurah dulu. Paket “Paling pas” ditandai.</li>
+<li>Paket dengan masa aktif lebih panjang dilipat di bawah, jadi daftar utama tetap pendek.</li>
+<li>Slider menempel di atas saat daftar digulir, jadi hari bisa diubah kapan saja.</li></ul></div></div></div>
+<script>
+const D={
+jp:{n:"Jepang",f:"🇯🇵",net:"SoftBank / KDDI",plans:[[1,3,9000,"t"],[3,3,19000,"t"],[1,7,15000,"t"],[3,7,32000,"t"],[5,7,45000,"t"],[1,7,52000,"d"],[10,15,95000,"t"],[1,15,98000,"d"],[2,15,150000,"d"],[20,30,189000,"t"],[50,30,320000,"t"]],reg:[["Makau, Bangladesh + 12 negara",1,7,20000],["Jepang, Korea Selatan",1,7,23000],["Asia 20 negara",3,15,72000]]},
+th:{n:"Thailand",f:"🇹🇭",net:"AIS / TrueMove",plans:[[1,3,7000,"t"],[1,7,13000,"t"],[3,7,28000,"t"],[1,7,45000,"d"],[5,15,52000,"t"],[10,15,80000,"t"],[1,15,85000,"d"],[20,30,160000,"t"]],reg:[["Thailand, Malaysia, Singapura",2,7,38000],["Asia Tenggara 8 negara",3,15,69000]]},
+asia:{n:"Asia regional",f:"🌏",net:"20 negara · multi-jaringan",plans:[[1,7,29000,"t"],[3,15,72000,"t"],[5,15,98000,"t"],[1,15,140000,"d"],[10,30,175000,"t"]],reg:[]}};
+const MAX=60,MARKS=[1,7,14,30,60];
+let cur="jp",days=7,quota="all",sel=null;
+const rp=n=>"Rp"+n.toLocaleString("id-ID");
+const key=p=>p.join("-");
+const pct=d=>(d-1)/(MAX-1)*100;
+function shell(){const d=D[cur],mn=Math.min(...d.plans.map(p=>p[2]));
+document.getElementById("scr").innerHTML=`<div class="top"><div class="ib">‹</div><div class="cp">${d.f} ${d.n} ⌄</div><div class="sp"></div></div>
+<div class="head"><h1>eSIM ${d.n}</h1><div class="sub">${d.net} · Aktif otomatis · Mulai <b>${rp(mn)}</b></div></div>
+<div class="sticky"><div class="dc"><div class="dh"><span class="q">Berapa lama perjalananmu?<br>Geser untuk mengatur</span><span class="v"><i id="dv" style="font-style:normal">${days}</i><span>hari</span></span></div>
+<div class="sl"><div class="tr"></div><div class="fl" id="fl"></div><div class="th" id="th"></div><input id="rg" type="range" min="1" max="${MAX}" value="${days}" aria-label="Lama perjalanan (hari)"></div>
+<div class="tk" id="tk">${MARKS.map(m=>`<span data-m="${m}" style="left:${pct(m)}%">${m}</span>`).join("")}</div>
+<div class="cov" id="cov"></div></div>
+<div class="chips">${[["all","Semua"],["t","Total"],["d","Harian"]].map(q=>`<button class="chip" data-q="${q[0]}">${q[1]}</button>`).join("")}</div></div>
+<div id="res"></div>`;
+const rg=document.getElementById("rg");
+rg.oninput=()=>{days=+rg.value;sel=null;upd()};
+document.querySelectorAll("#tk span").forEach(s=>s.onclick=()=>{days=+s.dataset.m;rg.value=days;sel=null;upd()});
+document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{quota=c.dataset.q;sel=null;upd()});
+upd()}
+function upd(){const d=D[cur];
+document.getElementById("dv").textContent=days;
+document.getElementById("fl").style.width=pct(days)+"%";
+document.getElementById("th").style.left=pct(days)+"%";
+document.querySelectorAll("#tk span").forEach(s=>s.classList.toggle("on",+s.dataset.m==days));
+document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.dataset.q==quota));
+const okq=p=>quota=="all"||(quota=="t"?p[3]=="t":p[3]=="d");
+const cover=d.plans.filter(p=>p[1]>=days&&okq(p));
+const tier=cover.length?Math.min(...cover.map(p=>p[1])):null;
+const fit=cover.filter(p=>p[1]==tier).sort((a,b)=>a[2]-b[2]);
+const longer=cover.filter(p=>p[1]>tier).sort((a,b)=>a[1]-b[1]||a[2]-b[2]);
+const best=d.plans.reduce((a,b)=>b[2]/b[1]<a[2]/a[1]?b:a);const pop=d.plans.find(p=>p[1]==7&&p[0]==1&&p[3]=="t")||d.plans[0];
+if(!sel||![...fit,...longer].find(p=>key(p)==sel))sel=fit[0]?key(fit[0]):null;
+const row=(p,i)=>`<div class="row ${key(p)==sel?"sel":""}" data-k="${key(p)}"><div class="gb"><b>${p[0]}</b><span>GB</span></div><div class="mid"><div class="t">${p[3]=="d"?"Harian":"Total"}${p==pop?'<span class="tag">Terlaris</span>':p==best?'<span class="tag g">Hemat/hari</span>':""}</div><div class="m">${p[1]} hari${p[3]=="d"?" · tiap hari":""}${i===0&&p==fit[0]?" · paling pas":""}</div></div><div class="pr"><b>${rp(p[2])}</b><small>≈ ${rp(Math.round(p[2]/days))}/hari${p[1]>days?" dipakai":""}</small></div><span class="rd"></span></div>`;
+const ro=r=>`<div class="row" style="cursor:default"><div class="gb"><b>${r[1]}</b><span>GB</span></div><div class="mid"><div class="t">${r[0]}</div><div class="m">${r[2]} hari</div></div><div class="pr"><b>${rp(r[3])}</b></div></div>`;
+document.getElementById("cov").innerHTML=cover.length?`Masa aktif paket terdekat: <b>${tier} hari</b> · ${fit.length} pilihan`:`Tidak ada paket dengan masa aktif ${days} hari`;
+const ch=cover.find(p=>key(p)==sel);
+document.getElementById("res").innerHTML=(fit.length?`<div class="lab"><span>Cocok untuk ${days} hari</span><span>${fit.length} paket</span></div><div class="list">${fit.map(row).join("")}</div>`:`<div class="empty"><b>Belum ada paket untuk ${days} hari</b>Kurangi hari atau ganti jenis kuota.</div>`)
++(longer.length?`<details class="f"><summary><div>Masa aktif lebih lama<small>${longer.length} paket · ${longer[0].slice(1,2)} hari ke atas</small></div><span>⌄</span></summary><div class="list">${longer.map(row).join("")}</div></details>`:"")
++(d.reg.length?`<details class="f"><summary><div>Ke lebih dari satu negara?<small>${d.reg.length} paket multi-negara termasuk ${d.n}</small></div><span>⌄</span></summary><div class="list">${d.reg.map(ro).join("")}</div></details>`:"");
+document.querySelectorAll("#res .row[data-k]").forEach(r=>r.onclick=()=>{sel=r.dataset.k;upd()});
+document.getElementById("fixed").innerHTML=`<div class="cta">${ch?`<div class="tt">${ch[0]} GB · ${ch[3]=="d"?"harian":"total"} · ${ch[1]} hari<b>${rp(ch[2])}</b></div><button>Beli</button>`:`<div class="tt">Pilih paket<b>–</b></div><button style="opacity:.4">Beli</button>`}</div><div class="tab"><span>Beranda</span><span>Jelajah</span><span class="on">Perjalanan</span><span>Dompet</span><span>Profil</span></div>`}
+function drawCtry(){document.getElementById("ctry").innerHTML=Object.keys(D).map(k=>`<button class="${k==cur?"on":""}" data-c="${k}">${D[k].f} ${D[k].n}</button>`).join("");
+document.querySelectorAll("#ctry button").forEach(b=>b.onclick=()=>{cur=b.dataset.c;sel=null;quota="all";drawCtry();shell()})}
+drawCtry();shell();
+</script></body></html>

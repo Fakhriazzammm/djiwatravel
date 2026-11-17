@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
-import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronLeft } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { glassIconButtonClass, Page, StickyCta } from "@/components/shell";
 import { GeoAnswer } from "@/components/geo-answer";
 import {
@@ -10,6 +10,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  clampDays,
+  initialDays,
+  isDailyQuota,
+  matchesQuota,
+  matchPackagesForDays,
+  pricePerChosenDay,
+  sliderMarks,
+  sliderMaxDays,
+  type QuotaFilter,
+} from "@/lib/destination-days";
 import { getDestinationPage } from "@/lib/destination-packages.fn";
 import { destinationOgImage } from "@/lib/destination-artwork";
 import type { ViewPackage } from "@/lib/package-view";
@@ -55,18 +66,6 @@ export function filterPackagesByAvailability(
 ): ViewPackage[] {
   if (filter === "all" || stockPending) return filter === "all" ? [...packages] : [];
   return packages.filter((pkg) => (filter === "available" ? pkg.sellable : !pkg.sellable));
-}
-
-export function toggleComparisonSelection(
-  selectedCodes: readonly string[],
-  packageCode: string,
-  maxSelections = 3,
-): string[] {
-  if (selectedCodes.includes(packageCode)) {
-    return selectedCodes.filter((code) => code !== packageCode);
-  }
-  if (selectedCodes.length >= maxSelections) return [...selectedCodes];
-  return [...selectedCodes, packageCode];
 }
 
 /**
@@ -199,7 +198,7 @@ function rupiah(value: number) {
   return `Rp${value.toLocaleString("id-ID")}`;
 }
 
-/** Trip-length chips on the page; a package falls in the first bucket whose `max` covers it. */
+/** Range tabs used when Admin turns the day slider off; a package falls in the first bucket whose `max` covers it. */
 export const DURATION_FILTERS = [
   { id: "short", label: "≤ 3 hari", short: "≤3 hr", max: 3 },
   { id: "week", label: "4–7 hari", short: "4–7 hr", max: 7 },
@@ -213,121 +212,18 @@ export function durationFilterOf(days: number): DurationFilterId {
   return (DURATION_FILTERS.find((f) => days <= f.max) ?? DURATION_FILTERS[4]).id;
 }
 
-/** "Harian" = a per-day allowance (name carries /Day) rather than one total quota. */
-export function isDailyQuota(pkg: Pick<ViewPackage, "name">): boolean {
-  return /\/\s*day|per\s*day|harian|daily/i.test(pkg.name);
-}
-
-export type QuotaFilter = "all" | "total" | "daily";
+export { isDailyQuota };
+export type { QuotaFilter };
 
 /** A package covering more than one country is "regional" even when listed under a country. */
 export function isMultiCountry(pkg: Pick<ViewPackage, "locationCodes">): boolean {
   return pkg.locationCodes.length > 1;
 }
 
-/** Cards shown in the swipe deck for one trip length; evenly sampled so the range stays visible. */
-export const DECK_MAX = 6;
-
-/** One card per data+validity combination (the cheapest), so the deck shows real choices. */
-export function dedupeByOffer<
-  T extends Pick<ViewPackage, "volumeBytes" | "unlimited" | "durationDays">,
->(sortedByPrice: readonly T[]): T[] {
-  const seen = new Set<string>();
-  return sortedByPrice.filter((pkg) => {
-    const key = `${pkg.unlimited ? "u" : pkg.volumeBytes}:${pkg.durationDays}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-export function sampleDeck<T>(sortedByPrice: readonly T[], max = DECK_MAX): T[] {
-  if (sortedByPrice.length <= max) return [...sortedByPrice];
-  const last = sortedByPrice.length - 1;
-  const out: T[] = [];
-  for (let i = 0; i < max; i += 1) {
-    const item = sortedByPrice[Math.round((i * last) / (max - 1))]!;
-    if (!out.includes(item)) out.push(item);
-  }
-  return out;
-}
-
-export function packageDeckCardClass(selected: boolean): string {
-  const state = selected ? "bg-[#a60f2a] text-white" : "bg-surface ring-1 ring-border/60";
-  return `tap w-[48%] max-w-[188px] shrink-0 snap-center rounded-2xl p-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${state}`;
-}
-
-function PackageRow({
-  pkg,
-  stockPending,
-  selected,
-  selectDisabled,
-  onToggle,
-  showCoverage,
-}: {
-  pkg: ViewPackage;
-  stockPending: boolean;
-  selected: boolean;
-  selectDisabled: boolean;
-  onToggle: () => void;
-  showCoverage: boolean;
-}) {
-  const perDay = pricePerDay(pkg);
-  return (
-    <li
-      className={`flex items-center gap-3 px-3 py-3 ${pkg.sellable || pkg.preorderAvailable ? "" : "opacity-60"}`}
-    >
-      <input
-        type="checkbox"
-        checked={selected}
-        disabled={!pkg.sellable || selectDisabled}
-        onChange={onToggle}
-        className="size-[18px] shrink-0 accent-primary"
-        aria-label={`Bandingkan ${pkg.name}`}
-      />
-      <div className="min-w-0 flex-1">
-        <Link
-          to="/plan/$id"
-          params={{ id: pkg.packageCode }}
-          className="block rounded-sm text-[15px] font-bold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {packageDataLabel(pkg)}
-          <span className="font-medium text-muted-foreground"> · {pkg.durationDays} hari</span>
-        </Link>
-        <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
-          {pkg.preorderAvailable && !pkg.sellable ? "Pre-order · " : ""}
-          {showCoverage
-            ? packageCoverageLabel(pkg)
-            : isDailyQuota(pkg)
-              ? "Kuota harian"
-              : "Kuota total"}
-        </p>
-      </div>
-      <div className="shrink-0 text-right">
-        <p className="text-[15px] font-bold tracking-tight">{rupiah(pkg.priceIdr)}</p>
-        <p className="text-[10.5px] text-muted-foreground">
-          {Number.isFinite(perDay) ? `≈ ${rupiah(Math.round(perDay))}/hari` : ""}
-        </p>
-      </div>
-      {pkg.sellable || pkg.preorderAvailable ? (
-        <Link
-          to="/checkout/$id"
-          params={{ id: pkg.packageCode }}
-          aria-label={`${pkg.preorderAvailable && !pkg.sellable ? "Pre-order" : "Pilih paket"} ${pkg.name}`}
-          className="tap inline-flex min-h-11 min-w-16 shrink-0 items-center justify-center gap-0.5 rounded-xl bg-brand-red px-3 text-sm font-bold text-white transition hover:brightness-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
-        >
-          {pkg.preorderAvailable && !pkg.sellable ? "Pre-order" : "Pilih"} <ChevronRight className="size-4" strokeWidth={2.5} aria-hidden="true" />
-        </Link>
-      ) : (
-        <span
-          className="min-w-16 shrink-0 text-center text-sm font-semibold text-muted-foreground"
-          aria-label={stockPending ? "Paket belum dapat dipesan saat ini" : "Paket habis"}
-        >
-          {stockPending ? "Cek stok" : "Habis"}
-        </span>
-      )}
-    </li>
-  );
+/** Splits "3 GB" into the big number and the small unit; anything else (Unlimited) stays whole. */
+function splitData(label: string): { amount: string; unit: string } {
+  const match = /^([\d.,]+)\s*(GB|MB)$/i.exec(label.trim());
+  return match ? { amount: match[1]!, unit: match[2]! } : { amount: label, unit: "" };
 }
 
 function Chip({
@@ -344,10 +240,8 @@ function Chip({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`tap min-h-10 shrink-0 rounded-xl border px-3.5 text-[13px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        active
-          ? "border-brand-red bg-brand-red/10 text-brand-red"
-          : "border-border/70 bg-surface text-foreground"
+      className={`tap min-h-9 shrink-0 rounded-full px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        active ? "bg-foreground text-background" : "bg-surface text-foreground"
       }`}
     >
       {children}
@@ -355,19 +249,187 @@ function Chip({
   );
 }
 
+type PackageTag = "best_seller" | "best_deal" | "cheapest" | undefined;
+
+/** One package: big quota left, kind and validity in the middle, price and price per day right. */
+function PlanRow({
+  pkg,
+  days,
+  selected,
+  tag,
+  note,
+  showCoverage,
+  onSelect,
+}: {
+  pkg: ViewPackage;
+  days: number;
+  selected: boolean;
+  tag: PackageTag;
+  note: string | null;
+  showCoverage: boolean;
+  onSelect: () => void;
+}) {
+  const { amount, unit } = splitData(shortData(pkg));
+  const perDay = pricePerChosenDay(pkg, days);
+  return (
+    <li>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        aria-label={`${packageDataLabel(pkg)}, ${pkg.durationDays} hari, ${rupiah(pkg.priceIdr)}`}
+        onClick={onSelect}
+        className={`tap flex min-h-12 w-full items-center gap-3 px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+          selected ? "bg-brand-red/10" : ""
+        }`}
+      >
+        <span className="w-16 shrink-0">
+          <b className={`font-bold tracking-tight ${unit ? "text-[21px]" : "text-[14px]"}`}>
+            {amount}
+          </b>
+          {unit && (
+            <span className="ml-0.5 text-xs font-semibold text-muted-foreground">{unit}</span>
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block whitespace-nowrap text-[13.5px] font-semibold">
+            {showCoverage ? packageCoverageLabel(pkg) : isDailyQuota(pkg) ? "Harian" : "Total"}
+            {tag === "best_seller" && (
+              <span className="ml-1.5 rounded-full bg-brand-red px-1.5 py-0.5 align-[1px] text-[9.5px] font-bold text-white">
+                Terlaris
+              </span>
+            )}
+            {tag === "best_deal" && (
+              <span className="ml-1.5 rounded-full bg-emerald-100 px-1.5 py-0.5 align-[1px] text-[9.5px] font-bold text-emerald-700">
+                Best Deal
+              </span>
+            )}
+          </span>
+          <span className="mt-0.5 block truncate text-[11.5px] text-muted-foreground">
+            {pkg.durationDays} hari
+            {isDailyQuota(pkg) ? " · tiap hari" : ""}
+            {note ? ` · ${note}` : ""}
+          </span>
+        </span>
+        <span className="shrink-0 text-right">
+          <b className="block text-[14.5px] font-bold tracking-tight">{rupiah(pkg.priceIdr)}</b>
+          <span className="text-[10.5px] text-muted-foreground">
+            {Number.isFinite(perDay) ? `≈ ${rupiah(Math.round(perDay))}/hari` : ""}
+          </span>
+        </span>
+        <span
+          aria-hidden="true"
+          className={`grid size-[22px] shrink-0 place-items-center rounded-full border-2 ${
+            selected ? "border-brand-red" : "border-[#c6cad5]"
+          }`}
+        >
+          {selected && <span className="size-[11px] rounded-full bg-brand-red" />}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** Pre-order or sold-out package: not selectable, links to checkout only when pre-order is open. */
+function OffRow({ pkg, stockPending }: { pkg: ViewPackage; stockPending: boolean }) {
+  return (
+    <li className="flex min-h-12 items-center gap-3 px-3.5 py-3">
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13.5px] font-semibold">
+          {packageDataLabel(pkg)}
+          <span className="font-medium text-muted-foreground"> · {pkg.durationDays} hari</span>
+        </span>
+        <span className="block text-[11.5px] text-muted-foreground">{rupiah(pkg.priceIdr)}</span>
+      </span>
+      {pkg.preorderAvailable && !pkg.sellable ? (
+        <Link
+          to="/checkout/$id"
+          params={{ id: pkg.packageCode }}
+          className="tap inline-flex min-h-10 items-center rounded-xl bg-brand-red px-3 text-[13px] font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+        >
+          Pre-order
+        </Link>
+      ) : (
+        <span className="text-xs font-semibold text-muted-foreground">
+          {stockPending ? "Cek stok" : "Habis"}
+        </span>
+      )}
+    </li>
+  );
+}
+
+/** Day slider: a transparent native range on top of a drawn track, so touch and keyboard just work. */
+function DaySlider({
+  days,
+  max,
+  onChange,
+}: {
+  days: number;
+  max: number;
+  onChange: (next: number) => void;
+}) {
+  const pct = (value: number) => (max > 1 ? ((value - 1) / (max - 1)) * 100 : 0);
+  return (
+    <div>
+      <div className="relative h-11">
+        <div className="pointer-events-none absolute inset-x-3.5 inset-y-0">
+          <div className="absolute inset-x-0 top-[19px] h-1.5 rounded-full bg-secondary" />
+          <div
+            className="absolute left-0 top-[19px] h-1.5 rounded-full bg-brand-red"
+            style={{ width: `${pct(days)}%` }}
+          />
+          <div
+            className="absolute top-2 -ml-3.5 size-7 rounded-full bg-white shadow-[0_1px_6px_rgb(0_0_0/0.28),0_0_0_1px_rgb(0_0_0/0.05)]"
+            style={{ left: `${pct(days)}%` }}
+          >
+            <span className="absolute inset-[9px] rounded-full bg-brand-red" />
+          </div>
+        </div>
+        <input
+          type="range"
+          min={1}
+          max={max}
+          step={1}
+          value={days}
+          onChange={(event) => onChange(Number(event.target.value))}
+          aria-label="Lama perjalanan (hari)"
+          aria-valuetext={`${days} hari`}
+          className="absolute inset-0 h-11 w-full cursor-pointer appearance-none bg-transparent opacity-0 [touch-action:pan-y] [&::-moz-range-thumb]:size-7 [&::-moz-range-thumb]:border-0 [&::-webkit-slider-thumb]:size-7 [&::-webkit-slider-thumb]:appearance-none"
+        />
+      </div>
+      <div className="relative mx-3.5 h-5 text-[10.5px] text-muted-foreground">
+        {sliderMarks(max).map((mark) => (
+          <button
+            key={mark}
+            type="button"
+            onClick={() => onChange(mark)}
+            aria-label={`${mark} hari`}
+            style={{ left: `${pct(mark)}%` }}
+            className={`tap absolute top-0 -translate-x-1/2 px-1.5 py-0.5 ${
+              mark === days ? "font-bold text-brand-red" : ""
+            }`}
+          >
+            {mark}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const LONGER_PAGE = 12;
+
 function Destination() {
   const router = useRouter();
-  const { destination, packages, picks, switcher, network, stale, stockPending } =
+  const { destination, packages, picks, switcher, network, stale, stockPending, daySlider } =
     Route.useLoaderData();
   const { availability } = Route.useSearch();
-  const [sort, setSort] = useState<SortKey>("price");
-  const [duration, setDuration] = useState<DurationFilterId | null>(null);
-  const [showAllDurations, setShowAllDurations] = useState(false);
-  const [cardCode, setCardCode] = useState<string | null>(null);
-  const deckRef = useRef<HTMLDivElement | null>(null);
+  const isRegionalDestination = destination.region === "Regional";
   const [quota, setQuota] = useState<QuotaFilter>("all");
-  const [comparisonOpen, setComparisonOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [longerVisible, setLongerVisible] = useState(LONGER_PAGE);
+  const [bucket, setBucket] = useState<DurationFilterId | null>(null);
   const goBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.history.back();
@@ -375,140 +437,110 @@ function Destination() {
     }
     void router.navigate({ to: "/esim/finder" });
   };
-  const [visible, setVisible] = useState(PAGE_SIZE);
-  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  const isRegionalDestination = destination.region === "Regional";
   const geoFacts = useMemo(
     () => buildDestinationFacts(destination.nameId, packages),
     [destination.nameId, packages],
   );
 
-  useEffect(() => {
-    setSelectedCodes([]);
-    setComparisonOpen(false);
-    setVisible(PAGE_SIZE);
-    setDuration(null);
-    setShowAllDurations(false);
-    setCardCode(null);
-    setQuota("all");
-    setPickerOpen(false);
-  }, [destination.code]);
-
   const byAvailability = useMemo(
     () => filterPackagesByAvailability(packages, availability, stockPending),
     [packages, availability, stockPending],
   );
-  const quotaOk = (pkg: ViewPackage) =>
-    quota === "all" || (quota === "daily") === isDailyQuota(pkg);
-  const durationCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const pkg of byAvailability) {
-      const id = durationFilterOf(pkg.durationDays);
-      counts.set(id, (counts.get(id) ?? 0) + 1);
-    }
-    return counts;
-  }, [byAvailability]);
-  const availableBuckets = DURATION_FILTERS.filter((f) => durationCounts.has(f.id));
-  const seller = picks.find((pick) => pick.tag === "best_seller") ?? picks[0];
-  const preferred = seller ? durationFilterOf(seller.pkg.durationDays) : availableBuckets[0]?.id;
-  const activeBucket: DurationFilterId | undefined =
-    duration && durationCounts.has(duration)
-      ? duration
-      : preferred && durationCounts.has(preferred)
-        ? preferred
-        : availableBuckets[0]?.id;
-  const matchesFilters = (pkg: ViewPackage) =>
-    quotaOk(pkg) && (showAllDurations || durationFilterOf(pkg.durationDays) === activeBucket);
+  const countryPool = byAvailability.filter((pkg) => isRegionalDestination || !isMultiCountry(pkg));
+  const livePool = countryPool.filter((pkg) => pkg.sellable || stockPending);
+  const offPool = countryPool.filter((pkg) => !pkg.sellable && !stockPending);
+  const regionalPool = isRegionalDestination
+    ? []
+    : byAvailability.filter((pkg) => isMultiCountry(pkg) && (pkg.sellable || stockPending));
 
-  const filtered = byAvailability.filter(matchesFilters);
-  const ordered = useMemo(() => {
-    const list = sortPackages(filtered, sort);
-    return list.sort((a, b) => a.durationDays - b.durationDays);
+  const maxDays = sliderMaxDays(livePool);
+  const seller = picks.find((pick) => pick.tag === "best_seller") ?? picks[0];
+  const [chosenDays, setChosenDays] = useState<number | null>(null);
+  const days = clampDays(chosenDays ?? initialDays(seller?.pkg.durationDays, maxDays), maxDays);
+
+  useEffect(() => {
+    setQuota("all");
+    setPickerOpen(false);
+    setSelectedCode(null);
+    setChosenDays(null);
+    setBucket(null);
+    setLongerVisible(LONGER_PAGE);
+  }, [destination.code]);
+
+  const quotaPool = livePool.filter((pkg) => matchesQuota(pkg, quota));
+  // Range tabs (slider off): count per bucket, the active one falls back to the seller's, then the first.
+  const bucketCounts = new Map<DurationFilterId, number>();
+  for (const pkg of livePool) {
+    const id = durationFilterOf(pkg.durationDays);
+    bucketCounts.set(id, (bucketCounts.get(id) ?? 0) + 1);
+  }
+  const availableBuckets = DURATION_FILTERS.filter((f) => bucketCounts.has(f.id));
+  const sellerBucket = seller ? durationFilterOf(seller.pkg.durationDays) : undefined;
+  const activeBucket: DurationFilterId | undefined =
+    bucket && bucketCounts.has(bucket)
+      ? bucket
+      : sellerBucket && bucketCounts.has(sellerBucket)
+        ? sellerBucket
+        : availableBuckets[0]?.id;
+
+  const match = useMemo(() => {
+    if (daySlider) return matchPackagesForDays(quotaPool, days);
+    const fit = quotaPool
+      .filter((pkg) => durationFilterOf(pkg.durationDays) === activeBucket)
+      .sort((a, b) => a.priceIdr - b.priceIdr || a.durationDays - b.durationDays);
+    return { tier: fit[0]?.durationDays ?? null, fit, longer: [] as ViewPackage[] };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [byAvailability, activeBucket, showAllDurations, quota, sort]);
-  const countryList = ordered.filter((pkg) => isRegionalDestination || !isMultiCountry(pkg));
-  const regionalList = isRegionalDestination ? [] : ordered.filter(isMultiCountry);
-  const live = countryList.filter((pkg) => pkg.sellable || stockPending);
-  const soldOut = countryList.filter((pkg) => !pkg.sellable && !stockPending);
-  const shown = live.slice(0, visible);
-  const groups = shown.reduce<Array<{ days: number; items: ViewPackage[] }>>((acc, pkg) => {
-    const last = acc[acc.length - 1];
-    if (last && last.days === pkg.durationDays) last.items.push(pkg);
-    else acc.push({ days: pkg.durationDays, items: [pkg] });
-    return acc;
-  }, []);
+  }, [daySlider, quotaPool.length, quota, days, activeBucket, livePool]);
+  const regionalFit = matchPackagesForDays(
+    regionalPool.filter((pkg) => matchesQuota(pkg, quota)),
+    daySlider ? days : 1,
+  );
+  const regionalList = [...regionalFit.fit, ...regionalFit.longer].slice(0, 8);
+  const offList = matchPackagesForDays(
+    offPool.filter((pkg) => matchesQuota(pkg, quota)),
+    daySlider ? days : 1,
+  );
+  const offShown = [...offList.fit, ...offList.longer];
+
+  const rowDays = daySlider ? days : (match.fit[0]?.durationDays ?? days);
+  const selectable = [...match.fit, ...match.longer, ...regionalList].filter(
+    (pkg) => pkg.sellable || stockPending,
+  );
+  const selected =
+    selectable.find((pkg) => pkg.packageCode === selectedCode) ??
+    match.fit.find((pkg) => pkg.sellable) ??
+    match.longer.find((pkg) => pkg.sellable);
+  const pickTag = new Map(picks.map((pick) => [pick.pkg.packageCode, pick.tag] as const));
+  const tagOf = (pkg: ViewPackage): PackageTag => {
+    const tag = pickTag.get(pkg.packageCode);
+    return tag === "best_seller" || tag === "best_deal" ? tag : undefined;
+  };
+  const choose = (pkg: ViewPackage) => setSelectedCode(pkg.packageCode);
+  const row = (pkg: ViewPackage, index: number, coverage: boolean) => (
+    <PlanRow
+      key={pkg.packageCode}
+      pkg={pkg}
+      days={rowDays}
+      selected={selected?.packageCode === pkg.packageCode}
+      tag={tagOf(pkg)}
+      note={daySlider && index === 0 && match.fit[0] === pkg ? "paling pas" : null}
+      showCoverage={coverage}
+      onSelect={() => choose(pkg)}
+    />
+  );
 
   const setAvailability = (next: AvailabilityFilter) => {
-    setVisible(PAGE_SIZE);
     void router.navigate({
       to: "/destination/$code",
       params: { code: destination.code },
       search: { availability: next },
     } as never);
   };
-  const selectedPackages = selectedCodes
-    .map((code) => packages.find((pkg) => pkg.packageCode === code))
-    .filter((pkg): pkg is ViewPackage => Boolean(pkg?.sellable));
-  const toggleComparison = (pkg: ViewPackage) => {
-    if (!pkg.sellable) return;
-    setSelectedCodes((current) => toggleComparisonSelection(current, pkg.packageCode));
-  };
-  const rowProps = (pkg: ViewPackage, showCoverage: boolean) => ({
-    pkg,
-    stockPending,
-    showCoverage,
-    selected: selectedCodes.includes(pkg.packageCode),
-    selectDisabled: selectedCodes.length >= 3 && !selectedCodes.includes(pkg.packageCode),
-    onToggle: () => toggleComparison(pkg),
-  });
   const cheapest = packages
     .filter((pkg) => pkg.sellable)
     .sort((a, b) => a.priceIdr - b.priceIdr)[0];
   const fromPrice = cheapest ? rupiah(cheapest.priceIdr) : null;
-  const filtersActive = quota !== "all" || showAllDurations;
-
-  const pickTag = new Map(picks.map((pick) => [pick.pkg.packageCode, pick.tag] as const));
-  const deck = sampleDeck(
-    dedupeByOffer(
-      byAvailability
-        .filter(
-          (pkg) =>
-            pkg.sellable &&
-            quotaOk(pkg) &&
-            durationFilterOf(pkg.durationDays) === activeBucket &&
-            (isRegionalDestination || !isMultiCountry(pkg)),
-        )
-        .sort((a, b) => a.priceIdr - b.priceIdr || b.volumeBytes - a.volumeBytes),
-    ),
-  );
-  const deckLabel = (pkg: ViewPackage, index: number) => {
-    const tag = pickTag.get(pkg.packageCode);
-    if (tag === "best_seller") return "🔥 Terlaris";
-    if (tag === "best_deal") return "Best Deal";
-    if (index === 0) return "Hemat";
-    if (index === deck.length - 1 && deck.length > 2) return "Puas";
-    return "Pilihan";
-  };
-  const chosen =
-    deck.find((pkg) => pkg.packageCode === cardCode) ??
-    deck.find((pkg) => pickTag.get(pkg.packageCode) === "best_seller") ??
-    deck[Math.floor((deck.length - 1) / 2)];
-  const chosenCode = chosen?.packageCode;
-  const deckKey = deck.map((pkg) => pkg.packageCode).join("|");
-  useEffect(() => {
-    const el = chosenCode
-      ? deckRef.current?.querySelector<HTMLElement>(`[data-code="${CSS.escape(chosenCode)}"]`)
-      : null;
-    const box = deckRef.current;
-    if (el && box) box.scrollLeft = el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deckKey]);
-  const chooseCard = (pkg: ViewPackage) => {
-    setCardCode(pkg.packageCode);
-    deckRef.current
-      ?.querySelector<HTMLElement>(`[data-code="${CSS.escape(pkg.packageCode)}"]`)
-      ?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
-  };
+  const nothing = match.fit.length === 0 && match.longer.length === 0;
 
   return (
     <Page>
@@ -571,13 +603,10 @@ function Destination() {
         </SheetContent>
       </Sheet>
       <section className="mt-3 px-0.5">
-        <span className="block text-[28px] leading-none" aria-hidden="true">
-          {destination.flag}
-        </span>
-        <h1 className="mt-4 text-[22px] font-bold leading-tight tracking-tight">
+        <h1 className="text-[22px] font-bold leading-tight tracking-tight">
           eSIM {destination.nameId}
         </h1>
-        <p className="mt-1 text-[15px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           {[network, "Aktif otomatis", isRegionalDestination ? "Regional" : null]
             .filter(Boolean)
             .join(" · ")}
@@ -605,226 +634,202 @@ function Destination() {
         </p>
       ) : (
         <>
-          <section className="mt-4" aria-labelledby="trip-length">
-            <h2 id="trip-length" className="mb-2 text-[15px] font-bold">
-              Berapa lama perjalananmu?
-            </h2>
-            <div role="group" aria-label="Masa aktif" className="flex rounded-xl bg-secondary p-1">
-              {availableBuckets.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  aria-pressed={activeBucket === f.id}
-                  onClick={() => {
-                    setDuration(f.id);
-                    setCardCode(null);
-                    setShowAllDurations(false);
+          <section
+            aria-labelledby="trip-length"
+            className="sticky top-[env(safe-area-inset-top)] z-20 -mx-4 mt-3 bg-background px-4 pb-1.5 pt-2"
+          >
+            {daySlider ? (
+              <div className="rounded-2xl bg-surface px-4 pb-2 pt-3 shadow-[0_1px_3px_rgb(0_0_0/0.06)]">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 id="trip-length" className="text-xs font-semibold text-muted-foreground">
+                    Berapa lama perjalananmu?
+                    <span className="block font-normal">Geser untuk mengatur</span>
+                  </h2>
+                  <p className="text-[28px] font-bold leading-none tracking-tight tabular-nums">
+                    {days}
+                    <span className="ml-1 text-sm font-semibold text-muted-foreground">hari</span>
+                  </p>
+                </div>
+                <DaySlider
+                  days={days}
+                  max={maxDays}
+                  onChange={(next) => {
+                    setChosenDays(next);
+                    setSelectedCode(null);
+                    setLongerVisible(LONGER_PAGE);
                   }}
-                  className={`tap min-h-9 flex-1 rounded-lg text-[13px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                    activeBucket === f.id
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground"
-                  }`}
+                />
+                <p className="text-[11.5px] text-muted-foreground" aria-live="polite">
+                  {match.tier === null ? (
+                    <>Tidak ada paket dengan masa aktif {days} hari</>
+                  ) : (
+                    <>
+                      Masa aktif paket terdekat:{" "}
+                      <b className="text-foreground">{match.tier} hari</b> · {match.fit.length}{" "}
+                      pilihan
+                    </>
+                  )}
+                </p>
+              </div>
+            ) : (
+              <>
+                <h2 id="trip-length" className="mb-1.5 text-xs font-semibold text-muted-foreground">
+                  Berapa lama perjalananmu?
+                </h2>
+                <div
+                  role="group"
+                  aria-label="Masa aktif"
+                  className="flex rounded-xl bg-secondary p-0.5"
                 >
-                  {f.short}
-                </button>
-              ))}
-            </div>
-          </section>
-          {deck.length > 0 && chosen && (
-            <section className="mt-4" aria-label="Pilih paket">
-              <div
-                ref={deckRef}
-                className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-2 pt-1 [scrollbar-width:none]"
-              >
-                {deck.map((pkg, index) => {
-                  const on = pkg.packageCode === chosen.packageCode;
-                  return (
+                  {availableBuckets.map((f) => (
                     <button
-                      key={pkg.packageCode}
+                      key={f.id}
                       type="button"
-                      data-code={pkg.packageCode}
-                      aria-pressed={on}
-                      onClick={() => chooseCard(pkg)}
-                      className={packageDeckCardClass(on)}
+                      aria-pressed={activeBucket === f.id}
+                      onClick={() => {
+                        setBucket(f.id);
+                        setSelectedCode(null);
+                      }}
+                      className={`tap min-h-10 flex-1 rounded-[10px] text-[13px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        activeBucket === f.id
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground"
+                      }`}
                     >
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wide ${on ? "text-white" : "text-brand-red"}`}
-                      >
-                        {deckLabel(pkg, index)}
-                      </span>
-                      <span className="mt-1 block text-[20px] font-extrabold leading-none tracking-tight">
-                        {shortData(pkg)}
-                      </span>
-                      <span
-                        className={`text-[11px] ${on ? "text-white" : "text-muted-foreground"}`}
-                      >
-                        {pkg.durationDays} hari · {isDailyQuota(pkg) ? "harian" : "total"}
-                      </span>
-                      <span className="mt-3 block text-[15px] font-bold">
-                        {rupiah(pkg.priceIdr)}
-                      </span>
-                      <span
-                        className={`text-[10px] ${on ? "text-white" : "text-muted-foreground"}`}
-                      >
-                        ≈ {rupiah(Math.round(pricePerDay(pkg)))}/hari
+                      {f.short}
+                      <span className="block text-[9.5px] font-normal">
+                        {bucketCounts.get(f.id)} paket
                       </span>
                     </button>
-                  );
-                })}
-              </div>
-              <div className="flex justify-center gap-1.5" aria-hidden="true">
-                {deck.map((pkg) => (
-                  <i
-                    key={pkg.packageCode}
-                    className={`h-1.5 rounded-full transition-all ${
-                      pkg.packageCode === chosen.packageCode
-                        ? "w-4 bg-brand-red"
-                        : "w-1.5 bg-border"
-                    }`}
-                  />
+                  ))}
+                </div>
+              </>
+            )}
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <div className="flex gap-1.5">
+                {(
+                  [
+                    ["all", "Semua"],
+                    ["total", "Total"],
+                    ["daily", "Harian"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <Chip
+                    key={key}
+                    active={quota === key}
+                    onClick={() => {
+                      setQuota(key);
+                      setSelectedCode(null);
+                    }}
+                  >
+                    {label}
+                  </Chip>
                 ))}
               </div>
-              <Link
-                to="/checkout/$id"
-                params={{ id: chosen.packageCode }}
-                className="tap mt-3 flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-red text-[14px] font-bold text-white transition hover:brightness-95 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
-              >
-                Beli {shortData(chosen)} · {rupiah(chosen.priceIdr)}
-              </Link>
-            </section>
-          )}
-          {regionalList.length > 0 && (
-            <section className="mt-4" aria-labelledby="regional">
-              <h2 id="regional" className="text-[15px] font-bold">
-                Jalan-jalan ke lebih dari satu negara?
-              </h2>
-              <p className="mb-2 mt-0.5 text-xs text-muted-foreground">
-                Satu eSIM yang juga mencakup {destination.nameId}, langsung dari katalog provider.
-              </p>
-              <ul className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/70 bg-surface">
-                {regionalList.slice(0, 3).map((pkg) => (
-                  <PackageRow key={pkg.packageCode} {...rowProps(pkg, true)} />
-                ))}
-              </ul>
-              {regionalList.length > 3 && (
-                <Link
-                  to="/esim/finder"
-                  hash="multi-negara"
-                  className="mt-2 inline-block px-1 text-sm font-semibold text-brand-red"
-                >
-                  Lihat {regionalList.length - 3} paket multi-negara lainnya
-                </Link>
-              )}
-            </section>
-          )}
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-[15px] font-bold">
-                {showAllDurations
-                  ? "Semua paket"
-                  : `Paket ${DURATION_FILTERS.find((f) => f.id === activeBucket)?.label ?? ""}`}{" "}
-                · {live.length}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowAllDurations((current) => !current)}
-                className="mt-0.5 text-xs font-semibold text-brand-red"
-              >
-                {showAllDurations ? "Hanya masa aktif terpilih" : "Tampilkan semua masa aktif"}
-              </button>
+              <span className="text-xs text-muted-foreground">{match.fit.length} paket</span>
             </div>
-            <label className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <span className="sr-only">Urutkan</span>
-              <select
-                value={sort}
-                onChange={(event) => {
-                  setSort(event.target.value as SortKey);
-                  setVisible(PAGE_SIZE);
-                }}
-                className="min-h-10 rounded-xl border border-border/70 bg-surface px-2 text-xs font-semibold text-foreground"
+          </section>
+
+          {match.fit.length > 0 && (
+            <section className="mt-2" aria-label={daySlider ? `Cocok untuk ${days} hari` : "Paket"}>
+              <h3 className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {daySlider ? `Cocok untuk ${days} hari` : "Pilih paket"}
+              </h3>
+              <ul
+                role="radiogroup"
+                aria-label="Paket eSIM"
+                className="divide-y divide-border/70 overflow-hidden rounded-2xl bg-surface"
               >
-                {SORT_OPTIONS.filter((o) => o.key !== "recommended" && o.key !== "duration").map(
-                  (o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ),
-                )}
-              </select>
-            </label>
-          </div>
-          <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4">
-            {(
-              [
-                ["all", "Semua kuota"],
-                ["total", "Kuota total"],
-                ["daily", "Kuota harian"],
-              ] as const
-            ).map(([key, label]) => (
-              <Chip key={key} active={quota === key} onClick={() => setQuota(key)}>
-                {label}
-              </Chip>
-            ))}
-          </div>
-          {live.length === 0 && soldOut.length === 0 ? (
-            <div className="mt-3 rounded-xl bg-surface p-4 text-sm text-muted-foreground">
-              <p>
+                {match.fit.map((pkg, index) => row(pkg, index, isRegionalDestination))}
+              </ul>
+            </section>
+          )}
+          {nothing && (
+            <div className="mt-2 rounded-2xl bg-surface p-4 text-center text-sm text-muted-foreground">
+              <p className="font-semibold text-foreground">
                 {stockPending
                   ? "Status ketersediaan paket belum dapat dipastikan."
-                  : filtersActive
-                    ? "Tidak ada paket untuk pilihan ini."
+                  : daySlider
+                    ? `Belum ada paket untuk ${days} hari`
                     : "Belum ada paket pada tampilan ini."}
               </p>
-              {(filtersActive || availability !== "all") && (
+              <p className="mt-1 text-xs">Kurangi hari atau ganti jenis kuota.</p>
+              {quota !== "all" && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowAllDurations(false);
-                    setQuota("all");
-                    if (availability !== "all") setAvailability("all");
-                  }}
-                  className="mt-2 font-semibold text-brand-red"
+                  onClick={() => setQuota("all")}
+                  className="tap mt-2 min-h-10 rounded-xl bg-secondary px-3 text-[13px] font-semibold"
                 >
-                  Reset pilihan
+                  Semua jenis kuota
                 </button>
               )}
             </div>
-          ) : (
-            groups.map((group) => (
-              <section key={group.days} className="mt-3" aria-label={`${group.days} hari`}>
-                <p className="mb-1.5 px-1 text-xs font-bold text-muted-foreground">
-                  {group.days} HARI
-                </p>
-                <ul className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/70 bg-surface">
-                  {group.items.map((pkg) => (
-                    <PackageRow key={pkg.packageCode} {...rowProps(pkg, isRegionalDestination)} />
-                  ))}
-                </ul>
-              </section>
-            ))
           )}
-          {visible < live.length && (
-            <button
-              type="button"
-              onClick={() => setVisible((current) => current + PAGE_SIZE)}
-              className="mt-4 w-full rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
-            >
-              Muat {Math.min(PAGE_SIZE, live.length - visible)} paket lagi
-            </button>
+          {match.longer.length > 0 && (
+            <details className="mt-3 rounded-2xl bg-surface">
+              <summary className="tap flex min-h-12 cursor-pointer list-none items-center justify-between px-3.5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                <span>
+                  Masa aktif lebih lama
+                  <span className="block text-[11px] font-normal text-muted-foreground">
+                    {match.longer.length} paket · {match.longer[0]!.durationDays} hari ke atas
+                  </span>
+                </span>
+                <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+              </summary>
+              <ul
+                role="radiogroup"
+                aria-label="Paket masa aktif lebih lama"
+                className="divide-y divide-border/70 border-t border-border/70"
+              >
+                {match.longer
+                  .slice(0, longerVisible)
+                  .map((pkg, index) => row(pkg, index + 1, isRegionalDestination))}
+              </ul>
+              {longerVisible < match.longer.length && (
+                <button
+                  type="button"
+                  onClick={() => setLongerVisible((current) => current + LONGER_PAGE)}
+                  className="tap min-h-12 w-full border-t border-border/70 text-[13px] font-semibold text-brand-red"
+                >
+                  Muat {Math.min(LONGER_PAGE, match.longer.length - longerVisible)} paket lagi
+                </button>
+              )}
+            </details>
           )}
-          {!stockPending && (soldOut.length > 0 || availability !== "all") && (
-            <details
-              className="mt-4 rounded-2xl border border-border/70 bg-surface"
-              open={availability === "sold-out"}
-            >
-              <summary className="tap flex min-h-12 cursor-pointer items-center justify-between px-4 text-sm font-semibold">
-                Pre-order atau habis sementara ({soldOut.length})
+          {regionalList.length > 0 && (
+            <details className="mt-3 rounded-2xl bg-surface">
+              <summary className="tap flex min-h-12 cursor-pointer list-none items-center justify-between px-3.5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                <span>
+                  Ke lebih dari satu negara?
+                  <span className="block text-[11px] font-normal text-muted-foreground">
+                    {regionalList.length} paket multi-negara termasuk {destination.nameId}
+                  </span>
+                </span>
+                <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+              </summary>
+              <ul
+                role="radiogroup"
+                aria-label="Paket multi-negara"
+                className="divide-y divide-border/70 border-t border-border/70"
+              >
+                {regionalList.map((pkg, index) => row(pkg, index + 1, true))}
+              </ul>
+            </details>
+          )}
+          {!stockPending && (offShown.length > 0 || availability !== "all") && (
+            <details className="mt-3 rounded-2xl bg-surface" open={availability === "sold-out"}>
+              <summary className="tap flex min-h-12 cursor-pointer list-none items-center justify-between px-3.5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                <span>
+                  Pre-order atau habis sementara
+                  <span className="block text-[11px] font-normal text-muted-foreground">
+                    {offShown.length} paket
+                  </span>
+                </span>
                 <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
               </summary>
               <ul className="divide-y divide-border/70 border-t border-border/70">
-                {soldOut.map((pkg) => (
-                  <PackageRow key={pkg.packageCode} {...rowProps(pkg, isRegionalDestination)} />
+                {offShown.map((pkg) => (
+                  <OffRow key={pkg.packageCode} pkg={pkg} stockPending={stockPending} />
                 ))}
               </ul>
               <div className="flex gap-2 border-t border-border/70 p-3">
@@ -840,124 +845,36 @@ function Destination() {
               </div>
             </details>
           )}
+          {selected && <div className="h-16" aria-hidden="true" />}
         </>
       )}
-      {selectedPackages.length > 0 && (
+      {selected && (
         <StickyCta>
           <div className="flex items-center gap-3 pb-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-foreground">
-                {selectedPackages.length} paket dipilih
+              <p className="truncate text-[11.5px] text-muted-foreground">
+                {shortData(selected)} · {isDailyQuota(selected) ? "harian" : "total"} ·{" "}
+                {selected.durationDays} hari ·{" "}
+                <Link
+                  to="/plan/$id"
+                  params={{ id: selected.packageCode }}
+                  className="font-semibold text-brand-red"
+                >
+                  Detail
+                </Link>
               </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {selectedPackages.map((pkg) => pkg.name).join(" · ")}
-              </p>
+              <p className="text-[15px] font-bold">{rupiah(selected.priceIdr)}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setComparisonOpen(true)}
-              className="shrink-0 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"
-              aria-label={`Buka perbandingan ${selectedPackages.length} paket`}
+            <Link
+              to="/checkout/$id"
+              params={{ id: selected.packageCode }}
+              className="tap inline-flex min-h-10 min-w-20 shrink-0 items-center justify-center rounded-xl bg-brand-red px-4 text-[14px] font-bold text-white transition hover:brightness-95 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
             >
-              Bandingkan
-            </button>
+              Beli
+            </Link>
           </div>
         </StickyCta>
       )}
-      <Sheet open={comparisonOpen && selectedPackages.length > 0} onOpenChange={setComparisonOpen}>
-        <SheetContent
-          side="bottom"
-          className="z-[70] max-h-[88dvh] overflow-y-auto rounded-t-3xl border-border bg-background px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 sm:left-1/2 sm:right-auto sm:w-[min(100%,44rem)] sm:-translate-x-1/2"
-          aria-describedby="comparison-description"
-        >
-          <SheetHeader className="pr-8 text-left">
-            <SheetTitle>Bandingkan paket ({selectedPackages.length}/3)</SheetTitle>
-            <SheetDescription id="comparison-description">
-              Geser tabel ke samping untuk melihat semua paket.
-            </SheetDescription>
-          </SheetHeader>
-          <div
-            className="mt-4 overflow-x-auto rounded-xl border border-border/70"
-            tabIndex={0}
-            aria-label="Tabel perbandingan paket"
-          >
-            <table className="min-w-[34rem] w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border bg-secondary/60 text-muted-foreground">
-                  <th
-                    scope="col"
-                    className="sticky left-0 z-10 bg-secondary px-3 py-3 font-semibold"
-                  >
-                    Detail
-                  </th>
-                  {selectedPackages.map((pkg) => (
-                    <th scope="col" key={pkg.packageCode} className="min-w-36 px-3 py-3 align-top">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="line-clamp-2 font-semibold text-foreground">
-                          {pkg.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedCodes((current) =>
-                              current.filter((code) => code !== pkg.packageCode),
-                            );
-                            if (selectedPackages.length === 1) setComparisonOpen(false);
-                          }}
-                          className="-mr-1 -mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          aria-label={`Hapus ${pkg.name} dari perbandingan`}
-                        >
-                          <X className="size-4" aria-hidden="true" />
-                        </button>
-                      </div>
-                      <Link
-                        to="/checkout/$id"
-                        params={{ id: pkg.packageCode }}
-                        className="mt-2 inline-flex min-h-9 items-center rounded-lg bg-brand-red px-3 text-xs font-semibold text-white transition hover:bg-brand-red/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      >
-                        Pilih paket
-                      </Link>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ["Destinasi", (pkg: ViewPackage) => packageDestinationLabel(pkg)],
-                  ["Data", (pkg: ViewPackage) => packageDataLabel(pkg)],
-                  ["Validitas", (pkg: ViewPackage) => `${pkg.durationDays} hari`],
-                  ["Cakupan", (pkg: ViewPackage) => packageCoverageLabel(pkg)],
-                  ["Harga", (pkg: ViewPackage) => rupiah(pkg.priceIdr)],
-                ].map(([label, value]) => (
-                  <tr key={label as string} className="border-b border-border last:border-0">
-                    <th
-                      scope="row"
-                      className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-3 font-semibold text-muted-foreground"
-                    >
-                      {label as string}
-                    </th>
-                    {selectedPackages.map((pkg) => (
-                      <td key={pkg.packageCode} className="px-3 py-3 align-top">
-                        {(value as (pkg: ViewPackage) => string)(pkg)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedCodes([]);
-              setComparisonOpen(false);
-            }}
-            className="mt-4 min-h-11 w-full rounded-xl border border-border bg-surface text-sm font-semibold text-muted-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Hapus semua pilihan
-          </button>
-        </SheetContent>
-      </Sheet>
       {geoFacts.count > 0 ? (
         <GeoAnswer
           heading={`Tentang eSIM ${destination.nameId}`}

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Destinasi eSIM: 3 alternatif redesign</title>
+<style>
+:root{--bg:#f3f4f7;--card:#fff;--fg:#17181c;--mut:#6b7080;--bd:#e6e8ee;--red:#c8333a;--redd:#8f1529;--soft:#fdecec;--ok:#16a34a;--sec:#eceef3}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:13px/1.35 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--fg);background:#e9eaee}
+.wrap{max-width:900px;margin:0 auto;padding:10px}
+.tabs,.ctry{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px}
+.tabs button,.ctry button{flex:none;border:0;border-radius:999px;padding:7px 12px;background:#fff;color:var(--fg);font:600 12px inherit;cursor:pointer}
+.tabs button.on{background:var(--red);color:#fff}.ctry button.on{background:var(--fg);color:#fff}
+.stage{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.note{flex:1;min-width:230px;font-size:12px;color:var(--mut)}.note h2{font-size:15px;color:var(--fg);margin-bottom:4px}.note li{margin:0 0 5px 16px}.note b{color:var(--fg)}
+.phone{width:360px;height:700px;border-radius:34px;border:6px solid #1c1d22;background:var(--bg);overflow:hidden;position:relative}
+.scroll{height:100%;overflow-y:auto;padding:12px 14px 130px;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}
+.top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ib{width:36px;height:36px;border-radius:50%;background:#fff;border:1px solid var(--bd);display:grid;place-items:center;font-size:15px;flex:none}
+.pill{margin:0 auto;background:#fff;border:1px solid var(--bd);border-radius:999px;padding:7px 12px;font-weight:600;font-size:13px}
+h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.sub{font-size:12px;color:var(--mut);margin-top:2px}.sub b{color:var(--fg)}
+.lab{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin:14px 0 6px}
+.seg{display:flex;background:var(--sec);border-radius:12px;padding:2px}
+.seg button{flex:1;border:0;background:none;padding:7px 0;border-radius:10px;font:600 12px inherit;color:var(--mut);cursor:pointer}
+.seg button.on{background:#fff;color:var(--fg);box-shadow:0 1px 2px #0002}
+.chips{display:flex;gap:6px;overflow-x:auto;margin:8px -14px 0;padding:0 14px;scrollbar-width:none}
+.chip{flex:none;border:1px solid var(--bd);background:#fff;border-radius:999px;padding:6px 11px;font:600 12px inherit;cursor:pointer}
+.chip.on{background:var(--fg);color:#fff;border-color:var(--fg)}
+.group{background:#fff;border:1px solid var(--bd);border-radius:16px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:10px 12px;min-height:56px;border-top:1px solid var(--bd);cursor:pointer}
+.row:first-child{border-top:0}
+.row .l{flex:1;min-width:0}.row .t{font-weight:600;font-size:14px}.row .m{font-size:11px;color:var(--mut);margin-top:1px}
+.row .p{text-align:right}.row .p b{font-size:14px;display:block}.row .p i{font-style:normal;font-size:10.5px;color:var(--mut)}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid #c9ccd6;flex:none;display:grid;place-items:center}
+.row.sel{background:var(--soft)}.row.sel .radio{border-color:var(--red)}.row.sel .radio:after{content:"";width:10px;height:10px;border-radius:50%;background:var(--red)}
+.tag{display:inline-block;font-size:9.5px;font-weight:700;border-radius:999px;padding:1px 6px;background:var(--red);color:#fff;margin-left:5px;vertical-align:1px}
+.tag.g{background:var(--ok)}
+.cta{position:absolute;left:12px;right:12px;bottom:78px;background:var(--fg);color:#fff;border-radius:18px;padding:8px 8px 8px 14px;display:flex;align-items:center;gap:10px}
+.cta .tt{flex:1;font-size:11px;color:#c9ccd6;line-height:1.25}.cta .tt b{display:block;color:#fff;font-size:14px}
+.cta button,.btn{border:0;background:var(--red);color:#fff;border-radius:13px;padding:10px 16px;font:700 14px inherit;cursor:pointer}
+.btn.full{width:100%;min-height:42px}
+.tab{position:absolute;left:0;right:0;bottom:0;height:64px;background:#fffe;border-top:1px solid var(--bd);display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--mut)}.tab .on{color:var(--red);font-weight:700}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pc{background:#fff;border:1.5px solid var(--bd);border-radius:16px;padding:10px;cursor:pointer;position:relative}
+.pc.sel{border-color:var(--red);background:var(--soft)}
+.pc .gb{font-size:22px;font-weight:700;letter-spacing:-.02em}.pc .d{font-size:11px;color:var(--mut)}
+.pc .pr{font-weight:700;font-size:14px;margin-top:8px}.pc .pd{font-size:10.5px;color:var(--mut)}
+.pc .tg{position:absolute;right:8px;top:8px}
+.step{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--bd);border-radius:16px;padding:8px 10px}
+.step button{width:36px;height:36px;border-radius:50%;border:0;background:var(--sec);font-size:20px;font-weight:600;cursor:pointer}
+.step div{text-align:center}.step b{font-size:22px}.step span{display:block;font-size:11px;color:var(--mut)}
+.hero{background:linear-gradient(160deg,var(--red),var(--redd));color:#fff;border-radius:18px;padding:12px}
+.hero small{opacity:.8;font-size:11px}.hero .gb{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:2px 0}
+.hero .rw{display:flex;justify-content:space-between;align-items:flex-end}.hero .pr{font-size:18px;font-weight:700}
+.hero button{border:0;background:#fff;color:var(--red);border-radius:12px;padding:9px 14px;font:700 13px inherit;margin-top:10px;width:100%;cursor:pointer}
+.use{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.use button{background:#fff;border:1.5px solid var(--bd);border-radius:14px;padding:8px 4px;font:600 12px inherit;cursor:pointer;text-align:center}
+.use button small{display:block;color:var(--mut);font-weight:500;font-size:10.5px;margin-top:1px}
+.use button.on{border-color:var(--red);background:var(--soft)}
+.fold{background:#fff;border:1px solid var(--bd);border-radius:16px;margin-top:10px}
+.fold summary{list-style:none;padding:12px;font-weight:600;font-size:14px;display:flex;justify-content:space-between;cursor:pointer;min-height:44px}
+.fold summary::-webkit-details-marker{display:none}
+.reg{display:flex;gap:8px;overflow-x:auto;margin:0 -14px;padding:0 14px;scrollbar-width:none}
+.reg .pc{flex:none;width:200px}
+.perk{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.perk span{font-size:11px;background:#fff;border:1px solid var(--bd);border-radius:999px;padding:3px 8px;color:var(--mut)}
+</style></head><body>
+<div class="wrap">
+<div class="tabs" id="tabs"></div>
+<div class="ctry" id="ctry"></div>
+<div class="stage"><div class="phone"><div class="scroll" id="scr"></div><div id="fixed"></div></div><div class="note" id="note"></div></div>
+</div>
+<script>
+const D={
+jp:{n:"Jepang",f:"🇯🇵",net:"SoftBank / KDDI",from:7000,plans:[[1,3,9000],[1,7,15000],[3,7,32000],[5,7,45000],[13,4,97000],[10,15,95000],[20,30,189000],[50,30,320000]],reg:[["Makau, Bangladesh +12",1,7,20000],["Jepang, Korea Selatan",1,7,23000],["Asia 20 negara",3,15,72000]]},
+th:{n:"Thailand",f:"🇹🇭",net:"AIS / TrueMove",from:6000,plans:[[1,3,7000],[1,7,13000],[3,7,28000],[5,15,52000],[10,15,80000],[20,30,160000]],reg:[["Thailand, Malaysia, Singapura",2,7,38000],["Asia Tenggara 8 negara",3,15,69000]]},
+asia:{n:"Asia (regional)",f:"🌏",net:"Multi-jaringan · 20 negara",from:20000,plans:[[1,7,29000],[3,15,72000],[5,15,98000],[10,30,175000],[20,30,260000]],reg:[]}
+};
+let cur="jp",alt="a",sel=1,dur="4–7",quota="all",use=1;
+const rp=n=>"Rp"+n.toLocaleString("id-ID");
+const perDay=p=>rp(Math.round(p[2]/p[1]));
+const bucket=d=>d<=3?"≤3":d<=7?"4–7":d<=15?"8–15":d<=30?"16–30":"30+";
+const B=["≤3","4–7","8–15","16–30","30+"];
+const tabs=[["a","A · Satu daftar"],["b","B · Kartu & durasi"],["c","C · Dipandu Travo"]];
+const notes={a:`<h2>A · Satu daftar bersih</h2><ul><li><b>Satu keputusan per layar:</b> durasi → pilih paket (radio) → bar beli melayang.</li><li>Tidak ada carousel dan tombol “Pilih” berulang; baris ber-radio, harga/hari sejajar.</li><li>Multi-negara jadi satu baris lipat, bukan blok panjang.</li><li>Paling dekat dengan desain sekarang; risiko migrasi terendah.</li></ul>`,b:`<h2>B · Kartu & stepper durasi</h2><ul><li><b>Stepper hari</b> (− 7 hari +) menggantikan 5 chip; hasil langsung difilter.</li><li>Grid 2 kolom kartu kuota besar (GB paling menonjol), mudah dibandingkan.</li><li>Tag “Terlaris / Hemat per hari” otomatis dari data.</li><li>Cocok untuk destinasi dengan banyak paket.</li></ul>`,c:`<h2>C · Dipandu Travo</h2><ul><li>Tanya dua hal: <b>berapa hari</b> & <b>seberapa berat pakai data</b>.</li><li>Kartu rekomendasi tunggal + alasan; “Lihat semua paket” sebagai lipatan.</li><li>Paling sedikit beban pilih untuk pembeli baru; pakai persona Travo.</li><li>Daftar penuh tetap ada untuk yang ingin kontrol.</li></ul>`};
+function tabsR(){document.getElementById("tabs").innerHTML=tabs.map(t=>`<button class="${t[0]==alt?"on":""}" onclick="alt='${t[0]}';sel=null;render()">${t[1]}</button>`).join("");
+document.getElementById("ctry").innerHTML=Object.keys(D).map(k=>`<button class="${k==cur?"on":""}" onclick="cur='${k}';sel=null;render()">${D[k].f} ${D[k].n}</button>`).join("")}
+const head=d=>`<div class="top"><div class="ib">‹</div><div class="pill">${d.f} ${d.n} ⌄</div></div>`;
+const tab=`<div class="tab"><span>Beranda</span><span>Jelajah</span><span class="on">Perjalanan</span><span>Dompet</span><span>Profil</span></div>`;
+const fix=p=>`<div class="cta"><div class="tt">${p[0]} GB · ${p[1]} hari<b>${rp(p[2])}</b></div><button>Beli</button></div>`+tab;
+function tags(d,p){const best=d.plans.reduce((a,b)=>b[2]/b[1]<a[2]/a[1]?b:a);const pop=d.plans.find(x=>x[1]==7&&x[0]==1)||d.plans[0];return p==pop?`<span class="tag">Terlaris</span>`:p==best?`<span class="tag g">Hemat/hari</span>`:""}
+function regFold(d){return d.reg.length?`<details class="fold"><summary>Juga ke negara lain? (${d.reg.length}) <span>⌄</span></summary><div class="group" style="border:0;border-top:1px solid var(--bd);border-radius:0 0 16px 16px">${d.reg.map(r=>`<div class="row"><div class="l"><div class="t">${r[1]} GB · ${r[2]} hari</div><div class="m">${r[0]}</div></div><div class="p"><b>${rp(r[3])}</b></div></div>`).join("")}</div></details>`:""}
+function A(d){let list=d.plans.filter(p=>bucket(p[1])==dur);if(!list.length)list=d.plans;if(!sel||!list.includes(sel))sel=list[0];
+return {s:`${head(d)}<h1>eSIM ${d.n}</h1><div class="sub">${d.net} · Aktif otomatis · Mulai <b>${rp(d.from)}</b></div>
+<div class="lab">Lama perjalanan</div><div class="seg">${B.map(b=>`<button class="${b==dur?"on":""}" onclick="dur='${b}';sel=null;render()">${b} hr</button>`).join("")}</div>
+<div class="chips">${[["all","Semua kuota"],["total","Kuota total"],["daily","Harian"]].map(q=>`<span class="chip ${quota==q[0]?"on":""}" onclick="quota='${q[0]}';render()">${q[1]}</span>`).join("")}</div>
+<div class="lab">${list.length} paket</div><div class="group">${list.map((p,i)=>`<div class="row ${p==sel?"sel":""}" onclick="sel=D['${cur}'].plans[${d.plans.indexOf(p)}];render()"><span class="radio"></span><div class="l"><div class="t">${p[0]} GB${tags(d,p)}</div><div class="m">${p[1]} hari · total</div></div><div class="p"><b>${rp(p[2])}</b><i>≈ ${perDay(p)}/hari</i></div></div>`).join("")}</div>${regFold(d)}`,f:fix(sel)}}
+function Bv(d){let days=window.dd||7;let list=d.plans.filter(p=>p[1]>=days&&p[1]<=days+8);if(!list.length)list=d.plans.filter(p=>bucket(p[1])==bucket(days));if(!list.length)list=d.plans;if(!sel||!list.includes(sel))sel=list[0];
+return {s:`${head(d)}<h1>eSIM ${d.n}</h1><div class="sub">${d.net} · Mulai <b>${rp(d.from)}</b></div>
+<div class="lab">Berapa hari kamu di ${d.n}?</div><div class="step"><button onclick="window.dd=Math.max(1,(window.dd||7)-1);sel=null;render()">−</button><div><b>${days}</b><span>hari</span></div><button onclick="window.dd=Math.min(60,(window.dd||7)+1);sel=null;render()">+</button></div>
+<div class="lab">Pilih kuota · ${list.length} paket</div><div class="grid">${list.map(p=>`<div class="pc ${p==sel?"sel":""}" onclick="sel=D['${cur}'].plans[${d.plans.indexOf(p)}];render()"><span class="tg">${tags(d,p)}</span><div class="gb">${p[0]} GB</div><div class="d">${p[1]} hari</div><div class="pr">${rp(p[2])}</div><div class="pd">≈ ${perDay(p)}/hari</div></div>`).join("")}</div>
+${d.reg.length?`<div class="lab">Multi-negara</div><div class="reg">${d.reg.map(r=>`<div class="pc"><div class="gb">${r[1]} GB</div><div class="d">${r[2]} hari · ${r[0]}</div><div class="pr">${rp(r[3])}</div></div>`).join("")}</div>`:""}`,f:fix(sel)}}
+function C(d){const need=[1,3,7][use];const days=window.dd||7;let c=d.plans.filter(p=>p[1]>=days).sort((a,b)=>a[2]-b[2]);const per=days*[0.2,0.6,1.2][use];c=c.filter(p=>p[0]>=per);const rec=c[0]||d.plans[d.plans.length-1];sel=rec;
+const all=d.plans;
+return {s:`${head(d)}<h1>eSIM ${d.n}</h1><div class="sub">${d.net} · Aktif otomatis</div>
+<div class="lab">Travo bantu pilihkan</div><div class="step"><button onclick="window.dd=Math.max(1,(window.dd||7)-1);render()">−</button><div><b>${days}</b><span>hari perjalanan</span></div><button onclick="window.dd=Math.min(60,(window.dd||7)+1);render()">+</button></div>
+<div class="use" style="margin-top:8px">${[["Ringan","Chat, peta"],["Sedang","Sosmed"],["Berat","Video, hotspot"]].map((u,i)=>`<button class="${i==use?"on":""}" onclick="use=${i};render()">${u[0]}<small>${u[1]}</small></button>`).join("")}</div>
+<div class="lab">Cocok untukmu</div><div class="hero"><small>Rekomendasi Travo</small><div class="gb">${rec[0]} GB · ${rec[1]} hari</div><div class="rw"><small>≈ ${(rec[0]/days*1000).toFixed(0)} MB/hari untuk ${days} hari</small><div class="pr">${rp(rec[2])}</div></div><button>Beli ${rec[0]} GB · ${rp(rec[2])}</button></div>
+<details class="fold"><summary>Lihat semua paket (${all.length}) <span>⌄</span></summary><div class="group" style="border:0;border-top:1px solid var(--bd);border-radius:0 0 16px 16px">${all.map(p=>`<div class="row"><div class="l"><div class="t">${p[0]} GB</div><div class="m">${p[1]} hari</div></div><div class="p"><b>${rp(p[2])}</b><i>≈ ${perDay(p)}/hari</i></div></div>`).join("")}</div></details>${regFold(d)}`,f:tab}}
+function render(){tabsR();const d=D[cur];const r={a:A,b:Bv,c:C}[alt](d);const s=document.getElementById("scr");const y=s.scrollTop;s.innerHTML=r.s;s.scrollTop=y;document.getElementById("fixed").innerHTML=r.f;document.getElementById("note").innerHTML=notes[alt]}
+render();
+</script></body></html>
