@@ -3,8 +3,12 @@ import {
   ADMIN_NEXT,
   DEFAULT_SHOPPER_CONFIG,
   DEFAULT_SHOPPER_FILTERS,
+  SHOPPER_BRANDS,
   bestSellerProducts,
+  brandChipAction,
   brandEnabled,
+  brandRequestDraft,
+  brandRequestable,
   canAdminCancel,
   countryEnabled,
   filterShopperProducts,
@@ -59,6 +63,50 @@ describe("shopper config", () => {
     expect(() => parseShopperConfig({ rates: { JPY: -1 } })).toThrow();
     expect(() => parseShopperConfig({ shippingIdr: 1.5 })).toThrow();
     expect(normalizeShopperConfig({ feePercent: 80 })).toEqual(DEFAULT_SHOPPER_CONFIG);
+  });
+});
+
+describe("brands bought on request", () => {
+  const coach = SHOPPER_BRANDS.find((b) => b.id === "coach")!;
+
+  it("lists Coach without a catalogue adapter, but with a team request", () => {
+    expect(coach).toMatchObject({ name: "Coach", country: "JP", adapter: false, request: true });
+    expect(coach.logo.src).toBe("/shopper-brands/coach.svg");
+    expect(DEFAULT_SHOPPER_CONFIG.brands.coach).toBe(true);
+  });
+
+  it("is requestable only while the brand and its country are switched on", () => {
+    const on = parseShopperConfig({ enabled: true });
+    expect(brandRequestable(on, "coach")).toBe(true);
+    // A request-only brand never pretends to have a catalogue.
+    expect(brandEnabled(on, "coach")).toBe(false);
+
+    const off = parseShopperConfig({ enabled: true, brands: { coach: false } });
+    expect(brandRequestable(off, "coach")).toBe(false);
+    expect(brandRequestable(parseShopperConfig({ enabled: false }), "coach")).toBe(false);
+
+    // Catalogue brands are filtered, waitlist brands keep their "Segera" state.
+    expect(brandRequestable(on, "longchamp")).toBe(false);
+    expect(brandRequestable(on, "muji")).toBe(false);
+  });
+
+  it("keeps the request-only entry out of the catalogue refresh", () => {
+    expect(SHOPPER_BRANDS.filter((b) => b.adapter).map((b) => b.id)).not.toContain("coach");
+  });
+
+  it("seeds the team message with the brand name", () => {
+    expect(brandRequestDraft("Coach")).toMatch(/^Coach — /);
+  });
+
+  it("decides what each brand chip does", () => {
+    const on = parseShopperConfig({ enabled: true });
+    expect(brandChipAction(on, "uniqlo")).toBe("filter");
+    expect(brandChipAction(on, "coach")).toBe("request");
+    expect(brandChipAction(on, "muji")).toBe("soon");
+    expect(
+      brandChipAction(parseShopperConfig({ enabled: true, brands: { coach: false } }), "coach"),
+    ).toBe("soon");
+    expect(brandChipAction(parseShopperConfig({ enabled: false }), "coach")).toBe("soon");
   });
 });
 

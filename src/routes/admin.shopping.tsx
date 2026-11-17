@@ -717,29 +717,30 @@ function Settings({
       </div>
       <div>
         <p className="mb-1 text-xs font-semibold text-muted-foreground">
-          Brand (hanya yang punya adapter katalog bisa aktif)
+          Brand (katalog otomatis, atau permintaan ke tim)
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
-          {SHOPPER_BRANDS.map((b) => (
-            <label
-              key={b.id}
-              className={`flex min-h-10 items-center justify-between gap-3 rounded-xl bg-secondary px-3 text-sm font-medium ${b.adapter ? "" : "opacity-50"}`}
-            >
-              {b.name}
-              {b.adapter ? (
-                ""
-              ) : (
-                <span className="text-[10px] text-muted-foreground">belum ada adapter</span>
-              )}
-              <input
-                type="checkbox"
-                disabled={!b.adapter}
-                checked={config.brands[b.id]}
-                onChange={(e) => set("brands", { ...config.brands, [b.id]: e.target.checked })}
-                className="size-5 accent-[var(--brand-red)]"
-              />
-            </label>
-          ))}
+          {SHOPPER_BRANDS.map((b) => {
+            const usable = b.adapter || Boolean(b.request);
+            return (
+              <label
+                key={b.id}
+                className={`flex min-h-10 items-center justify-between gap-3 rounded-xl bg-secondary px-3 text-sm font-medium ${usable ? "" : "opacity-50"}`}
+              >
+                {b.name}
+                <span className="text-[10px] text-muted-foreground">
+                  {b.adapter ? "" : b.request ? "permintaan tim" : "belum ada adapter"}
+                </span>
+                <input
+                  type="checkbox"
+                  disabled={!usable}
+                  checked={config.brands[b.id]}
+                  onChange={(e) => set("brands", { ...config.brands, [b.id]: e.target.checked })}
+                  className="size-5 accent-[var(--brand-red)]"
+                />
+              </label>
+            );
+          })}
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

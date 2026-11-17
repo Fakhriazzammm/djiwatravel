@@ -6,7 +6,8 @@
 export const SHOPPER_SETTING_KEY = "personalShopper";
 
 export type ShopperCountryCode = "JP" | "KR" | "TH" | "SG";
-export type ShopperBrandId = "uniqlo" | "gu" | "legato" | "anello" | "longchamp" | "donki" | "muji";
+export type ShopperBrandId =
+  "uniqlo" | "gu" | "legato" | "anello" | "longchamp" | "coach" | "donki" | "muji";
 export type ShopperCategory = "Atasan" | "Bawahan" | "Jaket" | "Inner" | "Tas" | "Lainnya";
 export type ShopperSort = "pop" | "best" | "low" | "high" | "new";
 
@@ -31,6 +32,11 @@ export const SHOPPER_BRANDS: readonly {
   country: ShopperCountryCode;
   /** Brands with a working catalog adapter. The others are shown as "Segera". */
   adapter: boolean;
+  /**
+   * No readable catalogue, but the team can still buy it on request. The chip then opens the
+   * request form instead of filtering the list, so the entry is live without a price feed.
+   */
+  request?: boolean;
   /** Official mark kept on our own origin. "fill" logos are square art, "fit" ones sit on white. */
   logo: { src: string; mode: "fill" | "fit" };
 }[] = [
@@ -78,6 +84,20 @@ export const SHOPPER_BRANDS: readonly {
     country: "JP",
     adapter: true,
     logo: { src: "/shopper-brands/longchamp.png", mode: "fill" },
+  },
+  {
+    id: "coach",
+    name: "Coach",
+    monogram: "CO",
+    color: "#1b1b1b",
+    country: "JP",
+    /**
+     * japan.coach.com sits behind Akamai Bot Manager and answers 403 to our server, so there is
+     * no catalogue to refresh. Customers order Coach through a team quote instead.
+     */
+    adapter: false,
+    request: true,
+    logo: { src: "/shopper-brands/coach.svg", mode: "fit" },
   },
   {
     id: "donki",
@@ -168,6 +188,7 @@ export const DEFAULT_SHOPPER_CONFIG: ShopperConfig = {
     legato: true,
     anello: true,
     longchamp: true,
+    coach: true,
     donki: false,
     muji: false,
   },
@@ -349,6 +370,36 @@ export const countryEnabled = (config: ShopperConfig, code: ShopperCountryCode) 
 export const brandEnabled = (config: ShopperConfig, id: ShopperBrandId) => {
   const brand = brandById(id);
   return Boolean(brand?.adapter && config.brands[id] && countryEnabled(config, brand.country));
+};
+
+/**
+ * A brand with no readable catalogue can still be sold through a team quote. The chip then opens
+ * the request form instead of filtering the list, so the entry is live without a price feed.
+ */
+export const brandRequestable = (config: ShopperConfig, id: ShopperBrandId) => {
+  const brand = brandById(id);
+  return Boolean(
+    brand &&
+    !brand.adapter &&
+    brand.request &&
+    config.brands[id] &&
+    countryEnabled(config, brand.country),
+  );
+};
+
+/** Opening line for a team request, so the message already names the brand. */
+export const brandRequestDraft = (name: string) => `${name} — saya mau titip beli: `;
+
+export type ShopperBrandAction = "filter" | "request" | "soon";
+
+/**
+ * What a brand chip does: filter the catalogue, open a team request, or stay on the waitlist.
+ * Shared by the brand strip and the filter sheet so both entry points always agree.
+ */
+export const brandChipAction = (config: ShopperConfig, id: ShopperBrandId): ShopperBrandAction => {
+  if (brandEnabled(config, id)) return "filter";
+  if (brandRequestable(config, id)) return "request";
+  return "soon";
 };
 
 export const marketEnabled = (config: ShopperConfig, site: MarketSite) =>

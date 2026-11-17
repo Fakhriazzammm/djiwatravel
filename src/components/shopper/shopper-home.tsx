@@ -26,7 +26,8 @@ import {
   activeFilterCount,
   bestSellerProducts,
   brandById,
-  brandEnabled,
+  brandChipAction,
+  brandRequestDraft,
   countryByCode,
   filterShopperProducts,
   formatIdr,
@@ -44,6 +45,7 @@ import {
 } from "@/lib/personal-shopper";
 import { cartCount, cartQuote, readShopperCart, useShopperCart } from "./shopper-cart";
 import { CartSheet, FilterSheet, MarketSheet, ProductSheet, SortSheet } from "./shopper-sheets";
+import { NewMessageSheet } from "./shopper-new-message";
 import type { MarketItemView } from "@/lib/shopper-market";
 import { ShopperNav } from "./shopper-nav";
 import { ImageViewer } from "./shopper-viewer";
@@ -86,6 +88,8 @@ export function ShopperHome({
   } | null>(null);
   const [openMarket, setOpenMarket] = useState<MarketItemView | null>(null);
   const [sheet, setSheet] = useState<null | "filter" | "sort" | "cart">(null);
+  /** A brand sold on request: its chip opens the team message instead of a catalogue filter. */
+  const [requestBrand, setRequestBrand] = useState<string | null>(null);
   const cart = useShopperCart();
   const [cartReady, setCartReady] = useState(false);
   useEffect(() => setCartReady(true), []);
@@ -288,16 +292,18 @@ export function ShopperHome({
               onClick={() => update({ ...filters, brand: "all" })}
             />
             {brands.map((b) => {
-              const live = brandEnabled(config, b.id);
+              const action = brandChipAction(config, b.id);
               return (
                 <BrandStory
                   key={b.id}
                   label={b.name.split(" ")[0]!}
                   brand={b.id}
-                  muted={!live}
+                  muted={action === "soon"}
+                  {...(action === "request" ? { badge: "Tim" } : {})}
                   selected={filters.brand === b.id}
                   onClick={() => {
-                    if (!live) return void toast(`${b.name} segera hadir`);
+                    if (action === "request") return setRequestBrand(b.name);
+                    if (action === "soon") return void toast(`${b.name} segera hadir`);
                     update({ ...filters, brand: b.id, category: "all" });
                   }}
                 />
@@ -590,6 +596,10 @@ export function ShopperHome({
         money={money}
         maxCatalogPrice={maxPrice}
         resultCount={results.length}
+        onRequestBrand={(name) => {
+          setSheet(null);
+          setRequestBrand(name);
+        }}
       />
       <SortSheet
         open={sheet === "sort"}
@@ -608,6 +618,11 @@ export function ShopperHome({
         money={cartMoney}
         config={config}
       />
+      <NewMessageSheet
+        open={requestBrand !== null}
+        initialText={requestBrand ? brandRequestDraft(requestBrand) : ""}
+        onClose={() => setRequestBrand(null)}
+      />
     </Page>
   );
 }
@@ -617,14 +632,18 @@ function BrandStory({
   brand,
   selected,
   muted = false,
+  badge,
   onClick,
 }: {
   label: string;
   brand: "all" | ShopperProduct["brand"];
   selected: boolean;
   muted?: boolean;
+  /** Small tag under the logo: "Soon" for waitlist brands, "Tim" for team-quoted ones. */
+  badge?: string;
   onClick: () => void;
 }) {
+  const tag = badge ?? (muted ? "Soon" : null);
   return (
     <button
       type="button"
@@ -634,9 +653,13 @@ function BrandStory({
     >
       <span className="relative mx-auto flex justify-center py-1">
         <BrandBubble brand={brand} selected={selected} muted={muted} />
-        {muted ? (
-          <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-1.5 py-px text-[8px] font-bold leading-none text-background">
-            Soon
+        {tag ? (
+          <span
+            className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-px text-[8px] font-bold leading-none ${
+              muted ? "bg-foreground text-background" : "bg-brand-red text-white"
+            }`}
+          >
+            {tag}
           </span>
         ) : null}
       </span>

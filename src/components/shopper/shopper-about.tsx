@@ -12,7 +12,7 @@ const CAN = [
   {
     icon: ShoppingBag,
     title: "Tas",
-    text: "Legato Largo, anello, dan Longchamp langsung dari toko resminya.",
+    text: "Legato Largo, anello, dan Longchamp langsung dari toko resminya. Coach dan brand lain lewat penawaran tim.",
   },
   {
     icon: Link2,

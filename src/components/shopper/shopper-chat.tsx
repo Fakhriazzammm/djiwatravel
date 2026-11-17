@@ -34,6 +34,7 @@ import {
 import { ShopperNav } from "./shopper-nav";
 import { ImageViewer } from "./shopper-viewer";
 import { ShopperSheet } from "./shopper-ui";
+import { NewMessageSheet } from "./shopper-new-message";
 
 type ThreadList = Awaited<ReturnType<typeof listMyChatThreads>>;
 type ThreadData = Awaited<ReturnType<typeof getMyChatThread>>;
@@ -227,77 +228,6 @@ export function ChatInbox() {
       )}
       <NewMessageSheet open={composing} onClose={() => setComposing(false)} />
     </Page>
-  );
-}
-
-/** A fresh conversation: what the customer is after, and optionally a link. */
-export function NewMessageSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [text, setText] = useState("");
-  const [url, setUrl] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const key = useRef(crypto.randomUUID());
-  const navigate = useNavigate();
-  async function submit() {
-    setBusy(true);
-    setError("");
-    try {
-      const r = await startMyChatThread({ data: { text, url, clientKey: key.current } });
-      key.current = crypto.randomUUID();
-      setText("");
-      setUrl("");
-      onClose();
-      await navigate({ to: "/titip-belanja/pesan/$id", params: { id: r.threadId } });
-    } catch (e) {
-      setError(authMessage(e) || "Pesan belum terkirim.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <ShopperSheet
-      open={open}
-      onOpenChange={(v) => !v && !busy && onClose()}
-      title="Tanya tim Djiwa"
-      description="Ceritakan barang yang kamu cari. Tim kami mencarikan lalu mengirim penawaran."
-    >
-      <div className="space-y-3 py-3">
-        <label className="block text-[12px]">
-          Barang yang dicari
-          <textarea
-            className={`${field} mt-1 py-2`}
-            rows={3}
-            maxLength={1000}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Contoh: poster くら寿司 A3, kondisi bagus, 1 barang"
-          />
-        </label>
-        <label className="block text-[12px]">
-          Link produk (opsional)
-          <input
-            className={`${field} mt-1`}
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://…"
-          />
-        </label>
-        {error && (
-          <p role="alert" className="text-[12px] text-brand-red">
-            {error}
-          </p>
-        )}
-        <button
-          type="button"
-          disabled={busy || (text.trim().length < 3 && url.trim().length < 8)}
-          onClick={() => void submit()}
-          className="tap ios-btn w-full bg-brand-red text-white disabled:opacity-50"
-        >
-          {busy ? "Mengirim…" : "Kirim ke tim"}
-        </button>
-      </div>
-    </ShopperSheet>
   );
 }
 

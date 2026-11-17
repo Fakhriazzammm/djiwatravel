@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import { brandRequestDraft } from "@/lib/personal-shopper";
 import { chatStage } from "@/lib/shopper-chat";
 
 // Role queries over a full inbox are slow in jsdom, especially while the whole suite runs in parallel.
@@ -166,6 +167,7 @@ vi.mock("@/components/shopper/shopper-ui", () => ({
 }));
 
 import { ChatInbox, ChatThread } from "@/components/shopper/shopper-chat";
+import { NewMessageSheet } from "@/components/shopper/shopper-new-message";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -302,5 +304,34 @@ describe("customer inbox", () => {
       to: "/titip-belanja/pesan/$id",
       params: { id: THREAD_ID },
     });
+  });
+});
+
+describe("brand request sheet", () => {
+  it("opens with the brand already written and sends it to the team", async () => {
+    mock.start.mockResolvedValue({ threadId: THREAD_ID, requestId: REQUEST_ID });
+    render(
+      <NewMessageSheet open onClose={() => undefined} initialText={brandRequestDraft("Coach")} />,
+    );
+    const field = screen.getByLabelText("Barang yang dicari") as HTMLTextAreaElement;
+    expect(field.value).toBe(brandRequestDraft("Coach"));
+    expect(field.value).toContain("Coach");
+    fireEvent.click(screen.getByRole("button", { name: "Kirim ke tim" }));
+    await waitFor(() => expect(mock.start).toHaveBeenCalled());
+    expect(mock.start.mock.calls[0]?.[0].data.text).toContain("Coach");
+  });
+
+  it("asks a guest to sign in instead of losing the request", async () => {
+    mock.start.mockRejectedValue(new Error("Autentikasi diperlukan."));
+    render(
+      <NewMessageSheet open onClose={() => undefined} initialText={brandRequestDraft("Coach")} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Kirim ke tim" }));
+    expect(await screen.findByText("Masuk akun")).toBeTruthy();
+  });
+
+  it("starts empty when no brand seeds it", () => {
+    render(<NewMessageSheet open onClose={() => undefined} />);
+    expect((screen.getByLabelText("Barang yang dicari") as HTMLTextAreaElement).value).toBe("");
   });
 });

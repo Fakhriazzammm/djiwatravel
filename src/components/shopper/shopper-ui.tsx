@@ -154,11 +154,14 @@ export function Chip({
   onClick,
   children,
   soon = false,
+  tag,
 }: {
   on: boolean;
   onClick: () => void;
   children: ReactNode;
   soon?: boolean;
+  /** Extra hint after the label, e.g. "Tim" for brands bought on request. */
+  tag?: string;
 }) {
   return (
     <button
@@ -170,7 +173,11 @@ export function Chip({
       } ${soon ? "opacity-60" : ""}`}
     >
       {children}
-      {soon ? <span className="ml-1 text-[8px] font-bold opacity-80">Segera</span> : null}
+      {soon ? (
+        <span className="ml-1 text-[8px] font-bold opacity-80">Segera</span>
+      ) : tag ? (
+        <span className="ml-1 text-[8px] font-bold opacity-80">{tag}</span>
+      ) : null}
     </button>
   );
 }

@@ -14,7 +14,7 @@ import {
   SHOPPER_COUNTRIES,
   SHOPPER_SORTS,
   brandById,
-  brandEnabled,
+  brandChipAction,
   formatIdr,
   formatMinor,
   productGallery,
@@ -203,6 +203,7 @@ export function FilterSheet({
   money,
   maxCatalogPrice,
   resultCount,
+  onRequestBrand,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -214,6 +215,8 @@ export function FilterSheet({
   money: Money;
   maxCatalogPrice: number;
   resultCount: number;
+  /** Brands without a price feed open the team request instead of a filter. */
+  onRequestBrand: (name: string) => void;
 }) {
   const top = Math.max(1000, Math.ceil(maxCatalogPrice / 500) * 500);
   const value = filters.maxPrice ?? top;
@@ -237,20 +240,24 @@ export function FilterSheet({
         <Chip on={filters.brand === "all"} onClick={() => setFilters({ ...filters, brand: "all" })}>
           Semua
         </Chip>
-        {SHOPPER_BRANDS.filter((b) => b.country === country).map((b) => (
-          <Chip
-            key={b.id}
-            on={filters.brand === b.id}
-            soon={!brandEnabled(config, b.id)}
-            onClick={() =>
-              brandEnabled(config, b.id)
-                ? setFilters({ ...filters, brand: b.id })
-                : toast(`${b.name} segera hadir`)
-            }
-          >
-            {b.name}
-          </Chip>
-        ))}
+        {SHOPPER_BRANDS.filter((b) => b.country === country).map((b) => {
+          const action = brandChipAction(config, b.id);
+          return (
+            <Chip
+              key={b.id}
+              on={filters.brand === b.id}
+              soon={action === "soon"}
+              {...(action === "request" ? { tag: "Tim" } : {})}
+              onClick={() => {
+                if (action === "request") return onRequestBrand(b.name);
+                if (action === "soon") return void toast(`${b.name} segera hadir`);
+                setFilters({ ...filters, brand: b.id });
+              }}
+            >
+              {b.name}
+            </Chip>
+          );
+        })}
       </div>
       <p className={sectionLabel}>Kategori</p>
       <div className="flex flex-wrap gap-1.5">
