@@ -62,4 +62,10 @@ describe("data allowance labels", () => {
     expect(metered.unlimited).toBeUndefined();
     expect(packageDataLabel(metered)).toBe("30 GB data");
   });
+
+  it("never infers unlimited from a marketing name with an unknown volume", () => {
+    const unknown = { name: "Japan Unlimited-10Mbps 7Days", volumeBytes: 0 };
+    expect(packageIsUnlimited(unknown)).toBe(false);
+    expect(packageDataLabel(unknown)).toBe("Kuota belum tersedia");
+  });
 });

@@ -1,5 +1,5 @@
 import type { ResellerCatalogPackage } from "@/lib/esim-access-catalog";
-import { BYTES_PER_GB, BYTES_PER_MB, isUnlimitedPlan, isUnlimitedVolume } from "./data-allowance";
+import { BYTES_PER_GB, BYTES_PER_MB, isUnlimitedVolume } from "./data-allowance";
 const regionNames =
   typeof Intl !== "undefined" && Intl.DisplayNames
     ? new Intl.DisplayNames(["id-ID"], { type: "region" })
@@ -64,13 +64,14 @@ export function packageDataLabel(
 }
 
 /**
- * Unmetered plans arrive either with the provider flag, an "Unlimited" name, or only the 999 GiB
- * volume sentinel (older cached records), so all three count.
+ * Unmetered plans are those the catalogue boundary already normalised (provider flag, "Unlimited"
+ * name) plus older cached records that only carry the 999 GiB volume sentinel. The label must not
+ * infer "unlimited" from a marketing name by itself: a zero-volume package is unknown, not free.
  */
 export function packageIsUnlimited(
-  pkg: Pick<ResellerCatalogPackage, "name" | "volumeBytes"> & { unlimited?: boolean },
+  pkg: { volumeBytes: number } & { unlimited?: boolean },
 ): boolean {
-  return isUnlimitedPlan(pkg) || isUnlimitedVolume(pkg.volumeBytes);
+  return pkg.unlimited === true || isUnlimitedVolume(pkg.volumeBytes);
 }
 
 /** GB quantity used in the catalog label, rounded to the same whole-GB amount customers see. */
