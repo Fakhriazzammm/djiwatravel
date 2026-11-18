@@ -14,6 +14,7 @@ import {
   formatKg,
   normalizeJapanPhone,
   normalizeJapanPostal,
+  mapsSearchUrl,
   normalizeShippingConfig,
   parseShippingConfig,
   quoteShipping,
@@ -212,5 +213,15 @@ describe("shipping lifecycle", () => {
     expect(shippingIsDead("DELIVERED")).toBe(false);
     expect(SHIPPING_STEPS[0]).toBe("AWAITING_DROP");
     expect(SHIPPING_STEPS.at(-1)).toBe("DELIVERED");
+  });
+});
+
+describe("drop point map link", () => {
+  it("searches Google Maps for the drop point name and address", () => {
+    const url = new URL(mapsSearchUrl(DEFAULT_SHIPPING_CONFIG.dropPoint));
+    expect(url.origin + url.pathname).toBe("https://www.google.com/maps/search/");
+    expect(url.searchParams.get("query")).toBe(
+      "Djiwa Tasikmalaya, Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya, Jawa Barat",
+    );
   });
 });

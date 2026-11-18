@@ -1,7 +1,12 @@
 import { useState, type ReactNode } from "react";
 import { Check, Copy, MapPin } from "lucide-react";
 import { toast } from "sonner";
-import { SHIPPING_STATUS_LABEL, type DropPoint, type ShippingStatus } from "@/lib/shipping";
+import {
+  SHIPPING_STATUS_LABEL,
+  mapsSearchUrl,
+  type DropPoint,
+  type ShippingStatus,
+} from "@/lib/shipping";
 
 export const TRUCK_SRC = "/assets/explore/services/shipping-truck.svg";
 
@@ -83,16 +88,15 @@ export function DropPointCard({ point }: { point: DropPoint }) {
       <p className="mt-0.5 text-[12px] text-muted-foreground">Buka {point.hours}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <CopyButton value={point.address} label="Salin alamat" />
-        {point.mapUrl && (
-          <a
-            href={point.mapUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="tap inline-flex min-h-8 items-center rounded-lg bg-secondary px-2.5 text-[11px] font-semibold"
-          >
-            Buka peta
-          </a>
-        )}
+        <a
+          href={point.mapUrl || mapsSearchUrl(point)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tap inline-flex min-h-8 items-center gap-1 rounded-lg bg-secondary px-2.5 text-[11px] font-semibold"
+        >
+          <MapPin className="size-3.5" aria-hidden="true" />
+          Buka di Google Maps
+        </a>
       </div>
     </div>
   );

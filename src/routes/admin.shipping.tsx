@@ -748,7 +748,7 @@ function Settings({
         />,
       )}
       {field(
-        "Tautan peta (https, opsional)",
+        "Tautan Google Maps (https, kosong = pencarian otomatis dari alamat)",
         <input
           className={input}
           value={config.dropPoint.mapUrl}

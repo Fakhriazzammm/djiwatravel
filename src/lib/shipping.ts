@@ -491,3 +491,7 @@ export const fmtDate = (iso: string) =>
     month: "long",
     timeZone: "Asia/Jakarta",
   });
+
+/** Google Maps link for the drop point: Admin's own link when set, else a search for its name and address. */
+export const mapsSearchUrl = (point: Pick<DropPoint, "name" | "address">) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.name}, ${point.address}`)}`;
