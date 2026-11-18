@@ -71,6 +71,20 @@ const tone = (s: ShippingStatus) =>
 /** Statuses where the team has a next move, shown first and counted on the tab. */
 const NEEDS_ACTION: ShippingStatus[] = ["AWAITING_DROP", "RECEIVED", "PAID", "PROBLEM"];
 
+/** The list filters, grouped the way the team thinks about the work instead of fifteen statuses. */
+const GROUPS: { id: string; label: string; statuses: ShippingStatus[] | null }[] = [
+  { id: "ALL", label: "Semua", statuses: null },
+  { id: "ACTION", label: "Perlu tindakan", statuses: NEEDS_ACTION },
+  { id: "PAY", label: "Menunggu bayar", statuses: ["PAYMENT_PENDING"] },
+  {
+    id: "ROUTE",
+    label: "Di jalur",
+    statuses: ["TO_BANDUNG", "AT_BANDUNG", "TO_JAKARTA", "AT_JAKARTA", "SHIPPED"],
+  },
+  { id: "DONE", label: "Selesai", statuses: ["ARRIVED", "DELIVERED"] },
+  { id: "DEAD", label: "Batal", statuses: ["CANCELLED", "REJECTED", "EXPIRED"] },
+];
+
 function AdminShipping() {
   const { data, ops } = Route.useLoaderData();
   const router = useRouter();
@@ -187,7 +201,10 @@ function Orders({
   setNotice: (n: Notice) => void;
   refresh: () => Promise<unknown>;
 }) {
-  const [filter, setFilter] = useState<"ALL" | ShippingStatus>("ALL");
+  const [group, setGroup] = useState("ALL");
+  const [exact, setExact] = useState<"ALL" | ShippingStatus>("ALL");
+  const [query, setQuery] = useState("");
+  const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [printing, setPrinting] = useState(false);
   const pickedOrders = data.orders.filter((o) => picked.has(o.id));
@@ -213,37 +230,100 @@ function Orders({
       setPrinting(false);
     }
   }
-  const rows = useMemo(
-    () => data.orders.filter((o) => filter === "ALL" || o.status === filter),
-    [data.orders, filter],
-  );
+  const countOf = (statuses: ShippingStatus[] | null) =>
+    statuses === null
+      ? data.orders.length
+      : data.orders.filter((o) => statuses.includes(o.status)).length;
+  const rows = useMemo(() => {
+    const wanted = GROUPS.find((g) => g.id === group)?.statuses ?? null;
+    const q = query.trim().toLowerCase();
+    return data.orders.filter(
+      (o) =>
+        (exact === "ALL" ? wanted === null || wanted.includes(o.status) : o.status === exact) &&
+        (q === "" ||
+          o.code.toLowerCase().includes(q) ||
+          o.recipientName.toLowerCase().includes(q) ||
+          o.city.toLowerCase().includes(q)),
+    );
+  }, [data.orders, group, exact, query]);
   const selected = data.orders.find((o) => o.id === selectedId) ?? rows[0] ?? null;
   // A parcel opened from the scan must not hide behind the current filter, and on a phone the
   // detail replaces the list (with a way back), so the team sees it without scrolling.
   useEffect(() => {
-    if (selectedId && !rows.some((o) => o.id === selectedId)) setFilter("ALL");
+    if (selectedId && !rows.some((o) => o.id === selectedId)) {
+      setGroup("ALL");
+      setExact("ALL");
+      setQuery("");
+    }
     if (selectedId) window.scrollTo({ top: 0 });
   }, [selectedId, rows]);
   return (
     <AdminSurface className="p-3">
-      <SectionHeading
-        title="Pengiriman"
-        detail="Yang perlu diterima, ditimbang, atau dikirim ada paling atas."
-      />
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {(["ALL", ...Object.keys(SHIPPING_STATUS_LABEL)] as ("ALL" | ShippingStatus)[]).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setFilter(s)}
-            className={`min-h-8 rounded-full px-3 text-xs font-semibold ${filter === s ? "bg-brand-red text-white" : "bg-secondary"}`}
-          >
-            {s === "ALL" ? "Semua" : SHIPPING_STATUS_LABEL[s]}
-            {s !== "ALL" && data.counts[s] ? ` · ${data.counts[s]}` : ""}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-semibold">
+          Pengiriman <span className="font-normal text-muted-foreground">· {rows.length}</span>
+        </h2>
+        <button
+          type="button"
+          aria-pressed={selecting}
+          onClick={() => {
+            setSelecting((v) => !v);
+            setPicked(new Set());
+          }}
+          className="tap min-h-9 rounded-lg px-3 text-xs font-semibold text-brand-red"
+        >
+          {selecting ? "Selesai memilih" : "Pilih untuk cetak"}
+        </button>
       </div>
-      {picked.size > 0 && (
+      <input
+        type="search"
+        className={`${input} mt-2`}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Cari kode, nama, atau kota"
+        aria-label="Cari pengiriman"
+      />
+      <div
+        className="-mx-3 mt-2 flex gap-1.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="tablist"
+        aria-label="Filter"
+      >
+        {GROUPS.map((g) => {
+          const n = countOf(g.statuses);
+          const on = group === g.id && exact === "ALL";
+          return (
+            <button
+              key={g.id}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => {
+                setGroup(g.id);
+                setExact("ALL");
+              }}
+              className={`tap min-h-9 shrink-0 rounded-full px-3.5 text-xs font-semibold ${on ? "bg-brand-red text-white" : g.id === "ACTION" && n > 0 ? "bg-[#fff1d6] text-[#92400E]" : "bg-secondary"}`}
+            >
+              {g.label}
+              {g.id !== "ALL" || n > 0 ? ` · ${n}` : ""}
+            </button>
+          );
+        })}
+      </div>
+      <select
+        className={`${input} mt-2 min-h-9 text-xs`}
+        value={exact}
+        onChange={(e) => setExact(e.target.value as "ALL" | ShippingStatus)}
+        aria-label="Status tepat"
+      >
+        <option value="ALL">Semua status</option>
+        {(Object.keys(SHIPPING_STATUS_LABEL) as ShippingStatus[]).map((st) => (
+          <option key={st} value={st}>
+            {SHIPPING_STATUS_LABEL[st]}
+            {data.counts[st] ? ` (${data.counts[st]})` : ""}
+          </option>
+        ))}
+      </select>
+      {selecting && picked.size > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-secondary p-2 text-xs">
           <span className="font-semibold">{picked.size} paket dipilih</span>
           <button
@@ -274,52 +354,71 @@ function Orders({
         </div>
       )}
       {rows.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          Belum ada pengiriman.
+        <div className="mt-4 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          {data.orders.length === 0
+            ? "Belum ada pengiriman."
+            : "Tidak ada pengiriman yang cocok dengan filter ini."}
         </div>
       ) : (
         <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <ul className={`space-y-1.5 ${selectedId ? "hidden lg:block" : ""}`}>
-            {rows.map((o) => (
-              <li key={o.id} className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  aria-label={`Pilih ${o.code}`}
-                  checked={picked.has(o.id)}
-                  onChange={(e) => {
-                    const next = new Set(picked);
-                    if (e.target.checked) next.add(o.id);
-                    else next.delete(o.id);
-                    setPicked(next);
-                  }}
-                  className="size-5 shrink-0 accent-[var(--brand-red)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(o.id)}
-                  aria-current={selected?.id === o.id}
-                  className={`flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl p-2.5 text-left text-xs ${selected?.id === o.id ? "bg-brand-red-soft" : "bg-secondary"}`}
-                >
-                  <span className="min-w-0">
-                    <span className="block font-semibold text-brand-red">{o.code}</span>
-                    <span className="block truncate text-muted-foreground">
-                      {o.recipientName}, {o.prefecture} · {formatKg(o.estimatedKg)}
+          <ul className={`space-y-2 ${selectedId ? "hidden lg:block" : ""}`}>
+            {rows.map((o) => {
+              const photoNote =
+                (o.status === "AWAITING_DROP" || o.status === "RECEIVED") &&
+                o.photoReview !== "APPROVED"
+                  ? o.photoReview === "REDO"
+                    ? "Menunggu foto ulang"
+                    : o.proofPhotoIds.length < data.config.minPhotos
+                      ? "Foto belum lengkap"
+                      : "Foto belum ditinjau"
+                  : null;
+              return (
+                <li key={o.id} className="flex items-stretch gap-2">
+                  {selecting && (
+                    <label className="flex w-8 shrink-0 items-center justify-center">
+                      <input
+                        type="checkbox"
+                        aria-label={`Pilih ${o.code}`}
+                        checked={picked.has(o.id)}
+                        onChange={(e) => {
+                          const next = new Set(picked);
+                          if (e.target.checked) next.add(o.id);
+                          else next.delete(o.id);
+                          setPicked(next);
+                        }}
+                        className="size-5 accent-[var(--brand-red)]"
+                      />
+                    </label>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(o.id)}
+                    aria-current={selected?.id === o.id}
+                    className={`tap min-w-0 flex-1 rounded-2xl p-3 text-left ${selected?.id === o.id ? "bg-brand-red-soft" : "bg-secondary"}`}
+                  >
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="font-mono text-sm font-bold text-brand-red">{o.code}</span>
+                      <StatusPill tone={tone(o.status)}>
+                        {SHIPPING_STATUS_LABEL[o.status]}
+                      </StatusPill>
                     </span>
-                    {(o.status === "AWAITING_DROP" || o.status === "RECEIVED") &&
-                      o.photoReview !== "APPROVED" && (
-                        <span className="block text-[11px] font-semibold text-[#9a6100]">
-                          {o.photoReview === "REDO"
-                            ? "Menunggu foto ulang"
-                            : o.proofPhotoIds.length < data.config.minPhotos
-                              ? "Foto belum lengkap"
-                              : "Foto belum ditinjau"}
-                        </span>
-                      )}
-                  </span>
-                  <StatusPill tone={tone(o.status)}>{SHIPPING_STATUS_LABEL[o.status]}</StatusPill>
-                </button>
-              </li>
-            ))}
+                    <span className="mt-0.5 block truncate text-[13px] font-medium">
+                      {o.recipientName}, {o.prefecture}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {formatKg(o.billedKg ?? o.estimatedKg)}
+                      {o.totalIdr !== null ? ` · ${formatIdr(o.totalIdr)}` : ""}
+                      {` · ${o.category}`}
+                    </span>
+                    {photoNote && (
+                      <span className="mt-1 block text-[11px] font-semibold text-[#9a6100]">
+                        {photoNote}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
           {selected && (
             <div className={selectedId ? "" : "hidden lg:block"}>
