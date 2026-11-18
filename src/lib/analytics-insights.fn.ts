@@ -1,12 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { INSIGHT_RANGES, INSIGHT_TABS } from "./analytics-insights";
+import { INSIGHT_TABS } from "./analytics-insights";
+import { RANGE_KEYS, resolveRange } from "./date-range";
 
 export const getAnalyticsInsights = createServerFn({ method: "GET" })
-  .validator(z.object({ tab: z.enum(INSIGHT_TABS), range: z.enum(INSIGHT_RANGES) }))
+  .validator(
+    z.object({
+      tab: z.enum(INSIGHT_TABS),
+      range: z.enum(RANGE_KEYS),
+      from: z.string().optional(),
+      to: z.string().optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     const { getAnalyticsInsightsHandler } = await import("./analytics-insights.server");
-    return getAnalyticsInsightsHandler(data.tab, data.range);
+    return getAnalyticsInsightsHandler(data.tab, resolveRange(data, "30h"));
   });
 
 /** Lightweight alert list for the dashboard banner; never throws into the page. */

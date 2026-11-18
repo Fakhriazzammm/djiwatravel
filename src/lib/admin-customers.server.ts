@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { requireAdmin } from "./admin-guard";
 import { pool } from "../db/client.server";
 import { getAdminEmailHandler } from "./admin-guard.server";
+import { sqlTs, type ResolvedRange } from "./date-range";
 
 export type AdminCustomerKind = "all" | "member" | "guest" | "noprofile";
 export type AdminCustomerCriteria = "all" | "ordered" | "never" | "trip" | "feed" | "shopping";
@@ -265,13 +266,23 @@ export async function exportAdminCustomersHandler({
 /* ------------------------------------------------------------------ growth */
 
 export type AdminCustomerGrowth = {
-  daily: { day: string; bought: number; rest: number }[];
+  window: { label: string; granularity: "hour" | "day"; fromDay: string; toDay: string };
+  /** New people per bucket in the range, split by whether they already paid. */
+  daily: { label: string; bought: number; rest: number }[];
   monthly: { month: string; total: number; bought: number }[];
+  kpi: {
+    newPeople: number;
+    previousNewPeople: number;
+    newBuyers: number;
+    /** People whose latest activity falls inside the range. */
+    activeInRange: number;
+    everyone: number;
+    members: number;
+  };
+  /** Funnel and features describe the people who first appeared in the range. */
   funnel: { label: string; count: number }[];
   features: { label: string; count: number }[];
-  members: number;
-  active7: number;
-  active30: number;
+  cohortMembers: number;
   topSpenders: GrowthPerson[];
   neverOrdered: GrowthPerson[];
   slipping: GrowthPerson[];
@@ -298,38 +309,54 @@ const growthPerson = (row: Record<string, unknown>, note: string): GrowthPerson 
 });
 
 /** Growth and adoption numbers for the "Pertumbuhan & analisis" tab. Aggregates only, no new tables. */
-export async function getAdminCustomerGrowthHandler(): Promise<AdminCustomerGrowth> {
+export async function getAdminCustomerGrowthHandler(
+  range: ResolvedRange,
+): Promise<AdminCustomerGrowth> {
   await requireAdmin();
+  const F = sqlTs(range.from);
+  const T = sqlTs(range.to);
+  const PF = sqlTs(range.prevFrom);
+  const PT = sqlTs(range.prevTo);
+  const unit = range.granularity;
+  const fmt = unit === "hour" ? "HH24:00" : "DD Mon";
   const [daily, monthly, summary, spenders, never, slipping] = await Promise.all([
     pool.query(
-      `${PEOPLE_CTE}
-       select (first_seen_at at time zone 'Asia/Jakarta')::date::text as day,
-              count(*) filter (where paid_count > 0)::int as bought,
-              count(*) filter (where paid_count = 0)::int as rest
-         from people where first_seen_at >= now() - interval '60 days'
-        group by 1 order by 1`,
+      `${PEOPLE_CTE},
+       d as (select generate_series(
+               date_trunc('${unit}', ${F} at time zone 'Asia/Jakarta'),
+               date_trunc('${unit}', (${T} - interval '1 second') at time zone 'Asia/Jakarta'),
+               interval '1 ${unit}') as bucket)
+       select to_char(d.bucket, '${fmt}') as label,
+              count(p.subject) filter (where p.paid_count > 0)::int as bought,
+              count(p.subject) filter (where p.paid_count = 0)::int as rest
+         from d left join people p
+           on date_trunc('${unit}', p.first_seen_at at time zone 'Asia/Jakarta') = d.bucket
+          and p.first_seen_at >= ${F} and p.first_seen_at < ${T}
+        group by d.bucket order by d.bucket`,
     ),
     pool.query(
       `${PEOPLE_CTE}
        select to_char(first_seen_at at time zone 'Asia/Jakarta', 'YYYY-MM') as month,
               count(*)::int as total, count(*) filter (where paid_count > 0)::int as bought
-         from people where first_seen_at >= date_trunc('month', now()) - interval '5 months'
+         from people where first_seen_at >= date_trunc('month', now()) - interval '11 months'
         group by 1 order by 1 desc`,
     ),
     pool.query(
-      `${PEOPLE_CTE}
-       select count(*)::int as everyone,
-              count(*) filter (where kind = 'member')::int as members,
-              count(*) filter (where kind = 'member' and profile_complete)::int as profiled,
-              count(*) filter (where order_count > 0)::int as ordered,
-              count(*) filter (where paid_count > 0)::int as paid,
-              count(*) filter (where paid_count > 1)::int as repeat,
-              count(*) filter (where kind = 'member' and trip_count > 0)::int as trips,
-              count(*) filter (where kind = 'member' and shopping_count > 0)::int as shopping,
-              count(*) filter (where kind = 'member' and feed_post_count > 0)::int as feeds,
-              count(*) filter (where last_activity_at >= now() - interval '7 days')::int as active7,
-              count(*) filter (where last_activity_at >= now() - interval '30 days')::int as active30
-         from people`,
+      `${PEOPLE_CTE},
+       w as (select * from people where first_seen_at >= ${F} and first_seen_at < ${T})
+       select (select count(*) from w)::int as everyone,
+              (select count(*) from w where kind = 'member')::int as members,
+              (select count(*) from w where kind = 'member' and profile_complete)::int as profiled,
+              (select count(*) from w where order_count > 0)::int as ordered,
+              (select count(*) from w where paid_count > 0)::int as paid,
+              (select count(*) from w where paid_count > 1)::int as repeat,
+              (select count(*) from w where kind = 'member' and trip_count > 0)::int as trips,
+              (select count(*) from w where kind = 'member' and shopping_count > 0)::int as shopping,
+              (select count(*) from w where kind = 'member' and feed_post_count > 0)::int as feeds,
+              (select count(*) from people where first_seen_at >= ${PF} and first_seen_at < ${PT})::int as prev_new,
+              (select count(*) from people where last_activity_at >= ${F} and last_activity_at < ${T})::int as active_in,
+              (select count(*) from people)::int as all_people,
+              (select count(*) from people where kind = 'member')::int as all_members`,
     ),
     pool.query(
       `${PEOPLE_CTE}
@@ -340,7 +367,8 @@ export async function getAdminCustomerGrowthHandler(): Promise<AdminCustomerGrow
       `${PEOPLE_CTE}
        select subject, display_name, email, last_activity_at, first_seen_at
          from people
-        where kind = 'member' and order_count = 0 and first_seen_at < now() - interval '2 days'
+        where kind = 'member' and order_count = 0
+          and first_seen_at >= ${F} and first_seen_at < ${T}
         order by first_seen_at desc limit 5`,
     ),
     pool.query(
@@ -355,8 +383,14 @@ export async function getAdminCustomerGrowthHandler(): Promise<AdminCustomerGrow
   const n = (key: string) => Number(s[key] ?? 0);
   const idr = (value: unknown) => `Rp${Math.round(Number(value ?? 0)).toLocaleString("id-ID")}`;
   return {
+    window: {
+      label: range.label,
+      granularity: range.granularity,
+      fromDay: range.fromDay,
+      toDay: range.toDay,
+    },
     daily: daily.rows.map((r: Record<string, unknown>) => ({
-      day: String(r["day"]),
+      label: String(r["label"]),
       bought: Number(r["bought"] ?? 0),
       rest: Number(r["rest"] ?? 0),
     })),
@@ -365,8 +399,16 @@ export async function getAdminCustomerGrowthHandler(): Promise<AdminCustomerGrow
       total: Number(r["total"] ?? 0),
       bought: Number(r["bought"] ?? 0),
     })),
+    kpi: {
+      newPeople: n("everyone"),
+      previousNewPeople: n("prev_new"),
+      newBuyers: n("paid"),
+      activeInRange: n("active_in"),
+      everyone: n("all_people"),
+      members: n("all_members"),
+    },
     funnel: [
-      { label: "Dikenal sistem", count: n("everyone") },
+      { label: "Pendaftar dalam rentang", count: n("everyone") },
       { label: "Member dengan profil lengkap", count: n("profiled") },
       { label: "Pernah memesan", count: n("ordered") },
       { label: "Pernah membayar", count: n("paid") },
@@ -377,9 +419,7 @@ export async function getAdminCustomerGrowthHandler(): Promise<AdminCustomerGrow
       { label: "Titip Belanja", count: n("shopping") },
       { label: "Posting di Feeds", count: n("feeds") },
     ],
-    members: n("members"),
-    active7: n("active7"),
-    active30: n("active30"),
+    cohortMembers: n("members"),
     topSpenders: spenders.rows.map((r: Record<string, unknown>) =>
       growthPerson(r, `${idr(r["spend_idr"])} · ${Number(r["paid_count"] ?? 0)} pembayaran`),
     ),

@@ -59,7 +59,17 @@ function AdminCustomerDetail() {
           <p className="text-sm text-muted-foreground">Customer tidak ditemukan.</p>
           <Link
             to="/admin/customers"
-            search={{ tab: "daftar", q: "", kind: "all", criteria: "all", sort: "active", page: 1 }}
+            search={{
+              tab: "daftar",
+              q: "",
+              kind: "all",
+              criteria: "all",
+              sort: "active",
+              page: 1,
+              range: "30h",
+              from: undefined,
+              to: undefined,
+            }}
             className="text-sm font-semibold text-brand-red"
           >
             Kembali ke daftar
@@ -79,7 +89,17 @@ function AdminCustomerDetail() {
       <div className="space-y-3">
         <Link
           to="/admin/customers"
-          search={{ tab: "daftar", q: "", kind: "all", criteria: "all", sort: "active", page: 1 }}
+          search={{
+            tab: "daftar",
+            q: "",
+            kind: "all",
+            criteria: "all",
+            sort: "active",
+            page: 1,
+            range: "30h",
+            from: undefined,
+            to: undefined,
+          }}
           className="inline-flex min-h-9 items-center gap-1.5 text-sm font-semibold text-muted-foreground"
         >
           <ArrowLeft className="size-4" aria-hidden="true" /> Semua customer

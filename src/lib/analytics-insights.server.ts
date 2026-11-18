@@ -3,7 +3,6 @@ import { requireAdmin } from "./admin-guard";
 import {
   buildCohorts,
   healthScore,
-  INSIGHT_RANGE_DAYS,
   MIN_GROUP_SIZE,
   pctOf,
   RFM_HINT,
@@ -18,7 +17,6 @@ import {
   evaluateAlerts,
   type FunnelInsight,
   type FunnelStep,
-  type InsightRange,
   type InsightResult,
   type InsightTab,
   type Named,
@@ -27,13 +25,13 @@ import {
   type RfmSegment,
   type UsersInsight,
 } from "./analytics-insights";
+import { sqlTs, type ResolvedRange } from "./date-range";
 
 type Row = Record<string, unknown>;
 const n = (v: unknown) => Number(v ?? 0) || 0;
 const TZ = "Asia/Jakarta";
 const COHORT_WEEKS = 12;
 const PAID_ESIM = `(o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))`;
-const BUCKET = `date_trunc('day', %s at time zone '${TZ}')`;
 
 const q = (text: string, params: unknown[] = []) =>
   pool.query(text, params).then((r) => r.rows as Row[]);
@@ -50,6 +48,27 @@ async function guarded<T>(label: string, run: () => Promise<T>): Promise<Insight
     return { data: null, error: "Data belum bisa dimuat. Coba muat ulang beberapa saat lagi." };
   }
 }
+
+type W = {
+  from: string;
+  to: string;
+  pfrom: string;
+  pto: string;
+  unit: "hour" | "day";
+  fmt: string;
+  days: number;
+};
+
+/** SQL window for a resolved range. Only validated Dates are turned into literals. */
+const winOf = (r: ResolvedRange): W => ({
+  from: sqlTs(r.from),
+  to: sqlTs(r.to),
+  pfrom: sqlTs(r.prevFrom),
+  pto: sqlTs(r.prevTo),
+  unit: r.granularity,
+  fmt: r.granularity === "hour" ? "HH24:00" : "DD Mon",
+  days: r.days,
+});
 
 const since = (days: number) => `now() - (${days}::int * interval '1 day')`;
 const priorSince = (days: number) => `now() - (${days * 2}::int * interval '1 day')`;
@@ -93,8 +112,9 @@ const BUYER_CTE = `
 
 // ------------------------------------------------------------------ Pengguna
 
-async function usersInsight(range: InsightRange): Promise<UsersInsight> {
-  const days = INSIGHT_RANGE_DAYS[range];
+async function usersInsight(r: ResolvedRange): Promise<UsersInsight> {
+  const w = winOf(r);
+  const days = w.days;
   const [
     totals,
     signups,
@@ -115,16 +135,16 @@ async function usersInsight(range: InsightRange): Promise<UsersInsight> {
          (select count(distinct lower(a.email)) from guest_order_access a
             join customer_orders o on o.id = a.order_id
            where o.customer_auth_subject is null and a.email is not null)::int as guests,
-         (select count(*) from customer_profiles where created_at >= ${since(days)})::int as new_members,
-         (select count(*) from customer_profiles where created_at >= ${priorSince(days)}
-             and created_at < ${since(days)})::int as prev_new`),
+         (select count(*) from customer_profiles where created_at >= ${w.from} and created_at < ${w.to})::int as new_members,
+         (select count(*) from customer_profiles where created_at >= ${w.pfrom}
+             and created_at < ${w.pto})::int as prev_new`),
     q(
       `with d as (select generate_series(
-           date_trunc('day', (${since(days - 1)}) at time zone '${TZ}'),
-           date_trunc('day', now() at time zone '${TZ}'), interval '1 day') as day)
-       select to_char(d.day, 'DD Mon') as label, count(p.auth_user_id)::int as value
+           date_trunc('${w.unit}', (${w.from}) at time zone '${TZ}'),
+           date_trunc('${w.unit}', (${w.to} - interval '1 second') at time zone '${TZ}'), interval '1 ${w.unit}') as day)
+       select to_char(d.day, '${w.fmt}') as label, count(p.auth_user_id)::int as value
          from d left join customer_profiles p
-           on date_trunc('day', p.created_at at time zone '${TZ}') = d.day
+           on date_trunc('${w.unit}', p.created_at at time zone '${TZ}') = d.day
         group by d.day order by d.day`,
     ),
     q(`with ${BUYER_CTE}
@@ -139,21 +159,21 @@ async function usersInsight(range: InsightRange): Promise<UsersInsight> {
          from buyer b left join customer_profiles cp on cp.auth_user_id = b.subject
         order by b.revenue desc limit 5000`),
     q(`select coalesce(device,'other') as label, count(distinct session_id)::int as value
-         from site_events where event_name='page_view' and created_at >= ${since(days)}
+         from site_events where event_name='page_view' and created_at >= ${w.from} and created_at < ${w.to}
         group by 1 order by value desc`),
     q(`select lpad(extract(hour from created_at at time zone '${TZ}')::int::text, 2, '0') || ':00' as label,
               count(distinct session_id)::int as value
-         from site_events where event_name='page_view' and created_at >= ${since(days)}
+         from site_events where event_name='page_view' and created_at >= ${w.from} and created_at < ${w.to}
         group by 1 order by 1`),
     q(`select extract(isodow from created_at at time zone '${TZ}')::int as dow,
               count(distinct session_id)::int as value
-         from site_events where event_name='page_view' and created_at >= ${since(days)}
+         from site_events where event_name='page_view' and created_at >= ${w.from} and created_at < ${w.to}
         group by 1 order by 1`),
     q(`select coalesce(nullif(utm_source,''), nullif(referrer_host,''), '(langsung)') as label,
               count(distinct session_id)::int as value
-         from site_events where event_name='page_view' and created_at >= ${since(days)}
+         from site_events where event_name='page_view' and created_at >= ${w.from} and created_at < ${w.to}
         group by 1 order by value desc limit 8`),
-    q(`with m as (select auth_user_id as s from customer_profiles where created_at >= ${since(days)})
+    q(`with m as (select auth_user_id as s from customer_profiles where created_at >= ${w.from} and created_at < ${w.to})
        select (select count(*) from m)::int as signed,
               (select count(*) from m where exists (select 1 from customer_orders o where o.customer_auth_subject = m.s))::int as ordered,
               (select count(*) from m where exists (select 1 from customer_orders o where o.customer_auth_subject = m.s and ${PAID_ESIM}))::int as paid,
@@ -341,10 +361,11 @@ const stepsFrom = (r: Row | undefined): FunnelStep[] => [
   { key: "paid", label: "Bayar berhasil", value: n(r?.["paid"]) },
 ];
 
-async function funnelInsight(range: InsightRange): Promise<FunnelInsight> {
-  const days = INSIGHT_RANGE_DAYS[range];
-  const cur = SESSION_CTE(since(days), "now() + interval '1 minute'");
-  const prev = SESSION_CTE(priorSince(days), since(days));
+async function funnelInsight(r: ResolvedRange): Promise<FunnelInsight> {
+  const w = winOf(r);
+  const days = w.days;
+  const cur = SESSION_CTE(w.from, w.to);
+  const prev = SESSION_CTE(w.pfrom, w.pto);
   const [now, before, device, channel, daily, abandoned, payment, byProvider] = await Promise.all([
     q(`with ${cur} select ${STEP_SELECT} from s`),
     q(`with ${prev} select ${STEP_SELECT} from s`),
@@ -353,25 +374,25 @@ async function funnelInsight(range: InsightRange): Promise<FunnelInsight> {
     q(`with ${cur} select src as label, ${STEP_SELECT} from s where visited group by src
        having count(*) >= ${MIN_GROUP_SIZE} order by visitors desc limit 6`),
     q(`with ${cur}
-       select to_char(date_trunc('day', at at time zone '${TZ}'), 'DD Mon') as label,
+       select to_char(date_trunc('${w.unit}', at at time zone '${TZ}'), '${w.fmt}') as label,
               count(*) filter (where visited)::int as visitors,
               count(*) filter (where visited and checkout)::int as checkout,
               count(*) filter (where visited and paid)::int as paid
-         from s group by date_trunc('day', at at time zone '${TZ}') order by date_trunc('day', at at time zone '${TZ}')`),
+         from s group by date_trunc('${w.unit}', at at time zone '${TZ}') order by date_trunc('${w.unit}', at at time zone '${TZ}')`),
     q(`select count(*)::int as c, coalesce(sum(total_amount), 0)::numeric as v from customer_orders
-        where created_at >= ${since(days)} and paid_at is null
+        where created_at >= ${w.from} and created_at < ${w.to} and paid_at is null
           and status in ('DRAFT','ORDER_CREATED','PAYMENT_PENDING')`),
     q(`select
-         (select count(*) from customer_orders o where o.created_at >= ${since(days)} and ${PAID_ESIM})::int as paid,
-         (select count(*) from customer_orders o where o.created_at >= ${since(days)} and o.paid_at is null
+         (select count(*) from customer_orders o where o.created_at >= ${w.from} and o.created_at < ${w.to} and ${PAID_ESIM})::int as paid,
+         (select count(*) from customer_orders o where o.created_at >= ${w.from} and o.created_at < ${w.to} and o.paid_at is null
             and o.status in ('ORDER_CREATED','PAYMENT_PENDING'))::int as pending,
-         (select count(*) from payment_intents p where p.created_at >= ${since(days)} and p.status = 'EXPIRED')::int as expired,
-         (select count(*) from payment_intents p where p.created_at >= ${since(days)} and p.status = 'FAILED')::int as failed,
+         (select count(*) from payment_intents p where p.created_at >= ${w.from} and p.created_at < ${w.to} and p.status = 'EXPIRED')::int as expired,
+         (select count(*) from payment_intents p where p.created_at >= ${w.from} and p.created_at < ${w.to} and p.status = 'FAILED')::int as failed,
          (select avg(extract(epoch from (o.paid_at - o.created_at)) / 60)::float from customer_orders o
-           where o.paid_at >= ${since(days)} and o.paid_at >= o.created_at) as avg_minutes`),
+           where o.paid_at >= ${w.from} and o.paid_at < ${w.to} and o.paid_at >= o.created_at) as avg_minutes`),
     q(`select coalesce(o.payment_provider, 'lainnya') as label,
               count(*) filter (where ${PAID_ESIM})::int as paid, count(*)::int as total
-         from customer_orders o where o.created_at >= ${since(days)} and o.status <> 'DRAFT'
+         from customer_orders o where o.created_at >= ${w.from} and o.created_at < ${w.to} and o.status <> 'DRAFT'
         group by 1 having count(*) >= ${MIN_GROUP_SIZE} order by total desc`),
   ]);
   const p = payment[0] ?? {};
@@ -406,44 +427,47 @@ async function funnelInsight(range: InsightRange): Promise<FunnelInsight> {
 
 // ------------------------------------------------------------------ Pendapatan
 
-async function revenueInsight(range: InsightRange): Promise<RevenueInsight> {
-  const days = INSIGHT_RANGE_DAYS[range];
-  const dayAt = BUCKET.replace("%s", "at");
+async function revenueInsight(r: ResolvedRange): Promise<RevenueInsight> {
+  const w = winOf(r);
+  const days = w.days;
+  const dayAt = `date_trunc('${w.unit}', at at time zone '${TZ}')`;
   const seriesSql = (from: string, to: string, startExpr: string) => `
     with ${SALES_CTE},
-    d as (select generate_series(date_trunc('day', (${startExpr}) at time zone '${TZ}'),
-          date_trunc('day', (${to}) at time zone '${TZ}'), interval '1 day') as day)
-    select to_char(d.day, 'DD Mon') as label, coalesce(sum(s.amount), 0)::numeric as value
+    d as (select generate_series(date_trunc('${w.unit}', (${startExpr}) at time zone '${TZ}'),
+          date_trunc('${w.unit}', (${to} - interval '1 second') at time zone '${TZ}'), interval '1 ${w.unit}') as day)
+    select to_char(d.day, '${w.fmt}') as label, coalesce(sum(s.amount), 0)::numeric as value
       from d left join sales s on ${dayAt} = d.day and s.at >= ${from} and s.at < ${to}
      group by d.day order by d.day`;
   const [kpi, prevKpi, series, prevSeries, product, channel, weekday, hour, split, refund, pre] =
     await Promise.all([
       q(`with ${SALES_CTE} select coalesce(sum(amount),0)::numeric as gross, count(*)::int as orders
-           from sales where at >= ${since(days)}`),
+           from sales where at >= ${w.from} and at < ${w.to}`),
       q(`with ${SALES_CTE} select coalesce(sum(amount),0)::numeric as gross, count(*)::int as orders
-           from sales where at >= ${priorSince(days)} and at < ${since(days)}`),
-      q(seriesSql(since(days), "now() + interval '1 day'", since(days - 1))),
-      q(seriesSql(priorSince(days), since(days), priorSince(days))),
+           from sales where at >= ${w.pfrom} and at < ${w.pto}`),
+      q(seriesSql(w.from, w.to, w.from)),
+      q(seriesSql(w.pfrom, w.pto, w.pfrom)),
       q(`with ${SALES_CTE} select product as label, sum(amount)::numeric as value, count(*)::int as orders
-           from sales where at >= ${since(days)} group by product order by value desc`),
+           from sales where at >= ${w.from} and at < ${w.to} group by product order by value desc`),
       q(`with ${SALES_CTE}
          select coalesce(nullif(e.utm_source,''), nullif(e.referrer_host,''),
                          case when e.id is null then 'Tidak terlacak' else '(langsung)' end) as label,
                 sum(s.amount)::numeric as value, count(*)::int as orders
            from sales s left join site_events e on e.event_name = 'order_start' and e.target = s.id
-          where s.at >= ${since(days)} group by 1 order by value desc limit 8`),
+          where s.at >= ${w.from} and s.at < ${w.to} group by 1 order by value desc limit 8`),
       q(`with ${SALES_CTE} select extract(isodow from at at time zone '${TZ}')::int as k,
-                sum(amount)::numeric as value from sales where at >= ${since(days)} group by 1 order by 1`),
+                sum(amount)::numeric as value from sales where at >= ${w.from} and at < ${w.to} group by 1 order by 1`),
       q(`with ${SALES_CTE} select extract(hour from at at time zone '${TZ}')::int as k,
-                sum(amount)::numeric as value from sales where at >= ${since(days)} group by 1 order by 1`),
+                sum(amount)::numeric as value from sales where at >= ${w.from} and at < ${w.to} group by 1 order by 1`),
       q(`with ${SALES_CTE},
          firsts as (select subject, min(at) as first_at from sales where subject is not null group by subject)
-         select count(distinct f.subject) filter (where f.first_at >= ${since(days)})::int as new_customers,
-                count(distinct f.subject) filter (where f.first_at < ${since(days)})::int as returning_customers,
-                coalesce(sum(s.amount) filter (where f.first_at >= ${since(days)}), 0)::numeric as new_revenue,
-                coalesce(sum(s.amount) filter (where f.first_at < ${since(days)}), 0)::numeric as returning_revenue
-           from sales s join firsts f on f.subject = s.subject where s.at >= ${since(days)}`),
-      q(`select count(*)::int as c from refund_requests where created_at >= ${since(days)}`),
+         select count(distinct f.subject) filter (where f.first_at >= ${w.from} and f.first_at < ${w.to})::int as new_customers,
+                count(distinct f.subject) filter (where f.first_at < ${w.from})::int as returning_customers,
+                coalesce(sum(s.amount) filter (where f.first_at >= ${w.from} and f.first_at < ${w.to}), 0)::numeric as new_revenue,
+                coalesce(sum(s.amount) filter (where f.first_at < ${w.from}), 0)::numeric as returning_revenue
+           from sales s join firsts f on f.subject = s.subject where s.at >= ${w.from} and s.at < ${w.to}`),
+      q(
+        `select count(*)::int as c from refund_requests where created_at >= ${w.from} and created_at < ${w.to}`,
+      ),
       q(`select count(*) filter (where preorder_status in ('pending','processing'))::int as open,
                 count(*) filter (where preorder_status in ('pending','processing')
                                    and preorder_deadline_at < now() + interval '1 day'
@@ -504,31 +528,32 @@ async function revenueInsight(range: InsightRange): Promise<RevenueInsight> {
 
 // ------------------------------------------------------------------ Destinasi
 
-async function destinationInsight(range: InsightRange): Promise<DestinationInsight> {
-  const days = INSIGHT_RANGE_DAYS[range];
+async function destinationInsight(r: ResolvedRange): Promise<DestinationInsight> {
+  const w = winOf(r);
+  const days = w.days;
   const CODE = `lower(substring(e.path from '^/destination/([A-Za-z0-9-]+)'))`;
   const [views, orders, searches, packages, unlimited] = await Promise.all([
     q(`select ${CODE} as code, count(*)::int as views, count(distinct e.session_id)::int as visitors
          from site_events e
         where e.event_name in ('page_view','destination_view') and e.path like '/destination/%'
-          and e.created_at >= ${since(days)} group by 1 having ${CODE} is not null`),
+          and e.created_at >= ${w.from} and e.created_at < ${w.to} group by 1 having ${CODE} is not null`),
     q(`with ${SALES_CTE}
        select ${CODE} as code, count(*)::int as orders, coalesce(sum(s.amount), 0)::numeric as revenue
          from sales s join site_events e on e.event_name = 'order_start' and e.target = s.id
-        where s.at >= ${since(days)} and s.product <> 'Titip Belanja' and e.path like '/destination/%'
+        where s.at >= ${w.from} and s.at < ${w.to} and s.product <> 'Titip Belanja' and e.path like '/destination/%'
         group by 1`),
     q(`select lower(e.target) as label, count(*)::int as value from site_events e
-        where e.event_name = 'finder_submit' and e.target is not null and e.created_at >= ${since(days)}
+        where e.event_name = 'finder_submit' and e.target is not null and e.created_at >= ${w.from} and e.created_at < ${w.to}
         group by 1 having count(*) >= ${MIN_GROUP_SIZE} order by value desc limit 10`),
     q(`select coalesce(i.package_name_snapshot, 'Paket') as label, count(distinct o.id)::int as orders,
               coalesce(sum(i.line_total), 0)::numeric as revenue, coalesce(sum(i.quantity), 0)::int as quantity
          from customer_order_items i join customer_orders o on o.id = i.order_id
-        where o.currency_code = 'IDR' and ${PAID_ESIM} and coalesce(o.paid_at, o.created_at) >= ${since(days)}
+        where o.currency_code = 'IDR' and ${PAID_ESIM} and coalesce(o.paid_at, o.created_at) >= ${w.from} and coalesce(o.paid_at, o.created_at) < ${w.to}
         group by 1 order by revenue desc limit 12`),
     q(`select count(*) filter (where i.package_name_snapshot ~* 'unlimited|tanpa batas')::int as unlimited,
               count(*) filter (where i.package_name_snapshot !~* 'unlimited|tanpa batas')::int as limited
          from customer_order_items i join customer_orders o on o.id = i.order_id
-        where o.currency_code = 'IDR' and ${PAID_ESIM} and coalesce(o.paid_at, o.created_at) >= ${since(days)}`),
+        where o.currency_code = 'IDR' and ${PAID_ESIM} and coalesce(o.paid_at, o.created_at) >= ${w.from} and coalesce(o.paid_at, o.created_at) < ${w.to}`),
   ]);
   const orderBy = new Map(
     orders.map((r) => [String(r["code"]), { orders: n(r["orders"]), revenue: n(r["revenue"]) }]),
@@ -577,17 +602,18 @@ const named = (rows: Row[]): Named[] =>
 const median = (v: unknown, digits = 1) =>
   v === null || v === undefined ? null : Math.round(n(v) * 10 ** digits) / 10 ** digits;
 
-const dailySeries = (days: number, table: string, extra = "") => `
+const dailySeries = (w: W, table: string, extra = "") => `
   with d as (select generate_series(
-      date_trunc('day', (${since(days - 1)}) at time zone '${TZ}'),
-      date_trunc('day', now() at time zone '${TZ}'), interval '1 day') as day)
-  select to_char(d.day, 'DD Mon') as label, count(t.*)::int as value
+      date_trunc('${w.unit}', (${w.from}) at time zone '${TZ}'),
+      date_trunc('${w.unit}', (${w.to} - interval '1 second') at time zone '${TZ}'), interval '1 ${w.unit}') as day)
+  select to_char(d.day, '${w.fmt}') as label, count(t.*)::int as value
     from d left join ${table} t
-      on date_trunc('day', t.created_at at time zone '${TZ}') = d.day ${extra}
+      on date_trunc('${w.unit}', t.created_at at time zone '${TZ}') = d.day ${extra}
    group by d.day order by d.day`;
 
-async function featuresInsight(range: InsightRange): Promise<FeaturesInsight> {
-  const days = INSIGHT_RANGE_DAYS[range];
+async function featuresInsight(r: ResolvedRange): Promise<FeaturesInsight> {
+  const w = winOf(r);
+  const days = w.days;
   const [
     travo,
     travoMsgs,
@@ -609,41 +635,41 @@ async function featuresInsight(range: InsightRange): Promise<FeaturesInsight> {
     delivery,
     pwa,
   ] = await Promise.all([
-    q(`select count(*) filter (where created_at >= ${since(days)})::int as c,
-              count(*) filter (where created_at >= ${priorSince(days)} and created_at < ${since(days)})::int as p
+    q(`select count(*) filter (where created_at >= ${w.from} and created_at < ${w.to})::int as c,
+              count(*) filter (where created_at >= ${w.pfrom} and created_at < ${w.pto})::int as p
          from travel_assistant_conversations`),
     q(`select count(*) filter (where role = 'user')::int as u, count(*) filter (where role = 'assistant')::int as a,
               count(distinct customer_auth_subject)::int as people
-         from travel_assistant_messages where created_at >= ${since(days)}`),
+         from travel_assistant_messages where created_at >= ${w.from} and created_at < ${w.to}`),
     q(`select scope as label, count(*)::int as value from travel_assistant_conversations
-        where created_at >= ${since(days)} group by 1 order by value desc`),
+        where created_at >= ${w.from} and created_at < ${w.to} group by 1 order by value desc`),
     q(
       dailySeries(
-        days,
+        w,
         "travel_assistant_messages",
-        "and t.role = 'user' and t.created_at >= " + since(days),
+        `and t.role = 'user' and t.created_at >= ${w.from} and t.created_at < ${w.to}`,
       ),
     ),
-    q(`select (select count(*) from travel_trips where created_at >= ${since(days)})::int as c,
-              (select count(*) from travel_trips where created_at >= ${priorSince(days)} and created_at < ${since(days)})::int as p,
-              (select count(distinct customer_auth_subject) from travel_trips where created_at >= ${since(days)})::int as people,
-              (select count(*) from travel_expenses where created_at >= ${since(days)})::int as expenses,
-              (select count(*) from travel_trip_shares where created_at >= ${since(days)})::int as shares,
-              (select count(*) from travel_receipt_scans where created_at >= ${since(days)})::int as scans`),
-    q(dailySeries(days, "travel_trips", "and t.created_at >= " + since(days))),
-    q(`select count(*) filter (where created_at >= ${since(days)} and status <> 'DRAFT')::int as c,
-              count(*) filter (where created_at >= ${priorSince(days)} and created_at < ${since(days)} and status <> 'DRAFT')::int as p
+    q(`select (select count(*) from travel_trips where created_at >= ${w.from} and created_at < ${w.to})::int as c,
+              (select count(*) from travel_trips where created_at >= ${w.pfrom} and created_at < ${w.pto})::int as p,
+              (select count(distinct customer_auth_subject) from travel_trips where created_at >= ${w.from} and created_at < ${w.to})::int as people,
+              (select count(*) from travel_expenses where created_at >= ${w.from} and created_at < ${w.to})::int as expenses,
+              (select count(*) from travel_trip_shares where created_at >= ${w.from} and created_at < ${w.to})::int as shares,
+              (select count(*) from travel_receipt_scans where created_at >= ${w.from} and created_at < ${w.to})::int as scans`),
+    q(dailySeries(w, "travel_trips", `and t.created_at >= ${w.from} and t.created_at < ${w.to}`)),
+    q(`select count(*) filter (where created_at >= ${w.from} and created_at < ${w.to} and status <> 'DRAFT')::int as c,
+              count(*) filter (where created_at >= ${w.pfrom} and created_at < ${w.pto} and status <> 'DRAFT')::int as p
          from shopping_discovery_requests`),
     q(`select count(*) filter (where status <> 'DRAFT')::int as submitted,
               count(*) filter (where status in ('OFFERED','ORDERED'))::int as offered,
               count(*) filter (where status = 'ORDERED')::int as ordered,
-              (select count(*) from shopping_orders where paid_at >= ${since(days)})::int as paid
-         from shopping_discovery_requests where created_at >= ${since(days)}`),
+              (select count(*) from shopping_orders where paid_at >= ${w.from} and paid_at < ${w.to})::int as paid
+         from shopping_discovery_requests where created_at >= ${w.from} and created_at < ${w.to}`),
     q(`with first_reply as (
          select t.id, t.created_at, t.response_due_at,
                 (select min(m.created_at) from shopping_chat_messages m
                   where m.thread_id = t.id and m.sender = 'ADMIN' and not m.internal) as replied_at
-           from shopping_chat_threads t where t.kind = 'REQUEST' and t.created_at >= ${since(days)})
+           from shopping_chat_threads t where t.kind = 'REQUEST' and t.created_at >= ${w.from} and t.created_at < ${w.to})
        select percentile_cont(0.5) within group (order by extract(epoch from (replied_at - created_at)) / 60)::float as med,
               count(*) filter (where replied_at is not null and response_due_at is not null)::int as answered,
               count(*) filter (where replied_at is not null and response_due_at is not null and replied_at <= response_due_at)::int as on_time
@@ -652,29 +678,29 @@ async function featuresInsight(range: InsightRange): Promise<FeaturesInsight> {
               count(*) filter (where closed_at is null and last_sender = 'CUSTOMER' and response_due_at < now())::int as overdue
          from shopping_chat_threads`),
     q(`select status as label, count(*)::int as value from shopping_discovery_requests
-        where created_at >= ${since(days)} and status <> 'DRAFT' group by 1 order by value desc`),
-    q(`select (select count(*) from feed_posts where created_at >= ${since(days)} and source = 'member')::int as posts,
-              (select count(*) from feed_comments where created_at >= ${since(days)} and source = 'member')::int as comments,
-              (select count(*) from feed_likes where created_at >= ${since(days)})::int as likes,
+        where created_at >= ${w.from} and created_at < ${w.to} and status <> 'DRAFT' group by 1 order by value desc`),
+    q(`select (select count(*) from feed_posts where created_at >= ${w.from} and created_at < ${w.to} and source = 'member')::int as posts,
+              (select count(*) from feed_comments where created_at >= ${w.from} and created_at < ${w.to} and source = 'member')::int as comments,
+              (select count(*) from feed_likes where created_at >= ${w.from} and created_at < ${w.to})::int as likes,
               (select floor(extract(epoch from (now() - min(created_at))) / 3600)::int from feed_posts where status = 'PENDING') as oldest`),
     q(`select kind as label, count(*)::int as value from feed_posts
-        where created_at >= ${since(days)} and source = 'member' group by 1 order by value desc`),
+        where created_at >= ${w.from} and created_at < ${w.to} and source = 'member' group by 1 order by value desc`),
     q(`select status as label, count(*)::int as value from feed_posts
-        where created_at >= ${since(days)} and source = 'member' group by 1 order by value desc`),
+        where created_at >= ${w.from} and created_at < ${w.to} and source = 'member' group by 1 order by value desc`),
     q(`select count(*) filter (where status = 'OPEN')::int as open,
-              count(*) filter (where status = 'ACTIONED' and created_at >= ${since(days)})::int as actioned
+              count(*) filter (where status = 'ACTIONED' and created_at >= ${w.from} and created_at < ${w.to})::int as actioned
          from feed_reports`),
     q(`select count(*)::int as c,
               count(*) filter (where exists (select 1 from customer_notification_states s
                                               where s.notification_id = n.id and s.read_at is not null))::int as read,
               (select count(*) from customer_push_subscriptions where active)::int as push
-         from customer_notifications n where created_at >= ${since(days)}`),
+         from customer_notifications n where created_at >= ${w.from} and created_at < ${w.to}`),
     q(`select type as label, count(*)::int as value from customer_notifications
-        where created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+        where created_at >= ${w.from} and created_at < ${w.to} group by 1 order by value desc limit 8`),
     q(`select channel || ' · ' || status as label, count(*)::int as value from notification_delivery_attempts
-        where created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+        where created_at >= ${w.from} and created_at < ${w.to} group by 1 order by value desc limit 8`),
     q(`select event_name || ' · ' || platform as label, count(*)::int as value from pwa_events
-        where created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+        where created_at >= ${w.from} and created_at < ${w.to} group by 1 order by value desc limit 8`),
   ]);
   const tv = travo[0] ?? {};
   const tm = travoMsgs[0] ?? {};
@@ -749,8 +775,9 @@ async function featuresInsight(range: InsightRange): Promise<FeaturesInsight> {
 
 const WORKER_STALE_MINUTES = 15;
 
-async function operationsInsight(range: InsightRange): Promise<OperationsInsight> {
-  const days = INSIGHT_RANGE_DAYS[range];
+async function operationsInsight(r: ResolvedRange): Promise<OperationsInsight> {
+  const w = winOf(r);
+  const days = w.days;
   const [
     sup,
     supReply,
@@ -765,25 +792,25 @@ async function operationsInsight(range: InsightRange): Promise<OperationsInsight
     unknown,
     team,
   ] = await Promise.all([
-    q(`select count(*) filter (where created_at >= ${since(days)})::int as opened,
-              count(*) filter (where created_at >= ${priorSince(days)} and created_at < ${since(days)})::int as prev,
+    q(`select count(*) filter (where created_at >= ${w.from} and created_at < ${w.to})::int as opened,
+              count(*) filter (where created_at >= ${w.pfrom} and created_at < ${w.pto})::int as prev,
               count(*) filter (where status not in ('resolved','closed'))::int as open_now,
               (select floor(extract(epoch from (now() - min(created_at))) / 86400)::int
                  from support_cases where status not in ('resolved','closed')) as oldest,
               percentile_cont(0.5) within group (order by extract(epoch from (updated_at - created_at)) / 3600)
-                filter (where status in ('resolved','closed') and created_at >= ${since(days)})::float as res_hours
+                filter (where status in ('resolved','closed') and created_at >= ${w.from} and created_at < ${w.to})::float as res_hours
          from support_cases`),
     q(`with c as (
          select sc.id, sc.created_at,
                 (select min(m.created_at) from support_case_messages m
                   where m.case_id = sc.id and m.author_type = 'admin') as replied
-           from support_cases sc where sc.created_at >= ${since(days)})
+           from support_cases sc where sc.created_at >= ${w.from} and sc.created_at < ${w.to})
        select percentile_cont(0.5) within group (order by extract(epoch from (replied - created_at)) / 60)::float as med
          from c where replied is not null`),
     q(`select category as label, count(*)::int as value from support_cases
-        where created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+        where created_at >= ${w.from} and created_at < ${w.to} group by 1 order by value desc limit 8`),
     q(`select status as label, count(*)::int as value from support_cases
-        where created_at >= ${since(days)} group by 1 order by value desc`),
+        where created_at >= ${w.from} and created_at < ${w.to} group by 1 order by value desc`),
     q(`select case when age < interval '1 day' then '< 1 hari'
                    when age < interval '3 days' then '1–3 hari'
                    when age < interval '7 days' then '3–7 hari' else '> 7 hari' end as label,
@@ -796,17 +823,17 @@ async function operationsInsight(range: InsightRange): Promise<OperationsInsight
               (select count(*) from customer_orders x where x.status = 'PROVISIONING'
                   and x.updated_at < now() - interval '30 minutes')::int as stuck,
               (select count(*) from refund_requests where status = 'REQUESTED')::int as refunds_open
-         from customer_orders o where o.created_at >= ${since(days)} and o.fulfillment_mode <> 'preorder'`),
+         from customer_orders o where o.created_at >= ${w.from} and o.created_at < ${w.to} and o.fulfillment_mode <> 'preorder'`),
     q(`select percentile_cont(0.5) within group (order by extract(epoch from (p.created_at - o.paid_at)) / 60)::float as med
          from customer_orders o
          join esim_provisioning_orders po on po.order_id = o.id
          join lateral (select min(created_at) as created_at from esim_profiles e where e.provisioning_order_id = po.id) p on true
-        where o.paid_at >= ${since(days)} and p.created_at is not null and p.created_at >= o.paid_at`),
+        where o.paid_at >= ${w.from} and o.paid_at < ${w.to} and p.created_at is not null and p.created_at >= o.paid_at`),
     q(`select worker_name as label, last_error_safe as err,
               floor(extract(epoch from (now() - last_heartbeat_at)) / 60)::int as age
          from worker_heartbeats order by worker_name`),
     q(`select status as label, count(*)::int as value from webhook_inbox
-        where received_at >= ${since(Math.max(days, 7))} group by 1 order by value desc`),
+        where received_at >= ${Math.max(days, 7) > days ? "now() - interval '7 days'" : w.from} group by 1 order by value desc`),
     q(`select count(*) filter (where status = 'queued')::int as queued,
               count(*) filter (where status = 'failed')::int as failed,
               (select count(*) from webhook_inbox where status = 'DEAD_LETTER')::int as dead
@@ -814,7 +841,7 @@ async function operationsInsight(range: InsightRange): Promise<OperationsInsight
     q(`select count(*)::int as c from payment_intents where status = 'UNKNOWN'`),
     q(`select coalesce(u.display_name, 'Sistem') as label, count(*)::int as value
          from admin_audit_logs l left join admin_users u on u.id = l.actor_id
-        where l.created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+        where l.created_at >= ${w.from} and l.created_at < ${w.to} group by 1 order by value desc limit 8`),
   ]);
   const s = sup[0] ?? {};
   const p = prov[0] ?? {};
@@ -914,26 +941,34 @@ export async function getAlertInput(): Promise<AlertInput> {
 
 export async function getAnalyticsInsightsHandler(
   tab: InsightTab,
-  range: InsightRange,
+  r: ResolvedRange,
 ): Promise<AnalyticsInsights> {
   await requireAdmin();
   const base: AnalyticsInsights = {
-    range,
+    range: r.key,
+    window: {
+      label: r.label,
+      from: r.from.toISOString(),
+      to: r.to.toISOString(),
+      granularity: r.granularity,
+      fromDay: r.fromDay,
+      toDay: r.toDay,
+    },
     tab,
     updatedAt: new Date().toISOString(),
-    since: new Date(Date.now() - INSIGHT_RANGE_DAYS[range] * 86_400_000).toISOString(),
+    since: r.from.toISOString(),
     alerts: [],
   };
   // Alerts never block a tab: a failing alert query just yields an empty list.
   const alerts = guarded("alerts", async () => evaluateAlerts(await getAlertInput()));
-  if (tab === "pengguna") base.users = await guarded("users", () => usersInsight(range));
-  if (tab === "funnel") base.funnel = await guarded("funnel", () => funnelInsight(range));
-  if (tab === "pendapatan") base.revenue = await guarded("revenue", () => revenueInsight(range));
+  if (tab === "pengguna") base.users = await guarded("users", () => usersInsight(r));
+  if (tab === "funnel") base.funnel = await guarded("funnel", () => funnelInsight(r));
+  if (tab === "pendapatan") base.revenue = await guarded("revenue", () => revenueInsight(r));
   if (tab === "destinasi")
-    base.destinations = await guarded("destinations", () => destinationInsight(range));
-  if (tab === "fitur") base.features = await guarded("features", () => featuresInsight(range));
+    base.destinations = await guarded("destinations", () => destinationInsight(r));
+  if (tab === "fitur") base.features = await guarded("features", () => featuresInsight(r));
   if (tab === "operasional")
-    base.operations = await guarded("operations", () => operationsInsight(range));
+    base.operations = await guarded("operations", () => operationsInsight(r));
   base.alerts = (await alerts).data ?? [];
   return base;
 }

@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { RANGE_KEYS, resolveRange } from "./date-range";
 
 export const getAdminCustomers = createServerFn({ method: "GET" })
   .validator(
@@ -24,10 +26,18 @@ export const exportAdminCustomers = createServerFn({ method: "POST" })
     return exportAdminCustomersHandler({ data });
   });
 
-export const getAdminCustomerGrowth = createServerFn({ method: "GET" }).handler(async () => {
-  const { getAdminCustomerGrowthHandler } = await import("./admin-customers.server");
-  return getAdminCustomerGrowthHandler();
-});
+export const getAdminCustomerGrowth = createServerFn({ method: "GET" })
+  .validator(
+    z.object({
+      range: z.enum(RANGE_KEYS),
+      from: z.string().optional(),
+      to: z.string().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { getAdminCustomerGrowthHandler } = await import("./admin-customers.server");
+    return getAdminCustomerGrowthHandler(resolveRange(data, "30h"));
+  });
 
 export const getAdminCustomerDetail = createServerFn({ method: "GET" })
   .validator(

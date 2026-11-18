@@ -1,30 +1,14 @@
 import { pool } from "../db/client.server";
 import { requireAdmin } from "./admin-guard";
 import { AI_REFERRER_HOSTS, channelFor } from "./traffic-census";
-import type { Named, Point, TrafficDashboard, TrafficRange } from "./traffic-dashboard";
+import type { Named, Point, TrafficDashboard } from "./traffic-dashboard";
+import { sqlTs, type ResolvedRange } from "./date-range";
 
 type Row = Record<string, unknown>;
 const n = (v: unknown) => Number(v ?? 0) || 0;
 const TZ = "Asia/Jakarta";
 const PAID_ESIM = `(o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))`;
 const AI_HOSTS_SQL = `(${AI_REFERRER_HOSTS.map((h) => `'${h}'`).join(",")})`;
-
-/** Window start and bucket size for a range. Values are fixed strings, never user input. */
-function windowFor(range: TrafficRange) {
-  if (range === "24j")
-    return { since: `now() - interval '24 hours'`, unit: "hour", step: "1 hour", fmt: "HH24:00" };
-  const days = range === "7h" ? 6 : range === "30h" ? 29 : 364;
-  const base = `(date_trunc('day', now() at time zone '${TZ}') - interval '${days} days') at time zone '${TZ}'`;
-  const since =
-    range === "all"
-      ? `greatest(least(
-           (select coalesce(min(created_at), now()) from site_events),
-           (select coalesce(min(created_at), now()) from traffic_bot_hits),
-           (select coalesce(min(created_at), now()) from customer_orders),
-           (select coalesce(min(created_at), now()) from shopping_orders)), ${base})`
-      : base;
-  return { since, unit: "day", step: "1 day", fmt: "DD Mon" };
-}
 
 function named(rows: Row[], label = "label", value = "value", tag?: string): Named[] {
   return rows.map((r) => ({
@@ -35,14 +19,21 @@ function named(rows: Row[], label = "label", value = "value", tag?: string): Nam
 }
 
 export async function getTrafficDashboardHandler(
-  range: TrafficRange,
+  range: ResolvedRange,
 ): Promise<TrafficDashboard | null> {
   await requireAdmin();
-  const w = windowFor(range);
-  const SINCE = `(select ${w.since})`;
+  const w = {
+    unit: range.granularity,
+    step: `1 ${range.granularity}`,
+    fmt: range.granularity === "hour" ? "HH24:00" : "DD Mon",
+  };
+  const SINCE = sqlTs(range.from);
+  const UNTIL = sqlTs(range.to);
+  const PREV_SINCE = sqlTs(range.prevFrom);
+  const PREV_UNTIL = sqlTs(range.prevTo);
   const bucketSeries = `generate_series(
       date_trunc('${w.unit}', ${SINCE} at time zone '${TZ}'),
-      date_trunc('${w.unit}', now() at time zone '${TZ}'), interval '${w.step}')`;
+      date_trunc('${w.unit}', (${UNTIL} - interval '1 second') at time zone '${TZ}'), interval '${w.step}')`;
   const q = (text: string, params: unknown[] = []) =>
     pool.query(text, params).then((r) => r.rows as Row[]);
   const series = (table: "e" | "b", where: string, extra = "") =>
@@ -51,7 +42,7 @@ export async function getTrafficDashboardHandler(
        select to_char(b.bucket, '${w.fmt}') as label, count(x.*)::int as value
        from b left join ${table === "e" ? "site_events" : "traffic_bot_hits"} x
          on date_trunc('${w.unit}', x.created_at at time zone '${TZ}') = b.bucket
-        and x.created_at >= ${SINCE} ${extra} and ${where}
+        and x.created_at >= ${SINCE} and created_at < ${UNTIL} ${extra} and ${where}
        group by b.bucket order by b.bucket`,
     );
 
@@ -137,55 +128,55 @@ export async function getTrafficDashboardHandler(
       q(`${sales}
          select to_char(b.bucket, '${w.fmt}') as label, coalesce(sum(s.amount),0)::numeric as value
          from (select s as bucket from ${bucketSeries} s) b
-         left join sales s on date_trunc('${w.unit}', s.at at time zone '${TZ}') = b.bucket and s.at >= ${SINCE}
+         left join sales s on date_trunc('${w.unit}', s.at at time zone '${TZ}') = b.bucket and s.at >= ${SINCE} and s.at < ${UNTIL}
          group by b.bucket order by b.bucket`),
       q(
-        `select path as label, count(*)::int as value from site_events where event_name='page_view' and created_at >= ${SINCE} group by path order by value desc, path limit 8`,
+        `select path as label, count(*)::int as value from site_events where event_name='page_view' and created_at >= ${SINCE} and created_at < ${UNTIL} group by path order by value desc, path limit 8`,
       ),
       q(
-        `select coalesce(nullif(referrer_host,''), nullif(utm_source,''), '(langsung)') as label, count(*)::int as value from site_events where event_name='page_view' and created_at >= ${SINCE} group by 1 order by value desc, label limit 7`,
+        `select coalesce(nullif(referrer_host,''), nullif(utm_source,''), '(langsung)') as label, count(*)::int as value from site_events where event_name='page_view' and created_at >= ${SINCE} and created_at < ${UNTIL} group by 1 order by value desc, label limit 7`,
       ),
       q(
-        `select device as label, count(distinct session_id)::int as value from site_events where event_name='page_view' and created_at >= ${SINCE} group by device order by value desc`,
+        `select device as label, count(distinct session_id)::int as value from site_events where event_name='page_view' and created_at >= ${SINCE} and created_at < ${UNTIL} group by device order by value desc`,
       ),
       q(
-        `select bot as label, count(*)::int as value from traffic_bot_hits where kind='ai_answer' and created_at >= ${SINCE} group by bot order by value desc limit 6`,
+        `select bot as label, count(*)::int as value from traffic_bot_hits where kind='ai_answer' and created_at >= ${SINCE} and created_at < ${UNTIL} group by bot order by value desc limit 6`,
       ),
       q(
-        `select path as label, count(*)::int as value from traffic_bot_hits where kind='ai_answer' and created_at >= ${SINCE} group by path order by value desc, path limit 8`,
+        `select path as label, count(*)::int as value from traffic_bot_hits where kind='ai_answer' and created_at >= ${SINCE} and created_at < ${UNTIL} group by path order by value desc, path limit 8`,
       ),
       q(
-        `select bot as label, count(*)::int as value, kind as tag from traffic_bot_hits where kind in ('ai_crawl','ai_train','search_engine') and created_at >= ${SINCE} group by bot, kind order by value desc limit 10`,
+        `select bot as label, count(*)::int as value, kind as tag from traffic_bot_hits where kind in ('ai_crawl','ai_train','search_engine') and created_at >= ${SINCE} and created_at < ${UNTIL} group by bot, kind order by value desc limit 10`,
       ),
       q(
-        `select count(*) filter (where kind='ai_answer')::int as ai_answers, count(*) filter (where kind='ai_crawl')::int as ai_crawl, count(*) filter (where kind='ai_train')::int as ai_train, count(*) filter (where kind='search_engine')::int as search_engine from traffic_bot_hits where created_at >= ${SINCE}`,
+        `select count(*) filter (where kind='ai_answer')::int as ai_answers, count(*) filter (where kind='ai_crawl')::int as ai_crawl, count(*) filter (where kind='ai_train')::int as ai_train, count(*) filter (where kind='search_engine')::int as search_engine from traffic_bot_hits where created_at >= ${SINCE} and created_at < ${UNTIL}`,
       ),
       q(
-        `select count(distinct session_id)::int as v from site_events where event_name='page_view' and referrer_host in ${AI_HOSTS_SQL} and created_at >= ${SINCE}`,
+        `select count(distinct session_id)::int as v from site_events where event_name='page_view' and referrer_host in ${AI_HOSTS_SQL} and created_at >= ${SINCE} and created_at < ${UNTIL}`,
       ),
       q(
-        `select count(*)::int as v from traffic_bot_hits where kind='unknown_bot' and created_at >= ${SINCE}`,
+        `select count(*)::int as v from traffic_bot_hits where kind='unknown_bot' and created_at >= ${SINCE} and created_at < ${UNTIL}`,
       ),
       q(
-        `${sales} select coalesce(sum(amount),0)::numeric as revenue, count(*)::int as orders from sales where at >= ${SINCE}`,
+        `${sales} select coalesce(sum(amount),0)::numeric as revenue, count(*)::int as orders from sales where at >= ${SINCE} and at < ${UNTIL}`,
       ),
       q(
-        `${sales} select coalesce(sum(amount),0)::numeric as revenue, count(*)::int as orders from sales where at >= ${SINCE} - (now() - ${SINCE}) and at < ${SINCE}`,
+        `${sales} select coalesce(sum(amount),0)::numeric as revenue, count(*)::int as orders from sales where at >= ${PREV_SINCE} and at < ${PREV_UNTIL}`,
       ),
       q(`select
-           (select count(distinct session_id) from site_events where event_name='page_view' and created_at >= ${SINCE})::int as visitors,
-           (select count(distinct session_id) from site_events where created_at >= ${SINCE} and (event_name in ('destination_view','finder_submit') or (event_name='page_view' and (path like '/plan/%' or path like '/destination/%' or path like '/titip-belanja%'))))::int as browsed,
-           (select count(distinct session_id) from site_events where event_name='checkout_start' and created_at >= ${SINCE})::int as checkout`),
+           (select count(distinct session_id) from site_events where event_name='page_view' and created_at >= ${SINCE} and created_at < ${UNTIL})::int as visitors,
+           (select count(distinct session_id) from site_events where created_at >= ${SINCE} and created_at < ${UNTIL} and (event_name in ('destination_view','finder_submit') or (event_name='page_view' and (path like '/plan/%' or path like '/destination/%' or path like '/titip-belanja%'))))::int as browsed,
+           (select count(distinct session_id) from site_events where event_name='checkout_start' and created_at >= ${SINCE} and created_at < ${UNTIL})::int as checkout`),
       q(
-        `${sales} select product as label, coalesce(sum(amount),0)::numeric as value, count(*)::int as orders from sales where at >= ${SINCE} group by product order by value desc`,
+        `${sales} select product as label, coalesce(sum(amount),0)::numeric as value, count(*)::int as orders from sales where at >= ${SINCE} and at < ${UNTIL} group by product order by value desc`,
       ),
       q(`${sales} select coalesce(nullif(e.utm_source,''), nullif(e.referrer_host,''), case when e.id is null then 'Tidak terlacak' else '(langsung)' end) as label,
                 sum(s.amount)::numeric as value, count(*)::int as orders
            from sales s left join site_events e on e.event_name='order_start' and e.target = s.id
-          where s.at >= ${SINCE} group by 1 order by value desc limit 7`),
+          where s.at >= ${SINCE} and s.at < ${UNTIL} group by 1 order by value desc limit 7`),
       q(`${sales} select coalesce(e.path, 'Tidak terlacak') as label, sum(s.amount)::numeric as value, count(*)::int as orders
            from sales s left join site_events e on e.event_name='order_start' and e.target = s.id
-          where s.at >= ${SINCE} group by 1 order by value desc limit 6`),
+          where s.at >= ${SINCE} and s.at < ${UNTIL} group by 1 order by value desc limit 6`),
       q(`${sales} select s.at::text as at, s.label, s.status, s.amount::numeric as amount,
                 coalesce(nullif(e.utm_source,''), nullif(e.referrer_host,''), case when e.id is null then 'Tidak terlacak' else '(langsung)' end) as source
            from sales s left join site_events e on e.event_name='order_start' and e.target = s.id
@@ -201,7 +192,7 @@ export async function getTrafficDashboardHandler(
 
     const channelTotals = new Map<string, number>();
     for (const r of await q(
-      `select referrer_host, utm_source, count(distinct session_id)::int as v from site_events where event_name='page_view' and created_at >= ${SINCE} group by 1, 2`,
+      `select referrer_host, utm_source, count(distinct session_id)::int as v from site_events where event_name='page_view' and created_at >= ${SINCE} and created_at < ${UNTIL} group by 1, 2`,
     )) {
       const c = channelFor(r["referrer_host"] as string | null, r["utm_source"] as string | null);
       channelTotals.set(c, (channelTotals.get(c) ?? 0) + n(r["v"]));
@@ -230,7 +221,15 @@ export async function getTrafficDashboardHandler(
         orders: n(r["orders"]),
       }));
     return {
-      range,
+      range: range.key,
+      window: {
+        label: range.label,
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+        granularity: range.granularity,
+        fromDay: range.fromDay,
+        toDay: range.toDay,
+      },
       updatedAt: new Date().toISOString(),
       since: since[0] ? String(since[0]["v"]) : null,
       live: { online: n(live[0]?.["v"]), paths: named(livePaths) },

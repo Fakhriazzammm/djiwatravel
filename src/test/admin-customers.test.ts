@@ -17,6 +17,7 @@ import {
   getAdminCustomerGrowthHandler,
   getAdminCustomersHandler,
 } from "@/lib/admin-customers.server";
+import { resolveRange } from "@/lib/date-range";
 import {
   avatarTone,
   customerCsvRows,
@@ -166,9 +167,9 @@ describe("Admin customer export and growth", () => {
     expect(csv[1]).toContain("person@example.com");
   });
 
-  it("builds growth numbers from aggregates only", async () => {
+  it("builds range-aware growth numbers from aggregates only", async () => {
     pool.query
-      .mockResolvedValueOnce({ rows: [{ day: "2026-11-01", bought: 1, rest: 4 }] })
+      .mockResolvedValueOnce({ rows: [{ label: "01 Nov", bought: 1, rest: 4 }] })
       .mockResolvedValueOnce({ rows: [{ month: "2026-11", total: 5, bought: 1 }] })
       .mockResolvedValueOnce({
         rows: [
@@ -182,8 +183,10 @@ describe("Admin customer export and growth", () => {
             trips: 2,
             shopping: 1,
             feeds: 0,
-            active7: 4,
-            active30: 6,
+            prev_new: 5,
+            active_in: 6,
+            all_people: 40,
+            all_members: 30,
           },
         ],
       })
@@ -200,15 +203,20 @@ describe("Admin customer export and growth", () => {
       })
       .mockResolvedValueOnce({ rows: [{ subject: "b", display_name: null, email: "b@x.id" }] })
       .mockResolvedValueOnce({ rows: [] });
-    const growth = await getAdminCustomerGrowthHandler();
+    const range = resolveRange({ range: "kustom", from: "2026-11-01", to: "2026-11-10" });
+    const growth = await getAdminCustomerGrowthHandler(range);
     expect(growth.funnel.map((step) => step.count)).toEqual([10, 6, 4, 3, 1]);
-    expect(growth.daily).toEqual([{ day: "2026-11-01", bought: 1, rest: 4 }]);
+    expect(growth.daily).toEqual([{ label: "01 Nov", bought: 1, rest: 4 }]);
+    expect(growth.kpi).toMatchObject({ newPeople: 10, previousNewPeople: 5, activeInRange: 6 });
+    expect(growth.window).toMatchObject({ fromDay: "2026-11-01", toDay: "2026-11-10" });
     expect(growth.topSpenders[0]).toMatchObject({
       name: "Rani",
       note: expect.stringContaining("2 pembayaran"),
     });
     expect(growth.neverOrdered[0]!.name).toBe("b@x.id");
-    expect(growth.active30).toBe(6);
+    // The window is bound as a validated timestamp literal, never raw text from the browser.
+    const sql = String(pool.query.mock.calls[0]![0]);
+    expect(sql).toContain("timestamptz '2026-10-31T17:00:00.000Z'");
   });
 
   it("formats display helpers", () => {

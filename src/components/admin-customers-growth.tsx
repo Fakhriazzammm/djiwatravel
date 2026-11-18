@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { CountUp, GrowBar, Reveal, useInView, useReducedMotion } from "@/components/admin-motion";
+import { changePct } from "@/lib/date-range";
 import type { AdminCustomerGrowth, GrowthPerson } from "@/lib/admin-customers.server";
 import { avatarTone, sharePct } from "@/lib/admin-customers-view";
 import { formatAdminDateTime } from "@/lib/admin-display";
@@ -9,13 +11,13 @@ const MONO = "font-mono text-[9.5px] font-semibold uppercase tracking-wider text
 
 function Block({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <section className="border border-border bg-card p-3">
+    <Reveal className="border border-border bg-card p-3 transition-colors hover:border-foreground/25">
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <h3 className={MONO}>{title}</h3>
         {hint && <p className="truncate text-[10.5px] text-muted-foreground">{hint}</p>}
       </div>
       {children}
-    </section>
+    </Reveal>
   );
 }
 
@@ -37,7 +39,7 @@ function Bar({
         <b className="shrink-0 tabular-nums">{num(value)}</b>
       </div>
       <div className="mt-1 h-1.5 bg-secondary">
-        <div className="h-1.5 bg-[#1d4ed8]" style={{ width: `${Math.max(pct, value ? 1 : 0)}%` }} />
+        <GrowBar percent={Math.max(pct, value ? 1 : 0)} className="h-1.5 bg-[#1d4ed8]" />
       </div>
       {note && <p className="mt-0.5 text-[10.5px] text-muted-foreground">{note}</p>}
     </li>
@@ -46,31 +48,80 @@ function Bar({
 
 function DailyChart({ daily }: { daily: AdminCustomerGrowth["daily"] }) {
   const max = Math.max(...daily.map((d) => d.bought + d.rest), 1);
+  const [ref, seen] = useInView<HTMLDivElement>();
+  const reduced = useReducedMotion();
+  const [hover, setHover] = useState<number | null>(null);
+  const shown = seen || reduced;
+  const step = Math.max(1, Math.ceil(daily.length / 8));
+  const current = hover === null ? null : daily[hover];
   return (
     <div>
       <div
-        className="flex h-28 items-end gap-[2px] border-b border-border"
-        role="img"
-        aria-label={`Pendaftar baru per hari, ${daily.length} hari`}
+        ref={ref}
+        className="relative"
+        onPointerLeave={() => setHover(null)}
+        onBlur={() => setHover(null)}
       >
-        {daily.map((d) => {
-          const total = d.bought + d.rest;
-          return (
-            <div
-              key={d.day}
-              title={`${d.day}: ${total} baru, ${d.bought} sudah membayar`}
-              className="flex h-full min-w-0 flex-1 flex-col justify-end"
-            >
-              <div className="bg-[#d4d4d8]" style={{ height: `${(d.rest / max) * 100}%` }} />
-              <div className="bg-[#166534]" style={{ height: `${(d.bought / max) * 100}%` }} />
-            </div>
-          );
-        })}
+        <div
+          className="flex h-32 items-end gap-[2px] border-b border-border"
+          role="img"
+          aria-label={`Pendaftar baru, ${daily.length} titik`}
+        >
+          {daily.map((d, index) => {
+            const total = d.bought + d.rest;
+            return (
+              <button
+                key={`${d.label}-${index}`}
+                type="button"
+                aria-label={`${d.label}: ${total} baru, ${d.bought} sudah membayar`}
+                onPointerEnter={() => setHover(index)}
+                onFocus={() => setHover(index)}
+                className={`flex h-full min-w-0 flex-1 flex-col justify-end outline-none transition-opacity focus-visible:ring-1 focus-visible:ring-brand-red ${hover !== null && hover !== index ? "opacity-45" : ""}`}
+              >
+                <span
+                  className="bg-[#d4d4d8]"
+                  style={{
+                    height: shown ? `${(d.rest / max) * 100}%` : "0%",
+                    transition: reduced
+                      ? "none"
+                      : `height 650ms cubic-bezier(0.22,1,0.36,1) ${Math.min(index * 12, 500)}ms`,
+                  }}
+                />
+                <span
+                  className="bg-[#166534]"
+                  style={{
+                    height: shown ? `${(d.bought / max) * 100}%` : "0%",
+                    transition: reduced
+                      ? "none"
+                      : `height 650ms cubic-bezier(0.22,1,0.36,1) ${Math.min(index * 12, 500)}ms`,
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
+        {current && (
+          <span
+            role="status"
+            className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap border border-border bg-card px-2 py-1 font-mono text-[10px] shadow-sm"
+            style={{
+              left: `${Math.min(88, Math.max(12, (((hover ?? 0) + 0.5) / daily.length) * 100))}%`,
+            }}
+          >
+            <b>{current.bought + current.rest}</b> baru · {current.bought} membayar{" "}
+            <span className="text-muted-foreground">{current.label}</span>
+          </span>
+        )}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-        <span>{daily[0]?.day.slice(5) ?? ""}</span>
-        <span>puncak {num(max)}/hari</span>
-        <span>{daily.at(-1)?.day.slice(5) ?? ""}</span>
+      <div className="mt-1 flex gap-[2px]">
+        {daily.map((d, index) => (
+          <span
+            key={`${d.label}-${index}`}
+            className="min-w-0 flex-1 truncate text-center text-[9px] text-muted-foreground"
+          >
+            {index % step === 0 ? d.label : ""}
+          </span>
+        ))}
       </div>
       <p className="mt-1.5 flex gap-3 text-[10.5px] text-muted-foreground">
         <span>
@@ -81,6 +132,7 @@ function DailyChart({ daily }: { daily: AdminCustomerGrowth["daily"] }) {
           <i className="mr-1 inline-block size-2 bg-[#d4d4d8]" />
           Belum membayar
         </span>
+        <span className="ml-auto">puncak {num(max)}</span>
       </p>
     </div>
   );
@@ -124,49 +176,83 @@ function People({ people, empty }: { people: GrowthPerson[]; empty: string }) {
   );
 }
 
+function Kpi({
+  label,
+  value,
+  hint,
+  delta,
+}: {
+  label: string;
+  value: number;
+  hint: ReactNode;
+  delta?: number | null;
+}) {
+  return (
+    <div className="px-3 py-2 transition-colors hover:bg-secondary/40">
+      <p className={MONO}>{label}</p>
+      <p className="text-base font-semibold tabular-nums">
+        <CountUp value={value} />
+        {delta !== undefined && delta !== null && (
+          <span
+            className={`ml-1.5 text-[10.5px] font-medium ${delta < 0 ? "text-destructive" : "text-emerald-600"}`}
+          >
+            {delta < 0 ? "▼" : "▲"} {Math.abs(delta)}%
+          </span>
+        )}
+      </p>
+      <p className="truncate text-[10.5px] text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
 export function CustomerGrowth({ data }: { data: AdminCustomerGrowth }) {
-  const everyone = data.funnel[0]?.count ?? 0;
+  const cohort = data.funnel[0]?.count ?? 0;
   const maxMonth = Math.max(...data.monthly.map((m) => m.total), 1);
+  const k = data.kpi;
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 border border-border bg-card sm:grid-cols-4 sm:divide-x sm:divide-border">
-        {[
-          ["Dikenal sistem", num(everyone), `${num(data.members)} member`],
-          [
-            "Aktif 7 hari",
-            num(data.active7),
-            `${sharePct(data.active7, everyone) ?? 0}% dari semua`,
-          ],
-          [
-            "Aktif 30 hari",
-            num(data.active30),
-            `${sharePct(data.active30, everyone) ?? 0}% dari semua`,
-          ],
-          [
-            "Pernah membayar",
-            num(data.funnel[3]?.count ?? 0),
-            `${sharePct(data.funnel[3]?.count ?? 0, everyone) ?? 0}% dari semua`,
-          ],
-        ].map(([label, value, hint]) => (
-          <div key={label} className="px-3 py-2">
-            <p className={MONO}>{label}</p>
-            <p className="text-base font-semibold tabular-nums">{value}</p>
-            <p className="text-[10.5px] text-muted-foreground">{hint}</p>
-          </div>
-        ))}
-      </div>
+      <Reveal className="grid grid-cols-2 border border-border bg-card sm:grid-cols-4 sm:divide-x sm:divide-border">
+        <Kpi
+          label="Pelanggan baru"
+          value={k.newPeople}
+          delta={changePct(k.newPeople, k.previousNewPeople)}
+          hint={`${data.window.label} · vs periode sebelumnya`}
+        />
+        <Kpi
+          label="Sudah membayar"
+          value={k.newBuyers}
+          hint={`${sharePct(k.newBuyers, k.newPeople) ?? 0}% dari pelanggan baru`}
+        />
+        <Kpi
+          label="Aktif dalam rentang"
+          value={k.activeInRange}
+          hint="aktivitas terakhir di rentang ini"
+        />
+        <Kpi label="Total dikenal" value={k.everyone} hint={`${num(k.members)} member`} />
+      </Reveal>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <Block title="Pendaftar baru per hari" hint="60 hari terakhir">
-          {data.daily.length ? (
+        <Block
+          title={
+            data.window.granularity === "hour"
+              ? "Pendaftar baru per jam"
+              : "Pendaftar baru per hari"
+          }
+          hint={
+            data.window.fromDay === data.window.toDay
+              ? data.window.fromDay
+              : `${data.window.fromDay} s/d ${data.window.toDay}`
+          }
+        >
+          {data.daily.some((d) => d.bought + d.rest > 0) ? (
             <DailyChart daily={data.daily} />
           ) : (
             <p className="py-6 text-center text-[11px] text-muted-foreground">
-              Belum ada pelanggan baru di 60 hari terakhir.
+              Belum ada pelanggan baru pada rentang ini.
             </p>
           )}
         </Block>
-        <Block title="Pendaftar per bulan" hint="termasuk yang sudah membayar">
+        <Block title="Pendaftar per bulan" hint="12 bulan terakhir">
           <ul className="space-y-2">
             {data.monthly.map((m) => (
               <Bar
@@ -187,7 +273,7 @@ export function CustomerGrowth({ data }: { data: AdminCustomerGrowth }) {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <Block title="Corong pelanggan" hint="dari dikenal sampai beli ulang">
+        <Block title="Corong pelanggan" hint="pendaftar dalam rentang">
           <ul className="space-y-2">
             {data.funnel.map((step, index) => {
               const prev = data.funnel[index - 1]?.count ?? 0;
@@ -197,22 +283,26 @@ export function CustomerGrowth({ data }: { data: AdminCustomerGrowth }) {
                   key={step.label}
                   label={step.label}
                   value={step.count}
-                  pct={(step.count / Math.max(everyone, 1)) * 100}
-                  note={fromPrev === null ? "semua orang" : `${fromPrev}% dari langkah sebelumnya`}
+                  pct={(step.count / Math.max(cohort, 1)) * 100}
+                  note={
+                    fromPrev === null
+                      ? "semua pendaftar di rentang ini"
+                      : `${fromPrev}% dari langkah sebelumnya`
+                  }
                 />
               );
             })}
           </ul>
         </Block>
-        <Block title="Fitur yang dipakai" hint={`dari ${num(data.members)} member`}>
+        <Block title="Fitur yang dipakai" hint={`dari ${num(data.cohortMembers)} member baru`}>
           <ul className="space-y-2">
             {data.features.map((feature) => (
               <Bar
                 key={feature.label}
                 label={feature.label}
                 value={feature.count}
-                pct={sharePct(feature.count, data.members) ?? 0}
-                note={`${sharePct(feature.count, data.members) ?? 0}% member`}
+                pct={sharePct(feature.count, data.cohortMembers) ?? 0}
+                note={`${sharePct(feature.count, data.cohortMembers) ?? 0}% member baru`}
               />
             ))}
           </ul>
@@ -220,11 +310,11 @@ export function CustomerGrowth({ data }: { data: AdminCustomerGrowth }) {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
-        <Block title="Belanja terbesar" hint={`${data.topSpenders.length} teratas`}>
+        <Block title="Belanja terbesar" hint="sepanjang waktu">
           <People people={data.topSpenders} empty="Belum ada pembayaran." />
         </Block>
-        <Block title="Belum pernah memesan" hint="member lebih dari 2 hari">
-          <People people={data.neverOrdered} empty="Semua member sudah memesan." />
+        <Block title="Belum pernah memesan" hint="member baru di rentang ini">
+          <People people={data.neverOrdered} empty="Semua member baru sudah memesan." />
         </Block>
         <Block title="Hampir pergi" hint="pernah membayar, sepi 60+ hari">
           <People people={data.slipping} empty="Tidak ada saat ini." />

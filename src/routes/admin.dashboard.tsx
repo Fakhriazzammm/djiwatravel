@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminDashboard } from "@/lib/admin-read-model.fn";
 import { getAdminAlerts } from "@/lib/analytics-insights.fn";
 import { getTrafficDashboard } from "@/lib/traffic-dashboard.fn";
-import { TRAFFIC_RANGES } from "@/lib/traffic-dashboard";
+import { RANGE_KEYS, parseDay } from "@/lib/date-range";
 import { TrafficPanel, type DashboardAlert } from "@/components/admin-traffic-panel";
 import { AdminShell } from "@/components/admin-shell";
 
@@ -15,12 +15,20 @@ const LOW_BALANCE_USD = 5;
 export const Route = createFileRoute("/admin/dashboard")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
-  validateSearch: z.object({ range: z.enum(TRAFFIC_RANGES).default("24j") }),
-  loaderDeps: ({ search }) => ({ range: search.range }),
+  validateSearch: z.object({
+    range: z.enum(RANGE_KEYS).catch("24j").default("24j"),
+    from: z.string().optional().catch(undefined),
+    to: z.string().optional().catch(undefined),
+  }),
+  loaderDeps: ({ search }) => ({
+    range: search.range,
+    from: parseDay(search.from) === null ? undefined : search.from,
+    to: parseDay(search.to) === null ? undefined : search.to,
+  }),
   loader: async ({ deps }) => {
     const [ops, census, insightAlerts] = await Promise.all([
       getAdminDashboard({ data: { period: "daily" } }),
-      getTrafficDashboard({ data: { range: deps.range } }),
+      getTrafficDashboard({ data: deps }),
       getAdminAlerts(),
     ]);
     return { provider: ops.providerBalance, census, insightAlerts };
@@ -30,7 +38,7 @@ export const Route = createFileRoute("/admin/dashboard")({
 
 function AdminDashboard() {
   const { provider, census, insightAlerts } = Route.useLoaderData();
-  const { range } = Route.useSearch();
+  const { range, from, to } = Route.useSearch();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const alerts: DashboardAlert[] = [];
@@ -82,7 +90,12 @@ function AdminDashboard() {
           />
         </button>
       </div>
-      <TrafficPanel data={census} range={range} alerts={alerts} providerLabel={providerLabel} />
+      <TrafficPanel
+        data={census}
+        range={{ range, from, to }}
+        alerts={alerts}
+        providerLabel={providerLabel}
+      />
     </AdminShell>
   );
 }

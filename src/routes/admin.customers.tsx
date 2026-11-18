@@ -30,6 +30,8 @@ import { AdminShell } from "@/components/admin-shell";
 import { CustomerGrowth } from "@/components/admin-customers-growth";
 import { formatAdminDateTime } from "@/lib/admin-display";
 import { toCsv } from "@/lib/analytics-insights";
+import { AdminRangePicker } from "@/components/admin-range-picker";
+import { RANGE_KEYS, parseDay, type RangeKey } from "@/lib/date-range";
 
 const MONO = "font-mono text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground";
 const KIND_LABEL: Record<AdminCustomerKind, string> = {
@@ -61,12 +63,27 @@ export const Route = createFileRoute("/admin/customers")({
         "active",
       ),
       page: Number.isInteger(page) && page >= 1 ? page : 1,
+      range: pick<RangeKey>(search["range"], RANGE_KEYS, "30h"),
+      from:
+        typeof search["from"] === "string" && parseDay(search["from"]) !== null
+          ? search["from"]
+          : undefined,
+      to:
+        typeof search["to"] === "string" && parseDay(search["to"]) !== null
+          ? search["to"]
+          : undefined,
     };
   },
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
-    if (deps.tab === "analisis") return { list: null, growth: await getAdminCustomerGrowth() };
-    const { tab: _tab, ...filters } = deps;
+    if (deps.tab === "analisis")
+      return {
+        list: null,
+        growth: await getAdminCustomerGrowth({
+          data: { range: deps.range, from: deps.from, to: deps.to },
+        }),
+      };
+    const { tab: _tab, range: _range, from: _from, to: _to, ...filters } = deps;
     return { list: await getAdminCustomers({ data: filters }), growth: null };
   },
   component: AdminCustomers,
@@ -164,16 +181,25 @@ function AdminCustomers() {
               </Link>
             ))}
           </nav>
-          <button
-            type="button"
-            aria-label="Muat ulang pelanggan"
-            disabled={busy === "refresh"}
-            onClick={refresh}
-            className="inline-flex min-h-9 items-center gap-1.5 border border-border px-2.5 font-mono text-[11.5px] hover:bg-secondary disabled:opacity-60"
-          >
-            <RefreshCw className={`size-3.5 ${busy === "refresh" ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Muat ulang</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {search.tab === "analisis" && (
+              <AdminRangePicker
+                to="/admin/customers"
+                search={{ tab: "analisis" }}
+                value={{ range: search.range, from: search.from, to: search.to }}
+              />
+            )}
+            <button
+              type="button"
+              aria-label="Muat ulang pelanggan"
+              disabled={busy === "refresh"}
+              onClick={refresh}
+              className="inline-flex min-h-9 items-center gap-1.5 border border-border px-2.5 font-mono text-[11.5px] hover:bg-secondary disabled:opacity-60"
+            >
+              <RefreshCw className={`size-3.5 ${busy === "refresh" ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Muat ulang</span>
+            </button>
+          </div>
         </div>
 
         {growth && <CustomerGrowth data={growth} />}

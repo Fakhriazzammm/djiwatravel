@@ -7,12 +7,8 @@ import {
   TrafficSplit,
   rupiahShort,
 } from "@/components/admin-traffic-parts";
-import {
-  TRAFFIC_RANGES,
-  TRAFFIC_RANGE_LABEL,
-  type TrafficDashboard,
-  type TrafficRange,
-} from "@/lib/traffic-dashboard";
+import type { TrafficDashboard } from "@/lib/traffic-dashboard";
+import { AdminRangePicker, type RangeValue } from "@/components/admin-range-picker";
 import { channelPercent } from "@/lib/traffic-view";
 import { formatRupiah, percentChange } from "@/lib/admin-dashboard-metrics";
 import { BOT_KIND_LABEL, clickThroughPer100, type BotKind } from "@/lib/traffic-census";
@@ -87,7 +83,7 @@ export function TrafficPanel({
   providerLabel,
 }: {
   data: TrafficDashboard | null;
-  range: TrafficRange;
+  range: RangeValue;
   alerts: DashboardAlert[];
   providerLabel: string;
 }) {
@@ -98,7 +94,7 @@ export function TrafficPanel({
       </Block>
     );
   }
-  const label = TRAFFIC_RANGE_LABEL[range];
+  const label = data.window.label;
   const s = data.sales;
   const funnelMax = Math.max(...s.funnel.map((f) => f.value), 1);
   const ctr = clickThroughPer100(data.kinds.aiClicks, data.kinds.aiAnswers);
@@ -113,21 +109,9 @@ export function TrafficPanel({
   ].filter((a) => a.n === null || a.n > 0);
 
   return (
-    <div key={range}>
+    <div key={`${range.range}${range.from ?? ""}${range.to ?? ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <nav className="inline-flex border border-border" aria-label="Rentang waktu">
-          {TRAFFIC_RANGES.map((r) => (
-            <Link
-              key={r}
-              to="/admin/dashboard"
-              search={{ range: r } as never}
-              aria-current={r === range ? "page" : undefined}
-              className={`px-3 py-1.5 ${MONO} ${r === range ? "bg-foreground text-background" : ""}`}
-            >
-              {TRAFFIC_RANGE_LABEL[r]}
-            </Link>
-          ))}
-        </nav>
+        <AdminRangePicker to="/admin/dashboard" search={{}} value={range} />
         <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <span className="size-1.5 animate-pulse rounded-full bg-emerald-600" aria-hidden="true" />
           <b className="text-foreground">{data.live.online} online</b> · saldo provider{" "}
@@ -154,12 +138,18 @@ export function TrafficPanel({
           value={s.revenue}
           format={formatRupiah}
           label="Pendapatan terbayar"
-          hint={range === "all" ? undefined : <Delta now={s.revenue} before={s.previousRevenue} />}
+          hint={
+            range.range === "semua" ? undefined : (
+              <Delta now={s.revenue} before={s.previousRevenue} />
+            )
+          }
         />
         <Stat
           value={s.orders}
           label="Pesanan dibayar"
-          hint={range === "all" ? undefined : <Delta now={s.orders} before={s.previousOrders} />}
+          hint={
+            range.range === "semua" ? undefined : <Delta now={s.orders} before={s.previousOrders} />
+          }
         />
         <Stat value={s.aov} format={formatRupiah} label="Rata-rata per pesanan" />
         <Stat

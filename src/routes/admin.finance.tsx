@@ -13,7 +13,7 @@ import {
   DEFAULT_REPORT_DAYS,
   MAX_REPORT_DAYS,
   MIN_REPORT_DAYS,
-  REPORT_PERIODS,
+  reportPeriodOptions,
 } from "@/lib/report-periods";
 
 export const Route = createFileRoute("/admin/finance")({
@@ -126,8 +126,12 @@ function AdminFinance() {
       subtitle="Buku Travel terpisah dari buku F&B — angka di sini hanya milik Travel."
     >
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2" role="group" aria-label="Periode laporan">
-          {REPORT_PERIODS.map((option) => (
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Periode laporan"
+        >
+          {reportPeriodOptions().map((option) => (
             <button
               key={option.days}
               type="button"

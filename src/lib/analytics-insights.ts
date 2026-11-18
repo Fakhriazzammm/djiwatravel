@@ -329,7 +329,16 @@ export type DestinationInsight = {
 export type InsightResult<T> = { data: T | null; error: string | null };
 
 export type AnalyticsInsights = {
-  range: InsightRange;
+  range: string;
+  /** The resolved window the numbers cover (WIB), for captions and charts. */
+  window: {
+    label: string;
+    from: string;
+    to: string;
+    granularity: "hour" | "day";
+    fromDay: string;
+    toDay: string;
+  };
   tab: InsightTab;
   updatedAt: string;
   since: string;
