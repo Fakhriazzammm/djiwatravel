@@ -12,6 +12,23 @@ export const getAdminCustomers = createServerFn({ method: "GET" })
     return getAdminCustomersHandler({ data });
   });
 
+export const exportAdminCustomers = createServerFn({ method: "POST" })
+  .validator(
+    async (data: Parameters<typeof import("./admin-customers.server").adminCustomersInput>[0]) => {
+      const { adminCustomersInput } = await import("./admin-customers.server");
+      return adminCustomersInput(data);
+    },
+  )
+  .handler(async ({ data }) => {
+    const { exportAdminCustomersHandler } = await import("./admin-customers.server");
+    return exportAdminCustomersHandler({ data });
+  });
+
+export const getAdminCustomerGrowth = createServerFn({ method: "GET" }).handler(async () => {
+  const { getAdminCustomerGrowthHandler } = await import("./admin-customers.server");
+  return getAdminCustomerGrowthHandler();
+});
+
 export const getAdminCustomerDetail = createServerFn({ method: "GET" })
   .validator(
     async (

@@ -12,9 +12,19 @@ vi.mock("../lib/admin-guard.server", () => ({
 import {
   adminCustomerDetailInput,
   adminCustomersInput,
+  exportAdminCustomersHandler,
   getAdminCustomerDetailHandler,
+  getAdminCustomerGrowthHandler,
   getAdminCustomersHandler,
 } from "@/lib/admin-customers.server";
+import {
+  avatarTone,
+  customerCsvRows,
+  customerInitial,
+  pageWindow,
+  rupiahCompact,
+  sharePct,
+} from "@/lib/admin-customers-view";
 
 const row = (patch: Record<string, unknown>) => ({
   subject: "auth-subject-123",
@@ -36,14 +46,30 @@ const row = (patch: Record<string, unknown>) => ({
 beforeEach(() => pool.query.mockReset());
 
 describe("Admin customer list", () => {
-  it("normalises its input: trimmed search, known filters only, capped paging", () => {
-    expect(adminCustomersInput({ q: "  rani  ", kind: "guest", limit: 9999 })).toEqual({
-      q: "rani",
-      kind: "guest",
-      limit: 200,
+  it("normalises its input: trimmed search, known filters only, bounded page", () => {
+    expect(
+      adminCustomersInput({
+        q: "  rani  ",
+        kind: "guest",
+        criteria: "never",
+        sort: "spend",
+        page: 9999,
+      }),
+    ).toEqual({ q: "rani", kind: "guest", criteria: "never", sort: "spend", page: 400 });
+    expect(adminCustomersInput({ kind: "hack", criteria: "x", sort: "y", page: 0 })).toEqual({
+      q: "",
+      kind: "all",
+      criteria: "all",
+      sort: "active",
+      page: 1,
     });
-    expect(adminCustomersInput({ kind: "hack" })).toMatchObject({ kind: "all", limit: 50 });
-    expect(adminCustomersInput()).toEqual({ q: "", kind: "all", limit: 50 });
+    expect(adminCustomersInput()).toEqual({
+      q: "",
+      kind: "all",
+      criteria: "all",
+      sort: "active",
+      page: 1,
+    });
   });
 
   it("lists members with and without a profile and guests, with full contact details", async () => {
@@ -69,12 +95,22 @@ describe("Admin customer list", () => {
           }),
         ],
       })
-      .mockResolvedValueOnce({ rows: [{ total: 3, member: 2, guest: 1, no_profile: 1 }] });
+      .mockResolvedValueOnce({
+        rows: [{ total: 3, member: 2, guest: 1, no_profile: 1, buyers: 2, new_month: 1 }],
+      });
 
     const result = await getAdminCustomersHandler({ data: adminCustomersInput({}) });
 
     expect(result.total).toBe(3);
-    expect(result.counts).toEqual({ all: 3, member: 2, guest: 1, noProfile: 1 });
+    expect(result.counts).toEqual({
+      all: 3,
+      member: 2,
+      guest: 1,
+      noProfile: 1,
+      buyers: 2,
+      newMonth: 1,
+    });
+    expect(result).toMatchObject({ page: 1, pageCount: 1 });
     expect(result.rows.map((r) => [r.kind, r.profileComplete])).toEqual([
       ["member", true],
       ["member", false],
@@ -96,13 +132,97 @@ describe("Admin customer list", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ total: 0, member: 0, guest: 0, no_profile: 0 }] });
     await getAdminCustomersHandler({
-      data: adminCustomersInput({ q: "'; drop table x;--", kind: "noprofile", limit: 20 }),
+      data: adminCustomersInput({
+        q: "'; drop table x;--",
+        kind: "noprofile",
+        criteria: "never",
+        sort: "spend",
+        page: 3,
+      }),
     });
     const [listSql, listParams] = pool.query.mock.calls[0]!;
-    expect(listParams).toEqual(["'; drop table x;--", "noprofile", 20]);
+    expect(listParams).toEqual(["'; drop table x;--", "noprofile", "never", 25, 50]);
     expect(String(listSql)).not.toContain("drop table");
     expect(String(listSql)).toMatch(/customer_profiles/);
     expect(String(listSql)).toMatch(/guest_order_access/);
+  });
+});
+
+describe("Admin customer export and growth", () => {
+  it("exports the filtered list, flags truncation and writes an audit entry", async () => {
+    pool.query
+      .mockResolvedValueOnce({ rows: [row({ spend_idr: "350000", paid_count: 1 })] })
+      .mockResolvedValueOnce({ rows: [] });
+    const result = await exportAdminCustomersHandler({
+      data: adminCustomersInput({ kind: "member", criteria: "ordered" }),
+    });
+    expect(result.truncated).toBe(false);
+    expect(result.rows[0]).toMatchObject({ spendIdr: 350000, paidCount: 1 });
+    const [auditSql, auditParams] = pool.query.mock.calls[1]!;
+    expect(String(auditSql)).toMatch(/customer\.export/);
+    expect(String(auditParams[1])).toContain("ekspor 1 pelanggan");
+    const csv = customerCsvRows(result.rows);
+    expect(csv[0]).toContain("WhatsApp");
+    expect(csv[1]).toContain("person@example.com");
+  });
+
+  it("builds growth numbers from aggregates only", async () => {
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ day: "2026-11-01", bought: 1, rest: 4 }] })
+      .mockResolvedValueOnce({ rows: [{ month: "2026-11", total: 5, bought: 1 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            everyone: 10,
+            members: 8,
+            profiled: 6,
+            ordered: 4,
+            paid: 3,
+            repeat: 1,
+            trips: 2,
+            shopping: 1,
+            feeds: 0,
+            active7: 4,
+            active30: 6,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            subject: "a",
+            display_name: "Rani",
+            email: "r@x.id",
+            spend_idr: "1200000",
+            paid_count: 2,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [{ subject: "b", display_name: null, email: "b@x.id" }] })
+      .mockResolvedValueOnce({ rows: [] });
+    const growth = await getAdminCustomerGrowthHandler();
+    expect(growth.funnel.map((step) => step.count)).toEqual([10, 6, 4, 3, 1]);
+    expect(growth.daily).toEqual([{ day: "2026-11-01", bought: 1, rest: 4 }]);
+    expect(growth.topSpenders[0]).toMatchObject({
+      name: "Rani",
+      note: expect.stringContaining("2 pembayaran"),
+    });
+    expect(growth.neverOrdered[0]!.name).toBe("b@x.id");
+    expect(growth.active30).toBe(6);
+  });
+
+  it("formats display helpers", () => {
+    expect(rupiahCompact(0)).toBe("Rp0");
+    expect(rupiahCompact(350000)).toBe("Rp350.000");
+    expect(rupiahCompact(1250000)).toBe("Rp1,3 jt");
+    expect(sharePct(1, 0)).toBeNull();
+    expect(sharePct(1, 3)).toBe(33);
+    expect(pageWindow(1, 9)).toEqual([1, 2, 3, 4, 5]);
+    expect(pageWindow(9, 9)).toEqual([5, 6, 7, 8, 9]);
+    expect(pageWindow(1, 1)).toEqual([1]);
+    expect(customerInitial({ displayName: null, email: "zed@x.id", kind: "member" })).toBe("Z");
+    expect(customerInitial({ displayName: null, email: null, kind: "guest" })).toBe("T");
+    expect(avatarTone("abc")).toBe(avatarTone("abc"));
   });
 });
 

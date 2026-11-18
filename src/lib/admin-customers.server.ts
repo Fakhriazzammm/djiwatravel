@@ -4,6 +4,11 @@ import { pool } from "../db/client.server";
 import { getAdminEmailHandler } from "./admin-guard.server";
 
 export type AdminCustomerKind = "all" | "member" | "guest" | "noprofile";
+export type AdminCustomerCriteria = "all" | "ordered" | "never" | "trip" | "feed" | "shopping";
+export type AdminCustomerSort = "active" | "joined" | "orders" | "spend";
+
+export const CUSTOMER_PAGE_SIZE = 25;
+const EXPORT_LIMIT = 5000;
 
 export type AdminCustomerRow = {
   /** The account id (or `guest:<hash>`): opens the customer's detail page. */
@@ -17,8 +22,13 @@ export type AdminCustomerRow = {
   whatsapp: string | null;
   displayName: string | null;
   orderCount: number;
+  /** Paid purchases across eSIM orders and Titip Belanja. */
+  paidCount: number;
+  /** Paid amount in IDR across eSIM orders and Titip Belanja. */
+  spendIdr: number;
   latestOrderAt: string | null;
   tripCount: number;
+  shoppingCount: number;
   feedPostCount: number;
   lastActivityAt: string | null;
   firstSeenAt: string | null;
@@ -26,18 +36,40 @@ export type AdminCustomerRow = {
 
 export type AdminCustomersResult = {
   rows: AdminCustomerRow[];
-  /** Rows that match the search and filter (rows may be fewer: the list is paged). */
+  /** Rows that match the search, filter and criteria (rows may be fewer: the list is paged). */
   total: number;
-  counts: { all: number; member: number; guest: number; noProfile: number };
+  page: number;
+  pageCount: number;
+  counts: {
+    all: number;
+    member: number;
+    guest: number;
+    noProfile: number;
+    /** People with at least one paid purchase. */
+    buyers: number;
+    /** First seen in the last 30 days. */
+    newMonth: number;
+  };
 };
 
-export const adminCustomersInput = (data: { q?: string; kind?: string; limit?: number } = {}) => ({
+const KINDS = ["member", "guest", "noprofile"];
+const CRITERIA = ["ordered", "never", "trip", "feed", "shopping"];
+const SORTS = ["joined", "orders", "spend"];
+
+export const adminCustomersInput = (
+  data: { q?: string; kind?: string; criteria?: string; sort?: string; page?: number } = {},
+) => ({
   q: (data.q ?? "").trim().slice(0, 80),
-  kind: (["member", "guest", "noprofile"].includes(data.kind ?? "")
-    ? data.kind
-    : "all") as AdminCustomerKind,
-  limit: Math.min(Math.max(data.limit ?? 50, 1), 200),
+  kind: (KINDS.includes(data.kind ?? "") ? data.kind : "all") as AdminCustomerKind,
+  criteria: (CRITERIA.includes(data.criteria ?? "")
+    ? data.criteria
+    : "all") as AdminCustomerCriteria,
+  sort: (SORTS.includes(data.sort ?? "") ? data.sort : "active") as AdminCustomerSort,
+  page: Number.isInteger(data.page) ? Math.min(Math.max(data.page as number, 1), 400) : 1,
 });
+
+/** Paid purchase on an eSIM order (same rule as Admin analytics). */
+const PAID_ESIM = `(o.paid_at is not null or o.status in ('PAYMENT_CONFIRMED','PROVISIONING','READY','INSTALLED'))`;
 
 /**
  * Everyone the system knows: members (anyone with an account who has a profile or any activity, so
@@ -58,17 +90,27 @@ const PEOPLE_CTE = `
            coalesce(cp.email, ca.email) as email, coalesce(cp.whatsapp, ca.whatsapp) as whatsapp,
            cp.display_name,
            (cp.auth_user_id is not null) as profile_complete,
-           coalesce(oc.n, 0)::int as order_count, oc.latest as latest_order_at,
-           coalesce(tc.n, 0)::int as trip_count, coalesce(fc.n, 0)::int as feed_post_count,
-           greatest(cp.updated_at, oc.latest, tc.latest, fc.latest) as last_activity_at,
-           least(cp.created_at, oc.first, tc.first, fc.first) as first_seen_at
+           (coalesce(oc.n, 0) + coalesce(sc.n, 0))::int as order_count,
+           greatest(oc.latest, sc.latest) as latest_order_at,
+           (coalesce(oc.paid, 0) + coalesce(sc.paid, 0))::int as paid_count,
+           (coalesce(oc.spend, 0) + coalesce(sc.spend, 0))::numeric as spend_idr,
+           coalesce(tc.n, 0)::int as trip_count, coalesce(sc.n, 0)::int as shopping_count,
+           coalesce(fc.n, 0)::int as feed_post_count,
+           greatest(cp.updated_at, oc.latest, sc.latest, tc.latest, fc.latest) as last_activity_at,
+           least(cp.created_at, oc.first, sc.first, tc.first, fc.first) as first_seen_at
       from subjects sub
       left join public.customer_profiles cp on cp.auth_user_id = sub.s
       left join lateral (select a.email, a.whatsapp from public.guest_order_access a
                            join public.customer_orders o on o.id = a.order_id
                           where o.customer_auth_subject = sub.s order by a.created_at desc limit 1) ca on true
-      left join lateral (select count(*) n, max(created_at) latest, min(created_at) first
-                           from public.customer_orders where customer_auth_subject = sub.s) oc on true
+      left join lateral (select count(*) n, max(o.created_at) latest, min(o.created_at) first,
+                                count(*) filter (where ${PAID_ESIM}) paid,
+                                coalesce(sum(o.total_amount) filter (where ${PAID_ESIM} and o.currency_code = 'IDR'), 0) spend
+                           from public.customer_orders o where o.customer_auth_subject = sub.s) oc on true
+      left join lateral (select count(*) n, max(created_at) latest, min(created_at) first,
+                                count(*) filter (where paid_at is not null) paid,
+                                coalesce(sum(total_idr) filter (where paid_at is not null), 0) spend
+                           from public.shopping_orders where customer_auth_subject = sub.s) sc on true
       left join lateral (select count(*) n, max(created_at) latest, min(created_at) first
                            from public.travel_trips where customer_auth_subject = sub.s) tc on true
       left join lateral (select count(*) n, max(created_at) latest, min(created_at) first
@@ -78,7 +120,9 @@ const PEOPLE_CTE = `
     select 'guest:' || md5(lower(a.email)) as subject, 'guest'::text as kind, lower(a.email) as email,
            max(a.whatsapp) as whatsapp, null::text as display_name, false as profile_complete,
            count(distinct o.id)::int as order_count, max(o.created_at) as latest_order_at,
-           0 as trip_count, 0 as feed_post_count,
+           (count(distinct o.id) filter (where ${PAID_ESIM}))::int as paid_count,
+           coalesce(sum(o.total_amount) filter (where ${PAID_ESIM} and o.currency_code = 'IDR'), 0)::numeric as spend_idr,
+           0 as trip_count, 0 as shopping_count, 0 as feed_post_count,
            max(o.created_at) as last_activity_at, min(o.created_at) as first_seen_at
       from public.customer_orders o
       join public.guest_order_access a on a.order_id = o.id
@@ -93,6 +137,15 @@ const KIND_FILTER = `(
   or ($2 = 'noprofile' and kind = 'member' and not profile_complete)
 )`;
 
+const CRITERIA_FILTER = `(
+  $3 = 'all'
+  or ($3 = 'ordered' and order_count > 0)
+  or ($3 = 'never' and order_count = 0)
+  or ($3 = 'trip' and trip_count > 0)
+  or ($3 = 'feed' and feed_post_count > 0)
+  or ($3 = 'shopping' and shopping_count > 0)
+)`;
+
 const MATCH = `(
   $1 = ''
   or strpos(lower(coalesce(email, '')), lower($1)) > 0
@@ -100,10 +153,37 @@ const MATCH = `(
   or strpos(coalesce(whatsapp, ''), $1) > 0
 )`;
 
+/** Fixed ORDER BY clauses: the sort key from the browser only selects one, it is never interpolated. */
+const ORDER_BY: Record<AdminCustomerSort, string> = {
+  active: "last_activity_at desc nulls last, first_seen_at desc nulls last",
+  joined: "first_seen_at desc nulls last, last_activity_at desc nulls last",
+  orders: "order_count desc, last_activity_at desc nulls last",
+  spend: "spend_idr desc, last_activity_at desc nulls last",
+};
+
 const ref = (subject: string) =>
   createHash("sha256").update(`customer:${subject}`).digest("hex").slice(0, 10);
 
 const iso = (value: unknown) => (value ? new Date(String(value)).toISOString() : null);
+
+const toRow = (row: Record<string, unknown>): AdminCustomerRow => ({
+  id: String(row["subject"]),
+  ref: ref(String(row["subject"])),
+  kind: row["kind"] === "guest" ? "guest" : "member",
+  profileComplete: Boolean(row["profile_complete"]),
+  email: row["email"] ? String(row["email"]) : null,
+  whatsapp: row["whatsapp"] ? String(row["whatsapp"]) : null,
+  displayName: row["display_name"] ? String(row["display_name"]) : null,
+  orderCount: Number(row["order_count"] ?? 0),
+  paidCount: Number(row["paid_count"] ?? 0),
+  spendIdr: Math.round(Number(row["spend_idr"] ?? 0)),
+  latestOrderAt: iso(row["latest_order_at"]),
+  tripCount: Number(row["trip_count"] ?? 0),
+  shoppingCount: Number(row["shopping_count"] ?? 0),
+  feedPostCount: Number(row["feed_post_count"] ?? 0),
+  lastActivityAt: iso(row["last_activity_at"]),
+  firstSeenAt: iso(row["first_seen_at"]),
+});
 
 export async function getAdminCustomersHandler({
   data,
@@ -115,45 +195,200 @@ export async function getAdminCustomersHandler({
     pool.query(
       `${PEOPLE_CTE}
        select *, count(*) over()::int as total from people
-        where ${MATCH} and ${KIND_FILTER}
-        order by last_activity_at desc nulls last, first_seen_at desc nulls last
-        limit $3`,
-      [data.q, data.kind, data.limit],
+        where ${MATCH} and ${KIND_FILTER} and ${CRITERIA_FILTER}
+        order by ${ORDER_BY[data.sort]}
+        limit $4 offset $5`,
+      [data.q, data.kind, data.criteria, CUSTOMER_PAGE_SIZE, (data.page - 1) * CUSTOMER_PAGE_SIZE],
     ),
     pool.query(
       `${PEOPLE_CTE}
        select count(*)::int as total,
               count(*) filter (where kind = 'member')::int as member,
               count(*) filter (where kind = 'guest')::int as guest,
-              count(*) filter (where kind = 'member' and not profile_complete)::int as no_profile
+              count(*) filter (where kind = 'member' and not profile_complete)::int as no_profile,
+              count(*) filter (where paid_count > 0)::int as buyers,
+              count(*) filter (where first_seen_at >= now() - interval '30 days')::int as new_month
          from people where ${MATCH}`,
       [data.q],
     ),
   ]);
   const c = (counts.rows[0] ?? {}) as Record<string, number>;
+  const total = Number(list.rows[0]?.["total"] ?? 0);
   return {
-    rows: list.rows.map((row): AdminCustomerRow => ({
-      id: String(row.subject),
-      ref: ref(String(row.subject)),
-      kind: row.kind === "guest" ? "guest" : "member",
-      profileComplete: Boolean(row.profile_complete),
-      email: row.email ? String(row.email) : null,
-      whatsapp: row.whatsapp ? String(row.whatsapp) : null,
-      displayName: row.display_name ? String(row.display_name) : null,
-      orderCount: Number(row.order_count ?? 0),
-      latestOrderAt: iso(row.latest_order_at),
-      tripCount: Number(row.trip_count ?? 0),
-      feedPostCount: Number(row.feed_post_count ?? 0),
-      lastActivityAt: iso(row.last_activity_at),
-      firstSeenAt: iso(row.first_seen_at),
-    })),
-    total: Number(list.rows[0]?.total ?? 0),
+    rows: list.rows.map(toRow),
+    total,
+    page: data.page,
+    pageCount: Math.max(1, Math.ceil(total / CUSTOMER_PAGE_SIZE)),
     counts: {
       all: Number(c["total"] ?? 0),
       member: Number(c["member"] ?? 0),
       guest: Number(c["guest"] ?? 0),
       noProfile: Number(c["no_profile"] ?? 0),
+      buyers: Number(c["buyers"] ?? 0),
+      newMonth: Number(c["new_month"] ?? 0),
     },
+  };
+}
+
+/**
+ * Whole filtered list for the CSV export (contact details in full, like the list). Capped, and the
+ * export itself is written to the Admin audit log.
+ */
+export async function exportAdminCustomersHandler({
+  data,
+}: {
+  data: ReturnType<typeof adminCustomersInput>;
+}): Promise<{ rows: AdminCustomerRow[]; truncated: boolean }> {
+  await requireAdmin();
+  const result = await pool.query(
+    `${PEOPLE_CTE}
+     select * from people
+      where ${MATCH} and ${KIND_FILTER} and ${CRITERIA_FILTER}
+      order by ${ORDER_BY[data.sort]}
+      limit $4`,
+    [data.q, data.kind, data.criteria, EXPORT_LIMIT + 1],
+  );
+  const rows = result.rows.slice(0, EXPORT_LIMIT).map(toRow);
+  try {
+    const actor = (await getAdminEmailHandler()) ?? "admin";
+    await pool.query(
+      `insert into public.admin_audit_logs (id, action, entity_type, entity_id, reason, before_json, after_json)
+       values ($1, 'customer.export', 'customer', 'list', $2, null, null)`,
+      [randomUUID(), `${actor}: ekspor ${rows.length} pelanggan (${data.kind}/${data.criteria})`],
+    );
+  } catch {
+    // The export still works if the audit table is unreachable.
+  }
+  return { rows, truncated: result.rows.length > EXPORT_LIMIT };
+}
+
+/* ------------------------------------------------------------------ growth */
+
+export type AdminCustomerGrowth = {
+  daily: { day: string; bought: number; rest: number }[];
+  monthly: { month: string; total: number; bought: number }[];
+  funnel: { label: string; count: number }[];
+  features: { label: string; count: number }[];
+  members: number;
+  active7: number;
+  active30: number;
+  topSpenders: GrowthPerson[];
+  neverOrdered: GrowthPerson[];
+  slipping: GrowthPerson[];
+};
+
+export type GrowthPerson = {
+  id: string;
+  name: string;
+  email: string | null;
+  note: string;
+  lastActivityAt: string | null;
+};
+
+const growthPerson = (row: Record<string, unknown>, note: string): GrowthPerson => ({
+  id: String(row["subject"]),
+  name: row["display_name"]
+    ? String(row["display_name"])
+    : row["email"]
+      ? String(row["email"])
+      : "Belum mengisi nama",
+  email: row["email"] ? String(row["email"]) : null,
+  note,
+  lastActivityAt: iso(row["last_activity_at"]),
+});
+
+/** Growth and adoption numbers for the "Pertumbuhan & analisis" tab. Aggregates only, no new tables. */
+export async function getAdminCustomerGrowthHandler(): Promise<AdminCustomerGrowth> {
+  await requireAdmin();
+  const [daily, monthly, summary, spenders, never, slipping] = await Promise.all([
+    pool.query(
+      `${PEOPLE_CTE}
+       select (first_seen_at at time zone 'Asia/Jakarta')::date::text as day,
+              count(*) filter (where paid_count > 0)::int as bought,
+              count(*) filter (where paid_count = 0)::int as rest
+         from people where first_seen_at >= now() - interval '60 days'
+        group by 1 order by 1`,
+    ),
+    pool.query(
+      `${PEOPLE_CTE}
+       select to_char(first_seen_at at time zone 'Asia/Jakarta', 'YYYY-MM') as month,
+              count(*)::int as total, count(*) filter (where paid_count > 0)::int as bought
+         from people where first_seen_at >= date_trunc('month', now()) - interval '5 months'
+        group by 1 order by 1 desc`,
+    ),
+    pool.query(
+      `${PEOPLE_CTE}
+       select count(*)::int as everyone,
+              count(*) filter (where kind = 'member')::int as members,
+              count(*) filter (where kind = 'member' and profile_complete)::int as profiled,
+              count(*) filter (where order_count > 0)::int as ordered,
+              count(*) filter (where paid_count > 0)::int as paid,
+              count(*) filter (where paid_count > 1)::int as repeat,
+              count(*) filter (where kind = 'member' and trip_count > 0)::int as trips,
+              count(*) filter (where kind = 'member' and shopping_count > 0)::int as shopping,
+              count(*) filter (where kind = 'member' and feed_post_count > 0)::int as feeds,
+              count(*) filter (where last_activity_at >= now() - interval '7 days')::int as active7,
+              count(*) filter (where last_activity_at >= now() - interval '30 days')::int as active30
+         from people`,
+    ),
+    pool.query(
+      `${PEOPLE_CTE}
+       select subject, display_name, email, last_activity_at, spend_idr, paid_count
+         from people where spend_idr > 0 order by spend_idr desc limit 5`,
+    ),
+    pool.query(
+      `${PEOPLE_CTE}
+       select subject, display_name, email, last_activity_at, first_seen_at
+         from people
+        where kind = 'member' and order_count = 0 and first_seen_at < now() - interval '2 days'
+        order by first_seen_at desc limit 5`,
+    ),
+    pool.query(
+      `${PEOPLE_CTE}
+       select subject, display_name, email, last_activity_at
+         from people
+        where paid_count > 0 and last_activity_at < now() - interval '60 days'
+        order by last_activity_at asc limit 5`,
+    ),
+  ]);
+  const s = (summary.rows[0] ?? {}) as Record<string, number>;
+  const n = (key: string) => Number(s[key] ?? 0);
+  const idr = (value: unknown) => `Rp${Math.round(Number(value ?? 0)).toLocaleString("id-ID")}`;
+  return {
+    daily: daily.rows.map((r: Record<string, unknown>) => ({
+      day: String(r["day"]),
+      bought: Number(r["bought"] ?? 0),
+      rest: Number(r["rest"] ?? 0),
+    })),
+    monthly: monthly.rows.map((r: Record<string, unknown>) => ({
+      month: String(r["month"]),
+      total: Number(r["total"] ?? 0),
+      bought: Number(r["bought"] ?? 0),
+    })),
+    funnel: [
+      { label: "Dikenal sistem", count: n("everyone") },
+      { label: "Member dengan profil lengkap", count: n("profiled") },
+      { label: "Pernah memesan", count: n("ordered") },
+      { label: "Pernah membayar", count: n("paid") },
+      { label: "Beli ulang (2+ pembayaran)", count: n("repeat") },
+    ],
+    features: [
+      { label: "Perjalanan (Trip)", count: n("trips") },
+      { label: "Titip Belanja", count: n("shopping") },
+      { label: "Posting di Feeds", count: n("feeds") },
+    ],
+    members: n("members"),
+    active7: n("active7"),
+    active30: n("active30"),
+    topSpenders: spenders.rows.map((r: Record<string, unknown>) =>
+      growthPerson(r, `${idr(r["spend_idr"])} · ${Number(r["paid_count"] ?? 0)} pembayaran`),
+    ),
+    neverOrdered: never.rows.map((r: Record<string, unknown>) =>
+      growthPerson(r, "Belum pernah memesan"),
+    ),
+    slipping: slipping.rows.map((r: Record<string, unknown>) =>
+      growthPerson(r, "Pernah membayar, sepi 60+ hari"),
+    ),
   };
 }
 
