@@ -1,4 +1,13 @@
-import { ChevronDown, Gauge, LogOut, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import {
+  BarChart3,
+  ChevronDown,
+  Gauge,
+  LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  X,
+} from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { adminNavigationGroups, isAdminNavigationActive } from "@/components/admin-navigation";
@@ -213,6 +222,16 @@ export function AdminShell({
             >
               <Gauge className="size-4" aria-hidden="true" />
               Dashboard
+            </Link>
+            <Link
+              to="/admin/analytics"
+              search={{ tab: "pengguna", range: "30h" }}
+              onClick={closeMenu}
+              aria-current={location.pathname === "/admin/analytics" ? "page" : undefined}
+              className={`mb-3 flex min-h-11 items-center gap-3 rounded-xl px-3 text-[13px] font-semibold focus-visible:ring-2 focus-visible:ring-brand-red ${location.pathname === "/admin/analytics" ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+            >
+              <BarChart3 className="size-4" aria-hidden="true" />
+              Analitik
             </Link>
             <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Kelola layanan

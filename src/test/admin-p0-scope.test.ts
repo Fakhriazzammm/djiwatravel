@@ -7,7 +7,7 @@ import { maskEmail, maskWhatsapp, toAdminCustomer } from "@/lib/admin-display";
 
 const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "utf8");
 
-// Routes that remain compatibility redirects. Customers is a real workspace; analytics redirects into the dashboard.
+// Routes that remain compatibility redirects. Customers is a real workspace; analytics is a real, admin-guarded workspace.
 const legacyRoutes = ["index", "overview"];
 
 describe("simplified admin P0 scope", () => {
@@ -77,9 +77,11 @@ describe("simplified admin P0 scope", () => {
     expect(source).not.toContain("Read model operasional belum tersedia");
   });
 
-  it("requires a live customer workspace and folds analytics into the dashboard", () => {
+  it("requires live customer and analytics workspaces next to the traffic dashboard", () => {
     expect(read("routes/admin.dashboard.tsx")).toContain("getTrafficDashboard");
-    expect(read("routes/admin.analytics.tsx")).toContain("/admin/dashboard");
+    const analytics = read("routes/admin.analytics.tsx");
+    expect(analytics).toContain("requireAdmin");
+    expect(analytics).toContain("getAnalyticsInsights");
     for (const [route, marker] of [["customers", "getAdminCustomers"]] as const) {
       const source = read(`routes/admin.${route}.tsx`);
       expect(source).toContain("requireAdmin");
