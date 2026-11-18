@@ -3,24 +3,31 @@ import { createFileRoute } from "@tanstack/react-router";
 const json = (value: unknown, status = 200) =>
   Response.json(value, { status, headers: { "Cache-Control": "no-store" } });
 
-/** Admin attaches one weigh-in photo (multipart: orderId, photo) to a shipment. */
+/**
+ * Attaches one photo (multipart: orderId, photo) to a shipment. The team adds weigh-in photos; the
+ * signed-in owner adds proof photos while the parcel is still waiting or at the drop point.
+ */
 async function receive(request: Request) {
   try {
-    const { requireAdmin } = await import("@/lib/admin-guard");
-    await requireAdmin();
-    const limit = 6 * 1024 * 1024;
-    if (Number(request.headers.get("content-length") || 0) > limit)
-      return json({ error: "Foto maksimal 5 MB." }, 413);
-    const form = await request.formData();
+    const { shippingCustomerFromRequest, readShippingForm, blobBytes } =
+      await import("@/lib/shipping-request.server");
+    const form = await readShippingForm(request);
     const orderId = String(form.get("orderId") || "");
-    const photo = form.get("photo");
-    if (!/^[0-9a-f-]{36}$/i.test(orderId) || !(photo instanceof Blob) || photo.size === 0)
+    const bytes = await blobBytes(form.get("photo"));
+    if (!/^[0-9a-f-]{36}$/i.test(orderId) || !bytes)
       return json({ error: "Pilih foto dulu." }, 400);
-    if (photo.size > limit) return json({ error: "Foto maksimal 5 MB." }, 413);
-    const { addShippingPhoto } = await import("@/lib/shipping.server");
-    return json(await addShippingPhoto(orderId, new Uint8Array(await photo.arrayBuffer())));
+    const { addShippingPhoto, addCustomerShippingPhoto } = await import("@/lib/shipping.server");
+    if (form.get("as") === "admin") {
+      return json(await addShippingPhoto(orderId, bytes));
+    }
+    const user = await shippingCustomerFromRequest(request);
+    return json(await addCustomerShippingPhoto(user.id, orderId, bytes));
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "Foto belum terunggah" }, 422);
+    const status = (error as { status?: number }).status;
+    return json(
+      { error: error instanceof Error ? error.message : "Foto belum terunggah" },
+      status ?? 422,
+    );
   }
 }
 

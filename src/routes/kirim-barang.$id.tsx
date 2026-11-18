@@ -11,8 +11,12 @@ import {
   shippingPrimaryBtn,
   shippingSoftBtn,
 } from "@/components/shipping/shipping-ui";
+import { ProofPhotos } from "@/components/shipping/shipping-photos";
+import { ShippingLabelCard } from "@/components/shipping/shipping-label";
+import { usePrintAction } from "@/hooks/use-print-action";
 import {
   cancelShippingBooking,
+  deleteMyShippingPhoto,
   confirmShippingDelivered,
   getMyShippingOrder,
   payShippingOrder,
@@ -56,6 +60,7 @@ function ShipmentDetail() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const print = usePrintAction();
   const status = order.status as ShippingStatus;
   const pending = status === "PAYMENT_PENDING";
 
@@ -114,18 +119,12 @@ function ShipmentDetail() {
 
       {status === "AWAITING_DROP" && (
         <>
-          <div className="ios-card p-3 text-center">
-            <p className="text-[11px] text-muted-foreground">Kode pengiriman</p>
-            <p className="mt-0.5 font-mono text-[22px] font-bold tracking-wide">{order.code}</p>
-            <div className="mt-1.5">
-              <CopyButton value={order.code} label="Salin kode" />
-            </div>
-          </div>
+          <ShippingLabelCard order={order} dropPoint={order.dropPoint} />
           <p className="ios-section-label mt-4">Langkah berikutnya</p>
           <ol className="ios-group divide-y divide-border/70 text-[13px]">
             <li className="ios-row">
               <span className="ios-tile bg-secondary text-[12px] font-bold">1</span>
-              <span className="font-semibold">Tulis kode ini besar-besar di paket</span>
+              <span className="font-semibold">Cetak atau simpan label QR, tempel di paket</span>
             </li>
             <li className="ios-row">
               <span className="ios-tile bg-secondary text-[12px] font-bold">2</span>
@@ -141,6 +140,17 @@ function ShipmentDetail() {
               <span className="font-semibold">Kami timbang, kamu dapat tagihan</span>
             </li>
           </ol>
+          <p className="ios-section-label mt-4">Foto bukti</p>
+          <ProofPhotos
+            orderId={order.id}
+            photoIds={order.proofPhotoIds}
+            review={order.photoReview}
+            note={order.photoReviewNote}
+            min={order.minPhotos}
+            editable
+            onChanged={() => void router.invalidate()}
+            onRemove={(photoId) => deleteMyShippingPhoto({ data: { orderId: order.id, photoId } })}
+          />
           <p className="ios-section-label mt-4">Alamat drop point</p>
           <DropPointCard point={order.dropPoint} />
           {order.inboundMode === "COURIER" && (
@@ -157,6 +167,21 @@ function ShipmentDetail() {
           <p className="mt-0.5 text-[12px] text-muted-foreground">
             Tim kami sedang menimbang. Tagihan segera dikirim lewat notifikasi.
           </p>
+        </div>
+      )}
+
+      {status === "RECEIVED" && order.proofPhotoIds.length > 0 && (
+        <div className="mt-3">
+          <ProofPhotos
+            orderId={order.id}
+            photoIds={order.proofPhotoIds}
+            review={order.photoReview}
+            note={order.photoReviewNote}
+            min={order.minPhotos}
+            editable={false}
+            onChanged={() => void router.invalidate()}
+            onRemove={async () => undefined}
+          />
         </div>
       )}
 
@@ -188,6 +213,18 @@ function ShipmentDetail() {
           {order.weighNote && (
             <p className="mt-1 text-[11px] text-muted-foreground">Catatan: {order.weighNote}</p>
           )}
+          <button
+            type="button"
+            disabled={print.busy !== null}
+            onClick={() =>
+              print.run("bill", async () =>
+                (await import("@/lib/shipping-print")).downloadBillPdf(order),
+              )
+            }
+            className="tap mt-2 text-[11px] font-semibold text-brand-red underline disabled:opacity-50"
+          >
+            Unduh rincian tagihan (PDF)
+          </button>
           {pending && (
             <>
               <p className="mt-2 text-[11px] text-muted-foreground">
@@ -219,6 +256,20 @@ function ShipmentDetail() {
             <CopyButton value={order.trackingNumber} />
           </div>
         )}
+      {(status === "SHIPPED" || status === "ARRIVED" || status === "DELIVERED") && (
+        <button
+          type="button"
+          disabled={print.busy !== null}
+          onClick={() =>
+            print.run("proof", async () =>
+              (await import("@/lib/shipping-print")).downloadProofPdf(order),
+            )
+          }
+          className={`${shippingSoftBtn} mt-3`}
+        >
+          Unduh bukti pengiriman (PDF)
+        </button>
+      )}
       {status === "ARRIVED" && (
         <button
           type="button"

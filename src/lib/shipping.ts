@@ -5,6 +5,9 @@
 
 export const SHIPPING_SETTING_KEY = "shipping";
 
+/** Most proof photos a customer can attach to one shipment (and weigh-in photos Admin can attach). */
+export const SHIPPING_MAX_PHOTOS = 4;
+
 export type ShippingCountryCode = "JP";
 
 export const SHIPPING_COUNTRIES: readonly { code: ShippingCountryCode; name: string }[] = [
@@ -105,6 +108,8 @@ export type ShippingConfig = {
   paymentWindowHours: number;
   /** Bookings a customer may keep waiting at once. */
   maxOpenBookings: number;
+  /** Proof photos of the contents a customer must attach to a booking. */
+  minPhotos: number;
   /** Courier names the team picks from when it ships a parcel. */
   couriers: string[];
   /** Things that cannot be sent, shown in the form and on the info page. */
@@ -126,6 +131,7 @@ export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
   dropDeadlineDays: 7,
   paymentWindowHours: 48,
   maxOpenBookings: 3,
+  minPhotos: 1,
   couriers: ["Partner Djiwa"],
   prohibited: [
     "Cairan, parfum, dan aerosol",
@@ -237,6 +243,10 @@ export function parseShippingConfig(value: unknown): ShippingConfig {
       raw["maxOpenBookings"] === undefined
         ? d.maxOpenBookings
         : intIn(raw["maxOpenBookings"], 1, 20, "maxOpenBookings"),
+    minPhotos:
+      raw["minPhotos"] === undefined
+        ? d.minPhotos
+        : intIn(raw["minPhotos"], 0, SHIPPING_MAX_PHOTOS, "minPhotos"),
     couriers,
     prohibited: list(raw["prohibited"], d.prohibited, 12, "prohibited"),
   };
@@ -495,3 +505,75 @@ export const fmtDate = (iso: string) =>
 /** Google Maps link for the drop point: Admin's own link when set, else a search for its name and address. */
 export const mapsSearchUrl = (point: Pick<DropPoint, "name" | "address">) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${point.name}, ${point.address}`)}`;
+
+/* ------------------------------------------------------------- photo review */
+
+export type PhotoReview = "PENDING" | "APPROVED" | "REDO";
+export const PHOTO_REVIEW_LABEL: Record<PhotoReview, string> = {
+  PENDING: "Menunggu ditinjau",
+  APPROVED: "Foto disetujui",
+  REDO: "Perlu foto ulang",
+};
+
+/* ---------------------------------------------------------------- QR and scan */
+
+const CODE_PATTERN = /DJW-KR-\d{4,}/i;
+
+/** What the QR on the parcel label holds: a link whose only data is the shipment code. */
+export const scanUrl = (origin: string, code: string) =>
+  `${origin.replace(/\/$/, "")}/admin/shipping?scan=${encodeURIComponent(code)}`;
+
+/**
+ * Reads a shipment code out of whatever a scanner delivers: the bare code, the label's link, or text
+ * with stray characters around it (USB scanners add line breaks). Null when there is no code.
+ */
+export function parseScanCode(raw: string): string | null {
+  const match = CODE_PATTERN.exec(raw.trim());
+  return match ? match[0].toUpperCase() : null;
+}
+
+/* ----------------------------------------------------------------- documents */
+
+export type LabelData = {
+  code: string;
+  qrValue: string;
+  recipientName: string;
+  phone: string;
+  addressLines: string[];
+  contents: string;
+  estimatedKg: number;
+  dropPointName: string;
+  dropPointAddress: string;
+};
+
+export function buildLabelData(
+  order: {
+    code: string;
+    recipientName: string;
+    phone: string;
+    addressLine: string;
+    city: string;
+    prefecture: string;
+    postalCode: string;
+    category: string;
+    contents: string;
+    estimatedKg: number;
+  },
+  dropPoint: Pick<DropPoint, "name" | "address">,
+  origin: string,
+): LabelData {
+  return {
+    code: order.code,
+    qrValue: scanUrl(origin, order.code),
+    recipientName: order.recipientName,
+    phone: order.phone,
+    addressLines: [order.addressLine, `${order.city}, ${order.prefecture} ${order.postalCode}`],
+    contents: `${order.category}: ${order.contents}`,
+    estimatedKg: order.estimatedKg,
+    dropPointName: dropPoint.name,
+    dropPointAddress: dropPoint.address,
+  };
+}
+
+export const labelFileName = (code: string, ext: "png" | "pdf") =>
+  `label-${code.replace(/[^A-Za-z0-9-]/g, "")}.${ext}`;

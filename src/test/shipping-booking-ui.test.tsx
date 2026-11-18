@@ -24,12 +24,25 @@ vi.mock("@/components/customer-auth", () => ({
   CustomerAuth: () => <button type="button">Masuk atau daftar</button>,
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+// jsdom has no image decoding: the photo "shrinking" step just hands the file back.
+vi.mock("@/lib/receipt-image", () => ({ compressReceiptPhoto: async (file: Blob) => file }));
+vi.stubGlobal(
+  "URL",
+  Object.assign(URL, { createObjectURL: () => "blob:test", revokeObjectURL: () => undefined }),
+);
 
 import { ShippingBookingForm } from "@/components/shipping/shipping-booking-form";
 
 const open: ShippingConfig = { ...DEFAULT_SHIPPING_CONFIG, enabled: true };
 
 afterEach(cleanup);
+
+async function addPhoto(name = "isi.jpg") {
+  const file = new File([new Uint8Array(20)], name, { type: "image/jpeg" });
+  fireEvent.change(screen.getByLabelText("Pilih foto dari galeri"), { target: { files: [file] } });
+  await waitFor(() => expect(screen.getAllByAltText("Foto isi paket").length).toBeGreaterThan(0));
+  return file;
+}
 
 function fillRecipient() {
   fireEvent.change(screen.getByLabelText("Nama penerima"), { target: { value: "Rina Tanaka" } });
@@ -93,14 +106,21 @@ describe("ShippingBookingForm", () => {
       target: { value: "Keripik, kopi bubuk, 2 kaos" },
     });
     fireEvent.change(screen.getByLabelText(/Nilai barang/), { target: { value: "650.000" } });
+
+    // The rules agreement and the proof photo are both required.
     fireEvent.click(screen.getByRole("button", { name: "Lihat ringkasan" }));
     expect(screen.getByText("Setujui daftar barang terlarang dulu")).toBeTruthy();
+    expect(screen.getByText("Lampirkan minimal 1 foto isi paket")).toBeTruthy();
     fireEvent.click(screen.getByRole("checkbox", { name: "Setujui daftar barang terlarang" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lihat ringkasan" }));
+    expect(screen.getByRole("heading", { name: "Barang" })).toBeTruthy(); // still on the goods step
+    const photo = await addPhoto("semua-barang.jpg");
     fireEvent.click(screen.getByRole("button", { name: "Lihat ringkasan" }));
 
     // Step 3: summary, drop point and the bill-after-weighing promise.
     expect(screen.getByRole("heading", { name: "Ringkasan" })).toBeTruthy();
     expect(screen.getByText("setelah ditimbang")).toBeTruthy();
+    expect(screen.getByText("1 foto")).toBeTruthy();
     expect(screen.getByText(/Jl\. Bojong Tengah No\. 34/)).toBeTruthy();
     expect(screen.getByText(/Antar maksimal 7 hari/)).toBeTruthy();
 
@@ -108,7 +128,10 @@ describe("ShippingBookingForm", () => {
     await waitFor(() =>
       expect(onCreated).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000042"),
     );
-    expect(onSubmit).toHaveBeenCalledWith({
+    expect(onSubmit.mock.calls[0]![1]).toEqual([expect.any(File)]);
+    expect(onSubmit.mock.calls[0]![1][0].name).toMatch(/^foto-/);
+    expect(photo.type).toBe("image/jpeg");
+    expect(onSubmit.mock.calls[0]![0]).toEqual({
       country: "JP",
       recipient: {
         recipientName: "Rina Tanaka",
@@ -153,6 +176,7 @@ describe("ShippingBookingForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pakaian" }));
     fireEvent.change(screen.getByLabelText("Isi paket"), { target: { value: "2 kaos" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "Setujui daftar barang terlarang" }));
+    await addPhoto();
     fireEvent.click(screen.getByRole("button", { name: "Lihat ringkasan" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Lewat kurir" }));
@@ -172,7 +196,55 @@ describe("ShippingBookingForm", () => {
     });
   });
 
-  it("asks a signed-out visitor to sign in before booking", () => {
+  it("shows the how-to-photograph guide and lets the customer remove a photo", async () => {
+    render(
+      <ShippingBookingForm
+        config={open}
+        available
+        signedIn
+        last={{
+          recipientName: "Rina Tanaka",
+          phone: "+819012345678",
+          postalCode: "150-0002",
+          prefecture: "Tokyo",
+          city: "Shibuya-ku",
+          addressLine: "2-21-1 Shibuya, Apt 302",
+        }}
+        onSubmit={vi.fn()}
+        onCreated={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lihat contoh" }));
+    expect(await screen.findByText("Cara memotret isi paket")).toBeTruthy();
+    expect(screen.getByRole("img", { name: /semua barang dijejer satu lapis/i })).toBeTruthy();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+
+    await addPhoto("a.jpg");
+    await addPhoto("b.jpg");
+    expect(screen.getAllByAltText("Foto isi paket")).toHaveLength(2);
+    fireEvent.click(screen.getAllByRole("button", { name: "Hapus foto" })[0]!);
+    expect(screen.getAllByAltText("Foto isi paket")).toHaveLength(1);
+  });
+
+  it("does not ask for a photo when Admin sets the minimum to 0", () => {
+    render(
+      <ShippingBookingForm
+        config={{ ...open, minPhotos: 0 }}
+        available
+        signedIn
+        last={null}
+        onSubmit={vi.fn()}
+        onCreated={vi.fn()}
+      />,
+    );
+    fillRecipient();
+    fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    expect(screen.getByText("Foto isi paket")).toBeTruthy();
+    expect(screen.queryByText(/wajib, minimal/)).toBeNull();
+  });
+
+  it("asks a signed-out visitor to sign in before booking", async () => {
     render(
       <ShippingBookingForm
         config={open}
@@ -189,6 +261,7 @@ describe("ShippingBookingForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pakaian" }));
     fireEvent.change(screen.getByLabelText("Isi paket"), { target: { value: "2 kaos" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "Setujui daftar barang terlarang" }));
+    await addPhoto();
     fireEvent.click(screen.getByRole("button", { name: "Lihat ringkasan" }));
     expect(screen.getByText("Masuk dulu untuk membuat booking.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Kirim booking" })).toBeNull();

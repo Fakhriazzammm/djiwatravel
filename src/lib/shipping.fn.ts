@@ -12,16 +12,6 @@ export const getLastShippingRecipient = createServerFn({ method: "GET" }).handle
   return getLastShippingRecipientHandler();
 });
 
-export const createShippingOrder = createServerFn({ method: "POST" })
-  .validator(async (data: unknown) => {
-    const { createShippingOrderInput } = await import("./shipping.server");
-    return createShippingOrderInput(data);
-  })
-  .handler(async ({ data }) => {
-    const { createShippingOrderHandler } = await import("./shipping.server");
-    return createShippingOrderHandler({ data });
-  });
-
 export const payShippingOrder = createServerFn({ method: "POST" })
   .validator(async (data: unknown) => {
     const { shippingOrderIdInput } = await import("./shipping.server");
@@ -77,6 +67,16 @@ export const getMyShippingOrder = createServerFn({ method: "GET" })
     return getMyShippingOrderHandler({ data });
   });
 
+export const deleteMyShippingPhoto = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { shippingPhotoIdInput } = await import("./shipping.server");
+    return shippingPhotoIdInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { deleteMyShippingPhotoHandler } = await import("./shipping.server");
+    return deleteMyShippingPhotoHandler({ data });
+  });
+
 /* Admin */
 
 export const getAdminShipping = createServerFn({ method: "GET" }).handler(async () => {
@@ -102,4 +102,14 @@ export const runAdminShippingAction = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { adminShippingActionHandler } = await import("./shipping.server");
     return adminShippingActionHandler({ data });
+  });
+
+export const scanShipping = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => {
+    const { scanShippingInput } = await import("./shipping.server");
+    return scanShippingInput(data);
+  })
+  .handler(async ({ data }) => {
+    const { scanShippingHandler } = await import("./shipping.server");
+    return scanShippingHandler({ data });
   });

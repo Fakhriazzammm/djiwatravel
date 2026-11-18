@@ -32,6 +32,8 @@ const COMPACT_PAGES = [
   "src/routes/kirim-barang.pengiriman.tsx",
   "src/components/shipping/shipping-ui.tsx",
   "src/components/shipping/shipping-booking-form.tsx",
+  "src/components/shipping/shipping-photos.tsx",
+  "src/components/shipping/shipping-label.tsx",
   "src/routes/live-catalog.tsx",
   "src/routes/my-esim.$id.tsx",
   "src/routes/my-esim.index.tsx",

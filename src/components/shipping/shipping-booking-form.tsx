@@ -4,6 +4,7 @@ import { Check, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
 import { BackBar, Page } from "@/components/shell";
+import { PhotoPicker, type PickedPhoto } from "@/components/shipping/shipping-photos";
 import {
   DropPointCard,
   Row,
@@ -45,7 +46,7 @@ export type ShippingBookingFormProps = {
   signedIn: boolean;
   last: ShippingBookingPayload["recipient"] | null;
   /** Creates the booking and returns its id; the route sends the customer to the new shipment. */
-  onSubmit: (payload: ShippingBookingPayload) => Promise<{ id: string }>;
+  onSubmit: (payload: ShippingBookingPayload, photos: File[]) => Promise<{ id: string }>;
   onCreated: (id: string) => void;
 };
 
@@ -78,6 +79,11 @@ export function ShippingBookingForm({
     estimatedKg: Math.min(Math.max(2, config.minKg), config.maxKg),
     acceptedRules: false,
   });
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
+  const photoError =
+    photos.length < config.minPhotos
+      ? `Lampirkan minimal ${config.minPhotos} foto isi paket`
+      : undefined;
   const [inbound, setInbound] = useState<{
     mode: "SELF" | "COURIER";
     courier: string;
@@ -108,7 +114,7 @@ export function ShippingBookingForm({
       return;
     }
     if (step === 2) {
-      if (Object.keys(goodsErrors).length === 0) {
+      if (Object.keys(goodsErrors).length === 0 && !photoError) {
         setShowErrors(false);
         setStep(3);
       }
@@ -120,21 +126,24 @@ export function ShippingBookingForm({
     if (Object.keys(inboundErrors).length > 0) return;
     setBusy(true);
     try {
-      const result = await onSubmit({
-        country: "JP",
-        recipient,
-        goods: {
-          category: goods.category,
-          contents: goods.contents,
-          declaredValueIdr,
-          estimatedKg: goods.estimatedKg,
+      const result = await onSubmit(
+        {
+          country: "JP",
+          recipient,
+          goods: {
+            category: goods.category,
+            contents: goods.contents,
+            declaredValueIdr,
+            estimatedKg: goods.estimatedKg,
+          },
+          acceptedRules: true,
+          inbound:
+            inbound.mode === "COURIER"
+              ? { mode: "COURIER", courier: inbound.courier, tracking: inbound.tracking }
+              : { mode: "SELF" },
         },
-        acceptedRules: true,
-        inbound:
-          inbound.mode === "COURIER"
-            ? { mode: "COURIER", courier: inbound.courier, tracking: inbound.tracking }
-            : { mode: "SELF" },
-      });
+        photos.map((p) => p.file),
+      );
       onCreated(result.id);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Booking belum berhasil, coba lagi.");
@@ -279,6 +288,12 @@ export function ShippingBookingForm({
               placeholder="650000"
             />
           </ShippingField>
+          <PhotoPicker
+            photos={photos}
+            onChange={setPhotos}
+            min={config.minPhotos}
+            error={showErrors ? photoError : undefined}
+          />
           <div>
             <p className="mb-1 text-[11px] font-medium text-muted-foreground">Estimasi berat</p>
             <div className="ios-card flex items-center justify-between p-3">
@@ -374,7 +389,20 @@ export function ShippingBookingForm({
             <Row label="Kategori" value={goods.category} />
             <Row label="Isi" value={goods.contents} />
             <Row label="Nilai" value={formatIdr(declaredValueIdr)} />
+            <Row label="Foto isi paket" value={`${photos.length} foto`} />
           </dl>
+          {photos.length > 0 && (
+            <div className="mt-1.5 flex gap-1.5 overflow-x-auto">
+              {photos.map((p) => (
+                <img
+                  key={p.id}
+                  src={p.url}
+                  alt="Foto isi paket"
+                  className="size-14 shrink-0 rounded-lg object-cover"
+                />
+              ))}
+            </div>
+          )}
           <p className="ios-section-label mt-3">Estimasi biaya</p>
           <dl className="ios-group space-y-1 p-3 text-[12px]">
             <Row

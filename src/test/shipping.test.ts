@@ -14,7 +14,11 @@ import {
   formatKg,
   normalizeJapanPhone,
   normalizeJapanPostal,
+  buildLabelData,
+  labelFileName,
   mapsSearchUrl,
+  parseScanCode,
+  scanUrl,
   normalizeShippingConfig,
   parseShippingConfig,
   quoteShipping,
@@ -223,5 +227,55 @@ describe("drop point map link", () => {
     expect(url.searchParams.get("query")).toBe(
       "Djiwa Tasikmalaya, Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya, Jawa Barat",
     );
+  });
+});
+
+describe("QR label and scan", () => {
+  it("encodes only the shipment code in a link under the site", () => {
+    expect(scanUrl("https://djiwatravel.com/", "DJW-KR-0042")).toBe(
+      "https://djiwatravel.com/admin/shipping?scan=DJW-KR-0042",
+    );
+  });
+
+  it("reads the code from a bare code, the label link or noisy scanner text", () => {
+    expect(parseScanCode("DJW-KR-0042")).toBe("DJW-KR-0042");
+    expect(parseScanCode("  djw-kr-0042\r\n")).toBe("DJW-KR-0042");
+    expect(parseScanCode("https://djiwatravel.com/admin/shipping?scan=DJW-KR-0042")).toBe(
+      "DJW-KR-0042",
+    );
+    expect(parseScanCode("DJW-KR-12345")).toBe("DJW-KR-12345");
+    expect(parseScanCode("hello")).toBeNull();
+    expect(parseScanCode("DJW-KR-42")).toBeNull();
+  });
+
+  it("builds the label from the shipment and the drop point", () => {
+    const label = buildLabelData(
+      {
+        code: "DJW-KR-0042",
+        recipientName: "Rina Tanaka",
+        phone: "+819012345678",
+        addressLine: "2-21-1 Shibuya, Apt 302",
+        city: "Shibuya-ku",
+        prefecture: "Tokyo",
+        postalCode: "150-0002",
+        category: "Makanan kering",
+        contents: "Keripik",
+        estimatedKg: 2,
+      },
+      DEFAULT_SHIPPING_CONFIG.dropPoint,
+      "https://djiwatravel.com",
+    );
+    expect(label.qrValue).toBe("https://djiwatravel.com/admin/shipping?scan=DJW-KR-0042");
+    expect(label.addressLines).toEqual(["2-21-1 Shibuya, Apt 302", "Shibuya-ku, Tokyo 150-0002"]);
+    expect(label.dropPointName).toBe("Djiwa Tasikmalaya");
+    expect(labelFileName("DJW-KR-0042", "pdf")).toBe("label-DJW-KR-0042.pdf");
+  });
+
+  it("asks for one proof photo by default and lets Admin change it", () => {
+    expect(DEFAULT_SHIPPING_CONFIG.minPhotos).toBe(1);
+    expect(parseShippingConfig({ minPhotos: 2 }).minPhotos).toBe(2);
+    expect(parseShippingConfig({ minPhotos: 0 }).minPhotos).toBe(0);
+    expect(() => parseShippingConfig({ minPhotos: 5 })).toThrow();
+    expect(parseShippingConfig({}).minPhotos).toBe(1); // settings saved before photos existed
   });
 });

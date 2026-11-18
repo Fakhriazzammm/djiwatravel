@@ -26,6 +26,8 @@ import {
   NOTIFY_TEXT,
   REMINDER_AFTER_DAYS,
   SHIPPING_ADMIN_NEXT,
+  SHIPPING_MAX_PHOTOS,
+  parseScanCode,
   SHIPPING_SETTING_KEY,
   SHIPPING_STATUS_LABEL,
   adminCanBill,
@@ -43,6 +45,7 @@ import {
   quoteShipping,
   shippingCodeFrom,
   shippingCountryEnabled,
+  shippingIsDead,
   shippingIsPaid,
   validateShippingGoods,
   validateShippingInbound,
@@ -137,6 +140,9 @@ type OrderRow = {
   status_reason: string | null;
   admin_note: string | null;
   refund_needed: boolean;
+  photo_review: "PENDING" | "APPROVED" | "REDO";
+  photo_review_note: string | null;
+  photo_reviewed_at: Date | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -203,12 +209,19 @@ const bookingSchema = z.object({
 });
 export const createShippingOrderInput = (data: unknown) => bookingSchema.parse(data);
 
-export async function createShippingOrderHandler({
+/**
+ * Creates one booking with its proof photos in a single transaction (the booking form posts them
+ * together), so a booking never exists without the photos the Admin setting asks for.
+ */
+export async function createShippingBooking({
+  user,
   data,
+  photos,
 }: {
+  user: { id: string };
   data: ReturnType<typeof createShippingOrderInput>;
+  photos: Uint8Array[];
 }) {
-  const user = await getAuthenticatedUser();
   const config = await getShippingConfig();
   if (!shippingCountryEnabled(config, "JP") || !paymentConfigured())
     throw new Error("Kirim Barang belum tersedia");
@@ -226,6 +239,13 @@ export async function createShippingOrderHandler({
     tracking: data.inbound.tracking ?? "",
   });
   if (Object.keys(inboundErrors).length > 0) throw new Error(Object.values(inboundErrors)[0]);
+
+  if (photos.length < config.minPhotos)
+    throw new Error(`Lampirkan minimal ${config.minPhotos} foto isi paket`);
+  if (photos.length > SHIPPING_MAX_PHOTOS) throw new Error(`Maksimal ${SHIPPING_MAX_PHOTOS} foto`);
+  const photoMimes = photos.map((bytes) => feedPhotoMime(bytes));
+  if (photoMimes.some((m) => m === null))
+    throw new Error("Foto harus JPEG, PNG, atau WebP maksimal 5 MB");
 
   const phone = normalizeJapanPhone(data.recipient.phone)!;
   const postal = normalizeJapanPostal(data.recipient.postalCode)!;
@@ -276,12 +296,18 @@ export async function createShippingOrderHandler({
       ],
     );
     const id = (inserted.rows[0] as { id: string }).id;
+    for (const [i, bytes] of photos.entries()) {
+      await client.query(
+        "insert into shipping_photos (order_id, mime, bytes, source) values ($1, $2, $3, 'CUSTOMER')",
+        [id, photoMimes[i], Buffer.from(bytes)],
+      );
+    }
     await logEvent(client, id, "AWAITING_DROP", "customer");
     await client.query("commit");
     await notifyOrder(
       { id, public_code: code, customer_auth_subject: user.id },
       "AWAITING_DROP",
-      `Booking dibuat. Tulis kode ${code} di paket dan antar ke drop point sebelum ${deadline.toLocaleDateString("id-ID", { day: "numeric", month: "long", timeZone: "Asia/Jakarta" })}.`,
+      `Booking dibuat. Simpan label QR ${code}, tempel di paket, dan antar ke drop point sebelum ${deadline.toLocaleDateString("id-ID", { day: "numeric", month: "long", timeZone: "Asia/Jakarta" })}.`,
     );
     return { id, code };
   } catch (error) {
@@ -630,22 +656,25 @@ export type ShippingEventView = {
   note?: string | null;
 };
 
+type PhotoIds = { customer: string[]; admin: string[] };
+const NO_PHOTOS: PhotoIds = { customer: [], admin: [] };
+
 async function photosFor(orderIds: string[]) {
-  const map = new Map<string, string[]>();
+  const map = new Map<string, PhotoIds>();
   if (orderIds.length === 0) return map;
   const rows = await pool.query(
-    "select id, order_id from shipping_photos where order_id = any($1::uuid[]) order by created_at",
+    "select id, order_id, source from shipping_photos where order_id = any($1::uuid[]) order by created_at",
     [orderIds],
   );
-  for (const r of rows.rows as { id: string; order_id: string }[]) {
-    const list = map.get(r.order_id) ?? [];
-    list.push(r.id);
-    map.set(r.order_id, list);
+  for (const r of rows.rows as { id: string; order_id: string; source: "CUSTOMER" | "ADMIN" }[]) {
+    const entry = map.get(r.order_id) ?? { customer: [], admin: [] };
+    (r.source === "CUSTOMER" ? entry.customer : entry.admin).push(r.id);
+    map.set(r.order_id, entry);
   }
   return map;
 }
 
-const view = (o: OrderRow, photos: string[], events: ShippingEventView[] = []) => {
+const view = (o: OrderRow, photos: PhotoIds, events: ShippingEventView[] = []) => {
   const rule = { minKg: Number(o.min_kg), roundKg: Number(o.round_kg) };
   return {
     id: o.id,
@@ -677,7 +706,12 @@ const view = (o: OrderRow, photos: string[], events: ShippingEventView[] = []) =
     packingIdr: o.packing_idr,
     totalIdr: o.total_idr,
     weighNote: o.weigh_note,
-    photoIds: photos,
+    /** Weigh-in photos from the team (shown on the bill). */
+    photoIds: photos.admin,
+    /** The customer's own proof photos of the contents. */
+    proofPhotoIds: photos.customer,
+    photoReview: o.photo_review,
+    photoReviewNote: o.photo_review_note,
     paymentUrl:
       o.status === "PAYMENT_PENDING" &&
       o.payment_expires_at &&
@@ -688,6 +722,8 @@ const view = (o: OrderRow, photos: string[], events: ShippingEventView[] = []) =
     paidAt: iso(o.paid_at),
     courier: o.courier,
     trackingNumber: o.tracking_number,
+    shippedAt: iso(o.shipped_at),
+    arrivedAt: iso(o.arrived_at),
     statusReason: o.status_reason,
     createdAt: iso(o.created_at)!,
     events,
@@ -703,7 +739,7 @@ export async function listMyShippingOrdersHandler() {
     )
   ).rows as OrderRow[];
   const photos = await photosFor(orders.map((o) => o.id));
-  return orders.map((o) => view(o, photos.get(o.id) ?? []));
+  return orders.map((o) => view(o, photos.get(o.id) ?? NO_PHOTOS));
 }
 
 export async function getMyShippingOrderHandler({
@@ -725,8 +761,9 @@ export async function getMyShippingOrderHandler({
   }));
   const config = await getShippingConfig();
   return {
-    ...view(order, photos.get(order.id) ?? [], events),
+    ...view(order, photos.get(order.id) ?? NO_PHOTOS, events),
     dropPoint: config.dropPoint,
+    minPhotos: config.minPhotos,
   };
 }
 
@@ -790,28 +827,72 @@ export async function confirmShippingDeliveredHandler({
 
 /* ------------------------------------------------------------------ photos */
 
-export const SHIPPING_MAX_PHOTOS = 4;
-
-export async function addShippingPhoto(orderId: string, bytes: Uint8Array) {
-  await requireAdmin();
+async function insertPhoto(orderId: string, bytes: Uint8Array, source: "CUSTOMER" | "ADMIN") {
   const mime = feedPhotoMime(bytes);
   if (!mime) throw new Error("Foto harus JPEG, PNG, atau WebP maksimal 5 MB");
-  const order = await pool.query("select id from shipping_orders where id = $1", [orderId]);
-  if (order.rows.length === 0) throw new Error("Pengiriman tidak ditemukan");
   const count = await pool.query(
-    "select count(*)::int as n from shipping_photos where order_id = $1",
-    [orderId],
+    "select count(*)::int as n from shipping_photos where order_id = $1 and source = $2",
+    [orderId, source],
   );
   if (Number((count.rows[0] as { n: number }).n) >= SHIPPING_MAX_PHOTOS)
-    throw new Error(`Maksimal ${SHIPPING_MAX_PHOTOS} foto per pengiriman`);
+    throw new Error(`Maksimal ${SHIPPING_MAX_PHOTOS} foto`);
   const row = await pool.query(
-    "insert into shipping_photos (order_id, mime, bytes) values ($1, $2, $3) returning id",
-    [orderId, mime, Buffer.from(bytes)],
+    "insert into shipping_photos (order_id, mime, bytes, source) values ($1, $2, $3, $4) returning id",
+    [orderId, mime, Buffer.from(bytes), source],
   );
-  return { id: (row.rows[0] as { id: string }).id };
+  return (row.rows[0] as { id: string }).id;
 }
 
-/** One weigh-in photo: its owner, or the team with `admin`. */
+/** Admin attaches a weigh-in photo (scale and contents) to a shipment. */
+export async function addShippingPhoto(orderId: string, bytes: Uint8Array) {
+  await requireAdmin();
+  const order = await pool.query("select id from shipping_orders where id = $1", [orderId]);
+  if (order.rows.length === 0) throw new Error("Pengiriman tidak ditemukan");
+  return { id: await insertPhoto(orderId, bytes, "ADMIN") };
+}
+
+/** The customer adds or replaces proof photos until the parcel is at the drop point. */
+export async function addCustomerShippingPhoto(
+  subject: string,
+  orderId: string,
+  bytes: Uint8Array,
+) {
+  const order = await ownedOrder(orderId, subject);
+  if (order.status !== "AWAITING_DROP" && order.status !== "RECEIVED")
+    throw new Error("Foto tidak bisa diubah lagi untuk pengiriman ini");
+  const id = await insertPhoto(order.id, bytes, "CUSTOMER");
+  // New photos need a new look from the team.
+  await pool.query(
+    `update shipping_orders set photo_review = 'PENDING', photo_review_note = null, photo_reviewed_at = null, updated_at = now()
+      where id = $1 and photo_review <> 'PENDING'`,
+    [order.id],
+  );
+  return { id };
+}
+
+const photoIdSchema = z.object({ orderId: z.string().uuid(), photoId: z.string().uuid() });
+export const shippingPhotoIdInput = (data: unknown) => photoIdSchema.parse(data);
+
+export async function deleteMyShippingPhotoHandler({
+  data,
+}: {
+  data: ReturnType<typeof shippingPhotoIdInput>;
+}) {
+  const user = await getAuthenticatedUser();
+  const order = await ownedOrder(data.orderId, user.id);
+  if (order.status !== "AWAITING_DROP") throw new Error("Foto tidak bisa dihapus lagi");
+  await pool.query(
+    "delete from shipping_photos where id = $1 and order_id = $2 and source = 'CUSTOMER'",
+    [data.photoId, order.id],
+  );
+  await pool.query(
+    "update shipping_orders set photo_review = 'PENDING', photo_review_note = null, photo_reviewed_at = null, updated_at = now() where id = $1",
+    [order.id],
+  );
+  return { ok: true };
+}
+
+/** One photo: its owner, or the team with `admin`. */
 export async function shippingPhoto(id: string, admin: boolean, viewerId: string | null) {
   const row = (
     await pool.query(
@@ -823,11 +904,6 @@ export async function shippingPhoto(id: string, admin: boolean, viewerId: string
   if (!row) return null;
   if (!admin && row.customer_auth_subject !== viewerId) return null;
   return { mime: row.mime, bytes: row.bytes };
-}
-
-export async function deleteShippingPhoto(id: string) {
-  await requireAdmin();
-  await pool.query("delete from shipping_photos where id = $1", [id]);
 }
 
 /* -------------------------------------------------------------------- admin */
@@ -871,7 +947,7 @@ export async function getAdminShippingHandler() {
       (counts.rows as { status: string; n: number }[]).map((r) => [r.status, r.n]),
     ),
     orders: orders.map((o) => ({
-      ...view(o, photos.get(o.id) ?? [], eventMap.get(o.id) ?? []),
+      ...view(o, photos.get(o.id) ?? NO_PHOTOS, eventMap.get(o.id) ?? []),
       partnerIdrPerKg: o.partner_idr_per_kg,
       partnerCostIdr: o.partner_cost_idr,
       financeError: o.finance_error,
@@ -958,6 +1034,9 @@ const actionSchema = z.object({
     "check_payment",
     "resend_finance",
     "delete_photo",
+    "photo_approve",
+    "photo_redo",
+    "undo_receive",
   ]),
   note: z.string().trim().max(800).optional(),
   courier: z.string().trim().max(60).optional(),
@@ -1000,6 +1079,66 @@ export async function adminShippingActionHandler({
       order.id,
     ]);
     return { ok: true };
+  }
+
+  if (data.action === "photo_approve" || data.action === "photo_redo") {
+    if (order.status !== "AWAITING_DROP" && order.status !== "RECEIVED")
+      throw new Error("Foto hanya ditinjau sebelum paket ditagih");
+    const redo = data.action === "photo_redo";
+    if (redo && (!data.note || data.note.length < 3))
+      throw new Error("Tulis catatan untuk pelanggan");
+    if (!redo) {
+      const count = await pool.query(
+        "select count(*)::int as n from shipping_photos where order_id = $1 and source = 'CUSTOMER'",
+        [order.id],
+      );
+      if (Number((count.rows[0] as { n: number }).n) === 0)
+        throw new Error("Belum ada foto dari pelanggan untuk disetujui");
+    }
+    await pool.query(
+      `update shipping_orders set photo_review = $2, photo_review_note = $3, photo_reviewed_at = now(), updated_at = now() where id = $1`,
+      [order.id, redo ? "REDO" : "APPROVED", redo ? data.note : null],
+    );
+    await logEvent(
+      pool,
+      order.id,
+      order.status,
+      actor,
+      redo ? `Minta foto ulang: ${data.note}` : "Foto disetujui",
+    );
+    await notifyOrder(
+      order,
+      `${redo ? "PHOTO_REDO" : "PHOTO_OK"}:${Date.now()}`,
+      redo
+        ? `Tim kami meminta foto ulang isi paketmu: ${data.note}. Buka pengiriman untuk menggantinya.`
+        : "Foto isi paketmu sudah disetujui. Silakan antar paketnya ke drop point.",
+    );
+    return { ok: true };
+  }
+  if (data.action === "undo_receive") {
+    if (order.status !== "RECEIVED" || order.weighed_kg !== null)
+      throw new Error("Penerimaan hanya bisa diurungkan sebelum paket ditagih");
+    const client2 = await pool.connect();
+    try {
+      await client2.query("begin");
+      const back = await client2.query(
+        "update shipping_orders set status = 'AWAITING_DROP', updated_at = now() where id = $1 and status = 'RECEIVED' and weighed_kg is null returning id",
+        [order.id],
+      );
+      if (back.rows.length === 0) throw new Error("Status sudah berubah, muat ulang");
+      await client2.query(
+        "delete from shipping_order_events where id = (select id from shipping_order_events where order_id = $1 and status = 'RECEIVED' order by created_at desc limit 1)",
+        [order.id],
+      );
+      await logEvent(client2, order.id, "AWAITING_DROP", actor, "Penerimaan diurungkan");
+      await client2.query("commit");
+    } catch (error) {
+      await client2.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client2.release();
+    }
+    return { ok: true, status: "AWAITING_DROP" as const };
   }
 
   const config = await getShippingConfig();
@@ -1120,4 +1259,85 @@ export async function adminShippingActionHandler({
   } finally {
     client.release();
   }
+}
+
+/* --------------------------------------------------------------------- scan */
+
+const scanSchema = z.object({
+  code: z.string().trim().min(4).max(400),
+  /** `lookup` only reads. `receive` moves a parcel waiting at the door to "Diterima di drop point". */
+  mode: z.enum(["lookup", "receive"]),
+});
+export const scanShippingInput = (data: unknown) => scanSchema.parse(data);
+
+export async function scanShippingHandler({
+  data,
+}: {
+  data: ReturnType<typeof scanShippingInput>;
+}) {
+  await requireAdmin();
+  const actor = (await getAdminEmailHandler()) ?? "admin";
+  const code = parseScanCode(data.code);
+  if (!code) return { found: false as const, reason: "invalid" as const };
+  const row = (await pool.query("select * from shipping_orders where public_code = $1", [code]))
+    .rows[0] as OrderRow | undefined;
+  if (!row) return { found: false as const, reason: "unknown" as const, code };
+
+  const config = await getShippingConfig();
+  const photos = (await photosFor([row.id])).get(row.id) ?? NO_PHOTOS;
+  const received = (
+    await pool.query(
+      "select created_at from shipping_order_events where order_id = $1 and status = 'RECEIVED' order by created_at desc limit 1",
+      [row.id],
+    )
+  ).rows[0] as { created_at: Date } | undefined;
+  const summary = (status: ShippingStatus) => ({
+    id: row.id,
+    code: row.public_code,
+    status,
+    statusLabel: SHIPPING_STATUS_LABEL[status],
+    recipientName: row.recipient_name,
+    prefecture: row.prefecture,
+    contents: `${row.category}: ${row.contents}`,
+    estimatedKg: Number(row.estimated_kg),
+    photoCount: photos.customer.length,
+    photoShort: photos.customer.length < config.minPhotos,
+    photoReview: row.photo_review,
+    receivedAt: received ? new Date(received.created_at).toISOString() : null,
+  });
+
+  if (shippingIsDead(row.status))
+    return { found: true as const, outcome: "blocked" as const, order: summary(row.status) };
+  if (data.mode === "lookup" || row.status !== "AWAITING_DROP")
+    return {
+      found: true as const,
+      outcome: (data.mode === "receive" ? "already" : "found") as "already" | "found",
+      order: summary(row.status),
+    };
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const updated = await client.query(
+      "update shipping_orders set status = 'RECEIVED', updated_at = now() where id = $1 and status = 'AWAITING_DROP' returning id",
+      [row.id],
+    );
+    if (updated.rows.length === 0) {
+      await client.query("rollback");
+      return { found: true as const, outcome: "already" as const, order: summary("RECEIVED") };
+    }
+    await logEvent(client, row.id, "RECEIVED", actor, "Scan QR di drop point");
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+  await notifyOrder(row, "RECEIVED", NOTIFY_TEXT["RECEIVED"]!);
+  return {
+    found: true as const,
+    outcome: "received" as const,
+    order: { ...summary("RECEIVED"), receivedAt: new Date().toISOString() },
+  };
 }

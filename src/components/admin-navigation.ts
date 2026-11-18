@@ -9,6 +9,7 @@ import {
   Newspaper,
   ListChecks,
   RotateCcw,
+  ScanLine,
   Settings,
   ShoppingBag,
   Truck,
@@ -64,6 +65,7 @@ export const adminNavigationGroups = [
     label: "Kirim Barang",
     items: [
       ["Pengiriman", "/admin/shipping", Truck],
+      ["Scan QR", "/admin/shipping#scan", ScanLine],
       ["Pengaturan", "/admin/shipping#settings", Settings],
     ],
   },

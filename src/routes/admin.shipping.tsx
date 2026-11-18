@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useLocation, useRouter } from "@tanstack/react-router";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Printer } from "lucide-react";
+import { AdminShippingScan } from "@/components/shipping/admin-shipping-scan";
+import { PhotoReviewBadge } from "@/components/shipping/shipping-photos";
 import {
   AdminShell,
   AdminSurface,
@@ -22,6 +24,7 @@ import {
   adminCanBill,
   adminCanCancel,
   adminCanReject,
+  buildLabelData,
   formatIdr,
   formatKg,
   quoteShipping,
@@ -33,11 +36,15 @@ import {
 export const Route = createFileRoute("/admin/shipping")({
   beforeLoad: () => requireAdmin(),
   head: () => ({ meta: [{ name: "robots", content: "noindex" }] }),
+  validateSearch: (search: Record<string, unknown>): { scan?: string } =>
+    typeof search["scan"] === "string" && search["scan"].length <= 400
+      ? { scan: search["scan"] }
+      : {},
   loader: () => getAdminShipping(),
   component: AdminShipping,
 });
 
-type Tab = "orders" | "settings";
+type Tab = "orders" | "scan" | "settings";
 type Data = Awaited<ReturnType<typeof getAdminShipping>>;
 type Order = Data["orders"][number];
 type Notice = { error: boolean; text: string } | null;
@@ -65,11 +72,19 @@ function AdminShipping() {
   const data = Route.useLoaderData();
   const router = useRouter();
   const location = useLocation();
-  const [tab, setTab] = useState<Tab>("orders");
+  const { scan } = Route.useSearch();
+  const [tab, setTab] = useState<Tab>(scan ? "scan" : "orders");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   useEffect(() => {
-    setTab(location.hash === "settings" ? "settings" : "orders");
-  }, [location.hash]);
+    setTab(
+      location.hash === "settings"
+        ? "settings"
+        : location.hash === "scan" || scan
+          ? "scan"
+          : "orders",
+    );
+  }, [location.hash, scan]);
   const refresh = () => router.invalidate();
   const todo = NEEDS_ACTION.reduce((n, s) => n + (data.counts[s] ?? 0), 0);
 
@@ -95,6 +110,7 @@ function AdminShipping() {
           {(
             [
               ["orders", "Pengiriman"],
+              ["scan", "Scan QR"],
               ["settings", "Pengaturan"],
             ] as const
           ).map(([id, label]) => (
@@ -121,7 +137,33 @@ function AdminShipping() {
             {notice.text}
           </p>
         )}
-        {tab === "orders" && <Orders data={data} setNotice={setNotice} refresh={refresh} />}
+        {tab === "scan" && (
+          <AdminSurface className="p-3">
+            <SectionHeading
+              title="Scan paket di drop point"
+              detail="Scan QR di label paket. Hanya tim dengan akses Admin yang bisa memakai halaman ini."
+            />
+            <div className="mt-3">
+              <AdminShippingScan
+                initialCode={scan ?? null}
+                onChanged={() => void refresh()}
+                onOpen={(id) => {
+                  setSelectedId(id);
+                  setTab("orders");
+                }}
+              />
+            </div>
+          </AdminSurface>
+        )}
+        {tab === "orders" && (
+          <Orders
+            data={data}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            setNotice={setNotice}
+            refresh={refresh}
+          />
+        )}
         {tab === "settings" && <Settings data={data} setNotice={setNotice} refresh={refresh} />}
       </div>
     </AdminShell>
@@ -132,15 +174,43 @@ function AdminShipping() {
 
 function Orders({
   data,
+  selectedId,
+  setSelectedId,
   setNotice,
   refresh,
 }: {
   data: Data;
+  selectedId: string | null;
+  setSelectedId: (id: string | null) => void;
   setNotice: (n: Notice) => void;
   refresh: () => Promise<unknown>;
 }) {
   const [filter, setFilter] = useState<"ALL" | ShippingStatus>("ALL");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [printing, setPrinting] = useState(false);
+  const pickedOrders = data.orders.filter((o) => picked.has(o.id));
+  const origin = typeof window === "undefined" ? "https://djiwatravel.com" : window.location.origin;
+
+  async function printBatch(kind: "labels" | "manifest") {
+    setPrinting(true);
+    try {
+      const print = await import("@/lib/shipping-print");
+      if (kind === "labels")
+        await print.downloadLabelsPdf(
+          pickedOrders.map((o) => buildLabelData(o, data.config.dropPoint, origin)),
+        );
+      else
+        await print.downloadManifestPdf(
+          pickedOrders,
+          data.config.dropPoint,
+          pickedOrders.find((o) => o.courier)?.courier ?? data.config.couriers[0] ?? "Kurir",
+        );
+    } catch {
+      setNotice({ error: true, text: "Dokumen belum bisa dibuat di perangkat ini. Coba lagi." });
+    } finally {
+      setPrinting(false);
+    }
+  }
   const rows = useMemo(
     () => data.orders.filter((o) => filter === "ALL" || o.status === filter),
     [data.orders, filter],
@@ -165,6 +235,36 @@ function Orders({
           </button>
         ))}
       </div>
+      {picked.size > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-secondary p-2 text-xs">
+          <span className="font-semibold">{picked.size} paket dipilih</span>
+          <button
+            type="button"
+            disabled={printing}
+            className={btn}
+            onClick={() => printBatch("labels")}
+          >
+            <Printer className="size-4" aria-hidden="true" />
+            Cetak label (PDF)
+          </button>
+          <button
+            type="button"
+            disabled={printing}
+            className={btn}
+            onClick={() => printBatch("manifest")}
+          >
+            <Printer className="size-4" aria-hidden="true" />
+            Manifest serah kurir (PDF)
+          </button>
+          <button
+            type="button"
+            className="text-muted-foreground underline"
+            onClick={() => setPicked(new Set())}
+          >
+            Kosongkan
+          </button>
+        </div>
+      )}
       {rows.length === 0 ? (
         <div className="mt-4 rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
           Belum ada pengiriman.
@@ -173,18 +273,40 @@ function Orders({
         <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
           <ul className="space-y-1.5">
             {rows.map((o) => (
-              <li key={o.id}>
+              <li key={o.id} className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  aria-label={`Pilih ${o.code}`}
+                  checked={picked.has(o.id)}
+                  onChange={(e) => {
+                    const next = new Set(picked);
+                    if (e.target.checked) next.add(o.id);
+                    else next.delete(o.id);
+                    setPicked(next);
+                  }}
+                  className="size-5 shrink-0 accent-[var(--brand-red)]"
+                />
                 <button
                   type="button"
                   onClick={() => setSelectedId(o.id)}
                   aria-current={selected?.id === o.id}
-                  className={`flex w-full items-center justify-between gap-2 rounded-xl p-2.5 text-left text-xs ${selected?.id === o.id ? "bg-brand-red-soft" : "bg-secondary"}`}
+                  className={`flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl p-2.5 text-left text-xs ${selected?.id === o.id ? "bg-brand-red-soft" : "bg-secondary"}`}
                 >
                   <span className="min-w-0">
                     <span className="block font-semibold text-brand-red">{o.code}</span>
                     <span className="block truncate text-muted-foreground">
                       {o.recipientName}, {o.prefecture} · {formatKg(o.estimatedKg)}
                     </span>
+                    {(o.status === "AWAITING_DROP" || o.status === "RECEIVED") &&
+                      o.photoReview !== "APPROVED" && (
+                        <span className="block text-[11px] font-semibold text-[#9a6100]">
+                          {o.photoReview === "REDO"
+                            ? "Menunggu foto ulang"
+                            : o.proofPhotoIds.length < data.config.minPhotos
+                              ? "Foto belum lengkap"
+                              : "Foto belum ditinjau"}
+                        </span>
+                      )}
                   </span>
                   <StatusPill tone={tone(o.status)}>{SHIPPING_STATUS_LABEL[o.status]}</StatusPill>
                 </button>
@@ -226,6 +348,8 @@ function OrderDetail({
   const [reason, setReason] = useState("");
   const [note, setNote] = useState(order.adminNote ?? "");
   const fileRef = useRef<HTMLInputElement>(null);
+  const [redoNote, setRedoNote] = useState("");
+  const [printBusy, setPrintBusy] = useState(false);
   const status = order.status as ShippingStatus;
   const next = SHIPPING_ADMIN_NEXT[status];
 
@@ -257,7 +381,10 @@ function OrderDetail({
       | "note"
       | "check_payment"
       | "resend_finance"
-      | "delete_photo",
+      | "delete_photo"
+      | "photo_approve"
+      | "photo_redo"
+      | "undo_receive",
     extra: Record<string, unknown> = {},
     success = "Tindakan berhasil.",
   ) {
@@ -274,6 +401,27 @@ function OrderDetail({
     }
   }
 
+  async function printOne(kind: "label" | "receipt" | "weigh") {
+    setPrintBusy(true);
+    try {
+      const print = await import("@/lib/shipping-print");
+      if (kind === "label")
+        await print.downloadLabelsPdf([
+          buildLabelData(order, config.dropPoint, window.location.origin),
+        ]);
+      else if (kind === "receipt") await print.downloadDropReceiptPdf(order, config.dropPoint);
+      else
+        await print.downloadWeighSheetPdf(
+          order,
+          order.proofPhotoIds.map((id) => `/api/shipping-photo/${id}?admin=1`),
+        );
+    } catch {
+      setNotice({ error: true, text: "Dokumen belum bisa dibuat di perangkat ini. Coba lagi." });
+    } finally {
+      setPrintBusy(false);
+    }
+  }
+
   async function upload(file: File | undefined) {
     if (!file) return;
     setBusy(true);
@@ -281,6 +429,7 @@ function OrderDetail({
     try {
       const form = new FormData();
       form.set("orderId", order.id);
+      form.set("as", "admin");
       form.set("photo", file);
       const response = await fetch("/api/shipping-photo", { method: "POST", body: form });
       const body = (await response.json()) as { error?: string };
@@ -332,6 +481,102 @@ function OrderDetail({
           />
         )}
       </dl>
+
+      <div className="mt-2 rounded-lg bg-background p-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-semibold">Foto dari pelanggan ({order.proofPhotoIds.length})</p>
+          <PhotoReviewBadge review={order.photoReview} />
+        </div>
+        {order.proofPhotoIds.length === 0 ? (
+          <p className="mt-1 text-[#9a6100]">Pelanggan belum melampirkan foto.</p>
+        ) : (
+          <div className="mt-1.5 flex gap-1.5 overflow-x-auto">
+            {order.proofPhotoIds.map((id) => (
+              <a
+                key={id}
+                href={`/api/shipping-photo/${id}?admin=1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0"
+              >
+                <img
+                  src={`/api/shipping-photo/${id}?admin=1`}
+                  alt="Foto isi paket dari pelanggan"
+                  className="h-20 w-28 rounded-lg object-cover"
+                  loading="lazy"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+        {order.photoReview === "REDO" && order.photoReviewNote && (
+          <p className="mt-1 text-muted-foreground">
+            Catatan ke pelanggan: {order.photoReviewNote}
+          </p>
+        )}
+        {(status === "AWAITING_DROP" || status === "RECEIVED") && (
+          <div className="mt-2 space-y-1.5">
+            <input
+              className={input}
+              value={redoNote}
+              maxLength={400}
+              onChange={(e) => setRedoNote(e.target.value)}
+              placeholder="Catatan bila minta foto ulang"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={
+                  busy || order.proofPhotoIds.length === 0 || order.photoReview === "APPROVED"
+                }
+                className={btn}
+                onClick={() => act("photo_approve", {}, "foto disetujui.")}
+              >
+                Setujui foto
+              </button>
+              <button
+                type="button"
+                disabled={busy || redoNote.trim().length < 3}
+                className={btn}
+                onClick={() => act("photo_redo", { note: redoNote.trim() }, "foto ulang diminta.")}
+              >
+                Minta foto ulang
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {(
+          [
+            ["label", "Cetak label"],
+            ["receipt", "Tanda terima"],
+            ["weigh", "Lembar timbang"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            disabled={printBusy}
+            className={btn}
+            onClick={() => printOne(key)}
+          >
+            <Printer className="size-4" aria-hidden="true" />
+            {label}
+          </button>
+        ))}
+        {status === "RECEIVED" && order.weighedKg === null && (
+          <button
+            type="button"
+            disabled={busy}
+            className={btn}
+            onClick={() => act("undo_receive", {}, "penerimaan diurungkan.")}
+          >
+            Urungkan terima
+          </button>
+        )}
+      </div>
 
       {order.photoIds.length > 0 && (
         <div className="mt-2 flex gap-1.5 overflow-x-auto">
@@ -756,7 +1001,7 @@ function Settings({
         />,
       )}
 
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {field(
           "Batas antar (hari)",
           num(config.dropDeadlineDays, (v) => set("dropDeadlineDays", v)),
@@ -768,6 +1013,10 @@ function Settings({
         {field(
           "Booking menunggu per pelanggan",
           num(config.maxOpenBookings, (v) => set("maxOpenBookings", v)),
+        )}
+        {field(
+          "Foto isi paket wajib (minimal, 0 = tidak wajib)",
+          num(config.minPhotos, (v) => set("minPhotos", v)),
         )}
       </div>
       {field(

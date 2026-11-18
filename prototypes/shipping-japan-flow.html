@@ -124,6 +124,10 @@ section[hidden]{display:none}
 .seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.seg span{background:#fff;border:1px solid var(--p-bd);border-radius:999px;padding:3px 10px;font-size:11px}.seg span.on{background:var(--p-pri);color:#fff;border-color:var(--p-pri)}
 .sw{display:inline-block;width:30px;height:18px;border-radius:99px;background:#16a34a;position:relative;vertical-align:middle}
 .sw::after{content:"";position:absolute;right:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff}
+.qr{width:132px;height:132px;margin:6px auto;background:#fff;border:1px solid #e6e8ee;border-radius:10px;padding:8px}.qr svg{width:100%;height:100%;display:block}
+.thumbs{display:flex;gap:6px}.thumbs>*{flex:1;height:64px}.add{border:1.5px dashed #c9ccd6;border-radius:12px;display:grid;place-items:center;color:#6b7080;font-size:11px;text-align:center;line-height:1.2}
+.view{height:190px;border-radius:14px;background:#1c1d22;position:relative;display:grid;place-items:center;color:#cfd3dc;font-size:11px}.view i{position:absolute;inset:30px;border:2px solid #fff;border-radius:12px;opacity:.85}
+.ok{color:#15803d;font-weight:700}.bad{color:#b42318;font-weight:700}
 @media (prefers-reduced-motion:no-preference){.tabs button{transition:background .15s}}
 </style></head>
 <body><main>
@@ -143,6 +147,7 @@ section[hidden]{display:none}
     <div class="fact"><b>Tujuan</b><span>Jepang saja (tahap 1)</span></div>
     <div class="fact"><b>Tarif</b><span>Rp150.000 / kg</span></div>
     <div class="fact"><b>Drop point</b><span>Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya</span></div>
+    <div class="fact"><b>Scan</b><span>QR di label paket, di-scan Admin di drop point</span></div>
     <div class="fact"><b>Bayar</b><span>Setelah barang ditimbang</span></div>
   </div>
   <div class="legend"><span><i style="background:var(--acc-soft)"></i>Customer</span><span><i style="background:var(--bg);border:1px dashed var(--bd)"></i>Sistem otomatis</span><span><i style="background:var(--fg)"></i>Admin</span></div>
@@ -151,9 +156,9 @@ section[hidden]{display:none}
 
     <div class="ln">Customer</div>
     <div><span class="chip c">Tap tile <b>Kirim Barang</b> di Home atau Explore, baca tarif &amp; drop point</span></div>
-    <div><span class="chip c">Isi penerima di Jepang, lalu isi barang &amp; estimasi berat</span></div>
-    <div><span class="chip c">Cek ringkasan &amp; estimasi, setujui aturan, kirim booking</span></div>
-    <div><span class="chip c">Tulis kode di paket, antar ke drop point Tasikmalaya</span></div>
+    <div><span class="chip c">Isi penerima di Jepang, isi barang &amp; estimasi berat, <b>unggah foto isi paket</b> (dijejer)</span></div>
+    <div><span class="chip c">Cek ringkasan &amp; estimasi, setujui aturan, kirim booking, <b>simpan label QR</b></span></div>
+    <div><span class="chip c">Tempel label QR di paket, antar ke drop point Tasikmalaya</span></div>
     <div><span class="chip c">Terima notif tagihan, cek berat &amp; foto timbang</span></div>
     <div><span class="chip c">Bayar lewat Mayar (QRIS, VA, e-wallet)</span></div>
     <div><span class="chip c">Pantau status &amp; resi di halaman Pengiriman</span></div>
@@ -161,8 +166,8 @@ section[hidden]{display:none}
 
     <div class="ln">Sistem</div>
     <div class="nil">–</div>
-    <div><span class="chip s">Validasi kode pos 7 digit, nomor +81, barang terlarang</span></div>
-    <div><span class="chip s">Buat kode <b>DJW-KR-0001</b>, status MENUNGGU_ANTAR, notif + email</span></div>
+    <div><span class="chip s">Validasi kode pos 7 digit, nomor +81, barang terlarang. Foto dikecilkan, EXIF dibuang</span></div>
+    <div><span class="chip s">Buat kode + <b>QR</b> DJW-KR-0001, status MENUNGGU_ANTAR, notif + email</span></div>
     <div><span class="chip s">Pengingat H+3. Batal otomatis H+7 bila tidak diantar</span></div>
     <div><span class="chip s">Hitung berat dibulatkan 0,5 kg × tarif, buat invoice Mayar</span></div>
     <div><span class="chip s">Webhook Mayar mengubah status jadi DIBAYAR</span></div>
@@ -172,11 +177,11 @@ section[hidden]{display:none}
     <div class="ln">Admin</div>
     <div class="nil">–</div>
     <div class="nil">–</div>
-    <div><span class="chip a">Booking baru muncul di antrian Kirim Barang</span></div>
-    <div><span class="chip a">Scan/cari kode, cek isi paket, foto, input <b>berat timbang</b></span></div>
+    <div><span class="chip a">Booking muncul di antrian. <b>Tinjau foto</b>: setujui, minta ulang, atau tolak</span></div>
+    <div><span class="chip a"><b>Scan QR</b>: status otomatis Diterima. Scan lagi: form timbang terbuka, cocokkan foto, input <b>berat timbang</b></span></div>
     <div><span class="chip a">Tambah biaya packing bila perlu, kirim tagihan</span></div>
     <div class="nil">–</div>
-    <div><span class="chip a">Packing, serahkan ke kurir express, input kurir &amp; <b>resi</b></span></div>
+    <div><span class="chip a">Packing, <b>scan QR</b> saat serah ke kurir, input kurir &amp; <b>resi</b></span></div>
     <div><span class="chip a">Tandai selesai bila customer konfirmasi atau H+14</span></div>
   </div></div>
 
@@ -248,6 +253,9 @@ section[hidden]{display:none}
           <div class="chips"><span class="on">Makanan kering</span><span>Pakaian</span><span>Kosmetik</span><span>Dokumen</span><span>Lainnya</span></div>
           <div class="field" style="margin-top:8px"><small>Isi paket</small><b>Keripik, kopi bubuk, 2 kaos</b></div>
           <div class="field"><small>Nilai barang (Rp), untuk bea cukai</small><b>650.000</b></div>
+          <div class="lbl">Foto isi paket <span class="mut" style="text-transform:none;letter-spacing:0">(wajib, minimal 1)</span></div>
+          <div class="thumbs"><div class="photo">Semua barang</div><div class="photo">Label</div><div class="add">+ Kamera<br>atau galeri</div></div>
+          <div class="mut" style="font-size:11px;margin-top:4px">Jejerkan semua barang dalam satu foto. Maksimal 4 foto. <u>Lihat contoh</u></div>
           <div class="lbl">Estimasi berat</div>
           <div class="card" style="display:flex;justify-content:space-between;align-items:center">
             <div class="stepper"><button type="button" data-d="-0.5" aria-label="Kurangi 0,5 kg">−</button><output id="kg">2,0 kg</output><button type="button" data-d="0.5" aria-label="Tambah 0,5 kg">+</button></div>
@@ -256,6 +264,28 @@ section[hidden]{display:none}
           <div class="ck" style="margin-top:10px"><i>✓</i><span>Paket tidak berisi cairan, baterai lithium, makanan segar/daging, obat, atau barang terlarang. <u>Lihat daftar</u></span></div>
         </div>
         <div class="foot"><div class="btn">Lihat ringkasan</div></div></div></div>
+
+    <div class="step"><div class="cap">4b Contoh foto <i>panduan</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Cara memotret isi paket</div></div>
+        <div class="body">
+          <div class="lbl" style="margin-top:0">Benar</div>
+          <div class="card" style="padding:8px">
+            <svg viewBox="0 0 260 150" width="100%" role="img" aria-label="Semua barang dijejer di alas polos, dilihat dari atas">
+              <rect x="0" y="0" width="260" height="150" rx="10" fill="#e9ebf0"/>
+              <rect x="14" y="24" width="52" height="70" rx="6" fill="#f59f00"/><rect x="22" y="40" width="36" height="8" rx="3" fill="#fff" opacity=".8"/>
+              <rect x="76" y="30" width="44" height="60" rx="6" fill="#6f4e37"/><rect x="82" y="44" width="32" height="8" rx="3" fill="#fff" opacity=".7"/>
+              <rect x="130" y="26" width="56" height="46" rx="5" fill="#3b5bdb"/><rect x="130" y="76" width="56" height="30" rx="5" fill="#5c7cfa"/>
+              <rect x="196" y="30" width="50" height="40" rx="5" fill="#e03131"/><rect x="196" y="74" width="50" height="30" rx="5" fill="#ff8787"/>
+              <rect x="14" y="108" width="82" height="30" rx="5" fill="#fff"/><text x="22" y="127" font-size="12" font-family="ui-monospace,monospace" font-weight="700" fill="#17181c">DJW-KR-0042</text>
+            </svg>
+            <div class="mut" style="margin-top:4px">Semua barang terlihat jelas, tidak bertumpuk, dari atas.</div>
+          </div>
+          <div class="lbl">Tips</div>
+          <div class="grp"><div><span class="k">1</span><span class="v">Alas polos (meja atau kain), cahaya terang</span></div><div><span class="k">2</span><span class="v">Jejer satu lapis, jangan ditumpuk</span></div><div><span class="k">3</span><span class="v">Satu foto semua barang, foto dekat untuk label atau merek</span></div><div><span class="k">4</span><span class="v">Kode booking boleh ikut difoto (setelah booking)</span></div></div>
+          <div class="lbl">Hindari</div>
+          <div class="grp"><div><span class="k bad">✕</span><span class="v">Foto gelap, buram, atau dari jauh</span></div><div><span class="k bad">✕</span><span class="v">Barang tertutup atau dalam tas tertutup</span></div></div>
+        </div>
+        <div class="foot"><div class="btn">Ambil foto</div></div></div></div>
 
     <div class="step"><div class="cap">5 Ringkasan &amp; booking</div>
       <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Ringkasan</div></div>
@@ -276,14 +306,31 @@ section[hidden]{display:none}
     <div class="step"><div class="cap">6 Booking berhasil <i>instruksi antar</i></div>
       <div class="phone"><div class="top"><div class="tt">Booking dibuat</div></div>
         <div class="body">
-          <div class="card" style="text-align:center"><div class="mut">Kode pengiriman</div><div class="code">DJW-KR-0042</div><div style="margin-top:6px"><button type="button" class="copy" data-copy="DJW-KR-0042">Salin kode</button></div></div>
+          <div class="card" style="text-align:center"><div class="mut">Label paket</div><div class="qr" data-qr="DJW-KR-0042"></div><div class="code">DJW-KR-0042</div><div style="margin-top:6px"><button type="button" class="copy" data-copy="DJW-KR-0042">Salin kode</button> <span class="copy">Simpan PNG</span> <span class="copy">Unduh PDF</span></div></div>
           <div class="lbl">Langkah berikutnya</div>
-          <div class="grp"><div><span class="k">1</span><span class="v">Tulis kode ini besar-besar di paket</span></div><div><span class="k">2</span><span class="v">Antar ke drop point sebelum 26 Nov</span></div><div><span class="k">3</span><span class="v">Kami timbang, kamu dapat tagihan</span></div></div>
+          <div class="grp"><div><span class="k">1</span><span class="v">Cetak atau simpan label QR, tempel di paket</span></div><div><span class="k">2</span><span class="v">Antar ke drop point sebelum 26 Nov</span></div><div><span class="k">3</span><span class="v">Kami timbang, kamu dapat tagihan</span></div></div>
           <div class="lbl">Alamat drop point</div>
           <div class="card"><b style="font-size:13px">Djiwa Tasikmalaya</b><div class="mut">Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya</div><div style="display:flex;gap:6px;margin-top:8px"><button type="button" class="copy" data-copy="Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya">Salin alamat</button><span class="copy">Buka peta</span></div></div>
           <div class="mut" style="font-size:11px;margin-top:8px">Buka 09.00 sampai 17.00 WIB, dijaga tim Djiwa Travel.</div>
         </div>
         <div class="foot"><div class="btn">Lihat pengiriman</div></div></div></div>
+
+    <div class="step"><div class="cap">6b Label paket <i>pratinjau, PNG atau PDF ukuran A6</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Label paket</div></div>
+        <div class="body">
+          <div class="card" style="border:1.5px dashed #9aa0b0;padding:10px;text-align:center">
+            <div style="font-size:10px;letter-spacing:.08em;font-weight:700">DJIWA TRAVEL · KIRIM BARANG</div>
+            <div class="qr" data-qr="DJW-KR-0042"></div>
+            <div class="code">DJW-KR-0042</div>
+            <div style="text-align:left;margin-top:8px;border-top:1px dashed #d4d7df;padding-top:6px">
+              <div class="mut" style="font-size:10px">KE</div><b>Rina Tanaka</b> · +81 90 1234 5678<br><span class="mut">2-21-1 Shibuya, Apt 302, Shibuya-ku, Tokyo 150-0002</span>
+              <div class="mut" style="font-size:10px;margin-top:6px">ISI</div>Makanan kering · estimasi 2 kg
+              <div class="mut" style="font-size:10px;margin-top:6px">ANTAR KE</div>Djiwa Tasikmalaya, Jl. Bojong Tengah No. 34, Cipedes
+            </div>
+          </div>
+          <div class="mut" style="font-size:11px;margin-top:6px">Cetak di kertas biasa, gunting, lalu tempel di sisi paket yang rata. Bisa juga ditulis tangan dengan kode yang sama.</div>
+        </div>
+        <div class="foot"><div class="btn">Unduh PDF</div><div style="display:flex;gap:6px;margin-top:6px"><span class="btn g sm" style="flex:1">Simpan PNG</span><span class="btn g sm" style="flex:1">Bagikan</span></div></div></div></div>
 
     <div class="step"><div class="cap">7 Tagihan <i>setelah ditimbang</i></div>
       <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">DJW-KR-0042</div><span class="badge b-amb" style="margin-left:auto">Menunggu bayar</span></div>
@@ -294,7 +341,7 @@ section[hidden]{display:none}
           <div class="lbl">Status</div>
           <div class="tl"><div class="done"><b>Diterima di drop point</b><small>20 Nov, 10.12</small></div><div class="now"><b>Menunggu pembayaran</b><small>Tagihan dikirim 20 Nov, 10.30</small></div><div><b>Dikirim ke Jepang</b></div></div>
         </div>
-        <div class="foot"><div class="btn">Bayar Rp375.000</div></div></div>
+        <div class="foot"><div class="btn">Bayar Rp375.000</div><div class="mut" style="text-align:center;margin-top:6px"><u>Unduh rincian tagihan (PDF)</u></div></div></div>
       <p class="note">Pembayaran lewat Mayar, sama seperti layanan lain. Admin tidak perlu konfirmasi manual.</p></div>
 
     <div class="step"><div class="cap">8 Pelacakan <i>sudah dikirim</i></div>
@@ -304,20 +351,36 @@ section[hidden]{display:none}
           <div class="lbl">Riwayat</div>
           <div class="tl"><div class="now"><b>Dalam perjalanan ke Jepang</b><small>22 Nov, 08.40</small></div><div class="done"><b>Dikirim dari Tasikmalaya</b><small>21 Nov, 14.05</small></div><div class="done"><b>Pembayaran diterima</b><small>20 Nov, 11.02</small></div><div class="done"><b>Ditimbang 2,4 kg</b><small>20 Nov, 10.12</small></div><div class="done"><b>Diterima di drop point</b><small>20 Nov, 10.12</small></div><div class="done"><b>Booking dibuat</b><small>18 Nov, 19.30</small></div></div>
         </div>
-        <div class="foot"><div class="btn g">Hubungi Djiwa</div></div></div>
+        <div class="foot"><div class="btn g">Unduh bukti pengiriman (PDF)</div><div class="mut" style="text-align:center;margin-top:6px"><u>Hubungi Djiwa</u></div></div></div>
       <p class="note">Kurir express dan nomor resi diisi Admin, nama kurir tidak dikunci ke satu vendor.</p></div>
   </div>
 </section>
 
 <!-- ================= ADMIN ================= -->
 <section id="adm" hidden>
-  <p class="sub">Admin: satu layar antrian + detail untuk menerima, menimbang, menagih, dan mengirim. Satu layar pengaturan untuk tarif dan drop point.</p>
+  <p class="sub">Admin: scan QR di drop point, satu layar antrian + detail (tinjau foto, timbang, tagih, kirim), dan pengaturan. Satu layar pengaturan untuk tarif dan drop point.</p>
   <div class="row" style="flex-direction:column;gap:22px">
+    <div class="step" style="width:100%"><div class="cap">A0 Scan QR di drop point <i>/admin/kirim-barang/scan</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Scan paket</div></div>
+        <div class="body">
+          <div class="chips" style="margin-bottom:8px"><span class="on">Terima</span><span>Timbang</span><span>Serah ke kurir</span></div>
+          <div class="view"><i></i>Arahkan kamera ke QR di paket</div>
+          <div class="field" style="margin-top:8px"><small>Atau scanner USB / ketik kode</small><b>DJW-KR-0042</b></div>
+          <div class="lbl">Hasil scan</div>
+          <div class="card"><b style="font-size:13px">DJW-KR-0042</b> <span class="badge b-blue">Diterima di drop point</span>
+            <div class="mut" style="margin-top:2px">Rina T., Tokyo · Makanan kering · estimasi 2 kg</div>
+            <div class="ok" style="margin-top:6px">Status berubah otomatis, 10.12 oleh admin</div>
+            <div style="display:flex;gap:6px;margin-top:8px"><span class="btn sm g">Urungkan</span><span class="btn sm">Timbang sekarang</span><span class="btn sm g">Cetak label</span></div></div>
+          <div class="lbl">Scan hari ini</div>
+          <div class="grp"><div><span class="v">DJW-KR-0041</span><span class="ok">Diterima</span></div><div><span class="v">DJW-KR-0040</span><span class="bad">Sudah diterima 09.40</span></div></div>
+        </div></div>
+      <p class="note">Mode Terima mengubah status sendiri. Mode Timbang dan Serah ke kurir membuka formulirnya, karena butuh berat atau resi.</p></div>
     <div class="step" style="width:100%"><div class="cap">A1 Antrian &amp; detail pengiriman <i>/admin/kirim-barang</i></div>
       <div class="dsk"><div class="bar">Admin <span>›</span> Kirim Barang</div>
         <div class="cols">
           <div class="pane">
             <div class="seg"><span class="on">Semua 14</span><span>Menunggu antar 5</span><span>Perlu timbang 2</span><span>Menunggu bayar 3</span><span>Siap kirim 2</span></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span class="btn" style="background:#e9ebf0;color:#17181c">Cetak label terpilih (PDF)</span><span class="btn" style="background:#e9ebf0;color:#17181c">Manifest serah kurir (PDF)</span></div>
             <table><thead><tr><th>Kode</th><th>Penerima</th><th>Status</th></tr></thead><tbody>
               <tr class="sel"><td><b>DJW-KR-0042</b></td><td>Rina T., Tokyo</td><td><span class="badge b-blue">Diterima</span></td></tr>
               <tr><td>DJW-KR-0041</td><td>Kenji S., Osaka</td><td><span class="badge b-amb">Menunggu bayar</span></td></tr>
@@ -328,6 +391,9 @@ section[hidden]{display:none}
           <div class="pane">
             <b style="font-size:14px">DJW-KR-0042</b> <span class="badge b-blue">Diterima di drop point</span>
             <div class="mut" style="margin:4px 0 8px">Fakhri A. · Makanan kering · Keripik, kopi bubuk, 2 kaos · Nilai Rp650.000</div>
+            <div class="lbl" style="margin-top:6px">Foto dari pelanggan</div>
+            <div class="thumbs" style="margin-bottom:6px"><div class="photo">Semua barang</div><div class="photo">Label</div></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><span class="btn" style="background:#dcf5e3;color:#15803d">Setujui foto</span><span class="btn" style="background:#e9ebf0;color:#17181c">Minta foto ulang</span></div>
             <div class="lbl" style="margin-top:6px">Timbang &amp; tagihan</div>
             <div class="two"><div class="field"><small>Berat timbang (kg)</small><b>2,4</b></div><div class="field"><small>Biaya packing (Rp)</small><b>0</b></div></div>
             <div class="photo" style="margin-bottom:6px">Unggah foto timbang &amp; isi paket</div>
@@ -336,6 +402,7 @@ section[hidden]{display:none}
             <div class="lbl">Setelah dibayar</div>
             <div class="two"><div class="field"><small>Kurir</small><b>Partner Djiwa ▾</b></div><div class="field"><small>Nomor resi</small><b>EE123456789ID</b></div></div>
             <span class="btn">Tandai dikirim</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><span class="btn" style="background:#e9ebf0;color:#17181c">Cetak label</span><span class="btn" style="background:#e9ebf0;color:#17181c">Tanda terima</span><span class="btn" style="background:#e9ebf0;color:#17181c">Lembar timbang</span></div>
           </div>
         </div></div>
       <p class="note" style="max-width:none">Tolak barang wajib isi alasan, customer menerima notif. Tiap perubahan status otomatis menulis riwayat dan mengirim notifikasi ke customer.</p></div>
@@ -359,6 +426,7 @@ section[hidden]{display:none}
             <div class="field"><small>Alamat</small><b>Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya, Jawa Barat</b></div>
             <div class="field"><small>Jam buka</small><b>09.00 sampai 17.00 WIB</b></div>
             <div class="two"><div class="field"><small>Batas antar (hari)</small><b>7</b></div><div class="field"><small>Batas bayar (jam)</small><b>48</b></div></div>
+            <div class="field"><small>Foto isi paket wajib (minimal)</small><b>1</b></div>
             <div class="lbl">Daftar barang terlarang</div>
             <div class="field"><small>Tampil di form &amp; halaman info</small><b>Cairan, baterai lithium, makanan segar/daging, obat…</b></div>
             <span class="btn">Simpan</span>
@@ -384,6 +452,23 @@ section[hidden]{display:none}
     <div><b>2. Kurir <em>partner</em>, biaya partner Rp100.000 per kg</b>Tarif pelanggan Rp150.000 per kg, jadi margin Rp50.000 per kg. Nama kurir dipilih Admin per paket dan angka biaya partner hanya terlihat di Admin.</div>
     <div><b>3. Drop point buka <em>09.00 sampai 17.00</em></b>Dijaga tim Djiwa Travel. Jam tampil di instruksi antar dan bisa diubah di Pengaturan.</div>
     <div><b>4. Pelanggan luar Tasikmalaya <em>boleh</em> kirim lewat kurir</b>Di ringkasan ada pilihan Antar sendiri atau Lewat kurir. Bila lewat kurir, pelanggan mengisi nama kurir dan nomor resi, dan Admin melihatnya di detail pengiriman.</div>
+  </div>
+  <h2 style="margin-top:18px">Perubahan alur: foto bukti dan scan QR</h2>
+  <div class="dec">
+    <div><b><em>Foto isi paket</em> wajib, minimal 1</b>Diambil dari kamera atau galeri di langkah Barang, dikecilkan dan EXIF dibuang di perangkat. Ada halaman contoh cara memotret. Kalau unggahan gagal, booking tetap jadi dan halaman pengiriman menawarkan "Lengkapi foto".</div>
+    <div><b>Admin <em>meninjau foto</em> sebelum paket diantar</b>Setujui, minta foto ulang dengan catatan, atau tolak bila ada barang terlarang. Pelanggan diberi tahu. Tanpa status baru: booking tetap Menunggu diantar.</div>
+    <div><b>Label <em>QR</em> di halaman booking</b>QR berisi tautan ke halaman scan Admin yang datanya hanya kode DJW-KR, tanpa data pribadi. Orang selain Admin yang membukanya hanya diminta masuk. Pelanggan menyimpan atau mencetak label lalu menempelnya di paket.</div>
+    <div><b>Scan Admin: <em>Terima</em> berubah otomatis</b>Scan QR di drop point langsung mengubah status ke Diterima, mencatat siapa dan kapan, dan mengabari pelanggan. Scan dua kali tidak mengubah apa-apa. Ada Urungkan.</div>
+    <div><b>Timbang dan Serah ke kurir <em>membuka formulir</em></b>Dua langkah ini butuh data (berat, kurir, resi), jadi scan membuka detail pengiriman yang tepat, bukan mengubah status sendiri.</div>
+    <div><b>Cara scan</b>Kamera di halaman scan Admin (browser yang bisa membaca QR), scanner USB, atau ketik kode. Bila browser tidak bisa, scan dengan aplikasi Kamera ponsel: QR membuka halaman scan dan cukup satu ketuk Terima. Hanya Admin yang bisa scan. Kode milik pengiriman yang dibatalkan atau ditolak menampilkan peringatan.</div>
+  </div>
+  <h2 style="margin-top:18px">Cetak dan unduh (PNG atau PDF)</h2>
+  <div class="dec">
+    <div><b>Customer: <em>label paket</em> (PNG dan PDF A6)</b>QR, kode besar, penerima, isi, dan alamat drop point. Cadangan bila printer tidak ada: kode bisa ditulis tangan. Tombol Bagikan memakai menu bagikan ponsel bila ada.</div>
+    <div><b>Customer: <em>rincian tagihan</em> dan <em>bukti pengiriman</em> (PDF)</b>Rincian berat, pembulatan, dan total setelah ditimbang. Bukti pengiriman berisi kurir, resi, tanggal, dan penerima, tersedia setelah dikirim.</div>
+    <div><b>Admin: <em>cetak label</em>, tanda terima, lembar timbang</b>Dari detail pengiriman dan dari layar scan. Tanda terima diberikan ke pelanggan yang antar langsung. Lembar timbang memuat berat, foto, dan tanda tangan petugas.</div>
+    <div><b>Admin: cetak <em>banyak label</em> dan <em>manifest serah kurir</em></b>Pilih beberapa paket di antrian, satu PDF berisi semua label atau daftar serah-terima untuk kurir partner (kode, penerima, berat, resi).</div>
+    <div><b>Dibuat di perangkat</b>PDF dan PNG dirender di browser dengan pustaka yang sudah dipakai aplikasi (jsPDF, html2canvas, qrcode.react), jadi tanpa dependensi baru dan tanpa mengirim data pelanggan ke layanan luar.</div>
   </div>
 </section>
 </main>
@@ -417,6 +502,21 @@ section[hidden]{display:none}
     var done=function(){c.textContent='Tersalin';setTimeout(function(){c.textContent=old},1200)};
     try{navigator.clipboard.writeText(txt).then(done,function(){})}catch(_){}
   });
+  function qr(host){
+    var str=host.dataset.qr,n=25,cells=[],h=2166136261;
+    for(var i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0}
+    function rnd(){h^=h<<13;h>>>=0;h^=h>>>17;h^=h<<5;h>>>=0;return h/4294967296}
+    var finder=function(x,y){return (x<7&&y<7)||(x>=n-7&&y<7)||(x<7&&y>=n-7)};
+    var out='<svg viewBox="0 0 '+n+' '+n+'" shape-rendering="crispEdges" role="img" aria-label="Contoh QR '+str+'">';
+    for(var y=0;y<n;y++)for(var x=0;x<n;x++){
+      var on;
+      if(finder(x,y)){var fx=x%(n-7>x?7:n-7),fy=y%(n-7>y?7:n-7);fx=x<7?x:x-(n-7);fy=y<7?y:y-(n-7);on=fx==0||fx==6||fy==0||fy==6||(fx>=2&&fx<=4&&fy>=2&&fy<=4)}
+      else on=rnd()>0.52;
+      if(on)out+='<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="#17181c"/>';
+    }
+    host.innerHTML=out+'</svg>';
+  }
+  [].forEach.call(document.querySelectorAll('[data-qr]'),qr);
   render();
 })();
 </script>

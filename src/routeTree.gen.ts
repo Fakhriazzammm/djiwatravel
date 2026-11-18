@@ -64,6 +64,7 @@ import { Route as ApiHomeEsimEventsRouteImport } from './routes/api.home-esim-ev
 import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recovery'
 import { Route as ApiPwaEventsRouteImport } from './routes/api.pwa-events'
 import { Route as ApiReceiptScanRouteImport } from './routes/api.receipt-scan'
+import { Route as ApiShippingBookingRouteImport } from './routes/api.shipping-booking'
 import { Route as ApiShippingPhotoRouteImport } from './routes/api.shipping-photo'
 import { Route as ApiShopperChatRouteImport } from './routes/api.shopper-chat'
 import { Route as ApiShopperSearchRouteImport } from './routes/api.shopper-search'
@@ -404,6 +405,11 @@ const ApiPwaEventsRoute = ApiPwaEventsRouteImport.update({
 const ApiReceiptScanRoute = ApiReceiptScanRouteImport.update({
   id: '/api/receipt-scan',
   path: '/api/receipt-scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiShippingBookingRoute = ApiShippingBookingRouteImport.update({
+  id: '/api/shipping-booking',
+  path: '/api/shipping-booking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiShippingPhotoRoute = ApiShippingPhotoRouteImport.update({
@@ -794,6 +800,7 @@ export interface FileRoutesByFullPath {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shipping-booking': typeof ApiShippingBookingRoute
   '/api/shipping-photo': typeof ApiShippingPhotoRouteWithChildren
   '/api/shopper-chat': typeof ApiShopperChatRoute
   '/api/shopper-search': typeof ApiShopperSearchRoute
@@ -916,6 +923,7 @@ export interface FileRoutesByTo {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shipping-booking': typeof ApiShippingBookingRoute
   '/api/shipping-photo': typeof ApiShippingPhotoRouteWithChildren
   '/api/shopper-chat': typeof ApiShopperChatRoute
   '/api/shopper-search': typeof ApiShopperSearchRoute
@@ -1039,6 +1047,7 @@ export interface FileRoutesById {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shipping-booking': typeof ApiShippingBookingRoute
   '/api/shipping-photo': typeof ApiShippingPhotoRouteWithChildren
   '/api/shopper-chat': typeof ApiShopperChatRoute
   '/api/shopper-search': typeof ApiShopperSearchRoute
@@ -1163,6 +1172,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shipping-booking'
     | '/api/shipping-photo'
     | '/api/shopper-chat'
     | '/api/shopper-search'
@@ -1285,6 +1295,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shipping-booking'
     | '/api/shipping-photo'
     | '/api/shopper-chat'
     | '/api/shopper-search'
@@ -1407,6 +1418,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shipping-booking'
     | '/api/shipping-photo'
     | '/api/shopper-chat'
     | '/api/shopper-search'
@@ -1530,6 +1542,7 @@ export interface RootRouteChildren {
   ApiOrderRecoveryRoute: typeof ApiOrderRecoveryRoute
   ApiPwaEventsRoute: typeof ApiPwaEventsRoute
   ApiReceiptScanRoute: typeof ApiReceiptScanRoute
+  ApiShippingBookingRoute: typeof ApiShippingBookingRoute
   ApiShippingPhotoRoute: typeof ApiShippingPhotoRouteWithChildren
   ApiShopperChatRoute: typeof ApiShopperChatRoute
   ApiShopperSearchRoute: typeof ApiShopperSearchRoute
@@ -1975,6 +1988,13 @@ declare module '@tanstack/react-router' {
       path: '/api/receipt-scan'
       fullPath: '/api/receipt-scan'
       preLoaderRoute: typeof ApiReceiptScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/shipping-booking': {
+      id: '/api/shipping-booking'
+      path: '/api/shipping-booking'
+      fullPath: '/api/shipping-booking'
+      preLoaderRoute: typeof ApiShippingBookingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/shipping-photo': {
@@ -2553,6 +2573,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOrderRecoveryRoute: ApiOrderRecoveryRoute,
   ApiPwaEventsRoute: ApiPwaEventsRoute,
   ApiReceiptScanRoute: ApiReceiptScanRoute,
+  ApiShippingBookingRoute: ApiShippingBookingRoute,
   ApiShippingPhotoRoute: ApiShippingPhotoRouteWithChildren,
   ApiShopperChatRoute: ApiShopperChatRoute,
   ApiShopperSearchRoute: ApiShopperSearchRoute,

@@ -1,10 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ShippingBookingForm } from "@/components/shipping/shipping-booking-form";
 import {
-  createShippingOrder,
-  getLastShippingRecipient,
-  getShippingStatus,
-} from "@/lib/shipping.fn";
+  ShippingBookingForm,
+  type ShippingBookingPayload,
+} from "@/components/shipping/shipping-booking-form";
+import { getLastShippingRecipient, getShippingStatus } from "@/lib/shipping.fn";
 import { DEFAULT_SHIPPING_CONFIG, normalizeShippingConfig } from "@/lib/shipping";
 
 export const Route = createFileRoute("/kirim-barang/baru")({
@@ -33,6 +32,20 @@ export const Route = createFileRoute("/kirim-barang/baru")({
   component: NewShipment,
 });
 
+/** Sends the booking and its photos in one request, so a booking never exists without them. */
+async function createBookingWithPhotos(
+  payload: ShippingBookingPayload,
+  photos: File[],
+): Promise<{ id: string }> {
+  const form = new FormData();
+  form.set("payload", JSON.stringify(payload));
+  for (const photo of photos) form.append("photo", photo, photo.name);
+  const response = await fetch("/api/shipping-booking", { method: "POST", body: form });
+  const body = (await response.json().catch(() => ({}))) as { id?: string; error?: string };
+  if (!response.ok || !body.id) throw new Error(body.error || "Booking belum berhasil, coba lagi.");
+  return { id: body.id };
+}
+
 function NewShipment() {
   const { config, available, signedIn, last } = Route.useLoaderData();
   const navigate = useNavigate();
@@ -42,7 +55,7 @@ function NewShipment() {
       available={available}
       signedIn={signedIn}
       last={last}
-      onSubmit={(payload) => createShippingOrder({ data: payload })}
+      onSubmit={createBookingWithPhotos}
       onCreated={(id) =>
         void navigate({ to: "/kirim-barang/$id", params: { id }, search: { baru: true } })
       }
