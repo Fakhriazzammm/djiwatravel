@@ -1,0 +1,9 @@
+[Unit]
+Description=Send the Djiwa Travel analytics report every Monday 08:00 WIB
+
+[Timer]
+OnCalendar=Mon *-*-* 01:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

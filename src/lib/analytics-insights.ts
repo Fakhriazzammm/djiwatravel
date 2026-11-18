@@ -18,13 +18,22 @@ export const INSIGHT_RANGE_LABEL: Record<InsightRange, string> = {
   "365h": "1 tahun",
 };
 
-export const INSIGHT_TABS = ["pengguna", "funnel", "pendapatan", "destinasi"] as const;
+export const INSIGHT_TABS = [
+  "pengguna",
+  "funnel",
+  "pendapatan",
+  "destinasi",
+  "fitur",
+  "operasional",
+] as const;
 export type InsightTab = (typeof INSIGHT_TABS)[number];
 export const INSIGHT_TAB_LABEL: Record<InsightTab, string> = {
   pengguna: "Pengguna",
   funnel: "Funnel",
   pendapatan: "Pendapatan",
   destinasi: "Destinasi",
+  fitur: "Fitur",
+  operasional: "Operasional",
 };
 
 /** Segments below this size are hidden from group breakdowns so a single person is never exposed. */
@@ -328,4 +337,328 @@ export type AnalyticsInsights = {
   funnel?: InsightResult<FunnelInsight>;
   revenue?: InsightResult<RevenueInsight>;
   destinations?: InsightResult<DestinationInsight>;
+  features?: InsightResult<FeaturesInsight>;
+  operations?: InsightResult<OperationsInsight>;
+  alerts: InsightAlert[];
 };
+
+// ---------------------------------------------------------------- features (phase 4)
+
+export type FeaturesInsight = {
+  travo: {
+    conversations: number;
+    previousConversations: number;
+    activeUsers: number;
+    userMessages: number;
+    assistantMessages: number;
+    messagesPerConversation: number | null;
+    byScope: Named[];
+    daily: Point[];
+  };
+  trips: {
+    created: number;
+    previousCreated: number;
+    users: number;
+    expenses: number;
+    shares: number;
+    receiptScans: number;
+    daily: Point[];
+  };
+  shopping: {
+    requests: number;
+    previousRequests: number;
+    funnel: FunnelStep[];
+    medianFirstReplyMinutes: number | null;
+    answeredWithinDuePct: number | null;
+    waitingNow: number;
+    overdueNow: number;
+    byStatus: Named[];
+  };
+  feeds: {
+    posts: number;
+    comments: number;
+    likes: number;
+    byKind: Named[];
+    byStatus: Named[];
+    reportsOpen: number;
+    reportsActioned: number;
+    oldestPendingHours: number | null;
+  };
+  notifications: {
+    created: number;
+    readRatePct: number | null;
+    byType: Named[];
+    pushActive: number;
+    delivery: Named[];
+    pwa: Named[];
+  };
+};
+
+// ---------------------------------------------------------------- operations (phase 5)
+
+export type OperationsInsight = {
+  support: {
+    opened: number;
+    previousOpened: number;
+    openNow: number;
+    medianFirstReplyMinutes: number | null;
+    medianResolutionHours: number | null;
+    oldestOpenDays: number | null;
+    byCategory: Named[];
+    byStatus: Named[];
+    aging: Named[];
+  };
+  provisioning: {
+    paid: number;
+    ready: number;
+    failed: number;
+    failureRatePct: number | null;
+    stuck: number;
+    medianMinutesToReady: number | null;
+    refundsOpen: number;
+  };
+  system: {
+    workers: {
+      name: string;
+      ageMinutes: number | null;
+      lastError: string | null;
+      stale: boolean;
+    }[];
+    webhooks: Named[];
+    deadLetters: number;
+    emailQueued: number;
+    emailFailed: number;
+    paymentsUnknown: number;
+  };
+  team: { label: string; value: number }[];
+};
+
+// ---------------------------------------------------------------- alerts (phase 5)
+
+export type AlertSeverity = "critical" | "warning" | "info";
+export type InsightAlert = {
+  key: string;
+  severity: AlertSeverity;
+  title: string;
+  detail: string;
+  href: string;
+};
+
+export type AlertInput = {
+  revenue: number;
+  previousRevenue: number;
+  orders: number;
+  previousOrders: number;
+  refundCount: number;
+  paidOrders: number;
+  failedProvisioning: number;
+  stuckProvisioning: number;
+  deadLetters: number;
+  staleWorkers: string[];
+  emailFailed: number;
+  preorderOverdue: number;
+  preorderNear: number;
+  supportOpenOver3d: number;
+  shoppingOverdue: number;
+  feedReportsOpen: number;
+  paymentsUnknown: number;
+};
+
+/** Fixed, documented thresholds. Compared against the last 7 days vs the 7 days before. */
+export const ALERT_RULES = {
+  revenueDropPct: -30,
+  minOrdersForTrend: 5,
+  refundRatePct: 10,
+  failureRatePct: 8,
+} as const;
+
+export function evaluateAlerts(i: AlertInput): InsightAlert[] {
+  const out: InsightAlert[] = [];
+  const add = (a: InsightAlert) => out.push(a);
+  if (i.preorderOverdue > 0)
+    add({
+      key: "preorder-overdue",
+      severity: "critical",
+      title: `${i.preorderOverdue} preorder lewat tenggat`,
+      detail: "Wajib dipenuhi atau ditinjau manual; tidak ada refund otomatis.",
+      href: "/admin/preorders",
+    });
+  if (i.deadLetters > 0)
+    add({
+      key: "dead-letter",
+      severity: "critical",
+      title: `${i.deadLetters} webhook gagal permanen`,
+      detail: "Kotak masuk webhook berisi dead letter yang perlu ditangani.",
+      href: "/admin/settings",
+    });
+  if (i.staleWorkers.length > 0)
+    add({
+      key: "worker-stale",
+      severity: "critical",
+      title: `Worker tidak berdenyut: ${i.staleWorkers.join(", ")}`,
+      detail: "Tidak ada denyut lebih dari 15 menit; antrean mungkin berhenti.",
+      href: "/admin/settings",
+    });
+  if (i.paymentsUnknown > 0)
+    add({
+      key: "payment-unknown",
+      severity: "warning",
+      title: `${i.paymentsUnknown} pembayaran berstatus tidak pasti`,
+      detail: "Perlu rekonsiliasi dengan provider pembayaran.",
+      href: "/admin/payments",
+    });
+  if (i.stuckProvisioning > 0)
+    add({
+      key: "provisioning-stuck",
+      severity: "warning",
+      title: `${i.stuckProvisioning} eSIM tertahan di provisioning > 30 menit`,
+      detail: "Periksa saldo provider dan log provisioning.",
+      href: "/admin/provisioning",
+    });
+  const failRate = pctOf(i.failedProvisioning, Math.max(i.paidOrders, 1));
+  if (
+    i.paidOrders >= ALERT_RULES.minOrdersForTrend &&
+    (failRate ?? 0) >= ALERT_RULES.failureRatePct
+  )
+    add({
+      key: "provisioning-failure-rate",
+      severity: "warning",
+      title: `Tingkat gagal provisioning ${failRate}%`,
+      detail: `Ambang ${ALERT_RULES.failureRatePct}% dari pesanan dibayar (7 hari).`,
+      href: "/admin/provisioning",
+    });
+  const refundRate = pctOf(i.refundCount, Math.max(i.orders, 1));
+  if (i.orders >= ALERT_RULES.minOrdersForTrend && (refundRate ?? 0) >= ALERT_RULES.refundRatePct)
+    add({
+      key: "refund-rate",
+      severity: "warning",
+      title: `Tingkat refund ${refundRate}%`,
+      detail: `Ambang ${ALERT_RULES.refundRatePct}% dari pesanan (7 hari).`,
+      href: "/admin/refunds",
+    });
+  const drop = deltaPct(i.revenue, i.previousRevenue);
+  if (
+    i.previousOrders >= ALERT_RULES.minOrdersForTrend &&
+    drop !== null &&
+    drop <= ALERT_RULES.revenueDropPct
+  )
+    add({
+      key: "revenue-drop",
+      severity: "warning",
+      title: `Pendapatan turun ${Math.abs(drop)}%`,
+      detail: "Dibandingkan 7 hari sebelumnya.",
+      href: "/admin/analytics?tab=pendapatan&range=7h",
+    });
+  if (i.preorderNear > 0)
+    add({
+      key: "preorder-near",
+      severity: "warning",
+      title: `${i.preorderNear} preorder jatuh tempo < 1 hari`,
+      detail: "Segera penuhi sebelum tenggat tiga hari.",
+      href: "/admin/preorders",
+    });
+  if (i.supportOpenOver3d > 0)
+    add({
+      key: "support-aging",
+      severity: "warning",
+      title: `${i.supportOpenOver3d} tiket bantuan terbuka > 3 hari`,
+      detail: "Selesaikan atau beri tanggapan.",
+      href: "/admin/support",
+    });
+  if (i.shoppingOverdue > 0)
+    add({
+      key: "shopping-overdue",
+      severity: "warning",
+      title: `${i.shoppingOverdue} chat Titip Belanja lewat target balas`,
+      detail: "Pelanggan menunggu balasan tim.",
+      href: "/admin/shopping#requests",
+    });
+  if (i.emailFailed > 0)
+    add({
+      key: "email-failed",
+      severity: "info",
+      title: `${i.emailFailed} email transaksional gagal terkirim`,
+      detail: "Periksa konfigurasi Helipod Email.",
+      href: "/admin/settings",
+    });
+  if (i.feedReportsOpen > 0)
+    add({
+      key: "feed-reports",
+      severity: "info",
+      title: `${i.feedReportsOpen} laporan Feeds belum ditinjau`,
+      detail: "Moderasi konten komunitas.",
+      href: "/admin/feeds#reports",
+    });
+  const rank = { critical: 0, warning: 1, info: 2 } as const;
+  return out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+}
+
+// ---------------------------------------------------------------- weekly report
+
+export type ReportInput = {
+  periodLabel: string;
+  revenue: number;
+  previousRevenue: number;
+  orders: number;
+  previousOrders: number;
+  newMembers: number;
+  topDestinations: { code: string; revenue: number; orders: number }[];
+  alerts: InsightAlert[];
+  baseUrl: string;
+};
+
+const rupiah = (v: number) => `Rp${Math.round(v).toLocaleString("id-ID")}`;
+const esc = (v: string) =>
+  v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const arrow = (d: number | null) =>
+  d === null ? "baru" : `${d < 0 ? "turun" : "naik"} ${Math.abs(d)}%`;
+
+export function buildWeeklyReport(r: ReportInput): { subject: string; html: string; text: string } {
+  const rev = deltaPct(r.revenue, r.previousRevenue);
+  const ord = deltaPct(r.orders, r.previousOrders);
+  const lines = [
+    `Ringkasan Djiwa Travel — ${r.periodLabel}`,
+    "",
+    `Pendapatan: ${rupiah(r.revenue)} (${arrow(rev)} vs minggu lalu)`,
+    `Pesanan dibayar: ${r.orders} (${arrow(ord)})`,
+    `Member baru: ${r.newMembers}`,
+    "",
+    "Destinasi teratas:",
+    ...(r.topDestinations.length
+      ? r.topDestinations.map(
+          (d, i) =>
+            `${i + 1}. ${d.code.toUpperCase()} — ${rupiah(d.revenue)} (${d.orders} pesanan)`,
+        )
+      : ["Belum ada penjualan terlacak."]),
+    "",
+    r.alerts.length ? `Perlu perhatian (${r.alerts.length}):` : "Tidak ada peringatan aktif.",
+    ...r.alerts.map((a) => `- [${a.severity}] ${a.title}`),
+    "",
+    `Detail: ${r.baseUrl}/admin/analytics`,
+  ];
+  const li = (s: string) => `<li style="margin:2px 0">${esc(s)}</li>`;
+  const html = `<div style="font-family:system-ui,sans-serif;font-size:14px;color:#111;max-width:560px">
+<h2 style="margin:0 0 8px">Ringkasan Djiwa Travel</h2><p style="margin:0 0 12px;color:#555">${esc(r.periodLabel)}</p>
+<table style="border-collapse:collapse;margin-bottom:12px">
+<tr><td style="padding:2px 12px 2px 0">Pendapatan</td><td><b>${esc(rupiah(r.revenue))}</b> (${esc(arrow(rev))})</td></tr>
+<tr><td style="padding:2px 12px 2px 0">Pesanan dibayar</td><td><b>${r.orders}</b> (${esc(arrow(ord))})</td></tr>
+<tr><td style="padding:2px 12px 2px 0">Member baru</td><td><b>${r.newMembers}</b></td></tr></table>
+<h3 style="margin:12px 0 4px">Destinasi teratas</h3><ol style="margin:0;padding-left:20px">${
+    r.topDestinations.length
+      ? r.topDestinations
+          .map((d) => li(`${d.code.toUpperCase()} — ${rupiah(d.revenue)} (${d.orders} pesanan)`))
+          .join("")
+      : li("Belum ada penjualan terlacak.")
+  }</ol>
+<h3 style="margin:12px 0 4px">Perlu perhatian</h3><ul style="margin:0;padding-left:20px">${
+    r.alerts.length
+      ? r.alerts.map((a) => li(`${a.title}`)).join("")
+      : li("Tidak ada peringatan aktif.")
+  }</ul>
+<p style="margin-top:16px"><a href="${esc(r.baseUrl)}/admin/analytics">Buka Analitik</a></p></div>`;
+  return {
+    subject: `Ringkasan mingguan Djiwa Travel · ${r.periodLabel}`,
+    html,
+    text: lines.join("\n"),
+  };
+}

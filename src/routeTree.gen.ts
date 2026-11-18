@@ -108,6 +108,7 @@ import { Route as ApiReceiptPhotoIdRouteImport } from './routes/api.receipt-phot
 import { Route as ApiShopperChatPhotoIdRouteImport } from './routes/api.shopper-chat-photo.$id'
 import { Route as ApiShopperPhotoIdRouteImport } from './routes/api.shopper-photo.$id'
 import { Route as ApiTasksAffiliateSweepRouteImport } from './routes/api.tasks.affiliate-sweep'
+import { Route as ApiTasksAnalyticsReportRouteImport } from './routes/api.tasks.analytics-report'
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
@@ -622,6 +623,11 @@ const ApiTasksAffiliateSweepRoute = ApiTasksAffiliateSweepRouteImport.update({
   path: '/api/tasks/affiliate-sweep',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTasksAnalyticsReportRoute = ApiTasksAnalyticsReportRouteImport.update({
+  id: '/api/tasks/analytics-report',
+  path: '/api/tasks/analytics-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTasksEsimSyncRoute = ApiTasksEsimSyncRouteImport.update({
   id: '/api/tasks/esim-sync',
   path: '/api/tasks/esim-sync',
@@ -791,6 +797,7 @@ export interface FileRoutesByFullPath {
   '/api/shopper-chat-photo/$id': typeof ApiShopperChatPhotoIdRoute
   '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
+  '/api/tasks/analytics-report': typeof ApiTasksAnalyticsReportRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -905,6 +912,7 @@ export interface FileRoutesByTo {
   '/api/shopper-chat-photo/$id': typeof ApiShopperChatPhotoIdRoute
   '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
+  '/api/tasks/analytics-report': typeof ApiTasksAnalyticsReportRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -1020,6 +1028,7 @@ export interface FileRoutesById {
   '/api/shopper-chat-photo/$id': typeof ApiShopperChatPhotoIdRoute
   '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
+  '/api/tasks/analytics-report': typeof ApiTasksAnalyticsReportRoute
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
@@ -1136,6 +1145,7 @@ export interface FileRouteTypes {
     | '/api/shopper-chat-photo/$id'
     | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
+    | '/api/tasks/analytics-report'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -1250,6 +1260,7 @@ export interface FileRouteTypes {
     | '/api/shopper-chat-photo/$id'
     | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
+    | '/api/tasks/analytics-report'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -1364,6 +1375,7 @@ export interface FileRouteTypes {
     | '/api/shopper-chat-photo/$id'
     | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
+    | '/api/tasks/analytics-report'
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
@@ -1475,6 +1487,7 @@ export interface RootRouteChildren {
   ApiShopperChatPhotoIdRoute: typeof ApiShopperChatPhotoIdRoute
   ApiShopperPhotoIdRoute: typeof ApiShopperPhotoIdRoute
   ApiTasksAffiliateSweepRoute: typeof ApiTasksAffiliateSweepRoute
+  ApiTasksAnalyticsReportRoute: typeof ApiTasksAnalyticsReportRoute
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
@@ -2182,6 +2195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTasksAffiliateSweepRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tasks/analytics-report': {
+      id: '/api/tasks/analytics-report'
+      path: '/api/tasks/analytics-report'
+      fullPath: '/api/tasks/analytics-report'
+      preLoaderRoute: typeof ApiTasksAnalyticsReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tasks/esim-sync': {
       id: '/api/tasks/esim-sync'
       path: '/api/tasks/esim-sync'
@@ -2424,6 +2444,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiShopperChatPhotoIdRoute: ApiShopperChatPhotoIdRoute,
   ApiShopperPhotoIdRoute: ApiShopperPhotoIdRoute,
   ApiTasksAffiliateSweepRoute: ApiTasksAffiliateSweepRoute,
+  ApiTasksAnalyticsReportRoute: ApiTasksAnalyticsReportRoute,
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,

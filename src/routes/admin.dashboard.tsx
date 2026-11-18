@@ -4,6 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getAdminDashboard } from "@/lib/admin-read-model.fn";
+import { getAdminAlerts } from "@/lib/analytics-insights.fn";
 import { getTrafficDashboard } from "@/lib/traffic-dashboard.fn";
 import { TRAFFIC_RANGES } from "@/lib/traffic-dashboard";
 import { TrafficPanel, type DashboardAlert } from "@/components/admin-traffic-panel";
@@ -17,17 +18,18 @@ export const Route = createFileRoute("/admin/dashboard")({
   validateSearch: z.object({ range: z.enum(TRAFFIC_RANGES).default("24j") }),
   loaderDeps: ({ search }) => ({ range: search.range }),
   loader: async ({ deps }) => {
-    const [ops, census] = await Promise.all([
+    const [ops, census, insightAlerts] = await Promise.all([
       getAdminDashboard({ data: { period: "daily" } }),
       getTrafficDashboard({ data: { range: deps.range } }),
+      getAdminAlerts(),
     ]);
-    return { provider: ops.providerBalance, census };
+    return { provider: ops.providerBalance, census, insightAlerts };
   },
   component: AdminDashboard,
 });
 
 function AdminDashboard() {
-  const { provider, census } = Route.useLoaderData();
+  const { provider, census, insightAlerts } = Route.useLoaderData();
   const { range } = Route.useSearch();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
@@ -45,6 +47,14 @@ function AdminDashboard() {
       text: "Saldo provider rendah",
       href: "/admin/finance",
       danger: false,
+    });
+  const critical = insightAlerts.filter((a) => a.severity === "critical").length;
+  if (insightAlerts.length > 0)
+    alerts.push({
+      key: "insights",
+      text: `${insightAlerts.length} peringatan analitik${critical ? ` (${critical} kritis)` : ""}`,
+      href: "/admin/analytics",
+      danger: critical > 0,
     });
   const providerLabel =
     provider.state === "ok" && provider.usd !== null

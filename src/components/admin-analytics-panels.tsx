@@ -14,7 +14,10 @@ import {
   toCsv,
   type DestinationInsight,
   type FunnelInsight,
+  type FeaturesInsight,
   type FunnelStep,
+  type InsightAlert,
+  type OperationsInsight,
   type InsightResult,
   type RevenueInsight,
   type UsersInsight,
@@ -811,5 +814,313 @@ export function DestinationsPanel({
         </Block>
       </div>
     </div>
+  );
+}
+
+// ------------------------------------------------------------------ Fitur
+
+export function FeaturesPanel({ result }: { result: InsightResult<FeaturesInsight> | undefined }) {
+  if (!result?.data) return <Unavailable message={result?.error ?? null} />;
+  const { travo, trips, shopping, feeds, notifications } = result.data;
+  return (
+    <div className="space-y-3">
+      <h2 className={MONO}>Travo (asisten AI)</h2>
+      <KpiGrid>
+        <Kpi
+          label="Percakapan baru"
+          value={num(travo.conversations)}
+          delta={deltaPct(travo.conversations, travo.previousConversations)}
+        />
+        <Kpi label="Pengguna aktif" value={num(travo.activeUsers)} />
+        <Kpi
+          label="Pesan pengguna"
+          value={num(travo.userMessages)}
+          hint={`${num(travo.assistantMessages)} balasan Travo`}
+        />
+        <Kpi
+          label="Pesan / percakapan"
+          value={
+            travo.messagesPerConversation === null ? "–" : String(travo.messagesPerConversation)
+          }
+        />
+      </KpiGrid>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Block title="Pesan pengguna per hari">
+          <TrafficLine points={travo.daily} color="#6366f1" height={100} />
+        </Block>
+        <Block title="Topik percakapan" hint="Cakupan yang dipilih pengguna">
+          <TrafficRows rows={travo.byScope} empty="Belum ada percakapan." />
+        </Block>
+      </div>
+
+      <h2 className={`${MONO} pt-2`}>Trip plan & Agenda</h2>
+      <KpiGrid>
+        <Kpi
+          label="Trip dibuat"
+          value={num(trips.created)}
+          delta={deltaPct(trips.created, trips.previousCreated)}
+        />
+        <Kpi label="Pembuat trip" value={num(trips.users)} />
+        <Kpi label="Pengeluaran dicatat" value={num(trips.expenses)} />
+        <Kpi
+          label="Dibagikan · struk"
+          value={`${num(trips.shares)} · ${num(trips.receiptScans)}`}
+        />
+      </KpiGrid>
+      <Block title="Trip dibuat per hari">
+        <TrafficLine points={trips.daily} color="#0ea5e9" height={100} />
+      </Block>
+
+      <h2 className={`${MONO} pt-2`}>Titip Belanja</h2>
+      <KpiGrid>
+        <Kpi
+          label="Permintaan masuk"
+          value={num(shopping.requests)}
+          delta={deltaPct(shopping.requests, shopping.previousRequests)}
+        />
+        <Kpi
+          label="Balasan pertama (median)"
+          value={
+            shopping.medianFirstReplyMinutes === null
+              ? "–"
+              : `${shopping.medianFirstReplyMinutes} mnt`
+          }
+          hint={
+            shopping.answeredWithinDuePct === null
+              ? undefined
+              : `${shopping.answeredWithinDuePct}% sebelum target`
+          }
+        />
+        <Kpi label="Menunggu balasan" value={num(shopping.waitingNow)} />
+        <Kpi label="Lewat target balas" value={num(shopping.overdueNow)} />
+      </KpiGrid>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Block
+          title="Funnel permintaan"
+          hint="Permintaan pada rentang ini; baris terakhir = semua pesanan dibayar"
+        >
+          <FunnelBars steps={shopping.funnel} />
+        </Block>
+        <Block title="Status permintaan">
+          <TrafficRows rows={shopping.byStatus} empty="Belum ada permintaan." />
+        </Block>
+      </div>
+
+      <h2 className={`${MONO} pt-2`}>Feeds</h2>
+      <KpiGrid>
+        <Kpi label="Post member" value={num(feeds.posts)} />
+        <Kpi label="Komentar" value={num(feeds.comments)} hint={`${num(feeds.likes)} suka`} />
+        <Kpi
+          label="Laporan terbuka"
+          value={num(feeds.reportsOpen)}
+          hint={`${feeds.reportsActioned} ditindak`}
+        />
+        <Kpi
+          label="Antrean tertua"
+          value={feeds.oldestPendingHours === null ? "–" : `${feeds.oldestPendingHours} jam`}
+          hint="Post menunggu tinjauan"
+        />
+      </KpiGrid>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Block title="Jenis post">
+          <TrafficRows rows={feeds.byKind} empty="Belum ada post." />
+        </Block>
+        <Block title="Status moderasi">
+          <TrafficRows rows={feeds.byStatus} empty="Belum ada post." />
+        </Block>
+      </div>
+
+      <h2 className={`${MONO} pt-2`}>Notifikasi & PWA</h2>
+      <KpiGrid>
+        <Kpi label="Notifikasi dikirim" value={num(notifications.created)} />
+        <Kpi
+          label="Dibaca"
+          value={notifications.readRatePct === null ? "–" : `${notifications.readRatePct}%`}
+        />
+        <Kpi label="Langganan push aktif" value={num(notifications.pushActive)} />
+      </KpiGrid>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Block title="Per jenis">
+          <TrafficRows rows={notifications.byType} empty="Belum ada notifikasi." />
+        </Block>
+        <Block title="Pengiriman (kanal · status)">
+          <TrafficRows rows={notifications.delivery} empty="Belum ada percobaan kirim." />
+        </Block>
+        <Block title="Peristiwa PWA">
+          <TrafficRows rows={notifications.pwa} empty="Belum ada peristiwa." />
+        </Block>
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ Operasional
+
+export function OperationsPanel({
+  result,
+}: {
+  result: InsightResult<OperationsInsight> | undefined;
+}) {
+  if (!result?.data) return <Unavailable message={result?.error ?? null} />;
+  const { support, provisioning: pv, system, team } = result.data;
+  return (
+    <div className="space-y-3">
+      <h2 className={MONO}>Bantuan (SLA)</h2>
+      <KpiGrid>
+        <Kpi
+          label="Tiket baru"
+          value={num(support.opened)}
+          delta={deltaPct(support.opened, support.previousOpened)}
+        />
+        <Kpi
+          label="Terbuka sekarang"
+          value={num(support.openNow)}
+          hint={
+            support.oldestOpenDays === null ? undefined : `tertua ${support.oldestOpenDays} hari`
+          }
+        />
+        <Kpi
+          label="Balasan pertama (median)"
+          value={
+            support.medianFirstReplyMinutes === null
+              ? "–"
+              : `${support.medianFirstReplyMinutes} mnt`
+          }
+        />
+        <Kpi
+          label="Selesai (median)"
+          value={
+            support.medianResolutionHours === null ? "–" : `${support.medianResolutionHours} jam`
+          }
+        />
+      </KpiGrid>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Block title="Umur tiket terbuka">
+          <TrafficRows rows={support.aging} empty="Tidak ada tiket terbuka." />
+        </Block>
+        <Block title="Kategori">
+          <TrafficRows rows={support.byCategory} empty="Belum ada tiket." />
+        </Block>
+        <Block title="Status">
+          <TrafficRows rows={support.byStatus} empty="Belum ada tiket." />
+        </Block>
+      </div>
+
+      <h2 className={`${MONO} pt-2`}>eSIM & provisioning</h2>
+      <KpiGrid>
+        <Kpi
+          label="Pesanan dibayar"
+          value={num(pv.paid)}
+          hint={`${num(pv.ready)} siap / terpasang`}
+        />
+        <Kpi
+          label="Gagal provisioning"
+          value={num(pv.failed)}
+          hint={pv.failureRatePct === null ? undefined : `${pv.failureRatePct}% dari dibayar`}
+        />
+        <Kpi label="Tertahan > 30 mnt" value={num(pv.stuck)} />
+        <Kpi
+          label="Waktu ke eSIM (median)"
+          value={pv.medianMinutesToReady === null ? "–" : `${pv.medianMinutesToReady} mnt`}
+          hint={`${pv.refundsOpen} refund menunggu`}
+        />
+      </KpiGrid>
+
+      <h2 className={`${MONO} pt-2`}>Kesehatan sistem</h2>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Block title="Worker" hint="Denyut terakhir; tanda merah bila lebih dari 15 menit">
+          {system.workers.length === 0 ? (
+            <p className="py-2 text-[11px] text-muted-foreground">Belum ada denyut tercatat.</p>
+          ) : (
+            <ul className="divide-y divide-border text-[12px]">
+              {system.workers.map((w) => (
+                <li key={w.name} className="flex items-center justify-between gap-2 py-1.5">
+                  <span className="min-w-0 truncate">
+                    {w.name}
+                    {w.lastError && (
+                      <span className="block truncate text-[10px] text-destructive">
+                        {w.lastError}
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={`shrink-0 text-[11px] font-semibold ${w.stale ? "text-destructive" : "text-emerald-600"}`}
+                  >
+                    {w.ageMinutes === null ? "belum pernah" : `${w.ageMinutes} mnt lalu`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Block>
+        <Block title="Antrean & webhook">
+          <TrafficRows rows={system.webhooks} empty="Tidak ada webhook pada rentang ini." />
+          <ul className="mt-2 space-y-1 text-[12px]">
+            <li className="flex justify-between">
+              <span>Webhook gagal permanen</span>
+              <b className={system.deadLetters > 0 ? "text-destructive" : ""}>
+                {system.deadLetters}
+              </b>
+            </li>
+            <li className="flex justify-between">
+              <span>Email antre · gagal</span>
+              <b>
+                {system.emailQueued} · {system.emailFailed}
+              </b>
+            </li>
+            <li className="flex justify-between">
+              <span>Pembayaran tidak pasti</span>
+              <b className={system.paymentsUnknown > 0 ? "text-destructive" : ""}>
+                {system.paymentsUnknown}
+              </b>
+            </li>
+          </ul>
+        </Block>
+      </div>
+
+      <Block
+        title="Aktivitas tim admin"
+        hint="Jumlah tindakan tercatat di audit log pada rentang ini"
+      >
+        <TrafficRows rows={team} empty="Belum ada aktivitas." />
+      </Block>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ Peringatan
+
+export function AlertsStrip({ alerts }: { alerts: InsightAlert[] }) {
+  if (alerts.length === 0)
+    return (
+      <p className="mb-3 border border-border bg-card px-3 py-2 text-[11.5px] text-emerald-700">
+        Tidak ada peringatan aktif (7 hari terakhir dibanding 7 hari sebelumnya).
+      </p>
+    );
+  const tone = {
+    critical: "border-l-destructive",
+    warning: "border-l-amber-500",
+    info: "border-l-sky-500",
+  } as const;
+  return (
+    <section aria-label="Peringatan" className="mb-3 border border-border bg-card">
+      <h2 className={`${MONO} border-b border-border px-3 py-2`}>Peringatan ({alerts.length})</h2>
+      <ul className="divide-y divide-border">
+        {alerts.map((a) => (
+          <li key={a.key} className={`border-l-4 ${tone[a.severity]}`}>
+            <a
+              href={a.href}
+              className="flex items-start justify-between gap-3 px-3 py-2 hover:bg-secondary/60"
+            >
+              <span className="min-w-0">
+                <span className="block text-[12.5px] font-semibold">{a.title}</span>
+                <span className="block text-[10.5px] text-muted-foreground">{a.detail}</span>
+              </span>
+              <span className="shrink-0 text-[11px] font-medium underline">Buka</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

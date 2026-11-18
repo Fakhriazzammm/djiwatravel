@@ -4,8 +4,11 @@ import { useState } from "react";
 import { z } from "zod";
 import { AdminShell } from "@/components/admin-shell";
 import {
+  AlertsStrip,
   DestinationsPanel,
+  FeaturesPanel,
   FunnelPanel,
+  OperationsPanel,
   RevenuePanel,
   UsersPanel,
 } from "@/components/admin-analytics-panels";
@@ -94,10 +97,13 @@ function AdminAnalytics() {
         })}{" "}
         WIB.
       </p>
+      <AlertsStrip alerts={data.alerts} />
       {tab === "pengguna" && <UsersPanel result={data.users} />}
       {tab === "funnel" && <FunnelPanel result={data.funnel} />}
       {tab === "pendapatan" && <RevenuePanel result={data.revenue} />}
       {tab === "destinasi" && <DestinationsPanel result={data.destinations} />}
+      {tab === "fitur" && <FeaturesPanel result={data.features} />}
+      {tab === "operasional" && <OperationsPanel result={data.operations} />}
     </AdminShell>
   );
 }

@@ -1,0 +1,8 @@
+[Unit]
+Description=Djiwa Travel weekly analytics e-mail report
+After=djiwatravel.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/djiwatravel-task.env
+ExecStart=/usr/bin/curl -fsS -m 120 -X POST -H "x-djiwa-task-secret: ${ANALYTICS_REPORT_TASK_SECRET}" http://127.0.0.1:3000/api/tasks/analytics-report

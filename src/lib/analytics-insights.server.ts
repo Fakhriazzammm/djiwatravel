@@ -5,12 +5,17 @@ import {
   healthScore,
   INSIGHT_RANGE_DAYS,
   MIN_GROUP_SIZE,
+  pctOf,
   RFM_HINT,
   RFM_LABEL,
   RFM_ORDER,
   rfmSegment,
   type AnalyticsInsights,
+  type AlertInput,
   type DestinationInsight,
+  type FeaturesInsight,
+  type OperationsInsight,
+  evaluateAlerts,
   type FunnelInsight,
   type FunnelStep,
   type InsightRange,
@@ -565,6 +570,346 @@ async function destinationInsight(range: InsightRange): Promise<DestinationInsig
   };
 }
 
+// ------------------------------------------------------------------ Fitur (fase 4)
+
+const named = (rows: Row[]): Named[] =>
+  rows.map((r) => ({ label: String(r["label"] ?? ""), value: n(r["value"]) }));
+const median = (v: unknown, digits = 1) =>
+  v === null || v === undefined ? null : Math.round(n(v) * 10 ** digits) / 10 ** digits;
+
+const dailySeries = (days: number, table: string, extra = "") => `
+  with d as (select generate_series(
+      date_trunc('day', (${since(days - 1)}) at time zone '${TZ}'),
+      date_trunc('day', now() at time zone '${TZ}'), interval '1 day') as day)
+  select to_char(d.day, 'DD Mon') as label, count(t.*)::int as value
+    from d left join ${table} t
+      on date_trunc('day', t.created_at at time zone '${TZ}') = d.day ${extra}
+   group by d.day order by d.day`;
+
+async function featuresInsight(range: InsightRange): Promise<FeaturesInsight> {
+  const days = INSIGHT_RANGE_DAYS[range];
+  const [
+    travo,
+    travoMsgs,
+    travoScope,
+    travoDaily,
+    trips,
+    tripDaily,
+    shopReq,
+    shopFunnel,
+    shopReply,
+    shopNow,
+    shopStatus,
+    feedCounts,
+    feedKind,
+    feedStatus,
+    feedReports,
+    notif,
+    notifType,
+    delivery,
+    pwa,
+  ] = await Promise.all([
+    q(`select count(*) filter (where created_at >= ${since(days)})::int as c,
+              count(*) filter (where created_at >= ${priorSince(days)} and created_at < ${since(days)})::int as p
+         from travel_assistant_conversations`),
+    q(`select count(*) filter (where role = 'user')::int as u, count(*) filter (where role = 'assistant')::int as a,
+              count(distinct customer_auth_subject)::int as people
+         from travel_assistant_messages where created_at >= ${since(days)}`),
+    q(`select scope as label, count(*)::int as value from travel_assistant_conversations
+        where created_at >= ${since(days)} group by 1 order by value desc`),
+    q(
+      dailySeries(
+        days,
+        "travel_assistant_messages",
+        "and t.role = 'user' and t.created_at >= " + since(days),
+      ),
+    ),
+    q(`select (select count(*) from travel_trips where created_at >= ${since(days)})::int as c,
+              (select count(*) from travel_trips where created_at >= ${priorSince(days)} and created_at < ${since(days)})::int as p,
+              (select count(distinct customer_auth_subject) from travel_trips where created_at >= ${since(days)})::int as people,
+              (select count(*) from travel_expenses where created_at >= ${since(days)})::int as expenses,
+              (select count(*) from travel_trip_shares where created_at >= ${since(days)})::int as shares,
+              (select count(*) from travel_receipt_scans where created_at >= ${since(days)})::int as scans`),
+    q(dailySeries(days, "travel_trips", "and t.created_at >= " + since(days))),
+    q(`select count(*) filter (where created_at >= ${since(days)} and status <> 'DRAFT')::int as c,
+              count(*) filter (where created_at >= ${priorSince(days)} and created_at < ${since(days)} and status <> 'DRAFT')::int as p
+         from shopping_discovery_requests`),
+    q(`select count(*) filter (where status <> 'DRAFT')::int as submitted,
+              count(*) filter (where status in ('OFFERED','ORDERED'))::int as offered,
+              count(*) filter (where status = 'ORDERED')::int as ordered,
+              (select count(*) from shopping_orders where paid_at >= ${since(days)})::int as paid
+         from shopping_discovery_requests where created_at >= ${since(days)}`),
+    q(`with first_reply as (
+         select t.id, t.created_at, t.response_due_at,
+                (select min(m.created_at) from shopping_chat_messages m
+                  where m.thread_id = t.id and m.sender = 'ADMIN' and not m.internal) as replied_at
+           from shopping_chat_threads t where t.kind = 'REQUEST' and t.created_at >= ${since(days)})
+       select percentile_cont(0.5) within group (order by extract(epoch from (replied_at - created_at)) / 60)::float as med,
+              count(*) filter (where replied_at is not null and response_due_at is not null)::int as answered,
+              count(*) filter (where replied_at is not null and response_due_at is not null and replied_at <= response_due_at)::int as on_time
+         from first_reply where replied_at is not null`),
+    q(`select count(*) filter (where closed_at is null and last_sender = 'CUSTOMER')::int as waiting,
+              count(*) filter (where closed_at is null and last_sender = 'CUSTOMER' and response_due_at < now())::int as overdue
+         from shopping_chat_threads`),
+    q(`select status as label, count(*)::int as value from shopping_discovery_requests
+        where created_at >= ${since(days)} and status <> 'DRAFT' group by 1 order by value desc`),
+    q(`select (select count(*) from feed_posts where created_at >= ${since(days)} and source = 'member')::int as posts,
+              (select count(*) from feed_comments where created_at >= ${since(days)} and source = 'member')::int as comments,
+              (select count(*) from feed_likes where created_at >= ${since(days)})::int as likes,
+              (select floor(extract(epoch from (now() - min(created_at))) / 3600)::int from feed_posts where status = 'PENDING') as oldest`),
+    q(`select kind as label, count(*)::int as value from feed_posts
+        where created_at >= ${since(days)} and source = 'member' group by 1 order by value desc`),
+    q(`select status as label, count(*)::int as value from feed_posts
+        where created_at >= ${since(days)} and source = 'member' group by 1 order by value desc`),
+    q(`select count(*) filter (where status = 'OPEN')::int as open,
+              count(*) filter (where status = 'ACTIONED' and created_at >= ${since(days)})::int as actioned
+         from feed_reports`),
+    q(`select count(*)::int as c,
+              count(*) filter (where exists (select 1 from customer_notification_states s
+                                              where s.notification_id = n.id and s.read_at is not null))::int as read,
+              (select count(*) from customer_push_subscriptions where active)::int as push
+         from customer_notifications n where created_at >= ${since(days)}`),
+    q(`select type as label, count(*)::int as value from customer_notifications
+        where created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+    q(`select channel || ' · ' || status as label, count(*)::int as value from notification_delivery_attempts
+        where created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+    q(`select event_name || ' · ' || platform as label, count(*)::int as value from pwa_events
+        where created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+  ]);
+  const tv = travo[0] ?? {};
+  const tm = travoMsgs[0] ?? {};
+  const tr = trips[0] ?? {};
+  const sr = shopReq[0] ?? {};
+  const sf = shopFunnel[0] ?? {};
+  const rp = shopReply[0] ?? {};
+  const sn = shopNow[0] ?? {};
+  const fc = feedCounts[0] ?? {};
+  const fr = feedReports[0] ?? {};
+  const nt = notif[0] ?? {};
+  const conv = n(tv["c"]);
+  const pts = (rows: Row[]): Point[] =>
+    rows.map((r) => ({ label: String(r["label"]), value: n(r["value"]) }));
+  return {
+    travo: {
+      conversations: conv,
+      previousConversations: n(tv["p"]),
+      activeUsers: n(tm["people"]),
+      userMessages: n(tm["u"]),
+      assistantMessages: n(tm["a"]),
+      messagesPerConversation: conv > 0 ? Math.round((n(tm["u"]) / conv) * 10) / 10 : null,
+      byScope: named(travoScope),
+      daily: pts(travoDaily),
+    },
+    trips: {
+      created: n(tr["c"]),
+      previousCreated: n(tr["p"]),
+      users: n(tr["people"]),
+      expenses: n(tr["expenses"]),
+      shares: n(tr["shares"]),
+      receiptScans: n(tr["scans"]),
+      daily: pts(tripDaily),
+    },
+    shopping: {
+      requests: n(sr["c"]),
+      previousRequests: n(sr["p"]),
+      funnel: [
+        { key: "submitted", label: "Permintaan masuk", value: n(sf["submitted"]) },
+        { key: "offered", label: "Ditawari tim", value: n(sf["offered"]) },
+        { key: "ordered", label: "Jadi pesanan", value: n(sf["ordered"]) },
+        { key: "paid", label: "Pesanan dibayar (semua)", value: n(sf["paid"]) },
+      ],
+      medianFirstReplyMinutes: median(rp["med"]),
+      answeredWithinDuePct: pctOf(n(rp["on_time"]), n(rp["answered"])),
+      waitingNow: n(sn["waiting"]),
+      overdueNow: n(sn["overdue"]),
+      byStatus: named(shopStatus),
+    },
+    feeds: {
+      posts: n(fc["posts"]),
+      comments: n(fc["comments"]),
+      likes: n(fc["likes"]),
+      byKind: named(feedKind),
+      byStatus: named(feedStatus),
+      reportsOpen: n(fr["open"]),
+      reportsActioned: n(fr["actioned"]),
+      oldestPendingHours: fc["oldest"] == null ? null : n(fc["oldest"]),
+    },
+    notifications: {
+      created: n(nt["c"]),
+      readRatePct: pctOf(n(nt["read"]), n(nt["c"])),
+      byType: named(notifType),
+      pushActive: n(nt["push"]),
+      delivery: named(delivery),
+      pwa: named(pwa),
+    },
+  };
+}
+
+// ------------------------------------------------------------------ Operasional (fase 5)
+
+const WORKER_STALE_MINUTES = 15;
+
+async function operationsInsight(range: InsightRange): Promise<OperationsInsight> {
+  const days = INSIGHT_RANGE_DAYS[range];
+  const [
+    sup,
+    supReply,
+    supCat,
+    supStatus,
+    supAging,
+    prov,
+    provTime,
+    workers,
+    webhooks,
+    outbox,
+    unknown,
+    team,
+  ] = await Promise.all([
+    q(`select count(*) filter (where created_at >= ${since(days)})::int as opened,
+              count(*) filter (where created_at >= ${priorSince(days)} and created_at < ${since(days)})::int as prev,
+              count(*) filter (where status not in ('resolved','closed'))::int as open_now,
+              (select floor(extract(epoch from (now() - min(created_at))) / 86400)::int
+                 from support_cases where status not in ('resolved','closed')) as oldest,
+              percentile_cont(0.5) within group (order by extract(epoch from (updated_at - created_at)) / 3600)
+                filter (where status in ('resolved','closed') and created_at >= ${since(days)})::float as res_hours
+         from support_cases`),
+    q(`with c as (
+         select sc.id, sc.created_at,
+                (select min(m.created_at) from support_case_messages m
+                  where m.case_id = sc.id and m.author_type = 'admin') as replied
+           from support_cases sc where sc.created_at >= ${since(days)})
+       select percentile_cont(0.5) within group (order by extract(epoch from (replied - created_at)) / 60)::float as med
+         from c where replied is not null`),
+    q(`select category as label, count(*)::int as value from support_cases
+        where created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+    q(`select status as label, count(*)::int as value from support_cases
+        where created_at >= ${since(days)} group by 1 order by value desc`),
+    q(`select case when age < interval '1 day' then '< 1 hari'
+                   when age < interval '3 days' then '1–3 hari'
+                   when age < interval '7 days' then '3–7 hari' else '> 7 hari' end as label,
+              count(*)::int as value
+         from (select now() - created_at as age from support_cases where status not in ('resolved','closed')) x
+        group by 1 order by min(age)`),
+    q(`select count(*) filter (where ${PAID_ESIM})::int as paid,
+              count(*) filter (where o.status in ('READY','INSTALLED'))::int as ready,
+              count(*) filter (where o.status = 'PROVISIONING_FAILED')::int as failed,
+              (select count(*) from customer_orders x where x.status = 'PROVISIONING'
+                  and x.updated_at < now() - interval '30 minutes')::int as stuck,
+              (select count(*) from refund_requests where status = 'REQUESTED')::int as refunds_open
+         from customer_orders o where o.created_at >= ${since(days)} and o.fulfillment_mode <> 'preorder'`),
+    q(`select percentile_cont(0.5) within group (order by extract(epoch from (p.created_at - o.paid_at)) / 60)::float as med
+         from customer_orders o
+         join esim_provisioning_orders po on po.order_id = o.id
+         join lateral (select min(created_at) as created_at from esim_profiles e where e.provisioning_order_id = po.id) p on true
+        where o.paid_at >= ${since(days)} and p.created_at is not null and p.created_at >= o.paid_at`),
+    q(`select worker_name as label, last_error_safe as err,
+              floor(extract(epoch from (now() - last_heartbeat_at)) / 60)::int as age
+         from worker_heartbeats order by worker_name`),
+    q(`select status as label, count(*)::int as value from webhook_inbox
+        where received_at >= ${since(Math.max(days, 7))} group by 1 order by value desc`),
+    q(`select count(*) filter (where status = 'queued')::int as queued,
+              count(*) filter (where status = 'failed')::int as failed,
+              (select count(*) from webhook_inbox where status = 'DEAD_LETTER')::int as dead
+         from travel_email_outbox`),
+    q(`select count(*)::int as c from payment_intents where status = 'UNKNOWN'`),
+    q(`select coalesce(u.display_name, 'Sistem') as label, count(*)::int as value
+         from admin_audit_logs l left join admin_users u on u.id = l.actor_id
+        where l.created_at >= ${since(days)} group by 1 order by value desc limit 8`),
+  ]);
+  const s = sup[0] ?? {};
+  const p = prov[0] ?? {};
+  const paid = n(p["paid"]);
+  return {
+    support: {
+      opened: n(s["opened"]),
+      previousOpened: n(s["prev"]),
+      openNow: n(s["open_now"]),
+      medianFirstReplyMinutes: median(supReply[0]?.["med"]),
+      medianResolutionHours: median(s["res_hours"]),
+      oldestOpenDays: s["oldest"] == null ? null : n(s["oldest"]),
+      byCategory: named(supCat),
+      byStatus: named(supStatus),
+      aging: named(supAging),
+    },
+    provisioning: {
+      paid,
+      ready: n(p["ready"]),
+      failed: n(p["failed"]),
+      failureRatePct: pctOf(n(p["failed"]), paid),
+      stuck: n(p["stuck"]),
+      medianMinutesToReady: median(provTime[0]?.["med"]),
+      refundsOpen: n(p["refunds_open"]),
+    },
+    system: {
+      workers: workers.map((r) => ({
+        name: String(r["label"]),
+        ageMinutes: r["age"] == null ? null : n(r["age"]),
+        lastError: r["err"] ? String(r["err"]).slice(0, 120) : null,
+        stale: r["age"] == null || n(r["age"]) > WORKER_STALE_MINUTES,
+      })),
+      webhooks: named(webhooks),
+      deadLetters: n(outbox[0]?.["dead"]),
+      emailQueued: n(outbox[0]?.["queued"]),
+      emailFailed: n(outbox[0]?.["failed"]),
+      paymentsUnknown: n(unknown[0]?.["c"]),
+    },
+    team: named(team),
+  };
+}
+
+// ------------------------------------------------------------------ Peringatan (fase 5)
+
+/** Reads the last 7 days against the 7 before; also used by the scheduled weekly report. */
+export async function getAlertInput(): Promise<AlertInput> {
+  const [sales, ops, queues] = await Promise.all([
+    q(`with ${SALES_CTE}
+       select coalesce(sum(amount) filter (where at >= ${since(7)}), 0)::numeric as rev,
+              coalesce(sum(amount) filter (where at >= ${priorSince(7)} and at < ${since(7)}), 0)::numeric as prev_rev,
+              count(*) filter (where at >= ${since(7)})::int as orders,
+              count(*) filter (where at >= ${priorSince(7)} and at < ${since(7)})::int as prev_orders
+         from sales where at >= ${priorSince(7)}`),
+    q(`select (select count(*) from refund_requests where created_at >= ${since(7)})::int as refunds,
+              (select count(*) from customer_orders o where o.created_at >= ${since(7)} and ${PAID_ESIM})::int as paid,
+              (select count(*) from customer_orders where created_at >= ${since(7)} and status = 'PROVISIONING_FAILED')::int as failed,
+              (select count(*) from customer_orders where status = 'PROVISIONING' and updated_at < now() - interval '30 minutes')::int as stuck,
+              (select count(*) from customer_orders where fulfillment_mode = 'preorder' and preorder_status in ('pending','processing')
+                  and preorder_deadline_at < now())::int as pre_over,
+              (select count(*) from customer_orders where fulfillment_mode = 'preorder' and preorder_status in ('pending','processing')
+                  and preorder_deadline_at >= now() and preorder_deadline_at < now() + interval '1 day')::int as pre_near,
+              (select count(*) from support_cases where status not in ('resolved','closed') and created_at < now() - interval '3 days')::int as support_old,
+              (select count(*) from feed_reports where status = 'OPEN')::int as reports`),
+    q(`select (select count(*) from webhook_inbox where status = 'DEAD_LETTER')::int as dead,
+              (select count(*) from travel_email_outbox where status = 'failed')::int as email_failed,
+              (select count(*) from payment_intents where status = 'UNKNOWN')::int as unknown,
+              (select count(*) from shopping_chat_threads where closed_at is null and last_sender = 'CUSTOMER'
+                  and response_due_at < now())::int as shop_over,
+              (select coalesce(array_agg(worker_name), '{}') from worker_heartbeats
+                where last_heartbeat_at < now() - interval '${WORKER_STALE_MINUTES} minutes') as stale`),
+  ]);
+  const a = sales[0] ?? {};
+  const o = ops[0] ?? {};
+  const z = queues[0] ?? {};
+  return {
+    revenue: n(a["rev"]),
+    previousRevenue: n(a["prev_rev"]),
+    orders: n(a["orders"]),
+    previousOrders: n(a["prev_orders"]),
+    refundCount: n(o["refunds"]),
+    paidOrders: n(o["paid"]),
+    failedProvisioning: n(o["failed"]),
+    stuckProvisioning: n(o["stuck"]),
+    deadLetters: n(z["dead"]),
+    staleWorkers: Array.isArray(z["stale"]) ? (z["stale"] as unknown[]).map(String) : [],
+    emailFailed: n(z["email_failed"]),
+    preorderOverdue: n(o["pre_over"]),
+    preorderNear: n(o["pre_near"]),
+    supportOpenOver3d: n(o["support_old"]),
+    shoppingOverdue: n(z["shop_over"]),
+    feedReportsOpen: n(o["reports"]),
+    paymentsUnknown: n(z["unknown"]),
+  };
+}
+
 // ------------------------------------------------------------------ entry
 
 export async function getAnalyticsInsightsHandler(
@@ -577,11 +922,18 @@ export async function getAnalyticsInsightsHandler(
     tab,
     updatedAt: new Date().toISOString(),
     since: new Date(Date.now() - INSIGHT_RANGE_DAYS[range] * 86_400_000).toISOString(),
+    alerts: [],
   };
+  // Alerts never block a tab: a failing alert query just yields an empty list.
+  const alerts = guarded("alerts", async () => evaluateAlerts(await getAlertInput()));
   if (tab === "pengguna") base.users = await guarded("users", () => usersInsight(range));
   if (tab === "funnel") base.funnel = await guarded("funnel", () => funnelInsight(range));
   if (tab === "pendapatan") base.revenue = await guarded("revenue", () => revenueInsight(range));
   if (tab === "destinasi")
     base.destinations = await guarded("destinations", () => destinationInsight(range));
+  if (tab === "fitur") base.features = await guarded("features", () => featuresInsight(range));
+  if (tab === "operasional")
+    base.operations = await guarded("operations", () => operationsInsight(range));
+  base.alerts = (await alerts).data ?? [];
   return base;
 }

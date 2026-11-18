@@ -113,3 +113,85 @@ describe("helpers", () => {
     expect(csv).toContain('"a,b"');
   });
 });
+
+import { buildWeeklyReport, evaluateAlerts, type AlertInput } from "@/lib/analytics-insights";
+import { isoWeekKey } from "@/lib/analytics-report.server";
+
+const calm: AlertInput = {
+  revenue: 1_000_000,
+  previousRevenue: 1_000_000,
+  orders: 10,
+  previousOrders: 10,
+  refundCount: 0,
+  paidOrders: 10,
+  failedProvisioning: 0,
+  stuckProvisioning: 0,
+  deadLetters: 0,
+  staleWorkers: [],
+  emailFailed: 0,
+  preorderOverdue: 0,
+  preorderNear: 0,
+  supportOpenOver3d: 0,
+  shoppingOverdue: 0,
+  feedReportsOpen: 0,
+  paymentsUnknown: 0,
+};
+
+describe("evaluateAlerts", () => {
+  it("is quiet when everything is healthy", () => {
+    expect(evaluateAlerts(calm)).toEqual([]);
+  });
+  it("puts critical alerts first", () => {
+    const keys = evaluateAlerts({
+      ...calm,
+      feedReportsOpen: 2,
+      supportOpenOver3d: 1,
+      preorderOverdue: 1,
+      staleWorkers: ["esim-sync"],
+    }).map((a) => a.key);
+    expect(keys.slice(0, 2).sort()).toEqual(["preorder-overdue", "worker-stale"]);
+    expect(keys[keys.length - 1]).toBe("feed-reports");
+  });
+  it("flags a revenue drop only when there was enough volume", () => {
+    expect(evaluateAlerts({ ...calm, revenue: 500_000 }).map((a) => a.key)).toContain(
+      "revenue-drop",
+    );
+    expect(
+      evaluateAlerts({ ...calm, revenue: 100_000, previousRevenue: 1_000_000, previousOrders: 2 }),
+    ).toEqual([]);
+  });
+  it("flags high refund and provisioning failure rates", () => {
+    const keys = evaluateAlerts({ ...calm, refundCount: 2, failedProvisioning: 1 }).map(
+      (a) => a.key,
+    );
+    expect(keys).toContain("refund-rate");
+    expect(keys).toContain("provisioning-failure-rate");
+  });
+});
+
+describe("weekly report", () => {
+  it("renders text and escaped html with alerts", () => {
+    const report = buildWeeklyReport({
+      periodLabel: "1 Nov – 8 Nov",
+      revenue: 2_000_000,
+      previousRevenue: 1_000_000,
+      orders: 4,
+      previousOrders: 2,
+      newMembers: 3,
+      topDestinations: [{ code: "jp", revenue: 1_500_000, orders: 3 }],
+      alerts: [
+        { key: "x", severity: "critical", title: "<b>Bahaya</b>", detail: "d", href: "/admin" },
+      ],
+      baseUrl: "https://djiwatravel.com",
+    });
+    expect(report.text).toContain("naik 100%");
+    expect(report.text).toContain("JP");
+    expect(report.html).toContain("&lt;b&gt;Bahaya");
+    expect(report.html).not.toContain("<b>Bahaya");
+  });
+  it("keys one report per ISO week", () => {
+    expect(isoWeekKey(new Date("2026-11-16T03:00:00Z"))).toBe("2026-W47");
+    expect(isoWeekKey(new Date("2026-11-22T20:00:00Z"))).toBe("2026-W47");
+    expect(isoWeekKey(new Date("2026-11-23T01:00:00Z"))).toBe("2026-W48");
+  });
+});
