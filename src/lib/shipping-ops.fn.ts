@@ -78,3 +78,9 @@ export const getOpsOrder = createServerFn({ method: "POST" })
   .handler(async ({ data }) =>
     (await import("./shipping-ops.server")).getOpsOrderHandler({ data }),
   );
+
+export const listHubQueue = createServerFn({ method: "POST" })
+  .validator(async (data: unknown) => (await import("./shipping-ops.server")).queueInput(data))
+  .handler(async ({ data }) =>
+    (await import("./shipping-ops.server")).listHubQueueHandler({ data }),
+  );

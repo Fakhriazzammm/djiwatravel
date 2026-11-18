@@ -1,8 +1,9 @@
-import type { getOpsMe, listBatches, scanOps } from "@/lib/shipping-ops.fn";
+import type { getOpsMe, listBatches, listHubQueue, scanOps } from "@/lib/shipping-ops.fn";
 
 export type OpsMe = Awaited<ReturnType<typeof getOpsMe>>;
 export type ScanResult = Awaited<ReturnType<typeof scanOps>>;
 export type BatchList = Awaited<ReturnType<typeof listBatches>>;
+export type QueueItem = Awaited<ReturnType<typeof listHubQueue>>[number];
 export type BatchSlim = BatchList["open"][number];
 
 export const bigBtn =

@@ -639,6 +639,8 @@ export const problemInput = (data: unknown) => problemSchema.parse(data);
 /** Flags damage or loss. The customer is told someone will be in touch. */
 export async function markProblemHandler({ data }: { data: ReturnType<typeof problemInput> }) {
   const ops = await requireOps();
+  // Staff always say where they are, and may only report from a hub they work at.
+  if (!ops.isAdmin && !data.hub) throw new Error("Pilih lokasimu dulu");
   if (data.hub) assertHub(ops, data.hub);
   const row = (await pool.query("select * from shipping_orders where id = $1", [data.orderId]))
     .rows[0] as OrderRow | undefined;
@@ -778,4 +780,59 @@ export async function getOpsOrderHandler({ data }: { data: ReturnType<typeof ord
   if (!row) throw new Error("Pengiriman tidak ditemukan");
   const photos = (await photosFor([row.id])).get(row.id) ?? NO_PHOTOS;
   return { ...orderView(row, photos), minPhotos: (await getShippingConfig()).minPhotos };
+}
+
+/* -------------------------------------------------------------------- queue */
+
+const queueSchema = z.object({ hub: hubSchema });
+export const queueInput = (data: unknown) => queueSchema.parse(data);
+
+/** Which statuses a hub keeps an eye on: what is expected, waiting, and ready to move on. */
+const QUEUE_STATUSES: Record<Hub, ShippingStatus[]> = {
+  TASIK: ["AWAITING_DROP", "RECEIVED", "PAYMENT_PENDING", "PAID"],
+  BANDUNG: ["TO_BANDUNG", "AT_BANDUNG"],
+  JAKARTA: ["TO_JAKARTA", "AT_JAKARTA"],
+};
+
+/** The work list of one hub: oldest first, so nothing sits forgotten. */
+export async function listHubQueueHandler({ data }: { data: ReturnType<typeof queueInput> }) {
+  const ops = await requireOps();
+  assertHub(ops, data.hub);
+  const rows = (
+    await pool.query(
+      `select o.id, o.public_code, o.status, o.recipient_name, o.prefecture, o.category, o.contents,
+              o.estimated_kg, o.billed_kg, o.updated_at, o.batch_id, b.code as batch_code, b.status as batch_status
+         from shipping_orders o left join shipping_batches b on b.id = o.batch_id
+        where o.status = any($1::text[])
+        order by o.updated_at asc limit 120`,
+      [QUEUE_STATUSES[data.hub]],
+    )
+  ).rows as {
+    id: string;
+    public_code: string;
+    status: ShippingStatus;
+    recipient_name: string;
+    prefecture: string;
+    category: string;
+    contents: string;
+    estimated_kg: string;
+    billed_kg: string | null;
+    updated_at: Date;
+    batch_id: string | null;
+    batch_code: string | null;
+    batch_status: string | null;
+  }[];
+  return rows.map((r) => ({
+    id: r.id,
+    code: r.public_code,
+    status: r.status,
+    statusLabel: SHIPPING_STATUS_LABEL[r.status],
+    recipientName: r.recipient_name,
+    prefecture: r.prefecture,
+    contents: `${r.category}: ${r.contents}`,
+    kg: Number(r.billed_kg ?? r.estimated_kg),
+    updatedAt: iso(r.updated_at)!,
+    // Only a batch still being loaded counts as "already in a batch".
+    openBatchCode: r.batch_status === "OPEN" ? r.batch_code : null,
+  }));
 }

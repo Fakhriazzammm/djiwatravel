@@ -44,7 +44,7 @@ export function OpsScan({
   batchId,
   batchLabel,
   initialCode,
-  loadSignal,
+  startMode,
   onWeigh,
   onChanged,
   onOpenBatch,
@@ -55,15 +55,15 @@ export function OpsScan({
   batchId: string | null;
   batchLabel: string | null;
   initialCode: string | null;
-  /** Bumped when the team picks a batch to load: jump to the load mode. */
-  loadSignal: number;
+  /** Open in the load mode (the team just picked a batch to load). */
+  startMode?: "load" | undefined;
   onWeigh: (orderId: string) => void;
   onChanged: () => void;
   onOpenBatch: (batchId: string) => void;
   onProblem: (orderId: string, code: string) => void;
 }) {
   const modes = HUB_MODES[hub];
-  const [mode, setMode] = useState<HubMode>(modes[0]!.id);
+  const [mode, setMode] = useState<HubMode>(startMode ?? modes[0]!.id);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -75,10 +75,14 @@ export function OpsScan({
   const supported = cameraSupported();
 
   // Changing hub changes what a scan means: start from that hub's first mode.
-  useEffect(() => setMode(HUB_MODES[hub][0]!.id), [hub]);
+  const firstRun = useRef(true);
   useEffect(() => {
-    if (loadSignal > 0) setMode("load");
-  }, [loadSignal]);
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    setMode(HUB_MODES[hub][0]!.id);
+  }, [hub]);
 
   const signal = useCallback((kind: Exclude<Flash, null>) => {
     setFlash(kind);

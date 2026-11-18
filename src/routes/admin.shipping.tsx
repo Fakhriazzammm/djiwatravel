@@ -111,7 +111,10 @@ function AdminShipping() {
             </p>
           </div>
         )}
-        <div className="flex gap-1 rounded-xl bg-secondary p-1" role="tablist">
+        <div
+          className={`gap-1 rounded-xl bg-secondary p-1 ${tab === "scan" ? "hidden lg:flex" : "flex"}`}
+          role="tablist"
+        >
           {(
             [
               ["orders", "Pengiriman"],
@@ -145,7 +148,12 @@ function AdminShipping() {
         )}
         {tab === "scan" && (
           <div className="mx-auto w-full max-w-md">
-            <ShippingOpsApp me={ops} initialCode={scan ?? null} onChanged={() => void refresh()} />
+            <ShippingOpsApp
+              me={ops}
+              initialCode={scan ?? null}
+              onChanged={() => void refresh()}
+              onAdminTab={setTab}
+            />
           </div>
         )}
         {tab === "staff" && <StaffManager />}

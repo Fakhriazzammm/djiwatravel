@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const mock = vi.hoisted(() => ({
@@ -12,6 +12,7 @@ const mock = vi.hoisted(() => ({
   problem: vi.fn(),
   order: vi.fn(),
   action: vi.fn(),
+  queue: vi.fn(),
 }));
 vi.mock("@/lib/shipping-ops.fn", () => ({
   scanOps: mock.scan,
@@ -23,6 +24,7 @@ vi.mock("@/lib/shipping-ops.fn", () => ({
   unloadFromBatch: mock.unload,
   markShippingProblem: mock.problem,
   getOpsOrder: mock.order,
+  listHubQueue: mock.queue,
 }));
 vi.mock("@/lib/shipping.fn", () => ({ runAdminShippingAction: mock.action }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -85,6 +87,11 @@ const parcel = (outcome: string, status: string, extra: Record<string, unknown> 
 });
 
 const emptyList = { open: [], incoming: [], outgoing: [], recent: [] };
+
+beforeEach(() => {
+  mock.queue.mockResolvedValue([]);
+  mock.list.mockResolvedValue({ open: [], incoming: [], outgoing: [], recent: [] });
+});
 
 afterEach(() => {
   cleanup();
@@ -364,5 +371,145 @@ describe("field app: batches", () => {
       await screen.findByRole("button", { name: "Tiba di Jepang (semua paket)" }),
     ).toBeTruthy();
     void within;
+  });
+});
+
+describe("field app: bottom bar", () => {
+  const queueItem = (status: string, code: string, extra: Record<string, unknown> = {}) => ({
+    id: `id-${code}`,
+    code,
+    status,
+    statusLabel: status,
+    recipientName: "Rina Tanaka",
+    prefecture: "Tokyo",
+    contents: "Makanan kering: Keripik",
+    kg: 2.5,
+    updatedAt: "2026-11-20T03:00:00.000Z",
+    openBatchCode: null,
+    ...extra,
+  });
+
+  it("has the four buttons for this screen only, and Scan is home", () => {
+    render(<ShippingOpsApp me={me(["TASIK"])} initialCode={null} />);
+    const bar = screen.getByRole("navigation", { name: "Menu petugas" });
+    expect(
+      within(bar)
+        .getAllByRole("tab")
+        .map((t) => t.textContent),
+    ).toEqual(["Scan", "Antrian", "Batch", "Lainnya"]);
+    expect(within(bar).getByRole("tab", { name: "Scan", selected: true })).toBeTruthy();
+  });
+
+  it("badges what needs attention: the to-do list and batches on their way here", async () => {
+    mock.queue.mockResolvedValue([
+      queueItem("RECEIVED", "DJW-KR-0001"),
+      queueItem("PAID", "DJW-KR-0002"),
+      queueItem("PAYMENT_PENDING", "DJW-KR-0003"), // waiting for the customer: not a task
+    ]);
+    mock.list.mockResolvedValue({
+      open: [],
+      incoming: [
+        {
+          id: "b1",
+          code: "BCH-0001",
+          fromHub: "TASIK",
+          toHub: "BANDUNG",
+          status: "DEPARTED",
+          carrier: "x",
+          tracking: null,
+          partnerKg: null,
+          note: null,
+          createdBy: "a",
+          departedAt: null,
+          arrivedAt: null,
+          createdAt: "2026-11-20T03:00:00.000Z",
+          total: 1,
+          checked: 0,
+          kg: 2,
+        },
+      ],
+      outgoing: [],
+      recent: [],
+    });
+    render(<ShippingOpsApp me={me(["BANDUNG"])} initialCode={null} />);
+    expect(await screen.findByRole("tab", { name: "Batch, 1 perlu perhatian" })).toBeTruthy();
+    expect(await screen.findByRole("tab", { name: "Antrian, 2 perlu perhatian" })).toBeTruthy();
+  });
+
+  it("shows the hub's to-do list with the one button that fits each parcel", async () => {
+    mock.queue.mockResolvedValue([
+      queueItem("AWAITING_DROP", "DJW-KR-0001"),
+      queueItem("RECEIVED", "DJW-KR-0002"),
+      queueItem("PAID", "DJW-KR-0003"),
+      queueItem("PAYMENT_PENDING", "DJW-KR-0004"),
+    ]);
+    render(<ShippingOpsApp me={me(["TASIK"])} initialCode={null} />);
+    tab("Antrian");
+    expect(await screen.findByText("Akan datang · 1")).toBeTruthy();
+    expect(screen.getByText("Perlu ditimbang · 1")).toBeTruthy();
+    expect(screen.getByText("Menunggu pembayaran · 1")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Terima" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Timbang" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Muat" })).toHaveLength(1);
+
+    // receive without the camera
+    mock.scan.mockResolvedValue(parcel("received", "RECEIVED"));
+    fireEvent.click(screen.getByRole("button", { name: "Terima" }));
+    await waitFor(() =>
+      expect(mock.scan).toHaveBeenCalledWith({
+        data: { code: "DJW-KR-0001", hub: "TASIK", mode: "receive" },
+      }),
+    );
+
+    // loading needs an open batch first
+    fireEvent.click(screen.getByRole("button", { name: "Muat" }));
+    expect(mock.scan).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks in an incoming parcel from the list when the QR is unreadable", async () => {
+    mock.queue.mockResolvedValue([queueItem("TO_BANDUNG", "DJW-KR-0007")]);
+    mock.scan.mockResolvedValue(parcel("checked_in", "AT_BANDUNG"));
+    render(<ShippingOpsApp me={me(["BANDUNG"])} initialCode={null} />);
+    tab("Antrian");
+    expect(await screen.findByText("Dalam perjalanan ke sini · 1")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Check-in" }));
+    await waitFor(() =>
+      expect(mock.scan).toHaveBeenCalledWith({
+        data: { code: "DJW-KR-0007", hub: "BANDUNG", mode: "checkin" },
+      }),
+    );
+  });
+
+  it("Lainnya: staff get Keluar, Admin gets the way back to the other Kirim Barang tabs", () => {
+    const { unmount } = render(<ShippingOpsApp me={me(["TASIK"])} initialCode={null} />);
+    tab("Lainnya");
+    expect(screen.getByText("p@x.co · Petugas")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Keluar" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Akun petugas" })).toBeNull();
+    unmount();
+
+    const onAdminTab = vi.fn();
+    render(
+      <ShippingOpsApp
+        me={me(["TASIK", "BANDUNG", "JAKARTA"], true)}
+        initialCode={null}
+        onAdminTab={onAdminTab}
+      />,
+    );
+    tab("Lainnya");
+    expect(screen.queryByRole("button", { name: "Keluar" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Akun petugas" }));
+    expect(onAdminTab).toHaveBeenCalledWith("staff");
+    fireEvent.click(screen.getByRole("button", { name: "Pengaturan" }));
+    expect(onAdminTab).toHaveBeenCalledWith("settings");
+  });
+
+  it("stops the camera screen when you leave Scan, and Scan comes back in the hub's first mode", () => {
+    render(<ShippingOpsApp me={me(["TASIK"])} initialCode={null} />);
+    expect(screen.getByLabelText("Kode pengiriman")).toBeTruthy();
+    tab("Antrian");
+    expect(screen.queryByLabelText("Kode pengiriman")).toBeNull();
+    tab("Scan");
+    expect(screen.getByRole("tab", { name: "Terima", selected: true })).toBeTruthy();
   });
 });

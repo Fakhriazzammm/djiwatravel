@@ -12,8 +12,9 @@ export const Route = createFileRoute("/api/shipping-photo/$id")({
           let admin = false;
           let viewerId: string | null = null;
           if (new URL(request.url).searchParams.get("admin") === "1") {
-            const { requireOps } = await import("@/lib/shipping-access.server");
-            await requireOps();
+            // Photos of any shipment: Admin, or staff of the drop point where parcels are weighed.
+            const { requireOps, assertHub } = await import("@/lib/shipping-access.server");
+            assertHub(await requireOps(), "TASIK");
             admin = true;
           } else {
             try {

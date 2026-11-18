@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { markShippingProblem } from "@/lib/shipping-ops.fn";
+import { listBatches, listHubQueue, markShippingProblem } from "@/lib/shipping-ops.fn";
 import { HUB_LABEL, type Hub } from "@/lib/shipping";
 import { OpsBatches } from "./ops-batches";
+import { OpsBottomNav, type OpsTab } from "./ops-nav";
+import { OpsMore } from "./ops-more";
+import { OpsQueue } from "./ops-queue";
 import { OpsScan } from "./ops-scan";
 import { OpsWeigh } from "./ops-weigh";
-import { bigBtn, field, type OpsMe } from "./ops-types";
+import { bigBtn, field, type OpsMe, type QueueItem } from "./ops-types";
 
 const HUB_KEY = "djiwa-ship-hub";
 
@@ -20,31 +23,61 @@ function savedHub(allowed: readonly Hub[]): Hub {
 }
 
 /**
- * The field app for hub staff and Admin: pick where you are once, then Scan and Batch. Used by the
- * mobile page /petugas and by the Scan tab in Admin, so both behave the same.
+ * The field app for hub staff and Admin, with its own bottom bar: Scan, Antrian (the hub's to-do
+ * list), Batch (the trip) and Lainnya (account, and the way back to Admin). Used by the mobile page
+ * /petugas and by the Scan tab in Admin, so both behave the same.
  */
 export function ShippingOpsApp({
   me,
   initialCode,
   onChanged,
+  onAdminTab,
 }: {
   me: OpsMe;
   initialCode: string | null;
   onChanged?: () => void;
+  /** Admin only: leave the field screen for another Kirim Barang tab. */
+  onAdminTab?: (tab: "orders" | "staff" | "settings") => void;
 }) {
   const [hub, setHub] = useState<Hub>(() =>
     typeof window === "undefined" ? (me.hubs[0] ?? "TASIK") : savedHub(me.hubs),
   );
-  const [tab, setTab] = useState<"scan" | "batch">("scan");
+  const [tab, setTab] = useState<OpsTab>("scan");
+  const [startLoad, setStartLoad] = useState(false);
   const [active, setActive] = useState<{ id: string; code: string } | null>(null);
   const [weighId, setWeighId] = useState<string | null>(null);
   const [problem, setProblem] = useState<{ orderId: string; code: string } | null>(null);
   const [problemNote, setProblemNote] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
-  const [loadSignal, setLoadSignal] = useState(0);
+  const [queue, setQueue] = useState<QueueItem[] | null>(null);
+  const [queueError, setQueueError] = useState("");
+  const [incoming, setIncoming] = useState(0);
 
   // The open batch belongs to one hub; moving to another hub starts clean.
   useEffect(() => setActive(null), [hub]);
+
+  // The to-do list and the batches on their way here feed the badges on the bottom bar.
+  useEffect(() => {
+    let live = true;
+    setQueue(null);
+    listHubQueue({ data: { hub } })
+      .then((rows) => {
+        if (live) {
+          setQueue(rows);
+          setQueueError("");
+        }
+      })
+      .catch((error: unknown) => {
+        if (live)
+          setQueueError(error instanceof Error ? error.message : "Antrian belum bisa dimuat.");
+      });
+    listBatches({ data: { hub } })
+      .then((list) => live && setIncoming(list.incoming.length))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [hub, refreshKey]);
 
   const changed = useCallback(() => {
     setRefreshKey((k) => k + 1);
@@ -60,57 +93,49 @@ export function ShippingOpsApp({
     }
   }
 
+  const goTab = (next: OpsTab) => {
+    setStartLoad(false);
+    setTab(next);
+  };
+
+  const todo = (queue ?? []).filter((i) => i.status !== "PAYMENT_PENDING").length;
+  const nav = <OpsBottomNav tab={tab} onTab={goTab} badges={{ queue: todo, batch: incoming }} />;
+
   if (weighId)
     return (
-      <OpsWeigh
-        orderId={weighId}
-        onClose={() => setWeighId(null)}
-        onDone={() => {
-          setWeighId(null);
-          changed();
-        }}
-      />
+      <div className="pb-24">
+        <OpsWeigh
+          orderId={weighId}
+          onClose={() => setWeighId(null)}
+          onDone={() => {
+            setWeighId(null);
+            changed();
+          }}
+        />
+        {nav}
+      </div>
     );
 
   return (
-    <div className="space-y-2.5">
-      <div className="flex gap-1.5 overflow-x-auto" role="tablist" aria-label="Lokasi">
-        {me.hubs.map((h) => (
-          <button
-            key={h}
-            type="button"
-            role="tab"
-            aria-selected={hub === h}
-            onClick={() => pickHub(h)}
-            className={`min-h-10 shrink-0 rounded-full px-4 text-[13px] font-semibold ${hub === h ? "bg-primary text-primary-foreground" : "bg-secondary"}`}
-          >
-            {HUB_LABEL[h]}
-          </button>
-        ))}
-      </div>
-      <div
-        className="grid grid-cols-2 gap-1 rounded-2xl bg-secondary p-1"
-        role="tablist"
-        aria-label="Menu"
-      >
-        {(
-          [
-            ["scan", "Scan"],
-            ["batch", "Batch"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={`min-h-11 rounded-xl text-[13px] font-semibold ${tab === id ? "bg-background shadow-sm" : "text-muted-foreground"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+    <div className="space-y-2.5 pb-24">
+      {me.hubs.length > 1 && tab !== "more" ? (
+        <div className="flex gap-1.5 overflow-x-auto" role="tablist" aria-label="Lokasi">
+          {me.hubs.map((h) => (
+            <button
+              key={h}
+              type="button"
+              role="tab"
+              aria-selected={hub === h}
+              onClick={() => pickHub(h)}
+              className={`min-h-10 shrink-0 rounded-full px-4 text-[13px] font-semibold ${hub === h ? "bg-primary text-primary-foreground" : "bg-secondary"}`}
+            >
+              {HUB_LABEL[h]}
+            </button>
+          ))}
+        </div>
+      ) : tab !== "more" ? (
+        <p className="text-[12px] font-semibold text-muted-foreground">Lokasi: {HUB_LABEL[hub]}</p>
+      ) : null}
 
       {problem && (
         <div className="rounded-2xl border border-[#ffc9c5] bg-[#fff0ef] p-3">
@@ -155,19 +180,30 @@ export function ShippingOpsApp({
         </div>
       )}
 
-      <div hidden={tab !== "scan"}>
+      {tab === "scan" && (
         <OpsScan
           hub={hub}
           batchId={active?.id ?? null}
           batchLabel={active?.code ?? null}
           initialCode={initialCode}
-          loadSignal={loadSignal}
+          startMode={startLoad ? "load" : undefined}
           onWeigh={setWeighId}
           onChanged={changed}
-          onOpenBatch={() => setTab("batch")}
+          onOpenBatch={() => goTab("batch")}
           onProblem={(orderId, code) => setProblem({ orderId, code })}
         />
-      </div>
+      )}
+      {tab === "queue" && (
+        <OpsQueue
+          hub={hub}
+          items={queue}
+          error={queueError}
+          activeBatchId={active?.id ?? null}
+          onWeigh={setWeighId}
+          onProblem={(orderId, code) => setProblem({ orderId, code })}
+          onChanged={changed}
+        />
+      )}
       {tab === "batch" && (
         <OpsBatches
           me={me}
@@ -177,11 +213,13 @@ export function ShippingOpsApp({
           refreshKey={refreshKey}
           onChanged={changed}
           onLoadMode={() => {
+            setStartLoad(true);
             setTab("scan");
-            setLoadSignal((n) => n + 1);
           }}
         />
       )}
+      {tab === "more" && <OpsMore me={me} hub={hub} onAdminTab={onAdminTab} />}
+      {nav}
     </div>
   );
 }
