@@ -141,7 +141,7 @@ function AdminShipping() {
         {notice && (
           <p
             role={notice.error ? "alert" : "status"}
-            className={`rounded-xl p-3 text-sm ${notice.error ? "bg-destructive/10 text-destructive" : "bg-secondary"}`}
+            className={`sticky top-2 z-30 rounded-xl p-3 text-sm shadow-sm ${notice.error ? "bg-[#fff0ef] text-destructive" : "bg-background"}`}
           >
             {notice.text}
           </p>
@@ -365,8 +365,10 @@ function OrderDetail({
   const [reason, setReason] = useState("");
   const [note, setNote] = useState(order.adminNote ?? "");
   const fileRef = useRef<HTMLInputElement>(null);
+  const weighRef = useRef<HTMLDivElement>(null);
   const [redoNote, setRedoNote] = useState("");
   const [printBusy, setPrintBusy] = useState(false);
+  const [printError, setPrintError] = useState("");
   const status = order.status as ShippingStatus;
   const next = SHIPPING_ADMIN_NEXT[status];
 
@@ -420,6 +422,7 @@ function OrderDetail({
 
   async function printOne(kind: "label" | "receipt" | "weigh") {
     setPrintBusy(true);
+    setPrintError("");
     try {
       const print = await import("@/lib/shipping-print");
       if (kind === "label")
@@ -433,7 +436,7 @@ function OrderDetail({
           order.proofPhotoIds.map((id) => `/api/shipping-photo/${id}?admin=1`),
         );
     } catch {
-      setNotice({ error: true, text: "Dokumen belum bisa dibuat di perangkat ini. Coba lagi." });
+      setPrintError("Dokumen belum bisa dibuat di perangkat ini. Coba lagi.");
     } finally {
       setPrintBusy(false);
     }
@@ -461,11 +464,66 @@ function OrderDetail({
     }
   }
 
+  const card = "rounded-xl bg-background p-3";
+  const btnBig =
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 text-[13px] font-semibold disabled:opacity-50";
+  const btnBigPrimary =
+    "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-red px-4 text-[14px] font-semibold text-white disabled:opacity-50";
+  const photosReviewable = status === "AWAITING_DROP" || status === "RECEIVED";
+
+  // What the team should do with this parcel right now, in one sentence and one button.
+  const step: { text: string; button?: { label: string; run: () => void; disabled?: boolean } } =
+    status === "AWAITING_DROP"
+      ? {
+          text: "Paket belum sampai. Scan QR di label saat tiba, atau terima dari sini.",
+          button: {
+            label: "Terima di drop point",
+            run: () => act("advance", {}, "paket diterima."),
+          },
+        }
+      : adminCanBill(status)
+        ? {
+            text: "Timbang paket, cocokkan dengan foto pelanggan, lalu kirim tagihan.",
+            button: {
+              label: "Ke form timbang",
+              run: () => weighRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+            },
+          }
+        : status === "PAYMENT_PENDING"
+          ? {
+              text: "Menunggu pelanggan membayar. Status dicek otomatis tiap menit.",
+              button: {
+                label: "Cek pembayaran sekarang",
+                run: () => act("check_payment", {}, "pembayaran dicek ke Mayar."),
+              },
+            }
+          : status === "PAID"
+            ? { text: "Sudah dibayar. Muat ke batch lewat scan di Tasikmalaya (tab Scan & Batch)." }
+            : next
+              ? {
+                  text:
+                    status === "SHIPPED"
+                      ? "Paket dalam pengiriman ke Jepang. Tandai bila sudah tiba."
+                      : "Paket sudah tiba. Tandai selesai bila pelanggan sudah menerima.",
+                  button: {
+                    label: SHIPPING_ADMIN_NEXT_LABEL[status] ?? "Lanjut",
+                    run: () => act("advance", {}, "status dimajukan."),
+                  },
+                }
+              : {
+                  text:
+                    status === "PROBLEM"
+                      ? "Paket bermasalah. Selesaikan masalahnya di bagian Posisi di jalur."
+                      : shippingIsPaid(status)
+                        ? "Paket sedang di jalur. Perpindahan dicatat lewat scan dan batch."
+                        : "Tidak ada langkah berikutnya untuk status ini.",
+                };
+
   return (
-    <article className="min-w-0 rounded-xl bg-secondary p-3 text-xs">
+    <article className="min-w-0 space-y-2.5 rounded-2xl bg-secondary p-3 text-[13px]">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-brand-red">{order.code}</p>
+        <div className="min-w-0">
+          <p className="font-mono text-[17px] font-bold text-brand-red">{order.code}</p>
           <p className="text-[11px] text-muted-foreground">
             Dibuat {formatAdminDateTime(order.createdAt)}
             {order.dropDeadlineAt && status === "AWAITING_DROP"
@@ -473,13 +531,30 @@ function OrderDetail({
               : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {order.refundNeeded && <StatusPill tone="danger">Perlu refund</StatusPill>}
           <StatusPill tone={tone(status)}>{SHIPPING_STATUS_LABEL[status]}</StatusPill>
         </div>
       </div>
 
-      <dl className="mt-2 space-y-1 rounded-lg bg-background p-2">
+      <div className={card}>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Langkah berikutnya
+        </p>
+        <p className="mt-0.5">{step.text}</p>
+        {step.button && (
+          <button
+            type="button"
+            disabled={busy || step.button.disabled}
+            className={`${btnBigPrimary} mt-2`}
+            onClick={step.button.run}
+          >
+            {step.button.label}
+          </button>
+        )}
+      </div>
+
+      <dl className={`${card} space-y-1.5`}>
         <Line k="Penerima" v={`${order.recipientName} · ${order.phone}`} />
         <Line
           k="Alamat"
@@ -499,7 +574,7 @@ function OrderDetail({
         )}
       </dl>
 
-      <div className="mt-2 rounded-lg bg-background p-2">
+      <div className={card}>
         <div className="flex items-center justify-between gap-2">
           <p className="font-semibold">Foto dari pelanggan ({order.proofPhotoIds.length})</p>
           <PhotoReviewBadge review={order.photoReview} />
@@ -507,7 +582,7 @@ function OrderDetail({
         {order.proofPhotoIds.length === 0 ? (
           <p className="mt-1 text-[#9a6100]">Pelanggan belum melampirkan foto.</p>
         ) : (
-          <div className="mt-1.5 flex gap-1.5 overflow-x-auto">
+          <div className="mt-2 flex gap-2 overflow-x-auto">
             {order.proofPhotoIds.map((id) => (
               <a
                 key={id}
@@ -519,7 +594,7 @@ function OrderDetail({
                 <img
                   src={`/api/shipping-photo/${id}?admin=1`}
                   alt="Foto isi paket dari pelanggan"
-                  className="h-20 w-28 rounded-lg object-cover"
+                  className="h-24 w-32 rounded-xl object-cover"
                   loading="lazy"
                 />
               </a>
@@ -531,96 +606,42 @@ function OrderDetail({
             Catatan ke pelanggan: {order.photoReviewNote}
           </p>
         )}
-        {(status === "AWAITING_DROP" || status === "RECEIVED") && (
-          <div className="mt-2 space-y-1.5">
-            <input
-              className={input}
-              value={redoNote}
-              maxLength={400}
-              onChange={(e) => setRedoNote(e.target.value)}
-              placeholder="Catatan bila minta foto ulang"
-            />
-            <div className="flex flex-wrap gap-2">
+        {photosReviewable && order.photoReview !== "APPROVED" && (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-[12px] font-semibold text-brand-red">
+              Tinjau foto
+            </summary>
+            <div className="mt-2 space-y-2">
               <button
                 type="button"
-                disabled={
-                  busy || order.proofPhotoIds.length === 0 || order.photoReview === "APPROVED"
-                }
-                className={btn}
+                disabled={busy || order.proofPhotoIds.length === 0}
+                className={`${btnBig} w-full`}
                 onClick={() => act("photo_approve", {}, "foto disetujui.")}
               >
                 Setujui foto
               </button>
+              <input
+                className={input}
+                value={redoNote}
+                maxLength={400}
+                onChange={(e) => setRedoNote(e.target.value)}
+                placeholder="Catatan untuk pelanggan bila minta foto ulang"
+              />
               <button
                 type="button"
                 disabled={busy || redoNote.trim().length < 3}
-                className={btn}
+                className={`${btnBig} w-full`}
                 onClick={() => act("photo_redo", { note: redoNote.trim() }, "foto ulang diminta.")}
               >
                 Minta foto ulang
               </button>
             </div>
-          </div>
+          </details>
         )}
       </div>
-
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {(
-          [
-            ["label", "Cetak label"],
-            ["receipt", "Tanda terima"],
-            ["weigh", "Lembar timbang"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            disabled={printBusy}
-            className={btn}
-            onClick={() => printOne(key)}
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            {label}
-          </button>
-        ))}
-        {status === "RECEIVED" && order.weighedKg === null && (
-          <button
-            type="button"
-            disabled={busy}
-            className={btn}
-            onClick={() => act("undo_receive", {}, "penerimaan diurungkan.")}
-          >
-            Urungkan terima
-          </button>
-        )}
-      </div>
-
-      {order.photoIds.length > 0 && (
-        <div className="mt-2 flex gap-1.5 overflow-x-auto">
-          {order.photoIds.map((id) => (
-            <span key={id} className="relative shrink-0">
-              <img
-                src={`/api/shipping-photo/${id}?admin=1`}
-                alt="Foto timbang"
-                className="h-16 w-24 rounded-lg object-cover"
-                loading="lazy"
-              />
-              <button
-                type="button"
-                aria-label="Hapus foto"
-                disabled={busy}
-                onClick={() => act("delete_photo", { photoId: id }, "foto dihapus.")}
-                className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-black/60 text-[11px] text-white"
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
 
       {adminCanBill(status) && (
-        <div className="mt-3 space-y-2 rounded-lg bg-background p-2">
+        <div ref={weighRef} className={`${card} space-y-2`}>
           <p className="font-semibold">Timbang dan tagih</p>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
@@ -628,7 +649,7 @@ function OrderDetail({
                 Berat timbang (kg)
               </span>
               <input
-                className={input}
+                className={`${input} text-base font-semibold`}
                 inputMode="decimal"
                 value={weighed}
                 onChange={(e) => setWeighed(e.target.value)}
@@ -654,27 +675,49 @@ function OrderDetail({
             onChange={(e) => setWeighNote(e.target.value)}
             placeholder="Catatan untuk pelanggan (opsional)"
           />
-          <div className="flex flex-wrap items-center gap-2">
+          {order.photoIds.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto">
+              {order.photoIds.map((id) => (
+                <span key={id} className="relative shrink-0">
+                  <img
+                    src={`/api/shipping-photo/${id}?admin=1`}
+                    alt="Foto timbang"
+                    className="h-16 w-24 rounded-lg object-cover"
+                    loading="lazy"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Hapus foto"
+                    disabled={busy}
+                    onClick={() => act("delete_photo", { photoId: id }, "foto dihapus.")}
+                    className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-[12px] text-white"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <label className={`${btnBig} w-full cursor-pointer`}>
+            Foto timbang ({order.photoIds.length}/4)
             <input
               ref={fileRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="text-[11px]"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
               disabled={busy}
               onChange={(e) => void upload(e.target.files?.[0])}
               aria-label="Unggah foto timbang dan isi paket"
             />
-            <span className="text-[11px] text-muted-foreground">
-              Foto timbang dan isi paket ({order.photoIds.length}/4)
-            </span>
-          </div>
+          </label>
           {previewQuote && (
-            <div className="rounded-lg bg-secondary p-2">
+            <div className="rounded-xl bg-secondary p-3">
               <p>
                 Dibulatkan {formatKg(previewQuote.billedKg)} × {formatIdr(order.rateIdrPerKg)} ={" "}
                 {formatIdr(previewQuote.freightIdr)}
               </p>
-              <p className="font-semibold">Total tagihan {formatIdr(previewQuote.totalIdr)}</p>
+              <p className="text-base font-bold">Total {formatIdr(previewQuote.totalIdr)}</p>
               {margin !== null && (
                 <p className="text-muted-foreground">
                   Biaya partner {formatIdr(order.partnerIdrPerKg)}/kg, margin {formatIdr(margin)}
@@ -685,7 +728,7 @@ function OrderDetail({
           <button
             type="button"
             disabled={busy || !previewQuote}
-            className={btnPrimary}
+            className={btnBigPrimary}
             onClick={() =>
               act(
                 "bill",
@@ -704,7 +747,7 @@ function OrderDetail({
       )}
 
       {order.totalIdr !== null && !adminCanBill(status) && (
-        <dl className="mt-2 space-y-1 rounded-lg bg-background p-2">
+        <dl className={`${card} space-y-1.5`}>
           <Line
             k="Ditimbang"
             v={`${order.weighedKg ? formatKg(order.weighedKg) : "-"} → ditagih ${order.billedKg ? formatKg(order.billedKg) : "-"}`}
@@ -722,7 +765,7 @@ function OrderDetail({
       )}
 
       {shippingIsPaid(status) && (
-        <div className="mt-3 space-y-2 rounded-lg bg-background p-2">
+        <div className={`${card} space-y-2`}>
           <p className="font-semibold">Posisi di jalur</p>
           <p className="text-muted-foreground">
             {order.currentHub ? `Terakhir di ${order.currentHub}. ` : ""}
@@ -740,7 +783,7 @@ function OrderDetail({
               <button
                 type="button"
                 disabled={busy}
-                className={btn}
+                className={`${btnBig} w-full`}
                 onClick={async () => {
                   setBusy(true);
                   try {
@@ -761,145 +804,187 @@ function OrderDetail({
               </button>
             </>
           )}
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
-            <select
-              className={input}
-              value={fixTo}
-              onChange={(e) => setFixTo(e.target.value)}
-              aria-label="Koreksi status ke"
+          <details>
+            <summary className="cursor-pointer text-[12px] font-semibold text-brand-red">
+              Koreksi status
+            </summary>
+            <div className="mt-2 space-y-2">
+              <select
+                className={input}
+                value={fixTo}
+                onChange={(e) => setFixTo(e.target.value)}
+                aria-label="Koreksi status ke"
+              >
+                <option value="">Pilih status yang benar…</option>
+                {(
+                  [
+                    "PAID",
+                    "TO_BANDUNG",
+                    "AT_BANDUNG",
+                    "TO_JAKARTA",
+                    "AT_JAKARTA",
+                    "SHIPPED",
+                  ] as const
+                ).map((st) => (
+                  <option key={st} value={st}>
+                    {SHIPPING_STATUS_LABEL[st]}
+                  </option>
+                ))}
+              </select>
+              <input
+                className={input}
+                value={fixNote}
+                onChange={(e) => setFixNote(e.target.value)}
+                placeholder="Alasan koreksi"
+                aria-label="Alasan koreksi"
+              />
+              <button
+                type="button"
+                disabled={busy || !fixTo || fixNote.trim().length < 3}
+                className={`${btnBig} w-full`}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await correctShippingStatus({
+                      data: { orderId: order.id, status: fixTo as "PAID", note: fixNote.trim() },
+                    });
+                    setNotice({ error: false, text: `${order.code}: status dikoreksi.` });
+                    setFixTo("");
+                    setFixNote("");
+                    await refresh();
+                  } catch (error) {
+                    setNotice({
+                      error: true,
+                      text: error instanceof Error ? error.message : "Koreksi gagal.",
+                    });
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Koreksi status
+              </button>
+            </div>
+          </details>
+        </div>
+      )}
+
+      <div className={card}>
+        <p className="mb-2 font-semibold">Cetak</p>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              ["label", "Label"],
+              ["receipt", "Tanda terima"],
+              ["weigh", "Lembar timbang"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              disabled={printBusy}
+              className="tap flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-border px-1 text-[11px] font-semibold disabled:opacity-50"
+              onClick={() => printOne(key)}
             >
-              <option value="">Koreksi status…</option>
-              {(
-                ["PAID", "TO_BANDUNG", "AT_BANDUNG", "TO_JAKARTA", "AT_JAKARTA", "SHIPPED"] as const
-              ).map((st) => (
-                <option key={st} value={st}>
-                  {SHIPPING_STATUS_LABEL[st]}
-                </option>
-              ))}
-            </select>
-            <input
-              className={input}
-              value={fixNote}
-              onChange={(e) => setFixNote(e.target.value)}
-              placeholder="Alasan koreksi"
-              aria-label="Alasan koreksi"
+              <Printer className="size-5" aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
+        {printBusy && <p className="mt-1.5 text-muted-foreground">Membuat dokumen…</p>}
+        {printError && (
+          <p role="alert" className="mt-1.5 text-destructive">
+            {printError}
+          </p>
+        )}
+      </div>
+
+      <details className={card}>
+        <summary className="cursor-pointer font-semibold">Tindakan lain</summary>
+        <div className="mt-3 space-y-3">
+          {status === "RECEIVED" && order.weighedKg === null && (
+            <button
+              type="button"
+              disabled={busy}
+              className={`${btnBig} w-full`}
+              onClick={() => act("undo_receive", {}, "penerimaan diurungkan.")}
+            >
+              Urungkan terima
+            </button>
+          )}
+          {order.paidAt && order.financeError && (
+            <button
+              type="button"
+              disabled={busy}
+              className={`${btnBig} w-full`}
+              onClick={() => act("resend_finance", {}, "pencatatan keuangan dikirim ulang.")}
+            >
+              Kirim ulang ke Keuangan
+            </button>
+          )}
+          {(adminCanReject(status) || adminCanCancel(status)) && (
+            <div className="space-y-2">
+              <input
+                className={input}
+                value={reason}
+                maxLength={400}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={
+                  adminCanCancel(status)
+                    ? "Alasan pembatalan (pelanggan dapat refund)"
+                    : "Alasan penolakan, dikirim ke pelanggan"
+                }
+              />
+              <button
+                type="button"
+                disabled={busy || reason.trim().length < 3}
+                className={`${btnBig} w-full text-destructive`}
+                onClick={() =>
+                  act(
+                    adminCanCancel(status) ? "cancel" : "reject",
+                    { note: reason.trim() },
+                    "selesai.",
+                  )
+                }
+              >
+                {adminCanCancel(status) ? "Batalkan dan tandai refund" : "Tolak barang"}
+              </button>
+            </div>
+          )}
+          <div className="space-y-2">
+            <textarea
+              className={`${input} min-h-16 py-2`}
+              value={note}
+              maxLength={800}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Catatan internal (tidak terlihat pelanggan)"
             />
             <button
               type="button"
-              disabled={busy || !fixTo || fixNote.trim().length < 3}
-              className={btn}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await correctShippingStatus({
-                    data: { orderId: order.id, status: fixTo as "PAID", note: fixNote.trim() },
-                  });
-                  setNotice({ error: false, text: `${order.code}: status dikoreksi.` });
-                  setFixTo("");
-                  setFixNote("");
-                  await refresh();
-                } catch (error) {
-                  setNotice({
-                    error: true,
-                    text: error instanceof Error ? error.message : "Koreksi gagal.",
-                  });
-                } finally {
-                  setBusy(false);
-                }
-              }}
+              disabled={busy || note === (order.adminNote ?? "")}
+              className={`${btnBig} w-full`}
+              onClick={() =>
+                act("note", note.trim() ? { note: note.trim() } : {}, "catatan disimpan.")
+              }
             >
-              Koreksi
+              Simpan catatan
             </button>
           </div>
         </div>
-      )}
+      </details>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {next && (
-          <button
-            type="button"
-            disabled={busy}
-            className={btnPrimary}
-            onClick={() => act("advance", {}, "status dimajukan.")}
-          >
-            {SHIPPING_ADMIN_NEXT_LABEL[status]}
-          </button>
-        )}
-        {status === "PAYMENT_PENDING" && (
-          <button
-            type="button"
-            disabled={busy}
-            className={btn}
-            onClick={() => act("check_payment", {}, "pembayaran dicek ke Mayar.")}
-          >
-            Cek pembayaran
-          </button>
-        )}
-        {order.paidAt && order.financeError && (
-          <button
-            type="button"
-            disabled={busy}
-            className={btn}
-            onClick={() => act("resend_finance", {}, "pencatatan keuangan dikirim ulang.")}
-          >
-            Kirim ulang ke Keuangan
-          </button>
-        )}
-      </div>
-
-      {(adminCanReject(status) || adminCanCancel(status)) && (
-        <div className="mt-3 space-y-2 rounded-lg bg-background p-2">
-          <input
-            className={input}
-            value={reason}
-            maxLength={400}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder={
-              adminCanCancel(status)
-                ? "Alasan pembatalan (pelanggan dapat refund)"
-                : "Alasan penolakan, dikirim ke pelanggan"
-            }
-          />
-          <button
-            type="button"
-            disabled={busy || reason.trim().length < 3}
-            className={`${btn} text-destructive`}
-            onClick={() =>
-              act(adminCanCancel(status) ? "cancel" : "reject", { note: reason.trim() }, "selesai.")
-            }
-          >
-            {adminCanCancel(status) ? "Batalkan dan tandai refund" : "Tolak barang"}
-          </button>
-        </div>
-      )}
-
-      <div className="mt-3 space-y-1.5">
-        <textarea
-          className={`${input} min-h-16 py-2`}
-          value={note}
-          maxLength={800}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Catatan internal (tidak terlihat pelanggan)"
-        />
-        <button
-          type="button"
-          disabled={busy || note === (order.adminNote ?? "")}
-          className={btn}
-          onClick={() => act("note", note.trim() ? { note: note.trim() } : {}, "catatan disimpan.")}
-        >
-          Simpan catatan
-        </button>
-      </div>
-
-      <ol className="mt-3 space-y-0.5 text-[11px] text-muted-foreground">
-        {order.events.map((e, i) => (
-          <li key={i}>
-            {formatAdminDateTime(e.at)} ·{" "}
-            {SHIPPING_STATUS_LABEL[e.status as ShippingStatus] ?? e.status} · {e.actor}
-            {e.note ? ` · ${e.note}` : ""}
-          </li>
-        ))}
-      </ol>
+      <details className={card}>
+        <summary className="cursor-pointer font-semibold">Riwayat ({order.events.length})</summary>
+        <ol className="mt-2 space-y-1 text-[11px] text-muted-foreground">
+          {order.events.map((e, i) => (
+            <li key={i}>
+              {formatAdminDateTime(e.at)} ·{" "}
+              {SHIPPING_STATUS_LABEL[e.status as ShippingStatus] ?? e.status} · {e.actor}
+              {e.note ? ` · ${e.note}` : ""}
+            </li>
+          ))}
+        </ol>
+      </details>
     </article>
   );
 }

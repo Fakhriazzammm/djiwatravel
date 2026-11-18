@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { billRows, manifestRows, proofRows, type PrintOrder } from "../lib/shipping-print";
+import {
+  billRows,
+  manifestRows,
+  proofRows,
+  withSvgNamespace,
+  type PrintOrder,
+} from "../lib/shipping-print";
 
 const order: PrintOrder = {
   code: "DJW-KR-0042",
@@ -74,5 +80,21 @@ describe("shipping documents", () => {
     });
     expect(lines[1]).toMatchObject({ kg: "~2 kg", tracking: "" });
     expect(lines[0]!.city).toBe("Shibuya-ku, Tokyo");
+  });
+});
+
+describe("QR image for the label", () => {
+  it("adds the XML namespace a browser needs to load the QR as an image", () => {
+    const react =
+      '<svg height="512" width="512" viewBox="0 0 37 37" role="img"><path d="M0,0"></path></svg>';
+    const fixed = withSvgNamespace(react);
+    expect(fixed).toContain('xmlns="http://www.w3.org/2000/svg"');
+    expect(fixed.startsWith("<svg xmlns=")).toBe(true);
+    expect(fixed).toContain('viewBox="0 0 37 37"');
+  });
+
+  it("leaves markup that already has the namespace alone", () => {
+    const ok = '<svg xmlns="http://www.w3.org/2000/svg" width="1"></svg>';
+    expect(withSvgNamespace(ok)).toBe(ok);
   });
 });

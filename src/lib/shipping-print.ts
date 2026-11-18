@@ -112,6 +112,17 @@ export function manifestRows(orders: PrintOrder[]): ManifestRow[] {
 
 /* ------------------------------------------------------------------ helpers */
 
+/**
+ * React renders an <svg> without the XML namespace, which is fine inside a page but makes a browser
+ * refuse the same markup as a standalone image (decode error). Adding it is what lets the QR be
+ * drawn onto the label canvas.
+ */
+export function withSvgNamespace(markup: string): string {
+  return /<svg[^>]*\sxmlns=/.test(markup)
+    ? markup
+    : markup.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+}
+
 /** jsPDF's built-in fonts cover Latin-1 only; anything else prints as "?" instead of garbage. */
 const safe = (text: string) => text.replace(/[^\x20-\x7E -ÿ]/g, "?");
 
@@ -132,8 +143,8 @@ async function qrImage(value: string): Promise<HTMLImageElement> {
     import("react"),
     import("qrcode.react"),
   ]);
-  const svg = renderToStaticMarkup(
-    createElement(QRCodeSVG, { value, size: 512, level: "M", marginSize: 2 }),
+  const svg = withSvgNamespace(
+    renderToStaticMarkup(createElement(QRCodeSVG, { value, size: 512, level: "M", marginSize: 2 })),
   );
   const image = new Image();
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
