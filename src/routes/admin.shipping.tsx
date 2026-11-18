@@ -75,6 +75,8 @@ function AdminShipping() {
   const { scan } = Route.useSearch();
   const [tab, setTab] = useState<Tab>(scan ? "scan" : "orders");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Which form the team wants after a scan, so the detail opens scrolled to it.
+  const [focus, setFocus] = useState<"weigh" | "ship" | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   useEffect(() => {
     setTab(
@@ -138,28 +140,27 @@ function AdminShipping() {
           </p>
         )}
         {tab === "scan" && (
-          <AdminSurface className="p-3">
-            <SectionHeading
-              title="Scan paket di drop point"
-              detail="Scan QR di label paket. Hanya tim dengan akses Admin yang bisa memakai halaman ini."
+          <div className="mx-auto w-full max-w-md">
+            <AdminShippingScan
+              initialCode={scan ?? null}
+              onChanged={() => void refresh()}
+              onOpen={(id, which) => {
+                setSelectedId(id);
+                setFocus(which ?? null);
+                setTab("orders");
+              }}
             />
-            <div className="mt-3">
-              <AdminShippingScan
-                initialCode={scan ?? null}
-                onChanged={() => void refresh()}
-                onOpen={(id) => {
-                  setSelectedId(id);
-                  setTab("orders");
-                }}
-              />
-            </div>
-          </AdminSurface>
+          </div>
         )}
         {tab === "orders" && (
           <Orders
             data={data}
             selectedId={selectedId}
-            setSelectedId={setSelectedId}
+            setSelectedId={(id) => {
+              setSelectedId(id);
+              setFocus(null);
+            }}
+            focus={focus}
             setNotice={setNotice}
             refresh={refresh}
           />
@@ -176,12 +177,14 @@ function Orders({
   data,
   selectedId,
   setSelectedId,
+  focus,
   setNotice,
   refresh,
 }: {
   data: Data;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
+  focus: "weigh" | "ship" | null;
   setNotice: (n: Notice) => void;
   refresh: () => Promise<unknown>;
 }) {
@@ -216,6 +219,12 @@ function Orders({
     [data.orders, filter],
   );
   const selected = data.orders.find((o) => o.id === selectedId) ?? rows[0] ?? null;
+  // A parcel opened from the scan must not hide behind the current filter, and on a phone the
+  // detail replaces the list (with a way back), so the team sees it without scrolling.
+  useEffect(() => {
+    if (selectedId && !rows.some((o) => o.id === selectedId)) setFilter("ALL");
+    if (selectedId) window.scrollTo({ top: 0 });
+  }, [selectedId, rows]);
   return (
     <AdminSurface className="p-3">
       <SectionHeading
@@ -271,7 +280,7 @@ function Orders({
         </div>
       ) : (
         <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <ul className="space-y-1.5">
+          <ul className={`space-y-1.5 ${selectedId ? "hidden lg:block" : ""}`}>
             {rows.map((o) => (
               <li key={o.id} className="flex items-center gap-1.5">
                 <input
@@ -314,13 +323,23 @@ function Orders({
             ))}
           </ul>
           {selected && (
-            <OrderDetail
-              key={selected.id}
-              order={selected}
-              config={data.config}
-              setNotice={setNotice}
-              refresh={refresh}
-            />
+            <div className={selectedId ? "" : "hidden lg:block"}>
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="tap mb-2 inline-flex min-h-10 items-center gap-1 text-[13px] font-semibold text-brand-red lg:hidden"
+              >
+                ‹ Semua pengiriman
+              </button>
+              <OrderDetail
+                key={selected.id}
+                order={selected}
+                config={data.config}
+                focus={selectedId === selected.id ? focus : null}
+                setNotice={setNotice}
+                refresh={refresh}
+              />
+            </div>
           )}
         </div>
       )}
@@ -331,14 +350,18 @@ function Orders({
 function OrderDetail({
   order,
   config,
+  focus,
   setNotice,
   refresh,
 }: {
   order: Order;
   config: ShippingConfig;
+  focus: "weigh" | "ship" | null;
   setNotice: (n: Notice) => void;
   refresh: () => Promise<unknown>;
 }) {
+  const weighRef = useRef<HTMLDivElement>(null);
+  const shipRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [weighed, setWeighed] = useState(order.weighedKg ? String(order.weighedKg) : "");
   const [packing, setPacking] = useState(String(order.packingIdr || 0));
@@ -352,6 +375,20 @@ function OrderDetail({
   const [printBusy, setPrintBusy] = useState(false);
   const status = order.status as ShippingStatus;
   const next = SHIPPING_ADMIN_NEXT[status];
+
+  // Opened from a scan: jump to the form the team wants and put the cursor in its first field.
+  useEffect(() => {
+    const target =
+      focus === "weigh" && adminCanBill(status)
+        ? weighRef.current
+        : focus === "ship" && status === "PAID"
+          ? shipRef.current
+          : null;
+    if (!target) return;
+    target.scrollIntoView({ block: "start" });
+    target.querySelector<HTMLElement>("input, select")?.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const weighedNumber = Number(weighed.replace(",", "."));
   const packingNumber = Number(packing.replace(/\D/g, "")) || 0;
@@ -603,7 +640,7 @@ function OrderDetail({
       )}
 
       {adminCanBill(status) && (
-        <div className="mt-3 space-y-2 rounded-lg bg-background p-2">
+        <div ref={weighRef} className="mt-3 space-y-2 rounded-lg bg-background p-2">
           <p className="font-semibold">Timbang dan tagih</p>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
@@ -705,7 +742,7 @@ function OrderDetail({
       )}
 
       {status === "PAID" && (
-        <div className="mt-3 space-y-2 rounded-lg bg-background p-2">
+        <div ref={shipRef} className="mt-3 space-y-2 rounded-lg bg-background p-2">
           <p className="font-semibold">Kirim ke Jepang</p>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
