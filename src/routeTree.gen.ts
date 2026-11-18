@@ -48,6 +48,7 @@ import { Route as AdminPrivasiRouteImport } from './routes/admin.privasi'
 import { Route as AdminProvisioningRouteImport } from './routes/admin.provisioning'
 import { Route as AdminRefundsRouteImport } from './routes/admin.refunds'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminShippingRouteImport } from './routes/admin.shipping'
 import { Route as AdminShoppingRouteImport } from './routes/admin.shopping'
 import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
@@ -63,6 +64,7 @@ import { Route as ApiHomeEsimEventsRouteImport } from './routes/api.home-esim-ev
 import { Route as ApiOrderRecoveryRouteImport } from './routes/api.order-recovery'
 import { Route as ApiPwaEventsRouteImport } from './routes/api.pwa-events'
 import { Route as ApiReceiptScanRouteImport } from './routes/api.receipt-scan'
+import { Route as ApiShippingPhotoRouteImport } from './routes/api.shipping-photo'
 import { Route as ApiShopperChatRouteImport } from './routes/api.shopper-chat'
 import { Route as ApiShopperSearchRouteImport } from './routes/api.shopper-search'
 import { Route as ApiSiteEventsRouteImport } from './routes/api.site-events'
@@ -78,6 +80,10 @@ import { Route as FeedsIndexRouteImport } from './routes/feeds.index'
 import { Route as FeedsIdRouteImport } from './routes/feeds.$id'
 import { Route as FeedsAktivitasRouteImport } from './routes/feeds.aktivitas'
 import { Route as FeedsAkuRouteImport } from './routes/feeds.aku'
+import { Route as KirimBarangIndexRouteImport } from './routes/kirim-barang.index'
+import { Route as KirimBarangIdRouteImport } from './routes/kirim-barang.$id'
+import { Route as KirimBarangBaruRouteImport } from './routes/kirim-barang.baru'
+import { Route as KirimBarangPengirimanRouteImport } from './routes/kirim-barang.pengiriman'
 import { Route as MyEsimIndexRouteImport } from './routes/my-esim.index'
 import { Route as MyEsimIdRouteImport } from './routes/my-esim.$id'
 import { Route as MyTripsIndexRouteImport } from './routes/my-trips.index'
@@ -105,6 +111,7 @@ import { Route as ApiGoogleCalendarStatusRouteImport } from './routes/api.google
 import { Route as ApiGoogleCalendarSyncRouteImport } from './routes/api.google-calendar.sync'
 import { Route as ApiInternalMemberPurchasesRouteImport } from './routes/api.internal.member-purchases'
 import { Route as ApiReceiptPhotoIdRouteImport } from './routes/api.receipt-photo.$id'
+import { Route as ApiShippingPhotoIdRouteImport } from './routes/api.shipping-photo.$id'
 import { Route as ApiShopperChatPhotoIdRouteImport } from './routes/api.shopper-chat-photo.$id'
 import { Route as ApiShopperPhotoIdRouteImport } from './routes/api.shopper-photo.$id'
 import { Route as ApiTasksAffiliateSweepRouteImport } from './routes/api.tasks.affiliate-sweep'
@@ -318,6 +325,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/admin/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminShippingRoute = AdminShippingRouteImport.update({
+  id: '/admin/shipping',
+  path: '/admin/shipping',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminShoppingRoute = AdminShoppingRouteImport.update({
   id: '/admin/shopping',
   path: '/admin/shopping',
@@ -394,6 +406,11 @@ const ApiReceiptScanRoute = ApiReceiptScanRouteImport.update({
   path: '/api/receipt-scan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiShippingPhotoRoute = ApiShippingPhotoRouteImport.update({
+  id: '/api/shipping-photo',
+  path: '/api/shipping-photo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiShopperChatRoute = ApiShopperChatRouteImport.update({
   id: '/api/shopper-chat',
   path: '/api/shopper-chat',
@@ -467,6 +484,26 @@ const FeedsAktivitasRoute = FeedsAktivitasRouteImport.update({
 const FeedsAkuRoute = FeedsAkuRouteImport.update({
   id: '/feeds/aku',
   path: '/feeds/aku',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KirimBarangIndexRoute = KirimBarangIndexRouteImport.update({
+  id: '/kirim-barang/',
+  path: '/kirim-barang/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KirimBarangIdRoute = KirimBarangIdRouteImport.update({
+  id: '/kirim-barang/$id',
+  path: '/kirim-barang/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KirimBarangBaruRoute = KirimBarangBaruRouteImport.update({
+  id: '/kirim-barang/baru',
+  path: '/kirim-barang/baru',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KirimBarangPengirimanRoute = KirimBarangPengirimanRouteImport.update({
+  id: '/kirim-barang/pengiriman',
+  path: '/kirim-barang/pengiriman',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyEsimIndexRoute = MyEsimIndexRouteImport.update({
@@ -608,6 +645,11 @@ const ApiReceiptPhotoIdRoute = ApiReceiptPhotoIdRouteImport.update({
   path: '/api/receipt-photo/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiShippingPhotoIdRoute = ApiShippingPhotoIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiShippingPhotoRoute,
+} as any)
 const ApiShopperChatPhotoIdRoute = ApiShopperChatPhotoIdRouteImport.update({
   id: '/api/shopper-chat-photo/$id',
   path: '/api/shopper-chat-photo/$id',
@@ -736,6 +778,7 @@ export interface FileRoutesByFullPath {
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/shipping': typeof AdminShippingRoute
   '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
@@ -751,6 +794,7 @@ export interface FileRoutesByFullPath {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shipping-photo': typeof ApiShippingPhotoRouteWithChildren
   '/api/shopper-chat': typeof ApiShopperChatRoute
   '/api/shopper-search': typeof ApiShopperSearchRoute
   '/api/site-events': typeof ApiSiteEventsRoute
@@ -765,6 +809,9 @@ export interface FileRoutesByFullPath {
   '/feeds/$id': typeof FeedsIdRoute
   '/feeds/aktivitas': typeof FeedsAktivitasRoute
   '/feeds/aku': typeof FeedsAkuRoute
+  '/kirim-barang/$id': typeof KirimBarangIdRoute
+  '/kirim-barang/baru': typeof KirimBarangBaruRoute
+  '/kirim-barang/pengiriman': typeof KirimBarangPengirimanRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -777,6 +824,7 @@ export interface FileRoutesByFullPath {
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/feeds/': typeof FeedsIndexRoute
+  '/kirim-barang/': typeof KirimBarangIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
@@ -794,6 +842,7 @@ export interface FileRoutesByFullPath {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/receipt-photo/$id': typeof ApiReceiptPhotoIdRoute
+  '/api/shipping-photo/$id': typeof ApiShippingPhotoIdRoute
   '/api/shopper-chat-photo/$id': typeof ApiShopperChatPhotoIdRoute
   '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
@@ -851,6 +900,7 @@ export interface FileRoutesByTo {
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/shipping': typeof AdminShippingRoute
   '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
@@ -866,6 +916,7 @@ export interface FileRoutesByTo {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shipping-photo': typeof ApiShippingPhotoRouteWithChildren
   '/api/shopper-chat': typeof ApiShopperChatRoute
   '/api/shopper-search': typeof ApiShopperSearchRoute
   '/api/site-events': typeof ApiSiteEventsRoute
@@ -880,6 +931,9 @@ export interface FileRoutesByTo {
   '/feeds/$id': typeof FeedsIdRoute
   '/feeds/aktivitas': typeof FeedsAktivitasRoute
   '/feeds/aku': typeof FeedsAkuRoute
+  '/kirim-barang/$id': typeof KirimBarangIdRoute
+  '/kirim-barang/baru': typeof KirimBarangBaruRoute
+  '/kirim-barang/pengiriman': typeof KirimBarangPengirimanRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -892,6 +946,7 @@ export interface FileRoutesByTo {
   '/wallet/pay': typeof WalletPayRoute
   '/admin': typeof AdminIndexRoute
   '/feeds': typeof FeedsIndexRoute
+  '/kirim-barang': typeof KirimBarangIndexRoute
   '/my-esim': typeof MyEsimIndexRoute
   '/my-trips': typeof MyTripsIndexRoute
   '/panduan': typeof PanduanIndexRoute
@@ -909,6 +964,7 @@ export interface FileRoutesByTo {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/receipt-photo/$id': typeof ApiReceiptPhotoIdRoute
+  '/api/shipping-photo/$id': typeof ApiShippingPhotoIdRoute
   '/api/shopper-chat-photo/$id': typeof ApiShopperChatPhotoIdRoute
   '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
@@ -967,6 +1023,7 @@ export interface FileRoutesById {
   '/admin/provisioning': typeof AdminProvisioningRoute
   '/admin/refunds': typeof AdminRefundsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/shipping': typeof AdminShippingRoute
   '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
@@ -982,6 +1039,7 @@ export interface FileRoutesById {
   '/api/order-recovery': typeof ApiOrderRecoveryRoute
   '/api/pwa-events': typeof ApiPwaEventsRoute
   '/api/receipt-scan': typeof ApiReceiptScanRoute
+  '/api/shipping-photo': typeof ApiShippingPhotoRouteWithChildren
   '/api/shopper-chat': typeof ApiShopperChatRoute
   '/api/shopper-search': typeof ApiShopperSearchRoute
   '/api/site-events': typeof ApiSiteEventsRoute
@@ -996,6 +1054,9 @@ export interface FileRoutesById {
   '/feeds/$id': typeof FeedsIdRoute
   '/feeds/aktivitas': typeof FeedsAktivitasRoute
   '/feeds/aku': typeof FeedsAkuRoute
+  '/kirim-barang/$id': typeof KirimBarangIdRoute
+  '/kirim-barang/baru': typeof KirimBarangBaruRoute
+  '/kirim-barang/pengiriman': typeof KirimBarangPengirimanRoute
   '/my-esim/$id': typeof MyEsimIdRoute
   '/my-trips/$tripId': typeof MyTripsTripIdRouteWithChildren
   '/my-trips/new': typeof MyTripsNewRoute
@@ -1008,6 +1069,7 @@ export interface FileRoutesById {
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/feeds/': typeof FeedsIndexRoute
+  '/kirim-barang/': typeof KirimBarangIndexRoute
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
@@ -1025,6 +1087,7 @@ export interface FileRoutesById {
   '/api/google-calendar/sync': typeof ApiGoogleCalendarSyncRoute
   '/api/internal/member-purchases': typeof ApiInternalMemberPurchasesRoute
   '/api/receipt-photo/$id': typeof ApiReceiptPhotoIdRoute
+  '/api/shipping-photo/$id': typeof ApiShippingPhotoIdRoute
   '/api/shopper-chat-photo/$id': typeof ApiShopperChatPhotoIdRoute
   '/api/shopper-photo/$id': typeof ApiShopperPhotoIdRoute
   '/api/tasks/affiliate-sweep': typeof ApiTasksAffiliateSweepRoute
@@ -1084,6 +1147,7 @@ export interface FileRouteTypes {
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
+    | '/admin/shipping'
     | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
@@ -1099,6 +1163,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shipping-photo'
     | '/api/shopper-chat'
     | '/api/shopper-search'
     | '/api/site-events'
@@ -1113,6 +1178,9 @@ export interface FileRouteTypes {
     | '/feeds/$id'
     | '/feeds/aktivitas'
     | '/feeds/aku'
+    | '/kirim-barang/$id'
+    | '/kirim-barang/baru'
+    | '/kirim-barang/pengiriman'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -1125,6 +1193,7 @@ export interface FileRouteTypes {
     | '/wallet/pay'
     | '/admin/'
     | '/feeds/'
+    | '/kirim-barang/'
     | '/my-esim/'
     | '/my-trips/'
     | '/panduan/'
@@ -1142,6 +1211,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/internal/member-purchases'
     | '/api/receipt-photo/$id'
+    | '/api/shipping-photo/$id'
     | '/api/shopper-chat-photo/$id'
     | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
@@ -1199,6 +1269,7 @@ export interface FileRouteTypes {
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
+    | '/admin/shipping'
     | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
@@ -1214,6 +1285,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shipping-photo'
     | '/api/shopper-chat'
     | '/api/shopper-search'
     | '/api/site-events'
@@ -1228,6 +1300,9 @@ export interface FileRouteTypes {
     | '/feeds/$id'
     | '/feeds/aktivitas'
     | '/feeds/aku'
+    | '/kirim-barang/$id'
+    | '/kirim-barang/baru'
+    | '/kirim-barang/pengiriman'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -1240,6 +1315,7 @@ export interface FileRouteTypes {
     | '/wallet/pay'
     | '/admin'
     | '/feeds'
+    | '/kirim-barang'
     | '/my-esim'
     | '/my-trips'
     | '/panduan'
@@ -1257,6 +1333,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/internal/member-purchases'
     | '/api/receipt-photo/$id'
+    | '/api/shipping-photo/$id'
     | '/api/shopper-chat-photo/$id'
     | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
@@ -1314,6 +1391,7 @@ export interface FileRouteTypes {
     | '/admin/provisioning'
     | '/admin/refunds'
     | '/admin/settings'
+    | '/admin/shipping'
     | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
@@ -1329,6 +1407,7 @@ export interface FileRouteTypes {
     | '/api/order-recovery'
     | '/api/pwa-events'
     | '/api/receipt-scan'
+    | '/api/shipping-photo'
     | '/api/shopper-chat'
     | '/api/shopper-search'
     | '/api/site-events'
@@ -1343,6 +1422,9 @@ export interface FileRouteTypes {
     | '/feeds/$id'
     | '/feeds/aktivitas'
     | '/feeds/aku'
+    | '/kirim-barang/$id'
+    | '/kirim-barang/baru'
+    | '/kirim-barang/pengiriman'
     | '/my-esim/$id'
     | '/my-trips/$tripId'
     | '/my-trips/new'
@@ -1355,6 +1437,7 @@ export interface FileRouteTypes {
     | '/wallet/pay'
     | '/admin/'
     | '/feeds/'
+    | '/kirim-barang/'
     | '/my-esim/'
     | '/my-trips/'
     | '/panduan/'
@@ -1372,6 +1455,7 @@ export interface FileRouteTypes {
     | '/api/google-calendar/sync'
     | '/api/internal/member-purchases'
     | '/api/receipt-photo/$id'
+    | '/api/shipping-photo/$id'
     | '/api/shopper-chat-photo/$id'
     | '/api/shopper-photo/$id'
     | '/api/tasks/affiliate-sweep'
@@ -1430,6 +1514,7 @@ export interface RootRouteChildren {
   AdminProvisioningRoute: typeof AdminProvisioningRoute
   AdminRefundsRoute: typeof AdminRefundsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminShippingRoute: typeof AdminShippingRoute
   AdminShoppingRoute: typeof AdminShoppingRoute
   AdminSupportRoute: typeof AdminSupportRoute
   AdminTeamRoute: typeof AdminTeamRoute
@@ -1445,6 +1530,7 @@ export interface RootRouteChildren {
   ApiOrderRecoveryRoute: typeof ApiOrderRecoveryRoute
   ApiPwaEventsRoute: typeof ApiPwaEventsRoute
   ApiReceiptScanRoute: typeof ApiReceiptScanRoute
+  ApiShippingPhotoRoute: typeof ApiShippingPhotoRouteWithChildren
   ApiShopperChatRoute: typeof ApiShopperChatRoute
   ApiShopperSearchRoute: typeof ApiShopperSearchRoute
   ApiSiteEventsRoute: typeof ApiSiteEventsRoute
@@ -1457,6 +1543,9 @@ export interface RootRouteChildren {
   FeedsIdRoute: typeof FeedsIdRoute
   FeedsAktivitasRoute: typeof FeedsAktivitasRoute
   FeedsAkuRoute: typeof FeedsAkuRoute
+  KirimBarangIdRoute: typeof KirimBarangIdRoute
+  KirimBarangBaruRoute: typeof KirimBarangBaruRoute
+  KirimBarangPengirimanRoute: typeof KirimBarangPengirimanRoute
   MyEsimIdRoute: typeof MyEsimIdRoute
   MyTripsTripIdRoute: typeof MyTripsTripIdRouteWithChildren
   MyTripsNewRoute: typeof MyTripsNewRoute
@@ -1468,6 +1557,7 @@ export interface RootRouteChildren {
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
   FeedsIndexRoute: typeof FeedsIndexRoute
+  KirimBarangIndexRoute: typeof KirimBarangIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   MyTripsIndexRoute: typeof MyTripsIndexRoute
   PanduanIndexRoute: typeof PanduanIndexRoute
@@ -1775,6 +1865,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/shipping': {
+      id: '/admin/shipping'
+      path: '/admin/shipping'
+      fullPath: '/admin/shipping'
+      preLoaderRoute: typeof AdminShippingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/shopping': {
       id: '/admin/shopping'
       path: '/admin/shopping'
@@ -1880,6 +1977,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReceiptScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/shipping-photo': {
+      id: '/api/shipping-photo'
+      path: '/api/shipping-photo'
+      fullPath: '/api/shipping-photo'
+      preLoaderRoute: typeof ApiShippingPhotoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/shopper-chat': {
       id: '/api/shopper-chat'
       path: '/api/shopper-chat'
@@ -1983,6 +2087,34 @@ declare module '@tanstack/react-router' {
       path: '/feeds/aku'
       fullPath: '/feeds/aku'
       preLoaderRoute: typeof FeedsAkuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kirim-barang/': {
+      id: '/kirim-barang/'
+      path: '/kirim-barang'
+      fullPath: '/kirim-barang/'
+      preLoaderRoute: typeof KirimBarangIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kirim-barang/$id': {
+      id: '/kirim-barang/$id'
+      path: '/kirim-barang/$id'
+      fullPath: '/kirim-barang/$id'
+      preLoaderRoute: typeof KirimBarangIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kirim-barang/baru': {
+      id: '/kirim-barang/baru'
+      path: '/kirim-barang/baru'
+      fullPath: '/kirim-barang/baru'
+      preLoaderRoute: typeof KirimBarangBaruRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kirim-barang/pengiriman': {
+      id: '/kirim-barang/pengiriman'
+      path: '/kirim-barang/pengiriman'
+      fullPath: '/kirim-barang/pengiriman'
+      preLoaderRoute: typeof KirimBarangPengirimanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-esim/': {
@@ -2174,6 +2306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReceiptPhotoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/shipping-photo/$id': {
+      id: '/api/shipping-photo/$id'
+      path: '/$id'
+      fullPath: '/api/shipping-photo/$id'
+      preLoaderRoute: typeof ApiShippingPhotoIdRouteImport
+      parentRoute: typeof ApiShippingPhotoRoute
+    }
     '/api/shopper-chat-photo/$id': {
       id: '/api/shopper-chat-photo/$id'
       path: '/api/shopper-chat-photo/$id'
@@ -2332,6 +2471,17 @@ const AdminOrdersRouteWithChildren = AdminOrdersRoute._addFileChildren(
   AdminOrdersRouteChildren,
 )
 
+interface ApiShippingPhotoRouteChildren {
+  ApiShippingPhotoIdRoute: typeof ApiShippingPhotoIdRoute
+}
+
+const ApiShippingPhotoRouteChildren: ApiShippingPhotoRouteChildren = {
+  ApiShippingPhotoIdRoute: ApiShippingPhotoIdRoute,
+}
+
+const ApiShippingPhotoRouteWithChildren =
+  ApiShippingPhotoRoute._addFileChildren(ApiShippingPhotoRouteChildren)
+
 interface MyTripsTripIdRouteChildren {
   MyTripsTripIdSectionRoute: typeof MyTripsTripIdSectionRoute
   MyTripsTripIdPrintRoute: typeof MyTripsTripIdPrintRoute
@@ -2387,6 +2537,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminProvisioningRoute: AdminProvisioningRoute,
   AdminRefundsRoute: AdminRefundsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminShippingRoute: AdminShippingRoute,
   AdminShoppingRoute: AdminShoppingRoute,
   AdminSupportRoute: AdminSupportRoute,
   AdminTeamRoute: AdminTeamRoute,
@@ -2402,6 +2553,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOrderRecoveryRoute: ApiOrderRecoveryRoute,
   ApiPwaEventsRoute: ApiPwaEventsRoute,
   ApiReceiptScanRoute: ApiReceiptScanRoute,
+  ApiShippingPhotoRoute: ApiShippingPhotoRouteWithChildren,
   ApiShopperChatRoute: ApiShopperChatRoute,
   ApiShopperSearchRoute: ApiShopperSearchRoute,
   ApiSiteEventsRoute: ApiSiteEventsRoute,
@@ -2414,6 +2566,9 @@ const rootRouteChildren: RootRouteChildren = {
   FeedsIdRoute: FeedsIdRoute,
   FeedsAktivitasRoute: FeedsAktivitasRoute,
   FeedsAkuRoute: FeedsAkuRoute,
+  KirimBarangIdRoute: KirimBarangIdRoute,
+  KirimBarangBaruRoute: KirimBarangBaruRoute,
+  KirimBarangPengirimanRoute: KirimBarangPengirimanRoute,
   MyEsimIdRoute: MyEsimIdRoute,
   MyTripsTripIdRoute: MyTripsTripIdRouteWithChildren,
   MyTripsNewRoute: MyTripsNewRoute,
@@ -2425,6 +2580,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
   FeedsIndexRoute: FeedsIndexRoute,
+  KirimBarangIndexRoute: KirimBarangIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
   MyTripsIndexRoute: MyTripsIndexRoute,
   PanduanIndexRoute: PanduanIndexRoute,

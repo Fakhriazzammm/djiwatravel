@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { FixedLayer } from "./motion-primitives";
 
 type Props = {
-  feature: "bagasi" | "shopper";
+  feature: "shipping" | "shopper";
   label: string;
   sub: string;
   icon: LucideIcon;

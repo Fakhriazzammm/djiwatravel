@@ -149,6 +149,13 @@ async function run(request: Request) {
     });
     return { checked: 0, settled: 0, expired: 0, failed: 1 };
   });
+  // Kirim Barang: settle or expire bills, lapse unbrought bookings, remind, auto-complete arrivals.
+  const { sweepShipping } = await import("@/lib/shipping.server");
+  await sweepShipping().catch((error) => {
+    console.error("[travel] shipping sweep failed", {
+      reason: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+    });
+  });
   // Fire and forget (single-flight inside): a slow store never delays the minute task.
   const { purgeDiscoveryPhotos } = await import("@/lib/shopper-discovery.server");
   await purgeDiscoveryPhotos().catch(() => undefined);

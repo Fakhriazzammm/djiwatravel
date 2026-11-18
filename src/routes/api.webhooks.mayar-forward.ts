@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { sweepPendingProviderPayments } from "@/lib/mayar-settlement-sweep.server";
 import { sweepShoppingPayments } from "@/lib/personal-shopper.server";
+import { sweepShippingPayments } from "@/lib/shipping.server";
 import { verifyTentramSignedRequest } from "@/lib/tentram-signed-request.server";
 
 /**
@@ -52,13 +53,18 @@ async function receive(request: Request) {
     ...(transactionId ? { transactionId } : {}),
     ...(invoiceId ? { invoiceId } : {}),
   }).catch(() => null);
+  // Kirim Barang bills use the same account and the same hint.
+  const shipping = await sweepShippingPayments({
+    ...(transactionId ? { transactionId } : {}),
+    ...(invoiceId ? { invoiceId } : {}),
+  }).catch(() => null);
   const base = report ?? { checked: 0, settled: 0, skipped: 0, failed: 1 };
   // 200 with checked=0 means the event belongs to another app sharing the Mayar account.
   return json({
     ok: true,
     ...base,
-    checked: base.checked + (shopping?.checked ?? 0),
-    settled: base.settled + (shopping?.settled ?? 0),
+    checked: base.checked + (shopping?.checked ?? 0) + (shipping?.checked ?? 0),
+    settled: base.settled + (shopping?.settled ?? 0) + (shipping?.settled ?? 0),
   });
 }
 

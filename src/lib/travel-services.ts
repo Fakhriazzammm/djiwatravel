@@ -6,7 +6,7 @@ export type TravelServiceCategory = {
   description: string;
   icon: string;
   status: TravelServiceStatus;
-  href?: "/explore" | "/esim/finder" | "/tiket" | "/titip-belanja";
+  href?: "/explore" | "/esim/finder" | "/tiket" | "/titip-belanja" | "/kirim-barang";
   displayOrder: number;
 };
 
@@ -46,10 +46,10 @@ export const travelServices: TravelServiceCategory[] = [
     displayOrder: 4,
   },
   {
-    id: "baggage",
-    label: "Bagasi",
-    description: "Kirim tanpa repot",
-    icon: "baggage",
+    id: "shipping",
+    label: "Kirim Barang",
+    description: "Express mancanegara",
+    icon: "shipping",
     status: "COMING_SOON",
     displayOrder: 5,
   },
@@ -93,6 +93,6 @@ export const visibleTravelServices = () =>
 
 export function serviceHref(
   service: TravelServiceCategory,
-): "/explore" | "/esim/finder" | "/tiket" | "/titip-belanja" | null {
+): "/explore" | "/esim/finder" | "/tiket" | "/titip-belanja" | "/kirim-barang" | null {
   return service.status === "ACTIVE" ? (service.href ?? null) : null;
 }

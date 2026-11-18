@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
 import { useFlightsStatus } from "@/hooks/use-flights-config";
+import { useShippingStatus } from "@/hooks/use-shipping-status";
 import { useShopperStatus } from "@/hooks/use-shopper-status";
 import { showFlightsTile } from "@/lib/flights";
 import { assetForService } from "@/lib/explore-assets";
@@ -33,8 +34,8 @@ const gridVariants = {
   },
 };
 
-const WAITLIST_FEATURE: Record<string, "bagasi" | "shopper"> = {
-  baggage: "bagasi",
+const WAITLIST_FEATURE: Record<string, "shipping" | "shopper"> = {
+  shipping: "shipping",
   "personal-shopper": "shopper",
 };
 
@@ -43,6 +44,8 @@ function useExploreServices() {
   const flightsTile = flights.available && showFlightsTile(flights.config);
   const shopper = useShopperStatus();
   const shopperOpen = shopper.available && shopper.config.enabled;
+  const shipping = useShippingStatus();
+  const shippingOpen = shipping.available && shipping.config.enabled;
   return useMemo(
     () =>
       visibleTravelServices()
@@ -51,13 +54,15 @@ function useExploreServices() {
         .map((service) =>
           service.id === "personal-shopper" && shopperOpen
             ? { ...service, status: "ACTIVE" as const, href: "/titip-belanja" as const }
-            : service,
+            : service.id === "shipping" && shippingOpen
+              ? { ...service, status: "ACTIVE" as const, href: "/kirim-barang" as const }
+              : service,
         ),
-    [flightsTile, shopperOpen],
+    [flightsTile, shopperOpen, shippingOpen],
   );
 }
 
-/** `waitlist` turns the Bagasi / Titip Belanja tiles into waitlist sign-ups (Home); Explore omits it. */
+/** `waitlist` turns the Kirim Barang / Titip Belanja tiles into waitlist sign-ups (Home); Explore omits it. */
 export function ServiceCategoryGrid({ waitlist = false }: { waitlist?: boolean } = {}) {
   const reduceMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);

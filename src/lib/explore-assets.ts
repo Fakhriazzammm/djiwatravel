@@ -2,13 +2,13 @@ import type { LucideIcon } from "lucide-react";
 import {
   Compass,
   FileCheck2,
-  Luggage,
   MapPin,
   Plane,
   ShieldCheck,
   ShoppingBag,
   Smartphone,
   Ticket,
+  Truck,
 } from "lucide-react";
 
 export type ExploreAsset = { src: string; alt: string; fallback: LucideIcon };
@@ -35,10 +35,10 @@ export const exploreAssets: Record<string, ExploreAsset> = {
     alt: "Ikon 3D open trip",
     fallback: MapPin,
   },
-  baggage: {
-    src: assetPath("baggage"),
-    alt: "Ikon 3D bagasi",
-    fallback: Luggage,
+  shipping: {
+    src: assetPath("shipping-truck"),
+    alt: "Ikon 3D truk pengiriman",
+    fallback: Truck,
   },
   "personal-shopper": {
     src: assetPath("personal-shopper"),

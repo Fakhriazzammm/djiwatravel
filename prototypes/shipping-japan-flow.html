@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Kirim Barang Jepang</title>
+<style>
+/* Layout: sticky tab bar, then horizontally scrolling rows of phone frames (customer) and desktop frames (admin). */
+:root{--bg:#f3f4f7;--panel:#fff;--fg:#17181c;--mut:#6b7080;--bd:#e3e5eb;--acc:#3b5bdb;--acc-soft:#e7ecff;--ok:#15803d;--warn:#b45309;--ink:#1c1d22}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121317;--panel:#1b1d23;--fg:#eceef3;--mut:#9aa0b0;--bd:#2c2f38;--acc:#8ea5ff;--acc-soft:#242a45;--ok:#4ade80;--warn:#fbbf24;--ink:#0b0c0f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121317;--panel:#1b1d23;--fg:#eceef3;--mut:#9aa0b0;--bd:#2c2f38;--acc:#8ea5ff;--acc-soft:#242a45;--ok:#4ade80;--warn:#fbbf24;--ink:#0b0c0f;color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.45 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;background:var(--bg);color:var(--fg);padding-block:12px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1180px;margin:0 auto}
+h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--mut);font-size:13px;margin-top:2px;max-width:70ch}
+h2{font-size:16px;font-weight:700;margin:0 0 2px}
+.tabs{display:flex;gap:6px;margin:14px 0;overflow-x:auto;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:6px;z-index:5}
+.tabs button{flex:none;border:1px solid var(--bd);background:var(--panel);color:var(--fg);border-radius:999px;padding:7px 14px;font:600 13px inherit;font-family:inherit;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.tabs button:focus-visible,.copy:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+section[hidden]{display:none}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin:10px 0 18px}
+.fact{background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:10px 12px}
+.fact b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);font-weight:600}
+.fact span{font-size:14px;font-weight:600}
+.row{display:flex;gap:18px;overflow-x:auto;padding:4px 2px 16px;align-items:flex-start;scroll-snap-type:x proximity}
+.step{flex:none;scroll-snap-align:start}
+.cap{font-size:12px;font-weight:700;margin-bottom:6px;display:flex;gap:6px;align-items:baseline}
+.cap i{font-style:normal;color:var(--mut);font-weight:500}
+.note{font-size:12px;color:var(--mut);margin-top:6px;max-width:300px}
+/* lanes */
+.lanes{overflow-x:auto;border:1px solid var(--bd);border-radius:16px;background:var(--panel)}
+.lane-grid{display:grid;grid-template-columns:96px repeat(8,148px);min-width:1280px}
+.lane-grid>div{padding:8px;border-bottom:1px solid var(--bd);border-right:1px solid var(--bd);font-size:12px}
+.lane-grid>div:nth-child(9n){border-right:0}
+.lane-grid .h{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);background:var(--bg)}
+.lane-grid .ln{font-weight:700;background:var(--bg)}
+.chip{display:block;border-radius:10px;padding:6px 8px;line-height:1.35}
+.chip.c{background:var(--acc-soft)}
+.chip.s{background:var(--bg);border:1px dashed var(--bd);color:var(--mut)}
+.chip.a{background:var(--fg);color:var(--bg)}
+.nil{color:var(--bd);text-align:center}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin:8px 0 14px}
+.legend span{display:flex;gap:6px;align-items:center}.legend i{width:12px;height:12px;border-radius:4px;display:inline-block}
+.status-flow{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pill{border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;background:var(--panel);border:1px solid var(--bd)}
+.arrow{color:var(--mut);align-self:center}
+.dec{display:grid;gap:8px;margin-top:10px}
+.dec div{background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:10px 12px;font-size:13px}
+.dec b{display:block;margin-bottom:2px}
+.dec em{font-style:normal;color:var(--acc);font-weight:700}
+
+/* ---------- phone (always light, it mocks the app) ---------- */
+.phone{--p-bg:#f3f4f7;--p-fg:#17181c;--p-mut:#6b7080;--p-bd:#e6e8ee;--p-pri:#2b2d33;--p-blue:#3b5bdb;--p-soft:#e7ecff;
+ width:300px;height:620px;border-radius:30px;border:6px solid #1c1d22;background:var(--p-bg);color:var(--p-fg);overflow:hidden;display:flex;flex-direction:column;position:relative;font-size:12px;line-height:1.35;color-scheme:light}
+.phone .top{flex:none;display:flex;align-items:center;gap:8px;padding:22px 14px 8px}
+.phone .ib{width:30px;height:30px;border-radius:50%;background:#fff;border:1px solid var(--p-bd);display:grid;place-items:center;font-size:13px;flex:none}
+.phone .tt{font-weight:700;font-size:15px}
+.phone .body{flex:1;min-height:0;overflow-y:auto;padding:0 14px 12px;scrollbar-width:none}
+.phone .body::-webkit-scrollbar{display:none}
+.phone .foot{flex:none;padding:8px 14px 14px;background:var(--p-bg)}
+.t22{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.mut{color:var(--p-mut)}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--p-mut);font-weight:600;margin:12px 0 5px}
+.grp{background:#fff;border:1px solid var(--p-bd);border-radius:16px;overflow:hidden}
+.grp>*{padding:9px 12px;border-bottom:1px solid var(--p-bd);display:flex;gap:10px;align-items:center;min-height:44px}
+.grp>*:last-child{border-bottom:0}
+.grp .k{color:var(--p-mut);flex:none;width:78px;font-size:11px}
+.grp .v{flex:1;min-width:0;font-weight:600;font-size:13px}
+.card{background:#fff;border:1px solid var(--p-bd);border-radius:16px;padding:12px}
+.btn{display:flex;align-items:center;justify-content:center;min-height:42px;border-radius:12px;background:var(--p-pri);color:#fff;font-weight:700;font-size:14px;width:100%}
+.btn.g{background:#e9ebf0;color:var(--p-fg)}
+.btn.sm{min-height:34px;font-size:12px;border-radius:10px;padding:0 12px;width:auto}
+.badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:700}
+.b-blue{background:var(--p-soft);color:var(--p-blue)}.b-amb{background:#fff1d6;color:#92400e}.b-grn{background:#dcf5e3;color:#15803d}.b-gry{background:#e9ebf0;color:#505565}
+.field{background:#fff;border:1px solid var(--p-bd);border-radius:12px;padding:6px 10px;margin-bottom:7px}
+.field small{display:block;font-size:10px;color:var(--p-mut)}
+.field b{font-size:13px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.prog{display:flex;gap:4px;margin:2px 0 10px}.prog i{flex:1;height:4px;border-radius:4px;background:#d9dce4}.prog i.on{background:var(--p-pri)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips span{border:1px solid var(--p-bd);background:#fff;border-radius:999px;padding:5px 10px;font-size:12px}
+.chips span.on{background:var(--p-pri);color:#fff;border-color:var(--p-pri)}
+.ck{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;color:var(--p-mut)}
+.ck i{flex:none;width:16px;height:16px;border-radius:5px;background:var(--p-pri);color:#fff;font-style:normal;font-size:11px;display:grid;place-items:center;margin-top:1px}
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper button{width:30px;height:30px;border-radius:9px;border:1px solid var(--p-bd);background:#fff;font-size:16px;font-weight:700;cursor:pointer;color:var(--p-fg)}
+.stepper output{font-weight:700;font-size:15px;min-width:54px;text-align:center}
+.tgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:14px;text-align:center;font-size:10.5px;font-weight:600;min-height:78px}
+.tile small{font-weight:400;color:var(--p-mut);font-size:9.5px}
+.tile .ic{width:36px;height:36px;border-radius:10px;background:#e9ebf0}
+.tile.hot{background:var(--p-soft);outline:2px solid var(--p-blue)}
+.tl{position:relative;padding-left:20px}
+.tl>div{position:relative;padding:0 0 12px}
+.tl>div::before{content:"";position:absolute;left:-15px;top:4px;width:9px;height:9px;border-radius:50%;background:#cfd3dc}
+.tl>div::after{content:"";position:absolute;left:-11px;top:14px;bottom:-4px;width:1px;background:#d9dce4}
+.tl>div:last-child::after{display:none}
+.tl>div.done::before{background:var(--p-pri)}
+.tl>div.now::before{background:var(--p-blue);box-shadow:0 0 0 4px var(--p-soft)}
+.tl b{font-size:12.5px}.tl small{display:block;color:var(--p-mut);font-size:11px}
+.code{font:700 22px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em}
+.copy{border:0;background:#e9ebf0;color:var(--p-fg);border-radius:8px;padding:4px 9px;font:600 11px inherit;font-family:inherit;cursor:pointer}
+.sum div{display:flex;justify-content:space-between;padding:2px 0}
+.sum .tot{border-top:1px dashed #d4d7df;margin-top:4px;padding-top:6px;font-weight:700;font-size:14px}
+.photo{height:70px;border-radius:12px;background:repeating-linear-gradient(45deg,#e9ebf0 0 8px,#f1f2f6 8px 16px);display:grid;place-items:center;color:var(--p-mut);font-size:11px}
+.truck{display:block}
+
+/* ---------- admin desktop frames ---------- */
+.dsk{--p-bg:#f3f4f7;--p-fg:#17181c;--p-mut:#6b7080;--p-bd:#e6e8ee;--p-pri:#2b2d33;--p-blue:#3b5bdb;--p-soft:#e7ecff;
+ width:min(100%,760px);border-radius:14px;border:1px solid #cfd3dc;background:var(--p-bg);color:var(--p-fg);overflow:hidden;font-size:12px;color-scheme:light}
+.dsk .bar{background:#1c1d22;color:#fff;padding:8px 12px;display:flex;gap:8px;font-size:12px;font-weight:600;align-items:center}
+.dsk .bar span{opacity:.6;font-weight:500}
+.dsk .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.dsk .pane{padding:12px;min-width:0}
+.dsk .pane+.pane{border-left:1px solid var(--p-bd);background:#fff}
+@media(max-width:700px){.dsk .cols{grid-template-columns:1fr}.dsk .pane+.pane{border-left:0;border-top:1px solid var(--p-bd)}}
+.dsk table{width:100%;border-collapse:collapse}
+.dsk th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--p-mut);font-weight:600;padding:4px 6px}
+.dsk td{padding:7px 6px;border-top:1px solid var(--p-bd);font-size:12px;vertical-align:middle}
+.dsk tr.sel td{background:var(--p-soft)}
+.dsk .btn{min-height:34px;font-size:12px;width:auto;padding:0 14px;display:inline-flex}
+.dsk .lbl{margin-top:10px}
+.dsk .field{margin-bottom:6px}
+.dsk .badge{white-space:nowrap}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.seg span{background:#fff;border:1px solid var(--p-bd);border-radius:999px;padding:3px 10px;font-size:11px}.seg span.on{background:var(--p-pri);color:#fff;border-color:var(--p-pri)}
+.sw{display:inline-block;width:30px;height:18px;border-radius:99px;background:#16a34a;position:relative;vertical-align:middle}
+.sw::after{content:"";position:absolute;right:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff}
+@media (prefers-reduced-motion:no-preference){.tabs button{transition:background .15s}}
+</style></head>
+<body><main>
+<h1>Kirim Barang ke Jepang</h1>
+<p class="sub">Prototype alur end-to-end: dari tile di Home sampai barang tiba di Jepang, beserta kontrol di Admin. Semua data di layar adalah contoh.</p>
+
+<div class="tabs" role="tablist" id="tabs">
+  <button role="tab" aria-selected="true" data-t="flow">User flow</button>
+  <button role="tab" aria-selected="false" data-t="cust">Layar customer</button>
+  <button role="tab" aria-selected="false" data-t="adm">Layar Admin</button>
+  <button role="tab" aria-selected="false" data-t="dec">Aturan &amp; keputusan</button>
+</div>
+
+<!-- ================= USER FLOW ================= -->
+<section id="flow">
+  <div class="facts">
+    <div class="fact"><b>Tujuan</b><span>Jepang saja (tahap 1)</span></div>
+    <div class="fact"><b>Tarif</b><span>Rp150.000 / kg</span></div>
+    <div class="fact"><b>Drop point</b><span>Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya</span></div>
+    <div class="fact"><b>Bayar</b><span>Setelah barang ditimbang</span></div>
+  </div>
+  <div class="legend"><span><i style="background:var(--acc-soft)"></i>Customer</span><span><i style="background:var(--bg);border:1px dashed var(--bd)"></i>Sistem otomatis</span><span><i style="background:var(--fg)"></i>Admin</span></div>
+  <div class="lanes"><div class="lane-grid">
+    <div class="h">Lane</div><div class="h">1 Temukan</div><div class="h">2 Isi form</div><div class="h">3 Booking</div><div class="h">4 Antar barang</div><div class="h">5 Timbang &amp; tagihan</div><div class="h">6 Bayar</div><div class="h">7 Pengiriman</div><div class="h">8 Selesai</div>
+
+    <div class="ln">Customer</div>
+    <div><span class="chip c">Tap tile <b>Kirim Barang</b> di Home atau Explore, baca tarif &amp; drop point</span></div>
+    <div><span class="chip c">Isi penerima di Jepang, lalu isi barang &amp; estimasi berat</span></div>
+    <div><span class="chip c">Cek ringkasan &amp; estimasi, setujui aturan, kirim booking</span></div>
+    <div><span class="chip c">Tulis kode di paket, antar ke drop point Tasikmalaya</span></div>
+    <div><span class="chip c">Terima notif tagihan, cek berat &amp; foto timbang</span></div>
+    <div><span class="chip c">Bayar lewat Mayar (QRIS, VA, e-wallet)</span></div>
+    <div><span class="chip c">Pantau status &amp; resi di halaman Pengiriman</span></div>
+    <div><span class="chip c">Konfirmasi diterima, beri ulasan</span></div>
+
+    <div class="ln">Sistem</div>
+    <div class="nil">–</div>
+    <div><span class="chip s">Validasi kode pos 7 digit, nomor +81, barang terlarang</span></div>
+    <div><span class="chip s">Buat kode <b>DJW-KR-0001</b>, status MENUNGGU_ANTAR, notif + email</span></div>
+    <div><span class="chip s">Pengingat H+3. Batal otomatis H+7 bila tidak diantar</span></div>
+    <div><span class="chip s">Hitung berat dibulatkan 0,5 kg × tarif, buat invoice Mayar</span></div>
+    <div><span class="chip s">Webhook Mayar mengubah status jadi DIBAYAR</span></div>
+    <div><span class="chip s">Kirim notif tiap perubahan status</span></div>
+    <div><span class="chip s">Minta ulasan H+2 setelah tiba</span></div>
+
+    <div class="ln">Admin</div>
+    <div class="nil">–</div>
+    <div class="nil">–</div>
+    <div><span class="chip a">Booking baru muncul di antrian Kirim Barang</span></div>
+    <div><span class="chip a">Scan/cari kode, cek isi paket, foto, input <b>berat timbang</b></span></div>
+    <div><span class="chip a">Tambah biaya packing bila perlu, kirim tagihan</span></div>
+    <div class="nil">–</div>
+    <div><span class="chip a">Packing, serahkan ke kurir express, input kurir &amp; <b>resi</b></span></div>
+    <div><span class="chip a">Tandai selesai bila customer konfirmasi atau H+14</span></div>
+  </div></div>
+
+  <h2 style="margin-top:18px">Status pengiriman</h2>
+  <div class="status-flow">
+    <span class="pill">Menunggu diantar</span><span class="arrow">›</span><span class="pill">Diterima di drop point</span><span class="arrow">›</span><span class="pill">Menunggu bayar</span><span class="arrow">›</span><span class="pill">Dibayar</span><span class="arrow">›</span><span class="pill">Dikirim ke Jepang</span><span class="arrow">›</span><span class="pill">Tiba di Jepang</span><span class="arrow">›</span><span class="pill">Selesai</span>
+  </div>
+  <p class="sub" style="margin-top:8px">Cabang: Dibatalkan (customer atau auto H+7), Ditolak (barang terlarang, admin wajib isi alasan).</p>
+</section>
+
+<!-- ================= CUSTOMER ================= -->
+<section id="cust" hidden>
+  <p class="sub">Geser ke samping. Layar 2 sampai 5 bisa diklik: ubah berat di langkah Barang dan angka estimasi ikut berubah.</p>
+  <div class="row">
+
+    <div class="step"><div class="cap">1 Home <i>tile baru</i></div>
+      <div class="phone"><div class="top"><div class="tt t22" style="font-size:20px">Halo, Fakhri</div></div>
+        <div class="body">
+          <div class="lbl" style="margin-top:4px">Layanan</div>
+          <div class="tgrid">
+            <div class="tile"><div class="ic"></div>eSIM<small>Aktif</small></div>
+            <div class="tile"><div class="ic"></div>Tiket<small>Pesawat</small></div>
+            <div class="tile"><div class="ic"></div>Open Trip<small>Aktif</small></div>
+            <div class="tile"><div class="ic"></div>Visa<small>Segera</small></div>
+            <div class="tile hot"><svg class="truck" width="38" height="38" viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="14" width="25" height="19" rx="3" fill="#3b5bdb"/><path d="M28 20h9l6 7v6H28z" fill="#f59f00"/><rect x="33" y="22" width="5" height="5" rx="1" fill="#e7ecff"/><circle cx="13" cy="35" r="4.5" fill="#1c1d22"/><circle cx="36" cy="35" r="4.5" fill="#1c1d22"/><circle cx="13" cy="35" r="1.8" fill="#adb5bd"/><circle cx="36" cy="35" r="1.8" fill="#adb5bd"/></svg>Kirim Barang<small>Express mancanegara</small></div>
+            <div class="tile"><div class="ic"></div>Titip Belanja<small>Aktif</small></div>
+            <div class="tile"><div class="ic"></div>Asuransi<small>Segera</small></div>
+            <div class="tile"><div class="ic"></div>Travo<small>AI</small></div>
+          </div>
+          <div class="lbl">Baru</div>
+          <div class="card"><b style="font-size:13px">Kirim barang ke Jepang</b><div class="mut" style="margin-top:2px">Antar ke drop point Tasikmalaya, kami kirim dengan express. Rp150.000 / kg.</div><div style="margin-top:8px"><span class="btn sm">Coba sekarang</span></div></div>
+        </div></div>
+      <p class="note">Tile menggantikan "Bagasi". Ikon truk 3D final dibuat setelah desain disetujui (di sini placeholder).</p></div>
+
+    <div class="step"><div class="cap">2 Info layanan</div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Kirim Barang</div></div>
+        <div class="body">
+          <div class="card" style="display:flex;gap:10px;align-items:center"><svg width="40" height="40" viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="14" width="25" height="19" rx="3" fill="#3b5bdb"/><path d="M28 20h9l6 7v6H28z" fill="#f59f00"/><circle cx="13" cy="35" r="4.5" fill="#1c1d22"/><circle cx="36" cy="35" r="4.5" fill="#1c1d22"/></svg><div><div class="t22" style="font-size:17px">Ke Jepang</div><div class="mut">Express, door to door</div></div></div>
+          <div class="lbl">Tarif</div>
+          <div class="grp"><div><span class="k">Per kg</span><span class="v">Rp150.000</span></div><div><span class="k">Dihitung</span><span class="v">Berat timbang, bulat 0,5 kg</span></div><div><span class="k">Minimum</span><span class="v">1 kg</span></div></div>
+          <div class="lbl">Cara kerja</div>
+          <div class="grp"><div><span class="k">1</span><span class="v">Isi data penerima &amp; barang</span></div><div><span class="k">2</span><span class="v">Antar ke drop point</span></div><div><span class="k">3</span><span class="v">Barang ditimbang, kamu bayar</span></div><div><span class="k">4</span><span class="v">Kami kirim, kamu lacak</span></div></div>
+          <div class="lbl">Drop point</div>
+          <div class="card"><b style="font-size:13px">Djiwa Tasikmalaya</b><div class="mut">Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya, Jawa Barat</div></div>
+        </div>
+        <div class="foot"><div class="btn">Mulai kirim barang</div></div></div></div>
+
+    <div class="step"><div class="cap">3 Form <i>penerima di Jepang</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Penerima</div><span class="mut" style="margin-left:auto">1 dari 2</span></div>
+        <div class="body">
+          <div class="prog"><i class="on"></i><i></i></div>
+          <div class="field"><small>Nama penerima</small><b>Rina Tanaka</b></div>
+          <div class="field"><small>Nomor telepon (+81)</small><b>+81 90 1234 5678</b></div>
+          <div class="lbl">Alamat di Jepang</div>
+          <div class="two"><div class="field"><small>Kode pos</small><b>150-0002</b></div><div class="field"><small>Prefektur</small><b>Tokyo ▾</b></div></div>
+          <div class="field"><small>Kota / kelurahan</small><b>Shibuya-ku</b></div>
+          <div class="field"><small>Alamat lengkap</small><b>2-21-1 Shibuya, Apt 302</b></div>
+          <div class="mut" style="font-size:11px">Tulis alamat dengan huruf latin. Kurir butuh nomor telepon aktif untuk konfirmasi.</div>
+          <div class="chips" style="margin-top:8px"><span class="on">Simpan alamat ini</span></div>
+        </div>
+        <div class="foot"><div class="btn">Lanjut</div></div></div>
+      <p class="note">Alamat tersimpan bisa dipilih ulang di pengiriman berikutnya.</p></div>
+
+    <div class="step"><div class="cap">4 Form <i>barang</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Barang</div><span class="mut" style="margin-left:auto">2 dari 2</span></div>
+        <div class="body">
+          <div class="prog"><i class="on"></i><i class="on"></i></div>
+          <div class="lbl" style="margin-top:0">Kategori</div>
+          <div class="chips"><span class="on">Makanan kering</span><span>Pakaian</span><span>Kosmetik</span><span>Dokumen</span><span>Lainnya</span></div>
+          <div class="field" style="margin-top:8px"><small>Isi paket</small><b>Keripik, kopi bubuk, 2 kaos</b></div>
+          <div class="field"><small>Nilai barang (Rp), untuk bea cukai</small><b>650.000</b></div>
+          <div class="lbl">Estimasi berat</div>
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+            <div class="stepper"><button type="button" data-d="-0.5" aria-label="Kurangi 0,5 kg">−</button><output id="kg">2,0 kg</output><button type="button" data-d="0.5" aria-label="Tambah 0,5 kg">+</button></div>
+            <div style="text-align:right"><div class="mut" style="font-size:10.5px">Estimasi biaya</div><b id="est1" style="font-size:15px">Rp300.000</b></div></div>
+          <div class="mut" style="font-size:11px;margin-top:4px">Biaya akhir mengikuti berat timbang di drop point.</div>
+          <div class="ck" style="margin-top:10px"><i>✓</i><span>Paket tidak berisi cairan, baterai lithium, makanan segar/daging, obat, atau barang terlarang. <u>Lihat daftar</u></span></div>
+        </div>
+        <div class="foot"><div class="btn">Lihat ringkasan</div></div></div></div>
+
+    <div class="step"><div class="cap">5 Ringkasan &amp; booking</div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Ringkasan</div></div>
+        <div class="body">
+          <div class="lbl" style="margin-top:0">Penerima</div>
+          <div class="grp"><div><span class="v">Rina Tanaka<br><span class="mut" style="font-weight:400">+81 90 1234 5678<br>2-21-1 Shibuya, Apt 302, Shibuya-ku, Tokyo 150-0002</span></span></div></div>
+          <div class="lbl">Barang</div>
+          <div class="grp"><div><span class="k">Kategori</span><span class="v">Makanan kering</span></div><div><span class="k">Isi</span><span class="v">Keripik, kopi bubuk, 2 kaos</span></div><div><span class="k">Nilai</span><span class="v">Rp650.000</span></div></div>
+          <div class="lbl">Estimasi biaya</div>
+          <div class="card sum"><div><span class="mut">Estimasi <span id="kg2">2,0</span> kg × Rp150.000</span><span id="est2">Rp300.000</span></div><div class="tot"><span>Dibayar nanti</span><span>setelah ditimbang</span></div></div>
+          <div class="lbl">Cara antar</div>
+          <div class="chips"><span class="on">Antar sendiri</span><span>Lewat kurir</span></div>
+          <div class="lbl">Antar ke</div>
+          <div class="grp"><div><span class="v">Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya<br><span class="mut" style="font-weight:400">Antar maksimal 7 hari setelah booking</span></span></div></div>
+        </div>
+        <div class="foot"><div class="btn">Kirim booking</div><div class="mut" style="text-align:center;margin-top:6px;font-size:11px">Belum ada pembayaran di langkah ini</div></div></div></div>
+
+    <div class="step"><div class="cap">6 Booking berhasil <i>instruksi antar</i></div>
+      <div class="phone"><div class="top"><div class="tt">Booking dibuat</div></div>
+        <div class="body">
+          <div class="card" style="text-align:center"><div class="mut">Kode pengiriman</div><div class="code">DJW-KR-0042</div><div style="margin-top:6px"><button type="button" class="copy" data-copy="DJW-KR-0042">Salin kode</button></div></div>
+          <div class="lbl">Langkah berikutnya</div>
+          <div class="grp"><div><span class="k">1</span><span class="v">Tulis kode ini besar-besar di paket</span></div><div><span class="k">2</span><span class="v">Antar ke drop point sebelum 26 Nov</span></div><div><span class="k">3</span><span class="v">Kami timbang, kamu dapat tagihan</span></div></div>
+          <div class="lbl">Alamat drop point</div>
+          <div class="card"><b style="font-size:13px">Djiwa Tasikmalaya</b><div class="mut">Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya</div><div style="display:flex;gap:6px;margin-top:8px"><button type="button" class="copy" data-copy="Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya">Salin alamat</button><span class="copy">Buka peta</span></div></div>
+          <div class="mut" style="font-size:11px;margin-top:8px">Buka 09.00 sampai 17.00 WIB, dijaga tim Djiwa Travel.</div>
+        </div>
+        <div class="foot"><div class="btn">Lihat pengiriman</div></div></div></div>
+
+    <div class="step"><div class="cap">7 Tagihan <i>setelah ditimbang</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">DJW-KR-0042</div><span class="badge b-amb" style="margin-left:auto">Menunggu bayar</span></div>
+        <div class="body">
+          <div class="card"><div class="photo">Foto timbang &amp; isi paket</div>
+            <div class="sum" style="margin-top:8px"><div><span class="mut">Berat timbang</span><span>2,4 kg</span></div><div><span class="mut">Dibulatkan</span><span>2,5 kg</span></div><div><span class="mut">2,5 kg × Rp150.000</span><span>Rp375.000</span></div><div><span class="mut">Packing tambahan</span><span>Rp0</span></div><div class="tot"><span>Total</span><span>Rp375.000</span></div></div></div>
+          <div class="mut" style="font-size:11px;margin-top:8px">Bayar dalam 48 jam agar paket tetap masuk jadwal kirim.</div>
+          <div class="lbl">Status</div>
+          <div class="tl"><div class="done"><b>Diterima di drop point</b><small>20 Nov, 10.12</small></div><div class="now"><b>Menunggu pembayaran</b><small>Tagihan dikirim 20 Nov, 10.30</small></div><div><b>Dikirim ke Jepang</b></div></div>
+        </div>
+        <div class="foot"><div class="btn">Bayar Rp375.000</div></div></div>
+      <p class="note">Pembayaran lewat Mayar, sama seperti layanan lain. Admin tidak perlu konfirmasi manual.</p></div>
+
+    <div class="step"><div class="cap">8 Pelacakan <i>sudah dikirim</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">DJW-KR-0042</div><span class="badge b-blue" style="margin-left:auto">Dikirim</span></div>
+        <div class="body">
+          <div class="card"><div class="mut">Kurir &amp; resi</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px"><div><b style="font-size:13px">Partner Djiwa</b><div class="mut">EE123456789ID</div></div><button type="button" class="copy" data-copy="EE123456789ID">Salin</button></div><div class="mut" style="margin-top:6px">Estimasi tiba 25 sampai 29 Nov</div></div>
+          <div class="lbl">Riwayat</div>
+          <div class="tl"><div class="now"><b>Dalam perjalanan ke Jepang</b><small>22 Nov, 08.40</small></div><div class="done"><b>Dikirim dari Tasikmalaya</b><small>21 Nov, 14.05</small></div><div class="done"><b>Pembayaran diterima</b><small>20 Nov, 11.02</small></div><div class="done"><b>Ditimbang 2,4 kg</b><small>20 Nov, 10.12</small></div><div class="done"><b>Diterima di drop point</b><small>20 Nov, 10.12</small></div><div class="done"><b>Booking dibuat</b><small>18 Nov, 19.30</small></div></div>
+        </div>
+        <div class="foot"><div class="btn g">Hubungi Djiwa</div></div></div>
+      <p class="note">Kurir express dan nomor resi diisi Admin, nama kurir tidak dikunci ke satu vendor.</p></div>
+  </div>
+</section>
+
+<!-- ================= ADMIN ================= -->
+<section id="adm" hidden>
+  <p class="sub">Admin: satu layar antrian + detail untuk menerima, menimbang, menagih, dan mengirim. Satu layar pengaturan untuk tarif dan drop point.</p>
+  <div class="row" style="flex-direction:column;gap:22px">
+    <div class="step" style="width:100%"><div class="cap">A1 Antrian &amp; detail pengiriman <i>/admin/kirim-barang</i></div>
+      <div class="dsk"><div class="bar">Admin <span>›</span> Kirim Barang</div>
+        <div class="cols">
+          <div class="pane">
+            <div class="seg"><span class="on">Semua 14</span><span>Menunggu antar 5</span><span>Perlu timbang 2</span><span>Menunggu bayar 3</span><span>Siap kirim 2</span></div>
+            <table><thead><tr><th>Kode</th><th>Penerima</th><th>Status</th></tr></thead><tbody>
+              <tr class="sel"><td><b>DJW-KR-0042</b></td><td>Rina T., Tokyo</td><td><span class="badge b-blue">Diterima</span></td></tr>
+              <tr><td>DJW-KR-0041</td><td>Kenji S., Osaka</td><td><span class="badge b-amb">Menunggu bayar</span></td></tr>
+              <tr><td>DJW-KR-0040</td><td>Aiko M., Kyoto</td><td><span class="badge b-gry">Menunggu antar</span></td></tr>
+              <tr><td>DJW-KR-0039</td><td>Yuki H., Tokyo</td><td><span class="badge b-grn">Dikirim</span></td></tr>
+            </tbody></table>
+          </div>
+          <div class="pane">
+            <b style="font-size:14px">DJW-KR-0042</b> <span class="badge b-blue">Diterima di drop point</span>
+            <div class="mut" style="margin:4px 0 8px">Fakhri A. · Makanan kering · Keripik, kopi bubuk, 2 kaos · Nilai Rp650.000</div>
+            <div class="lbl" style="margin-top:6px">Timbang &amp; tagihan</div>
+            <div class="two"><div class="field"><small>Berat timbang (kg)</small><b>2,4</b></div><div class="field"><small>Biaya packing (Rp)</small><b>0</b></div></div>
+            <div class="photo" style="margin-bottom:6px">Unggah foto timbang &amp; isi paket</div>
+            <div class="sum card"><div><span class="mut">Dibulatkan 2,5 kg × Rp150.000</span><span>Rp375.000</span></div><div class="tot"><span>Total tagihan</span><span>Rp375.000</span></div></div>
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span class="btn">Kirim tagihan</span><span class="btn" style="background:#fde8e8;color:#b42318">Tolak barang</span></div>
+            <div class="lbl">Setelah dibayar</div>
+            <div class="two"><div class="field"><small>Kurir</small><b>Partner Djiwa ▾</b></div><div class="field"><small>Nomor resi</small><b>EE123456789ID</b></div></div>
+            <span class="btn">Tandai dikirim</span>
+          </div>
+        </div></div>
+      <p class="note" style="max-width:none">Tolak barang wajib isi alasan, customer menerima notif. Tiap perubahan status otomatis menulis riwayat dan mengirim notifikasi ke customer.</p></div>
+
+    <div class="step" style="width:100%"><div class="cap">A2 Pengaturan layanan <i>/admin/kirim-barang/pengaturan</i></div>
+      <div class="dsk"><div class="bar">Admin <span>›</span> Kirim Barang <span>›</span> Pengaturan</div>
+        <div class="cols">
+          <div class="pane">
+            <div class="lbl" style="margin-top:0">Layanan</div>
+            <div class="grp" style="background:#fff;border:1px solid var(--p-bd);border-radius:12px"><div style="padding:9px 12px;display:flex;justify-content:space-between;align-items:center">Tampilkan tile di Home &amp; Explore <span class="sw"></span></div></div>
+            <div class="lbl">Tarif per negara</div>
+            <table><thead><tr><th>Negara</th><th>Tarif / kg</th><th>Aktif</th></tr></thead><tbody>
+              <tr><td>Jepang</td><td><b>Rp150.000</b></td><td><span class="sw"></span></td></tr>
+              <tr><td class="mut">Tambah negara…</td><td></td><td></td></tr></tbody></table>
+            <div class="field" style="margin-top:8px"><small>Biaya partner per kg (internal, untuk margin)</small><b>Rp100.000</b></div>
+            <div class="two" style="margin-top:8px"><div class="field"><small>Minimum berat (kg)</small><b>1,0</b></div><div class="field"><small>Pembulatan (kg)</small><b>0,5</b></div></div>
+          </div>
+          <div class="pane">
+            <div class="lbl" style="margin-top:0">Drop point</div>
+            <div class="field"><small>Nama</small><b>Djiwa Tasikmalaya</b></div>
+            <div class="field"><small>Alamat</small><b>Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya, Jawa Barat</b></div>
+            <div class="field"><small>Jam buka</small><b>09.00 sampai 17.00 WIB</b></div>
+            <div class="two"><div class="field"><small>Batas antar (hari)</small><b>7</b></div><div class="field"><small>Batas bayar (jam)</small><b>48</b></div></div>
+            <div class="lbl">Daftar barang terlarang</div>
+            <div class="field"><small>Tampil di form &amp; halaman info</small><b>Cairan, baterai lithium, makanan segar/daging, obat…</b></div>
+            <span class="btn">Simpan</span>
+          </div>
+        </div></div></div>
+  </div>
+</section>
+
+<!-- ================= KEPUTUSAN ================= -->
+<section id="dec" hidden>
+  <h2>Usulan saya (perlu persetujuan)</h2>
+  <div class="dec">
+    <div><b><em>Bayar setelah ditimbang</em>, bukan di muka</b>Tarif per kg bergantung berat nyata, jadi booking gratis dan tagihan dibuat setelah drop point menimbang. Menghindari selisih dan refund. Alternatif: bayar estimasi di muka lalu selisihnya ditagih atau dikembalikan.</div>
+    <div><b><em>Pembulatan 0,5 kg, minimum 1 kg</em></b>Contoh 2,4 kg menjadi 2,5 kg = Rp375.000. Angka ini belum final, perlu dicek dengan biaya kurir.</div>
+    <div><b><em>Batas antar 7 hari, batas bayar 48 jam</em></b>Lewat batas, booking batal otomatis dan customer diberi tahu. Bisa diubah di Admin.</div>
+    <div><b><em>Barang terlarang</em> dicek dua lapis</b>Customer menyetujui daftar saat booking, Admin tetap bisa menolak saat memeriksa fisik paket. Daftar resminya perlu divalidasi dengan kurir ke Jepang dan bea cukai Jepang, bukan dari tebakan.</div>
+    <div><b><em>Nama kurir tidak dikunci</em></b>Admin memilih kurir dan mengisi resi per paket, jadi vendor bisa diganti tanpa mengubah aplikasi.</div>
+    <div><b><em>Id internal</em> berubah dari baggage ke shipping</b>Waitlist lama bernilai <code>bagasi</code> tetap terbaca lewat alias. Pendaftar waitlist lama dapat notifikasi saat layanan dibuka.</div>
+  </div>
+  <h2 style="margin-top:18px">Sudah diputuskan</h2>
+  <div class="dec">
+    <div><b>1. Bayar <em>setelah ditimbang</em></b>Booking gratis, tagihan dibuat setelah drop point menimbang.</div>
+    <div><b>2. Kurir <em>partner</em>, biaya partner Rp100.000 per kg</b>Tarif pelanggan Rp150.000 per kg, jadi margin Rp50.000 per kg. Nama kurir dipilih Admin per paket dan angka biaya partner hanya terlihat di Admin.</div>
+    <div><b>3. Drop point buka <em>09.00 sampai 17.00</em></b>Dijaga tim Djiwa Travel. Jam tampil di instruksi antar dan bisa diubah di Pengaturan.</div>
+    <div><b>4. Pelanggan luar Tasikmalaya <em>boleh</em> kirim lewat kurir</b>Di ringkasan ada pilihan Antar sendiri atau Lewat kurir. Bila lewat kurir, pelanggan mengisi nama kurir dan nomor resi, dan Admin melihatnya di detail pengiriman.</div>
+  </div>
+</section>
+</main>
+<script>
+(function(){
+  var tabs=document.getElementById('tabs');
+  function show(id){
+    ['flow','cust','adm','dec'].forEach(function(t){document.getElementById(t).hidden=(t!==id)});
+    [].forEach.call(tabs.querySelectorAll('button'),function(b){b.setAttribute('aria-selected',String(b.dataset.t===id))});
+  }
+  tabs.addEventListener('click',function(e){var b=e.target.closest('button');if(b){show(b.dataset.t);try{history.replaceState(null,'','#'+b.dataset.t)}catch(_){}}});
+  var h=(location.hash||'').slice(1);if(['flow','cust','adm','dec'].indexOf(h)>-1)show(h);
+
+  var kg=2,RATE=150000;
+  var fmt=function(n){return 'Rp'+n.toLocaleString('id-ID')};
+  var dec=function(n){return n.toFixed(1).replace('.',',')};
+  function render(){
+    var est=Math.max(1,kg)*RATE;
+    document.getElementById('kg').textContent=dec(kg)+' kg';
+    document.getElementById('kg2').textContent=dec(kg);
+    document.getElementById('est1').textContent=fmt(est);
+    document.getElementById('est2').textContent=fmt(est);
+  }
+  document.querySelector('.stepper').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    kg=Math.min(30,Math.max(1,kg+parseFloat(b.dataset.d)));render();
+  });
+  document.addEventListener('click',function(e){
+    var c=e.target.closest('.copy[data-copy]');if(!c)return;
+    var txt=c.dataset.copy,old=c.textContent;
+    var done=function(){c.textContent='Tersalin';setTimeout(function(){c.textContent=old},1200)};
+    try{navigator.clipboard.writeText(txt).then(done,function(){})}catch(_){}
+  });
+  render();
+})();
+</script>
+</body></html>

@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Settings,
   ShoppingBag,
+  Truck,
   ShoppingCart,
   ShieldCheck,
   Tags,
@@ -57,6 +58,13 @@ export const adminNavigationGroups = [
       ["Pesan", "/admin/shopping#requests", MessageCircle],
       ["Katalog Produk", "/admin/shopping#catalog", Tags],
       ["Pengaturan", "/admin/shopping#settings", Settings],
+    ],
+  },
+  {
+    label: "Kirim Barang",
+    items: [
+      ["Pengiriman", "/admin/shipping", Truck],
+      ["Pengaturan", "/admin/shipping#settings", Settings],
     ],
   },
   {

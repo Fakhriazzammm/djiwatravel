@@ -488,7 +488,7 @@ export const travelWaitlistEntries = pgTable(
     index("travel_waitlist_feature_created_idx").on(table.featureKey, table.createdAt),
     check(
       "travel_waitlist_feature_key_check",
-      sql`feature_key = ANY (ARRAY['bagasi'::text, 'shopper'::text])`,
+      sql`feature_key = ANY (ARRAY['bagasi'::text, 'shipping'::text, 'shopper'::text])`,
     ),
     check("travel_waitlist_contact_check", sql`email IS NOT NULL OR whatsapp IS NOT NULL`),
   ],

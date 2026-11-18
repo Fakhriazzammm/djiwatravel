@@ -6,7 +6,10 @@ import { normalizeWhatsapp, WHATSAPP_PATTERN } from "./phone";
 
 const schema = z
   .object({
-    feature: z.enum(["bagasi", "shopper"]),
+    // "bagasi" is the key before the tile became Kirim Barang: still accepted, stored as "shipping".
+    feature: z
+      .enum(["shipping", "bagasi", "shopper"])
+      .transform((f) => (f === "bagasi" ? "shipping" : f)),
     destination: z.string().trim().min(1).max(80),
     travelDate: z.string().trim().date().optional().or(z.literal("")),
     email: z.string().trim().email().max(254).optional().or(z.literal("")),

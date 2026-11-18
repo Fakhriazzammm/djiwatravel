@@ -282,6 +282,14 @@ It is not a requirement to replace every utility glyph.
 - Performance: provide a lightweight mobile variant when needed, reserve
   intrinsic dimensions to avoid layout shift, and test slow network rendering.
 
+### Manifest notes
+
+- `public/assets/explore/services/shipping-truck.svg` (Kirim Barang tile, Home and
+  Explore; reviewed 2026-11-19): hand-authored vector truck in the same glossy
+  look, a placeholder until a transparent 3D render of the same object is
+  generated and replaces it under a new versioned name (`shipping-truck-v2`).
+  The adjacent label "Kirim Barang" carries the meaning.
+
 ### When utility glyphs are correct
 
 Use a system/Lucide-style glyph for close, back, menu, calendar, chevron,

@@ -198,10 +198,15 @@ describe("TravelSupportDialog", () => {
 describe("TravelWaitlistCard", () => {
   it("keeps the mobile waitlist sheet above the tab bar and scrollable", () => {
     render(
-      <TravelWaitlistCard feature="bagasi" label="Bagasi" sub="Segera hadir" icon={() => null} />,
+      <TravelWaitlistCard
+        feature="shipping"
+        label="Kirim Barang"
+        sub="Segera hadir"
+        icon={() => null}
+      />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /bagasi segera hadir/i }));
+    fireEvent.click(screen.getByRole("button", { name: /kirim barang segera hadir/i }));
 
     const dialog = screen.getByRole("dialog");
     expect(dialog.className).toContain("max-h-[calc(100dvh-1.5rem)]");

@@ -10,6 +10,7 @@ import { parseReceiptScanConfig } from "./receipt-scan";
 import { parsePlaceIdeasConfig } from "./place-ideas";
 import { parseTripAssistantConfig } from "./trip-assistant";
 import { parsePwaConfig } from "./pwa-config";
+import { parseShippingConfig } from "./shipping";
 
 export type AdminSettingKey =
   | "retryPolicy"
@@ -34,6 +35,7 @@ export type AdminSettingKey =
   | "guestTrips"
   | "flights"
   | "personalShopper"
+  | "shipping"
   | "feeds";
 export type AdminSettings = Record<AdminSettingKey, unknown>;
 export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
@@ -59,6 +61,7 @@ export const ADMIN_SETTING_KEYS: AdminSettingKey[] = [
   "guestTrips",
   "flights",
   "personalShopper",
+  "shipping",
   "feeds",
 ];
 export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
@@ -100,6 +103,7 @@ export function validateAdminSetting(key: AdminSettingKey, value: unknown) {
   if (key === "guestTrips") parseGuestTripsConfig(value);
   if (key === "flights") parseFlightsConfig(value);
   if (key === "personalShopper") parseShopperConfig(value);
+  if (key === "shipping") parseShippingConfig(value);
   if (key === "feeds") parseFeedsConfig(value);
   return true;
 }

@@ -15,7 +15,7 @@ describe("travel service configuration", () => {
       "flights",
       "attractions",
       "open-trip",
-      "baggage",
+      "shipping",
       "personal-shopper",
       "visa",
       "travel-insurance",
