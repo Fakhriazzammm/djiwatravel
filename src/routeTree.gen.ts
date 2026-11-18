@@ -19,6 +19,7 @@ import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OrderStatusRouteImport } from './routes/order-status'
+import { Route as PetugasRouteImport } from './routes/petugas'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PrivasiAkunRouteImport } from './routes/privasi-akun'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -179,6 +180,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
 const OrderStatusRoute = OrderStatusRouteImport.update({
   id: '/order-status',
   path: '/order-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PetugasRoute = PetugasRouteImport.update({
+  id: '/petugas',
+  path: '/petugas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -756,6 +762,7 @@ export interface FileRoutesByFullPath {
   '/my-orders': typeof MyOrdersRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
+  '/petugas': typeof PetugasRoute
   '/privacy': typeof PrivacyRoute
   '/privasi-akun': typeof PrivasiAkunRoute
   '/profile': typeof ProfileRoute
@@ -879,6 +886,7 @@ export interface FileRoutesByTo {
   '/my-orders': typeof MyOrdersRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
+  '/petugas': typeof PetugasRoute
   '/privacy': typeof PrivacyRoute
   '/privasi-akun': typeof PrivasiAkunRoute
   '/profile': typeof ProfileRoute
@@ -1003,6 +1011,7 @@ export interface FileRoutesById {
   '/my-orders': typeof MyOrdersRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
+  '/petugas': typeof PetugasRoute
   '/privacy': typeof PrivacyRoute
   '/privasi-akun': typeof PrivasiAkunRoute
   '/profile': typeof ProfileRoute
@@ -1128,6 +1137,7 @@ export interface FileRouteTypes {
     | '/my-orders'
     | '/notifications'
     | '/order-status'
+    | '/petugas'
     | '/privacy'
     | '/privasi-akun'
     | '/profile'
@@ -1251,6 +1261,7 @@ export interface FileRouteTypes {
     | '/my-orders'
     | '/notifications'
     | '/order-status'
+    | '/petugas'
     | '/privacy'
     | '/privasi-akun'
     | '/profile'
@@ -1374,6 +1385,7 @@ export interface FileRouteTypes {
     | '/my-orders'
     | '/notifications'
     | '/order-status'
+    | '/petugas'
     | '/privacy'
     | '/privasi-akun'
     | '/profile'
@@ -1498,6 +1510,7 @@ export interface RootRouteChildren {
   MyOrdersRoute: typeof MyOrdersRoute
   NotificationsRoute: typeof NotificationsRoute
   OrderStatusRoute: typeof OrderStatusRoute
+  PetugasRoute: typeof PetugasRoute
   PrivacyRoute: typeof PrivacyRoute
   PrivasiAkunRoute: typeof PrivasiAkunRoute
   ProfileRoute: typeof ProfileRoute
@@ -1673,6 +1686,13 @@ declare module '@tanstack/react-router' {
       path: '/order-status'
       fullPath: '/order-status'
       preLoaderRoute: typeof OrderStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/petugas': {
+      id: '/petugas'
+      path: '/petugas'
+      fullPath: '/petugas'
+      preLoaderRoute: typeof PetugasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -2529,6 +2549,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyOrdersRoute: MyOrdersRoute,
   NotificationsRoute: NotificationsRoute,
   OrderStatusRoute: OrderStatusRoute,
+  PetugasRoute: PetugasRoute,
   PrivacyRoute: PrivacyRoute,
   PrivasiAkunRoute: PrivasiAkunRoute,
   ProfileRoute: ProfileRoute,

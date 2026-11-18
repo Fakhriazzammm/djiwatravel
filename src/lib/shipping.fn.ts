@@ -103,13 +103,3 @@ export const runAdminShippingAction = createServerFn({ method: "POST" })
     const { adminShippingActionHandler } = await import("./shipping.server");
     return adminShippingActionHandler({ data });
   });
-
-export const scanShipping = createServerFn({ method: "POST" })
-  .validator(async (data: unknown) => {
-    const { scanShippingInput } = await import("./shipping.server");
-    return scanShippingInput(data);
-  })
-  .handler(async ({ data }) => {
-    const { scanShippingHandler } = await import("./shipping.server");
-    return scanShippingHandler({ data });
-  });

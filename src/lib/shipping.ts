@@ -110,6 +110,17 @@ export type ShippingConfig = {
   maxOpenBookings: number;
   /** Proof photos of the contents a customer must attach to a booking. */
   minPhotos: number;
+  /** The two hubs after the drop point (Tasikmalaya is `dropPoint`). */
+  hubs: Record<"BANDUNG" | "JAKARTA", { name: string; address: string }>;
+  /** Days per leg, for the "estimasi tiba" text the customer sees. */
+  eta: {
+    toBandungDays: number;
+    toJakartaDays: number;
+    toJapanMinDays: number;
+    toJapanMaxDays: number;
+  };
+  /** Suggestions for who carries a batch inside Indonesia (own car, a courier company). */
+  transport: string[];
   /** Courier names the team picks from when it ships a parcel. */
   couriers: string[];
   /** Things that cannot be sent, shown in the form and on the info page. */
@@ -132,6 +143,12 @@ export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
   paymentWindowHours: 48,
   maxOpenBookings: 3,
   minPhotos: 1,
+  hubs: {
+    BANDUNG: { name: "Gudang Djiwa Bandung", address: "Bandung, Jawa Barat" },
+    JAKARTA: { name: "Hub Djiwa Jakarta", address: "Jakarta" },
+  },
+  eta: { toBandungDays: 1, toJakartaDays: 1, toJapanMinDays: 5, toJapanMaxDays: 7 },
+  transport: ["Mobil Djiwa", "Ekspedisi"],
   couriers: ["Partner Djiwa"],
   prohibited: [
     "Cairan, parfum, dan aerosol",
@@ -174,6 +191,48 @@ const obj = (value: unknown, label: string) => {
     throw new Error(`shipping.${label} harus berupa objek`);
   return value as Record<string, unknown>;
 };
+
+function parseHubs(value: unknown): ShippingConfig["hubs"] {
+  const d = DEFAULT_SHIPPING_CONFIG.hubs;
+  if (value === undefined) return d;
+  const raw = obj(value, "hubs");
+  const out = { BANDUNG: { ...d.BANDUNG }, JAKARTA: { ...d.JAKARTA } };
+  for (const key of ["BANDUNG", "JAKARTA"] as const) {
+    if (raw[key] === undefined) continue;
+    const h = obj(raw[key], `hubs.${key}`);
+    if (h["name"] !== undefined) out[key].name = text(h["name"], 2, 80, `hubs.${key}.name`);
+    if (h["address"] !== undefined)
+      out[key].address = text(h["address"], 3, 300, `hubs.${key}.address`);
+  }
+  return out;
+}
+
+function parseEta(value: unknown): ShippingConfig["eta"] {
+  const d = DEFAULT_SHIPPING_CONFIG.eta;
+  if (value === undefined) return d;
+  const raw = obj(value, "eta");
+  const eta = {
+    toBandungDays:
+      raw["toBandungDays"] === undefined
+        ? d.toBandungDays
+        : intIn(raw["toBandungDays"], 1, 14, "eta.toBandungDays"),
+    toJakartaDays:
+      raw["toJakartaDays"] === undefined
+        ? d.toJakartaDays
+        : intIn(raw["toJakartaDays"], 1, 14, "eta.toJakartaDays"),
+    toJapanMinDays:
+      raw["toJapanMinDays"] === undefined
+        ? d.toJapanMinDays
+        : intIn(raw["toJapanMinDays"], 1, 60, "eta.toJapanMinDays"),
+    toJapanMaxDays:
+      raw["toJapanMaxDays"] === undefined
+        ? d.toJapanMaxDays
+        : intIn(raw["toJapanMaxDays"], 1, 60, "eta.toJapanMaxDays"),
+  };
+  if (eta.toJapanMaxDays < eta.toJapanMinDays)
+    throw new Error("shipping.eta.toJapanMaxDays tidak boleh lebih kecil dari toJapanMinDays");
+  return eta;
+}
 
 export function parseShippingConfig(value: unknown): ShippingConfig {
   const raw = obj(value, "config");
@@ -247,6 +306,13 @@ export function parseShippingConfig(value: unknown): ShippingConfig {
       raw["minPhotos"] === undefined
         ? d.minPhotos
         : intIn(raw["minPhotos"], 0, SHIPPING_MAX_PHOTOS, "minPhotos"),
+    hubs: parseHubs(raw["hubs"]),
+    eta: parseEta(raw["eta"]),
+    transport: (() => {
+      const t = list(raw["transport"], d.transport, 8, "transport");
+      if (t.length === 0) throw new Error("shipping.transport minimal satu pilihan");
+      return t;
+    })(),
     couriers,
     prohibited: list(raw["prohibited"], d.prohibited, 12, "prohibited"),
   };
@@ -318,24 +384,34 @@ export type ShippingStatus =
   | "RECEIVED"
   | "PAYMENT_PENDING"
   | "PAID"
+  | "TO_BANDUNG"
+  | "AT_BANDUNG"
+  | "TO_JAKARTA"
+  | "AT_JAKARTA"
   | "SHIPPED"
   | "ARRIVED"
   | "DELIVERED"
   | "CANCELLED"
   | "REJECTED"
-  | "EXPIRED";
+  | "EXPIRED"
+  | "PROBLEM";
 
 export const SHIPPING_STATUS_LABEL: Record<ShippingStatus, string> = {
   AWAITING_DROP: "Menunggu diantar",
-  RECEIVED: "Diterima di drop point",
+  RECEIVED: "Diterima di Tasikmalaya",
   PAYMENT_PENDING: "Menunggu pembayaran",
   PAID: "Dibayar",
+  TO_BANDUNG: "Menuju Bandung",
+  AT_BANDUNG: "Di gudang Bandung",
+  TO_JAKARTA: "Menuju Jakarta",
+  AT_JAKARTA: "Di Jakarta",
   SHIPPED: "Dikirim ke Jepang",
   ARRIVED: "Tiba di Jepang",
   DELIVERED: "Selesai",
   CANCELLED: "Dibatalkan",
   REJECTED: "Ditolak",
   EXPIRED: "Kedaluwarsa",
+  PROBLEM: "Bermasalah",
 };
 
 /** The steps a customer sees on the timeline, in order. */
@@ -344,6 +420,10 @@ export const SHIPPING_STEPS: readonly ShippingStatus[] = [
   "RECEIVED",
   "PAYMENT_PENDING",
   "PAID",
+  "TO_BANDUNG",
+  "AT_BANDUNG",
+  "TO_JAKARTA",
+  "AT_JAKARTA",
   "SHIPPED",
   "ARRIVED",
   "DELIVERED",
@@ -352,16 +432,17 @@ export const SHIPPING_STEPS: readonly ShippingStatus[] = [
 export const SHIPPING_DEAD: readonly ShippingStatus[] = ["CANCELLED", "REJECTED", "EXPIRED"];
 export const shippingIsDead = (s: ShippingStatus) => SHIPPING_DEAD.includes(s);
 
-/** Statuses Admin may move forward with one button, and the label of that button. */
+/**
+ * Statuses a team member moves forward with one button. Everything between "Dibayar" and "Dikirim ke
+ * Jepang" is moved by scanning at the hubs (batches), never by a button on the parcel.
+ */
 export const SHIPPING_ADMIN_NEXT: Partial<Record<ShippingStatus, ShippingStatus>> = {
   AWAITING_DROP: "RECEIVED",
-  PAID: "SHIPPED",
   SHIPPED: "ARRIVED",
   ARRIVED: "DELIVERED",
 };
 export const SHIPPING_ADMIN_NEXT_LABEL: Partial<Record<ShippingStatus, string>> = {
   AWAITING_DROP: "Terima di drop point",
-  PAID: "Tandai dikirim",
   SHIPPED: "Tandai tiba di Jepang",
   ARRIVED: "Tandai selesai",
 };
@@ -373,14 +454,26 @@ export const adminCanReject = (s: ShippingStatus) =>
   s === "AWAITING_DROP" || s === "RECEIVED" || s === "PAYMENT_PENDING" || s === "EXPIRED";
 export const adminCanCancel = (s: ShippingStatus) => s === "PAID";
 export const shippingIsPaid = (s: ShippingStatus) =>
-  s === "PAID" || s === "SHIPPED" || s === "ARRIVED" || s === "DELIVERED";
+  s === "PAID" ||
+  s === "TO_BANDUNG" ||
+  s === "AT_BANDUNG" ||
+  s === "TO_JAKARTA" ||
+  s === "AT_JAKARTA" ||
+  s === "SHIPPED" ||
+  s === "ARRIVED" ||
+  s === "DELIVERED" ||
+  s === "PROBLEM";
 /** Weighing and billing happen once the parcel is at the drop point (or its bill lapsed). */
 export const adminCanBill = (s: ShippingStatus) => s === "RECEIVED" || s === "EXPIRED";
 
 export const NOTIFY_TEXT: Partial<Record<ShippingStatus, string>> = {
   RECEIVED:
     "Paketmu sudah diterima di drop point Tasikmalaya. Kami timbang dan kirim tagihannya segera.",
-  PAID: "Pembayaran diterima. Paketmu masuk jadwal kirim ke Jepang.",
+  PAID: "Pembayaran diterima. Paketmu masuk jadwal kirim ke Jepang lewat Bandung dan Jakarta.",
+  TO_BANDUNG: "Paketmu berangkat dari Tasikmalaya menuju gudang Bandung.",
+  AT_BANDUNG: "Paketmu sudah tiba di gudang Bandung.",
+  TO_JAKARTA: "Paketmu berangkat dari Bandung menuju Jakarta.",
+  AT_JAKARTA: "Paketmu sudah tiba di Jakarta dan menunggu diserahkan ke partner pengiriman.",
   ARRIVED: "Paketmu tiba di Jepang dan segera diantar ke penerima.",
   DELIVERED: "Pengiriman selesai. Terima kasih sudah memakai Kirim Barang.",
 };
@@ -519,9 +612,9 @@ export const PHOTO_REVIEW_LABEL: Record<PhotoReview, string> = {
 
 const CODE_PATTERN = /DJW-KR-\d{4,}/i;
 
-/** What the QR on the parcel label holds: a link whose only data is the shipment code. */
+/** What the QR on the parcel label holds: a link to the field app whose only data is the shipment code. */
 export const scanUrl = (origin: string, code: string) =>
-  `${origin.replace(/\/$/, "")}/admin/shipping?scan=${encodeURIComponent(code)}`;
+  `${origin.replace(/\/$/, "")}/petugas?scan=${encodeURIComponent(code)}`;
 
 /**
  * Reads a shipment code out of whatever a scanner delivers: the bare code, the label's link, or text
@@ -577,3 +670,125 @@ export function buildLabelData(
 
 export const labelFileName = (code: string, ext: "png" | "pdf") =>
   `label-${code.replace(/[^A-Za-z0-9-]/g, "")}.${ext}`;
+
+/* ----------------------------------------------------------------------- hubs */
+
+export type Hub = "TASIK" | "BANDUNG" | "JAKARTA";
+export type BatchDestination = "BANDUNG" | "JAKARTA" | "JAPAN";
+export const HUBS: readonly Hub[] = ["TASIK", "BANDUNG", "JAKARTA"];
+export const isHub = (value: unknown): value is Hub =>
+  typeof value === "string" && (HUBS as readonly string[]).includes(value);
+
+export const hubName = (config: ShippingConfig, hub: Hub) =>
+  hub === "TASIK" ? config.dropPoint.name : config.hubs[hub].name;
+
+/** Where a batch loaded at a hub goes. */
+export const BATCH_DESTINATION: Record<Hub, BatchDestination> = {
+  TASIK: "BANDUNG",
+  BANDUNG: "JAKARTA",
+  JAKARTA: "JAPAN",
+};
+export const DESTINATION_LABEL: Record<BatchDestination, string> = {
+  BANDUNG: "Bandung",
+  JAKARTA: "Jakarta",
+  JAPAN: "Jepang",
+};
+export const HUB_LABEL: Record<Hub, string> = {
+  TASIK: "Tasikmalaya",
+  BANDUNG: "Bandung",
+  JAKARTA: "Jakarta",
+};
+
+export type HubMode = "receive" | "checkin" | "load";
+/** What a scan can do at each hub: the mode list for the scan screen. */
+export const HUB_MODES: Record<Hub, { id: HubMode; label: string }[]> = {
+  TASIK: [
+    { id: "receive", label: "Terima" },
+    { id: "load", label: "Muat ke Bandung" },
+  ],
+  BANDUNG: [
+    { id: "checkin", label: "Check-in" },
+    { id: "load", label: "Muat ke Jakarta" },
+  ],
+  JAKARTA: [
+    { id: "checkin", label: "Check-in" },
+    { id: "load", label: "Serah ke Jepang" },
+  ],
+};
+
+/** The status a parcel must have to be loaded at a hub (Tasikmalaya: paid, others: checked in). */
+export const LOADABLE_STATUS: Record<Hub, ShippingStatus> = {
+  TASIK: "PAID",
+  BANDUNG: "AT_BANDUNG",
+  JAKARTA: "AT_JAKARTA",
+};
+/** On departure the parcels of a batch take this status. */
+export const DEPART_STATUS: Record<Hub, ShippingStatus> = {
+  TASIK: "TO_BANDUNG",
+  BANDUNG: "TO_JAKARTA",
+  JAKARTA: "SHIPPED",
+};
+/** The status a parcel takes when it is checked in at a hub. */
+export const CHECKIN_STATUS: Record<"BANDUNG" | "JAKARTA", ShippingStatus> = {
+  BANDUNG: "AT_BANDUNG",
+  JAKARTA: "AT_JAKARTA",
+};
+/** The status a parcel must have to be checked in at a hub. */
+export const INBOUND_STATUS: Record<"BANDUNG" | "JAKARTA", ShippingStatus> = {
+  BANDUNG: "TO_BANDUNG",
+  JAKARTA: "TO_JAKARTA",
+};
+
+/** Staff may only work at hubs they are registered for; Admin works everywhere. */
+export const canWorkAt = (hubs: readonly Hub[], hub: Hub, isAdmin: boolean) =>
+  isAdmin || hubs.includes(hub);
+
+/** Where on the four-point route a parcel is: a node (0..3) and whether it is moving towards the next. */
+export function routePosition(status: ShippingStatus): { node: 0 | 1 | 2 | 3; moving: boolean } {
+  switch (status) {
+    case "TO_BANDUNG":
+      return { node: 0, moving: true };
+    case "AT_BANDUNG":
+      return { node: 1, moving: false };
+    case "TO_JAKARTA":
+      return { node: 1, moving: true };
+    case "AT_JAKARTA":
+      return { node: 2, moving: false };
+    case "SHIPPED":
+      return { node: 2, moving: true };
+    case "ARRIVED":
+    case "DELIVERED":
+      return { node: 3, moving: false };
+    default:
+      return { node: 0, moving: false };
+  }
+}
+export const ROUTE_NODES = ["Tasikmalaya", "Bandung", "Jakarta", "Jepang"] as const;
+
+/** "Estimasi tiba" text for the customer from the legs configured in Admin; null when nothing to say. */
+export function etaText(
+  status: ShippingStatus,
+  config: Pick<ShippingConfig, "eta">,
+): string | null {
+  const day = (n: number) => (n === 1 ? "1 hari" : `${n} hari`);
+  switch (status) {
+    case "TO_BANDUNG":
+      return `Estimasi tiba di Bandung dalam ${day(config.eta.toBandungDays)}.`;
+    case "TO_JAKARTA":
+      return `Estimasi tiba di Jakarta dalam ${day(config.eta.toJakartaDays)}.`;
+    case "SHIPPED":
+      return `Estimasi tiba di Jepang dalam ${config.eta.toJapanMinDays} sampai ${config.eta.toJapanMaxDays} hari.`;
+    default:
+      return null;
+  }
+}
+
+/** Codes: a parcel is DJW-KR-0042, a batch is BCH-0007. */
+export type ScannedCode = { kind: "parcel" | "batch"; code: string };
+export function parseAnyCode(raw: string): ScannedCode | null {
+  const parcel = parseScanCode(raw);
+  if (parcel) return { kind: "parcel", code: parcel };
+  const batch = /BCH-\d{4,}/i.exec(raw.trim());
+  return batch ? { kind: "batch", code: batch[0].toUpperCase() } : null;
+}
+export const batchCodeFrom = (n: number) => `BCH-${String(n).padStart(4, "0")}`;

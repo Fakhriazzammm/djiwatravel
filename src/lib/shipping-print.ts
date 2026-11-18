@@ -490,3 +490,81 @@ export async function downloadManifestPdf(
   pdf.line(width / 2, doc.y + 52, width / 2 + 170, doc.y + 52);
   pdf.save(`manifest-${courier.replace(/[^A-Za-z0-9]+/g, "-")}-${orders.length}-paket.pdf`);
 }
+
+/** Admin: the manifest of one batch (a trip between two points), signed by both sides. */
+export async function downloadBatchManifestPdf(batch: {
+  code: string;
+  from: string;
+  to: string;
+  carrier: string;
+  tracking: string | null;
+  items: { code: string; recipientName: string; city: string; contents: string; kg: number }[];
+}): Promise<void> {
+  const rows: ManifestRow[] = batch.items.map((i, n) => ({
+    no: n + 1,
+    code: i.code,
+    recipient: i.recipientName,
+    city: i.city,
+    contents: i.contents,
+    kg: formatKg(i.kg),
+    tracking: batch.tracking ?? "",
+  }));
+  const doc = await newDoc(`Manifest ${batch.code}: ${batch.from} ke ${batch.to}`, batch.carrier, {
+    orientation: "landscape",
+  });
+  const { pdf, width, margin } = doc;
+  pdf.setFontSize(10);
+  pdf.text(
+    safe(`Pembawa: ${batch.carrier}${batch.tracking ? `, resi ${batch.tracking}` : ""}`),
+    margin,
+    doc.y,
+  );
+  pdf.text(`Tanggal: ${formatReceiptDate(Date.now())}`, width - margin, doc.y, { align: "right" });
+  doc.y += 22;
+  const cols: [string, number][] = [
+    ["No", 28],
+    ["Kode", 90],
+    ["Penerima", 130],
+    ["Kota", 110],
+    ["Isi", 210],
+    ["Berat", 60],
+  ];
+  let cx = margin;
+  pdf.setFont("helvetica", "bold");
+  for (const [name, w] of cols) {
+    pdf.text(name, cx, doc.y);
+    cx += w;
+  }
+  pdf.setFont("helvetica", "normal");
+  doc.y += 18;
+  const height = pdf.internal.pageSize.getHeight();
+  for (const r of rows) {
+    if (doc.y > height - 120) {
+      pdf.addPage();
+      doc.y = 60;
+    }
+    const cells = [String(r.no), r.code, r.recipient, r.city, r.contents, r.kg];
+    let x = margin;
+    let rowHeight = 14;
+    cells.forEach((cell, i) => {
+      const w = cols[i]![1];
+      const lines = pdf.splitTextToSize(safe(cell), w - 8) as string[];
+      pdf.text(lines, x, doc.y);
+      rowHeight = Math.max(rowHeight, lines.length * 12);
+      x += w;
+    });
+    doc.y += rowHeight + 6;
+  }
+  if (doc.y > height - 110) {
+    pdf.addPage();
+    doc.y = 70;
+  }
+  doc.y += 28;
+  pdf.text(`Total paket: ${rows.length}`, margin, doc.y);
+  doc.y += 30;
+  pdf.text("Pengirim", margin, doc.y);
+  pdf.text("Penerima", width / 2, doc.y);
+  pdf.line(margin, doc.y + 52, margin + 170, doc.y + 52);
+  pdf.line(width / 2, doc.y + 52, width / 2 + 170, doc.y + 52);
+  pdf.save(`manifest-${batch.code}.pdf`);
+}

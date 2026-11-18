@@ -14,7 +14,18 @@ import {
   formatKg,
   normalizeJapanPhone,
   normalizeJapanPostal,
+  BATCH_DESTINATION,
+  CHECKIN_STATUS,
+  DEPART_STATUS,
+  HUB_MODES,
+  INBOUND_STATUS,
+  LOADABLE_STATUS,
+  batchCodeFrom,
   buildLabelData,
+  canWorkAt,
+  etaText,
+  parseAnyCode,
+  routePosition,
   labelFileName,
   mapsSearchUrl,
   parseScanCode,
@@ -197,7 +208,8 @@ describe("shipping lifecycle", () => {
 
   it("moves forward one step at a time and splits reject from cancel by payment", () => {
     expect(SHIPPING_ADMIN_NEXT.AWAITING_DROP).toBe("RECEIVED");
-    expect(SHIPPING_ADMIN_NEXT.PAID).toBe("SHIPPED");
+    expect(SHIPPING_ADMIN_NEXT.PAID).toBeUndefined(); // hub moves happen by scan, not by a button
+    expect(SHIPPING_ADMIN_NEXT.SHIPPED).toBe("ARRIVED");
     expect(SHIPPING_ADMIN_NEXT.RECEIVED).toBeUndefined(); // billing is its own action
     expect(adminCanBill("RECEIVED")).toBe(true);
     expect(adminCanBill("PAID")).toBe(false);
@@ -233,16 +245,14 @@ describe("drop point map link", () => {
 describe("QR label and scan", () => {
   it("encodes only the shipment code in a link under the site", () => {
     expect(scanUrl("https://djiwatravel.com/", "DJW-KR-0042")).toBe(
-      "https://djiwatravel.com/admin/shipping?scan=DJW-KR-0042",
+      "https://djiwatravel.com/petugas?scan=DJW-KR-0042",
     );
   });
 
   it("reads the code from a bare code, the label link or noisy scanner text", () => {
     expect(parseScanCode("DJW-KR-0042")).toBe("DJW-KR-0042");
     expect(parseScanCode("  djw-kr-0042\r\n")).toBe("DJW-KR-0042");
-    expect(parseScanCode("https://djiwatravel.com/admin/shipping?scan=DJW-KR-0042")).toBe(
-      "DJW-KR-0042",
-    );
+    expect(parseScanCode("https://djiwatravel.com/petugas?scan=DJW-KR-0042")).toBe("DJW-KR-0042");
     expect(parseScanCode("DJW-KR-12345")).toBe("DJW-KR-12345");
     expect(parseScanCode("hello")).toBeNull();
     expect(parseScanCode("DJW-KR-42")).toBeNull();
@@ -265,7 +275,7 @@ describe("QR label and scan", () => {
       DEFAULT_SHIPPING_CONFIG.dropPoint,
       "https://djiwatravel.com",
     );
-    expect(label.qrValue).toBe("https://djiwatravel.com/admin/shipping?scan=DJW-KR-0042");
+    expect(label.qrValue).toBe("https://djiwatravel.com/petugas?scan=DJW-KR-0042");
     expect(label.addressLines).toEqual(["2-21-1 Shibuya, Apt 302", "Shibuya-ku, Tokyo 150-0002"]);
     expect(label.dropPointName).toBe("Djiwa Tasikmalaya");
     expect(labelFileName("DJW-KR-0042", "pdf")).toBe("label-DJW-KR-0042.pdf");
@@ -277,5 +287,84 @@ describe("QR label and scan", () => {
     expect(parseShippingConfig({ minPhotos: 0 }).minPhotos).toBe(0);
     expect(() => parseShippingConfig({ minPhotos: 5 })).toThrow();
     expect(parseShippingConfig({}).minPhotos).toBe(1); // settings saved before photos existed
+  });
+});
+
+describe("route Tasikmalaya, Bandung, Jakarta, Japan", () => {
+  it("moves a batch one leg at a time and every hub has its own scan modes", () => {
+    expect(BATCH_DESTINATION).toEqual({ TASIK: "BANDUNG", BANDUNG: "JAKARTA", JAKARTA: "JAPAN" });
+    expect(HUB_MODES.TASIK.map((m) => m.id)).toEqual(["receive", "load"]);
+    expect(HUB_MODES.BANDUNG.map((m) => m.id)).toEqual(["checkin", "load"]);
+    expect(HUB_MODES.JAKARTA.map((m) => m.label)).toEqual(["Check-in", "Serah ke Jepang"]);
+    // paid parcels leave Tasikmalaya, checked-in parcels leave Bandung and Jakarta
+    expect(LOADABLE_STATUS).toEqual({
+      TASIK: "PAID",
+      BANDUNG: "AT_BANDUNG",
+      JAKARTA: "AT_JAKARTA",
+    });
+    expect(DEPART_STATUS).toEqual({
+      TASIK: "TO_BANDUNG",
+      BANDUNG: "TO_JAKARTA",
+      JAKARTA: "SHIPPED",
+    });
+    expect(INBOUND_STATUS.BANDUNG).toBe("TO_BANDUNG");
+    expect(CHECKIN_STATUS.JAKARTA).toBe("AT_JAKARTA");
+  });
+
+  it("limits staff to their hubs while Admin works anywhere", () => {
+    expect(canWorkAt(["BANDUNG"], "BANDUNG", false)).toBe(true);
+    expect(canWorkAt(["BANDUNG"], "JAKARTA", false)).toBe(false);
+    expect(canWorkAt([], "TASIK", true)).toBe(true);
+  });
+
+  it("places the parcel on the four-point route", () => {
+    expect(routePosition("PAID")).toEqual({ node: 0, moving: false });
+    expect(routePosition("TO_BANDUNG")).toEqual({ node: 0, moving: true });
+    expect(routePosition("AT_BANDUNG")).toEqual({ node: 1, moving: false });
+    expect(routePosition("TO_JAKARTA")).toEqual({ node: 1, moving: true });
+    expect(routePosition("SHIPPED")).toEqual({ node: 2, moving: true });
+    expect(routePosition("DELIVERED")).toEqual({ node: 3, moving: false });
+  });
+
+  it("tells the customer when to expect the parcel, from the legs set in Admin", () => {
+    const config = DEFAULT_SHIPPING_CONFIG;
+    expect(etaText("TO_BANDUNG", config)).toBe("Estimasi tiba di Bandung dalam 1 hari.");
+    expect(etaText("SHIPPED", config)).toBe("Estimasi tiba di Jepang dalam 5 sampai 7 hari.");
+    expect(etaText("AT_BANDUNG", config)).toBeNull();
+    expect(etaText("TO_JAKARTA", { eta: { ...config.eta, toJakartaDays: 2 } })).toBe(
+      "Estimasi tiba di Jakarta dalam 2 hari.",
+    );
+  });
+
+  it("reads parcel and batch codes, and numbers batches", () => {
+    expect(parseAnyCode("https://djiwatravel.com/petugas?scan=DJW-KR-0042")).toEqual({
+      kind: "parcel",
+      code: "DJW-KR-0042",
+    });
+    expect(parseAnyCode(" bch-0007\n")).toEqual({ kind: "batch", code: "BCH-0007" });
+    expect(parseAnyCode("BCH-7")).toBeNull();
+    expect(batchCodeFrom(7)).toBe("BCH-0007");
+  });
+
+  it("ships with Bandung and Jakarta hubs, leg times and carriers that Admin can change", () => {
+    const d = DEFAULT_SHIPPING_CONFIG;
+    expect(d.hubs.BANDUNG.name).toBeTruthy();
+    expect(d.eta).toEqual({
+      toBandungDays: 1,
+      toJakartaDays: 1,
+      toJapanMinDays: 5,
+      toJapanMaxDays: 7,
+    });
+    expect(d.transport).toEqual(["Mobil Djiwa", "Ekspedisi"]);
+    const parsed = parseShippingConfig({
+      hubs: { BANDUNG: { name: "Gudang Cibiru" } },
+      eta: { toBandungDays: 2 },
+      transport: ["Mobil Djiwa"],
+    });
+    expect(parsed.hubs.BANDUNG).toEqual({ name: "Gudang Cibiru", address: d.hubs.BANDUNG.address });
+    expect(parsed.eta.toBandungDays).toBe(2);
+    expect(() => parseShippingConfig({ eta: { toJapanMinDays: 9, toJapanMaxDays: 3 } })).toThrow();
+    expect(() => parseShippingConfig({ transport: [] })).toThrow();
+    expect(parseShippingConfig({}).hubs).toEqual(d.hubs); // settings saved before the route existed
   });
 });

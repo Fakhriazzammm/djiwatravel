@@ -65,7 +65,8 @@ export const adminNavigationGroups = [
     label: "Kirim Barang",
     items: [
       ["Pengiriman", "/admin/shipping", Truck],
-      ["Scan QR", "/admin/shipping#scan", ScanLine],
+      ["Scan & Batch", "/admin/shipping#scan", ScanLine],
+      ["Petugas", "/admin/shipping#staff", UsersRound],
       ["Pengaturan", "/admin/shipping#settings", Settings],
     ],
   },

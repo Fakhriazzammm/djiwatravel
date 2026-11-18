@@ -128,6 +128,18 @@ section[hidden]{display:none}
 .thumbs{display:flex;gap:6px}.thumbs>*{flex:1;height:64px}.add{border:1.5px dashed #c9ccd6;border-radius:12px;display:grid;place-items:center;color:#6b7080;font-size:11px;text-align:center;line-height:1.2}
 .view{height:190px;border-radius:14px;background:#1c1d22;position:relative;display:grid;place-items:center;color:#cfd3dc;font-size:11px}.view i{position:absolute;inset:30px;border:2px solid #fff;border-radius:12px;opacity:.85}
 .ok{color:#15803d;font-weight:700}.bad{color:#b42318;font-weight:700}
+.nodes{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:0;overflow-x:auto;margin:10px 0}
+.node{position:relative;background:var(--panel);border:1px solid var(--bd);border-radius:14px;padding:10px 12px;margin-right:22px;min-width:150px}
+.node:not(:last-child)::after{content:"›";position:absolute;right:-18px;top:50%;transform:translateY(-50%);color:var(--mut);font-size:20px}
+.node b{display:block;font-size:14px}.node small{display:block;color:var(--mut);font-size:12px;margin-top:2px}
+.node .t{display:inline-block;margin-top:6px;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700;background:var(--acc-soft);color:var(--acc)}
+.mx{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--bd);border-radius:14px;overflow:hidden;font-size:12.5px}
+.mx th{background:var(--bg);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);padding:8px}
+.mx td{padding:8px;border-top:1px solid var(--bd);vertical-align:top}
+.scrollx{overflow-x:auto}
+.route{display:flex;align-items:center;margin:4px 0 12px}.route i{flex:none;width:12px;height:12px;border-radius:50%;background:#cfd3dc}.route i.on{background:var(--p-pri)}.route i.now{background:var(--p-blue);box-shadow:0 0 0 4px var(--p-soft)}.route u{flex:1;height:3px;background:#d9dce4;text-decoration:none}.route u.on{background:var(--p-pri)}
+.rl{display:flex;justify-content:space-between;font-size:10px;color:var(--p-mut);margin:-8px 0 8px}
+.prog2{height:6px;border-radius:6px;background:#e1e4ea;overflow:hidden}.prog2 i{display:block;height:100%;background:var(--p-pri)}
 @media (prefers-reduced-motion:no-preference){.tabs button{transition:background .15s}}
 </style></head>
 <body><main>
@@ -136,6 +148,7 @@ section[hidden]{display:none}
 
 <div class="tabs" role="tablist" id="tabs">
   <button role="tab" aria-selected="true" data-t="flow">User flow</button>
+  <button role="tab" aria-selected="false" data-t="route">Rute 4 titik (baru)</button>
   <button role="tab" aria-selected="false" data-t="cust">Layar customer</button>
   <button role="tab" aria-selected="false" data-t="adm">Layar Admin</button>
   <button role="tab" aria-selected="false" data-t="dec">Aturan &amp; keputusan</button>
@@ -457,7 +470,7 @@ section[hidden]{display:none}
   <div class="dec">
     <div><b><em>Foto isi paket</em> wajib, minimal 1</b>Diambil dari kamera atau galeri di langkah Barang, dikecilkan dan EXIF dibuang di perangkat. Ada halaman contoh cara memotret. Kalau unggahan gagal, booking tetap jadi dan halaman pengiriman menawarkan "Lengkapi foto".</div>
     <div><b>Admin <em>meninjau foto</em> sebelum paket diantar</b>Setujui, minta foto ulang dengan catatan, atau tolak bila ada barang terlarang. Pelanggan diberi tahu. Tanpa status baru: booking tetap Menunggu diantar.</div>
-    <div><b>Label <em>QR</em> di halaman booking</b>QR berisi tautan ke halaman scan Admin yang datanya hanya kode DJW-KR, tanpa data pribadi. Orang selain Admin yang membukanya hanya diminta masuk. Pelanggan menyimpan atau mencetak label lalu menempelnya di paket.</div>
+    <div><b>Label <em>QR</em> di halaman booking</b>QR berisi tautan ke halaman petugas (/petugas) yang datanya hanya kode DJW-KR, tanpa data pribadi. Orang yang bukan petugas atau Admin hanya diminta masuk. Pelanggan menyimpan atau mencetak label lalu menempelnya di paket.</div>
     <div><b>Scan Admin: <em>Terima</em> berubah otomatis</b>Scan QR di drop point langsung mengubah status ke Diterima, mencatat siapa dan kapan, dan mengabari pelanggan. Scan dua kali tidak mengubah apa-apa. Ada Urungkan.</div>
     <div><b>Timbang dan Serah ke kurir <em>membuka formulir</em></b>Dua langkah ini butuh data (berat, kurir, resi), jadi scan membuka detail pengiriman yang tepat, bukan mengubah status sendiri.</div>
     <div><b>Cara scan</b>Kamera di halaman scan Admin (browser yang bisa membaca QR), scanner USB, atau ketik kode. Bila browser tidak bisa, scan dengan aplikasi Kamera ponsel: QR membuka halaman scan dan cukup satu ketuk Terima. Hanya Admin yang bisa scan. Kode milik pengiriman yang dibatalkan atau ditolak menampilkan peringatan.</div>
@@ -471,16 +484,125 @@ section[hidden]{display:none}
     <div><b>Dibuat di perangkat</b>PDF dan PNG dirender di browser dengan pustaka yang sudah dipakai aplikasi (jsPDF, html2canvas, qrcode.react), jadi tanpa dependensi baru dan tanpa mengirim data pelanggan ke layanan luar.</div>
   </div>
 </section>
+<section id="route" hidden>
+  <p class="sub">Rute baru: Tasikmalaya (drop point) → Bandung (gudang, pengumpulan) → Jakarta (hub ekspor) → Jepang. Setiap titik punya satu langkah scan, dan paket dikirim antar titik dalam <b>batch</b> supaya petugas cukup scan, bukan mengetik.</p>
+  <div class="nodes">
+    <div class="node"><b>Tasikmalaya</b><small>Drop point. Terima, timbang, tagih</small><span class="t">Scan: terima, muat</span></div>
+    <div class="node"><b>Bandung</b><small>Gudang. Kumpulkan dan konsolidasi</small><span class="t">Scan: check-in, muat</span></div>
+    <div class="node"><b>Jakarta</b><small>Hub ekspor. Serah ke partner</small><span class="t">Scan: check-in, serah</span></div>
+    <div class="node"><b>Jepang</b><small>Partner mengantar ke penerima</small><span class="t">Resi partner</span></div>
+  </div>
+
+  <h2 style="margin-top:14px">Siapa scan apa, dan statusnya jadi apa</h2>
+  <div class="scrollx"><table class="mx"><thead><tr><th>Titik</th><th>Aksi petugas</th><th>Status paket</th><th>Pelanggan dikabari</th></tr></thead><tbody>
+    <tr><td rowspan="3"><b>Tasikmalaya</b></td><td><b>Terima</b>: scan QR label (otomatis)</td><td>Diterima di Tasikmalaya</td><td>Ya</td></tr>
+    <tr><td><b>Timbang &amp; tagih</b> (berat, foto), pelanggan bayar</td><td>Menunggu bayar → Dibayar</td><td>Ya</td></tr>
+    <tr><td><b>Muat ke Bandung</b>: scan tiap paket ke batch, lalu Berangkat</td><td>Menuju Bandung</td><td>Ya</td></tr>
+    <tr><td rowspan="2"><b>Bandung</b></td><td><b>Check-in</b>: scan QR batch lalu paket (atau scan paket saja)</td><td>Di gudang Bandung</td><td>Ya</td></tr>
+    <tr><td><b>Muat ke Jakarta</b>: scan paket ke batch baru, lalu Berangkat</td><td>Menuju Jakarta</td><td>Ya</td></tr>
+    <tr><td rowspan="2"><b>Jakarta</b></td><td><b>Check-in</b>: bongkar batch, selisih ditandai</td><td>Di Jakarta</td><td>Ya</td></tr>
+    <tr><td><b>Serah ke partner</b>: resi master + resi tiap paket</td><td>Dikirim ke Jepang</td><td>Ya, dengan resi</td></tr>
+    <tr><td><b>Jepang</b></td><td>Tandai tiba (atau otomatis dari pelacakan partner), pelanggan konfirmasi</td><td>Tiba di Jepang → Selesai</td><td>Ya</td></tr>
+  </tbody></table></div>
+
+  <h2 style="margin-top:16px">Aturan supaya cepat dan aman</h2>
+  <div class="dec">
+    <div><b>Satu scan = satu aksi.</b>Lokasi petugas dipilih sekali per perangkat (Tasikmalaya, Bandung, Jakarta). Dari lokasi dan mode, sistem tahu status berikutnya, jadi tidak ada dropdown status.</div>
+    <div><b>Urutan terkunci.</b>Paket tidak bisa loncat titik. Scan di Jakarta untuk paket yang belum dimuat dari Bandung ditolak dengan pesan jelas.</div>
+    <div><b>Batch menghemat waktu.</b>Satu batch = satu perjalanan antar titik (kode BCH-0007, pembawa, resi ekspedisi bila ada). Muat dengan scan, satu ketuk Berangkat, semua paket pindah status sekaligus. Saat tiba, scan paket satu per satu atau satu ketuk "Semua sesuai".</div>
+    <div><b>Selisih langsung kelihatan.</b>Diharapkan 14, ter-scan 13: paket yang belum ter-scan ditandai, bisa dicek ulang atau ditandai hilang dengan catatan.</div>
+    <div><b>Foto kondisi opsional di tiap check-in</b>Satu ketuk ambil foto. Wajib bila petugas menandai rusak. Foto tersimpan di riwayat paket dan terlihat di Admin.</div>
+    <div><b>Timbang ulang opsional di Jakarta.</b>Isi berat versi partner untuk menghitung margin yang akurat. Tagihan pelanggan tidak berubah.</div>
+    <div><b>Tagihan tetap di Tasikmalaya.</b>Paket baru boleh dimuat ke Bandung setelah dibayar.</div>
+  </div>
+
+  <h2 style="margin-top:16px">Layar</h2>
+  <div class="row">
+    <div class="step"><div class="cap">R1 Customer <i>lacak 4 titik</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">DJW-KR-0042</div><span class="badge b-blue" style="margin-left:auto">Menuju Jakarta</span></div>
+        <div class="body">
+          <div class="card"><div class="mut">Posisi paket</div>
+            <div class="route" style="margin-top:8px"><i class="on"></i><u class="on"></u><i class="on"></i><u class="on"></u><i class="now"></i><u></u><i></i></div>
+            <div class="rl"><span>Tasik</span><span>Bandung</span><span>Jakarta</span><span>Jepang</span></div>
+            <div class="prog2"><i style="width:55%"></i></div>
+            <div class="mut" style="margin-top:6px">Dalam perjalanan Bandung ke Jakarta. Estimasi tiba di Jakarta besok.</div></div>
+          <div class="lbl">Riwayat</div>
+          <div class="tl"><div class="now"><b>Menuju Jakarta</b><small>21 Nov, 08.10 · batch BCH-0007</small></div><div class="done"><b>Di gudang Bandung</b><small>20 Nov, 17.40 · foto kondisi</small></div><div class="done"><b>Menuju Bandung</b><small>20 Nov, 13.20</small></div><div class="done"><b>Dibayar</b><small>20 Nov, 11.02</small></div><div class="done"><b>Diterima di Tasikmalaya</b><small>20 Nov, 10.12</small></div><div class="done"><b>Booking dibuat</b><small>18 Nov, 19.30</small></div></div>
+        </div></div></div>
+
+    <div class="step"><div class="cap">R2 Admin <i>scan di Bandung</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Scan paket</div></div>
+        <div class="body">
+          <div class="chips" style="margin-bottom:8px"><span class="on">Bandung</span><span>Tasikmalaya</span><span>Jakarta</span></div>
+          <div class="chips" style="margin-bottom:8px"><span class="on">Check-in</span><span>Muat ke Jakarta</span></div>
+          <div class="view"><i></i>Arahkan kamera ke QR paket atau batch</div>
+          <div class="card" style="margin-top:8px;background:#e8f8ed;border-color:#b8e6c6"><div class="ok" style="font-size:18px">Di gudang Bandung</div><b class="code" style="font-size:16px">DJW-KR-0042</b><div class="mut">Rina T., Tokyo · 2,4 kg · dibayar</div>
+            <div style="display:flex;gap:6px;margin-top:8px"><span class="btn sm g">Foto kondisi</span><span class="btn sm g">Rusak</span><span class="btn sm g">Urungkan</span></div></div>
+          <div class="lbl">Hari ini di Bandung</div>
+          <div class="grp"><div><span class="v">Check-in</span><span class="ok">9 paket</span></div><div><span class="v">Siap muat ke Jakarta</span><span class="ok">14 paket</span></div></div>
+        </div></div></div>
+
+    <div class="step"><div class="cap">R3 Admin <i>muat batch</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Batch BCH-0007</div><span class="badge b-amb" style="margin-left:auto">Terbuka</span></div>
+        <div class="body">
+          <div class="card"><b style="font-size:13px">Bandung → Jakarta</b>
+            <div class="field" style="margin:8px 0 6px"><small>Pembawa / ekspedisi</small><b>Mobil Djiwa · B 1234 XYZ</b></div>
+            <div class="mut">Scan paket untuk dimuat</div>
+            <div class="prog2" style="margin-top:6px"><i style="width:100%"></i></div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px"><b style="font-size:16px">14 paket dimuat</b><span class="mut">28,6 kg</span></div></div>
+          <div class="view" style="height:110px;margin-top:8px"><i style="inset:14px"></i>Scan paket berikutnya</div>
+          <div class="lbl">Terakhir dimuat</div>
+          <div class="grp"><div><span class="v">DJW-KR-0042</span><span class="ok">Dimuat</span></div><div><span class="v">DJW-KR-0044</span><span class="ok">Dimuat</span></div><div><span class="v">DJW-KR-0039</span><span class="bad">Belum dibayar, tidak bisa dimuat</span></div></div>
+        </div>
+        <div class="foot"><div class="btn">Berangkat (14 paket)</div><div class="mut" style="text-align:center;margin-top:6px"><u>Foto muatan</u> · <u>Cetak manifest</u></div></div></div></div>
+
+    <div class="step"><div class="cap">R4 Admin <i>bongkar di Jakarta</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Tiba: BCH-0007</div><span class="badge b-blue" style="margin-left:auto">Menuju Jakarta</span></div>
+        <div class="body">
+          <div class="card"><div class="mut">Ter-scan dari yang diharapkan</div><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:24px">13 / 14</b><span class="bad">1 selisih</span></div><div class="prog2" style="margin-top:6px"><i style="width:93%"></i></div></div>
+          <div class="view" style="height:100px;margin-top:8px"><i style="inset:12px"></i>Scan paket</div>
+          <div class="lbl">Belum ter-scan</div>
+          <div class="grp"><div><span class="v">DJW-KR-0049<br><span class="mut" style="font-weight:400">Pakaian · 1,1 kg</span></span><span class="btn sm g">Cek ulang</span></div></div>
+        </div>
+        <div class="foot"><div class="btn">Selesai bongkar (13 sesuai)</div><div class="mut" style="text-align:center;margin-top:6px"><u>Semua sesuai</u> tidak tersedia bila ada selisih</div></div></div></div>
+
+    <div class="step"><div class="cap">R5 Admin <i>serah ke partner di Jakarta</i></div>
+      <div class="phone"><div class="top"><div class="ib">‹</div><div class="tt">Serah ke Jepang</div></div>
+        <div class="body">
+          <div class="field"><small>Partner</small><b>Partner Djiwa ▾</b></div>
+          <div class="field"><small>Resi master (satu untuk semua paket)</small><b>EE9988776655ID</b></div>
+          <div class="lbl">Paket di Jakarta (13)</div>
+          <div class="grp"><div><span class="v">DJW-KR-0042</span><span class="mut">resi sama</span></div><div><span class="v">DJW-KR-0044</span><span class="mut">resi sama</span></div><div><span class="v">DJW-KR-0051</span><span class="field" style="margin:0;padding:3px 8px"><b>EE…12</b></span></div></div>
+          <div class="field" style="margin-top:8px"><small>Berat partner (opsional, untuk margin)</small><b>31,2 kg total</b></div>
+        </div>
+        <div class="foot"><div class="btn">Serahkan 13 paket</div></div></div></div>
+  </div>
+
+  <h2 style="margin-top:8px">Status baru</h2>
+  <div class="status-flow">
+    <span class="pill">Menunggu diantar</span><span class="arrow">›</span><span class="pill">Diterima di Tasikmalaya</span><span class="arrow">›</span><span class="pill">Menunggu bayar</span><span class="arrow">›</span><span class="pill">Dibayar</span><span class="arrow">›</span><span class="pill">Menuju Bandung</span><span class="arrow">›</span><span class="pill">Di gudang Bandung</span><span class="arrow">›</span><span class="pill">Menuju Jakarta</span><span class="arrow">›</span><span class="pill">Di Jakarta</span><span class="arrow">›</span><span class="pill">Dikirim ke Jepang</span><span class="arrow">›</span><span class="pill">Tiba di Jepang</span><span class="arrow">›</span><span class="pill">Selesai</span>
+  </div>
+  <p class="sub" style="margin-top:8px">Cabang: Dibatalkan, Ditolak, Kedaluwarsa, dan Bermasalah (rusak atau hilang, dengan catatan dan foto). Pelanggan melihat 4 titik di bar posisi, dengan riwayat lengkap di bawahnya.</p>
+
+  <h2 style="margin-top:18px">Sudah diputuskan</h2>
+  <div class="dec">
+    <div><b>1. Pembawa antar kota: <em>campuran</em></b>Di batch, pembawa dipilih dari daftar (Mobil Djiwa, Ekspedisi, atau ketik sendiri) dengan resi ekspedisi opsional. Partner ke Jepang dipilih dari daftar kurir partner.</div>
+    <div><b>2. <em>Akun petugas</em> dibuat Admin</b>Admin mendaftarkan email Google petugas, nama, dan lokasi kerjanya (Tasikmalaya, Bandung, Jakarta) di Admin › Kirim Barang › Petugas. Petugas masuk di /petugas dan hanya bisa bekerja di lokasinya. Petugas Tasikmalaya boleh menerima, menimbang, menagih, dan menolak. Pengaturan, refund, dan koreksi tetap hanya Admin.</div>
+    <div><b>3. Dimuat hanya setelah <em>dibayar</em></b>Scan muat untuk paket yang belum dibayar ditolak dengan pesan jelas.</div>
+    <div><b>4. <em>Estimasi waktu</em> tiap leg</b>Diatur di Pengaturan (default 1 hari, 1 hari, 5 sampai 7 hari) dan tampil ke pelanggan di bar posisi.</div>
+    <div><b>5. Tiba di Jepang: <em>manual oleh Admin</em></b>Satu ketuk per batch, atau per paket.</div>
+  </div>
+</section>
 </main>
 <script>
 (function(){
   var tabs=document.getElementById('tabs');
   function show(id){
-    ['flow','cust','adm','dec'].forEach(function(t){document.getElementById(t).hidden=(t!==id)});
+    ['flow','route','cust','adm','dec'].forEach(function(t){document.getElementById(t).hidden=(t!==id)});
     [].forEach.call(tabs.querySelectorAll('button'),function(b){b.setAttribute('aria-selected',String(b.dataset.t===id))});
   }
   tabs.addEventListener('click',function(e){var b=e.target.closest('button');if(b){show(b.dataset.t);try{history.replaceState(null,'','#'+b.dataset.t)}catch(_){}}});
-  var h=(location.hash||'').slice(1);if(['flow','cust','adm','dec'].indexOf(h)>-1)show(h);
+  var h=(location.hash||'').slice(1);if(['flow','route','cust','adm','dec'].indexOf(h)>-1)show(h);
 
   var kg=2,RATE=150000;
   var fmt=function(n){return 'Rp'+n.toLocaleString('id-ID')};

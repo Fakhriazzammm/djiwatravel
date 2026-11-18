@@ -12,8 +12,8 @@ export const Route = createFileRoute("/api/shipping-photo/$id")({
           let admin = false;
           let viewerId: string | null = null;
           if (new URL(request.url).searchParams.get("admin") === "1") {
-            const { requireAdmin } = await import("@/lib/admin-guard");
-            await requireAdmin();
+            const { requireOps } = await import("@/lib/shipping-access.server");
+            await requireOps();
             admin = true;
           } else {
             try {

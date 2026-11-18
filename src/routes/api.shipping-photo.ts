@@ -18,7 +18,10 @@ async function receive(request: Request) {
       return json({ error: "Pilih foto dulu." }, 400);
     const { addShippingPhoto, addCustomerShippingPhoto } = await import("@/lib/shipping.server");
     if (form.get("as") === "admin") {
-      return json(await addShippingPhoto(orderId, bytes));
+      const hub = String(form.get("hub") || "TASIK");
+      if (hub !== "TASIK" && hub !== "BANDUNG" && hub !== "JAKARTA")
+        return json({ error: "Lokasi tidak dikenal." }, 400);
+      return json(await addShippingPhoto(orderId, bytes, hub));
     }
     const user = await shippingCustomerFromRequest(request);
     return json(await addCustomerShippingPhoto(user.id, orderId, bytes));

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { pool } from "../db/client.server";
 import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
+import { actorOf, assertActionAllowed, assertHub, requireOps } from "./shipping-access.server";
 import { buildSettingAudit } from "./admin-settings";
 import { getAuthenticatedUser } from "./customer-session.fn";
 import { readCustomerProfile } from "./customer-profile.server";
@@ -27,7 +28,6 @@ import {
   REMINDER_AFTER_DAYS,
   SHIPPING_ADMIN_NEXT,
   SHIPPING_MAX_PHOTOS,
-  parseScanCode,
   SHIPPING_SETTING_KEY,
   SHIPPING_STATUS_LABEL,
   adminCanBill,
@@ -35,6 +35,7 @@ import {
   adminCanReject,
   customerCanCancel,
   dropDeadline,
+  etaText,
   estimateShippingIdr,
   formatIdr,
   formatKg,
@@ -93,7 +94,7 @@ export async function getShippingStatusHandler() {
 
 /* --------------------------------------------------------------- order rows */
 
-type OrderRow = {
+export type OrderRow = {
   id: string;
   public_code: string;
   customer_auth_subject: string;
@@ -143,26 +144,32 @@ type OrderRow = {
   photo_review: "PENDING" | "APPROVED" | "REDO";
   photo_review_note: string | null;
   photo_reviewed_at: Date | null;
+  current_hub: "TASIK" | "BANDUNG" | "JAKARTA" | null;
+  batch_id: string | null;
+  batch_checked_at: Date | null;
+  problem_from: string | null;
+  problem_note: string | null;
   created_at: Date;
   updated_at: Date;
 };
 
 type Db = { query: (sql: string, params?: unknown[]) => Promise<unknown> };
 
-async function logEvent(
+export async function logEvent(
   client: Db,
   orderId: string,
   status: string,
   actor: string,
   note?: string | null,
+  where?: { hub?: string | null; batchCode?: string | null },
 ) {
   await client.query(
-    "insert into shipping_order_events (order_id, status, actor, note) values ($1, $2, $3, $4)",
-    [orderId, status, actor, note ?? null],
+    "insert into shipping_order_events (order_id, status, actor, note, hub, batch_code) values ($1, $2, $3, $4, $5, $6)",
+    [orderId, status, actor, note ?? null, where?.hub ?? null, where?.batchCode ?? null],
   );
 }
 
-async function notifyOrder(
+export async function notifyOrder(
   order: Pick<OrderRow, "id" | "public_code" | "customer_auth_subject">,
   key: string,
   body: string,
@@ -178,7 +185,7 @@ async function notifyOrder(
   }).catch(() => undefined);
 }
 
-const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
+export const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
 
 /* --------------------------------------------------------------- booking */
 
@@ -654,12 +661,14 @@ export type ShippingEventView = {
   at: string;
   actor?: string;
   note?: string | null;
+  hub?: string | null;
+  batchCode?: string | null;
 };
 
-type PhotoIds = { customer: string[]; admin: string[] };
-const NO_PHOTOS: PhotoIds = { customer: [], admin: [] };
+export type PhotoIds = { customer: string[]; admin: string[] };
+export const NO_PHOTOS: PhotoIds = { customer: [], admin: [] };
 
-async function photosFor(orderIds: string[]) {
+export async function photosFor(orderIds: string[]) {
   const map = new Map<string, PhotoIds>();
   if (orderIds.length === 0) return map;
   const rows = await pool.query(
@@ -674,7 +683,7 @@ async function photosFor(orderIds: string[]) {
   return map;
 }
 
-const view = (o: OrderRow, photos: PhotoIds, events: ShippingEventView[] = []) => {
+export const view = (o: OrderRow, photos: PhotoIds, events: ShippingEventView[] = []) => {
   const rule = { minKg: Number(o.min_kg), roundKg: Number(o.round_kg) };
   return {
     id: o.id,
@@ -725,6 +734,8 @@ const view = (o: OrderRow, photos: PhotoIds, events: ShippingEventView[] = []) =
     shippedAt: iso(o.shipped_at),
     arrivedAt: iso(o.arrived_at),
     statusReason: o.status_reason,
+    currentHub: o.current_hub,
+    problemNote: o.problem_note,
     createdAt: iso(o.created_at)!,
     events,
   };
@@ -752,18 +763,23 @@ export async function getMyShippingOrderHandler({
   const photos = await photosFor([order.id]);
   const events = (
     await pool.query(
-      "select status, created_at from shipping_order_events where order_id = $1 order by created_at",
+      "select status, created_at, hub, batch_code from shipping_order_events where order_id = $1 and actor <> 'internal' order by created_at",
       [order.id],
     )
-  ).rows.map((e: { status: string; created_at: Date }) => ({
-    status: e.status,
-    at: new Date(e.created_at).toISOString(),
-  }));
+  ).rows.map(
+    (e: { status: string; created_at: Date; hub: string | null; batch_code: string | null }) => ({
+      status: e.status,
+      at: new Date(e.created_at).toISOString(),
+      hub: e.hub,
+      batchCode: e.batch_code,
+    }),
+  );
   const config = await getShippingConfig();
   return {
     ...view(order, photos.get(order.id) ?? NO_PHOTOS, events),
     dropPoint: config.dropPoint,
     minPhotos: config.minPhotos,
+    eta: etaText(order.status, config),
   };
 }
 
@@ -843,12 +859,22 @@ async function insertPhoto(orderId: string, bytes: Uint8Array, source: "CUSTOMER
   return (row.rows[0] as { id: string }).id;
 }
 
-/** Admin attaches a weigh-in photo (scale and contents) to a shipment. */
-export async function addShippingPhoto(orderId: string, bytes: Uint8Array) {
-  await requireAdmin();
+/**
+ * The team attaches a photo to a shipment: a weigh-in photo at the drop point, or (with `hub`) a
+ * condition photo taken when the parcel is checked in at a hub. Staff only for their own hubs.
+ */
+export async function addShippingPhoto(
+  orderId: string,
+  bytes: Uint8Array,
+  hub: "TASIK" | "BANDUNG" | "JAKARTA" = "TASIK",
+) {
+  const ops = await requireOps();
+  assertHub(ops, hub);
   const order = await pool.query("select id from shipping_orders where id = $1", [orderId]);
   if (order.rows.length === 0) throw new Error("Pengiriman tidak ditemukan");
-  return { id: await insertPhoto(orderId, bytes, "ADMIN") };
+  const id = await insertPhoto(orderId, bytes, "ADMIN");
+  await pool.query("update shipping_photos set hub = $2 where id = $1", [id, hub]);
+  return { id };
 }
 
 /** The customer adds or replaces proof photos until the parcel is at the drop point. */
@@ -1052,11 +1078,12 @@ export async function adminShippingActionHandler({
 }: {
   data: ReturnType<typeof adminShippingActionInput>;
 }) {
-  await requireAdmin();
-  const actor = (await getAdminEmailHandler()) ?? "admin";
+  const ops = await requireOps();
+  const actor = actorOf(ops);
   const order = (await pool.query("select * from shipping_orders where id = $1", [data.orderId]))
     .rows[0] as OrderRow | undefined;
   if (!order) throw new Error("Pengiriman tidak ditemukan");
+  assertActionAllowed(ops, data.action, order.status);
 
   if (data.action === "check_payment")
     return { ok: true, result: await settleShippingOrder(order.id) };
@@ -1197,10 +1224,6 @@ export async function adminShippingActionHandler({
     if (data.action === "advance") {
       const next = SHIPPING_ADMIN_NEXT[order.status];
       if (!next) throw new Error("Status ini tidak bisa dimajukan");
-      if (next === "SHIPPED" && (!data.courier || !data.trackingNumber))
-        throw new Error("Kurir dan nomor resi wajib diisi");
-      if (next === "SHIPPED" && !config.couriers.includes(data.courier!))
-        throw new Error("Pilih kurir dari daftar di Pengaturan");
       const updated = await client.query(
         `update shipping_orders set status = $2,
                 courier = coalesce($3, courier), tracking_number = coalesce($4, tracking_number),
@@ -1214,11 +1237,7 @@ export async function adminShippingActionHandler({
       if (updated.rows.length === 0) throw new Error("Status sudah berubah, muat ulang");
       await logEvent(client, order.id, next, actor, data.note);
       await client.query("commit");
-      const text: Partial<Record<ShippingStatus, string>> = {
-        ...NOTIFY_TEXT,
-        SHIPPED: `Paketmu dikirim ke Jepang${data.courier ? ` lewat ${data.courier}` : ""}, resi ${data.trackingNumber}.`,
-      };
-      await notifyOrder(order, next, text[next] ?? SHIPPING_STATUS_LABEL[next]);
+      await notifyOrder(order, next, NOTIFY_TEXT[next] ?? SHIPPING_STATUS_LABEL[next]);
       return { ok: true, status: next };
     }
 
@@ -1259,85 +1278,4 @@ export async function adminShippingActionHandler({
   } finally {
     client.release();
   }
-}
-
-/* --------------------------------------------------------------------- scan */
-
-const scanSchema = z.object({
-  code: z.string().trim().min(4).max(400),
-  /** `lookup` only reads. `receive` moves a parcel waiting at the door to "Diterima di drop point". */
-  mode: z.enum(["lookup", "receive"]),
-});
-export const scanShippingInput = (data: unknown) => scanSchema.parse(data);
-
-export async function scanShippingHandler({
-  data,
-}: {
-  data: ReturnType<typeof scanShippingInput>;
-}) {
-  await requireAdmin();
-  const actor = (await getAdminEmailHandler()) ?? "admin";
-  const code = parseScanCode(data.code);
-  if (!code) return { found: false as const, reason: "invalid" as const };
-  const row = (await pool.query("select * from shipping_orders where public_code = $1", [code]))
-    .rows[0] as OrderRow | undefined;
-  if (!row) return { found: false as const, reason: "unknown" as const, code };
-
-  const config = await getShippingConfig();
-  const photos = (await photosFor([row.id])).get(row.id) ?? NO_PHOTOS;
-  const received = (
-    await pool.query(
-      "select created_at from shipping_order_events where order_id = $1 and status = 'RECEIVED' order by created_at desc limit 1",
-      [row.id],
-    )
-  ).rows[0] as { created_at: Date } | undefined;
-  const summary = (status: ShippingStatus) => ({
-    id: row.id,
-    code: row.public_code,
-    status,
-    statusLabel: SHIPPING_STATUS_LABEL[status],
-    recipientName: row.recipient_name,
-    prefecture: row.prefecture,
-    contents: `${row.category}: ${row.contents}`,
-    estimatedKg: Number(row.estimated_kg),
-    photoCount: photos.customer.length,
-    photoShort: photos.customer.length < config.minPhotos,
-    photoReview: row.photo_review,
-    receivedAt: received ? new Date(received.created_at).toISOString() : null,
-  });
-
-  if (shippingIsDead(row.status))
-    return { found: true as const, outcome: "blocked" as const, order: summary(row.status) };
-  if (data.mode === "lookup" || row.status !== "AWAITING_DROP")
-    return {
-      found: true as const,
-      outcome: (data.mode === "receive" ? "already" : "found") as "already" | "found",
-      order: summary(row.status),
-    };
-
-  const client = await pool.connect();
-  try {
-    await client.query("begin");
-    const updated = await client.query(
-      "update shipping_orders set status = 'RECEIVED', updated_at = now() where id = $1 and status = 'AWAITING_DROP' returning id",
-      [row.id],
-    );
-    if (updated.rows.length === 0) {
-      await client.query("rollback");
-      return { found: true as const, outcome: "already" as const, order: summary("RECEIVED") };
-    }
-    await logEvent(client, row.id, "RECEIVED", actor, "Scan QR di drop point");
-    await client.query("commit");
-  } catch (error) {
-    await client.query("rollback").catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
-  await notifyOrder(row, "RECEIVED", NOTIFY_TEXT["RECEIVED"]!);
-  return {
-    found: true as const,
-    outcome: "received" as const,
-    order: { ...summary("RECEIVED"), receivedAt: new Date().toISOString() },
-  };
 }

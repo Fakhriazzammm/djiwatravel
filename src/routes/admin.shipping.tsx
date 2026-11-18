@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useLocation, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, Printer } from "lucide-react";
-import { AdminShippingScan } from "@/components/shipping/admin-shipping-scan";
+import { ShippingOpsApp } from "@/components/shipping/ops/ops-app";
+import { StaffManager } from "@/components/shipping/staff-manager";
 import { PhotoReviewBadge } from "@/components/shipping/shipping-photos";
 import {
   AdminShell,
@@ -12,6 +13,7 @@ import {
 } from "@/components/admin-shell";
 import { formatAdminDateTime } from "@/lib/admin-display";
 import { requireAdmin } from "@/lib/admin-guard";
+import { correctShippingStatus, getOpsMe, resolveShippingProblem } from "@/lib/shipping-ops.fn";
 import {
   getAdminShipping,
   runAdminShippingAction,
@@ -28,6 +30,7 @@ import {
   formatIdr,
   formatKg,
   quoteShipping,
+  shippingIsPaid,
   shippingMarginIdr,
   type ShippingConfig,
   type ShippingStatus,
@@ -40,11 +43,11 @@ export const Route = createFileRoute("/admin/shipping")({
     typeof search["scan"] === "string" && search["scan"].length <= 400
       ? { scan: search["scan"] }
       : {},
-  loader: () => getAdminShipping(),
+  loader: async () => ({ data: await getAdminShipping(), ops: await getOpsMe() }),
   component: AdminShipping,
 });
 
-type Tab = "orders" | "scan" | "settings";
+type Tab = "orders" | "scan" | "staff" | "settings";
 type Data = Awaited<ReturnType<typeof getAdminShipping>>;
 type Order = Data["orders"][number];
 type Notice = { error: boolean; text: string } | null;
@@ -66,25 +69,25 @@ const tone = (s: ShippingStatus) =>
         : "neutral";
 
 /** Statuses where the team has a next move, shown first and counted on the tab. */
-const NEEDS_ACTION: ShippingStatus[] = ["AWAITING_DROP", "RECEIVED", "PAID"];
+const NEEDS_ACTION: ShippingStatus[] = ["AWAITING_DROP", "RECEIVED", "PAID", "PROBLEM"];
 
 function AdminShipping() {
-  const data = Route.useLoaderData();
+  const { data, ops } = Route.useLoaderData();
   const router = useRouter();
   const location = useLocation();
   const { scan } = Route.useSearch();
   const [tab, setTab] = useState<Tab>(scan ? "scan" : "orders");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Which form the team wants after a scan, so the detail opens scrolled to it.
-  const [focus, setFocus] = useState<"weigh" | "ship" | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   useEffect(() => {
     setTab(
       location.hash === "settings"
         ? "settings"
-        : location.hash === "scan" || scan
-          ? "scan"
-          : "orders",
+        : location.hash === "staff"
+          ? "staff"
+          : location.hash === "scan" || scan
+            ? "scan"
+            : "orders",
     );
   }, [location.hash, scan]);
   const refresh = () => router.invalidate();
@@ -112,7 +115,8 @@ function AdminShipping() {
           {(
             [
               ["orders", "Pengiriman"],
-              ["scan", "Scan QR"],
+              ["scan", "Scan & Batch"],
+              ["staff", "Petugas"],
               ["settings", "Pengaturan"],
             ] as const
           ).map(([id, label]) => (
@@ -141,26 +145,15 @@ function AdminShipping() {
         )}
         {tab === "scan" && (
           <div className="mx-auto w-full max-w-md">
-            <AdminShippingScan
-              initialCode={scan ?? null}
-              onChanged={() => void refresh()}
-              onOpen={(id, which) => {
-                setSelectedId(id);
-                setFocus(which ?? null);
-                setTab("orders");
-              }}
-            />
+            <ShippingOpsApp me={ops} initialCode={scan ?? null} onChanged={() => void refresh()} />
           </div>
         )}
+        {tab === "staff" && <StaffManager />}
         {tab === "orders" && (
           <Orders
             data={data}
             selectedId={selectedId}
-            setSelectedId={(id) => {
-              setSelectedId(id);
-              setFocus(null);
-            }}
-            focus={focus}
+            setSelectedId={setSelectedId}
             setNotice={setNotice}
             refresh={refresh}
           />
@@ -177,14 +170,12 @@ function Orders({
   data,
   selectedId,
   setSelectedId,
-  focus,
   setNotice,
   refresh,
 }: {
   data: Data;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
-  focus: "weigh" | "ship" | null;
   setNotice: (n: Notice) => void;
   refresh: () => Promise<unknown>;
 }) {
@@ -335,7 +326,6 @@ function Orders({
                 key={selected.id}
                 order={selected}
                 config={data.config}
-                focus={selectedId === selected.id ? focus : null}
                 setNotice={setNotice}
                 refresh={refresh}
               />
@@ -350,24 +340,20 @@ function Orders({
 function OrderDetail({
   order,
   config,
-  focus,
   setNotice,
   refresh,
 }: {
   order: Order;
   config: ShippingConfig;
-  focus: "weigh" | "ship" | null;
   setNotice: (n: Notice) => void;
   refresh: () => Promise<unknown>;
 }) {
-  const weighRef = useRef<HTMLDivElement>(null);
-  const shipRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [weighed, setWeighed] = useState(order.weighedKg ? String(order.weighedKg) : "");
   const [packing, setPacking] = useState(String(order.packingIdr || 0));
   const [weighNote, setWeighNote] = useState(order.weighNote ?? "");
-  const [courier, setCourier] = useState(order.courier ?? config.couriers[0] ?? "");
-  const [tracking, setTracking] = useState(order.trackingNumber ?? "");
+  const [fixTo, setFixTo] = useState<string>("");
+  const [fixNote, setFixNote] = useState("");
   const [reason, setReason] = useState("");
   const [note, setNote] = useState(order.adminNote ?? "");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -375,20 +361,6 @@ function OrderDetail({
   const [printBusy, setPrintBusy] = useState(false);
   const status = order.status as ShippingStatus;
   const next = SHIPPING_ADMIN_NEXT[status];
-
-  // Opened from a scan: jump to the form the team wants and put the cursor in its first field.
-  useEffect(() => {
-    const target =
-      focus === "weigh" && adminCanBill(status)
-        ? weighRef.current
-        : focus === "ship" && status === "PAID"
-          ? shipRef.current
-          : null;
-    if (!target) return;
-    target.scrollIntoView({ block: "start" });
-    target.querySelector<HTMLElement>("input, select")?.focus({ preventScroll: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const weighedNumber = Number(weighed.replace(",", "."));
   const packingNumber = Number(packing.replace(/\D/g, "")) || 0;
@@ -640,7 +612,7 @@ function OrderDetail({
       )}
 
       {adminCanBill(status) && (
-        <div ref={weighRef} className="mt-3 space-y-2 rounded-lg bg-background p-2">
+        <div className="mt-3 space-y-2 rounded-lg bg-background p-2">
           <p className="font-semibold">Timbang dan tagih</p>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
@@ -741,32 +713,95 @@ function OrderDetail({
         </dl>
       )}
 
-      {status === "PAID" && (
-        <div ref={shipRef} className="mt-3 space-y-2 rounded-lg bg-background p-2">
-          <p className="font-semibold">Kirim ke Jepang</p>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className="mb-0.5 block text-[11px] text-muted-foreground">Kurir</span>
-              <select
-                className={input}
-                value={courier}
-                onChange={(e) => setCourier(e.target.value)}
+      {shippingIsPaid(status) && (
+        <div className="mt-3 space-y-2 rounded-lg bg-background p-2">
+          <p className="font-semibold">Posisi di jalur</p>
+          <p className="text-muted-foreground">
+            {order.currentHub ? `Terakhir di ${order.currentHub}. ` : ""}
+            {SHIPPING_STATUS_LABEL[status]}.{" "}
+            {status === "PAID"
+              ? "Paket dimuat ke batch lewat scan di Tasikmalaya."
+              : "Perpindahan antar titik dicatat lewat scan dan batch di tab Scan & Batch."}
+          </p>
+          {order.courier && (
+            <Line k="Kurir Jepang" v={`${order.courier} · resi ${order.trackingNumber ?? "-"}`} />
+          )}
+          {status === "PROBLEM" && (
+            <>
+              <p className="font-semibold text-destructive">{order.problemNote ?? "Bermasalah"}</p>
+              <button
+                type="button"
+                disabled={busy}
+                className={btn}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await resolveShippingProblem({ data: { orderId: order.id } });
+                    setNotice({ error: false, text: `${order.code}: masalah diselesaikan.` });
+                    await refresh();
+                  } catch (error) {
+                    setNotice({
+                      error: true,
+                      text: error instanceof Error ? error.message : "Tindakan gagal.",
+                    });
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
               >
-                {config.couriers.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-0.5 block text-[11px] text-muted-foreground">Nomor resi</span>
-              <input
-                className={input}
-                value={tracking}
-                onChange={(e) => setTracking(e.target.value)}
-              />
-            </label>
+                Masalah selesai, kembalikan ke jalur
+              </button>
+            </>
+          )}
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
+            <select
+              className={input}
+              value={fixTo}
+              onChange={(e) => setFixTo(e.target.value)}
+              aria-label="Koreksi status ke"
+            >
+              <option value="">Koreksi status…</option>
+              {(
+                ["PAID", "TO_BANDUNG", "AT_BANDUNG", "TO_JAKARTA", "AT_JAKARTA", "SHIPPED"] as const
+              ).map((st) => (
+                <option key={st} value={st}>
+                  {SHIPPING_STATUS_LABEL[st]}
+                </option>
+              ))}
+            </select>
+            <input
+              className={input}
+              value={fixNote}
+              onChange={(e) => setFixNote(e.target.value)}
+              placeholder="Alasan koreksi"
+              aria-label="Alasan koreksi"
+            />
+            <button
+              type="button"
+              disabled={busy || !fixTo || fixNote.trim().length < 3}
+              className={btn}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await correctShippingStatus({
+                    data: { orderId: order.id, status: fixTo as "PAID", note: fixNote.trim() },
+                  });
+                  setNotice({ error: false, text: `${order.code}: status dikoreksi.` });
+                  setFixTo("");
+                  setFixNote("");
+                  await refresh();
+                } catch (error) {
+                  setNotice({
+                    error: true,
+                    text: error instanceof Error ? error.message : "Koreksi gagal.",
+                  });
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Koreksi
+            </button>
           </div>
         </div>
       )}
@@ -775,15 +810,9 @@ function OrderDetail({
         {next && (
           <button
             type="button"
-            disabled={busy || (status === "PAID" && (!courier || !tracking.trim()))}
+            disabled={busy}
             className={btnPrimary}
-            onClick={() =>
-              act(
-                "advance",
-                status === "PAID" ? { courier, trackingNumber: tracking.trim() } : {},
-                "status dimajukan.",
-              )
-            }
+            onClick={() => act("advance", {}, "status dimajukan.")}
           >
             {SHIPPING_ADMIN_NEXT_LABEL[status]}
           </button>
@@ -891,11 +920,15 @@ function Settings({
   const [reason, setReason] = useState("");
   const [couriers, setCouriers] = useState(data.config.couriers.join("\n"));
   const [prohibited, setProhibited] = useState(data.config.prohibited.join("\n"));
+  const [transport, setTransport] = useState(data.config.transport.join("\n"));
   const [busy, setBusy] = useState(false);
   const set = <K extends keyof ShippingConfig>(key: K, value: ShippingConfig[K]) =>
     setConfig((c) => ({ ...c, [key]: value }));
   const jp = config.countries.JP;
   const setJp = (patch: Partial<typeof jp>) => set("countries", { JP: { ...jp, ...patch } });
+  const setHub = (hub: "BANDUNG" | "JAKARTA", patch: Partial<{ name: string; address: string }>) =>
+    set("hubs", { ...config.hubs, [hub]: { ...config.hubs[hub], ...patch } });
+  const setEta = (patch: Partial<ShippingConfig["eta"]>) => set("eta", { ...config.eta, ...patch });
   const setPoint = (patch: Partial<ShippingConfig["dropPoint"]>) =>
     set("dropPoint", { ...config.dropPoint, ...patch });
   const lines = (text: string) =>
@@ -910,7 +943,12 @@ function Settings({
     try {
       const result = await saveAdminShippingConfig({
         data: {
-          config: { ...config, couriers: lines(couriers), prohibited: lines(prohibited) },
+          config: {
+            ...config,
+            couriers: lines(couriers),
+            prohibited: lines(prohibited),
+            transport: lines(transport),
+          },
           expectedVersion: data.version,
           reason,
         },
@@ -1056,8 +1094,60 @@ function Settings({
           num(config.minPhotos, (v) => set("minPhotos", v)),
         )}
       </div>
+      <p className="text-xs font-semibold text-muted-foreground">Gudang Bandung dan hub Jakarta</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {(["BANDUNG", "JAKARTA"] as const).map((h) => (
+          <div key={h} className="space-y-2">
+            {field(
+              `Nama ${h === "BANDUNG" ? "gudang Bandung" : "hub Jakarta"}`,
+              <input
+                className={input}
+                value={config.hubs[h].name}
+                onChange={(e) => setHub(h, { name: e.target.value })}
+              />,
+            )}
+            {field(
+              "Alamat",
+              <input
+                className={input}
+                value={config.hubs[h].address}
+                onChange={(e) => setHub(h, { address: e.target.value })}
+              />,
+            )}
+          </div>
+        ))}
+      </div>
+      <p className="text-xs font-semibold text-muted-foreground">
+        Estimasi waktu tiap leg (hari), tampil ke pelanggan
+      </p>
+      <div className="grid gap-2 sm:grid-cols-4">
+        {field(
+          "Tasik ke Bandung",
+          num(config.eta.toBandungDays, (v) => setEta({ toBandungDays: v })),
+        )}
+        {field(
+          "Bandung ke Jakarta",
+          num(config.eta.toJakartaDays, (v) => setEta({ toJakartaDays: v })),
+        )}
+        {field(
+          "Ke Jepang (min)",
+          num(config.eta.toJapanMinDays, (v) => setEta({ toJapanMinDays: v })),
+        )}
+        {field(
+          "Ke Jepang (maks)",
+          num(config.eta.toJapanMaxDays, (v) => setEta({ toJapanMaxDays: v })),
+        )}
+      </div>
       {field(
-        "Kurir partner (satu per baris)",
+        "Pembawa antar kota (satu per baris, pilihan di batch)",
+        <textarea
+          className={`${input} min-h-16 py-2`}
+          value={transport}
+          onChange={(e) => setTransport(e.target.value)}
+        />,
+      )}
+      {field(
+        "Kurir partner",
         <textarea
           className={`${input} min-h-20 py-2`}
           value={couriers}

@@ -26,7 +26,9 @@ import {
   SHIPPING_STATUS_LABEL,
   fmtDate,
   fmtDateTime,
+  ROUTE_NODES,
   SHIPPING_STEPS,
+  routePosition,
   formatIdr,
   formatKg,
   shippingIsDead,
@@ -106,6 +108,9 @@ function ShipmentDetail() {
   }
 
   const reached = new Map<string, string>(order.events.map((e) => [e.status, e.at]));
+  const batchOf = new Map<string, string>(
+    order.events.flatMap((e) => (e.batchCode ? [[e.status, `batch ${e.batchCode}`] as const] : [])),
+  );
   const dead = shippingIsDead(status);
   const billed = order.totalIdr !== null;
 
@@ -159,6 +164,23 @@ function ShipmentDetail() {
             </p>
           )}
         </>
+      )}
+
+      {!dead && status !== "AWAITING_DROP" && (
+        <div className="ios-card p-3">
+          <p className="text-[11px] text-muted-foreground">Posisi paket</p>
+          <RouteBar status={status} />
+          {order.eta && <p className="mt-1.5 text-[12px] text-muted-foreground">{order.eta}</p>}
+        </div>
+      )}
+      {status === "PROBLEM" && (
+        <div className="ios-card mt-3 border border-[#f1d9a8] bg-[#fffaf0] p-3">
+          <p className="text-[14px] font-bold text-[#92400E]">Ada kendala pada paketmu</p>
+          <p className="mt-0.5 text-[12px] text-[#92400E]">
+            Tim kami sedang menanganinya dan akan menghubungimu. Kamu juga bisa menghubungi kami
+            dari tombol di bawah.
+          </p>
+        </div>
       )}
 
       {status === "RECEIVED" && (
@@ -337,6 +359,7 @@ function ShipmentDetail() {
                     {at && (
                       <span className="block text-[10px] text-muted-foreground">
                         {fmtDateTime(at)}
+                        {batchOf.get(step) ? ` · ${batchOf.get(step)}` : ""}
                       </span>
                     )}
                   </span>
@@ -395,5 +418,41 @@ function ShipmentDetail() {
         Hubungi Djiwa
       </Link>
     </Page>
+  );
+}
+
+/** The four-point route as a bar: Tasikmalaya, Bandung, Jakarta, Jepang, with the parcel marked. */
+function RouteBar({ status }: { status: ShippingStatus }) {
+  const { node, moving } = routePosition(status);
+  const done = (i: number) => i < node || (i === node && !moving) || (i === node && moving);
+  return (
+    <div
+      className="mt-2"
+      role="img"
+      aria-label={`Posisi paket: ${ROUTE_NODES[node]}${moving ? ", menuju titik berikutnya" : ""}`}
+    >
+      <div className="flex items-center">
+        {ROUTE_NODES.map((name, i) => (
+          <div
+            key={name}
+            className={`flex items-center ${i < ROUTE_NODES.length - 1 ? "flex-1" : ""}`}
+          >
+            <span
+              className={`size-3 shrink-0 rounded-full ${i === node && !moving ? "bg-[#3B5BDB] ring-4 ring-[#E7ECFF]" : done(i) ? "bg-primary" : "bg-border"}`}
+            />
+            {i < ROUTE_NODES.length - 1 && (
+              <span
+                className={`mx-1 h-[3px] flex-1 rounded-full ${i < node ? "bg-primary" : i === node && moving ? "bg-gradient-to-r from-primary to-[#3B5BDB]" : "bg-border"}`}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+        {ROUTE_NODES.map((name) => (
+          <span key={name}>{name}</span>
+        ))}
+      </div>
+    </div>
   );
 }

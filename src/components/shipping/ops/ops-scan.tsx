@@ -1,38 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, CameraOff, Keyboard, Undo2 } from "lucide-react";
-import { runAdminShippingAction, scanShipping } from "@/lib/shipping.fn";
+import { Camera, CameraOff, Keyboard } from "lucide-react";
+import { scanOps } from "@/lib/shipping-ops.fn";
 import {
+  HUB_MODES,
+  HUB_LABEL,
   SHIPPING_STATUS_LABEL,
   formatKg,
-  parseScanCode,
+  parseAnyCode,
+  type Hub,
+  type HubMode,
   type ShippingStatus,
 } from "@/lib/shipping";
 import { formatAdminDateTime } from "@/lib/admin-display";
+import { bigBtn, field, type ScanResult } from "./ops-types";
 
-type ScanResult = Awaited<ReturnType<typeof scanShipping>>;
-type Mode = "receive" | "weigh" | "handover";
-type Entry = { id: number; at: number; code: string; result: ScanResult; undone?: boolean };
+type Entry = { id: number; at: number; code: string; result: ScanResult };
 type Flash = "ok" | "warn" | "bad" | null;
-
-const MODES: { id: Mode; label: string; hint: string }[] = [
-  { id: "receive", label: "Terima", hint: "Scan langsung mengubah status ke Diterima." },
-  { id: "weigh", label: "Timbang", hint: "Scan membuka formulir timbang." },
-  { id: "handover", label: "Serah ke kurir", hint: "Scan membuka formulir kurir dan resi." },
-];
-
-const input =
-  "min-h-11 w-full rounded-xl border border-border bg-background px-3 text-[15px] outline-none focus:border-brand-red";
+let entryId = 0;
 
 type BarcodeDetectorLike = {
   detect: (source: CanvasImageSource) => Promise<{ rawValue: string }[]>;
 };
 type BarcodeDetectorCtor = new (options: { formats: string[] }) => BarcodeDetectorLike;
-
 const cameraSupported = () =>
   typeof window !== "undefined" &&
   "BarcodeDetector" in window &&
   Boolean(navigator.mediaDevices?.getUserMedia);
-
 const buzz = (pattern: number | number[]) => {
   try {
     navigator.vibrate?.(pattern);
@@ -41,25 +34,36 @@ const buzz = (pattern: number | number[]) => {
   }
 };
 
-let entryId = 0;
-
 /**
- * Scan tab, built for one hand at the drop point: the camera opens on its own, the newest result is
- * a big colour-coded card with the next action under the thumb, and older scans fold away. "Terima"
- * moves a parcel to "Diterima di drop point" by itself (with Urungkan one tap away); "Timbang" and
- * "Serah ke kurir" open the parcel's own form, already scrolled to the field to fill.
+ * One scan screen for every hub. The hub the person works at decides what a scan does: Tasikmalaya
+ * receives at the door, Bandung and Jakarta check parcels in, and "Muat" fills the open batch. The
+ * newest result is a big colour-coded card with the next move under the thumb; older scans fold away.
  */
-export function AdminShippingScan({
+export function OpsScan({
+  hub,
+  batchId,
+  batchLabel,
   initialCode,
-  onOpen,
+  loadSignal,
+  onWeigh,
   onChanged,
+  onOpenBatch,
+  onProblem,
 }: {
+  hub: Hub;
+  /** The open batch parcels are loaded into (load mode). */
+  batchId: string | null;
+  batchLabel: string | null;
   initialCode: string | null;
-  /** Opens a parcel in the list; `focus` says which form the team wants next. */
-  onOpen: (orderId: string, focus?: "weigh" | "ship") => void;
+  /** Bumped when the team picks a batch to load: jump to the load mode. */
+  loadSignal: number;
+  onWeigh: (orderId: string) => void;
   onChanged: () => void;
+  onOpenBatch: (batchId: string) => void;
+  onProblem: (orderId: string, code: string) => void;
 }) {
-  const [mode, setMode] = useState<Mode>("receive");
+  const modes = HUB_MODES[hub];
+  const [mode, setMode] = useState<HubMode>(modes[0]!.id);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -70,9 +74,11 @@ export function AdminShippingScan({
   const lastCode = useRef<{ code: string; at: number }>({ code: "", at: 0 });
   const supported = cameraSupported();
 
-  const push = useCallback((entry: Omit<Entry, "id">) => {
-    setHistory((h) => [{ ...entry, id: ++entryId }, ...h].slice(0, 30));
-  }, []);
+  // Changing hub changes what a scan means: start from that hub's first mode.
+  useEffect(() => setMode(HUB_MODES[hub][0]!.id), [hub]);
+  useEffect(() => {
+    if (loadSignal > 0) setMode("load");
+  }, [loadSignal]);
 
   const signal = useCallback((kind: Exclude<Flash, null>) => {
     setFlash(kind);
@@ -81,52 +87,52 @@ export function AdminShippingScan({
   }, []);
 
   const handle = useCallback(
-    async (raw: string, forceMode?: "lookup" | "receive") => {
-      const code = parseScanCode(raw);
-      if (!code) {
-        push({
-          at: Date.now(),
-          code: raw.slice(0, 40),
-          result: { found: false, reason: "invalid" },
-        });
+    async (raw: string, forceLookup = false) => {
+      const parsed = parseAnyCode(raw);
+      const push = (result: ScanResult, code: string) =>
+        setHistory((h) => [{ id: ++entryId, at: Date.now(), code, result }, ...h].slice(0, 30));
+      if (!parsed) {
+        push({ found: false, reason: "invalid" }, raw.slice(0, 40));
         signal("bad");
         return;
       }
-      // A camera sees the same label many times a second: ignore repeats for a few seconds.
       const now = Date.now();
-      if (lastCode.current.code === code && now - lastCode.current.at < 4000) return;
-      lastCode.current = { code, at: now };
+      if (lastCode.current.code === parsed.code && now - lastCode.current.at < 4000) return;
+      lastCode.current = { code: parsed.code, at: now };
       setBusy(true);
       try {
-        const result = await scanShipping({
-          data: { code, mode: forceMode ?? (mode === "receive" ? "receive" : "lookup") },
+        const result = await scanOps({
+          data: {
+            code: parsed.code,
+            hub,
+            mode: forceLookup ? "lookup" : mode,
+            ...(mode === "load" && batchId ? { batchId } : {}),
+          },
         });
-        push({ at: now, code, result });
+        push(result, parsed.code);
         if (!result.found) signal("bad");
-        else if (result.outcome === "received") {
+        else if (result.kind === "batch") signal("ok");
+        else if (["received", "checked_in", "loaded"].includes(result.outcome)) {
           signal("ok");
           onChanged();
-        } else if (result.outcome === "found") {
-          signal("ok");
-          if (!forceMode) onOpen(result.order.id, mode === "handover" ? "ship" : "weigh");
-        } else signal("warn");
+        } else if (result.outcome === "found") signal("ok");
+        else if (result.outcome === "already") signal("warn");
+        else signal("bad");
       } catch {
-        push({ at: now, code, result: { found: false, reason: "invalid" } });
+        push({ found: false, reason: "invalid" }, parsed.code);
         signal("bad");
       } finally {
         setBusy(false);
       }
     },
-    [mode, onChanged, onOpen, push, signal],
+    [batchId, hub, mode, onChanged, signal],
   );
 
-  // A link opened from the phone's own camera app arrives as ?scan=CODE: look it up, never change it.
   useEffect(() => {
-    if (initialCode) void handle(initialCode, "lookup");
+    if (initialCode) void handle(initialCode, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCode]);
 
-  // The camera starts by itself where the browser can read QR codes.
   useEffect(() => {
     if (supported) setCameraOn(true);
   }, [supported]);
@@ -174,27 +180,7 @@ export function AdminShippingScan({
     };
   }, [cameraOn, handle]);
 
-  async function undo(entry: Entry) {
-    if (!entry.result.found) return;
-    setBusy(true);
-    try {
-      await runAdminShippingAction({
-        data: { orderId: entry.result.order.id, action: "undo_receive" },
-      });
-      setHistory((h) => h.map((e) => (e.id === entry.id ? { ...e, undone: true } : e)));
-      lastCode.current = { code: "", at: 0 }; // the same label can be scanned again right away
-      onChanged();
-    } catch {
-      signal("bad");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const latest = history[0] ?? null;
-  const receivedToday = history.filter(
-    (e) => e.result.found && e.result.outcome === "received" && !e.undone,
-  ).length;
   const ring =
     flash === "ok"
       ? "ring-4 ring-[#34C759]"
@@ -203,15 +189,17 @@ export function AdminShippingScan({
         : flash === "bad"
           ? "ring-4 ring-[#FF3B30]"
           : "ring-0";
+  const needsBatch = mode === "load" && !batchId;
 
   return (
     <div className="space-y-2.5">
       <div
-        className="grid grid-cols-3 gap-1 rounded-2xl bg-secondary p-1"
+        className="grid gap-1 rounded-2xl bg-secondary p-1"
+        style={{ gridTemplateColumns: `repeat(${modes.length}, minmax(0, 1fr))` }}
         role="tablist"
         aria-label="Mode scan"
       >
-        {MODES.map((m) => (
+        {modes.map((m) => (
           <button
             key={m.id}
             type="button"
@@ -225,8 +213,18 @@ export function AdminShippingScan({
         ))}
       </div>
 
+      {mode === "load" && (
+        <div
+          className={`rounded-xl px-3 py-2 text-[12px] ${batchId ? "bg-[#e8f8ed] text-[#15803D]" : "bg-[#fffaf0] text-[#9a6100]"}`}
+        >
+          {batchId
+            ? `Memuat ke ${batchLabel ?? "batch"}. Scan paket satu per satu.`
+            : "Belum ada batch terbuka. Buka tab Batch dan buat batch dulu."}
+        </div>
+      )}
+
       <div
-        className={`relative aspect-[4/3] max-h-[44dvh] w-full overflow-hidden rounded-2xl bg-black transition-shadow ${ring}`}
+        className={`relative aspect-[4/3] max-h-[40dvh] w-full overflow-hidden rounded-2xl bg-black transition-shadow ${ring}`}
       >
         {cameraOn ? (
           <>
@@ -235,9 +233,6 @@ export function AdminShippingScan({
               aria-hidden="true"
               className="pointer-events-none absolute inset-[18%] rounded-2xl border-2 border-white/80"
             />
-            <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white">
-              {MODES.find((m) => m.id === mode)!.hint}
-            </span>
             <button
               type="button"
               aria-label="Matikan kamera"
@@ -248,7 +243,7 @@ export function AdminShippingScan({
             </button>
           </>
         ) : (
-          <div className="flex size-full flex-col items-center justify-center gap-2 bg-secondary px-6 text-center">
+          <div className="flex size-full flex-col items-center justify-center gap-2 bg-secondary px-4 text-center">
             {supported ? (
               <button
                 type="button"
@@ -256,7 +251,7 @@ export function AdminShippingScan({
                   setCameraError("");
                   setCameraOn(true);
                 }}
-                className="tap inline-flex min-h-12 items-center gap-2 rounded-2xl bg-brand-red px-5 text-[14px] font-semibold text-white"
+                className="tap inline-flex min-h-12 items-center gap-2 rounded-2xl bg-brand-red px-4 text-[14px] font-semibold text-white"
               >
                 <Camera className="size-5" aria-hidden="true" />
                 Nyalakan kamera
@@ -280,15 +275,18 @@ export function AdminShippingScan({
         <ResultCard
           key={latest.id}
           entry={latest}
+          hub={hub}
           busy={busy}
-          onOpen={onOpen}
-          onUndo={() => void undo(latest)}
+          needsBatch={needsBatch}
+          onWeigh={onWeigh}
+          onOpenBatch={onOpenBatch}
+          onProblem={onProblem}
+          onNext={() => setHistory((h) => h.slice(1))}
           onReceive={() => {
             lastCode.current = { code: "", at: 0 };
             setHistory((h) => h.slice(1));
-            void handle(latest.result.found ? latest.result.order.code : latest.code, "receive");
+            void handle(latest.code);
           }}
-          onNext={() => setHistory((h) => h.slice(1))}
         />
       ) : (
         <div className="rounded-2xl border border-dashed border-border p-4 text-center text-[12px] text-muted-foreground">
@@ -307,7 +305,7 @@ export function AdminShippingScan({
           }}
         >
           <input
-            className={input}
+            className={field}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Scanner USB atau ketik DJW-KR-0042"
@@ -339,15 +337,12 @@ export function AdminShippingScan({
         <details className="rounded-2xl bg-secondary p-3 text-[12px]">
           <summary className="cursor-pointer font-semibold">
             Riwayat scan ({history.length - 1})
-            {receivedToday > 0 ? ` · ${receivedToday} diterima` : ""}
           </summary>
           <ul className="mt-2 space-y-1.5">
             {history.slice(1).map((e) => (
               <li key={e.id} className="flex items-center justify-between gap-2">
-                <span className="font-mono font-semibold">
-                  {e.result.found ? e.result.order.code : e.code}
-                </span>
-                <span className="text-muted-foreground">{summaryOf(e)}</span>
+                <span className="font-mono font-semibold">{e.code}</span>
+                <span className="text-muted-foreground">{summaryOf(e.result)}</span>
               </li>
             ))}
           </ul>
@@ -357,38 +352,56 @@ export function AdminShippingScan({
   );
 }
 
-function summaryOf(e: Entry) {
-  if (!e.result.found)
-    return e.result.reason === "unknown" ? "Tidak ada di sistem" : "QR tidak dikenali";
-  if (e.undone) return "Diurungkan";
-  return e.result.outcome === "received"
-    ? "Diterima"
-    : e.result.outcome === "already"
-      ? "Sudah diterima"
-      : e.result.outcome === "blocked"
-        ? SHIPPING_STATUS_LABEL[e.result.order.status as ShippingStatus]
-        : e.result.order.statusLabel;
+function summaryOf(r: ScanResult) {
+  if (!r.found) return r.reason === "unknown" ? "Tidak ada di sistem" : "QR tidak dikenali";
+  if (r.kind === "batch")
+    return `Batch ${r.batch.status === "OPEN" ? "terbuka" : "dalam perjalanan"}`;
+  return (
+    {
+      received: "Diterima",
+      checked_in: "Check-in",
+      loaded: "Dimuat",
+      already: "Sudah",
+      wrong_place: "Salah tempat",
+      not_ready: "Belum siap",
+      blocked: SHIPPING_STATUS_LABEL[r.order.status as ShippingStatus],
+      problem: "Bermasalah",
+      found: r.order.statusLabel,
+    } as const
+  )[r.outcome];
 }
-
-const bigBtn =
-  "tap inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-[14px] font-semibold disabled:opacity-50";
 
 function ResultCard({
   entry,
+  hub,
   busy,
-  onOpen,
-  onUndo,
+  needsBatch,
+  onWeigh,
+  onOpenBatch,
+  onProblem,
   onReceive,
   onNext,
 }: {
   entry: Entry;
+  hub: Hub;
   busy: boolean;
-  onOpen: (orderId: string, focus?: "weigh" | "ship") => void;
-  onUndo: () => void;
+  needsBatch: boolean;
+  onWeigh: (orderId: string) => void;
+  onOpenBatch: (batchId: string) => void;
+  onProblem: (orderId: string, code: string) => void;
   onReceive: () => void;
   onNext: () => void;
 }) {
   const { result } = entry;
+  const next = (
+    <button
+      type="button"
+      onClick={onNext}
+      className={`${bigBtn} border border-border bg-background`}
+    >
+      Scan berikutnya
+    </button>
+  );
   if (!result.found)
     return (
       <div role="alert" className="rounded-2xl border border-[#ffc9c5] bg-[#fff0ef] p-4">
@@ -400,73 +413,114 @@ function ResultCard({
             ? `${entry.code} tidak ditemukan. Periksa kodenya.`
             : "Isi QR tidak dikenali sebagai kode pengiriman. Coba scan ulang."}
         </p>
-        <button
-          type="button"
-          onClick={onNext}
-          className={`${bigBtn} mt-3 border border-border bg-background`}
-        >
-          Scan berikutnya
-        </button>
+        <div className="mt-3">{next}</div>
       </div>
     );
 
+  if (result.kind === "batch") {
+    const b = result.batch;
+    return (
+      <div className="rounded-2xl border border-border bg-secondary p-4" aria-live="polite">
+        <p className="font-mono text-[18px] font-bold">{b.code}</p>
+        <p className="text-[13px] font-medium">
+          {HUB_LABEL[b.fromHub]} → {b.toHub === "JAPAN" ? "Jepang" : HUB_LABEL[b.toHub]} ·{" "}
+          {b.carrier}
+        </p>
+        <p className="text-[12px] text-muted-foreground">
+          {b.total} paket · {formatKg(b.kg)} · {b.checked} ter-scan
+        </p>
+        <div className="mt-3 space-y-2">
+          <button
+            type="button"
+            onClick={() => onOpenBatch(b.id)}
+            className={`${bigBtn} bg-brand-red text-white`}
+          >
+            Buka batch
+          </button>
+          {next}
+        </div>
+      </div>
+    );
+  }
+
   const o = result.order;
-  const status = o.status as ShippingStatus;
-  const kind = entry.undone
-    ? "undone"
-    : result.outcome === "received"
+  const outcome = result.outcome;
+  const kind =
+    outcome === "received" || outcome === "checked_in" || outcome === "loaded"
       ? "ok"
-      : result.outcome === "already"
+      : outcome === "already"
         ? "warn"
-        : result.outcome === "blocked"
-          ? "bad"
-          : "neutral";
+        : outcome === "found"
+          ? "neutral"
+          : "bad";
   const skin = {
     ok: "border-[#b8e6c6] bg-[#e8f8ed]",
     warn: "border-[#f1d9a8] bg-[#fffaf0]",
     bad: "border-[#ffc9c5] bg-[#fff0ef]",
-    undone: "border-border bg-secondary",
     neutral: "border-border bg-secondary",
   }[kind];
-  const title = {
-    ok: "Diterima",
-    warn: "Sudah diterima sebelumnya",
-    bad: `Jangan diproses: ${SHIPPING_STATUS_LABEL[status].toLowerCase()}`,
-    undone: "Penerimaan diurungkan",
-    neutral: o.statusLabel,
-  }[kind];
-  const titleColor = {
+  const color = {
     ok: "text-[#15803D]",
     warn: "text-[#9a6100]",
     bad: "text-destructive",
-    undone: "text-foreground",
     neutral: "text-foreground",
   }[kind];
-
-  // A parcel looked up (Camera-app link, or Timbang/Serah mode) that is still waiting at the door.
-  const canReceive = !entry.undone && status === "AWAITING_DROP" && result.outcome === "found";
-  const canWeigh = !entry.undone && (status === "RECEIVED" || status === "EXPIRED");
-  const canShip = !entry.undone && status === "PAID";
+  const title =
+    outcome === "received"
+      ? "Diterima di Tasikmalaya"
+      : outcome === "checked_in"
+        ? `Check-in di ${HUB_LABEL[hub]}`
+        : outcome === "loaded"
+          ? `Dimuat ke ${("batchCode" in result ? (result.batchCode as string | null) : null) ?? "batch"}`
+          : outcome === "already"
+            ? "Sudah tercatat sebelumnya"
+            : outcome === "wrong_place"
+              ? "Salah tempat"
+              : outcome === "not_ready"
+                ? "Belum bisa dimuat"
+                : outcome === "blocked"
+                  ? `Jangan diproses: ${SHIPPING_STATUS_LABEL[o.status as ShippingStatus].toLowerCase()}`
+                  : outcome === "problem"
+                    ? "Paket bermasalah"
+                    : o.statusLabel;
+  const msg = result.message;
+  const status = o.status as ShippingStatus;
+  const progress =
+    "progress" in result ? (result.progress as { checked: number; total: number } | null) : null;
+  const loaded = "loaded" in result ? (result.loaded as { total: number; kg: number }) : null;
 
   return (
     <div className={`rounded-2xl border p-4 ${skin}`} aria-live="polite">
-      <p className={`text-[20px] font-bold leading-tight ${titleColor}`}>{title}</p>
+      <p className={`text-[20px] font-bold leading-tight ${color}`}>{title}</p>
       <p className="mt-1 font-mono text-[18px] font-bold tracking-wide">{o.code}</p>
       <p className="mt-0.5 text-[13px] font-medium">
-        {o.recipientName}, {o.prefecture} · {formatKg(o.estimatedKg)}
+        {o.recipientName}, {o.prefecture} · {formatKg(o.billedKg ?? o.estimatedKg)}
       </p>
       <p className="text-[12px] text-muted-foreground">{o.contents}</p>
-      {kind === "ok" && (
+      {msg && <p className={`mt-1 text-[12px] font-semibold ${color}`}>{msg}</p>}
+      {outcome === "already" && o.sinceAt && (
         <p className="mt-1 text-[12px] text-muted-foreground">
-          {formatAdminDateTime(o.receivedAt ?? new Date().toISOString())}. Pelanggan sudah dikabari.
+          {o.statusLabel} sejak {formatAdminDateTime(o.sinceAt)}. Tidak ada yang diubah.
         </p>
       )}
-      {kind === "warn" && o.receivedAt && (
-        <p className="mt-1 text-[12px] text-muted-foreground">
-          Diterima {formatAdminDateTime(o.receivedAt)}. Tidak ada yang diubah.
+      {outcome === "received" && (
+        <p className="mt-1 text-[12px] text-muted-foreground">Pelanggan sudah dikabari.</p>
+      )}
+      {progress && (
+        <p className="mt-1 text-[12px] font-semibold">
+          {progress.checked} dari {progress.total} paket di batch ini sudah ter-scan
+          {progress.checked === progress.total ? ", batch selesai" : ""}.
         </p>
       )}
-      {(o.photoShort || o.photoReview === "REDO") && (
+      {loaded && (
+        <p className="mt-1 text-[12px] font-semibold">
+          {loaded.total} paket dimuat · {formatKg(loaded.kg)}
+        </p>
+      )}
+      {outcome === "problem" && o.problemNote && (
+        <p className="mt-1 text-[12px] text-destructive">{o.problemNote}</p>
+      )}
+      {(o.photoShort || o.photoReview === "REDO") && hub === "TASIK" && (
         <p className="mt-1 text-[12px] font-semibold text-[#9a6100]">
           {o.photoReview === "REDO"
             ? "Menunggu foto ulang dari pelanggan."
@@ -475,7 +529,7 @@ function ResultCard({
       )}
 
       <div className="mt-3 space-y-2">
-        {canReceive && (
+        {outcome === "found" && status === "AWAITING_DROP" && hub === "TASIK" && (
           <button
             type="button"
             disabled={busy}
@@ -485,51 +539,31 @@ function ResultCard({
             Terima di drop point
           </button>
         )}
-        {canWeigh && (
+        {hub === "TASIK" && (status === "RECEIVED" || status === "EXPIRED") && (
           <button
             type="button"
-            onClick={() => onOpen(o.id, "weigh")}
+            onClick={() => onWeigh(o.id)}
             className={`${bigBtn} bg-brand-red text-white`}
           >
             Timbang sekarang
           </button>
         )}
-        {canShip && (
-          <button
-            type="button"
-            onClick={() => onOpen(o.id, "ship")}
-            className={`${bigBtn} bg-brand-red text-white`}
-          >
-            Isi kurir dan resi
-          </button>
+        {needsBatch && outcome === "not_ready" && (
+          <p className="text-[12px] text-[#9a6100]">Buka tab Batch untuk membuat batch.</p>
         )}
-        {kind === "ok" && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onUndo}
-            className={`${bigBtn} border border-border bg-background`}
-          >
-            <Undo2 className="size-4" aria-hidden="true" />
-            Urungkan terima
-          </button>
-        )}
-        {!canWeigh && !canShip && kind !== "bad" && kind !== "ok" && (
-          <button
-            type="button"
-            onClick={() => onOpen(o.id)}
-            className={`${bigBtn} border border-border bg-background`}
-          >
-            Buka detail pengiriman
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onNext}
-          className={`${bigBtn} ${canWeigh || canShip || canReceive || kind === "ok" ? "text-muted-foreground" : "bg-background border border-border"}`}
-        >
-          Scan berikutnya
-        </button>
+        {["TO_BANDUNG", "AT_BANDUNG", "TO_JAKARTA", "AT_JAKARTA", "PAID", "SHIPPED"].includes(
+          status,
+        ) &&
+          kind !== "bad" && (
+            <button
+              type="button"
+              onClick={() => onProblem(o.id, o.code)}
+              className={`${bigBtn} border border-border bg-background text-destructive`}
+            >
+              Tandai rusak atau hilang
+            </button>
+          )}
+        {next}
       </div>
     </div>
   );
