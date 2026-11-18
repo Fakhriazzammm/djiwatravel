@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { listBatches, listHubQueue, markShippingProblem } from "@/lib/shipping-ops.fn";
 import { HUB_LABEL, type Hub } from "@/lib/shipping";
@@ -27,22 +27,33 @@ function savedHub(allowed: readonly Hub[]): Hub {
  * list), Batch (the trip) and Lainnya (account, and the way back to Admin). Used by the mobile page
  * /petugas and by the Scan tab in Admin, so both behave the same.
  */
+export type AdminSlots = {
+  /** Every shipment, with filters and the detail screen. */
+  orders: ReactNode;
+  staff: ReactNode;
+  settings: ReactNode;
+  /** Shipments that need the team's next move, shown on the Pengiriman tab. */
+  todo: number;
+  /** The tab the page was opened on (from the link or hash). */
+  requestedTab: OpsTab;
+};
+
 export function ShippingOpsApp({
   me,
   initialCode,
   onChanged,
-  onAdminTab,
+  admin,
 }: {
   me: OpsMe;
   initialCode: string | null;
   onChanged?: () => void;
-  /** Admin only: leave the field screen for another Kirim Barang tab. */
-  onAdminTab?: (tab: "orders" | "staff" | "settings") => void;
+  /** Admin only: the rest of Kirim Barang lives in this same app, so there is one navigation. */
+  admin?: AdminSlots;
 }) {
   const [hub, setHub] = useState<Hub>(() =>
     typeof window === "undefined" ? (me.hubs[0] ?? "TASIK") : savedHub(me.hubs),
   );
-  const [tab, setTab] = useState<OpsTab>("scan");
+  const [tab, setTab] = useState<OpsTab>(admin?.requestedTab ?? "scan");
   const [startLoad, setStartLoad] = useState(false);
   const [active, setActive] = useState<{ id: string; code: string } | null>(null);
   const [weighId, setWeighId] = useState<string | null>(null);
@@ -52,6 +63,12 @@ export function ShippingOpsApp({
   const [queue, setQueue] = useState<QueueItem[] | null>(null);
   const [queueError, setQueueError] = useState("");
   const [incoming, setIncoming] = useState(0);
+
+  // A link such as /admin/shipping#settings opens that tab.
+  useEffect(() => {
+    if (admin) setTab(admin.requestedTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [admin?.requestedTab]);
 
   // The open batch belongs to one hub; moving to another hub starts clean.
   useEffect(() => setActive(null), [hub]);
@@ -99,7 +116,14 @@ export function ShippingOpsApp({
   };
 
   const todo = (queue ?? []).filter((i) => i.status !== "PAYMENT_PENDING").length;
-  const nav = <OpsBottomNav tab={tab} onTab={goTab} badges={{ queue: todo, batch: incoming }} />;
+  const nav = (
+    <OpsBottomNav
+      tab={tab}
+      onTab={goTab}
+      badges={{ queue: todo, batch: incoming, ...(admin ? { orders: admin.todo } : {}) }}
+      withOrders={Boolean(admin)}
+    />
+  );
 
   if (weighId)
     return (
@@ -116,9 +140,11 @@ export function ShippingOpsApp({
       </div>
     );
 
+  const wide = tab === "orders" || tab === "staff" || tab === "settings";
+  const hubTab = tab === "scan" || tab === "queue" || tab === "batch";
   return (
-    <div className="space-y-2.5 pb-24">
-      {me.hubs.length > 1 && tab !== "more" ? (
+    <div className={`mx-auto w-full space-y-2.5 pb-24 ${wide ? "" : "max-w-md"}`}>
+      {me.hubs.length > 1 && hubTab ? (
         <div className="flex gap-1.5 overflow-x-auto" role="tablist" aria-label="Lokasi">
           {me.hubs.map((h) => (
             <button
@@ -133,7 +159,7 @@ export function ShippingOpsApp({
             </button>
           ))}
         </div>
-      ) : tab !== "more" ? (
+      ) : hubTab ? (
         <p className="text-[12px] font-semibold text-muted-foreground">Lokasi: {HUB_LABEL[hub]}</p>
       ) : null}
 
@@ -218,7 +244,22 @@ export function ShippingOpsApp({
           }}
         />
       )}
-      {tab === "more" && <OpsMore me={me} hub={hub} onAdminTab={onAdminTab} />}
+      {tab === "more" && (
+        <OpsMore me={me} hub={hub} onAdminTab={admin ? (t) => goTab(t) : undefined} />
+      )}
+      {admin && tab === "orders" && admin.orders}
+      {admin && (tab === "staff" || tab === "settings") && (
+        <div className="space-y-2.5">
+          <button
+            type="button"
+            onClick={() => goTab("more")}
+            className="tap min-h-10 text-[13px] font-semibold text-brand-red"
+          >
+            ‹ Lainnya
+          </button>
+          {tab === "staff" ? admin.staff : admin.settings}
+        </div>
+      )}
       {nav}
     </div>
   );

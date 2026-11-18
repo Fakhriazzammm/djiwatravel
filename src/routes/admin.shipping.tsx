@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useLocation, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, Printer } from "lucide-react";
 import { ShippingOpsApp } from "@/components/shipping/ops/ops-app";
+import type { OpsTab } from "@/components/shipping/ops/ops-nav";
 import { StaffManager } from "@/components/shipping/staff-manager";
 import { PhotoReviewBadge } from "@/components/shipping/shipping-photos";
 import {
@@ -47,7 +48,6 @@ export const Route = createFileRoute("/admin/shipping")({
   component: AdminShipping,
 });
 
-type Tab = "orders" | "scan" | "staff" | "settings";
 type Data = Awaited<ReturnType<typeof getAdminShipping>>;
 type Order = Data["orders"][number];
 type Notice = { error: boolean; text: string } | null;
@@ -90,27 +90,24 @@ function AdminShipping() {
   const router = useRouter();
   const location = useLocation();
   const { scan } = Route.useSearch();
-  const [tab, setTab] = useState<Tab>(scan ? "scan" : "orders");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
-  useEffect(() => {
-    setTab(
-      location.hash === "settings"
-        ? "settings"
-        : location.hash === "staff"
-          ? "staff"
-          : location.hash === "scan" || scan
-            ? "scan"
-            : "orders",
-    );
-  }, [location.hash, scan]);
   const refresh = () => router.invalidate();
   const todo = NEEDS_ACTION.reduce((n, s) => n + (data.counts[s] ?? 0), 0);
+  // The links in the Admin menu land on the matching tab of the one Kirim Barang app.
+  const requestedTab: OpsTab =
+    location.hash === "settings"
+      ? "settings"
+      : location.hash === "staff"
+        ? "staff"
+        : location.hash === "scan" || scan
+          ? "scan"
+          : "orders";
 
   return (
     <AdminShell
       title="Kirim Barang"
-      subtitle="Paket ke Jepang: terima di drop point, timbang dan tagih, kirim dengan kurir partner, atur tarif."
+      subtitle="Paket ke Jepang: terima di drop point, timbang dan tagih, kirim lewat Bandung dan Jakarta."
     >
       <div className="space-y-3">
         {!data.paymentReady && (
@@ -125,33 +122,6 @@ function AdminShipping() {
             </p>
           </div>
         )}
-        <div
-          className={`gap-1 rounded-xl bg-secondary p-1 ${tab === "scan" ? "hidden lg:flex" : "flex"}`}
-          role="tablist"
-        >
-          {(
-            [
-              ["orders", "Pengiriman"],
-              ["scan", "Scan & Batch"],
-              ["staff", "Petugas"],
-              ["settings", "Pengaturan"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={`min-h-10 flex-1 rounded-lg text-xs font-semibold ${tab === id ? "bg-background shadow-sm" : "text-muted-foreground"}`}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                {label}
-                {id === "orders" && <CountBadge n={todo} label="perlu tindakan" />}
-              </span>
-            </button>
-          ))}
-        </div>
         {notice && (
           <p
             role={notice.error ? "alert" : "status"}
@@ -160,27 +130,26 @@ function AdminShipping() {
             {notice.text}
           </p>
         )}
-        {tab === "scan" && (
-          <div className="mx-auto w-full max-w-md">
-            <ShippingOpsApp
-              me={ops}
-              initialCode={scan ?? null}
-              onChanged={() => void refresh()}
-              onAdminTab={setTab}
-            />
-          </div>
-        )}
-        {tab === "staff" && <StaffManager />}
-        {tab === "orders" && (
-          <Orders
-            data={data}
-            selectedId={selectedId}
-            setSelectedId={setSelectedId}
-            setNotice={setNotice}
-            refresh={refresh}
-          />
-        )}
-        {tab === "settings" && <Settings data={data} setNotice={setNotice} refresh={refresh} />}
+        <ShippingOpsApp
+          me={ops}
+          initialCode={scan ?? null}
+          onChanged={() => void refresh()}
+          admin={{
+            orders: (
+              <Orders
+                data={data}
+                selectedId={selectedId}
+                setSelectedId={setSelectedId}
+                setNotice={setNotice}
+                refresh={refresh}
+              />
+            ),
+            staff: <StaffManager />,
+            settings: <Settings data={data} setNotice={setNotice} refresh={refresh} />,
+            todo,
+            requestedTab,
+          }}
+        />
       </div>
     </AdminShell>
   );
@@ -1099,6 +1068,100 @@ function Line({ k, v }: { k: string; v: string }) {
 
 /* ---------------------------------------------------------------- settings */
 
+/** An on/off switch with a real switch role, big enough for a thumb. */
+function Switch({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="tap flex min-h-12 w-full items-center justify-between gap-3 rounded-xl bg-secondary px-3 text-left"
+    >
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold">{label}</span>
+        {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+      </span>
+      <span
+        aria-hidden="true"
+        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? "bg-[#34C759]" : "bg-border"}`}
+      >
+        <span
+          className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${checked ? "left-[22px]" : "left-0.5"}`}
+        />
+      </span>
+    </button>
+  );
+}
+
+/** One collapsible group of settings with a one-line summary, so the page is a menu, not a wall. */
+function Group({
+  title,
+  summary,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  summary: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details open={defaultOpen} className="group rounded-2xl border border-border bg-background">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold">{title}</span>
+          <span className="block truncate text-xs text-muted-foreground">{summary}</span>
+        </span>
+        <span
+          aria-hidden="true"
+          className="text-muted-foreground transition-transform group-open:rotate-90"
+        >
+          ›
+        </span>
+      </summary>
+      <div className="space-y-3 border-t border-border p-3">{children}</div>
+    </details>
+  );
+}
+
+function Field({
+  label,
+  suffix,
+  hint,
+  children,
+}: {
+  label: string;
+  suffix?: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1 block text-xs font-semibold text-muted-foreground">{label}</span>
+      <span className="relative block">
+        {children}
+        {suffix && (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+            {suffix}
+          </span>
+        )}
+      </span>
+      {hint && <span className="mt-0.5 block text-[11px] text-muted-foreground">{hint}</span>}
+    </label>
+  );
+}
+
 function Settings({
   data,
   setNotice,
@@ -1129,21 +1192,21 @@ function Settings({
       .map((l) => l.trim())
       .filter(Boolean);
 
+  const draft: ShippingConfig = {
+    ...config,
+    couriers: lines(couriers),
+    prohibited: lines(prohibited),
+    transport: lines(transport),
+  };
+  // Compared with what is saved, so the bar below only asks for a reason when something changed.
+  const dirty = JSON.stringify(draft) !== JSON.stringify(data.config);
+
   async function save() {
     setBusy(true);
     setNotice(null);
     try {
       const result = await saveAdminShippingConfig({
-        data: {
-          config: {
-            ...config,
-            couriers: lines(couriers),
-            prohibited: lines(prohibited),
-            transport: lines(transport),
-          },
-          expectedVersion: data.version,
-          reason,
-        },
+        data: { config: draft, expectedVersion: data.version, reason },
       });
       if (!result.ok)
         setNotice({
@@ -1168,204 +1231,210 @@ function Settings({
     }
   }
 
-  const flag = (label: string, checked: boolean, onChange: (v: boolean) => void) => (
-    <label className="flex min-h-10 items-center justify-between gap-3 rounded-xl bg-secondary px-3 text-sm font-medium">
-      {label}
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="size-5 accent-[var(--brand-red)]"
-      />
-    </label>
-  );
-  const field = (label: string, control: React.ReactNode) => (
-    <label className="block">
-      <span className="mb-1 block text-xs font-semibold text-muted-foreground">{label}</span>
-      {control}
-    </label>
-  );
   const num = (value: number, onChange: (v: number) => void, step = 1) => (
     <input
       type="number"
+      inputMode="decimal"
       step={step}
-      className={input}
+      className={`${input} pr-12`}
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
     />
   );
+  const text = (value: string, onChange: (v: string) => void, placeholder?: string) => (
+    <input
+      className={input}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+  const area = (value: string, onChange: (v: string) => void, rows = 4) => (
+    <textarea
+      className={`${input} min-h-20 py-2 leading-6`}
+      rows={rows}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
 
   return (
-    <AdminSurface className="space-y-3 p-3">
-      <SectionHeading
-        title="Pengaturan"
-        detail="Perubahan langsung terlihat di aplikasi pelanggan dalam sekitar satu menit. Booking yang sudah dibuat tetap memakai tarif saat booking."
-      />
-      {flag("Kirim Barang aktif (tile di Beranda membuka layanan)", config.enabled, (v) =>
-        set("enabled", v),
-      )}
+    <div className="space-y-3 pb-28">
+      <AdminSurface className="space-y-3 p-3">
+        <SectionHeading
+          title="Pengaturan"
+          detail="Berlaku di aplikasi pelanggan dalam sekitar satu menit. Booking yang sudah dibuat tetap memakai tarif saat booking."
+        />
+        <Switch
+          label="Kirim Barang aktif"
+          hint="Tile di Beranda membuka layanan. Mati: tile kembali jadi waitlist."
+          checked={config.enabled}
+          onChange={(v) => set("enabled", v)}
+        />
+      </AdminSurface>
 
-      <p className="text-xs font-semibold text-muted-foreground">Tujuan: Jepang</p>
-      <div className="grid gap-2 sm:grid-cols-3">
-        {flag("Jepang aktif", jp.enabled, (v) => setJp({ enabled: v }))}
-        {field(
-          "Tarif pelanggan per kg (Rp)",
-          num(jp.rateIdrPerKg, (v) => setJp({ rateIdrPerKg: v }), 1000),
-        )}
-        {field(
-          "Biaya partner per kg (Rp, internal)",
-          num(jp.partnerCostIdrPerKg, (v) => setJp({ partnerCostIdrPerKg: v }), 1000),
-        )}
-      </div>
-      <div className="grid gap-2 sm:grid-cols-3">
-        {field(
-          "Berat minimum (kg)",
-          num(config.minKg, (v) => set("minKg", v), 0.5),
-        )}
-        {field(
-          "Pembulatan ke atas (kg)",
-          num(config.roundKg, (v) => set("roundKg", v), 0.5),
-        )}
-        {field(
-          "Berat maksimum per paket (kg)",
-          num(config.maxKg, (v) => set("maxKg", v)),
-        )}
-      </div>
+      <Group
+        title="Tarif dan berat"
+        summary={`Jepang ${formatIdr(jp.rateIdrPerKg)}/kg · min ${config.minKg} kg · bulat ${config.roundKg} kg`}
+        defaultOpen
+      >
+        <Switch label="Jepang aktif" checked={jp.enabled} onChange={(v) => setJp({ enabled: v })} />
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Tarif pelanggan" suffix="Rp/kg">
+            {num(jp.rateIdrPerKg, (v) => setJp({ rateIdrPerKg: v }), 1000)}
+          </Field>
+          <Field label="Biaya partner" suffix="Rp/kg" hint="Internal, untuk margin">
+            {num(jp.partnerCostIdrPerKg, (v) => setJp({ partnerCostIdrPerKg: v }), 1000)}
+          </Field>
+          <Field label="Berat minimum" suffix="kg">
+            {num(config.minKg, (v) => set("minKg", v), 0.5)}
+          </Field>
+          <Field label="Pembulatan ke atas" suffix="kg">
+            {num(config.roundKg, (v) => set("roundKg", v), 0.5)}
+          </Field>
+          <Field label="Berat maksimum" suffix="kg" hint="Per paket">
+            {num(config.maxKg, (v) => set("maxKg", v))}
+          </Field>
+        </div>
+      </Group>
 
-      <p className="text-xs font-semibold text-muted-foreground">Drop point</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {field(
-          "Nama",
-          <input
-            className={input}
-            value={config.dropPoint.name}
-            onChange={(e) => setPoint({ name: e.target.value })}
-          />,
-        )}
-        {field(
-          "Jam buka (teks untuk pelanggan)",
-          <input
-            className={input}
-            value={config.dropPoint.hours}
-            onChange={(e) => setPoint({ hours: e.target.value })}
-          />,
-        )}
-      </div>
-      {field(
-        "Alamat",
-        <input
-          className={input}
-          value={config.dropPoint.address}
-          onChange={(e) => setPoint({ address: e.target.value })}
-        />,
-      )}
-      {field(
-        "Tautan Google Maps (https, kosong = pencarian otomatis dari alamat)",
-        <input
-          className={input}
-          value={config.dropPoint.mapUrl}
-          onChange={(e) => setPoint({ mapUrl: e.target.value })}
-        />,
-      )}
+      <Group
+        title="Drop point Tasikmalaya"
+        summary={`${config.dropPoint.name} · ${config.dropPoint.hours}`}
+      >
+        <Field label="Nama">{text(config.dropPoint.name, (v) => setPoint({ name: v }))}</Field>
+        <Field label="Alamat">
+          {text(config.dropPoint.address, (v) => setPoint({ address: v }))}
+        </Field>
+        <Field label="Jam buka" hint="Teks untuk pelanggan">
+          {text(config.dropPoint.hours, (v) => setPoint({ hours: v }))}
+        </Field>
+        <Field label="Tautan Google Maps" hint="Kosong = pencarian otomatis dari alamat">
+          {text(
+            config.dropPoint.mapUrl,
+            (v) => setPoint({ mapUrl: v }),
+            "https://maps.app.goo.gl/…",
+          )}
+        </Field>
+      </Group>
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {field(
-          "Batas antar (hari)",
-          num(config.dropDeadlineDays, (v) => set("dropDeadlineDays", v)),
-        )}
-        {field(
-          "Batas bayar (jam)",
-          num(config.paymentWindowHours, (v) => set("paymentWindowHours", v)),
-        )}
-        {field(
-          "Booking menunggu per pelanggan",
-          num(config.maxOpenBookings, (v) => set("maxOpenBookings", v)),
-        )}
-        {field(
-          "Foto isi paket wajib (minimal, 0 = tidak wajib)",
-          num(config.minPhotos, (v) => set("minPhotos", v)),
-        )}
-      </div>
-      <p className="text-xs font-semibold text-muted-foreground">Gudang Bandung dan hub Jakarta</p>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <Group
+        title="Gudang Bandung dan hub Jakarta"
+        summary={`${config.hubs.BANDUNG.name} · ${config.hubs.JAKARTA.name}`}
+      >
         {(["BANDUNG", "JAKARTA"] as const).map((h) => (
-          <div key={h} className="space-y-2">
-            {field(
-              `Nama ${h === "BANDUNG" ? "gudang Bandung" : "hub Jakarta"}`,
-              <input
-                className={input}
-                value={config.hubs[h].name}
-                onChange={(e) => setHub(h, { name: e.target.value })}
-              />,
-            )}
-            {field(
-              "Alamat",
-              <input
-                className={input}
-                value={config.hubs[h].address}
-                onChange={(e) => setHub(h, { address: e.target.value })}
-              />,
-            )}
+          <div key={h} className="space-y-2 rounded-xl bg-secondary p-3">
+            <p className="text-xs font-semibold">{h === "BANDUNG" ? "Bandung" : "Jakarta"}</p>
+            <Field label="Nama">{text(config.hubs[h].name, (v) => setHub(h, { name: v }))}</Field>
+            <Field label="Alamat">
+              {text(config.hubs[h].address, (v) => setHub(h, { address: v }))}
+            </Field>
           </div>
         ))}
-      </div>
-      <p className="text-xs font-semibold text-muted-foreground">
-        Estimasi waktu tiap leg (hari), tampil ke pelanggan
-      </p>
-      <div className="grid gap-2 sm:grid-cols-4">
-        {field(
-          "Tasik ke Bandung",
-          num(config.eta.toBandungDays, (v) => setEta({ toBandungDays: v })),
-        )}
-        {field(
-          "Bandung ke Jakarta",
-          num(config.eta.toJakartaDays, (v) => setEta({ toJakartaDays: v })),
-        )}
-        {field(
-          "Ke Jepang (min)",
-          num(config.eta.toJapanMinDays, (v) => setEta({ toJapanMinDays: v })),
-        )}
-        {field(
-          "Ke Jepang (maks)",
-          num(config.eta.toJapanMaxDays, (v) => setEta({ toJapanMaxDays: v })),
-        )}
-      </div>
-      {field(
-        "Pembawa antar kota (satu per baris, pilihan di batch)",
-        <textarea
-          className={`${input} min-h-16 py-2`}
-          value={transport}
-          onChange={(e) => setTransport(e.target.value)}
-        />,
-      )}
-      {field(
-        "Kurir partner",
-        <textarea
-          className={`${input} min-h-20 py-2`}
-          value={couriers}
-          onChange={(e) => setCouriers(e.target.value)}
-        />,
-      )}
-      {field(
-        "Barang terlarang (satu per baris, tampil di form)",
-        <textarea
-          className={`${input} min-h-28 py-2`}
-          value={prohibited}
-          onChange={(e) => setProhibited(e.target.value)}
-        />,
-      )}
-      {field(
-        "Alasan perubahan (masuk audit log)",
-        <input className={input} value={reason} onChange={(e) => setReason(e.target.value)} />,
-      )}
-      <button
-        type="button"
-        disabled={busy || reason.trim().length < 3}
-        className={btnPrimary}
-        onClick={save}
+      </Group>
+
+      <Group
+        title="Batas waktu dan estimasi"
+        summary={`Antar ${config.dropDeadlineDays} hari · bayar ${config.paymentWindowHours} jam · Jepang ${config.eta.toJapanMinDays}-${config.eta.toJapanMaxDays} hari`}
       >
-        {busy ? "Menyimpan…" : "Simpan pengaturan"}
-      </button>
-    </AdminSurface>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Batas antar" suffix="hari">
+            {num(config.dropDeadlineDays, (v) => set("dropDeadlineDays", v))}
+          </Field>
+          <Field label="Batas bayar" suffix="jam">
+            {num(config.paymentWindowHours, (v) => set("paymentWindowHours", v))}
+          </Field>
+          <Field label="Booking menunggu" hint="Per pelanggan">
+            {num(config.maxOpenBookings, (v) => set("maxOpenBookings", v))}
+          </Field>
+          <Field label="Foto wajib" suffix="foto" hint="Minimal, 0 = tidak wajib">
+            {num(config.minPhotos, (v) => set("minPhotos", v))}
+          </Field>
+        </div>
+        <p className="text-xs font-semibold text-muted-foreground">
+          Estimasi tiap leg, tampil ke pelanggan
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Tasik ke Bandung" suffix="hari">
+            {num(config.eta.toBandungDays, (v) => setEta({ toBandungDays: v }))}
+          </Field>
+          <Field label="Bandung ke Jakarta" suffix="hari">
+            {num(config.eta.toJakartaDays, (v) => setEta({ toJakartaDays: v }))}
+          </Field>
+          <Field label="Ke Jepang (min)" suffix="hari">
+            {num(config.eta.toJapanMinDays, (v) => setEta({ toJapanMinDays: v }))}
+          </Field>
+          <Field label="Ke Jepang (maks)" suffix="hari">
+            {num(config.eta.toJapanMaxDays, (v) => setEta({ toJapanMaxDays: v }))}
+          </Field>
+        </div>
+      </Group>
+
+      <Group
+        title="Kurir dan pembawa"
+        summary={`${lines(couriers).length} partner · ${lines(transport).length} pembawa`}
+      >
+        <Field label="Partner ke Jepang" hint="Satu per baris">
+          {area(couriers, setCouriers, 3)}
+        </Field>
+        <Field label="Pembawa antar kota" hint="Satu per baris, pilihan di batch">
+          {area(transport, setTransport, 3)}
+        </Field>
+      </Group>
+
+      <Group
+        title="Barang terlarang"
+        summary={`${lines(prohibited).length} aturan, tampil di form`}
+      >
+        <Field label="Daftar" hint="Satu per baris, maksimal 12">
+          {area(prohibited, setProhibited, 6)}
+        </Field>
+      </Group>
+
+      <div className="sticky bottom-0 z-20 -mx-4 border-t border-border bg-background/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+        {dirty ? (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-[#9a6100]">
+              Ada perubahan yang belum disimpan
+            </p>
+            <input
+              className={input}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Alasan perubahan (masuk audit log)"
+              aria-label="Alasan perubahan"
+            />
+            <div className="grid grid-cols-[auto_1fr] gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                className={`${btn} px-4`}
+                onClick={() => {
+                  setConfig(data.config);
+                  setCouriers(data.config.couriers.join("\n"));
+                  setProhibited(data.config.prohibited.join("\n"));
+                  setTransport(data.config.transport.join("\n"));
+                  setReason("");
+                }}
+              >
+                Batalkan
+              </button>
+              <button
+                type="button"
+                disabled={busy || reason.trim().length < 3}
+                className={`${btnPrimary} min-h-11 text-sm`}
+                onClick={save}
+              >
+                {busy ? "Menyimpan…" : "Simpan pengaturan"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-center text-xs text-muted-foreground">
+            Semua pengaturan sudah tersimpan.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

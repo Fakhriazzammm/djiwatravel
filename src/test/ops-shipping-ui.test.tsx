@@ -488,20 +488,59 @@ describe("field app: bottom bar", () => {
     expect(screen.queryByRole("button", { name: "Akun petugas" })).toBeNull();
     unmount();
 
-    const onAdminTab = vi.fn();
+    // Admin: the same app, with the rest of Kirim Barang inside it
+    const admin = {
+      orders: <div>DAFTAR SEMUA PENGIRIMAN</div>,
+      staff: <div>KELOLA PETUGAS</div>,
+      settings: <div>FORM PENGATURAN</div>,
+      todo: 3,
+      requestedTab: "orders" as const,
+    };
     render(
       <ShippingOpsApp
         me={me(["TASIK", "BANDUNG", "JAKARTA"], true)}
         initialCode={null}
-        onAdminTab={onAdminTab}
+        admin={admin}
       />,
     );
+    expect(screen.getByText("DAFTAR SEMUA PENGIRIMAN")).toBeTruthy(); // opened on the requested tab
     tab("Lainnya");
     expect(screen.queryByRole("button", { name: "Keluar" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Akun petugas" }));
-    expect(onAdminTab).toHaveBeenCalledWith("staff");
+    expect(screen.getByText("KELOLA PETUGAS")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "‹ Lainnya" }));
     fireEvent.click(screen.getByRole("button", { name: "Pengaturan" }));
-    expect(onAdminTab).toHaveBeenCalledWith("settings");
+    expect(screen.getByText("FORM PENGATURAN")).toBeTruthy();
+    // Lainnya stays lit while one of its screens is open
+    expect(screen.getByRole("tab", { name: "Lainnya", selected: true })).toBeTruthy();
+  });
+
+  it("gives Admin one bar with five tabs, and staff the same bar without the shipment list", () => {
+    const admin = {
+      orders: <div>DAFTAR</div>,
+      staff: <div>S</div>,
+      settings: <div>P</div>,
+      todo: 2,
+      requestedTab: "scan" as const,
+    };
+    const { unmount } = render(
+      <ShippingOpsApp
+        me={me(["TASIK", "BANDUNG", "JAKARTA"], true)}
+        initialCode={null}
+        admin={admin}
+      />,
+    );
+    const bar = screen.getByRole("navigation", { name: "Menu petugas" });
+    expect(
+      within(bar)
+        .getAllByRole("tab")
+        .map((t) => (t.textContent ?? "").replace(/^\d+/, "")),
+    ).toEqual(["Scan", "Antrian", "Pengiriman", "Batch", "Lainnya"]);
+    expect(within(bar).getByRole("tab", { name: "Pengiriman, 2 perlu perhatian" })).toBeTruthy();
+    expect(within(bar).getByRole("tab", { name: "Scan", selected: true })).toBeTruthy();
+    unmount();
+    render(<ShippingOpsApp me={me(["TASIK"])} initialCode={null} />);
+    expect(screen.queryByRole("tab", { name: "Pengiriman" })).toBeNull();
   });
 
   it("stops the camera screen when you leave Scan, and Scan comes back in the hub's first mode", () => {

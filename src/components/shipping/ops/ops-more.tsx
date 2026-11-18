@@ -11,7 +11,7 @@ export function OpsMore({
 }: {
   me: OpsMe;
   hub: Hub;
-  onAdminTab?: ((tab: "orders" | "staff" | "settings") => void) | undefined;
+  onAdminTab?: ((tab: "staff" | "settings") => void) | undefined;
 }) {
   return (
     <div className="space-y-3">
@@ -41,7 +41,6 @@ export function OpsMore({
           <div className="grid gap-1.5">
             {(
               [
-                ["orders", "Semua pengiriman"],
                 ["staff", "Akun petugas"],
                 ["settings", "Pengaturan"],
               ] as const
