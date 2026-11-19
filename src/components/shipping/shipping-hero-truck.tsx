@@ -1,39 +1,65 @@
-import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
+import {
+  motion,
+  useAnimationFrame,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { TRUCK_SRC } from "@/components/shipping/shipping-ui";
 
 const LANDSCAPE_SRC = "/assets/explore/services/shipping-japan-landscape-v1.jpg";
+// A, B(mirrored), A, B: shifting by exactly half the strip (two tiles) lands on an identical
+// frame, so the scroll loops with no seam.
 const LANDSCAPE_TILES = [false, true, false, true];
-const EXHAUST_DELAYS = [0, 0.24, 0.48];
+const SMOKE = [0, 0.28, 0.56, 0.84];
+const LINES = [30, 52, 74];
 
+const CRUISE = 2.2; // landscape strip percent per second
+const RUSH = 9;
+
+/**
+ * The delivery scene behind the Kirim Barang hero: the landscape scrolls forever (far layer),
+ * the road streams faster (near layer), the truck rides on its suspension with a shadow, exhaust
+ * puffs and speed lines never stop. Tapping the truck honks and pushes it to a rush that eases
+ * back to cruising speed. One speed value drives every layer, so they always agree.
+ */
 export function ShippingHeroTruck() {
   const reduced = useReducedMotion();
-  const [drive, setDrive] = useState(0);
-  const [revving, setRevving] = useState(false);
+  const [rush, setRush] = useState(false);
   const timer = useRef<number | undefined>(undefined);
+  const speed = useRef(CRUISE);
+  const target = useRef(CRUISE);
+  const pos = useMotionValue(0);
+  const landscapeX = useTransform(pos, (v) => `${-(v % 50)}%`);
+  const roadX = useTransform(pos, (v) => `${-((v * 36) % 40)}px 8px`);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  function revEngine() {
-    window.clearTimeout(timer.current);
-    setDrive((previous) => previous + 1);
-    setRevving(true);
-    timer.current = window.setTimeout(() => setRevving(false), 2200);
-  }
-
-  const duration = drive === 0 ? 4.8 : 2.2;
-  const distance = useMotionValue(0);
-  const landscapeX = useTransform(distance, (value) => `${-(value % 50)}%`);
-
-  useEffect(() => {
+  useAnimationFrame((_, delta) => {
     if (reduced) return;
+    const dt = Math.min(delta, 64) / 1000;
+    // Ease toward the target speed (accelerate quickly, settle gently).
+    speed.current += (target.current - speed.current) * Math.min(1, dt * (rush ? 5 : 1.6));
+    pos.set(pos.get() + speed.current * dt);
+  });
 
-    const animation = animate(distance, distance.get() + (drive ? 14 : 12), {
-      duration,
-      ease: drive ? "easeOut" : "linear",
-    });
-    return () => animation.stop();
-  }, [distance, drive, duration, reduced]);
+  const honk = () => {
+    window.clearTimeout(timer.current);
+    target.current = RUSH;
+    setRush(true);
+    try {
+      navigator.vibrate?.(12);
+    } catch {
+      /* optional */
+    }
+    timer.current = window.setTimeout(() => {
+      target.current = CRUISE;
+      setRush(false);
+    }, 2400);
+  };
+
+  const bounce = rush ? 0.38 : 0.85;
 
   return (
     <>
@@ -55,53 +81,89 @@ export function ShippingHeroTruck() {
         </motion.div>
         <div className="absolute inset-0 bg-linear-to-r from-brand-red-soft via-brand-red-soft/80 to-transparent" />
       </div>
-      <div
-        key={drive}
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-5 h-6"
-      >
+
+      {/* Road: dashes stream past at the same speed as everything else. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-5 h-6">
         <motion.span
           className="absolute inset-x-0 bottom-0 h-6 bg-brand-red-soft/80 text-brand-red/35"
           style={{
-            backgroundImage: "linear-gradient(90deg, currentColor 0 12px, transparent 12px 40px)",
+            backgroundImage: "linear-gradient(90deg, currentColor 0 14px, transparent 14px 40px)",
             backgroundSize: "40px 2px",
-            backgroundPosition: "0 8px",
             backgroundRepeat: "repeat-x",
+            backgroundPosition: roadX,
           }}
-          animate={reduced ? {} : { backgroundPositionX: ["0px", drive ? "-320px" : "-240px"] }}
-          transition={{ duration, ease: "linear" }}
         />
       </div>
 
+      {/* Speed lines: constant, longer and quicker while rushing. */}
+      {!reduced && (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+          {LINES.map((top, i) => (
+            <motion.span
+              key={top}
+              className="absolute right-[34%] h-[2px] rounded-full bg-foreground/20"
+              style={{ top: `${top}%`, width: rush ? 46 : 26 }}
+              animate={{ x: [0, -70], opacity: [0, 0.7, 0] }}
+              transition={{
+                duration: rush ? 0.5 : 1.3,
+                repeat: Infinity,
+                ease: "linear",
+                delay: i * (rush ? 0.15 : 0.4),
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       <button
         type="button"
-        onClick={revEngine}
+        onClick={honk}
         aria-label="Bunyikan klakson dan jalankan truk Travo"
         className="absolute -right-1 bottom-[21px] z-10 block h-[128px] w-[45%] max-w-[175px] select-none rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
+        {/* Shadow under the wheels breathes with the suspension. */}
         <motion.span
-          key={drive}
-          className="relative block size-full"
+          aria-hidden="true"
+          className="absolute bottom-[3px] left-[8%] h-[7px] w-[84%] rounded-[50%] bg-foreground/20 blur-[3px]"
+          animate={reduced ? {} : { scaleX: [1, 0.94, 1], opacity: [0.9, 0.65, 0.9] }}
+          transition={{ duration: bounce, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.span
+          className="relative block size-full origin-bottom"
           animate={
             reduced
               ? {}
               : {
-                  x: drive ? [-5, -11, 3, 0] : [-7, 1, -3, 0],
-                  y: [0, -3, 0, -2, 0],
-                  rotate: drive ? [0, -1, 0.5, 0] : [0, -0.5, 0],
+                  y: [0, -2.2, 0, -1.2, 0],
+                  rotate: rush ? [-1.2, 0.2, -1, 0.3, -1.2] : [0, -0.35, 0, -0.2, 0],
+                  x: rush ? -6 : 0,
                 }
           }
-          transition={{ duration, ease: "easeInOut" }}
+          transition={{
+            y: { duration: bounce, repeat: Infinity, ease: "easeInOut" },
+            rotate: { duration: bounce * 1.4, repeat: Infinity, ease: "easeInOut" },
+            x: { type: "spring", stiffness: 120, damping: 14 },
+          }}
         >
           {!reduced &&
-            EXHAUST_DELAYS.map((delay) => (
+            SMOKE.map((delay) => (
               <motion.span
                 key={delay}
                 aria-hidden="true"
                 className="absolute bottom-[26px] left-[10px] size-3 rounded-full bg-foreground/25 blur-[2px]"
                 initial={{ opacity: 0, scale: 0.4 }}
-                animate={{ opacity: [0, 0.55, 0], scale: [0.4, 1.7], x: [0, -28], y: [0, -16] }}
-                transition={{ duration: 0.85, repeat: drive ? 1 : 4, delay }}
+                animate={{
+                  opacity: [0, rush ? 0.7 : 0.5, 0],
+                  scale: [0.4, rush ? 2.6 : 1.8],
+                  x: [0, rush ? -46 : -28],
+                  y: [0, rush ? -22 : -16],
+                }}
+                transition={{
+                  duration: rush ? 0.7 : 1.5,
+                  repeat: Infinity,
+                  ease: "easeOut",
+                  delay: rush ? delay / 2 : delay,
+                }}
               />
             ))}
           <img
@@ -111,7 +173,7 @@ export function ShippingHeroTruck() {
             className="relative size-full object-contain object-right-bottom"
           />
         </motion.span>
-        {revving && (
+        {rush && (
           <span
             role="status"
             className="absolute right-3 top-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-brand-red shadow-sm"
