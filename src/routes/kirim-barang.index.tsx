@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
+import { useState } from "react";
 import { BackBar, Page } from "@/components/shell";
 import {
   DropPointCard,
   ShippingStatusBadge,
-  ShippingTruck,
   shippingPrimaryBtn,
 } from "@/components/shipping/shipping-ui";
+import { ShippingHeroTruck } from "@/components/shipping/shipping-hero-truck";
 import { getShippingStatus, listMyShippingOrders } from "@/lib/shipping.fn";
 import {
   DEFAULT_SHIPPING_CONFIG,
@@ -23,6 +24,14 @@ const COUNTRY_CHOICES = [
   { code: "MY", name: "Malaysia", flag: "🇲🇾" },
   { code: "TH", name: "Thailand", flag: "🇹🇭" },
 ] as const;
+
+const INFO_TABS = [
+  { id: "cara", label: "Cara kerja" },
+  { id: "tarif", label: "Tarif" },
+  { id: "drop", label: "Drop point" },
+  { id: "larangan", label: "Larangan" },
+] as const;
+type InfoTab = (typeof INFO_TABS)[number]["id"];
 
 export const Route = createFileRoute("/kirim-barang/")({
   head: () => ({
@@ -49,6 +58,7 @@ export const Route = createFileRoute("/kirim-barang/")({
 
 function ShippingHome() {
   const { config, available, mine } = Route.useLoaderData();
+  const [tab, setTab] = useState<InfoTab>("cara");
   const tariff = config.countries.JP;
   const countryName = "Jepang";
   const etaMin = config.eta.toBandungDays + config.eta.toJakartaDays + config.eta.toJapanMinDays;
@@ -58,38 +68,40 @@ function ShippingHome() {
   return (
     <Page tabs={false}>
       <BackBar title="Kirim Barang" fallbackTo="/" />
-      <section className="relative mt-1 overflow-hidden rounded-3xl bg-gradient-to-br from-[#EEF2FF] via-white to-[#FFF1F0] p-4 ring-1 ring-border/60">
-        <div className="relative z-10 max-w-[62%]">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-red">
-            Kirim Barang
-          </p>
-          <h1 className="mt-1 text-[22px] font-bold leading-tight tracking-tight">
+      <section className="relative mt-1 overflow-hidden rounded-3xl bg-brand-red-soft px-4 pb-9 pt-4">
+        <div className="relative z-10 max-w-[58%]">
+          <span className="inline-block rounded-full bg-white px-2.5 py-0.5 text-[10.5px] font-bold text-brand-red">
+            🇯🇵 Jepang · Express
+          </span>
+          <h1 className="mt-2 text-[21px] font-bold leading-[1.1] tracking-tight">
             Kirim paket ke {countryName}, kami urus
           </h1>
           <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
             Antar ke drop point, kami timbang dan kirim express. Kamu tinggal melacak.
           </p>
         </div>
-        <ShippingTruck className="absolute -right-2 top-3 size-[132px]" />
-        <dl className="relative z-10 mt-4 grid grid-cols-3 gap-2 text-center">
-          {[
-            ["Tarif", `${formatIdr(tariff.rateIdrPerKg)}/kg`],
-            ["Estimasi", `${etaMin}–${etaMax} hari`],
-            ["Minimum", formatKg(config.minKg)],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-2xl bg-white/80 px-1 py-2 ring-1 ring-border/50">
-              <dt className="text-[10px] text-muted-foreground">{label}</dt>
-              <dd className="text-[12px] font-bold tabular-nums">{value}</dd>
-            </div>
-          ))}
-        </dl>
+        <ShippingHeroTruck className="absolute -right-3 bottom-2 h-[150px] w-[172px]" />
       </section>
+      <dl className="relative z-10 -mt-6 grid grid-cols-3 gap-2 px-2 text-center">
+        {[
+          ["Tarif", `${formatIdr(tariff.rateIdrPerKg)}/kg`],
+          ["Estimasi", `${etaMin}–${etaMax} hari`],
+          ["Minimum", formatKg(config.minKg)],
+        ].map(([label, value]) => (
+          <div
+            key={label}
+            className="rounded-2xl bg-card px-1 py-2 shadow-md ring-1 ring-border/40"
+          >
+            <dt className="text-[10px] text-muted-foreground">{label}</dt>
+            <dd className="text-[12.5px] font-bold tabular-nums">{value}</dd>
+          </div>
+        ))}
+      </dl>
 
-      <p className="ios-section-label mt-4">Negara tujuan</p>
       <div
         role="radiogroup"
         aria-label="Negara tujuan"
-        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {COUNTRY_CHOICES.map((c) => {
           const live = c.code === "JP";
@@ -100,66 +112,89 @@ function ShippingHome() {
               role="radio"
               aria-checked={live}
               disabled={!live}
-              className={`tap flex shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-left ring-1 ${live ? "bg-foreground text-background ring-foreground" : "bg-card text-muted-foreground ring-border/70 opacity-80"}`}
+              className={`tap flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold ring-1 ${live ? "bg-foreground text-background ring-foreground" : "bg-card text-muted-foreground opacity-80 ring-border/70"}`}
             >
-              <span className="text-[20px] leading-none" aria-hidden="true">
-                {c.flag}
-              </span>
-              <span>
-                <span className="block text-[12.5px] font-semibold leading-tight">{c.name}</span>
-                <span className="block text-[10px] leading-tight">
-                  {live ? "Tersedia" : "Segera"}
-                </span>
-              </span>
+              <span aria-hidden="true">{c.flag}</span>
+              {c.name}
+              {!live && <span className="text-[9.5px] font-medium">· Segera</span>}
             </button>
           );
         })}
       </div>
 
-      <p className="ios-section-label mt-4">Tarif</p>
-      <dl className="ios-group divide-y divide-border/70 text-[13px]">
-        <div className="ios-row justify-between">
-          <dt className="text-muted-foreground">Per kg</dt>
-          <dd className="font-semibold">{formatIdr(tariff.rateIdrPerKg)}</dd>
-        </div>
-        <div className="ios-row justify-between">
-          <dt className="text-muted-foreground">Dihitung dari</dt>
-          <dd className="text-right font-semibold">
-            Berat timbang, bulat {formatKg(config.roundKg)}
-          </dd>
-        </div>
-        <div className="ios-row justify-between">
-          <dt className="text-muted-foreground">Minimum</dt>
-          <dd className="font-semibold">{formatKg(config.minKg)}</dd>
-        </div>
-      </dl>
-
-      <p className="ios-section-label mt-4">Cara kerja</p>
-      <ol className="ios-group divide-y divide-border/70 text-[13px]">
-        {[
-          "Isi data penerima dan barang",
-          "Antar paket ke drop point",
-          "Barang ditimbang, kamu bayar",
-          "Kami kirim, kamu lacak",
-        ].map((text, i) => (
-          <li key={text} className="ios-row">
-            <span className="ios-tile bg-secondary text-[12px] font-bold">{i + 1}</span>
-            <span className="font-semibold">{text}</span>
-          </li>
+      <div
+        role="tablist"
+        aria-label="Info Kirim Barang"
+        className="mt-3 flex rounded-xl bg-secondary p-[3px]"
+      >
+        {INFO_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            id={`kb-tab-${t.id}`}
+            aria-selected={tab === t.id}
+            aria-controls="kb-panel"
+            onClick={() => setTab(t.id)}
+            className={`tap flex-1 rounded-[10px] py-1.5 text-[12px] font-semibold transition-colors ${tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
+          >
+            {t.label}
+          </button>
         ))}
-      </ol>
+      </div>
 
-      <p className="ios-section-label mt-4">Drop point</p>
-      <DropPointCard point={config.dropPoint} />
-
-      <p className="ios-section-label mt-4">Tidak bisa dikirim</p>
-      <ul className="ios-group divide-y divide-border/70 text-[12px] text-muted-foreground">
-        {config.prohibited.map((line) => (
-          <li key={line} className="px-3 py-2">
-            {line}
-          </li>
-        ))}
-      </ul>
+      <div
+        role="tabpanel"
+        id="kb-panel"
+        aria-labelledby={`kb-tab-${tab}`}
+        className="mt-2 text-[13px]"
+      >
+        {tab === "cara" && (
+          <ol className="ios-group divide-y divide-border/70">
+            {[
+              "Isi data penerima dan barang",
+              "Antar paket ke drop point",
+              "Barang ditimbang, kamu bayar",
+              "Kami kirim, kamu lacak",
+            ].map((text, i) => (
+              <li key={text} className="ios-row">
+                <span className="ios-tile bg-brand-red-soft text-[12px] font-bold text-brand-red">
+                  {i + 1}
+                </span>
+                <span className="font-semibold">{text}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        {tab === "tarif" && (
+          <dl className="ios-group divide-y divide-border/70">
+            <div className="ios-row justify-between">
+              <dt className="text-muted-foreground">Per kg</dt>
+              <dd className="font-semibold">{formatIdr(tariff.rateIdrPerKg)}</dd>
+            </div>
+            <div className="ios-row justify-between">
+              <dt className="text-muted-foreground">Dihitung dari</dt>
+              <dd className="text-right font-semibold">
+                Berat timbang, bulat {formatKg(config.roundKg)}
+              </dd>
+            </div>
+            <div className="ios-row justify-between">
+              <dt className="text-muted-foreground">Minimum</dt>
+              <dd className="font-semibold">{formatKg(config.minKg)}</dd>
+            </div>
+          </dl>
+        )}
+        {tab === "drop" && <DropPointCard point={config.dropPoint} />}
+        {tab === "larangan" && (
+          <ul className="ios-group divide-y divide-border/70 text-[12px] text-muted-foreground">
+            {config.prohibited.map((line) => (
+              <li key={line} className="px-3 py-2">
+                {line}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {active.length > 0 && (
         <>
