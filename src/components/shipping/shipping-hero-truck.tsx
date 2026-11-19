@@ -1,7 +1,9 @@
-import { motion, useReducedMotion } from "motion/react";
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { TRUCK_SRC } from "@/components/shipping/shipping-ui";
 
+const LANDSCAPE_SRC = "/assets/explore/services/shipping-japan-landscape-v1.jpg";
+const LANDSCAPE_TILES = [false, true, false, true];
 const EXHAUST_DELAYS = [0, 0.24, 0.48];
 
 export function ShippingHeroTruck() {
@@ -20,29 +22,46 @@ export function ShippingHeroTruck() {
   }
 
   const duration = drive === 0 ? 4.8 : 2.2;
+  const distance = useMotionValue(0);
+  const landscapeX = useTransform(distance, (value) => `${-(value % 50)}%`);
+
+  useEffect(() => {
+    if (reduced) return;
+
+    const animation = animate(distance, distance.get() + (drive ? 14 : 12), {
+      duration,
+      ease: drive ? "easeOut" : "linear",
+    });
+    return () => animation.stop();
+  }, [distance, drive, duration, reduced]);
 
   return (
     <>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute inset-y-0 left-0 flex w-[400%] opacity-80"
+          style={{ x: landscapeX }}
+        >
+          {LANDSCAPE_TILES.map((mirrored, index) => (
+            <img
+              key={index}
+              src={LANDSCAPE_SRC}
+              alt=""
+              draggable={false}
+              className="h-full w-1/4 shrink-0 object-cover object-[center_62%]"
+              style={mirrored ? { transform: "scaleX(-1)" } : undefined}
+            />
+          ))}
+        </motion.div>
+        <div className="absolute inset-0 bg-linear-to-r from-brand-red-soft via-brand-red-soft/80 to-transparent" />
+      </div>
       <div
         key={drive}
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-5 h-16 overflow-hidden"
+        className="pointer-events-none absolute inset-x-0 bottom-5 h-6"
       >
-        {/* The horizon moves more slowly than the roadside and lane markings. */}
         <motion.span
-          className="absolute inset-y-0 left-0 w-[calc(100%+80px)] opacity-30"
-          style={{
-            backgroundImage:
-              "radial-gradient(ellipse at 40px 100%, var(--brand-red) 0 48%, transparent 49%)",
-            backgroundSize: "80px 45px",
-            backgroundPosition: "left bottom",
-            backgroundRepeat: "repeat-x",
-          }}
-          animate={reduced ? {} : { x: [0, -80] }}
-          transition={{ duration, ease: "linear" }}
-        />
-        <motion.span
-          className="absolute inset-x-0 bottom-0 h-6 bg-brand-red-soft"
+          className="absolute inset-x-0 bottom-0 h-6 bg-brand-red-soft/80 text-brand-red/35"
           style={{
             backgroundImage: "linear-gradient(90deg, currentColor 0 12px, transparent 12px 40px)",
             backgroundSize: "40px 2px",
