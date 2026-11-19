@@ -31,7 +31,7 @@ export const exploreAssets: Record<string, ExploreAsset> = {
     fallback: Plane,
   },
   "open-trip": {
-    src: assetPath("open-trip-v2", "png"),
+    src: assetPath("open-trip-travo-v1", "webp"),
     alt: "Ikon 3D open trip",
     fallback: MapPin,
   },
@@ -58,11 +58,11 @@ export const exploreAssets: Record<string, ExploreAsset> = {
 };
 
 export const exploreAssetReview = {
-  source: "OpenAI image generation from the user-provided Explore screenshot as a style reference",
+  source: "OpenAI image generation with the approved Travo reference and Open Trip icon",
   provider: "OpenAI image generation",
-  promptVersion: "explore-open-trip-3d-v2",
+  promptVersion: "explore-open-trip-travo-v1",
   reviewed: true,
-  note: "Open Trip uses a transparent 320px PNG optimized for the 54px Explore slot; the adjacent label remains the semantic explanation.",
+  note: "Open Trip uses a transparent 192px WebP optimized for the 54px Explore slot; the adjacent label remains the semantic explanation.",
 };
 
 export function assetForService(icon: string): ExploreAsset {

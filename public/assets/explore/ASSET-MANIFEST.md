@@ -21,10 +21,10 @@ object and gives Travo an action specific to the service. The transparent
 192 × 192 WebP files render
 in the existing mobile slots.
 
-| Surface           | Assets                                                                                                         | Display |
-| ----------------- | -------------------------------------------------------------------------------------------------------------- | ------- |
-| Home and Explore  | `services/{esim,shipping-truck,personal-shopper,visa,travel-insurance,flight-plane,attractions}-travo-v1.webp` | 54 px   |
-| Home eSIM summary | `../esim/esim-pass-global-travo-v1.webp`                                                                       | 44 px   |
+| Surface           | Assets                                                                                                                   | Display |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | ------- |
+| Home and Explore  | `services/{esim,shipping-truck,personal-shopper,visa,travel-insurance,flight-plane,attractions,open-trip}-travo-v1.webp` | 54 px   |
+| Home eSIM summary | `../esim/esim-pass-global-travo-v1.webp`                                                                                 | 44 px   |
 
 Admin service availability continues to use the existing settings. The image
 paths are presentation assets and require no new permissions or migration.
