@@ -19,14 +19,14 @@ const assetPath = (name: string, extension = "svg") =>
   `/assets/explore/services/${name}.${extension}?v=${ASSET_VERSION}`;
 
 export const exploreAssets: Record<string, ExploreAsset> = {
-  esim: { src: assetPath("esim"), alt: "Ikon 3D eSIM", fallback: Smartphone },
+  esim: { src: assetPath("esim-travo-v1", "webp"), alt: "Ikon 3D eSIM", fallback: Smartphone },
   attractions: {
-    src: assetPath("attractions"),
+    src: assetPath("attractions-travo-v1", "webp"),
     alt: "Ikon 3D aktivitas wisata",
     fallback: Ticket,
   },
   transportation: {
-    src: assetPath("flight-plane-v1", "png"),
+    src: assetPath("flight-plane-travo-v1", "webp"),
     alt: "Ikon 3D pesawat",
     fallback: Plane,
   },
@@ -36,22 +36,22 @@ export const exploreAssets: Record<string, ExploreAsset> = {
     fallback: MapPin,
   },
   shipping: {
-    src: assetPath("shipping-truck"),
+    src: assetPath("shipping-truck-travo-v1", "webp"),
     alt: "Ikon 3D truk pengiriman",
     fallback: Truck,
   },
   "personal-shopper": {
-    src: assetPath("personal-shopper"),
+    src: assetPath("personal-shopper-travo-v1", "webp"),
     alt: "Ikon 3D titip belanja",
     fallback: ShoppingBag,
   },
   visa: {
-    src: assetPath("visa"),
+    src: assetPath("visa-travo-v1", "webp"),
     alt: "Ikon 3D layanan visa",
     fallback: FileCheck2,
   },
   "travel-insurance": {
-    src: assetPath("travel-insurance"),
+    src: assetPath("travel-insurance-travo-v1", "webp"),
     alt: "Ikon 3D asuransi perjalanan",
     fallback: ShieldCheck,
   },

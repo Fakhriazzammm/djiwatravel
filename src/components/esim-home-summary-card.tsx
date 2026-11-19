@@ -169,7 +169,7 @@ function ChipArt() {
         style={{ touchAction: "pan-y" }}
       >
         <motion.img
-          src="/assets/esim/esim-pass-global-v1.webp"
+          src="/assets/esim/esim-pass-global-travo-v1.webp"
           alt=""
           width={192}
           height={192}
