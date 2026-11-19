@@ -227,7 +227,7 @@ export function ServiceShelf() {
             )}
           </>
         );
-        const cell = "w-[62px] shrink-0 rounded-xl py-1 text-center";
+        const cell = "min-w-[62px] shrink-0 rounded-xl px-1.5 py-1 text-center";
         return (
           <div key={service.id} role="listitem">
             {href ? (

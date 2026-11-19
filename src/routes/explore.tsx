@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { Search, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -49,8 +49,14 @@ export const Route = createFileRoute("/explore")({
   }),
   // A cold provider read can legitimately take a few seconds; say so instead of showing a gap.
   pendingComponent: ExplorePending,
-  component: Explore,
+  component: ExploreLayout,
 });
+
+/** /explore/aktivitas and /explore/aku are children; without an Outlet they showed this page. */
+function ExploreLayout() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  return path.replace(/\/+$/, "") === "/explore" ? <Explore /> : <Outlet />;
+}
 
 /** While the catalogue loads: the same bottom bar the loaded page will have (no swap on arrival). */
 function ExplorePending() {
