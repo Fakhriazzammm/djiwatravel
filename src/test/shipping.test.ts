@@ -237,7 +237,7 @@ describe("drop point map link", () => {
     const url = new URL(mapsSearchUrl(DEFAULT_SHIPPING_CONFIG.dropPoint));
     expect(url.origin + url.pathname).toBe("https://www.google.com/maps/search/");
     expect(url.searchParams.get("query")).toBe(
-      "Djiwa Tasikmalaya, Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya, Jawa Barat",
+      "Djiwa Travel Tasikmalaya (Djiwa Tentram Cafe & Resto), Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya, Jawa Barat",
     );
   });
 });
@@ -277,7 +277,7 @@ describe("QR label and scan", () => {
     );
     expect(label.qrValue).toBe("https://djiwatravel.com/petugas?scan=DJW-KR-0042");
     expect(label.addressLines).toEqual(["2-21-1 Shibuya, Apt 302", "Shibuya-ku, Tokyo 150-0002"]);
-    expect(label.dropPointName).toBe("Djiwa Tasikmalaya");
+    expect(label.dropPointName).toBe("Djiwa Travel Tasikmalaya (Djiwa Tentram Cafe & Resto)");
     expect(labelFileName("DJW-KR-0042", "pdf")).toBe("label-DJW-KR-0042.pdf");
   });
 

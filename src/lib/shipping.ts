@@ -134,7 +134,7 @@ export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
   roundKg: 0.5,
   maxKg: 30,
   dropPoint: {
-    name: "Djiwa Tasikmalaya",
+    name: "Djiwa Travel Tasikmalaya (Djiwa Tentram Cafe & Resto)",
     address: "Jl. Bojong Tengah No. 34, Kec. Cipedes, Tasikmalaya, Jawa Barat",
     hours: "09.00 sampai 17.00 WIB",
     mapUrl: "",
