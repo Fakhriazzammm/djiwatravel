@@ -329,7 +329,7 @@ describe("route Tasikmalaya, Bandung, Jakarta, Japan", () => {
   it("tells the customer when to expect the parcel, from the legs set in Admin", () => {
     const config = DEFAULT_SHIPPING_CONFIG;
     expect(etaText("TO_BANDUNG", config)).toBe("Estimasi tiba di Bandung dalam 1 hari.");
-    expect(etaText("SHIPPED", config)).toBe("Estimasi tiba di Jepang dalam 5 sampai 7 hari.");
+    expect(etaText("SHIPPED", config)).toBe("Estimasi tiba di Jepang dalam 5 sampai 19 hari.");
     expect(etaText("AT_BANDUNG", config)).toBeNull();
     expect(etaText("TO_JAKARTA", { eta: { ...config.eta, toJakartaDays: 2 } })).toBe(
       "Estimasi tiba di Jakarta dalam 2 hari.",
@@ -353,7 +353,7 @@ describe("route Tasikmalaya, Bandung, Jakarta, Japan", () => {
       toBandungDays: 1,
       toJakartaDays: 1,
       toJapanMinDays: 5,
-      toJapanMaxDays: 7,
+      toJapanMaxDays: 19,
     });
     expect(d.transport).toEqual(["Mobil Djiwa", "Ekspedisi"]);
     const parsed = parseShippingConfig({

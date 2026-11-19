@@ -147,7 +147,7 @@ export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
     BANDUNG: { name: "Gudang Djiwa Bandung", address: "Bandung, Jawa Barat" },
     JAKARTA: { name: "Hub Djiwa Jakarta", address: "Jakarta" },
   },
-  eta: { toBandungDays: 1, toJakartaDays: 1, toJapanMinDays: 5, toJapanMaxDays: 7 },
+  eta: { toBandungDays: 1, toJakartaDays: 1, toJapanMinDays: 5, toJapanMaxDays: 19 },
   transport: ["Mobil Djiwa", "Ekspedisi"],
   couriers: ["Partner Djiwa"],
   prohibited: [
