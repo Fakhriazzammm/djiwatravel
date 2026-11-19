@@ -8,7 +8,7 @@ import {
   type ShippingStatus,
 } from "@/lib/shipping";
 
-export const TRUCK_SRC = "/assets/explore/services/shipping-truck.svg";
+export const TRUCK_SRC = "/assets/explore/services/shipping-truck-travo-v1.webp";
 
 export const shippingField =
   "min-h-10 w-full rounded-xl border border-border/70 bg-secondary/70 px-3 text-[14px] outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/15";
@@ -21,7 +21,7 @@ export function ShippingTruck({ className = "size-10" }: { className?: string })
   return (
     <img
       src={TRUCK_SRC}
-      alt="Ikon truk pengiriman"
+      alt="Travo si maskot dengan truk pengiriman"
       className={`${className} shrink-0 object-contain`}
       decoding="async"
     />
