@@ -1,119 +1,106 @@
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { TRUCK_SRC } from "@/components/shipping/shipping-ui";
 
-const PUFFS = [0, 0.45, 0.9, 1.35];
+const EXHAUST_DELAYS = [0, 0.24, 0.48];
 
-/**
- * The Travo truck driving along a road: it bobs, exhaust puffs drift back, speed lines and road
- * dashes stream past. Tapping it revs the engine (faster, bigger puffs, a "Tiin!" bubble).
- */
-export function ShippingHeroTruck({ className = "" }: { className?: string }) {
+export function ShippingHeroTruck() {
   const reduced = useReducedMotion();
-  const [rev, setRev] = useState(0);
-  const [honk, setHonk] = useState(false);
-  const fast = rev > 0;
-  const speed = fast ? 0.45 : 1.1;
+  const [drive, setDrive] = useState(0);
+  const [revving, setRevving] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
 
-  const onTap = () => {
-    setRev((n) => n + 1);
-    setHonk(true);
-    window.setTimeout(() => setHonk(false), 900);
-    window.setTimeout(() => setRev((n) => (n > 0 ? 0 : n)), 1800);
-    try {
-      navigator.vibrate?.(12);
-    } catch {
-      /* vibration is optional */
-    }
-  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  function revEngine() {
+    window.clearTimeout(timer.current);
+    setDrive((previous) => previous + 1);
+    setRevving(true);
+    timer.current = window.setTimeout(() => setRevving(false), 2200);
+  }
+
+  const duration = drive === 0 ? 4.8 : 2.2;
 
   return (
-    <button
-      type="button"
-      onClick={onTap}
-      aria-label="Truk Travo. Ketuk untuk membunyikan klakson"
-      className={`relative block select-none outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
-    >
-      {/* Road dashes */}
-      <span className="absolute inset-x-0 bottom-[10px] h-[3px] overflow-hidden" aria-hidden="true">
+    <>
+      <div
+        key={drive}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-5 h-16 overflow-hidden"
+      >
+        {/* The horizon moves more slowly than the roadside and lane markings. */}
         <motion.span
-          className="absolute inset-y-0 left-0 w-[200%]"
+          className="absolute inset-y-0 left-0 w-[calc(100%+80px)] opacity-30"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(90deg, rgba(23,24,28,.22) 0 14px, transparent 14px 32px)",
+              "radial-gradient(ellipse at 40px 100%, var(--brand-red) 0 48%, transparent 49%)",
+            backgroundSize: "80px 45px",
+            backgroundPosition: "left bottom",
+            backgroundRepeat: "repeat-x",
           }}
-          animate={reduced ? {} : { x: ["0%", "-16%"] }}
-          transition={{ duration: speed, ease: "linear", repeat: Infinity }}
+          animate={reduced ? {} : { x: [0, -80] }}
+          transition={{ duration, ease: "linear" }}
         />
-      </span>
+        <motion.span
+          className="absolute inset-x-0 bottom-0 h-6 bg-brand-red-soft"
+          style={{
+            backgroundImage: "linear-gradient(90deg, currentColor 0 12px, transparent 12px 40px)",
+            backgroundSize: "40px 2px",
+            backgroundPosition: "0 8px",
+            backgroundRepeat: "repeat-x",
+          }}
+          animate={reduced ? {} : { backgroundPositionX: ["0px", drive ? "-320px" : "-240px"] }}
+          transition={{ duration, ease: "linear" }}
+        />
+      </div>
 
-      {/* Speed lines */}
-      {!reduced &&
-        [28, 52, 76].map((top, i) => (
-          <motion.span
-            key={top}
-            aria-hidden="true"
-            className="absolute h-[2px] rounded-full bg-foreground/25"
-            style={{ top: `${top}%`, left: 0, width: 26 - i * 5 }}
-            animate={{ x: [0, -18], opacity: [0, 0.8, 0] }}
-            transition={{ duration: speed + i * 0.15, repeat: Infinity, delay: i * 0.25 }}
+      <button
+        type="button"
+        onClick={revEngine}
+        aria-label="Bunyikan klakson dan jalankan truk Travo"
+        className="absolute -right-1 bottom-[21px] z-10 block h-[128px] w-[45%] max-w-[175px] select-none rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        <motion.span
+          key={drive}
+          className="relative block size-full"
+          animate={
+            reduced
+              ? {}
+              : {
+                  x: drive ? [-5, -11, 3, 0] : [-7, 1, -3, 0],
+                  y: [0, -3, 0, -2, 0],
+                  rotate: drive ? [0, -1, 0.5, 0] : [0, -0.5, 0],
+                }
+          }
+          transition={{ duration, ease: "easeInOut" }}
+        >
+          {!reduced &&
+            EXHAUST_DELAYS.map((delay) => (
+              <motion.span
+                key={delay}
+                aria-hidden="true"
+                className="absolute bottom-[26px] left-[10px] size-3 rounded-full bg-foreground/25 blur-[2px]"
+                initial={{ opacity: 0, scale: 0.4 }}
+                animate={{ opacity: [0, 0.55, 0], scale: [0.4, 1.7], x: [0, -28], y: [0, -16] }}
+                transition={{ duration: 0.85, repeat: drive ? 1 : 4, delay }}
+              />
+            ))}
+          <img
+            src={TRUCK_SRC}
+            alt=""
+            draggable={false}
+            className="relative size-full object-contain object-right-bottom"
           />
-        ))}
-
-      {/* Exhaust smoke, drifting back (to the left) and up */}
-      {!reduced &&
-        PUFFS.map((delay) => (
-          <motion.span
-            key={delay}
-            aria-hidden="true"
-            className="absolute bottom-[26px] left-[10px] size-3 rounded-full bg-foreground/20 blur-[1px]"
-            initial={{ opacity: 0, scale: 0.4 }}
-            animate={{
-              opacity: [0, 0.55, 0],
-              scale: fast ? [0.4, 2.4] : [0.4, 1.7],
-              x: fast ? [0, -38] : [0, -24],
-              y: [0, -22],
-            }}
-            transition={{
-              duration: fast ? 0.9 : 1.8,
-              repeat: Infinity,
-              delay: delay / (fast ? 2 : 1),
-            }}
-          />
-        ))}
-
-      {/* The truck */}
-      <motion.img
-        src={TRUCK_SRC}
-        alt=""
-        draggable={false}
-        decoding="async"
-        className="relative size-full object-contain"
-        animate={
-          reduced
-            ? {}
-            : fast
-              ? { y: [0, -3, 0, -2, 0], x: [0, 4, 0], rotate: [0, -1.5, 0] }
-              : { y: [0, -2.5, 0], rotate: [0, -0.6, 0] }
-        }
-        transition={{ duration: fast ? 0.35 : 0.9, repeat: Infinity, ease: "easeInOut" }}
-        whileTap={reduced ? {} : { scale: 0.96 }}
-      />
-
-      <AnimatePresence>
-        {honk && (
-          <motion.span
+        </motion.span>
+        {revving && (
+          <span
             role="status"
-            initial={{ opacity: 0, y: 6, scale: 0.7 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ type: "spring", stiffness: 500, damping: 26 }}
-            className="absolute -top-1 right-2 rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-brand-red shadow"
+            className="absolute right-3 top-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-brand-red shadow-sm"
           >
             Tiin tiin!
-          </motion.span>
+          </span>
         )}
-      </AnimatePresence>
-    </button>
+      </button>
+    </>
   );
 }

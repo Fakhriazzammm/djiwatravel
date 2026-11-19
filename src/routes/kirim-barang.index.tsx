@@ -68,19 +68,19 @@ function ShippingHome() {
   return (
     <Page tabs={false}>
       <BackBar title="Kirim Barang" fallbackTo="/" />
-      <section className="relative mt-1 overflow-hidden rounded-3xl bg-brand-red-soft px-4 pb-9 pt-4">
-        <div className="relative z-10 max-w-[58%]">
+      <section className="relative mt-1 min-h-[190px] overflow-hidden rounded-[22px] bg-brand-red-soft px-4 pb-10 pt-4">
+        <div className="pointer-events-none relative z-10 w-[56%]">
           <span className="inline-block rounded-full bg-white px-2.5 py-0.5 text-[10.5px] font-bold text-brand-red">
             🇯🇵 Jepang · Express
           </span>
           <h1 className="mt-2 text-[21px] font-bold leading-[1.1] tracking-tight">
-            Kirim paket ke {countryName}, kami urus
+            Paketmu sampai {countryName}
           </h1>
           <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
             Antar ke drop point, kami timbang dan kirim express. Kamu tinggal melacak.
           </p>
         </div>
-        <ShippingHeroTruck className="absolute -right-3 bottom-2 h-[150px] w-[172px]" />
+        <ShippingHeroTruck />
       </section>
       <dl className="relative z-10 -mt-6 grid grid-cols-3 gap-2 px-2 text-center">
         {[
