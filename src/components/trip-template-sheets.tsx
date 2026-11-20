@@ -3,6 +3,7 @@ import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { btnRed } from "@/components/shell";
+import { SharedBudgetCard } from "@/components/shared-budget-card";
 import { TemplateDays } from "@/components/trip-template-ui";
 import {
   Sheet,
@@ -16,42 +17,25 @@ import {
   publishDraftTemplate,
   publishTripTemplate,
 } from "@/lib/trip-templates.fn";
-import type { TemplateDraft } from "@/lib/trip-templates";
+import { formatIdr, type TemplateDraft } from "@/lib/trip-templates";
 
 const content =
   "mx-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7";
 const field = "w-full rounded-2xl bg-secondary/70 px-3 py-2.5 text-[14px] outline-none";
 
-function publishedText(feed: { posted: boolean; pending: boolean } | undefined) {
+function publishedText(feed: { posted: boolean; pending: boolean; message?: string | undefined } | undefined) {
   if (feed?.posted)
     return feed.pending
       ? "Template tayang. Postingan Feeds menunggu tinjauan."
       : "Template tayang dan dibagikan ke Feeds";
-  return "Template tayang";
+  return feed?.message ? `Template tayang. ${feed.message}` : "Template tayang";
 }
 
-function ShareToggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (value: boolean) => void;
-}) {
+function TimelineNotice() {
   return (
-    <label className="flex items-start gap-2.5 rounded-2xl bg-secondary/70 px-3 py-2.5">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="mt-0.5 size-4 accent-brand-red"
-      />
-      <span className="text-[13px] leading-[18px]">
-        <b className="font-semibold">Bagikan ke timeline Feeds</b>
-        <span className="block text-[12px] text-muted-foreground">
-          Traveler lain bisa melihat dan memakai template-mu dari Explore.
-        </span>
-      </span>
-    </label>
+    <p className="text-[12px] leading-4 text-muted-foreground">
+      Dengan izin Komunitas, itinerary yang diterbitkan otomatis dibagikan ke Feeds sesuai aturan moderasi.
+    </p>
   );
 }
 
@@ -75,14 +59,13 @@ export function PublishTripTemplateSheet({
   const navigate = useNavigate();
   const [title, setTitle] = useState(trip.name);
   const [description, setDescription] = useState("");
-  const [share, setShare] = useState(true);
   const [busy, setBusy] = useState(false);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
     try {
       const result = await publishTripTemplate({
-        data: { tripId: trip.id, title, description, shareToFeed: share },
+        data: { tripId: trip.id, title, description },
       });
       toast.success(publishedText(result.feed));
       onOpenChange(false);
@@ -99,8 +82,9 @@ export function PublishTripTemplateSheet({
         <SheetHeader className="mb-3 text-left">
           <SheetTitle>Jadikan template</SheetTitle>
           <SheetDescription>
-            Orang lain bisa melihat dan memakai agenda perjalanan ini. Catatan, biaya, pemesanan,
-            dan dokumen tidak ikut. Tanggal diganti jadi Hari 1, Hari 2, dan seterusnya.
+            Orang lain bisa melihat dan memakai agenda perjalanan ini beserta rencana anggarannya
+            per orang. Catatan, pengeluaran nyata, pemesanan, dan dokumen tidak ikut. Tanggal
+            diganti jadi Hari 1, Hari 2, dan seterusnya.
           </SheetDescription>
         </SheetHeader>
         <form onSubmit={submit} className="space-y-3">
@@ -121,7 +105,7 @@ export function PublishTripTemplateSheet({
             aria-label="Deskripsi"
             className={`${field} min-h-20`}
           />
-          <ShareToggle checked={share} onChange={setShare} />
+          <TimelineNotice />
           <button type="submit" disabled={busy} className={`${btnRed} w-full disabled:opacity-50`}>
             {busy ? "Menerbitkan…" : "Terbitkan template"}
           </button>
@@ -143,7 +127,6 @@ export function TravoTemplateSheet({
   const [brief, setBrief] = useState("");
   const [days, setDays] = useState(3);
   const [draft, setDraft] = useState<TemplateDraft | null>(null);
-  const [share, setShare] = useState(true);
   const [busy, setBusy] = useState<"draft" | "publish" | null>(null);
   async function generate(event: React.FormEvent) {
     event.preventDefault();
@@ -164,7 +147,6 @@ export function TravoTemplateSheet({
     try {
       const result = await publishDraftTemplate({
         data: {
-          shareToFeed: share,
           title: draft.title,
           description: draft.description,
           destinationName: draft.destinationName,
@@ -177,7 +159,9 @@ export function TravoTemplateSheet({
             title: item.title,
             location: item.location,
             category: item.category,
+            costIdr: item.costIdr ?? null,
           })),
+          budget: draft.budget?.categories ?? [],
         },
       });
       toast.success(publishedText(result.feed));
@@ -261,10 +245,23 @@ export function TravoTemplateSheet({
                 title: item.title,
                 location: item.location,
                 category: item.category,
+                costIdr: item.costIdr ?? null,
                 image: null,
               }))}
             />
-            <ShareToggle checked={share} onChange={setShare} />
+            {draft.budget && (
+              <SharedBudgetCard
+                title="Estimasi anggaran"
+                total={formatIdr(draft.budget.totalIdr)}
+                note="Per orang · usulan Travo, cek harga terbaru"
+                lines={draft.budget.categories.map((line) => ({
+                  name: line.name,
+                  amount: formatIdr(line.amountIdr),
+                  share: draft.budget!.totalIdr ? line.amountIdr / draft.budget!.totalIdr : 0,
+                }))}
+              />
+            )}
+            <TimelineNotice />
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"

@@ -202,18 +202,38 @@ describe("My Trips sharing", () => {
             return_date: "2026-11-05",
             travelers_count: 2,
             primary_currency: "JPY",
+            total_budget_minor: 30000000,
           },
         ],
       } as never)
       .mockResolvedValueOnce({
         rows: [{ id: "item-1", title: "Museum", activity_date: "2026-11-02" }],
+      } as never)
+      .mockResolvedValueOnce({
+        rows: [
+          { name: "Akomodasi", allocated_minor: 20000000 },
+          { name: "Makan", allocated_minor: 10000000 },
+        ],
       } as never);
 
     const shared = await loadSharedTrip("a".repeat(32));
 
     expect(shared?.itinerary).toHaveLength(1);
-    expect(query.mock.calls[0]?.[0]).not.toContain("travel_expenses");
-    expect(query.mock.calls[1]?.[0]).not.toContain("travel_checklist_items");
+    // The planned budget is public; actual spending, the checklist and the total column never leak.
+    expect(shared?.budget).toEqual({
+      currency: "JPY",
+      travelers: 2,
+      totalMinor: 30000000,
+      categories: [
+        { name: "Akomodasi", allocatedMinor: 20000000 },
+        { name: "Makan", allocatedMinor: 10000000 },
+      ],
+    });
+    expect(shared?.trip).not.toHaveProperty("total_budget_minor");
+    for (const call of query.mock.calls) {
+      expect(call[0]).not.toContain("travel_expenses");
+      expect(call[0]).not.toContain("travel_checklist_items");
+    }
   });
 
   it("rejects malformed and revoked tokens without leaking trip data", async () => {

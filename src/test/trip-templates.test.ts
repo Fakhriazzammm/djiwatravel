@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cleanTemplateBudget,
   cleanTemplateDraft,
   dateForDay,
   dayIndexFor,
@@ -116,5 +117,64 @@ describe("cleanTemplateDraft (Travo output)", () => {
     expect(cleanTemplateDraft({ ...base, items: [] }, 2)).toBeNull();
     expect(cleanTemplateDraft({ ...base, title: "", items: many }, 2)).toBeNull();
     expect(cleanTemplateDraft(null, 2)).toBeNull();
+  });
+});
+
+describe("template budget (Travo output)", () => {
+  it("cleans lines, merges duplicates, rounds and totals", () => {
+    const budget = cleanTemplateBudget([
+      { name: "Makan", amountIdr: 1_500_000.4 },
+      { name: "Makan", amountIdr: 500_000 },
+      { name: "Akomodasi", amountIdr: 4_000_000 },
+      { name: "", amountIdr: 100 },
+      { name: "Nol", amountIdr: 0 },
+      { name: "Negatif", amountIdr: -5 },
+      null,
+    ]);
+    expect(budget).toEqual({
+      categories: [
+        { name: "Makan", amountIdr: 2_000_000 },
+        { name: "Akomodasi", amountIdr: 4_000_000 },
+      ],
+      totalIdr: 6_000_000,
+    });
+    expect(cleanTemplateBudget([])).toBeNull();
+    expect(cleanTemplateBudget("x")).toBeNull();
+  });
+
+  it("keeps per-item costs and the budget on a cleaned draft", () => {
+    const draft = cleanTemplateDraft(
+      {
+        title: "Bali 2 hari",
+        description: "",
+        destinationName: "Bali",
+        destinationCode: "ID",
+        days: 2,
+        items: [
+          {
+            day: 1,
+            start: "09:00",
+            end: "",
+            title: "Tanah Lot",
+            location: "Tabanan",
+            category: "wisata",
+            costIdr: 60_000,
+          },
+          {
+            day: 1,
+            start: "12:00",
+            end: "",
+            title: "Makan",
+            location: "",
+            category: "kuliner",
+            costIdr: -1,
+          },
+        ],
+        budget: [{ name: "Akomodasi", amountIdr: 800_000 }],
+      },
+      2,
+    );
+    expect(draft?.items.map((i) => i.costIdr)).toEqual([60_000, null]);
+    expect(draft?.budget?.totalIdr).toBe(800_000);
   });
 });

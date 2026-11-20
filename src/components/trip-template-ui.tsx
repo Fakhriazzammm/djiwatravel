@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { CalendarDays, MapPin, Sparkles, Users } from "lucide-react";
 import { isAllowedImageUrl } from "@/lib/place-image";
+import { compactIdr } from "@/lib/trip-templates";
 
 export type TemplateCardData = {
   slug: string;
@@ -19,6 +20,8 @@ export type TemplateViewItem = {
   id?: string;
   lat?: number | null;
   lng?: number | null;
+  /** Planned cost per traveler in rupiah. */
+  costIdr?: number | null;
   day: number;
   start: string | null;
   end: string | null;
@@ -36,30 +39,56 @@ const CATEGORY: Record<string, string> = {
   akomodasi: "Akomodasi",
 };
 
+const MASCOT = "/assets/home-hero/mascot-map-v1.png";
+
+/**
+ * Cover of a template: its photo, or a brand gradient. With `branded` it carries the Djiwa Travel
+ * badge and the mascot, so a shared template reads as ours even before the page is read.
+ */
 export function TemplateCover({
   url,
   title,
   className = "h-28",
+  branded = false,
 }: {
   url: string | null;
   title: string;
   className?: string;
+  branded?: boolean;
 }) {
-  if (url && isAllowedImageUrl(url))
-    return (
-      <img
-        src={url}
-        alt=""
-        loading="lazy"
-        className={`${className} w-full rounded-xl object-cover`}
-      />
-    );
+  const photo = url && isAllowedImageUrl(url);
   return (
-    <div
-      aria-hidden="true"
-      className={`${className} flex w-full items-end rounded-xl bg-gradient-to-br from-brand-red/90 to-brand-red/50 p-2.5`}
-    >
-      <span className="line-clamp-2 text-[13px] font-bold leading-4 text-white">{title}</span>
+    <div className={`relative w-full overflow-hidden rounded-xl ${className}`}>
+      {photo ? (
+        <img src={url} alt="" loading="lazy" className="size-full object-cover" />
+      ) : (
+        <div
+          aria-hidden="true"
+          className="flex size-full items-end bg-gradient-to-br from-brand-red/90 to-brand-red/50 p-2.5"
+        >
+          <span className="line-clamp-2 text-[13px] font-bold leading-4 text-white">{title}</span>
+        </div>
+      )}
+      {branded && (
+        <>
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/55 to-transparent"
+          />
+          <span className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-red shadow">
+            Djiwa Travel
+          </span>
+          <span className="absolute bottom-2.5 left-3 right-24 line-clamp-2 text-[15px] font-bold leading-5 text-white drop-shadow">
+            {title}
+          </span>
+          <img
+            src={MASCOT}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute -bottom-1 right-1 h-24 w-auto drop-shadow-lg"
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -141,6 +170,11 @@ export function TemplateDays({
                         {item.location}
                       </p>
                     )}
+                    {item.costIdr ? (
+                      <p className="mt-0.5 text-[11px] font-medium text-brand-red">
+                        ≈ {compactIdr(item.costIdr)} / orang
+                      </p>
+                    ) : null}
                     {item.category && CATEGORY[item.category] && (
                       <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
                         {CATEGORY[item.category]}

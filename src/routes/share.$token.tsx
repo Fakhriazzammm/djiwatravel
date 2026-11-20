@@ -16,7 +16,9 @@ import { isAllowedImageUrl } from "@/lib/place-image";
 import { splitActivityNotes } from "@/lib/share-card";
 import { tripStoryImages } from "@/lib/trip-share-image";
 import { Page, Wordmark } from "@/components/shell";
+import { SharedBudgetCard } from "@/components/shared-budget-card";
 import { SharedItineraryMap } from "@/components/shared-itinerary-map";
+import { formatTripMoney } from "@/lib/trip-money";
 import { getSharedTrip } from "@/lib/my-trips.fn";
 
 export const loadShared = async ({ params }: { params: { token: string } }) => {
@@ -129,6 +131,17 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
   const handle = ownerInfo?.handle ?? "member";
   const token = String((data.trip as { token?: string }).token ?? "");
   const days = groupByDay(data.itinerary as SharedItem[]);
+  const budget =
+    (
+      data as {
+        budget?: {
+          currency: string;
+          travelers: number;
+          totalMinor: number;
+          categories: { name: string; allocatedMinor: number }[];
+        } | null;
+      }
+    ).budget ?? null;
   const activityCount = days.reduce((sum, day) => sum + day.items.length, 0);
   const imageOf = (item: SharedItem) =>
     isAllowedImageUrl(item.place_image_url) ? item.place_image_url : null;
@@ -202,6 +215,18 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
         >
           Rencana perjalanan
         </h2>
+        {budget && (
+          <SharedBudgetCard
+            title="Anggaran"
+            total={formatTripMoney(budget.totalMinor, budget.currency)}
+            note={`Rencana untuk ${budget.travelers} traveler`}
+            lines={budget.categories.map((line) => ({
+              name: line.name,
+              amount: formatTripMoney(line.allocatedMinor, budget.currency),
+              share: budget.totalMinor ? line.allocatedMinor / budget.totalMinor : 0,
+            }))}
+          />
+        )}
         {days.length > 0 && (
           <SharedItineraryMap
             className="mt-2"
@@ -275,6 +300,17 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
                                 ? `${time || "Mulai belum diatur"}${end ? `–${end}` : ""}`
                                 : "Waktu belum diatur"}
                             </span>
+                            {Number(
+                              (item as { estimated_cost_minor?: unknown }).estimated_cost_minor,
+                            ) > 0 && (
+                              <span className="font-semibold text-foreground/80">
+                                ≈{" "}
+                                {formatTripMoney(
+                                  (item as { estimated_cost_minor?: unknown }).estimated_cost_minor,
+                                  (item as { currency?: unknown }).currency ?? budget?.currency,
+                                )}
+                              </span>
+                            )}
                             <span className="inline-flex min-w-0 items-center gap-0.5">
                               <MapPin className="size-3 shrink-0" />
                               <span className="truncate">

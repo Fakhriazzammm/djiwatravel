@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Flag, MapPin, Sparkles } from "lucide-react";
+import { Flag, MapPin, Share2, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
-import { BackBar, Page, btnRed, btnSoft } from "@/components/shell";
+import { FixedLayer } from "@/components/motion-primitives";
+import { BackBar, Page, Wordmark, btnRed, btnSoft } from "@/components/shell";
+import { SharedBudgetCard } from "@/components/shared-budget-card";
 import { SharedItineraryMap } from "@/components/shared-itinerary-map";
 import { TemplateCover, TemplateDays } from "@/components/trip-template-ui";
 import {
@@ -13,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { formatIdr, templatePath } from "@/lib/trip-templates";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
 import { getPublicTemplate, reportTemplate, copyTemplate } from "@/lib/trip-templates.fn";
 
@@ -39,6 +42,33 @@ export const Route = createFileRoute("/template/$slug")({
   },
   component: TemplatePage,
 });
+
+const MASCOT = "/assets/home-hero/mascot-map-v1.png";
+
+/** Native share sheet, else copy. Only the creator's own link carries their affiliate code. */
+async function shareTemplate(input: {
+  slug: string;
+  title: string;
+  days: number;
+  code: string | null;
+}) {
+  const url = `${window.location.origin}${templatePath(input.slug, input.code)}`;
+  const text = `Template itinerary ${input.days} hari: ${input.title} di Djiwa Travel`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: input.title, text, url });
+      return;
+    } catch {
+      // dismissed: fall back to copying
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    toast.success("Tautan template disalin");
+  } catch {
+    toast.error("Tautan belum bisa disalin.");
+  }
+}
 
 function tomorrow() {
   const d = new Date(Date.now() + 86_400_000);
@@ -86,12 +116,44 @@ function TemplatePage() {
         </div>
       </Page>
     );
-  const { template, isOwner } = data;
+  const { template, isOwner, shareCode } = data;
+  const onShare = () =>
+    void shareTemplate({
+      slug: template.slug,
+      title: template.title,
+      days: template.days,
+      code: shareCode,
+    });
+  const budget = template.budget;
   return (
     <Page tabs={false}>
-      <BackBar title="Template" fallbackTo="/template" />
-      <div className="space-y-3 pb-28">
-        <TemplateCover url={template.coverUrl} title={template.destinationName} className="h-40" />
+      <BackBar
+        title="Template"
+        fallbackTo="/template"
+        action={
+          <button
+            type="button"
+            onClick={onShare}
+            aria-label="Bagikan template"
+            className="tap inline-flex size-9 items-center justify-center rounded-full bg-secondary"
+          >
+            <Share2 className="size-4" aria-hidden="true" />
+          </button>
+        }
+      />
+      <div className="space-y-3 pb-32">
+        <div className="flex items-center gap-2">
+          <Wordmark className="h-6" />
+          <span className="text-[11px] font-semibold text-muted-foreground">
+            Template itinerary
+          </span>
+        </div>
+        <TemplateCover
+          url={template.coverUrl}
+          title={template.destinationName}
+          className="h-44"
+          branded
+        />
         <div>
           <h1 className="text-[20px] font-bold leading-6">{template.title}</h1>
           <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[12px] text-muted-foreground">
@@ -110,6 +172,18 @@ function TemplatePage() {
             <p className="mt-2 text-[13px] leading-5 text-foreground/80">{template.description}</p>
           )}
         </div>
+        {budget && (
+          <SharedBudgetCard
+            title="Estimasi anggaran"
+            total={formatIdr(budget.totalIdr)}
+            note="Per orang · perkiraan, cek harga terbaru sebelum berangkat"
+            lines={budget.categories.map((line) => ({
+              name: line.name,
+              amount: formatIdr(line.amountIdr),
+              share: budget.totalIdr ? line.amountIdr / budget.totalIdr : 0,
+            }))}
+          />
+        )}
         <SharedItineraryMap days={mapDays} activeId={activeId} onActiveChange={setActiveId} />
         <TemplateDays
           items={rows}
@@ -117,6 +191,21 @@ function TemplatePage() {
           activeId={activeId}
           onSelect={setActiveId}
         />
+        <aside className="flex items-center gap-3 rounded-2xl bg-brand-red/10 p-3 ring-1 ring-brand-red/15">
+          <img src={MASCOT} alt="" aria-hidden="true" className="h-16 w-auto shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold">Dibuat dengan Djiwa Travel</p>
+            <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">
+              Susun itinerary, anggaran, dan peta perjalananmu sendiri, lalu bagikan ke temanmu.
+            </p>
+            <Link
+              to="/my-trips/new"
+              className="tap mt-1.5 inline-flex text-[12px] font-bold text-brand-red"
+            >
+              Buat itinerary-mu →
+            </Link>
+          </div>
+        </aside>
         {!isOwner && (
           <button
             type="button"
@@ -129,27 +218,38 @@ function TemplatePage() {
           </button>
         )}
       </div>
-      {/* Floating pill: lifted off the bottom edge so it never sits under a browser or home bar. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] z-30 px-5">
-        <div className="mx-auto max-w-md">
-          {isOwner ? (
-            <Link
-              to="/my-templates"
-              className={`${btnSoft} pointer-events-auto w-full !rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.18)]`}
-            >
-              Ini templatemu · kelola
-            </Link>
-          ) : (
+      {/* Floating bar. It is portalled to <body>: inside the page wrapper a transformed ancestor would
+          make `fixed` behave like `absolute` and the bar would scroll away with the content. */}
+      <FixedLayer>
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-40 px-4">
+          <div className="mx-auto flex max-w-md items-center gap-2">
             <button
               type="button"
-              className={`${btnRed} pointer-events-auto w-full !rounded-full shadow-[0_10px_28px_rgba(196,53,59,0.45)]`}
-              onClick={() => setUseOpen(true)}
+              onClick={onShare}
+              aria-label="Bagikan template"
+              className="tap pointer-events-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-surface text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.2)] ring-1 ring-border/60"
             >
-              Pakai template ini
+              <Share2 className="size-5" aria-hidden="true" />
             </button>
-          )}
+            {isOwner ? (
+              <Link
+                to="/my-templates"
+                className={`${btnSoft} pointer-events-auto !h-12 flex-1 !rounded-full bg-surface shadow-[0_8px_24px_rgba(0,0,0,0.2)] ring-1 ring-border/60`}
+              >
+                Ini templatemu · kelola
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className={`${btnRed} pointer-events-auto flex-1 !rounded-full shadow-[0_10px_28px_rgba(196,53,59,0.45)]`}
+                onClick={() => setUseOpen(true)}
+              >
+                Pakai template ini
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      </FixedLayer>
       <UseSheet
         open={useOpen}
         onOpenChange={setUseOpen}

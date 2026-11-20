@@ -5,10 +5,12 @@ import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { recordAdminAction } from "./admin-audit.server";
 import { readAffiliateConfig } from "./affiliate.server";
-import { shareTemplateToFeed, syncTemplateFeedPost } from "./feeds.server";
+import { prepareTemplateFeedPost, insertTemplateFeedPost, syncTemplateFeedPost } from "./feeds.server";
 import { resolveTripOwner, type TripOwner } from "./guest-trips.server";
 import { createTrip } from "./my-trips.server";
 import { jakartaDayStart } from "./receipt-scan";
+import { fetchFxRate } from "./receipt-scan.server";
+import { resolveTemplateCover } from "./template-cover.server";
 import { tripCurrencyFor } from "./trip-countries";
 import { assistantCostIdr, parseJsonLoose } from "./trip-assistant";
 import {
@@ -23,6 +25,7 @@ import {
   TEMPLATE_DRAFT_SCHEMA,
   TRIP_TEMPLATES_SETTING_KEY,
   DEFAULT_TRIP_TEMPLATES_CONFIG,
+  cleanTemplateBudget,
   cleanTemplateDraft,
   dateForDay,
   dayIndexFor,
@@ -32,6 +35,7 @@ import {
   parseTripTemplatesConfig,
   returnDateFor,
   templateDraftPrompt,
+  type TemplateBudget,
   type TemplateItem,
   type TripTemplatesConfig,
 } from "./trip-templates";
@@ -119,7 +123,40 @@ const dateText = (value: unknown) => {
 type Snapshot = {
   items: (TemplateItem & { lat: number | null; lng: number | null })[];
   days: number;
+  budget: TemplateBudget | null;
 };
+
+/** Planned amounts of a trip in rupiah per traveler (null when no rate is available). */
+async function plannedBudgetIdr(tripId: string, trip: Record<string, unknown>) {
+  const currency = String(trip["primary_currency"] ?? "IDR")
+    .trim()
+    .toUpperCase();
+  const travelers = Math.max(1, Number(trip["travelers_count"]) || 1);
+  let rate = 1;
+  if (currency !== "IDR") {
+    const fx = await fetchFxRate({ from: currency, to: "IDR" }).catch(() => null);
+    if (!fx) return { rate: null as number | null, budget: null, travelers, currency };
+    rate = fx.rate;
+  }
+  // Amounts are stored in minor units (x100) for every currency in My Trips.
+  const toIdr = (minor: unknown) => Math.round((Number(minor) / 100) * rate);
+  const perPerson = (idr: number) => Math.round(idr / travelers / 1000) * 1000;
+  const categories = await pool.query(
+    "select name, allocated_minor from travel_budget_categories where trip_id=$1 and allocated_minor > 0 order by sort_order, created_at",
+    [tripId],
+  );
+  let budget = cleanTemplateBudget(
+    categories.rows.map((row) => ({
+      name: String(row.name),
+      amountIdr: perPerson(toIdr(row.allocated_minor)),
+    })),
+  );
+  if (!budget && Number(trip["total_budget_minor"]) > 0)
+    budget = cleanTemplateBudget([
+      { name: "Total anggaran", amountIdr: perPerson(toIdr(trip["total_budget_minor"])) },
+    ]);
+  return { rate, budget, travelers, currency };
+}
 
 /** The shareable part of a trip: titles, places, times, category, map point and photo. Never notes, costs or bookings. */
 async function snapshotTrip(
@@ -131,7 +168,7 @@ async function snapshotTrip(
   snapshot: Snapshot;
 }> {
   const tripResult = await pool.query(
-    "select name, destination_code, destination_name, departure_date, return_date from travel_trips where id=$1 and customer_auth_subject=$2",
+    "select name, destination_code, destination_name, departure_date, return_date, primary_currency, travelers_count, total_budget_minor from travel_trips where id=$1 and customer_auth_subject=$2",
     [tripId, subject],
   );
   const trip = tripResult.rows[0];
@@ -139,10 +176,12 @@ async function snapshotTrip(
   const start = dateText(trip.departure_date);
   const end = dateText(trip.return_date);
   const rows = await pool.query(
-    `select id, activity_date, start_time, end_time, title, location, activity_category, latitude, longitude, place_image_url
+    `select id, activity_date, start_time, end_time, title, location, activity_category, latitude, longitude, place_image_url,
+            estimated_cost_minor, currency
        from travel_itinerary_items where trip_id=$1 order by activity_date, start_time nulls last, created_at`,
     [tripId],
   );
+  const planned = await plannedBudgetIdr(tripId, trip);
   const items: Snapshot["items"] = [];
   for (const row of rows.rows) {
     if (only && !only.includes(String(row.id))) continue;
@@ -158,6 +197,7 @@ async function snapshotTrip(
       lat: row.latitude == null ? null : Number(row.latitude),
       lng: row.longitude == null ? null : Number(row.longitude),
       image: row.place_image_url ? String(row.place_image_url) : null,
+      costIdr: itemCostIdr(row, planned),
     });
     if (items.length >= TEMPLATE_MAX_ITEMS) break;
   }
@@ -173,8 +213,25 @@ async function snapshotTrip(
     snapshot: {
       items,
       days: Math.min(TEMPLATE_MAX_DAYS, Math.max(span, ...items.map((i) => i.day))),
+      budget: planned.budget,
     },
   };
+}
+
+/** An activity's planned cost per traveler in rupiah (its own currency, converted at today's rate). */
+function itemCostIdr(
+  row: Record<string, unknown>,
+  planned: { rate: number | null; travelers: number; currency: string },
+) {
+  const minor = Number(row["estimated_cost_minor"]);
+  if (!Number.isFinite(minor) || minor <= 0) return null;
+  const cur = String(row["currency"] ?? planned.currency)
+    .trim()
+    .toUpperCase();
+  if (cur !== planned.currency && cur !== "IDR") return null;
+  const rate = cur === "IDR" ? 1 : planned.rate;
+  if (!rate) return null;
+  return Math.round(((minor / 100) * rate) / planned.travelers / 1000) * 1000 || null;
 }
 
 type Client = {
@@ -187,8 +244,8 @@ async function writeItems(client: Client, templateId: string, items: Snapshot["i
     const order = perDay.get(item.day) ?? 0;
     perDay.set(item.day, order + 1);
     await client.query(
-      `insert into trip_template_items (template_id,day_index,sort_order,start_time,end_time,title,location,category,latitude,longitude,place_image_url)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+      `insert into trip_template_items (template_id,day_index,sort_order,start_time,end_time,title,location,category,latitude,longitude,place_image_url,cost_idr)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [
         templateId,
         item.day,
@@ -201,6 +258,7 @@ async function writeItems(client: Client, templateId: string, items: Snapshot["i
         item.lat ?? null,
         item.lng ?? null,
         item.image ?? null,
+        item.costIdr ?? null,
       ],
     );
   }
@@ -228,6 +286,14 @@ const publishTripSchema = z.object({
 });
 export const publishTripTemplateInput = (data: unknown) => publishTripSchema.parse(data);
 
+/** Cover lookup that never blocks publishing for long: a slow lookup just means no photo yet. */
+async function coverFor(input: Parameters<typeof resolveTemplateCover>[0]) {
+  return Promise.race([
+    resolveTemplateCover(input).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 7000)),
+  ]);
+}
+
 async function insertTemplate(
   owner: TripOwner,
   input: {
@@ -239,17 +305,35 @@ async function insertTemplate(
     source: "trip" | "travo";
     sourceTripId: string | null;
     items: Snapshot["items"];
+    budget: TemplateBudget | null;
+    shareToFeed: boolean;
   },
 ) {
   const name = await ownerName(owner.id);
-  const cover = input.items.find((i) => i.image)?.image ?? null;
+  const cover =
+    input.items.find((i) => i.image)?.image ??
+    (await coverFor({
+      destinationCode: input.destinationCode,
+      destinationName: input.destinationName,
+      locations: input.items.map((i) => i.location),
+    }));
+  const slug = makeSlug(input.title, randomBytes(5).toString("hex"));
+  const affiliate = await affiliateFor(owner.id);
+  const post = input.shareToFeed
+    ? await prepareTemplateFeedPost({
+        ...input,
+        subject: owner.id,
+        slug,
+        coverUrl: cover,
+        affiliateCode: affiliate.code,
+      })
+    : null;
   const client = await pool.connect();
   try {
     await client.query("begin");
-    const slug = makeSlug(input.title, randomBytes(5).toString("hex"));
     const result = await client.query(
-      `insert into trip_templates (slug,owner_subject,owner_name,title,description,destination_code,destination_name,day_count,cover_url,source,source_trip_id,published_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now()) returning id, slug`,
+      `insert into trip_templates (slug,owner_subject,owner_name,title,description,destination_code,destination_name,day_count,cover_url,source,source_trip_id,budget_json,published_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,now()) returning id, slug`,
       [
         slug,
         owner.id,
@@ -262,55 +346,22 @@ async function insertTemplate(
         cover,
         input.source,
         input.sourceTripId,
+        input.budget ? JSON.stringify(input.budget) : null,
       ],
     );
     const id = String(result.rows[0]!["id"]);
     await writeItems(client, id, input.items);
+    const feed = post
+      ? await insertTemplateFeedPost(client, post)
+      : { posted: false, pending: false };
+
     await client.query("commit");
-    return { id, slug: String(result.rows[0]!["slug"]), cover };
+    return { id, slug, affiliate, feed };
   } catch (error) {
     await client.query("rollback");
     throw error;
   } finally {
     client.release();
-  }
-}
-
-/** Shares the new template to the Feeds timeline; a failure never fails the template. */
-async function shareToTimeline(
-  owner: TripOwner,
-  config: TripTemplatesConfig,
-  wanted: boolean,
-  created: { slug: string; cover: string | null },
-  info: {
-    title: string;
-    description: string;
-    destinationCode: string;
-    destinationName: string;
-    days: number;
-  },
-  affiliate: { code: string | null },
-) {
-  if (!config.shareToFeed || !wanted) return { posted: false as const, pending: false };
-  try {
-    const result = await shareTemplateToFeed({
-      subject: owner.id,
-      slug: created.slug,
-      title: info.title,
-      description: info.description,
-      destinationCode: info.destinationCode,
-      destinationName: info.destinationName,
-      days: info.days,
-      coverUrl: created.cover,
-      affiliateCode: affiliate.code,
-    });
-    return { posted: result.posted, pending: Boolean(result.pending) };
-  } catch (error) {
-    console.error(
-      "[trip-templates] feed share failed",
-      error instanceof Error ? error.message : error,
-    );
-    return { posted: false as const, pending: false };
   }
 }
 
@@ -321,7 +372,8 @@ export async function publishTripTemplateHandler({ data }: { data: unknown }) {
   const owner = await requireMember();
   await assertQuota(owner.id, config);
   const { trip, snapshot } = await snapshotTrip(input.tripId, owner.id, input.itemIds);
-  const created = await insertTemplate(owner, {
+  return insertTemplate(owner, {
+    shareToFeed: config.shareToFeed && input.shareToFeed,
     title: input.title,
     description: input.description ?? "",
     destinationCode: trip.destination_code,
@@ -330,23 +382,8 @@ export async function publishTripTemplateHandler({ data }: { data: unknown }) {
     source: "trip",
     sourceTripId: input.tripId,
     items: snapshot.items,
+    budget: snapshot.budget,
   });
-  const affiliate = await affiliateFor(owner.id);
-  const feed = await shareToTimeline(
-    owner,
-    config,
-    input.shareToFeed,
-    created,
-    {
-      title: input.title,
-      description: input.description ?? "",
-      destinationCode: trip.destination_code,
-      destinationName: trip.destination_name,
-      days: snapshot.days,
-    },
-    affiliate,
-  );
-  return { id: created.id, slug: created.slug, affiliate, feed };
 }
 
 const draftItemSchema = z.object({
@@ -356,6 +393,7 @@ const draftItemSchema = z.object({
   title: textField(1, 160),
   location: z.string().max(200).nullable().optional(),
   category: z.string().max(40).nullable().optional(),
+  costIdr: z.number().int().min(0).max(50_000_000).nullable().optional(),
 });
 const publishDraftSchema = z.object({
   title: textField(3, 120),
@@ -364,6 +402,10 @@ const publishDraftSchema = z.object({
   destinationCode: z.string().trim().min(2).max(8),
   days: z.number().int().min(1).max(TEMPLATE_MAX_DAYS),
   items: z.array(draftItemSchema).min(1).max(TEMPLATE_MAX_ITEMS),
+  budget: z
+    .array(z.object({ name: textField(1, 40), amountIdr: z.number().int().min(0).max(50_000_000) }))
+    .max(8)
+    .optional(),
   shareToFeed: z.boolean().default(true),
 });
 export const publishDraftTemplateInput = (data: unknown) => publishDraftSchema.parse(data);
@@ -382,11 +424,13 @@ export async function publishDraftTemplateHandler({ data }: { data: unknown }) {
       destinationCode: input.destinationCode,
       days: input.days,
       items: input.items.map((i) => ({ ...i, start: i.start ?? "", end: i.end ?? "" })),
+      budget: input.budget ?? [],
     },
     input.days,
   );
   if (!draft) throw new Error("Template belum lengkap");
-  const created = await insertTemplate(owner, {
+  return insertTemplate(owner, {
+    shareToFeed: config.shareToFeed && input.shareToFeed,
     title: draft.title,
     description: draft.description,
     destinationCode: input.destinationCode,
@@ -395,23 +439,8 @@ export async function publishDraftTemplateHandler({ data }: { data: unknown }) {
     source: "travo",
     sourceTripId: null,
     items: draft.items.map((i) => ({ ...i, lat: null, lng: null })),
+    budget: draft.budget,
   });
-  const affiliate = await affiliateFor(owner.id);
-  const feed = await shareToTimeline(
-    owner,
-    config,
-    input.shareToFeed,
-    created,
-    {
-      title: draft.title,
-      description: draft.description,
-      destinationCode: input.destinationCode,
-      destinationName: draft.destinationName,
-      days: draft.days,
-    },
-    affiliate,
-  );
-  return { id: created.id, slug: created.slug, affiliate, feed };
 }
 
 /* ------------------------------------------------------------------ Travo draft */
@@ -542,8 +571,14 @@ export async function refreshTemplateHandler({ data }: { data: unknown }) {
     await client.query("delete from trip_template_items where template_id=$1", [id]);
     await writeItems(client, id, snapshot.items);
     await client.query(
-      `update trip_templates set day_count=$2, version=version+1, cover_url=$3, updated_at=now() where id=$1`,
-      [id, snapshot.days, snapshot.items.find((i) => i.image)?.image ?? null],
+      `update trip_templates set day_count=$2, version=version+1, cover_url=coalesce($3, cover_url),
+              budget_json=$4::jsonb, updated_at=now() where id=$1`,
+      [
+        id,
+        snapshot.days,
+        snapshot.items.find((i) => i.image)?.image ?? null,
+        snapshot.budget ? JSON.stringify(snapshot.budget) : null,
+      ],
     );
     await client.query("commit");
   } catch (error) {
@@ -621,6 +656,7 @@ type PublicItem = {
   lat: number | null;
   lng: number | null;
   image: string | null;
+  costIdr: number | null;
 };
 
 export async function getPublicTemplateHandler({ data }: { data: unknown }) {
@@ -629,7 +665,7 @@ export async function getPublicTemplateHandler({ data }: { data: unknown }) {
   if (!config.enabled) return null;
   const found = await pool.query(
     `select id, slug, owner_subject, owner_name, title, description, destination_code, destination_name,
-            day_count, cover_url, version, use_count, view_count, featured, source
+            day_count, cover_url, version, use_count, view_count, featured, source, budget_json
        from trip_templates where slug=$1 and status='published'`,
     [slug],
   );
@@ -639,11 +675,30 @@ export async function getPublicTemplateHandler({ data }: { data: unknown }) {
     .query("update trip_templates set view_count = view_count + 1 where id=$1", [row.id])
     .catch(() => undefined);
   const items = await pool.query(
-    `select day_index, start_time, end_time, title, location, category, latitude, longitude, place_image_url
+    `select day_index, start_time, end_time, title, location, category, latitude, longitude, place_image_url, cost_idr
        from trip_template_items where template_id=$1 order by day_index, sort_order`,
     [row.id],
   );
   const viewer = await resolveTripOwner().catch(() => null);
+  const isOwner = Boolean(viewer && !viewer.guest && viewer.id === row.owner_subject);
+  // A template without a photo gets one the first time it is opened (kept for next time).
+  let coverUrl: string | null = row.cover_url ? String(row.cover_url) : null;
+  if (!coverUrl) {
+    coverUrl =
+      items.rows.map((r) => (r.place_image_url ? String(r.place_image_url) : null)).find(Boolean) ??
+      (await coverFor({
+        destinationCode: String(row.destination_code),
+        destinationName: String(row.destination_name),
+        locations: items.rows.map((r) => (r.location ? String(r.location) : null)),
+      }));
+    if (coverUrl)
+      void pool
+        .query("update trip_templates set cover_url=$2 where id=$1 and cover_url is null", [
+          row.id,
+          coverUrl,
+        ])
+        .catch(() => undefined);
+  }
   return {
     template: {
       id: String(row.id),
@@ -653,13 +708,16 @@ export async function getPublicTemplateHandler({ data }: { data: unknown }) {
       destinationCode: String(row.destination_code),
       destinationName: String(row.destination_name),
       days: Number(row.day_count),
-      coverUrl: row.cover_url ? String(row.cover_url) : null,
+      coverUrl,
       uses: Number(row.use_count),
       featured: Boolean(row.featured),
       byTravo: row.source === "travo",
       ownerName: row.owner_name ? String(row.owner_name) : null,
+      budget: cleanTemplateBudget((row.budget_json as { categories?: unknown } | null)?.categories),
     },
-    isOwner: Boolean(viewer && !viewer.guest && viewer.id === row.owner_subject),
+    isOwner,
+    /** Only the creator gets their affiliate code back, so sharing from here keeps earning commission. */
+    shareCode: isOwner && viewer ? (await affiliateFor(viewer.id)).code : null,
     signedIn: Boolean(viewer && !viewer.guest),
     items: items.rows.map((r): PublicItem => ({
       day: Number(r.day_index),
@@ -671,6 +729,7 @@ export async function getPublicTemplateHandler({ data }: { data: unknown }) {
       lat: r.latitude == null ? null : Number(r.latitude),
       lng: r.longitude == null ? null : Number(r.longitude),
       image: r.place_image_url ? String(r.place_image_url) : null,
+      costIdr: r.cost_idr ? Number(r.cost_idr) : null,
     })),
   };
 }
@@ -683,6 +742,31 @@ const gallerySchema = z.object({
     .optional(),
   q: z.string().trim().max(60).optional(),
 });
+
+async function backfillCover(slug: string) {
+  try {
+    const found = await pool.query(
+      `select t.id, t.destination_code, t.destination_name,
+              (select array_agg(i.location) from trip_template_items i where i.template_id = t.id) as locations
+         from trip_templates t where t.slug=$1 and t.cover_url is null`,
+      [slug],
+    );
+    const row = found.rows[0];
+    if (!row) return;
+    const url = await resolveTemplateCover({
+      destinationCode: String(row.destination_code),
+      destinationName: String(row.destination_name),
+      locations: (row.locations as (string | null)[] | null) ?? [],
+    });
+    if (url)
+      await pool.query("update trip_templates set cover_url=$2 where id=$1 and cover_url is null", [
+        row.id,
+        url,
+      ]);
+  } catch {
+    // The card keeps its placeholder; the next visit tries again.
+  }
+}
 
 export async function listTemplateGalleryHandler({ data }: { data: unknown }) {
   const input = gallerySchema.parse(data ?? {});
@@ -710,6 +794,9 @@ export async function listTemplateGalleryHandler({ data }: { data: unknown }) {
          from trip_templates where status='published' group by destination_code order by n desc limit 12`,
     ),
   ]);
+  // Cards without a photo get one in the background; it shows from the next visit.
+  for (const row of list.rows.filter((r) => !r.cover_url).slice(0, 4))
+    void backfillCover(String(row.slug));
   return {
     enabled: true as const,
     templates: list.rows.map((row) => ({
@@ -757,7 +844,7 @@ export async function copyTemplateHandler({ data }: { data: unknown }) {
   const owner = await requireMember();
   if (input.departureDate < todayJakarta()) throw new Error("Tanggal berangkat sudah lewat");
   const found = await pool.query(
-    `select id, owner_subject, title, destination_code, destination_name, day_count, version
+    `select id, owner_subject, title, destination_code, destination_name, day_count, version, budget_json
        from trip_templates where slug=$1 and status='published'`,
     [input.slug],
   );
@@ -770,12 +857,25 @@ export async function copyTemplateHandler({ data }: { data: unknown }) {
   if (Number(usedToday.rows[0]?.n) >= config.dailyUses)
     throw new Error("Batas pemakaian template hari ini sudah habis. Coba lagi besok.");
   const items = await pool.query(
-    `select day_index, sort_order, start_time, end_time, title, location, category, latitude, longitude, place_image_url
+    `select day_index, sort_order, start_time, end_time, title, location, category, latitude, longitude, place_image_url, cost_idr
        from trip_template_items where template_id=$1 order by day_index, sort_order`,
     [template.id],
   );
   const days = Number(template.day_count);
   const code = String(template.destination_code);
+  // Planned amounts are per traveler in rupiah; the new trip gets them for its own group, in its currency.
+  const budget = cleanTemplateBudget(
+    (template.budget_json as { categories?: unknown } | null)?.categories,
+  );
+  let currency: string = tripCurrencyFor(code);
+  let rate = 1;
+  if (currency !== "IDR") {
+    const fx = await fetchFxRate({ from: "IDR", to: currency }).catch(() => null);
+    if (fx) rate = fx.rate;
+    else currency = "IDR";
+  }
+  const minorFor = (idrPerPerson: number) =>
+    Math.round(idrPerPerson * input.travelers * rate * 100);
   const trip = (await createTrip({
     name: String(template.title).slice(0, 120),
     destinationCode: code,
@@ -783,16 +883,16 @@ export async function copyTemplateHandler({ data }: { data: unknown }) {
     departureDate: input.departureDate,
     returnDate: returnDateFor(input.departureDate, days),
     travelersCount: input.travelers,
-    primaryCurrency: tripCurrencyFor(code),
-    totalBudgetMinor: 0,
+    primaryCurrency: currency as ReturnType<typeof tripCurrencyFor>,
+    totalBudgetMinor: budget ? minorFor(budget.totalIdr) : 0,
   })) as { id: string };
   const client = await pool.connect();
   try {
     await client.query("begin");
     for (const row of items.rows) {
       await client.query(
-        `insert into travel_itinerary_items (trip_id,activity_date,start_time,end_time,title,location,activity_category,latitude,longitude,place_image_url)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        `insert into travel_itinerary_items (trip_id,activity_date,start_time,end_time,title,location,activity_category,latitude,longitude,place_image_url,estimated_cost_minor,currency)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
         [
           trip.id,
           dateForDay(input.departureDate, Number(row.day_index)),
@@ -804,7 +904,16 @@ export async function copyTemplateHandler({ data }: { data: unknown }) {
           row.latitude,
           row.longitude,
           row.place_image_url,
+          row.cost_idr ? minorFor(Number(row.cost_idr)) : null,
+          row.cost_idr ? currency : null,
         ],
+      );
+    }
+    for (const [index, line] of (budget?.categories ?? []).entries()) {
+      await client.query(
+        `insert into travel_budget_categories (trip_id,name,allocated_minor,currency,sort_order)
+         values ($1,$2,$3,$4,$5) on conflict do nothing`,
+        [trip.id, line.name, minorFor(line.amountIdr), currency, index],
       );
     }
     await client.query("update travel_trips set source_template_id=$2 where id=$1", [

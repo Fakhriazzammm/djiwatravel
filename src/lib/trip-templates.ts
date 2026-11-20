@@ -7,7 +7,7 @@ export type TripTemplatesConfig = {
   enabled: boolean;
   /** Show the "Template" tile next to Tiket on Home and Explore. */
   showTile: boolean;
-  /** A new template is shared to the Feeds timeline (the member can untick it per template). */
+  /** A new template is shared to the Feeds timeline. */
   shareToFeed: boolean;
   /** Published templates one member may keep at a time. */
   maxPerUser: number;
@@ -122,7 +122,42 @@ export function templatePath(slug: string, affiliateCode?: string | null) {
   return `/template/${slug}${code ? `?ref=${encodeURIComponent(code)}` : ""}`;
 }
 
+const text = (value: unknown, max: number) =>
+  typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
+
+export type TemplateBudgetCategory = { name: string; amountIdr: number };
+/** Planned budget per traveler, in rupiah. Never actual spending. */
+export type TemplateBudget = { categories: TemplateBudgetCategory[]; totalIdr: number };
+
+export const TEMPLATE_MAX_COST_IDR = 50_000_000;
+
+const money = (value: unknown) => {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) && n > 0 ? Math.min(n, TEMPLATE_MAX_COST_IDR) : 0;
+};
+
+/** Clean budget lines (name, whole rupiah), merge duplicates, at most 8, total = sum. */
+export function cleanTemplateBudget(raw: unknown): TemplateBudget | null {
+  const list = Array.isArray(raw) ? raw : [];
+  const merged = new Map<string, number>();
+  for (const entry of list) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    const name = text(row["name"], 40);
+    const amount = money(row["amountIdr"]);
+    if (!name || !amount) continue;
+    merged.set(name, (merged.get(name) ?? 0) + amount);
+  }
+  const categories = [...merged.entries()]
+    .slice(0, 8)
+    .map(([name, amountIdr]) => ({ name, amountIdr: Math.min(amountIdr, TEMPLATE_MAX_COST_IDR) }));
+  if (!categories.length) return null;
+  return { categories, totalIdr: categories.reduce((sum, c) => sum + c.amountIdr, 0) };
+}
+
 export type TemplateItem = {
+  /** Planned cost per traveler in rupiah; 0 or missing = free or unknown. */
+  costIdr?: number | null;
   day: number;
   start: string | null;
   end: string | null;
@@ -141,11 +176,10 @@ export type TemplateDraft = {
   destinationCode: string | null;
   days: number;
   items: TemplateItem[];
+  budget: TemplateBudget | null;
 };
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
-const text = (value: unknown, max: number) =>
-  typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
 
 /**
  * Turns the model's JSON into a safe draft: text capped, days inside the requested range, times
@@ -181,6 +215,7 @@ export function cleanTemplateDraft(raw: unknown, maxDays: number): TemplateDraft
       title: itemTitle,
       location: text(row["location"], 200) || null,
       category: normalizeCategory(row["category"]),
+      costIdr: money(row["costIdr"]) || null,
     });
     if (items.length >= TEMPLATE_MAX_ITEMS) break;
   }
@@ -194,6 +229,7 @@ export function cleanTemplateDraft(raw: unknown, maxDays: number): TemplateDraft
     destinationCode: /^[A-Z]{2}$/.test(code) ? code : null,
     days,
     items,
+    budget: cleanTemplateBudget(data["budget"]),
   };
 }
 
@@ -207,7 +243,15 @@ export function normalizeCategory(value: unknown): string | null {
 export const TEMPLATE_DRAFT_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["title", "description", "destinationName", "destinationCode", "days", "items"],
+  required: [
+    "title",
+    "description",
+    "destinationName",
+    "destinationCode",
+    "days",
+    "items",
+    "budget",
+  ],
   properties: {
     title: { type: "string" },
     description: { type: "string" },
@@ -219,7 +263,7 @@ export const TEMPLATE_DRAFT_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["day", "start", "end", "title", "location", "category"],
+        required: ["day", "start", "end", "title", "location", "category", "costIdr"],
         properties: {
           day: { type: "integer" },
           start: { type: "string" },
@@ -227,7 +271,17 @@ export const TEMPLATE_DRAFT_SCHEMA = {
           title: { type: "string" },
           location: { type: "string" },
           category: { type: "string" },
+          costIdr: { type: "integer" },
         },
+      },
+    },
+    budget: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "amountIdr"],
+        properties: { name: { type: "string" }, amountIdr: { type: "integer" } },
       },
     },
   },
@@ -242,8 +296,26 @@ export function templateDraftPrompt(brief: string, days: number) {
       "Hanya sebut tempat nyata yang kamu yakin ada. Jangan mengarang nama tempat, harga, atau jam buka. Kosongkan `end` bila tidak yakin.",
       "`category` salah satu: wisata, kuliner, belanja, transport, akomodasi, lainnya.",
       "`destinationCode` kode negara 2 huruf (contoh JP, ID, TH). `title` maksimal 60 karakter, tanpa emoji.",
+      "Anggaran: `costIdr` = perkiraan biaya kegiatan itu per orang dalam rupiah penuh (0 bila gratis atau tidak yakin). `budget` = rincian anggaran seluruh perjalanan PER ORANG dalam rupiah, 4-6 baris: Akomodasi, Transportasi, Makan, Tiket & aktivitas, Belanja & lainnya. Pakai angka realistis untuk gaya perjalanan yang diminta, bulatkan ke Rp 10.000, dan jangan mengarang harga pasti.",
       "Jangan menyertakan data pribadi, nomor pesanan, atau catatan privat apa pun.",
     ].join("\n"),
     user: `Permintaan traveler: ${brief}`,
   };
+}
+
+const idrFormat = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+});
+
+/** "Rp 1.500.000" for a whole-rupiah amount. */
+export const formatIdr = (amount: number) => idrFormat.format(Math.round(amount));
+
+/** "Rp 60 rb" / "Rp 1,5 jt" for one activity row, where space is tight. */
+export function compactIdr(amount: number) {
+  const trim = (n: number) => String(Number(n.toFixed(1))).replace(".", ",");
+  if (amount >= 1_000_000) return `Rp ${trim(amount / 1_000_000)} jt`;
+  if (amount >= 1_000) return `Rp ${trim(amount / 1_000)} rb`;
+  return `Rp ${Math.round(amount)}`;
 }

@@ -523,7 +523,7 @@ export async function loadSharedTrip(token: string) {
     `select s.token, s.created_at as shared_at,
       t.id, t.name, t.destination_code, t.destination_name,
       t.departure_date::text as departure_date, t.return_date::text as return_date,
-      t.travelers_count, t.primary_currency, t.timezone,
+      t.travelers_count, t.primary_currency, t.total_budget_minor, t.timezone,
       (select p.display_name from customer_profiles p
         where p.auth_user_id=t.customer_auth_subject limit 1) as owner_display_name
      from travel_trip_shares s
@@ -536,12 +536,40 @@ export async function loadSharedTrip(token: string) {
   const trip = share.rows[0];
   const itinerary = await pool.query(
     `select id, activity_date::text as activity_date, start_time, end_time, timezone,
-      title, location, latitude, longitude, notes, activity_category, place_image_url
+      title, location, latitude, longitude, notes, activity_category, place_image_url,
+      estimated_cost_minor, currency
      from travel_itinerary_items
      where trip_id=$1
      order by activity_date, start_time nulls last`,
     [trip.id],
   );
+  // Planned budget only (the amounts set aside per category); spending is never public.
+  let categories: { rows: Record<string, unknown>[] } = { rows: [] };
+  try {
+    categories =
+      (await pool.query(
+        "select name, allocated_minor from travel_budget_categories where trip_id=$1 and allocated_minor > 0 order by sort_order, created_at",
+        [trip.id],
+      )) ?? categories;
+  } catch {
+    // A budget read problem must never hide the itinerary itself.
+  }
+  const totalMinor = Number(trip.total_budget_minor) || 0;
+  const budget =
+    categories.rows.length || totalMinor > 0
+      ? {
+          currency: String(trip.primary_currency ?? "IDR"),
+          travelers: Number(trip.travelers_count) || 1,
+          totalMinor:
+            totalMinor ||
+            categories.rows.reduce((sum, row) => sum + (Number(row["allocated_minor"]) || 0), 0),
+          categories: categories.rows.map((row) => ({
+            name: String(row["name"]),
+            allocatedMinor: Number(row["allocated_minor"]) || 0,
+          })),
+        }
+      : null;
+  delete trip.total_budget_minor;
   // Only the first name is public; the full profile name and contact never leave the server.
   const ownerName =
     String(trip.owner_display_name ?? "")
@@ -554,6 +582,7 @@ export async function loadSharedTrip(token: string) {
     trip,
     sharedAt: trip.shared_at as string,
     itinerary: itinerary.rows,
+    budget,
   };
 }
 

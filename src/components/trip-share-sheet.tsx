@@ -119,8 +119,8 @@ export function ShareTripSheet({
         <SheetHeader className="mb-4 text-left">
           <SheetTitle>Bagikan itinerary</SheetTitle>
           <SheetDescription>
-            Tautan baca-saja berisi nama perjalanan, tanggal, dan agenda. Pengeluaran, checklist,
-            dan data pribadi tidak ikut dibagikan.
+            Tautan baca-saja berisi nama perjalanan, tanggal, agenda, peta, dan rencana anggaran.
+            Pengeluaran nyata, checklist, dan data pribadi tidak ikut dibagikan.
           </SheetDescription>
         </SheetHeader>
 
