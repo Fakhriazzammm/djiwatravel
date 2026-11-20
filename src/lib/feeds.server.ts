@@ -1455,18 +1455,16 @@ export type TemplateFeedInput = {
   affiliateCode: string | null;
 };
 
-/**
- * Shares a newly published template to the timeline. It follows the same house rules as a member's
- * own post (banned accounts, community consent, banned words, review of the first posts) but it is
- * never an error for the member: when a rule says no, the template still goes live without a post.
- */
-export async function shareTemplateToFeed(
+/** Resolve policy and author details before taking a publication transaction's connection. */
+export async function prepareTemplateFeedPost(
   input: TemplateFeedInput,
-): Promise<{ posted: boolean; pending?: boolean }> {
+): Promise<{ message: string } | { values: (string | null)[]; pending: boolean }> {
   const config = await getFeedsConfig();
-  if (!config.enabled) return { posted: false };
-  if (await isBanned(input.subject)) return { posted: false };
-  if (!(await hasConsent(input.subject, "community"))) return { posted: false };
+  if (!config.enabled) return { message: "Feeds sedang dinonaktifkan." } as const;
+  if (await isBanned(input.subject))
+    return { message: "Akun ini tidak dapat memposting di Feeds." } as const;
+  if (!(await hasConsent(input.subject, "community")))
+    return { message: "Izin Komunitas belum aktif." } as const;
   const profile = await readCustomerProfile({ id: input.subject, email: "" }).catch(() => null);
   const author = feedAuthorName(profile?.displayName);
   const summary = input.description.trim();
@@ -1487,14 +1485,8 @@ export async function shareTemplateToFeed(
       ? input.destinationCode.toUpperCase()
       : null;
   const path = `/template/${input.slug}${input.affiliateCode ? `?ref=${encodeURIComponent(input.affiliateCode)}` : ""}`;
-  const result = await pool.query(
-    `insert into feed_posts
-       (customer_auth_subject, author_name, source, kind, body, destination_code, link_path, link_label,
-        image_url, template_slug, status, flag, published_at)
-     values ($1,$2,'template','tips',$3,$4,$5,$6,$7,$8,$9,$10, case when $9 = 'PUBLISHED' then now() else null end)
-     on conflict (template_slug) where template_slug is not null do nothing
-     returning id`,
-    [
+  return {
+    values: [
       input.subject,
       author,
       body,
@@ -1506,8 +1498,25 @@ export async function shareTemplateToFeed(
       status,
       flag,
     ],
+    pending: status === "PENDING",
+  } as const;
+}
+
+export async function insertTemplateFeedPost(
+  db: Pick<typeof pool, "query">,
+  post: Awaited<ReturnType<typeof prepareTemplateFeedPost>>,
+) {
+  if ("message" in post) return { posted: false, pending: false, message: post.message };
+  const result = await db.query(
+    `insert into feed_posts
+       (customer_auth_subject, author_name, source, kind, body, destination_code, link_path, link_label,
+        image_url, template_slug, status, flag, published_at)
+     values ($1,$2,'template','tips',$3,$4,$5,$6,$7,$8,$9,$10, case when $9 = 'PUBLISHED' then now() else null end)
+     on conflict (template_slug) where template_slug is not null do nothing
+     returning id`,
+    post.values,
   );
-  return { posted: Boolean(result.rows[0]), pending: status === "PENDING" };
+  return { posted: Boolean(result.rows[0]), pending: post.pending };
 }
 
 /** Keeps the timeline post in step with its template. Never throws into the template action. */

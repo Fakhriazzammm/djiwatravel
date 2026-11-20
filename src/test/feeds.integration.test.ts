@@ -835,15 +835,32 @@ describeDb("feeds against a real database", () => {
       ...extra,
     });
 
+    const share = async (input: ReturnType<typeof template>) =>
+      server.insertTemplateFeedPost(pool, await server.prepareTemplateFeedPost(input));
+
+    it("rolls back a timeline post with the publication transaction", async () => {
+      const post = await server.prepareTemplateFeedPost(template("t-rollback-1111"));
+      const client = await pool.connect();
+      try {
+        await client.query("begin");
+        expect((await server.insertTemplateFeedPost(client, post)).posted).toBe(true);
+      } finally {
+        await client.query("rollback");
+        client.release();
+      }
+      const result = await pool.query(
+        "select id from feed_posts where template_slug = 't-rollback-1111'",
+      );
+      expect(result.rowCount).toBe(0);
+    });
+
     it("shares a new template as a post with a link card, once", async () => {
       await setConfig({ reviewFirstPosts: 0 });
-      expect(await server.shareTemplateToFeed(template("kyoto-santai-aaaa1111"))).toMatchObject({
+      expect(await share(template("kyoto-santai-aaaa1111"))).toMatchObject({
         posted: true,
         pending: false,
       });
-      expect((await server.shareTemplateToFeed(template("kyoto-santai-aaaa1111"))).posted).toBe(
-        false,
-      );
+      expect((await share(template("kyoto-santai-aaaa1111"))).posted).toBe(false);
       const row = await pool.query(
         "select source, kind, status, link_path, link_label, destination_code from feed_posts where template_slug=$1",
         ["kyoto-santai-aaaa1111"],
@@ -860,12 +877,12 @@ describeDb("feeds against a real database", () => {
 
     it("follows the same rules as a member post: off, no consent, ban, review, banned word", async () => {
       await setConfig({ reviewFirstPosts: 1 });
-      expect(await server.shareTemplateToFeed(template("t-review-1111"))).toMatchObject({
+      expect(await share(template("t-review-1111"))).toMatchObject({
         posted: true,
         pending: true,
       });
       await pool.query("delete from customer_data_consents where customer_auth_subject='u-rani'");
-      expect((await server.shareTemplateToFeed(template("t-consent-2222"))).posted).toBe(false);
+      expect((await share(template("t-consent-2222"))).posted).toBe(false);
       await pool.query(
         `insert into customer_data_consents (customer_auth_subject, purpose, granted, policy_version, source)
          values ('u-rani','community',true,'test','settings')`,
@@ -873,19 +890,20 @@ describeDb("feeds against a real database", () => {
       await pool.query(
         "insert into feed_bans (customer_auth_subject, banned_by) values ('u-rani','ops')",
       );
-      expect((await server.shareTemplateToFeed(template("t-ban-3333"))).posted).toBe(false);
+      expect((await share(template("t-ban-3333"))).posted).toBe(false);
       await pool.query("delete from feed_bans");
       await setConfig({ reviewFirstPosts: 0, bannedWords: ["judi"] });
-      expect(
-        await server.shareTemplateToFeed(template("t-word-4444", { title: "Wisata judi" })),
-      ).toMatchObject({ posted: true, pending: true });
+      expect(await share(template("t-word-4444", { title: "Wisata judi" }))).toMatchObject({
+        posted: true,
+        pending: true,
+      });
       await setConfig({ enabled: false });
-      expect((await server.shareTemplateToFeed(template("t-off-5555"))).posted).toBe(false);
+      expect((await share(template("t-off-5555"))).posted).toBe(false);
     });
 
     it("the post is hidden with its template, restored with it and removed when it is deleted", async () => {
       await setConfig({ reviewFirstPosts: 0 });
-      await server.shareTemplateToFeed(template("t-sync-6666"));
+      await share(template("t-sync-6666"));
       const status = async () =>
         (
           await pool.query(
