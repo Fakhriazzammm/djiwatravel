@@ -70,6 +70,16 @@ async function shareTemplate(input: {
   }
 }
 
+/** Budget lines we can act on with our own features: flight search and eSIM. */
+function budgetAction(name: string, destination: string) {
+  if (/tiket pesawat/i.test(name))
+    return {
+      action: { label: "Cari tiket →", href: `/tiket?tujuan=${encodeURIComponent(destination)}` },
+    };
+  if (/esim/i.test(name)) return { action: { label: "Lihat eSIM →", href: "/esim/finder" } };
+  return {};
+}
+
 function tomorrow() {
   const d = new Date(Date.now() + 86_400_000);
   return d.toISOString().slice(0, 10);
@@ -181,6 +191,8 @@ function TemplatePage() {
               name: line.name,
               amount: formatIdr(line.amountIdr),
               share: budget.totalIdr ? line.amountIdr / budget.totalIdr : 0,
+              ...(line.note ? { note: line.note } : {}),
+              ...budgetAction(line.name, template.destinationName),
             }))}
           />
         )}

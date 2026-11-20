@@ -15,18 +15,18 @@ import { createTrip } from "./my-trips.server";
 import { jakartaDayStart } from "./receipt-scan";
 import { fetchFxRate } from "./receipt-scan.server";
 import { resolveTemplateCover } from "./template-cover.server";
+import { buildTemplateFromOwnData } from "./trip-template-plan.server";
 import { tripCurrencyFor } from "./trip-countries";
-import { assistantCostIdr, parseJsonLoose } from "./trip-assistant";
+import { assistantCostIdr } from "./trip-assistant";
 import {
   allowAssistantBurst,
-  askModel,
   readTripAssistantConfig,
   tripAssistantConfigured,
 } from "./trip-assistant.server";
 import {
+  TEMPLATE_MAX_BUDGET_LINES,
   TEMPLATE_MAX_DAYS,
   TEMPLATE_MAX_ITEMS,
-  TEMPLATE_DRAFT_SCHEMA,
   TRIP_TEMPLATES_SETTING_KEY,
   DEFAULT_TRIP_TEMPLATES_CONFIG,
   cleanTemplateBudget,
@@ -39,7 +39,6 @@ import {
   parseTripTemplatesConfig,
   returnDateFor,
   splitTotalBudget,
-  templateDraftPrompt,
   type TemplateBudget,
   type TemplateItem,
   type TripTemplatesConfig,
@@ -129,6 +128,8 @@ type Snapshot = {
   items: (TemplateItem & { lat: number | null; lng: number | null })[];
   days: number;
   budget: TemplateBudget | null;
+  /** True when the trip only had a lump sum, so the lines are a generic split, not the owner's own. */
+  budgetDerived: boolean;
 };
 
 /** Planned amounts of a trip in rupiah per traveler (null when no rate is available). */
@@ -140,7 +141,8 @@ async function plannedBudgetIdr(tripId: string, trip: Record<string, unknown>) {
   let rate = 1;
   if (currency !== "IDR") {
     const fx = await fetchFxRate({ from: currency, to: "IDR" }).catch(() => null);
-    if (!fx) return { rate: null as number | null, budget: null, travelers, currency };
+    if (!fx)
+      return { rate: null as number | null, budget: null, travelers, currency, derived: false };
     rate = fx.rate;
   }
   // Amounts are stored in minor units (x100) for every currency in My Trips.
@@ -156,10 +158,13 @@ async function plannedBudgetIdr(tripId: string, trip: Record<string, unknown>) {
       amountIdr: perPerson(toIdr(row.allocated_minor)),
     })),
   );
-  if (!budget && Number(trip["total_budget_minor"]) > 0)
+  let derived = false;
+  if (!budget && Number(trip["total_budget_minor"]) > 0) {
     // Only a lump sum was planned: show it split into the usual categories, not as one bare line.
+    derived = true;
     budget = cleanTemplateBudget(splitTotalBudget(perPerson(toIdr(trip["total_budget_minor"]))));
-  return { rate, budget, travelers, currency };
+  }
+  return { rate, budget, travelers, currency, derived };
 }
 
 /** The shareable part of a trip: titles, places, times, category, map point and photo. Never notes, costs or bookings. */
@@ -218,6 +223,7 @@ async function snapshotTrip(
       items,
       days: Math.min(TEMPLATE_MAX_DAYS, Math.max(span, ...items.map((i) => i.day))),
       budget: planned.budget,
+      budgetDerived: planned.derived,
     },
   };
 }
@@ -398,6 +404,8 @@ const draftItemSchema = z.object({
   location: z.string().max(200).nullable().optional(),
   category: z.string().max(40).nullable().optional(),
   costIdr: z.number().int().min(0).max(50_000_000).nullable().optional(),
+  lat: z.number().min(-90).max(90).nullable().optional(),
+  lng: z.number().min(-180).max(180).nullable().optional(),
 });
 const publishDraftSchema = z.object({
   title: textField(3, 120),
@@ -407,8 +415,14 @@ const publishDraftSchema = z.object({
   days: z.number().int().min(1).max(TEMPLATE_MAX_DAYS),
   items: z.array(draftItemSchema).min(1).max(TEMPLATE_MAX_ITEMS),
   budget: z
-    .array(z.object({ name: textField(1, 40), amountIdr: z.number().int().min(0).max(50_000_000) }))
-    .max(8)
+    .array(
+      z.object({
+        name: textField(1, 40),
+        amountIdr: z.number().int().min(0).max(50_000_000),
+        note: z.string().trim().max(120).optional(),
+      }),
+    )
+    .max(TEMPLATE_MAX_BUDGET_LINES)
     .optional(),
   shareToFeed: z.boolean().default(true),
 });
@@ -442,18 +456,29 @@ export async function publishDraftTemplateHandler({ data }: { data: unknown }) {
     days: draft.days,
     source: "travo",
     sourceTripId: null,
-    items: draft.items.map((i) => ({ ...i, lat: null, lng: null })),
+    items: draft.items.map((i) => ({ ...i, lat: i.lat ?? null, lng: i.lng ?? null })),
     budget: draft.budget,
   });
 }
 
 /* ------------------------------------------------------------------ Travo draft */
 
-const draftBriefSchema = z.object({
-  brief: textField(8, 300),
-  days: z.number().int().min(1).max(7),
+const draftSchema = z.object({
+  country: z.object({ code: z.string().trim().length(2), name: z.string().trim().min(2).max(80) }),
+  city: z.object({
+    name: z.string().trim().min(2).max(60),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
+  }),
+  days: z.number().int().min(1).max(10),
+  style: z.enum(["hemat", "nyaman", "auto"]).default("auto"),
+  interests: z.array(z.string().trim().min(1).max(30)).max(7).default([]),
+  origin: z
+    .object({ code: z.string().trim().length(3), name: z.string().trim().min(2).max(80) })
+    .nullable()
+    .default(null),
 });
-export const generateTemplateDraftInput = (data: unknown) => draftBriefSchema.parse(data);
+export const generateTemplateDraftInput = (data: unknown) => draftSchema.parse(data);
 
 async function draftsToday(subject: string) {
   const result = await pool.query(
@@ -463,7 +488,11 @@ async function draftsToday(subject: string) {
   return Number(result.rows[0]?.n) || 0;
 }
 
-/** Travo proposes a template from a short brief. Nothing is saved: the member reviews and publishes. */
+/**
+ * Travo drafts a template from our own data: the same research as "Rencana lengkap" (recorded fares,
+ * eSIM catalog, city costs, map places), with the internet only as a fallback for what we do not
+ * have. Nothing is saved: the member reviews the draft, its sources and the budget, then publishes.
+ */
 export async function generateTemplateDraftHandler({ data }: { data: unknown }) {
   const input = generateTemplateDraftInput(data);
   const config = await requireEnabled();
@@ -479,32 +508,21 @@ export async function generateTemplateDraftHandler({ data }: { data: unknown }) 
     };
   if (!allowAssistantBurst(owner.id, Date.now(), 3))
     return { status: "limit" as const, message: "Terlalu cepat. Tunggu sebentar lalu coba lagi." };
-  const prompt = templateDraftPrompt(input.brief, input.days);
   const model = assistant.generationModel;
-  try {
-    const outcome = await askModel(
-      model,
-      prompt.system,
-      [{ role: "user", content: prompt.user }],
-      3500,
-      undefined,
-      { name: "trip_template_draft", schema: TEMPLATE_DRAFT_SCHEMA },
-    );
-    const parsed =
-      typeof outcome.parsed === "string" ? parseJsonLoose(outcome.parsed) : outcome.parsed;
-    const draft = cleanTemplateDraft(parsed, input.days);
-    await logRun(owner, model, draft ? "ok" : "error", outcome.usage);
-    if (!draft)
-      return {
-        status: "error" as const,
-        message: "Travo belum berhasil menyusun template. Coba tulis permintaan lebih jelas.",
-      };
-    return { status: "ok" as const, draft };
-  } catch (error) {
-    await logRun(owner, model, "error", { input: 0, output: 0 });
-    console.error("[trip-templates] draft failed", error instanceof Error ? error.message : error);
-    return { status: "error" as const, message: "Travo sedang sibuk. Coba lagi sebentar lagi." };
-  }
+  const result = await buildTemplateFromOwnData({
+    owner,
+    generationModel: model,
+    tone: assistant.tone,
+    country: input.country,
+    city: input.city,
+    days: input.days,
+    style: input.style,
+    interests: input.interests,
+    origin: input.origin,
+  });
+  await logRun(owner, model, result.status === "ok" ? "ok" : "error", result.usage);
+  if (result.status === "error") return { status: "error" as const, message: result.message };
+  return { status: "ok" as const, draft: result.draft, sources: result.sources };
 }
 
 async function logRun(
@@ -576,12 +594,15 @@ export async function refreshTemplateHandler({ data }: { data: unknown }) {
     await writeItems(client, id, snapshot.items);
     await client.query(
       `update trip_templates set day_count=$2, version=version+1, cover_url=coalesce($3, cover_url),
-              budget_json=$4::jsonb, updated_at=now() where id=$1`,
+              budget_json = case when $5 then coalesce(budget_json, $4::jsonb) else $4::jsonb end,
+              updated_at=now() where id=$1`,
       [
         id,
         snapshot.days,
         snapshot.items.find((i) => i.image)?.image ?? null,
         snapshot.budget ? JSON.stringify(snapshot.budget) : null,
+        // A generic split of a lump sum never replaces a budget that is already on the template.
+        snapshot.budgetDerived,
       ],
     );
     await client.query("commit");

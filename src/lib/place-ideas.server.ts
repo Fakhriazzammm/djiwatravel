@@ -107,7 +107,7 @@ export function reserveSearchSlot(now = Date.now(), limit = 4) {
   return true;
 }
 
-async function searchWeb(query: string): Promise<{ title: string; url: string }[]> {
+export async function searchWeb(query: string): Promise<{ title: string; url: string }[]> {
   const url = new URL(TINYFISH_SEARCH);
   url.searchParams.set("query", query);
   const response = await fetch(url, {
@@ -126,7 +126,7 @@ async function searchWeb(query: string): Promise<{ title: string; url: string }[
   );
 }
 
-async function fetchPages(pages: { title: string; url: string }[]): Promise<Source[]> {
+export async function fetchPages(pages: { title: string; url: string }[]): Promise<Source[]> {
   if (!pages.length) return [];
   const response = await fetch(TINYFISH_FETCH, {
     method: "POST",

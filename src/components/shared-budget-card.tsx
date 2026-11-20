@@ -1,6 +1,14 @@
 import { Wallet } from "lucide-react";
 
-export type BudgetLine = { name: string; amount: string; share: number };
+export type BudgetLine = {
+  name: string;
+  amount: string;
+  share: number;
+  /** Where the amount comes from. */
+  note?: string;
+  /** One of our own features that can book or check this line (flight search, eSIM). */
+  action?: { label: string; href: string };
+};
 
 /**
  * Planned budget of a template or a shared itinerary: the total and one bar per category. It shows
@@ -37,6 +45,19 @@ export function SharedBudgetCard({
                 <span className="min-w-0 truncate font-medium">{line.name}</span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">{line.amount}</span>
               </div>
+              {(line.note || line.action) && (
+                <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                  {line.note}
+                  {line.action && (
+                    <>
+                      {line.note ? " " : ""}
+                      <a href={line.action.href} className="font-semibold text-brand-red">
+                        {line.action.label}
+                      </a>
+                    </>
+                  )}
+                </p>
+              )}
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
                 <div
                   className="h-full rounded-full bg-brand-red"

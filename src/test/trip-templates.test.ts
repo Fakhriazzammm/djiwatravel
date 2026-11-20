@@ -202,3 +202,18 @@ describe("splitTotalBudget (a trip that only has a lump sum)", () => {
     expect(splitTotalBudget(-5)).toEqual([]);
   });
 });
+
+describe("template budget notes", () => {
+  it("keeps a short source note per line and drops it when empty", () => {
+    const budget = cleanTemplateBudget([
+      { name: "Tiket pesawat", amountIdr: 8_200_000, note: "  Harga tercatat Aviasales  " },
+      { name: "Makan", amountIdr: 3_000_000, note: "" },
+    ]);
+    expect(budget?.categories[0]).toEqual({
+      name: "Tiket pesawat",
+      amountIdr: 8_200_000,
+      note: "Harga tercatat Aviasales",
+    });
+    expect(budget?.categories[1]).toEqual({ name: "Makan", amountIdr: 3_000_000 });
+  });
+});

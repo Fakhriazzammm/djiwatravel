@@ -3,7 +3,9 @@ import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { btnRed } from "@/components/shell";
+import { FlightPlaceField } from "@/components/flight-place-field";
 import { SharedBudgetCard } from "@/components/shared-budget-card";
+import { TripCountryPicker } from "@/components/trip-country-picker";
 import { TemplateDays } from "@/components/trip-template-ui";
 import {
   Sheet,
@@ -17,6 +19,8 @@ import {
   publishDraftTemplate,
   publishTripTemplate,
 } from "@/lib/trip-templates.fn";
+import type { FlightPlace } from "@/lib/flights";
+import type { TripCountry } from "@/lib/trip-countries";
 import { formatIdr, type TemplateDraft } from "@/lib/trip-templates";
 
 const content =
@@ -117,7 +121,27 @@ export function PublishTripTemplateSheet({
   );
 }
 
-/** Travo drafts a template from a short brief; the member reviews it, then publishes. */
+const STYLES = [
+  ["auto", "Otomatis"],
+  ["hemat", "Hemat"],
+  ["nyaman", "Nyaman"],
+] as const;
+
+/** Budget lines we can act on with our own features: flight search and eSIM. */
+function lineAction(name: string, destination: string) {
+  if (/tiket pesawat/i.test(name))
+    return {
+      action: { label: "Cari tiket →", href: `/tiket?tujuan=${encodeURIComponent(destination)}` },
+    };
+  if (/esim/i.test(name)) return { action: { label: "Lihat eSIM →", href: "/esim/finder" } };
+  return {};
+}
+
+/**
+ * Travo drafts a template from our own data (recorded fares, the eSIM catalog, city costs and map
+ * places; the internet only fills what we lack). The member reviews the draft, its budget and its
+ * sources, then publishes.
+ */
 export function TravoTemplateSheet({
   open,
   onOpenChange,
@@ -126,17 +150,41 @@ export function TravoTemplateSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const navigate = useNavigate();
-  const [brief, setBrief] = useState("");
-  const [days, setDays] = useState(3);
+  const [country, setCountry] = useState<TripCountry | null>(null);
+  const [city, setCity] = useState("");
+  const [days, setDays] = useState(4);
+  const [style, setStyle] = useState<(typeof STYLES)[number][0]>("auto");
+  const [interests, setInterests] = useState("");
+  const [origin, setOrigin] = useState<FlightPlace | null>(null);
   const [draft, setDraft] = useState<TemplateDraft | null>(null);
+  const [sources, setSources] = useState<string[]>([]);
   const [busy, setBusy] = useState<"draft" | "publish" | null>(null);
   async function generate(event: React.FormEvent) {
     event.preventDefault();
+    if (!country) {
+      toast.error("Pilih negara tujuan dulu.");
+      return;
+    }
     setBusy("draft");
     try {
-      const result = await generateTemplateDraft({ data: { brief, days } });
-      if (result.status === "ok") setDraft(result.draft);
-      else toast.error(result.message);
+      const result = await generateTemplateDraft({
+        data: {
+          country: { code: country.code, name: country.name },
+          city: { name: city.trim() },
+          days,
+          style,
+          interests: interests
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 7),
+          origin: origin ? { code: origin.code, name: origin.name } : null,
+        },
+      });
+      if (result.status === "ok") {
+        setDraft(result.draft);
+        setSources(result.sources);
+      } else toast.error(result.message);
     } catch (cause) {
       toast.error(errorText(cause, "Travo belum bisa menyusun template."));
     } finally {
@@ -152,7 +200,7 @@ export function TravoTemplateSheet({
           title: draft.title,
           description: draft.description,
           destinationName: draft.destinationName,
-          destinationCode: draft.destinationCode ?? "ID",
+          destinationCode: draft.destinationCode ?? country?.code ?? "ID",
           days: draft.days,
           items: draft.items.map((item) => ({
             day: item.day,
@@ -162,13 +210,19 @@ export function TravoTemplateSheet({
             location: item.location,
             category: item.category,
             costIdr: item.costIdr ?? null,
+            lat: item.lat ?? null,
+            lng: item.lng ?? null,
           })),
-          budget: draft.budget?.categories ?? [],
+          budget: (draft.budget?.categories ?? []).map((line) => ({
+            name: line.name,
+            amountIdr: line.amountIdr,
+            ...(line.note ? { note: line.note } : {}),
+          })),
         },
       });
       toast.success(publishedText(result.feed));
       setDraft(null);
-      setBrief("");
+      setSources([]);
       onOpenChange(false);
       await navigate({ to: "/my-templates" });
     } catch (cause) {
@@ -185,42 +239,80 @@ export function TravoTemplateSheet({
             <Sparkles className="size-4 text-brand-red" aria-hidden="true" /> Buat dengan Travo
           </SheetTitle>
           <SheetDescription>
-            Ceritakan perjalanan idealmu. Travo menyusun draf, kamu periksa dulu sebelum
-            diterbitkan. Cek jam buka dan harga sebelum berangkat.
+            Travo menyusun itinerary, anggaran, tiket, dan eSIM dari data Djiwa Travel: harga tiket
+            tercatat, katalog eSIM, biaya kota, dan tempat di peta. Hanya yang belum kami punya
+            dicari dari internet.
           </SheetDescription>
         </SheetHeader>
         {!draft ? (
           <form onSubmit={generate} className="space-y-3">
-            <textarea
+            <TripCountryPicker value={country?.code ?? ""} onChange={(next) => setCountry(next)} />
+            <input
               required
-              minLength={8}
-              maxLength={300}
-              value={brief}
-              onChange={(event) => setBrief(event.target.value)}
-              placeholder="Contoh: Liburan santai di Kyoto, suka kuliner dan kuil, budget menengah"
-              aria-label="Permintaan untuk Travo"
-              className={`${field} min-h-24`}
+              minLength={2}
+              maxLength={60}
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              placeholder="Kota basis perjalanan (contoh: Kyoto)"
+              aria-label="Kota"
+              className={field}
+            />
+            <FlightPlaceField
+              id="template-origin"
+              label="Berangkat dari (opsional, default Jakarta)"
+              value={origin}
+              onPick={setOrigin}
             />
             <label className="flex min-h-11 items-center justify-between rounded-2xl bg-secondary/70 px-4">
               <span className="text-sm font-medium">Jumlah hari</span>
               <input
                 type="number"
                 min={1}
-                max={7}
+                max={10}
                 value={days}
                 onChange={(event) =>
-                  setDays(Math.max(1, Math.min(7, Number(event.target.value) || 1)))
+                  setDays(Math.max(1, Math.min(10, Number(event.target.value) || 1)))
                 }
                 className="w-14 bg-transparent text-right text-sm outline-none"
               />
             </label>
+            <div className="flex gap-1.5" role="group" aria-label="Gaya anggaran">
+              {STYLES.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={style === value}
+                  onClick={() => setStyle(value)}
+                  className={`tap min-h-9 flex-1 rounded-full text-[12px] font-semibold ${
+                    style === value
+                      ? "bg-brand-red text-white"
+                      : "bg-secondary text-secondary-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <input
+              value={interests}
+              onChange={(event) => setInterests(event.target.value)}
+              maxLength={140}
+              placeholder="Minat, pisahkan koma (kuliner, kuil, belanja)"
+              aria-label="Minat"
+              className={field}
+            />
             <button
               type="submit"
               disabled={busy !== null}
               className={`${btnRed} w-full disabled:opacity-50`}
             >
-              {busy === "draft" ? "Travo sedang menyusun…" : "Susun template"}
+              {busy === "draft" ? "Travo sedang mengumpulkan data…" : "Susun template"}
             </button>
+            {busy === "draft" && (
+              <p className="text-center text-[11px] text-muted-foreground">
+                Mengambil harga tiket, eSIM, biaya kota, dan tempat di peta. Bisa sampai 1 menit.
+              </p>
+            )}
           </form>
         ) : (
           <div className="space-y-3">
@@ -238,6 +330,20 @@ export function TravoTemplateSheet({
               aria-label="Deskripsi"
               className={`${field} min-h-16`}
             />
+            {draft.budget && (
+              <SharedBudgetCard
+                title="Estimasi anggaran"
+                total={formatIdr(draft.budget.totalIdr)}
+                note="Per orang · cek harga terbaru sebelum berangkat"
+                lines={draft.budget.categories.map((line) => ({
+                  name: line.name,
+                  amount: formatIdr(line.amountIdr),
+                  share: draft.budget!.totalIdr ? line.amountIdr / draft.budget!.totalIdr : 0,
+                  ...(line.note ? { note: line.note } : {}),
+                  ...lineAction(line.name, draft.destinationName),
+                }))}
+              />
+            )}
             <TemplateDays
               days={draft.days}
               items={draft.items.map((item) => ({
@@ -251,17 +357,18 @@ export function TravoTemplateSheet({
                 image: null,
               }))}
             />
-            {draft.budget && (
-              <SharedBudgetCard
-                title="Estimasi anggaran"
-                total={formatIdr(draft.budget.totalIdr)}
-                note="Per orang · usulan Travo, cek harga terbaru"
-                lines={draft.budget.categories.map((line) => ({
-                  name: line.name,
-                  amount: formatIdr(line.amountIdr),
-                  share: draft.budget!.totalIdr ? line.amountIdr / draft.budget!.totalIdr : 0,
-                }))}
-              />
+            {sources.length > 0 && (
+              <section
+                aria-label="Sumber data"
+                className="rounded-2xl bg-secondary/60 p-3 text-[11px] leading-4 text-muted-foreground"
+              >
+                <p className="mb-1 font-semibold text-foreground">Sumber data</p>
+                <ul className="list-disc space-y-0.5 pl-4">
+                  {sources.map((source) => (
+                    <li key={source}>{source}</li>
+                  ))}
+                </ul>
+              </section>
             )}
             <TimelineNotice />
             <div className="grid grid-cols-2 gap-2">

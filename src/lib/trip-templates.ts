@@ -125,10 +125,12 @@ export function templatePath(slug: string, affiliateCode?: string | null) {
 const text = (value: unknown, max: number) =>
   typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
 
-export type TemplateBudgetCategory = { name: string; amountIdr: number };
+/** `note` says where the amount comes from (for example the recorded fare), shown under the line. */
+export type TemplateBudgetCategory = { name: string; amountIdr: number; note?: string };
 /** Planned budget per traveler, in rupiah. Never actual spending. */
 export type TemplateBudget = { categories: TemplateBudgetCategory[]; totalIdr: number };
 
+export const TEMPLATE_MAX_BUDGET_LINES = 10;
 export const TEMPLATE_MAX_COST_IDR = 50_000_000;
 
 const money = (value: unknown) => {
@@ -136,21 +138,44 @@ const money = (value: unknown) => {
   return Number.isFinite(n) && n > 0 ? Math.min(n, TEMPLATE_MAX_COST_IDR) : 0;
 };
 
-/** Clean budget lines (name, whole rupiah), merge duplicates, at most 8, total = sum. */
+/** A map point is kept only when both numbers are a real position. */
+function pointOf(row: Record<string, unknown>): { lat?: number; lng?: number } {
+  const lat = Number(row["lat"]);
+  const lng = Number(row["lng"]);
+  const ok =
+    row["lat"] != null &&
+    row["lng"] != null &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180;
+  return ok ? { lat, lng } : {};
+}
+
+/** Clean budget lines (name, whole rupiah), merge duplicates, at most 10, total = sum. */
 export function cleanTemplateBudget(raw: unknown): TemplateBudget | null {
   const list = Array.isArray(raw) ? raw : [];
-  const merged = new Map<string, number>();
+  const merged = new Map<string, { amountIdr: number; note?: string }>();
   for (const entry of list) {
     if (!entry || typeof entry !== "object") continue;
     const row = entry as Record<string, unknown>;
     const name = text(row["name"], 40);
     const amount = money(row["amountIdr"]);
     if (!name || !amount) continue;
-    merged.set(name, (merged.get(name) ?? 0) + amount);
+    const note = text(row["note"], 120);
+    const have = merged.get(name);
+    merged.set(name, {
+      amountIdr: (have?.amountIdr ?? 0) + amount,
+      ...(have?.note || note ? { note: have?.note ?? note } : {}),
+    });
   }
-  const categories = [...merged.entries()]
-    .slice(0, 8)
-    .map(([name, amountIdr]) => ({ name, amountIdr: Math.min(amountIdr, TEMPLATE_MAX_COST_IDR) }));
+  const categories: TemplateBudgetCategory[] = [...merged.entries()]
+    .slice(0, TEMPLATE_MAX_BUDGET_LINES)
+    .map(([name, line]) => ({
+      name,
+      amountIdr: Math.min(line.amountIdr, TEMPLATE_MAX_COST_IDR),
+      ...(line.note ? { note: line.note } : {}),
+    }));
   if (!categories.length) return null;
   return { categories, totalIdr: categories.reduce((sum, c) => sum + c.amountIdr, 0) };
 }
@@ -216,6 +241,7 @@ export function cleanTemplateDraft(raw: unknown, maxDays: number): TemplateDraft
       location: text(row["location"], 200) || null,
       category: normalizeCategory(row["category"]),
       costIdr: money(row["costIdr"]) || null,
+      ...pointOf(row),
     });
     if (items.length >= TEMPLATE_MAX_ITEMS) break;
   }
@@ -296,7 +322,7 @@ export function templateDraftPrompt(brief: string, days: number) {
       "Hanya sebut tempat nyata yang kamu yakin ada. Jangan mengarang nama tempat, harga, atau jam buka. Kosongkan `end` bila tidak yakin.",
       "`category` salah satu: wisata, kuliner, belanja, transport, akomodasi, lainnya.",
       "`destinationCode` kode negara 2 huruf (contoh JP, ID, TH). `title` maksimal 60 karakter, tanpa emoji.",
-      "Anggaran: `costIdr` = perkiraan biaya kegiatan itu per orang dalam rupiah penuh (0 bila gratis atau tidak yakin). `budget` = rincian anggaran seluruh perjalanan PER ORANG dalam rupiah, 4-6 baris: Akomodasi, Transportasi, Makan, Tiket & aktivitas, Belanja & lainnya. Pakai angka realistis untuk gaya perjalanan yang diminta, bulatkan ke Rp 10.000, dan jangan mengarang harga pasti.",
+      "Anggaran: `costIdr` = perkiraan biaya kegiatan itu per orang dalam rupiah penuh (0 bila gratis atau tidak yakin). `budget` = rincian anggaran seluruh perjalanan PER ORANG dalam rupiah, 6-8 baris, sepaket dari berangkat sampai pulang: Tiket pesawat (pulang-pergi dari Jakarta), Akomodasi, Transportasi lokal, Makan, Tiket & aktivitas, eSIM & internet, Visa & asuransi (bila negaranya butuh visa atau asuransi), Belanja & lainnya. Pakai angka realistis untuk gaya perjalanan yang diminta, bulatkan ke Rp 10.000, dan jangan mengarang harga pasti.",
       "Jangan menyertakan data pribadi, nomor pesanan, atau catatan privat apa pun.",
     ].join("\n"),
     user: `Permintaan traveler: ${brief}`,
