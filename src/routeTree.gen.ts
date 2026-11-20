@@ -17,6 +17,7 @@ import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MyOrdersRouteImport } from './routes/my-orders'
+import { Route as MyTemplatesRouteImport } from './routes/my-templates'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OrderStatusRouteImport } from './routes/order-status'
 import { Route as PetugasRouteImport } from './routes/petugas'
@@ -53,6 +54,7 @@ import { Route as AdminShippingRouteImport } from './routes/admin.shipping'
 import { Route as AdminShoppingRouteImport } from './routes/admin.shopping'
 import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
+import { Route as AdminTemplatesRouteImport } from './routes/admin.templates'
 import { Route as AdminTrafficRouteImport } from './routes/admin.traffic'
 import { Route as ApiCustomerNotificationsRouteImport } from './routes/api.customer-notifications'
 import { Route as ApiCustomerProfileRouteImport } from './routes/api.customer-profile'
@@ -98,6 +100,8 @@ import { Route as PlanIdRouteImport } from './routes/plan.$id'
 import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
 import { Route as RefundOrderRouteImport } from './routes/refund.$order'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
+import { Route as TemplateIndexRouteImport } from './routes/template.index'
+import { Route as TemplateSlugRouteImport } from './routes/template.$slug'
 import { Route as TitipBelanjaIndexRouteImport } from './routes/titip-belanja.index'
 import { Route as WalletPayRouteImport } from './routes/wallet.pay'
 import { Route as AdminCustomerIdRouteImport } from './routes/admin.customer.$id'
@@ -170,6 +174,11 @@ const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
 const MyOrdersRoute = MyOrdersRouteImport.update({
   id: '/my-orders',
   path: '/my-orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyTemplatesRoute = MyTemplatesRouteImport.update({
+  id: '/my-templates',
+  path: '/my-templates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -350,6 +359,11 @@ const AdminSupportRoute = AdminSupportRouteImport.update({
 const AdminTeamRoute = AdminTeamRouteImport.update({
   id: '/admin/team',
   path: '/admin/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTemplatesRoute = AdminTemplatesRouteImport.update({
+  id: '/admin/templates',
+  path: '/admin/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminTrafficRoute = AdminTrafficRouteImport.update({
@@ -578,6 +592,16 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
   path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TemplateIndexRoute = TemplateIndexRouteImport.update({
+  id: '/template/',
+  path: '/template/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemplateSlugRoute = TemplateSlugRouteImport.update({
+  id: '/template/$slug',
+  path: '/template/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TitipBelanjaIndexRoute = TitipBelanjaIndexRouteImport.update({
   id: '/titip-belanja/',
   path: '/titip-belanja/',
@@ -760,6 +784,7 @@ export interface FileRoutesByFullPath {
   '/live-catalog': typeof LiveCatalogRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/my-orders': typeof MyOrdersRoute
+  '/my-templates': typeof MyTemplatesRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/petugas': typeof PetugasRoute
@@ -795,6 +820,7 @@ export interface FileRoutesByFullPath {
   '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/admin/templates': typeof AdminTemplatesRoute
   '/admin/traffic': typeof AdminTrafficRoute
   '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
   '/api/customer-profile': typeof ApiCustomerProfileRoute
@@ -835,6 +861,7 @@ export interface FileRoutesByFullPath {
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
   '/share/$token': typeof ShareTokenRoute
+  '/template/$slug': typeof TemplateSlugRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/feeds/': typeof FeedsIndexRoute
@@ -842,6 +869,7 @@ export interface FileRoutesByFullPath {
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
+  '/template/': typeof TemplateIndexRoute
   '/titip-belanja/': typeof TitipBelanjaIndexRoute
   '/admin/customer/$id': typeof AdminCustomerIdRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
@@ -884,6 +912,7 @@ export interface FileRoutesByTo {
   '/live-catalog': typeof LiveCatalogRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/my-orders': typeof MyOrdersRoute
+  '/my-templates': typeof MyTemplatesRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/petugas': typeof PetugasRoute
@@ -919,6 +948,7 @@ export interface FileRoutesByTo {
   '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/admin/templates': typeof AdminTemplatesRoute
   '/admin/traffic': typeof AdminTrafficRoute
   '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
   '/api/customer-profile': typeof ApiCustomerProfileRoute
@@ -959,6 +989,7 @@ export interface FileRoutesByTo {
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
   '/share/$token': typeof ShareTokenRoute
+  '/template/$slug': typeof TemplateSlugRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin': typeof AdminIndexRoute
   '/feeds': typeof FeedsIndexRoute
@@ -966,6 +997,7 @@ export interface FileRoutesByTo {
   '/my-esim': typeof MyEsimIndexRoute
   '/my-trips': typeof MyTripsIndexRoute
   '/panduan': typeof PanduanIndexRoute
+  '/template': typeof TemplateIndexRoute
   '/titip-belanja': typeof TitipBelanjaIndexRoute
   '/admin/customer/$id': typeof AdminCustomerIdRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
@@ -1009,6 +1041,7 @@ export interface FileRoutesById {
   '/live-catalog': typeof LiveCatalogRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/my-orders': typeof MyOrdersRoute
+  '/my-templates': typeof MyTemplatesRoute
   '/notifications': typeof NotificationsRoute
   '/order-status': typeof OrderStatusRoute
   '/petugas': typeof PetugasRoute
@@ -1044,6 +1077,7 @@ export interface FileRoutesById {
   '/admin/shopping': typeof AdminShoppingRoute
   '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
+  '/admin/templates': typeof AdminTemplatesRoute
   '/admin/traffic': typeof AdminTrafficRoute
   '/api/customer-notifications': typeof ApiCustomerNotificationsRoute
   '/api/customer-profile': typeof ApiCustomerProfileRoute
@@ -1084,6 +1118,7 @@ export interface FileRoutesById {
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
   '/share/$token': typeof ShareTokenRoute
+  '/template/$slug': typeof TemplateSlugRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/feeds/': typeof FeedsIndexRoute
@@ -1091,6 +1126,7 @@ export interface FileRoutesById {
   '/my-esim/': typeof MyEsimIndexRoute
   '/my-trips/': typeof MyTripsIndexRoute
   '/panduan/': typeof PanduanIndexRoute
+  '/template/': typeof TemplateIndexRoute
   '/titip-belanja/': typeof TitipBelanjaIndexRoute
   '/admin/customer/$id': typeof AdminCustomerIdRoute
   '/admin/orders/$id': typeof AdminOrdersIdRoute
@@ -1135,6 +1171,7 @@ export interface FileRouteTypes {
     | '/live-catalog'
     | '/llms.txt'
     | '/my-orders'
+    | '/my-templates'
     | '/notifications'
     | '/order-status'
     | '/petugas'
@@ -1170,6 +1207,7 @@ export interface FileRouteTypes {
     | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
+    | '/admin/templates'
     | '/admin/traffic'
     | '/api/customer-notifications'
     | '/api/customer-profile'
@@ -1210,6 +1248,7 @@ export interface FileRouteTypes {
     | '/receipt/$id'
     | '/refund/$order'
     | '/share/$token'
+    | '/template/$slug'
     | '/wallet/pay'
     | '/admin/'
     | '/feeds/'
@@ -1217,6 +1256,7 @@ export interface FileRouteTypes {
     | '/my-esim/'
     | '/my-trips/'
     | '/panduan/'
+    | '/template/'
     | '/titip-belanja/'
     | '/admin/customer/$id'
     | '/admin/orders/$id'
@@ -1259,6 +1299,7 @@ export interface FileRouteTypes {
     | '/live-catalog'
     | '/llms.txt'
     | '/my-orders'
+    | '/my-templates'
     | '/notifications'
     | '/order-status'
     | '/petugas'
@@ -1294,6 +1335,7 @@ export interface FileRouteTypes {
     | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
+    | '/admin/templates'
     | '/admin/traffic'
     | '/api/customer-notifications'
     | '/api/customer-profile'
@@ -1334,6 +1376,7 @@ export interface FileRouteTypes {
     | '/receipt/$id'
     | '/refund/$order'
     | '/share/$token'
+    | '/template/$slug'
     | '/wallet/pay'
     | '/admin'
     | '/feeds'
@@ -1341,6 +1384,7 @@ export interface FileRouteTypes {
     | '/my-esim'
     | '/my-trips'
     | '/panduan'
+    | '/template'
     | '/titip-belanja'
     | '/admin/customer/$id'
     | '/admin/orders/$id'
@@ -1383,6 +1427,7 @@ export interface FileRouteTypes {
     | '/live-catalog'
     | '/llms.txt'
     | '/my-orders'
+    | '/my-templates'
     | '/notifications'
     | '/order-status'
     | '/petugas'
@@ -1418,6 +1463,7 @@ export interface FileRouteTypes {
     | '/admin/shopping'
     | '/admin/support'
     | '/admin/team'
+    | '/admin/templates'
     | '/admin/traffic'
     | '/api/customer-notifications'
     | '/api/customer-profile'
@@ -1458,6 +1504,7 @@ export interface FileRouteTypes {
     | '/receipt/$id'
     | '/refund/$order'
     | '/share/$token'
+    | '/template/$slug'
     | '/wallet/pay'
     | '/admin/'
     | '/feeds/'
@@ -1465,6 +1512,7 @@ export interface FileRouteTypes {
     | '/my-esim/'
     | '/my-trips/'
     | '/panduan/'
+    | '/template/'
     | '/titip-belanja/'
     | '/admin/customer/$id'
     | '/admin/orders/$id'
@@ -1508,6 +1556,7 @@ export interface RootRouteChildren {
   LiveCatalogRoute: typeof LiveCatalogRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   MyOrdersRoute: typeof MyOrdersRoute
+  MyTemplatesRoute: typeof MyTemplatesRoute
   NotificationsRoute: typeof NotificationsRoute
   OrderStatusRoute: typeof OrderStatusRoute
   PetugasRoute: typeof PetugasRoute
@@ -1543,6 +1592,7 @@ export interface RootRouteChildren {
   AdminShoppingRoute: typeof AdminShoppingRoute
   AdminSupportRoute: typeof AdminSupportRoute
   AdminTeamRoute: typeof AdminTeamRoute
+  AdminTemplatesRoute: typeof AdminTemplatesRoute
   AdminTrafficRoute: typeof AdminTrafficRoute
   ApiCustomerNotificationsRoute: typeof ApiCustomerNotificationsRoute
   ApiCustomerProfileRoute: typeof ApiCustomerProfileRoute
@@ -1581,12 +1631,14 @@ export interface RootRouteChildren {
   ReceiptIdRoute: typeof ReceiptIdRoute
   RefundOrderRoute: typeof RefundOrderRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  TemplateSlugRoute: typeof TemplateSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
   FeedsIndexRoute: typeof FeedsIndexRoute
   KirimBarangIndexRoute: typeof KirimBarangIndexRoute
   MyEsimIndexRoute: typeof MyEsimIndexRoute
   MyTripsIndexRoute: typeof MyTripsIndexRoute
   PanduanIndexRoute: typeof PanduanIndexRoute
+  TemplateIndexRoute: typeof TemplateIndexRoute
   TitipBelanjaIndexRoute: typeof TitipBelanjaIndexRoute
   AdminCustomerIdRoute: typeof AdminCustomerIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -1672,6 +1724,13 @@ declare module '@tanstack/react-router' {
       path: '/my-orders'
       fullPath: '/my-orders'
       preLoaderRoute: typeof MyOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-templates': {
+      id: '/my-templates'
+      path: '/my-templates'
+      fullPath: '/my-templates'
+      preLoaderRoute: typeof MyTemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -1924,6 +1983,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/team'
       fullPath: '/admin/team'
       preLoaderRoute: typeof AdminTeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/templates': {
+      id: '/admin/templates'
+      path: '/admin/templates'
+      fullPath: '/admin/templates'
+      preLoaderRoute: typeof AdminTemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/traffic': {
@@ -2241,6 +2307,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/template/': {
+      id: '/template/'
+      path: '/template'
+      fullPath: '/template/'
+      preLoaderRoute: typeof TemplateIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/template/$slug': {
+      id: '/template/$slug'
+      path: '/template/$slug'
+      fullPath: '/template/$slug'
+      preLoaderRoute: typeof TemplateSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/titip-belanja/': {
       id: '/titip-belanja/'
       path: '/titip-belanja'
@@ -2547,6 +2627,7 @@ const rootRouteChildren: RootRouteChildren = {
   LiveCatalogRoute: LiveCatalogRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   MyOrdersRoute: MyOrdersRoute,
+  MyTemplatesRoute: MyTemplatesRoute,
   NotificationsRoute: NotificationsRoute,
   OrderStatusRoute: OrderStatusRoute,
   PetugasRoute: PetugasRoute,
@@ -2582,6 +2663,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminShoppingRoute: AdminShoppingRoute,
   AdminSupportRoute: AdminSupportRoute,
   AdminTeamRoute: AdminTeamRoute,
+  AdminTemplatesRoute: AdminTemplatesRoute,
   AdminTrafficRoute: AdminTrafficRoute,
   ApiCustomerNotificationsRoute: ApiCustomerNotificationsRoute,
   ApiCustomerProfileRoute: ApiCustomerProfileRoute,
@@ -2620,12 +2702,14 @@ const rootRouteChildren: RootRouteChildren = {
   ReceiptIdRoute: ReceiptIdRoute,
   RefundOrderRoute: RefundOrderRoute,
   ShareTokenRoute: ShareTokenRoute,
+  TemplateSlugRoute: TemplateSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
   FeedsIndexRoute: FeedsIndexRoute,
   KirimBarangIndexRoute: KirimBarangIndexRoute,
   MyEsimIndexRoute: MyEsimIndexRoute,
   MyTripsIndexRoute: MyTripsIndexRoute,
   PanduanIndexRoute: PanduanIndexRoute,
+  TemplateIndexRoute: TemplateIndexRoute,
   TitipBelanjaIndexRoute: TitipBelanjaIndexRoute,
   AdminCustomerIdRoute: AdminCustomerIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

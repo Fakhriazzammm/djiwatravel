@@ -338,7 +338,7 @@ async function readModelStream(
   return { content, usage };
 }
 
-async function askModel(
+export async function askModel(
   model: string,
   system: string,
   messages: { role: string; content: string }[],

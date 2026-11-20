@@ -6,7 +6,7 @@ export type TravelServiceCategory = {
   description: string;
   icon: string;
   status: TravelServiceStatus;
-  href?: "/explore" | "/esim/finder" | "/tiket" | "/titip-belanja" | "/kirim-barang";
+  href?: "/explore" | "/esim/finder" | "/tiket" | "/template" | "/titip-belanja" | "/kirim-barang";
   displayOrder: number;
 };
 
@@ -28,6 +28,15 @@ export const travelServices: TravelServiceCategory[] = [
     status: "ACTIVE",
     href: "/tiket",
     displayOrder: 2,
+  },
+  {
+    id: "templates",
+    label: "Template",
+    description: "Itinerary siap pakai",
+    icon: "open-trip",
+    status: "ACTIVE",
+    href: "/template",
+    displayOrder: 2.5,
   },
   {
     id: "attractions",
@@ -93,6 +102,7 @@ export const visibleTravelServices = () =>
 
 export function serviceHref(
   service: TravelServiceCategory,
-): "/explore" | "/esim/finder" | "/tiket" | "/titip-belanja" | "/kirim-barang" | null {
+):
+  "/explore" | "/esim/finder" | "/tiket" | "/template" | "/titip-belanja" | "/kirim-barang" | null {
   return service.status === "ACTIVE" ? (service.href ?? null) : null;
 }

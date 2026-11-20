@@ -1,0 +1,273 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Flag, MapPin, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { CustomerAuth } from "@/components/customer-auth";
+import { BackBar, Page, btnRed, btnSoft } from "@/components/shell";
+import { TemplateCover, TemplateDays } from "@/components/trip-template-ui";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { useBetterAuthUser } from "@/lib/use-better-auth-user";
+import { getPublicTemplate, reportTemplate, copyTemplate } from "@/lib/trip-templates.fn";
+
+export const Route = createFileRoute("/template/$slug")({
+  loader: ({ params }) => getPublicTemplate({ data: { slug: params.slug } }),
+  head: ({ loaderData }) => {
+    const t = loaderData?.template;
+    const title = t
+      ? `${t.title} — Template Djiwa Travel`
+      : "Template tidak ditemukan — Djiwa Travel";
+    const description = t
+      ? `${t.days} hari di ${t.destinationName}${t.ownerName ? ` oleh ${t.ownerName}` : ""}. Pakai itinerary ini lalu atur tanggalmu.`
+      : "Template itinerary di Djiwa Travel.";
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        ...(t?.coverUrl ? [{ property: "og:image", content: t.coverUrl }] : []),
+        ...(t ? [] : [{ name: "robots", content: "noindex" }]),
+      ],
+    };
+  },
+  component: TemplatePage,
+});
+
+function tomorrow() {
+  const d = new Date(Date.now() + 86_400_000);
+  return d.toISOString().slice(0, 10);
+}
+
+function TemplatePage() {
+  const data = Route.useLoaderData();
+  const { user, loading } = useBetterAuthUser();
+  const [useOpen, setUseOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  if (!data)
+    return (
+      <Page>
+        <BackBar title="Template" fallbackTo="/template" />
+        <div className="mt-10 text-center">
+          <p className="text-[15px] font-semibold">Template tidak ditemukan</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Template ini sudah dinonaktifkan atau tautannya salah.
+          </p>
+          <Link to="/template" className={`${btnSoft} mt-4 inline-flex px-5`}>
+            Lihat template lain
+          </Link>
+        </div>
+      </Page>
+    );
+  const { template, items, isOwner } = data;
+  return (
+    <Page tabs={false}>
+      <BackBar title="Template" fallbackTo="/template" />
+      <div className="space-y-3 pb-24">
+        <TemplateCover url={template.coverUrl} title={template.destinationName} className="h-40" />
+        <div>
+          <h1 className="text-[20px] font-bold leading-6">{template.title}</h1>
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[12px] text-muted-foreground">
+            <MapPin className="size-3" aria-hidden="true" />
+            {template.destinationName} · {template.days} hari ·{" "}
+            {template.byTravo ? (
+              <span className="inline-flex items-center gap-1">
+                <Sparkles className="size-3 text-brand-red" aria-hidden="true" /> Disusun Travo
+              </span>
+            ) : (
+              <span>oleh {template.ownerName ?? "member Djiwa"}</span>
+            )}
+            {template.uses > 0 && <span>· dipakai {template.uses}x</span>}
+          </p>
+          {template.description && (
+            <p className="mt-2 text-[13px] leading-5 text-foreground/80">{template.description}</p>
+          )}
+        </div>
+        <TemplateDays items={items} days={template.days} />
+        {!isOwner && (
+          <button
+            type="button"
+            onClick={() =>
+              user ? setReportOpen(true) : toast.info("Masuk untuk melaporkan template")
+            }
+            className="tap mx-auto flex items-center gap-1 text-[11px] text-muted-foreground"
+          >
+            <Flag className="size-3" aria-hidden="true" /> Laporkan template
+          </button>
+        )}
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2.5 backdrop-blur">
+        <div className="mx-auto max-w-md">
+          {isOwner ? (
+            <Link to="/my-templates" className={`${btnSoft} w-full`}>
+              Ini templatemu · kelola
+            </Link>
+          ) : (
+            <button type="button" className={`${btnRed} w-full`} onClick={() => setUseOpen(true)}>
+              Pakai template ini
+            </button>
+          )}
+        </div>
+      </div>
+      <UseSheet
+        open={useOpen}
+        onOpenChange={setUseOpen}
+        slug={template.slug}
+        title={template.title}
+        days={template.days}
+        signedIn={Boolean(user)}
+        authLoading={loading}
+      />
+      <ReportSheet open={reportOpen} onOpenChange={setReportOpen} slug={template.slug} />
+    </Page>
+  );
+}
+
+function UseSheet({
+  open,
+  onOpenChange,
+  slug,
+  title,
+  days,
+  signedIn,
+  authLoading,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  slug: string;
+  title: string;
+  days: number;
+  signedIn: boolean;
+  authLoading: boolean;
+}) {
+  const navigate = useNavigate();
+  const [date, setDate] = useState(tomorrow());
+  const [travelers, setTravelers] = useState(1);
+  const [busy, setBusy] = useState(false);
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const trip = await copyTemplate({ data: { slug, departureDate: date, travelers } });
+      toast.success("Perjalanan dibuat dari template");
+      await navigate({ to: "/my-trips/$tripId", params: { tripId: trip.tripId } });
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Template belum bisa dipakai.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="mx-auto max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
+      >
+        <SheetHeader className="mb-3 text-left">
+          <SheetTitle>Pakai template ini</SheetTitle>
+          <SheetDescription>
+            {signedIn
+              ? `“${title}” disalin jadi perjalananmu sendiri (${days} hari). Kamu bebas mengubahnya.`
+              : "Masuk dulu supaya template tersimpan di akunmu. Setelah masuk, kamu kembali ke halaman ini."}
+          </SheetDescription>
+        </SheetHeader>
+        {authLoading ? null : !signedIn ? (
+          <CustomerAuth label="Masuk untuk memakai template" />
+        ) : (
+          <form onSubmit={submit} className="space-y-3">
+            <label className="flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-secondary/70 px-4">
+              <span className="text-sm font-medium">Tanggal berangkat</span>
+              <input
+                required
+                type="date"
+                min={tomorrow().slice(0, 10)}
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                className="bg-transparent text-right text-sm outline-none"
+              />
+            </label>
+            <label className="flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-secondary/70 px-4">
+              <span className="text-sm font-medium">Jumlah traveler</span>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={travelers}
+                onChange={(event) =>
+                  setTravelers(Math.max(1, Math.min(50, Number(event.target.value) || 1)))
+                }
+                className="w-16 bg-transparent text-right text-sm outline-none"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={busy}
+              className={`${btnRed} w-full disabled:opacity-50`}
+            >
+              {busy ? "Menyalin…" : "Buat perjalanan"}
+            </button>
+          </form>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function ReportSheet({
+  open,
+  onOpenChange,
+  slug,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  slug: string;
+}) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await reportTemplate({ data: { slug, reason } });
+      toast.success("Laporan terkirim. Terima kasih.");
+      setReason("");
+      onOpenChange(false);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Laporan belum terkirim.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="mx-auto w-full max-w-lg rounded-t-[28px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7"
+      >
+        <SheetHeader className="mb-3 text-left">
+          <SheetTitle>Laporkan template</SheetTitle>
+          <SheetDescription>Ceritakan singkat apa yang tidak pantas atau keliru.</SheetDescription>
+        </SheetHeader>
+        <form onSubmit={submit} className="space-y-3">
+          <textarea
+            required
+            minLength={3}
+            maxLength={300}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            className="min-h-24 w-full rounded-2xl bg-secondary/70 p-3 text-[14px] outline-none"
+            aria-label="Alasan laporan"
+          />
+          <button type="submit" disabled={busy} className={`${btnRed} w-full disabled:opacity-50`}>
+            Kirim laporan
+          </button>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}

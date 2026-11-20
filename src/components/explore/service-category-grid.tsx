@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { TravelWaitlistCard } from "@/components/travel-waitlist-card";
 import { useFlightsStatus } from "@/hooks/use-flights-config";
+import { useTemplatesStatus } from "@/hooks/use-templates-status";
 import { useShippingStatus } from "@/hooks/use-shipping-status";
 import { useShopperStatus } from "@/hooks/use-shopper-status";
 import { showFlightsTile } from "@/lib/flights";
@@ -42,6 +43,7 @@ const WAITLIST_FEATURE: Record<string, "shipping" | "shopper"> = {
 function useExploreServices() {
   const flights = useFlightsStatus();
   const flightsTile = flights.available && showFlightsTile(flights.config);
+  const templatesTile = useTemplatesStatus().showTile;
   const shopper = useShopperStatus();
   const shopperOpen = shopper.available && shopper.config.enabled;
   const shipping = useShippingStatus();
@@ -50,6 +52,7 @@ function useExploreServices() {
     () =>
       visibleTravelServices()
         .filter((service) => service.id !== "flights" || flightsTile)
+        .filter((service) => service.id !== "templates" || templatesTile)
         // Admin turns Titip Belanja on: the waitlist tile becomes a live entry point.
         .map((service) =>
           service.id === "personal-shopper" && shopperOpen
@@ -58,7 +61,7 @@ function useExploreServices() {
               ? { ...service, status: "ACTIVE" as const, href: "/kirim-barang" as const }
               : service,
         ),
-    [flightsTile, shopperOpen, shippingOpen],
+    [flightsTile, templatesTile, shopperOpen, shippingOpen],
   );
 }
 
