@@ -319,3 +319,29 @@ export function compactIdr(amount: number) {
   if (amount >= 1_000) return `Rp ${trim(amount / 1_000)} rb`;
   return `Rp ${Math.round(amount)}`;
 }
+
+/** How a lump-sum budget is shown when the trip never split it into categories (percent of the total). */
+export const DEFAULT_BUDGET_SPLIT: readonly (readonly [string, number])[] = [
+  ["Akomodasi", 39],
+  ["Transportasi", 20],
+  ["Makan", 22],
+  ["Tiket & aktivitas", 13],
+  ["Belanja & lainnya", 6],
+];
+
+/**
+ * Splits a total (whole rupiah, per traveler) into the default categories, each rounded to
+ * Rp 10.000. The last line absorbs the rounding so the lines always add up to the total.
+ */
+export function splitTotalBudget(totalIdr: number): TemplateBudgetCategory[] {
+  const total = Math.round(totalIdr);
+  if (!Number.isFinite(total) || total <= 0) return [];
+  if (total < 500_000) return [{ name: "Total anggaran", amountIdr: total }];
+  let left = total;
+  return DEFAULT_BUDGET_SPLIT.map(([name, percent], index) => {
+    const last = index === DEFAULT_BUDGET_SPLIT.length - 1;
+    const amountIdr = last ? left : Math.round((total * percent) / 100 / 10_000) * 10_000;
+    left -= amountIdr;
+    return { name, amountIdr };
+  });
+}

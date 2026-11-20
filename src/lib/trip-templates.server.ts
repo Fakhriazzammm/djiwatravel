@@ -38,6 +38,7 @@ import {
   normalizeTripTemplatesConfig,
   parseTripTemplatesConfig,
   returnDateFor,
+  splitTotalBudget,
   templateDraftPrompt,
   type TemplateBudget,
   type TemplateItem,
@@ -156,9 +157,8 @@ async function plannedBudgetIdr(tripId: string, trip: Record<string, unknown>) {
     })),
   );
   if (!budget && Number(trip["total_budget_minor"]) > 0)
-    budget = cleanTemplateBudget([
-      { name: "Total anggaran", amountIdr: perPerson(toIdr(trip["total_budget_minor"])) },
-    ]);
+    // Only a lump sum was planned: show it split into the usual categories, not as one bare line.
+    budget = cleanTemplateBudget(splitTotalBudget(perPerson(toIdr(trip["total_budget_minor"]))));
   return { rate, budget, travelers, currency };
 }
 

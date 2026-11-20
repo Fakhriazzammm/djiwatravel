@@ -8,6 +8,7 @@ import {
   normalizeTripTemplatesConfig,
   parseTripTemplatesConfig,
   returnDateFor,
+  splitTotalBudget,
   templatePath,
 } from "@/lib/trip-templates";
 
@@ -176,5 +177,28 @@ describe("template budget (Travo output)", () => {
     );
     expect(draft?.items.map((i) => i.costIdr)).toEqual([60_000, null]);
     expect(draft?.budget?.totalIdr).toBe(800_000);
+  });
+});
+
+describe("splitTotalBudget (a trip that only has a lump sum)", () => {
+  it("splits into the default categories and always adds up to the total", () => {
+    for (const total of [15_000_000, 7_333_000, 999_000, 500_000]) {
+      const lines = splitTotalBudget(total);
+      expect(lines.reduce((sum, l) => sum + l.amountIdr, 0)).toBe(total);
+      expect(lines.every((l) => l.amountIdr > 0)).toBe(true);
+    }
+    expect(splitTotalBudget(15_000_000).map((l) => l.name)).toEqual([
+      "Akomodasi",
+      "Transportasi",
+      "Makan",
+      "Tiket & aktivitas",
+      "Belanja & lainnya",
+    ]);
+    expect(splitTotalBudget(15_000_000)[0]?.amountIdr).toBe(5_850_000);
+  });
+  it("keeps a tiny total as one line and ignores nothing-or-negative", () => {
+    expect(splitTotalBudget(300_000)).toEqual([{ name: "Total anggaran", amountIdr: 300_000 }]);
+    expect(splitTotalBudget(0)).toEqual([]);
+    expect(splitTotalBudget(-5)).toEqual([]);
   });
 });
