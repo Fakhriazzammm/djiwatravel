@@ -152,9 +152,16 @@ export async function drainTravelEmailOutbox(limit = 20) {
         signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) throw new Error(`helipod_email_http_${response.status}`);
+      // Helipod answers 202 with the email id; keeping it lets delivery events find this row.
+      const accepted = (await response.json().catch(() => null)) as {
+        data?: { id?: unknown };
+      } | null;
+      const providerId =
+        typeof accepted?.data?.id === "string" ? accepted.data.id.slice(0, 80) : null;
       await pool.query(
-        `update public.travel_email_outbox set status = 'sent', sent_at = now(), last_error = null, updated_at = now() where id = $1::uuid`,
-        [id],
+        `update public.travel_email_outbox set status = 'sent', sent_at = now(), last_error = null,
+                provider_email_id = coalesce($2, provider_email_id), updated_at = now() where id = $1::uuid`,
+        [id, providerId],
       );
       sent += 1;
     } catch (error) {

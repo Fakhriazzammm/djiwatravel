@@ -34,7 +34,7 @@ export type AdminPreorderRow = {
 
 export async function readAdminPreordersHandler() {
   await requireAdmin();
-  const [orders, balance, emailStats] = await Promise.all([
+  const [orders, balance, emailStats, deliveryStats] = await Promise.all([
     pool.query(
       `select o.id, o.public_order_code, o.status, o.preorder_status, o.total_amount,
               o.paid_at::text as paid_at, o.preorder_deadline_at::text as deadline_at,
@@ -58,6 +58,15 @@ export async function readAdminPreordersHandler() {
     pool.query(
       `select status, count(*)::int as count from public.travel_email_outbox where status <> 'sent' group by status`,
     ),
+    // Delivery outcomes reported by Helipod webhooks over the last 30 days (empty until the webhook is on).
+    pool
+      .query(
+        `select coalesce(delivery_status, 'unknown') as outcome, count(*)::int as count
+           from public.travel_email_outbox
+          where status = 'sent' and sent_at > now() - interval '30 days'
+          group by 1`,
+      )
+      .catch(() => ({ rows: [] as Array<Record<string, unknown>> })),
   ]);
   const rawRows = orders.rows as Array<Record<string, unknown>>;
   const packageCodes = [
@@ -130,7 +139,17 @@ export async function readAdminPreordersHandler() {
         balance.capturedAtMs === null ? null : new Date(balance.capturedAtMs).toISOString(),
       source: balance.source,
     },
-    email: { configured: emailConfigured, undeliveredCount: undeliveredEmailCount },
+    email: {
+      configured: emailConfigured,
+      undeliveredCount: undeliveredEmailCount,
+      webhookConfigured: Boolean(process.env["HELIPOD_EMAIL_WEBHOOK_SECRET"]?.trim()),
+      delivery: Object.fromEntries(
+        (deliveryStats.rows as Array<Record<string, unknown>>).map((row) => [
+          String(row["outcome"]),
+          Number(row["count"]) || 0,
+        ]),
+      ) as Record<string, number>,
+    },
   };
 }
 

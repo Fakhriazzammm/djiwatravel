@@ -125,6 +125,7 @@ import { Route as ApiTasksAnalyticsReportRouteImport } from './routes/api.tasks.
 import { Route as ApiTasksEsimSyncRouteImport } from './routes/api.tasks.esim-sync'
 import { Route as ApiTasksFinanceReconcileRouteImport } from './routes/api.tasks.finance-reconcile'
 import { Route as ApiWebhooksDjiwaTravelRouteImport } from './routes/api.webhooks.djiwa-travel'
+import { Route as ApiWebhooksHelipodEmailRouteImport } from './routes/api.webhooks.helipod-email'
 import { Route as ApiWebhooksMayarForwardRouteImport } from './routes/api.webhooks.mayar-forward'
 import { Route as MyTripsTripIdSectionRouteImport } from './routes/my-trips.$tripId.$section'
 import { Route as MyTripsTripIdPrintRouteImport } from './routes/my-trips.$tripId.print'
@@ -722,6 +723,11 @@ const ApiWebhooksDjiwaTravelRoute = ApiWebhooksDjiwaTravelRouteImport.update({
   path: '/api/webhooks/djiwa-travel',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksHelipodEmailRoute = ApiWebhooksHelipodEmailRouteImport.update({
+  id: '/api/webhooks/helipod-email',
+  path: '/api/webhooks/helipod-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksMayarForwardRoute = ApiWebhooksMayarForwardRouteImport.update({
   id: '/api/webhooks/mayar-forward',
   path: '/api/webhooks/mayar-forward',
@@ -892,6 +898,7 @@ export interface FileRoutesByFullPath {
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
+  '/api/webhooks/helipod-email': typeof ApiWebhooksHelipodEmailRoute
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/print': typeof MyTripsTripIdPrintRoute
@@ -1020,6 +1027,7 @@ export interface FileRoutesByTo {
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
+  '/api/webhooks/helipod-email': typeof ApiWebhooksHelipodEmailRoute
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/print': typeof MyTripsTripIdPrintRoute
@@ -1149,6 +1157,7 @@ export interface FileRoutesById {
   '/api/tasks/esim-sync': typeof ApiTasksEsimSyncRoute
   '/api/tasks/finance-reconcile': typeof ApiTasksFinanceReconcileRoute
   '/api/webhooks/djiwa-travel': typeof ApiWebhooksDjiwaTravelRoute
+  '/api/webhooks/helipod-email': typeof ApiWebhooksHelipodEmailRoute
   '/api/webhooks/mayar-forward': typeof ApiWebhooksMayarForwardRoute
   '/my-trips/$tripId/$section': typeof MyTripsTripIdSectionRoute
   '/my-trips/$tripId/print': typeof MyTripsTripIdPrintRoute
@@ -1279,6 +1288,7 @@ export interface FileRouteTypes {
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
+    | '/api/webhooks/helipod-email'
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/print'
@@ -1407,6 +1417,7 @@ export interface FileRouteTypes {
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
+    | '/api/webhooks/helipod-email'
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/print'
@@ -1535,6 +1546,7 @@ export interface FileRouteTypes {
     | '/api/tasks/esim-sync'
     | '/api/tasks/finance-reconcile'
     | '/api/webhooks/djiwa-travel'
+    | '/api/webhooks/helipod-email'
     | '/api/webhooks/mayar-forward'
     | '/my-trips/$tripId/$section'
     | '/my-trips/$tripId/print'
@@ -1659,6 +1671,7 @@ export interface RootRouteChildren {
   ApiTasksEsimSyncRoute: typeof ApiTasksEsimSyncRoute
   ApiTasksFinanceReconcileRoute: typeof ApiTasksFinanceReconcileRoute
   ApiWebhooksDjiwaTravelRoute: typeof ApiWebhooksDjiwaTravelRoute
+  ApiWebhooksHelipodEmailRoute: typeof ApiWebhooksHelipodEmailRoute
   ApiWebhooksMayarForwardRoute: typeof ApiWebhooksMayarForwardRoute
   ShareHandleTokenRoute: typeof ShareHandleTokenRoute
   TitipBelanjaPesanIdRoute: typeof TitipBelanjaPesanIdRoute
@@ -2482,6 +2495,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWebhooksDjiwaTravelRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/helipod-email': {
+      id: '/api/webhooks/helipod-email'
+      path: '/api/webhooks/helipod-email'
+      fullPath: '/api/webhooks/helipod-email'
+      preLoaderRoute: typeof ApiWebhooksHelipodEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/mayar-forward': {
       id: '/api/webhooks/mayar-forward'
       path: '/api/webhooks/mayar-forward'
@@ -2730,6 +2750,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTasksEsimSyncRoute: ApiTasksEsimSyncRoute,
   ApiTasksFinanceReconcileRoute: ApiTasksFinanceReconcileRoute,
   ApiWebhooksDjiwaTravelRoute: ApiWebhooksDjiwaTravelRoute,
+  ApiWebhooksHelipodEmailRoute: ApiWebhooksHelipodEmailRoute,
   ApiWebhooksMayarForwardRoute: ApiWebhooksMayarForwardRoute,
   ShareHandleTokenRoute: ShareHandleTokenRoute,
   TitipBelanjaPesanIdRoute: TitipBelanjaPesanIdRoute,

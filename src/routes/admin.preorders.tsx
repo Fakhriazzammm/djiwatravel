@@ -112,6 +112,13 @@ function AdminPreorders() {
                 {data.email.configured ? "terhubung" : "belum dikonfigurasi"} ·{" "}
                 {data.email.undeliveredCount} menunggu.
               </p>
+              {data.email.configured && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {data.email.webhookConfigured
+                    ? `Email 30 hari: ${data.email.delivery["delivered"] ?? 0} sampai · ${data.email.delivery["bounced"] ?? 0} bounce · ${data.email.delivery["complained"] ?? 0} spam · ${data.email.delivery["unknown"] ?? 0} belum ada kabar`
+                    : "Pelacakan hasil kirim (bounce, spam) belum aktif: pasang HELIPOD_EMAIL_WEBHOOK_SECRET."}
+                </p>
+              )}
             </div>
           </div>
         </AdminSurface>
