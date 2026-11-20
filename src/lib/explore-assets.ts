@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BookOpen,
   Compass,
   FileCheck2,
   MapPin,
@@ -29,6 +30,11 @@ export const exploreAssets: Record<string, ExploreAsset> = {
     src: assetPath("flight-plane-travo-v1", "webp"),
     alt: "Ikon 3D pesawat",
     fallback: Plane,
+  },
+  itinerary: {
+    src: assetPath("itinerary-travo-v1", "webp"),
+    alt: "Travo menunjuk tujuan di buku itinerary",
+    fallback: BookOpen,
   },
   "open-trip": {
     src: assetPath("open-trip-travo-v1", "webp"),

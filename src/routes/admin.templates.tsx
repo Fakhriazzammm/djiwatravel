@@ -142,7 +142,7 @@ function AdminTemplates() {
           {(
             [
               ["enabled", "Fitur template aktif"],
-              ["showTile", "Tampilkan tile Template di Home & Explore"],
+              ["showTile", "Tampilkan pintasan Itinerary di Home & Explore"],
               ["shareToFeed", "Bagikan template baru ke timeline Feeds"],
               ["aiEnabled", "Travo boleh membuat draf template"],
             ] as const

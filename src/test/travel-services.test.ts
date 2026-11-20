@@ -21,10 +21,15 @@ describe("travel service configuration", () => {
       "visa",
       "travel-insurance",
     ]);
+    expect(services.find((service) => service.id === "templates")).toMatchObject({
+      label: "Itinerary",
+      icon: "itinerary",
+      href: "/template",
+    });
     expect(serviceStatusLabel.COMING_SOON).toBe("Segera hadir");
   });
 
-  it("only active services can navigate, Tiket opens the flight search and Template opens the gallery", () => {
+  it("only active services can navigate, Tiket opens the flight search and Itinerary opens the gallery", () => {
     for (const service of travelServices) {
       const expected =
         service.status !== "ACTIVE"

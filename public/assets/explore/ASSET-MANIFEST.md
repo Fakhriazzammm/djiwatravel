@@ -26,5 +26,7 @@ in the existing mobile slots.
 | Home and Explore  | `services/{esim,shipping-truck,personal-shopper,visa,travel-insurance,flight-plane,attractions,open-trip}-travo-v1.webp` | 54 px   |
 | Home eSIM summary | `../esim/esim-pass-global-travo-v1.webp`                                                                                 | 44 px   |
 
+Reviewed 2026-11-20: `services/itinerary-travo-v1.webp` is the 54 px Home and Explore Itinerary icon. OpenAI ImageGen through Codex used the locked mascot prompt and mascot-v6 reference, with Travo leaning over a spiral-bound planner and pointing to the next of two connected stops.
+
 Admin service availability continues to use the existing settings. The image
 paths are presentation assets and require no new permissions or migration.

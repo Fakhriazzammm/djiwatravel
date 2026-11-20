@@ -31,9 +31,9 @@ export const travelServices: TravelServiceCategory[] = [
   },
   {
     id: "templates",
-    label: "Template",
+    label: "Itinerary",
     description: "Itinerary siap pakai",
-    icon: "open-trip",
+    icon: "itinerary",
     status: "ACTIVE",
     href: "/template",
     displayOrder: 2.5,
