@@ -120,7 +120,7 @@ export function FeedCard({
             </span>
           ) : (
             <span className="ml-auto shrink-0 rounded-lg bg-brand-red-soft px-2 py-0.5 text-[10px] font-semibold text-brand-red">
-              {FEED_KIND_LABEL[post.kind]}
+              {post.source === "template" ? "Template" : FEED_KIND_LABEL[post.kind]}
             </span>
           )}
         </div>
@@ -151,7 +151,9 @@ export function FeedCard({
             className="tap mt-2 flex min-h-10 items-center gap-2 rounded-xl bg-secondary px-3 text-[12px] font-semibold"
           >
             <span className="min-w-0 flex-1 truncate">{post.linkLabel ?? "Baca selengkapnya"}</span>
-            <span className="shrink-0 text-brand-red">Baca</span>
+            <span className="shrink-0 text-brand-red">
+              {post.source === "template" ? "Lihat" : "Baca"}
+            </span>
             <ChevronRight className="size-4 shrink-0 text-brand-red" aria-hidden="true" />
           </a>
         )}

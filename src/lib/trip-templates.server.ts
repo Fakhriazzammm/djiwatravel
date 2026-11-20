@@ -5,6 +5,7 @@ import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { recordAdminAction } from "./admin-audit.server";
 import { readAffiliateConfig } from "./affiliate.server";
+import { shareTemplateToFeed, syncTemplateFeedPost } from "./feeds.server";
 import { resolveTripOwner, type TripOwner } from "./guest-trips.server";
 import { createTrip } from "./my-trips.server";
 import { jakartaDayStart } from "./receipt-scan";
@@ -223,6 +224,7 @@ const publishTripSchema = z.object({
   title: textField(3, 120),
   description: z.string().trim().max(600).optional(),
   itemIds: z.array(z.string().uuid()).max(TEMPLATE_MAX_ITEMS).optional(),
+  shareToFeed: z.boolean().default(true),
 });
 export const publishTripTemplateInput = (data: unknown) => publishTripSchema.parse(data);
 
@@ -265,12 +267,50 @@ async function insertTemplate(
     const id = String(result.rows[0]!["id"]);
     await writeItems(client, id, input.items);
     await client.query("commit");
-    return { id, slug: String(result.rows[0]!["slug"]) };
+    return { id, slug: String(result.rows[0]!["slug"]), cover };
   } catch (error) {
     await client.query("rollback");
     throw error;
   } finally {
     client.release();
+  }
+}
+
+/** Shares the new template to the Feeds timeline; a failure never fails the template. */
+async function shareToTimeline(
+  owner: TripOwner,
+  config: TripTemplatesConfig,
+  wanted: boolean,
+  created: { slug: string; cover: string | null },
+  info: {
+    title: string;
+    description: string;
+    destinationCode: string;
+    destinationName: string;
+    days: number;
+  },
+  affiliate: { code: string | null },
+) {
+  if (!config.shareToFeed || !wanted) return { posted: false as const, pending: false };
+  try {
+    const result = await shareTemplateToFeed({
+      subject: owner.id,
+      slug: created.slug,
+      title: info.title,
+      description: info.description,
+      destinationCode: info.destinationCode,
+      destinationName: info.destinationName,
+      days: info.days,
+      coverUrl: created.cover,
+      affiliateCode: affiliate.code,
+    });
+    return { posted: result.posted, pending: Boolean(result.pending) };
+  } catch (error) {
+    console.error(
+      "[trip-templates] feed share failed",
+      error instanceof Error ? error.message : error,
+    );
+    return { posted: false as const, pending: false };
   }
 }
 
@@ -291,7 +331,22 @@ export async function publishTripTemplateHandler({ data }: { data: unknown }) {
     sourceTripId: input.tripId,
     items: snapshot.items,
   });
-  return { ...created, affiliate: await affiliateFor(owner.id) };
+  const affiliate = await affiliateFor(owner.id);
+  const feed = await shareToTimeline(
+    owner,
+    config,
+    input.shareToFeed,
+    created,
+    {
+      title: input.title,
+      description: input.description ?? "",
+      destinationCode: trip.destination_code,
+      destinationName: trip.destination_name,
+      days: snapshot.days,
+    },
+    affiliate,
+  );
+  return { id: created.id, slug: created.slug, affiliate, feed };
 }
 
 const draftItemSchema = z.object({
@@ -309,6 +364,7 @@ const publishDraftSchema = z.object({
   destinationCode: z.string().trim().min(2).max(8),
   days: z.number().int().min(1).max(TEMPLATE_MAX_DAYS),
   items: z.array(draftItemSchema).min(1).max(TEMPLATE_MAX_ITEMS),
+  shareToFeed: z.boolean().default(true),
 });
 export const publishDraftTemplateInput = (data: unknown) => publishDraftSchema.parse(data);
 
@@ -340,7 +396,22 @@ export async function publishDraftTemplateHandler({ data }: { data: unknown }) {
     sourceTripId: null,
     items: draft.items.map((i) => ({ ...i, lat: null, lng: null })),
   });
-  return { ...created, affiliate: await affiliateFor(owner.id) };
+  const affiliate = await affiliateFor(owner.id);
+  const feed = await shareToTimeline(
+    owner,
+    config,
+    input.shareToFeed,
+    created,
+    {
+      title: draft.title,
+      description: draft.description,
+      destinationCode: input.destinationCode,
+      destinationName: draft.destinationName,
+      days: draft.days,
+    },
+    affiliate,
+  );
+  return { id: created.id, slug: created.slug, affiliate, feed };
 }
 
 /* ------------------------------------------------------------------ Travo draft */
@@ -441,10 +512,14 @@ export async function updateTemplateHandler({ data }: { data: unknown }) {
        status = case when status='hidden' then 'hidden' else coalesce($5, status) end,
        published_at = case when $5='published' and published_at is null then now() else published_at end,
        updated_at=now()
-     where id=$1 and owner_subject=$2 returning id, status`,
+     where id=$1 and owner_subject=$2 returning id, status, slug`,
     [input.id, owner.id, input.title, input.description || null, input.status ?? null],
   );
   if (!result.rows[0]) throw new Error("Template tidak ditemukan");
+  await syncTemplateFeedPost(
+    String(result.rows[0].slug),
+    result.rows[0].status === "published" ? "live" : "off",
+  );
   return { id: input.id, status: String(result.rows[0].status) };
 }
 
@@ -484,9 +559,10 @@ export async function deleteTemplateHandler({ data }: { data: unknown }) {
   const { id } = templateIdInput(data);
   const owner = await requireMember();
   const result = await pool.query(
-    "delete from trip_templates where id=$1 and owner_subject=$2 returning id",
+    "delete from trip_templates where id=$1 and owner_subject=$2 returning id, slug",
     [id, owner.id],
   );
+  if (result.rows[0]) await syncTemplateFeedPost(String(result.rows[0].slug), "deleted");
   return { deleted: Boolean(result.rows[0]) };
 }
 
@@ -862,7 +938,7 @@ export async function adminTemplateActionHandler({ data }: { data: unknown }) {
   try {
     await client.query("begin");
     const current = await client.query(
-      "select id, title, status, featured from trip_templates where id=$1 for update",
+      "select id, slug, title, status, featured from trip_templates where id=$1 for update",
       [input.id],
     );
     const before = current.rows[0];
@@ -892,6 +968,7 @@ export async function adminTemplateActionHandler({ data }: { data: unknown }) {
         "update trip_template_reports set handled_at=now() where template_id=$1 and handled_at is null",
         [input.id],
       );
+    // After commit the timeline post follows the template (see below); it is derived state.
     await recordAdminAction(
       {
         actor,
@@ -905,6 +982,10 @@ export async function adminTemplateActionHandler({ data }: { data: unknown }) {
       client,
     );
     await client.query("commit");
+    const slug = String(before.slug);
+    if (input.action === "hide") await syncTemplateFeedPost(slug, "off");
+    else if (input.action === "restore") await syncTemplateFeedPost(slug, "live");
+    else if (input.action === "delete") await syncTemplateFeedPost(slug, "deleted");
     return { ok: true };
   } catch (error) {
     await client.query("rollback").catch(() => undefined);

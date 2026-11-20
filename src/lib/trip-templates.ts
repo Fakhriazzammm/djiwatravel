@@ -7,6 +7,8 @@ export type TripTemplatesConfig = {
   enabled: boolean;
   /** Show the "Template" tile next to Tiket on Home and Explore. */
   showTile: boolean;
+  /** A new template is shared to the Feeds timeline (the member can untick it per template). */
+  shareToFeed: boolean;
   /** Published templates one member may keep at a time. */
   maxPerUser: number;
   /** Travo may draft a template from a short brief. */
@@ -20,6 +22,7 @@ export type TripTemplatesConfig = {
 export const DEFAULT_TRIP_TEMPLATES_CONFIG: TripTemplatesConfig = {
   enabled: true,
   showTile: true,
+  shareToFeed: true,
   maxPerUser: 20,
   aiEnabled: true,
   aiDailyDrafts: 5,
@@ -38,6 +41,7 @@ export function normalizeTripTemplatesConfig(value: unknown): TripTemplatesConfi
   return {
     enabled: flag(raw["enabled"], d.enabled),
     showTile: flag(raw["showTile"], d.showTile),
+    shareToFeed: flag(raw["shareToFeed"], d.shareToFeed),
     maxPerUser: num(raw["maxPerUser"], d.maxPerUser, 1, 200),
     aiEnabled: flag(raw["aiEnabled"], d.aiEnabled),
     aiDailyDrafts: num(raw["aiDailyDrafts"], d.aiDailyDrafts, 0, 50),
@@ -49,7 +53,7 @@ export function normalizeTripTemplatesConfig(value: unknown): TripTemplatesConfi
 export function parseTripTemplatesConfig(value: unknown): TripTemplatesConfig {
   if (!value || typeof value !== "object") throw new Error("Konfigurasi template tidak valid");
   const raw = value as Record<string, unknown>;
-  for (const key of ["enabled", "showTile", "aiEnabled"])
+  for (const key of ["enabled", "showTile", "shareToFeed", "aiEnabled"])
     if (typeof raw[key] !== "boolean") throw new Error(`${key} harus boolean`);
   const strict = (key: string, min: number, max: number) => {
     const n = Number(raw[key]);
@@ -60,6 +64,7 @@ export function parseTripTemplatesConfig(value: unknown): TripTemplatesConfig {
   return {
     enabled: raw["enabled"] as boolean,
     showTile: raw["showTile"] as boolean,
+    shareToFeed: raw["shareToFeed"] as boolean,
     aiEnabled: raw["aiEnabled"] as boolean,
     maxPerUser: strict("maxPerUser", 1, 200),
     aiDailyDrafts: strict("aiDailyDrafts", 0, 50),

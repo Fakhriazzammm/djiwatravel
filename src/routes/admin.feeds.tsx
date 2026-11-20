@@ -249,6 +249,7 @@ function PostCard({
         <StatusPill>{FEED_KIND_LABEL[post.kind]}</StatusPill>
         {post.source === "seed" && <StatusPill tone="warn">Contoh (bukan akun asli)</StatusPill>}
         {post.source === "guide" && <StatusPill>Travo Guide</StatusPill>}
+        {post.source === "template" && <StatusPill>Template</StatusPill>}
         {post.banned && <StatusPill tone="danger">Diblokir</StatusPill>}
         {post.flag && (
           <StatusPill tone="warn">

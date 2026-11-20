@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Flag, MapPin, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CustomerAuth } from "@/components/customer-auth";
 import { BackBar, Page, btnRed, btnSoft } from "@/components/shell";
+import { SharedItineraryMap } from "@/components/shared-itinerary-map";
 import { TemplateCover, TemplateDays } from "@/components/trip-template-ui";
 import {
   Sheet,
@@ -49,6 +50,27 @@ function TemplatePage() {
   const { user, loading } = useBetterAuthUser();
   const [useOpen, setUseOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const rows = useMemo(
+    () => (data?.items ?? []).map((item, index) => ({ ...item, id: `${item.day}-${index}` })),
+    [data],
+  );
+  const mapDays = useMemo(() => {
+    const byDay = new Map<number, typeof rows>();
+    for (const row of rows) byDay.set(row.day, [...(byDay.get(row.day) ?? []), row]);
+    return [...byDay.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([day, list]) => ({
+        key: `hari-${day}`,
+        label: `Hari ${day}`,
+        items: list.map((row) => ({
+          id: row.id,
+          title: row.title,
+          latitude: row.lat,
+          longitude: row.lng,
+        })),
+      }));
+  }, [rows]);
   if (!data)
     return (
       <Page>
@@ -64,11 +86,11 @@ function TemplatePage() {
         </div>
       </Page>
     );
-  const { template, items, isOwner } = data;
+  const { template, isOwner } = data;
   return (
     <Page tabs={false}>
       <BackBar title="Template" fallbackTo="/template" />
-      <div className="space-y-3 pb-24">
+      <div className="space-y-3 pb-28">
         <TemplateCover url={template.coverUrl} title={template.destinationName} className="h-40" />
         <div>
           <h1 className="text-[20px] font-bold leading-6">{template.title}</h1>
@@ -88,7 +110,13 @@ function TemplatePage() {
             <p className="mt-2 text-[13px] leading-5 text-foreground/80">{template.description}</p>
           )}
         </div>
-        <TemplateDays items={items} days={template.days} />
+        <SharedItineraryMap days={mapDays} activeId={activeId} onActiveChange={setActiveId} />
+        <TemplateDays
+          items={rows}
+          days={template.days}
+          activeId={activeId}
+          onSelect={setActiveId}
+        />
         {!isOwner && (
           <button
             type="button"
@@ -101,14 +129,22 @@ function TemplatePage() {
           </button>
         )}
       </div>
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2.5 backdrop-blur">
+      {/* Floating pill: lifted off the bottom edge so it never sits under a browser or home bar. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] z-30 px-5">
         <div className="mx-auto max-w-md">
           {isOwner ? (
-            <Link to="/my-templates" className={`${btnSoft} w-full`}>
+            <Link
+              to="/my-templates"
+              className={`${btnSoft} pointer-events-auto w-full !rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.18)]`}
+            >
               Ini templatemu · kelola
             </Link>
           ) : (
-            <button type="button" className={`${btnRed} w-full`} onClick={() => setUseOpen(true)}>
+            <button
+              type="button"
+              className={`${btnRed} pointer-events-auto w-full !rounded-full shadow-[0_10px_28px_rgba(196,53,59,0.45)]`}
+              onClick={() => setUseOpen(true)}
+            >
               Pakai template ini
             </button>
           )}

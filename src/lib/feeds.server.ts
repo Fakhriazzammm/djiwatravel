@@ -32,6 +32,7 @@ import { addItineraryItem } from "./my-trips.server";
 import { assertConsent, hasConsent } from "./consent.server";
 import { createCustomerNotification } from "./push.server";
 import { travelGuides } from "./travel-guides";
+import { isAllowedImageUrl } from "./place-image";
 
 /* ------------------------------------------------------------------ config */
 
@@ -1436,5 +1437,105 @@ export async function saveFeedsConfigHandler({
     throw error;
   } finally {
     client.release();
+  }
+}
+
+/* ------------------------------------------------------------------ itinerary templates */
+
+export type TemplateFeedInput = {
+  subject: string;
+  slug: string;
+  title: string;
+  description: string;
+  destinationCode: string | null;
+  destinationName: string;
+  days: number;
+  coverUrl: string | null;
+  /** The creator's affiliate code, so the timeline link earns commission like the share link. */
+  affiliateCode: string | null;
+};
+
+/**
+ * Shares a newly published template to the timeline. It follows the same house rules as a member's
+ * own post (banned accounts, community consent, banned words, review of the first posts) but it is
+ * never an error for the member: when a rule says no, the template still goes live without a post.
+ */
+export async function shareTemplateToFeed(
+  input: TemplateFeedInput,
+): Promise<{ posted: boolean; pending?: boolean }> {
+  const config = await getFeedsConfig();
+  if (!config.enabled) return { posted: false };
+  if (await isBanned(input.subject)) return { posted: false };
+  if (!(await hasConsent(input.subject, "community"))) return { posted: false };
+  const profile = await readCustomerProfile({ id: input.subject, email: "" }).catch(() => null);
+  const author = feedAuthorName(profile?.displayName);
+  const summary = input.description.trim();
+  const body =
+    `Baru bikin template itinerary ${input.destinationName} ${input.days} hari: ${input.title}.${summary ? ` ${summary}` : ""} Pakai dan sesuaikan tanggalnya.`
+      .replace(/\s+/g, " ")
+      .slice(0, FEED_BODY_MAX);
+  const banned = findBannedWord(`${input.title} ${input.description}`, config.bannedWords);
+  const ever = await pool.query(
+    "select count(*)::int as n from feed_posts where customer_auth_subject = $1 and published_at is not null",
+    [input.subject],
+  );
+  const needsReview = Number(ever.rows[0]?.n) < config.reviewFirstPosts;
+  const status: FeedStatus = banned || needsReview ? "PENDING" : "PUBLISHED";
+  const flag = banned ? `kata: ${banned}` : needsReview ? "post_awal" : "template";
+  const code =
+    input.destinationCode && /^[A-Za-z]{2}$/.test(input.destinationCode)
+      ? input.destinationCode.toUpperCase()
+      : null;
+  const path = `/template/${input.slug}${input.affiliateCode ? `?ref=${encodeURIComponent(input.affiliateCode)}` : ""}`;
+  const result = await pool.query(
+    `insert into feed_posts
+       (customer_auth_subject, author_name, source, kind, body, destination_code, link_path, link_label,
+        image_url, template_slug, status, flag, published_at)
+     values ($1,$2,'template','tips',$3,$4,$5,$6,$7,$8,$9,$10, case when $9 = 'PUBLISHED' then now() else null end)
+     on conflict (template_slug) where template_slug is not null do nothing
+     returning id`,
+    [
+      input.subject,
+      author,
+      body,
+      code,
+      path,
+      `Template ${input.days} hari: ${input.title}`.slice(0, 160),
+      input.coverUrl && isAllowedImageUrl(input.coverUrl) ? input.coverUrl : null,
+      input.slug,
+      status,
+      flag,
+    ],
+  );
+  return { posted: Boolean(result.rows[0]), pending: status === "PENDING" };
+}
+
+/** Keeps the timeline post in step with its template. Never throws into the template action. */
+export async function syncTemplateFeedPost(slug: string, to: "live" | "off" | "deleted") {
+  try {
+    if (to === "live")
+      await pool.query(
+        `update feed_posts set status = 'PUBLISHED', status_reason = null,
+                published_at = coalesce(published_at, now()), updated_at = now()
+          where template_slug = $1 and status = 'HIDDEN' and status_reason = 'template_inactive'`,
+        [slug],
+      );
+    else if (to === "off")
+      await pool.query(
+        `update feed_posts set status = 'HIDDEN', status_reason = 'template_inactive', updated_at = now()
+          where template_slug = $1 and status = 'PUBLISHED'`,
+        [slug],
+      );
+    else
+      await pool.query(
+        `update feed_posts set status = 'REMOVED', status_reason = 'template_deleted', updated_at = now()
+          where template_slug = $1 and status <> 'REMOVED'`,
+        [slug],
+      );
+  } catch (error) {
+    console.error(
+      "[feeds] template post sync failed",
+      error instanceof Error ? error.message : error,
+    );
   }
 }

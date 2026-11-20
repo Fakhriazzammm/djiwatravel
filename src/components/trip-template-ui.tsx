@@ -15,6 +15,10 @@ export type TemplateCardData = {
 };
 
 export type TemplateViewItem = {
+  /** Stable id inside one template page: links a list row to its pin on the map. */
+  id?: string;
+  lat?: number | null;
+  lng?: number | null;
   day: number;
   start: string | null;
   end: string | null;
@@ -93,7 +97,17 @@ export function TemplateCard({ template }: { template: TemplateCardData }) {
 }
 
 /** Read-only itinerary grouped by "Hari N" (a template has no dates). */
-export function TemplateDays({ items, days }: { items: TemplateViewItem[]; days: number }) {
+export function TemplateDays({
+  items,
+  days,
+  activeId = null,
+  onSelect,
+}: {
+  items: TemplateViewItem[];
+  days: number;
+  activeId?: string | null;
+  onSelect?: (id: string) => void;
+}) {
   const byDay = new Map<number, TemplateViewItem[]>();
   for (const item of items) byDay.set(item.day, [...(byDay.get(item.day) ?? []), item]);
   return (
@@ -111,7 +125,12 @@ export function TemplateDays({ items, days }: { items: TemplateViewItem[]; days:
             </h3>
             <ol className="divide-y divide-border/50">
               {byDay.get(day)!.map((item, index) => (
-                <li key={`${day}-${index}`} className="flex gap-2.5 px-3 py-2.5">
+                <li
+                  key={`${day}-${index}`}
+                  id={item.id ? `item-${item.id}` : undefined}
+                  onClick={item.id && onSelect ? () => onSelect(item.id!) : undefined}
+                  className={`flex gap-2.5 px-3 py-2.5 transition-colors ${item.id && onSelect ? "cursor-pointer" : ""} ${item.id && item.id === activeId ? "bg-brand-red/10" : ""}`}
+                >
                   <span className="w-11 shrink-0 pt-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
                     {item.start ?? "—"}
                   </span>

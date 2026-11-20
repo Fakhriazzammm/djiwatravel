@@ -16,6 +16,7 @@ import { isAllowedImageUrl } from "@/lib/place-image";
 import { splitActivityNotes } from "@/lib/share-card";
 import { tripStoryImages } from "@/lib/trip-share-image";
 import { Page, Wordmark } from "@/components/shell";
+import { SharedItineraryMap } from "@/components/shared-itinerary-map";
 import { getSharedTrip } from "@/lib/my-trips.fn";
 
 export const loadShared = async ({ params }: { params: { token: string } }) => {
@@ -201,6 +202,21 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
         >
           Rencana perjalanan
         </h2>
+        {days.length > 0 && (
+          <SharedItineraryMap
+            className="mt-2"
+            days={days.map((day, index) => ({
+              key: day.date,
+              label: `Hari ${index + 1}`,
+              items: day.items.map((item) => ({
+                id: String(item.id),
+                title: String(item.title ?? "Aktivitas"),
+                latitude: (item as { latitude?: unknown }).latitude,
+                longitude: (item as { longitude?: unknown }).longitude,
+              })),
+            }))}
+          />
+        )}
         {days.length ? (
           <div className="mt-2 space-y-2.5">
             {days.map((day, index) => (
@@ -224,7 +240,11 @@ export function SharedItinerary({ data }: { data: LoaderData }) {
                     const end = String(item.end_time ?? "").slice(0, 5);
                     const notes = splitActivityNotes(item.notes);
                     return (
-                      <article key={item.id} className="flex items-start gap-2 py-2">
+                      <article
+                        key={item.id}
+                        id={`item-${item.id}`}
+                        className="flex items-start gap-2 py-2"
+                      >
                         <span
                           aria-label={`Urutan ${itemIndex + 1}`}
                           className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-[10px] font-semibold tabular-nums text-muted-foreground"

@@ -821,4 +821,95 @@ describeDb("feeds against a real database", () => {
       expect(state.rows[0].n).toBe(2);
     });
   });
+  describe("itinerary templates on the timeline", () => {
+    const template = (slug: string, extra: Record<string, unknown> = {}) => ({
+      subject: "u-rani",
+      slug,
+      title: "Kyoto santai",
+      description: "Kuil dan kuliner.",
+      destinationCode: "JP",
+      destinationName: "Kyoto, Jepang",
+      days: 3,
+      coverUrl: null,
+      affiliateCode: "RANI-1",
+      ...extra,
+    });
+
+    it("shares a new template as a post with a link card, once", async () => {
+      await setConfig({ reviewFirstPosts: 0 });
+      expect(await server.shareTemplateToFeed(template("kyoto-santai-aaaa1111"))).toMatchObject({
+        posted: true,
+        pending: false,
+      });
+      expect((await server.shareTemplateToFeed(template("kyoto-santai-aaaa1111"))).posted).toBe(
+        false,
+      );
+      const row = await pool.query(
+        "select source, kind, status, link_path, link_label, destination_code from feed_posts where template_slug=$1",
+        ["kyoto-santai-aaaa1111"],
+      );
+      expect(row.rows).toHaveLength(1);
+      expect(row.rows[0]).toMatchObject({
+        source: "template",
+        kind: "tips",
+        status: "PUBLISHED",
+        link_path: "/template/kyoto-santai-aaaa1111?ref=RANI-1",
+        destination_code: "JP",
+      });
+    });
+
+    it("follows the same rules as a member post: off, no consent, ban, review, banned word", async () => {
+      await setConfig({ reviewFirstPosts: 1 });
+      expect(await server.shareTemplateToFeed(template("t-review-1111"))).toMatchObject({
+        posted: true,
+        pending: true,
+      });
+      await pool.query("delete from customer_data_consents where customer_auth_subject='u-rani'");
+      expect((await server.shareTemplateToFeed(template("t-consent-2222"))).posted).toBe(false);
+      await pool.query(
+        `insert into customer_data_consents (customer_auth_subject, purpose, granted, policy_version, source)
+         values ('u-rani','community',true,'test','settings')`,
+      );
+      await pool.query(
+        "insert into feed_bans (customer_auth_subject, banned_by) values ('u-rani','ops')",
+      );
+      expect((await server.shareTemplateToFeed(template("t-ban-3333"))).posted).toBe(false);
+      await pool.query("delete from feed_bans");
+      await setConfig({ reviewFirstPosts: 0, bannedWords: ["judi"] });
+      expect(
+        await server.shareTemplateToFeed(template("t-word-4444", { title: "Wisata judi" })),
+      ).toMatchObject({ posted: true, pending: true });
+      await setConfig({ enabled: false });
+      expect((await server.shareTemplateToFeed(template("t-off-5555"))).posted).toBe(false);
+    });
+
+    it("the post is hidden with its template, restored with it and removed when it is deleted", async () => {
+      await setConfig({ reviewFirstPosts: 0 });
+      await server.shareTemplateToFeed(template("t-sync-6666"));
+      const status = async () =>
+        (
+          await pool.query(
+            "select status, status_reason from feed_posts where template_slug='t-sync-6666'",
+          )
+        ).rows[0];
+      await server.syncTemplateFeedPost("t-sync-6666", "off");
+      expect(await status()).toMatchObject({
+        status: "HIDDEN",
+        status_reason: "template_inactive",
+      });
+      await server.syncTemplateFeedPost("t-sync-6666", "live");
+      expect(await status()).toMatchObject({ status: "PUBLISHED", status_reason: null });
+      // A post the team hid for another reason is never restored by the template.
+      await pool.query(
+        "update feed_posts set status='HIDDEN', status_reason='auto_reports' where template_slug='t-sync-6666'",
+      );
+      await server.syncTemplateFeedPost("t-sync-6666", "live");
+      expect(await status()).toMatchObject({ status: "HIDDEN", status_reason: "auto_reports" });
+      await server.syncTemplateFeedPost("t-sync-6666", "deleted");
+      expect(await status()).toMatchObject({
+        status: "REMOVED",
+        status_reason: "template_deleted",
+      });
+    });
+  });
 });

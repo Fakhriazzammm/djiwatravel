@@ -204,7 +204,7 @@ export type FeedPostView = {
   placeName: string | null;
   photoUrl: string | null;
   /** "guide" posts come from Travo Guide and carry a link card; "seed" posts are example content. */
-  source: "member" | "seed" | "guide";
+  source: "member" | "seed" | "guide" | "template";
   linkPath: string | null;
   linkLabel: string | null;
   /** The comment previewed under the post: most liked, else newest. */

@@ -22,6 +22,39 @@ const content =
   "mx-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7";
 const field = "w-full rounded-2xl bg-secondary/70 px-3 py-2.5 text-[14px] outline-none";
 
+function publishedText(feed: { posted: boolean; pending: boolean } | undefined) {
+  if (feed?.posted)
+    return feed.pending
+      ? "Template tayang. Postingan Feeds menunggu tinjauan."
+      : "Template tayang dan dibagikan ke Feeds";
+  return "Template tayang";
+}
+
+function ShareToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <label className="flex items-start gap-2.5 rounded-2xl bg-secondary/70 px-3 py-2.5">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-0.5 size-4 accent-brand-red"
+      />
+      <span className="text-[13px] leading-[18px]">
+        <b className="font-semibold">Bagikan ke timeline Feeds</b>
+        <span className="block text-[12px] text-muted-foreground">
+          Traveler lain bisa melihat dan memakai template-mu dari Explore.
+        </span>
+      </span>
+    </label>
+  );
+}
+
 function errorText(cause: unknown, fallback: string) {
   const message = cause instanceof Error ? cause.message : "";
   return message === "Autentikasi diperlukan"
@@ -42,13 +75,16 @@ export function PublishTripTemplateSheet({
   const navigate = useNavigate();
   const [title, setTitle] = useState(trip.name);
   const [description, setDescription] = useState("");
+  const [share, setShare] = useState(true);
   const [busy, setBusy] = useState(false);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
     try {
-      await publishTripTemplate({ data: { tripId: trip.id, title, description } });
-      toast.success("Template tayang");
+      const result = await publishTripTemplate({
+        data: { tripId: trip.id, title, description, shareToFeed: share },
+      });
+      toast.success(publishedText(result.feed));
       onOpenChange(false);
       await navigate({ to: "/my-templates" });
     } catch (cause) {
@@ -85,6 +121,7 @@ export function PublishTripTemplateSheet({
             aria-label="Deskripsi"
             className={`${field} min-h-20`}
           />
+          <ShareToggle checked={share} onChange={setShare} />
           <button type="submit" disabled={busy} className={`${btnRed} w-full disabled:opacity-50`}>
             {busy ? "Menerbitkan…" : "Terbitkan template"}
           </button>
@@ -106,6 +143,7 @@ export function TravoTemplateSheet({
   const [brief, setBrief] = useState("");
   const [days, setDays] = useState(3);
   const [draft, setDraft] = useState<TemplateDraft | null>(null);
+  const [share, setShare] = useState(true);
   const [busy, setBusy] = useState<"draft" | "publish" | null>(null);
   async function generate(event: React.FormEvent) {
     event.preventDefault();
@@ -124,8 +162,9 @@ export function TravoTemplateSheet({
     if (!draft) return;
     setBusy("publish");
     try {
-      await publishDraftTemplate({
+      const result = await publishDraftTemplate({
         data: {
+          shareToFeed: share,
           title: draft.title,
           description: draft.description,
           destinationName: draft.destinationName,
@@ -141,7 +180,7 @@ export function TravoTemplateSheet({
           })),
         },
       });
-      toast.success("Template tayang");
+      toast.success(publishedText(result.feed));
       setDraft(null);
       setBrief("");
       onOpenChange(false);
@@ -225,6 +264,7 @@ export function TravoTemplateSheet({
                 image: null,
               }))}
             />
+            <ShareToggle checked={share} onChange={setShare} />
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
