@@ -225,37 +225,80 @@ body {
 
 /* Home "Susun trip" cards: deck shuffle, each card cycles back -> front. */
 @keyframes card-shuffle {
-  0%, 26% { translate: 0 0; rotate: -10deg; z-index: 1; }
-  33%, 59% { translate: 12px -6px; rotate: -1deg; z-index: 2; }
-  66%, 91% { translate: 24px 0; rotate: 9deg; z-index: 3; }
-  95% { translate: 38px -4px; rotate: 20deg; z-index: 3; }
-  100% { translate: 0 0; rotate: -10deg; z-index: 1; }
+  0%,
+  26% {
+    translate: 0 0;
+    rotate: -10deg;
+    z-index: 1;
+  }
+  33%,
+  59% {
+    translate: 12px -6px;
+    rotate: -1deg;
+    z-index: 2;
+  }
+  66%,
+  91% {
+    translate: 24px 0;
+    rotate: 9deg;
+    z-index: 3;
+  }
+  95% {
+    translate: 38px -4px;
+    rotate: 20deg;
+    z-index: 3;
+  }
+  100% {
+    translate: 0 0;
+    rotate: -10deg;
+    z-index: 1;
+  }
 }
 .animate-card-shuffle {
   animation: card-shuffle 9s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .animate-card-shuffle { animation: none !important; translate: 0 0; rotate: -10deg; }
-  .animate-card-shuffle:nth-child(2) { translate: 12px -6px; rotate: -1deg; }
-  .animate-card-shuffle:nth-child(3) { translate: 24px 0; rotate: 9deg; }
+  .animate-card-shuffle {
+    animation: none !important;
+    translate: 0 0;
+    rotate: -10deg;
+  }
+  .animate-card-shuffle:nth-child(2) {
+    translate: 12px -6px;
+    rotate: -1deg;
+  }
+  .animate-card-shuffle:nth-child(3) {
+    translate: 24px 0;
+    rotate: 9deg;
+  }
 }
 
 /* Home hero mascot floats gently beside the search pill. */
 @keyframes mascot-bob {
-  50% { translate: 0 -6px; rotate: -3deg; }
+  50% {
+    translate: 0 -6px;
+    rotate: -3deg;
+  }
 }
 .animate-mascot-bob {
   animation: mascot-bob 3.4s ease-in-out infinite;
 }
 @keyframes hero-sky-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .animate-hero-sky-in {
   animation: hero-sky-in 1.2s ease both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .animate-mascot-bob, .animate-hero-sky-in { animation: none !important; }
+  .animate-mascot-bob,
+  .animate-hero-sky-in {
+    animation: none !important;
+  }
 }
 
 /* Respect the user's reduced-motion preference across the whole app. */
@@ -310,5 +353,25 @@ body {
   }
   [data-receipt-stage] {
     display: block !important;
+  }
+}
+
+/* Admin customer detail: chart bars grow up, timeline rows fade in. */
+@keyframes cd-grow-up {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes cd-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }

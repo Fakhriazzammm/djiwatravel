@@ -213,7 +213,11 @@ decision; the older masking helpers stay in use on the Orders pages). A member
 without a profile shows the contact left on their latest order. Tapping a row opens
 `/admin/customer/$id` (`getAdminCustomerDetail`): contact, account id, profile
 (nationality, birth date, gender), eSIM orders, trips, Titip Belanja orders with
-recipient details, Feeds posts and counts, and the latest data-consent answers.
+recipient details, Kirim Barang orders, Feeds posts and counts, and the latest data-consent
+answers. The page is an analysis view (`?tab=ringkasan|linimasa|pesanan|perilaku|data`):
+segment, activation score (0-100), spend split by service, account-health alerts, a merged
+timeline and a 12-month activity chart, all derived in the pure `admin-customer-insight.ts`
+from the detail the server already returns.
 Opening a detail page writes `customer.view` to `admin_audit_logs` (actor e-mail and a
 hashed customer reference, never the raw account id). Read-only; never shows tokens,
 payment secrets or eSIM codes.

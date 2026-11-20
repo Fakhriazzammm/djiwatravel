@@ -469,6 +469,7 @@ export type AdminCustomerDetail = {
     code: string;
     status: string;
     totalIdr: number;
+    paidAt: string | null;
     recipientName: string | null;
     recipientWhatsapp: string | null;
     city: string | null;
@@ -479,6 +480,15 @@ export type AdminCustomerDetail = {
     comments: number;
     likes: number;
   };
+  shipping: {
+    code: string;
+    status: string;
+    country: string;
+    estimatedKg: number;
+    totalIdr: number | null;
+    paidAt: string | null;
+    createdAt: string;
+  }[];
   consents: { purpose: string; granted: boolean; at: string; source: string }[];
 } | null;
 
@@ -506,6 +516,7 @@ export async function getAdminCustomerDetailHandler({
   let orders;
   let trips = { rows: [] as Record<string, unknown>[] };
   let shopping = { rows: [] as Record<string, unknown>[] };
+  let shipping = { rows: [] as Record<string, unknown>[] };
   let posts = { rows: [] as Record<string, unknown>[] };
   let social = { rows: [{ comments: 0, likes: 0 }] as Record<string, unknown>[] };
   let consents = { rows: [] as Record<string, unknown>[] };
@@ -533,7 +544,7 @@ export async function getAdminCustomerDetailHandler({
     email = text(contact.rows[0].email);
     whatsapp = text(contact.rows[0].whatsapp);
   } else {
-    const [prof, ord, trip, shop, feed, soc, cons, access] = await Promise.all([
+    const [prof, ord, trip, shop, feed, soc, cons, access, ship] = await Promise.all([
       pool.query(
         `select display_name, email, whatsapp, nationality, date_of_birth::text as date_of_birth,
                 gender, created_at, updated_at from public.customer_profiles where auth_user_id = $1`,
@@ -550,7 +561,7 @@ export async function getAdminCustomerDetailHandler({
         [id],
       ),
       pool.query(
-        `select public_code, status, total_idr, recipient_name, recipient_whatsapp, city, created_at
+        `select public_code, status, total_idr, paid_at, recipient_name, recipient_whatsapp, city, created_at
            from public.shopping_orders where customer_auth_subject = $1 order by created_at desc limit 20`,
         [id],
       ),
@@ -575,8 +586,14 @@ export async function getAdminCustomerDetailHandler({
           where o.customer_auth_subject = $1 order by a.created_at desc limit 1`,
         [id],
       ),
+      pool.query(
+        `select public_code, status, country, estimated_kg::float as estimated_kg, total_idr, paid_at, created_at
+           from public.shipping_orders where customer_auth_subject = $1 order by created_at desc limit 20`,
+        [id],
+      ),
     ]);
     orders = ord;
+    shipping = { rows: ship?.rows ?? [] };
     trips = trip;
     shopping = shop;
     posts = feed;
@@ -600,6 +617,7 @@ export async function getAdminCustomerDetailHandler({
       orders.rows.length +
         trips.rows.length +
         shopping.rows.length +
+        shipping.rows.length +
         posts.rows.length +
         consents.rows.length >
         0;
@@ -648,9 +666,22 @@ export async function getAdminCustomerDetailHandler({
       code: String(row["public_code"]),
       status: String(row["status"]),
       totalIdr: Number(row["total_idr"] ?? 0),
+      paidAt: iso2(row["paid_at"]),
       recipientName: text(row["recipient_name"]),
       recipientWhatsapp: text(row["recipient_whatsapp"]),
       city: text(row["city"]),
+      createdAt: iso2(row["created_at"]) ?? "",
+    })),
+    shipping: shipping.rows.map((row) => ({
+      code: String(row["public_code"]),
+      status: String(row["status"]),
+      country: String(row["country"] ?? "JP"),
+      estimatedKg: Number(row["estimated_kg"] ?? 0),
+      totalIdr:
+        row["total_idr"] === null || row["total_idr"] === undefined
+          ? null
+          : Number(row["total_idr"]),
+      paidAt: iso2(row["paid_at"]),
       createdAt: iso2(row["created_at"]) ?? "",
     })),
     feeds: {
