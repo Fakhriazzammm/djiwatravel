@@ -723,7 +723,7 @@ export async function createFeedPost(input: CreateFeedPostInput) {
     `select
        count(*) filter (where created_at > now() - interval '24 hours')::int as today,
        count(*) filter (where status = 'PENDING')::int as pending,
-       count(*) filter (where published_at is not null)::int as ever_published
+       count(*) filter (where published_at is not null and source <> 'template')::int as ever_published
      from feed_posts where customer_auth_subject = $1`,
     [input.subject],
   );
@@ -1473,13 +1473,8 @@ export async function prepareTemplateFeedPost(
       .replace(/\s+/g, " ")
       .slice(0, FEED_BODY_MAX);
   const banned = findBannedWord(`${input.title} ${input.description}`, config.bannedWords);
-  const ever = await pool.query(
-    "select count(*)::int as n from feed_posts where customer_auth_subject = $1 and published_at is not null",
-    [input.subject],
-  );
-  const needsReview = Number(ever.rows[0]?.n) < config.reviewFirstPosts;
-  const status: FeedStatus = banned || needsReview ? "PENDING" : "PUBLISHED";
-  const flag = banned ? `kata: ${banned}` : needsReview ? "post_awal" : "template";
+  const status: FeedStatus = banned ? "PENDING" : "PUBLISHED";
+  const flag = banned ? `kata: ${banned}` : "template";
   const code =
     input.destinationCode && /^[A-Za-z]{2}$/.test(input.destinationCode)
       ? input.destinationCode.toUpperCase()

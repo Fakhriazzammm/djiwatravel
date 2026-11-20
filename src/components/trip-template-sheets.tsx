@@ -23,7 +23,9 @@ const content =
   "mx-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-7";
 const field = "w-full rounded-2xl bg-secondary/70 px-3 py-2.5 text-[14px] outline-none";
 
-function publishedText(feed: { posted: boolean; pending: boolean; message?: string | undefined } | undefined) {
+function publishedText(
+  feed: { posted: boolean; pending: boolean; message?: string | undefined } | undefined,
+) {
   if (feed?.posted)
     return feed.pending
       ? "Template tayang. Postingan Feeds menunggu tinjauan."
@@ -34,7 +36,7 @@ function publishedText(feed: { posted: boolean; pending: boolean; message?: stri
 function TimelineNotice() {
   return (
     <p className="text-[12px] leading-4 text-muted-foreground">
-      Dengan izin Komunitas, itinerary yang diterbitkan otomatis dibagikan ke Feeds sesuai aturan moderasi.
+      Dengan izin Komunitas, itinerary yang kamu terbitkan langsung dibagikan ke Feeds.
     </p>
   );
 }

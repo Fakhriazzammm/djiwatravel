@@ -875,12 +875,16 @@ describeDb("feeds against a real database", () => {
       });
     });
 
-    it("follows the same rules as a member post: off, no consent, ban, review, banned word", async () => {
+    it("publishes a first itinerary to visitors while respecting consent, bans and flagged content", async () => {
       await setConfig({ reviewFirstPosts: 1 });
       expect(await share(template("t-review-1111"))).toMatchObject({
         posted: true,
-        pending: true,
+        pending: false,
       });
+      as(null);
+      expect((await list()).posts.some((p) => p.source === "template")).toBe(true);
+      as("u-rani");
+      expect((await post("Postingan pertama di Feeds")).pending).toBe(true);
       await pool.query("delete from customer_data_consents where customer_auth_subject='u-rani'");
       expect((await share(template("t-consent-2222"))).posted).toBe(false);
       await pool.query(

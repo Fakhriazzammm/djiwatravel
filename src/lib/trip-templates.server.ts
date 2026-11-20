@@ -5,7 +5,11 @@ import { requireAdmin } from "./admin-guard";
 import { getAdminEmailHandler } from "./admin-guard.server";
 import { recordAdminAction } from "./admin-audit.server";
 import { readAffiliateConfig } from "./affiliate.server";
-import { prepareTemplateFeedPost, insertTemplateFeedPost, syncTemplateFeedPost } from "./feeds.server";
+import {
+  prepareTemplateFeedPost,
+  insertTemplateFeedPost,
+  syncTemplateFeedPost,
+} from "./feeds.server";
 import { resolveTripOwner, type TripOwner } from "./guest-trips.server";
 import { createTrip } from "./my-trips.server";
 import { jakartaDayStart } from "./receipt-scan";

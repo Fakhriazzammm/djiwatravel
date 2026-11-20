@@ -491,7 +491,7 @@ function Settings({
       <div className="grid gap-3 sm:grid-cols-2">
         {num(
           "Tinjau postingan awal per akun",
-          "0 = langsung tayang. Postingan awal tiap akun menunggu persetujuan.",
+          "0 = langsung tayang. Aturan ini berlaku untuk post yang ditulis di Feeds. Itinerary terbit otomatis.",
           "reviewFirstPosts",
         )}
         {num("Batas posting per hari", "Per akun, 24 jam terakhir.", "postsPerDay")}
