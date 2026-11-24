@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { getListableDestinations } from "@/lib/destination-availability.server";
-import { travelGuideSlugs } from "@/lib/travel-guides";
+import { getNewestTravelGuides } from "@/lib/travel-guides";
 import { getIndexablePlans } from "@/lib/seo-indexability.server";
 
 const BASE_URL = "https://djiwatravel.com";
@@ -37,10 +37,11 @@ const STATIC_PATHS: Array<{ path: string; priority: string; changefreq: string }
   { path: "/panduan", priority: "0.8", changefreq: "weekly" },
 ];
 
-function urlEntry(path: string, priority: string, changefreq: string) {
+function urlEntry(path: string, priority: string, changefreq: string, lastmod?: string) {
   return [
     "  <url>",
     `    <loc>${BASE_URL}${path}</loc>`,
+    ...(lastmod ? [`    <lastmod>${lastmod}</lastmod>`] : []),
     `    <changefreq>${changefreq}</changefreq>`,
     `    <priority>${priority}</priority>`,
     "  </url>",
@@ -64,7 +65,9 @@ export const Route = createFileRoute("/sitemap.xml")({
           ...STATIC_PATHS.map(({ path, priority, changefreq }) =>
             urlEntry(path, priority, changefreq),
           ),
-          ...travelGuideSlugs.map((slug) => urlEntry(`/panduan/${slug}`, "0.7", "monthly")),
+          ...getNewestTravelGuides().map((guide) =>
+            urlEntry(`/panduan/${guide.slug}`, "0.7", "monthly", guide.updatedAt),
+          ),
           ...indexed.map((destination) =>
             urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
           ),

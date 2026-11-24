@@ -15,6 +15,7 @@ import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FinderRouteImport } from './routes/finder'
 import { Route as LiveCatalogRouteImport } from './routes/live-catalog'
+import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as MyTemplatesRouteImport } from './routes/my-templates'
@@ -96,6 +97,7 @@ import { Route as MyTripsNewRouteImport } from './routes/my-trips.new'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as PanduanIndexRouteImport } from './routes/panduan.index'
 import { Route as PanduanSlugRouteImport } from './routes/panduan.$slug'
+import { Route as PanduanFeedDotxmlRouteImport } from './routes/panduan.feed[.]xml'
 import { Route as PlanIdRouteImport } from './routes/plan.$id'
 import { Route as ReceiptIdRouteImport } from './routes/receipt.$id'
 import { Route as RefundOrderRouteImport } from './routes/refund.$order'
@@ -165,6 +167,11 @@ const FinderRoute = FinderRouteImport.update({
 const LiveCatalogRoute = LiveCatalogRouteImport.update({
   id: '/live-catalog',
   path: '/live-catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
+  id: '/llms-full.txt',
+  path: '/llms-full.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
@@ -573,6 +580,11 @@ const PanduanSlugRoute = PanduanSlugRouteImport.update({
   path: '/panduan/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PanduanFeedDotxmlRoute = PanduanFeedDotxmlRouteImport.update({
+  id: '/panduan/feed.xml',
+  path: '/panduan/feed.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlanIdRoute = PlanIdRouteImport.update({
   id: '/plan/$id',
   path: '/plan/$id',
@@ -788,6 +800,7 @@ export interface FileRoutesByFullPath {
   '/explore': typeof ExploreRouteWithChildren
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/my-orders': typeof MyOrdersRoute
   '/my-templates': typeof MyTemplatesRoute
@@ -863,6 +876,7 @@ export interface FileRoutesByFullPath {
   '/my-trips/new': typeof MyTripsNewRoute
   '/order/$id': typeof OrderIdRoute
   '/panduan/$slug': typeof PanduanSlugRoute
+  '/panduan/feed.xml': typeof PanduanFeedDotxmlRoute
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
@@ -917,6 +931,7 @@ export interface FileRoutesByTo {
   '/explore': typeof ExploreRouteWithChildren
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/my-orders': typeof MyOrdersRoute
   '/my-templates': typeof MyTemplatesRoute
@@ -992,6 +1007,7 @@ export interface FileRoutesByTo {
   '/my-trips/new': typeof MyTripsNewRoute
   '/order/$id': typeof OrderIdRoute
   '/panduan/$slug': typeof PanduanSlugRoute
+  '/panduan/feed.xml': typeof PanduanFeedDotxmlRoute
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
@@ -1047,6 +1063,7 @@ export interface FileRoutesById {
   '/explore': typeof ExploreRouteWithChildren
   '/finder': typeof FinderRoute
   '/live-catalog': typeof LiveCatalogRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/my-orders': typeof MyOrdersRoute
   '/my-templates': typeof MyTemplatesRoute
@@ -1122,6 +1139,7 @@ export interface FileRoutesById {
   '/my-trips/new': typeof MyTripsNewRoute
   '/order/$id': typeof OrderIdRoute
   '/panduan/$slug': typeof PanduanSlugRoute
+  '/panduan/feed.xml': typeof PanduanFeedDotxmlRoute
   '/plan/$id': typeof PlanIdRoute
   '/receipt/$id': typeof ReceiptIdRoute
   '/refund/$order': typeof RefundOrderRoute
@@ -1178,6 +1196,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/finder'
     | '/live-catalog'
+    | '/llms-full.txt'
     | '/llms.txt'
     | '/my-orders'
     | '/my-templates'
@@ -1253,6 +1272,7 @@ export interface FileRouteTypes {
     | '/my-trips/new'
     | '/order/$id'
     | '/panduan/$slug'
+    | '/panduan/feed.xml'
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
@@ -1307,6 +1327,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/finder'
     | '/live-catalog'
+    | '/llms-full.txt'
     | '/llms.txt'
     | '/my-orders'
     | '/my-templates'
@@ -1382,6 +1403,7 @@ export interface FileRouteTypes {
     | '/my-trips/new'
     | '/order/$id'
     | '/panduan/$slug'
+    | '/panduan/feed.xml'
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
@@ -1436,6 +1458,7 @@ export interface FileRouteTypes {
     | '/explore'
     | '/finder'
     | '/live-catalog'
+    | '/llms-full.txt'
     | '/llms.txt'
     | '/my-orders'
     | '/my-templates'
@@ -1511,6 +1534,7 @@ export interface FileRouteTypes {
     | '/my-trips/new'
     | '/order/$id'
     | '/panduan/$slug'
+    | '/panduan/feed.xml'
     | '/plan/$id'
     | '/receipt/$id'
     | '/refund/$order'
@@ -1566,6 +1590,7 @@ export interface RootRouteChildren {
   ExploreRoute: typeof ExploreRouteWithChildren
   FinderRoute: typeof FinderRoute
   LiveCatalogRoute: typeof LiveCatalogRoute
+  LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   MyOrdersRoute: typeof MyOrdersRoute
   MyTemplatesRoute: typeof MyTemplatesRoute
@@ -1639,6 +1664,7 @@ export interface RootRouteChildren {
   MyTripsNewRoute: typeof MyTripsNewRoute
   OrderIdRoute: typeof OrderIdRoute
   PanduanSlugRoute: typeof PanduanSlugRoute
+  PanduanFeedDotxmlRoute: typeof PanduanFeedDotxmlRoute
   PlanIdRoute: typeof PlanIdRoute
   ReceiptIdRoute: typeof ReceiptIdRoute
   RefundOrderRoute: typeof RefundOrderRoute
@@ -1723,6 +1749,13 @@ declare module '@tanstack/react-router' {
       path: '/live-catalog'
       fullPath: '/live-catalog'
       preLoaderRoute: typeof LiveCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms-full.txt': {
+      id: '/llms-full.txt'
+      path: '/llms-full.txt'
+      fullPath: '/llms-full.txt'
+      preLoaderRoute: typeof LlmsFullDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms.txt': {
@@ -2292,6 +2325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanduanSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/panduan/feed.xml': {
+      id: '/panduan/feed.xml'
+      path: '/panduan/feed.xml'
+      fullPath: '/panduan/feed.xml'
+      preLoaderRoute: typeof PanduanFeedDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/plan/$id': {
       id: '/plan/$id'
       path: '/plan/$id'
@@ -2645,6 +2685,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExploreRoute: ExploreRouteWithChildren,
   FinderRoute: FinderRoute,
   LiveCatalogRoute: LiveCatalogRoute,
+  LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   MyOrdersRoute: MyOrdersRoute,
   MyTemplatesRoute: MyTemplatesRoute,
@@ -2718,6 +2759,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyTripsNewRoute: MyTripsNewRoute,
   OrderIdRoute: OrderIdRoute,
   PanduanSlugRoute: PanduanSlugRoute,
+  PanduanFeedDotxmlRoute: PanduanFeedDotxmlRoute,
   PlanIdRoute: PlanIdRoute,
   ReceiptIdRoute: ReceiptIdRoute,
   RefundOrderRoute: RefundOrderRoute,

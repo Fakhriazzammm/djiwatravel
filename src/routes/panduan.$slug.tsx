@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { BackBar, Page, SectionTitle } from "@/components/shell";
 import { formatTravelGuideDate, getTravelGuide } from "@/lib/travel-guides";
+import { faqPageJsonLd } from "@/lib/geo";
 import { GuideShareActions } from "@/components/guide-share-actions";
 
 const BASE_URL = "https://djiwatravel.com";
@@ -14,19 +15,45 @@ export const Route = createFileRoute("/panduan/$slug")({
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [{ name: "robots", content: "noindex" }] };
     const url = `${BASE_URL}/panduan/${loaderData.slug}`;
+    const wordCount = [...loaderData.paragraphs, ...loaderData.steps.map((s) => s.body)]
+      .join(" ")
+      .split(/\s+/).length;
     const articleSchema = {
       "@context": "https://schema.org",
       "@type": "Article",
       headline: loaderData.title,
       description: loaderData.description,
+      ...(loaderData.summary ? { abstract: loaderData.summary } : {}),
       image: loaderData.image ? `${BASE_URL}${loaderData.image}` : undefined,
       datePublished: loaderData.publishedAt,
       dateModified: loaderData.updatedAt,
       inLanguage: "id-ID",
+      wordCount,
+      articleSection: loaderData.eyebrow,
+      ...(loaderData.keywords?.length ? { keywords: loaderData.keywords.join(", ") } : {}),
       mainEntityOfPage: { "@type": "WebPage", "@id": url },
-      author: { "@type": "Organization", name: "Djiwa Travel", url: BASE_URL },
-      publisher: { "@type": "Organization", name: "Djiwa Travel", url: BASE_URL },
+      isPartOf: { "@type": "CollectionPage", name: "Panduan Travel", url: `${BASE_URL}/panduan` },
+      speakable: { "@type": "SpeakableSpecification", cssSelector: ["h1", "[data-speakable]"] },
+      ...(loaderData.sources?.length
+        ? {
+            citation: loaderData.sources.map((source) => ({
+              "@type": "CreativeWork",
+              name: source.label,
+              url: source.url,
+            })),
+          }
+        : {}),
+      author: { "@type": "Organization", name: "Tim Djiwa Travel", url: BASE_URL },
+      publisher: {
+        "@type": "Organization",
+        name: "Djiwa Travel",
+        url: BASE_URL,
+        logo: { "@type": "ImageObject", url: `${BASE_URL}/icon-512.png` },
+      },
     };
+    const faqSchema = loaderData.faqs?.length
+      ? { "@context": "https://schema.org", ...faqPageJsonLd([...loaderData.faqs]) }
+      : null;
     const breadcrumbSchema = {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
@@ -49,16 +76,31 @@ export const Route = createFileRoute("/panduan/$slug")({
           property: "og:image",
           content: loaderData.image ? `${BASE_URL}${loaderData.image}` : `${BASE_URL}/icon-512.png`,
         },
+        { property: "article:published_time", content: loaderData.publishedAt },
+        { property: "article:modified_time", content: loaderData.updatedAt },
+        { property: "article:section", content: loaderData.eyebrow },
+        { name: "robots", content: "index, follow, max-snippet:-1, max-image-preview:large" },
         { name: "twitter:card", content: "summary_large_image" },
         {
           name: "twitter:image",
           content: loaderData.image ? `${BASE_URL}${loaderData.image}` : `${BASE_URL}/icon-512.png`,
         },
       ],
-      links: [{ rel: "canonical", href: url }],
+      links: [
+        { rel: "canonical", href: url },
+        {
+          rel: "alternate",
+          type: "application/rss+xml",
+          title: "Panduan Djiwa Travel",
+          href: `${BASE_URL}/panduan/feed.xml`,
+        },
+      ],
       scripts: [
         { type: "application/ld+json", children: JSON.stringify(articleSchema) },
         { type: "application/ld+json", children: JSON.stringify(breadcrumbSchema) },
+        ...(faqSchema
+          ? [{ type: "application/ld+json", children: JSON.stringify(faqSchema) }]
+          : []),
       ],
     };
   },
@@ -98,6 +140,19 @@ function TravelGuideDetail() {
           {` · ${guide.readTime}`}
         </p>
         <GuideShareActions title={guide.title} url={`${BASE_URL}/panduan/${guide.slug}`} />
+        {guide.summary && (
+          <section
+            className="mt-4 rounded-2xl bg-secondary p-4"
+            aria-labelledby="guide-summary-title"
+          >
+            <h2 id="guide-summary-title" className="text-sm font-bold">
+              Jawaban singkat
+            </h2>
+            <p data-speakable className="mt-1 text-[15px] leading-7">
+              {guide.summary}
+            </p>
+          </section>
+        )}
         <div className="mt-4 space-y-3 text-[15px] leading-7 text-foreground">
           {guide.paragraphs.map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>
@@ -136,6 +191,19 @@ function TravelGuideDetail() {
             ))}
           </ol>
         </section>
+        {guide.faqs && guide.faqs.length > 0 && (
+          <section className="mt-4" aria-labelledby="guide-faq-title">
+            <SectionTitle>Pertanyaan yang sering diajukan</SectionTitle>
+            <div className="divide-y divide-border overflow-hidden rounded-2xl bg-surface">
+              {guide.faqs.map((faq) => (
+                <div key={faq.question} className="p-4">
+                  <h3 className="font-bold">{faq.question}</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
         <section className="mt-4" aria-labelledby="related-destinations-title">
           <SectionTitle>Tujuan terkait</SectionTitle>
           <div className="flex flex-wrap gap-2">

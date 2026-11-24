@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { buildGuideRss, buildGuidesFullText } from "@/lib/guide-feed";
 import { getTravelGuide, travelGuides, travelGuideSlugs } from "@/lib/travel-guides";
 
 describe("travel guide SEO registry", () => {
@@ -39,6 +40,29 @@ describe("travel guide SEO registry", () => {
     }
   });
 
+  it("ships ten answer-first explainer guides with FAQ, summary and citations", () => {
+    const explainers = travelGuides.filter((g) => g.publishedAt === "2026-11-24");
+    expect(explainers).toHaveLength(10);
+    for (const g of explainers) {
+      expect(g.summary && g.summary.length).toBeGreaterThan(120);
+      expect(g.faqs?.length).toBeGreaterThanOrEqual(3);
+      expect(g.keywords?.length).toBeGreaterThanOrEqual(2);
+      expect(g.title.length).toBeLessThanOrEqual(75);
+      expect(g.description.length).toBeLessThanOrEqual(200);
+      expect(g.paragraphs.join(" ")).not.toMatch(/Rp\s?\d/);
+    }
+  });
+
+  it("builds RSS and full-text feeds for every guide", () => {
+    const rss = buildGuideRss(travelGuides);
+    const full = buildGuidesFullText(travelGuides);
+    for (const g of travelGuides) {
+      expect(rss).toContain(`/panduan/${g.slug}`);
+      expect(full).toContain(g.title);
+    }
+    expect(rss).toContain('<rss version="2.0"');
+  });
+
   it("resolves known slugs and rejects unknown input", () => {
     expect(getTravelGuide(travelGuideSlugs[0]!)).toBe(travelGuides[0]);
     expect(getTravelGuide("tidak-ada")).toBeUndefined();
@@ -58,7 +82,8 @@ describe("travel guide SEO registry", () => {
     );
     expect(detail).toContain('"@type": "BreadcrumbList"');
     expect(guideIndex).toContain("tax refund Jepang");
-    expect(sitemap).toContain("travelGuideSlugs.map");
+    expect(sitemap).toContain("getNewestTravelGuides().map");
+    expect(sitemap).toContain("<lastmod>");
     expect(sitemap).not.toMatch(/urlEntry\(`\/(?:admin|api|checkout|order|receipt|my-esim)/);
   });
 

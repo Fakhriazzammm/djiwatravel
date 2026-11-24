@@ -19,6 +19,7 @@ export const Route = createFileRoute("/llms.txt")({
             slug: g.slug,
             title: g.title,
             description: g.description,
+            summary: g.summary,
           })),
         });
         return new Response(body, {

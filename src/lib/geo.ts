@@ -180,7 +180,7 @@ export function buildRobotsTxt(config: GeoConfig): string {
 
 export type LlmsInput = {
   destinations: Array<{ code: string; nameId: string }>;
-  guides: Array<{ slug: string; title: string; description: string }>;
+  guides: Array<{ slug: string; title: string; description: string; summary?: string | undefined }>;
 };
 
 export function buildLlmsTxt({ destinations, guides }: LlmsInput): string {
@@ -193,9 +193,13 @@ export function buildLlmsTxt({ destinations, guides }: LlmsInput): string {
     `- [Beranda](${SEO_BASE_URL}/): ringkasan layanan dan FAQ`,
     `- [Explore destinasi](${SEO_BASE_URL}/explore): semua negara dan paket regional`,
     `- [Panduan travel](${SEO_BASE_URL}/panduan): cara memilih dan memasang eSIM`,
+    `- [Teks lengkap panduan](${SEO_BASE_URL}/llms-full.txt): seluruh isi panduan dalam teks biasa`,
+    `- [Feed RSS panduan](${SEO_BASE_URL}/panduan/feed.xml)`,
     "",
     "## Panduan",
-    ...guides.map((g) => `- [${g.title}](${SEO_BASE_URL}/panduan/${g.slug}): ${g.description}`),
+    ...guides.map(
+      (g) => `- [${g.title}](${SEO_BASE_URL}/panduan/${g.slug}): ${g.summary ?? g.description}`,
+    ),
     "",
     "## Destinasi eSIM",
     ...destinations.map(

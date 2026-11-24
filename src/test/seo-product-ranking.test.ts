@@ -118,7 +118,7 @@ describe("public product SEO contract", () => {
     const guides = read("lib/travel-guides.ts");
     const sitemap = read("routes/sitemap[.]xml.ts");
     expect(guides.match(/slug: "/g)?.length).toBeGreaterThanOrEqual(5);
-    expect(sitemap).toContain("travelGuideSlugs.map");
+    expect(sitemap).toContain("getNewestTravelGuides().map");
   });
 
   it("records checkout starts against a public package URL without customer data", () => {

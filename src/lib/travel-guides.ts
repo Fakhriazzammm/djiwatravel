@@ -1,3 +1,5 @@
+import { esimExplainerGuides } from "./travel-guides-esim";
+
 export type GuideLink =
   { to: "/titip-belanja" | "/my-trips/new"; label: string } | { guide: string; label: string };
 
@@ -13,6 +15,12 @@ export type TravelGuide = {
   image?: string;
   imageAlt?: string;
   sources?: readonly { label: string; url: string }[];
+  /** Answer-first summary (40–60 words): shown at the top, used as the Article `abstract` and speakable text. */
+  summary?: string;
+  /** Visible Q&A rendered on the page and emitted as FAQPage JSON-LD (same text, so they cannot drift). */
+  faqs?: readonly { question: string; answer: string }[];
+  /** Search topics for Article `keywords`. */
+  keywords?: readonly string[];
   paragraphs: readonly string[];
   steps: readonly { title: string; body: string }[];
   relatedDestinations: readonly { code: string; label: string }[];
@@ -22,6 +30,7 @@ export type TravelGuide = {
 
 /** Curated guides are intentionally versioned in source so every indexed page stays useful. */
 export const travelGuides: readonly TravelGuide[] = [
+  ...esimExplainerGuides,
   {
     slug: "tax-refund-jepang-2026",
     title: "Tax Refund Jepang 2026: Cara Kerja Aturan Baru",

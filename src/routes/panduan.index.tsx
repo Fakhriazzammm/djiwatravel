@@ -1,11 +1,42 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Page, BackBar, SectionTitle } from "@/components/shell";
 import { formatTravelGuideDate, getNewestTravelGuides } from "@/lib/travel-guides";
+import { breadcrumbJsonLd } from "@/lib/seo";
 
 const BASE_URL = "https://djiwatravel.com";
 
 export const Route = createFileRoute("/panduan/")({
   head: () => ({
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Panduan Travel Djiwa Travel",
+          url: `${BASE_URL}/panduan`,
+          inLanguage: "id-ID",
+          mainEntity: {
+            "@type": "ItemList",
+            itemListElement: getNewestTravelGuides().map((guide, index) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              url: `${BASE_URL}/panduan/${guide.slug}`,
+              name: guide.title,
+            })),
+          },
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(
+          breadcrumbJsonLd([
+            { name: "Beranda", url: BASE_URL },
+            { name: "Panduan Travel", url: `${BASE_URL}/panduan` },
+          ]),
+        ),
+      },
+    ],
     meta: [
       { title: "Panduan Travel: eSIM, Tax Refund Jepang & Tips Perjalanan | Djiwa Travel" },
       {
@@ -24,7 +55,15 @@ export const Route = createFileRoute("/panduan/")({
       },
       { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "canonical", href: `${BASE_URL}/panduan` }],
+    links: [
+      { rel: "canonical", href: `${BASE_URL}/panduan` },
+      {
+        rel: "alternate",
+        type: "application/rss+xml",
+        title: "Panduan Djiwa Travel",
+        href: `${BASE_URL}/panduan/feed.xml`,
+      },
+    ],
   }),
   component: TravelGuideIndex,
 });
