@@ -28,7 +28,7 @@ export function buildGuideRss(guides: readonly TravelGuide[]): string {
     "  <channel>",
     "    <title>Panduan Travel Djiwa Travel</title>",
     `    <link>${SEO_BASE_URL}/panduan</link>`,
-    "    <description>Panduan eSIM, internet perjalanan, dan persiapan liburan untuk traveler Indonesia.</description>",
+    "    <description>Panduan transportasi, eSIM, internet perjalanan, dan persiapan liburan untuk traveler Indonesia.</description>",
     "    <language>id-ID</language>",
     `    <atom:link href="${SEO_BASE_URL}/panduan/feed.xml" rel="self" type="application/rss+xml" />`,
     ...(sorted[0] ? [`    <lastBuildDate>${rfc822(sorted[0].updatedAt)}</lastBuildDate>`] : []),

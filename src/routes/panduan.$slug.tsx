@@ -85,6 +85,14 @@ export const Route = createFileRoute("/panduan/$slug")({
           name: "twitter:image",
           content: loaderData.image ? `${BASE_URL}${loaderData.image}` : `${BASE_URL}/icon-512.png`,
         },
+        {
+          property: "og:image:alt",
+          content: loaderData.imageAlt ?? loaderData.title,
+        },
+        {
+          name: "twitter:image:alt",
+          content: loaderData.imageAlt ?? loaderData.title,
+        },
       ],
       links: [
         { rel: "canonical", href: url },

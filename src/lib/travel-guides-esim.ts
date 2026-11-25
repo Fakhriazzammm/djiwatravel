@@ -360,6 +360,7 @@ export const esimExplainerGuides: readonly TravelGuide[] = [
     sources: [APPLE_TRAVEL, APPLE_DATA, MAPS_OFFLINE],
     relatedDestinations: [{ code: "asia", label: "Bandingkan paket Asia" }],
     relatedLinks: [
+      { guide: "incheon-ke-seoul-arex-express-all-stop", label: "Cara naik AREX dari Incheon" },
       { guide: "cara-memilih-kuota-internet-saat-traveling", label: "Cara memilih kuota" },
       { guide: "cara-memasang-esim-sebelum-berangkat", label: "Cara memasang eSIM" },
     ],
@@ -423,6 +424,10 @@ export const esimExplainerGuides: readonly TravelGuide[] = [
     sources: [APPLE_TRAVEL, MAPS_OFFLINE],
     relatedDestinations: [{ code: "asia", label: "Bandingkan paket Asia" }],
     relatedLinks: [
+      {
+        guide: "suvarnabhumi-ke-bangkok-airport-rail-link",
+        label: "Cara naik Airport Rail Link ke Bangkok",
+      },
       {
         guide: "tips-internet-traveling-ke-singapura-dan-malaysia",
         label: "Internet Singapura dan Malaysia",

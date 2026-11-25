@@ -192,7 +192,7 @@ export function buildLlmsTxt({ destinations, guides }: LlmsInput): string {
     "## Halaman utama",
     `- [Beranda](${SEO_BASE_URL}/): ringkasan layanan dan FAQ`,
     `- [Explore destinasi](${SEO_BASE_URL}/explore): semua negara dan paket regional`,
-    `- [Panduan travel](${SEO_BASE_URL}/panduan): cara memilih dan memasang eSIM`,
+    `- [Panduan travel](${SEO_BASE_URL}/panduan): eSIM dan transportasi bandara`,
     `- [Teks lengkap panduan](${SEO_BASE_URL}/llms-full.txt): seluruh isi panduan dalam teks biasa`,
     `- [Feed RSS panduan](${SEO_BASE_URL}/panduan/feed.xml)`,
     "",

@@ -3,7 +3,12 @@ import { existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { buildGuideRss, buildGuidesFullText } from "@/lib/guide-feed";
-import { getTravelGuide, travelGuides, travelGuideSlugs } from "@/lib/travel-guides";
+import {
+  getNewestTravelGuides,
+  getTravelGuide,
+  travelGuides,
+  travelGuideSlugs,
+} from "@/lib/travel-guides";
 
 describe("travel guide SEO registry", () => {
   it("includes the 2026 Japan tax refund guide and its key traveler rules", () => {
@@ -53,6 +58,46 @@ describe("travel guide SEO registry", () => {
     }
   });
 
+  it("ships ten transport guides with answer-first copy and distinct covers", () => {
+    const arrivals = travelGuides.filter((guide) => guide.publishedAt === "2026-11-25");
+    expect(arrivals.map((guide) => guide.slug)).toEqual([
+      "jr-pass-jepang-worth-it-tokyo-kyoto-osaka",
+      "suica-vs-icoca-kartu-transportasi-jepang",
+      "cara-naik-mrt-singapura-kartu-contactless-ez-link",
+      "incheon-ke-seoul-arex-express-all-stop",
+      "suvarnabhumi-ke-bangkok-airport-rail-link",
+      "kansai-airport-ke-osaka-nankai-rapit-haruka",
+      "klia-ke-kuala-lumpur-ekspres-atau-transit",
+      "cara-pakai-tmoney-seoul-beli-top-up",
+      "bandara-hong-kong-ke-kota-airport-express-atau-bus",
+      "taoyuan-airport-ke-taipei-main-station-mrt",
+    ]);
+    expect(new Set(arrivals.map(({ image }) => image)).size).toBe(10);
+    for (const guide of arrivals) {
+      expect(guide.summary?.length).toBeGreaterThan(120);
+      expect(guide.faqs?.length).toBeGreaterThanOrEqual(3);
+      expect(guide.keywords?.length).toBeGreaterThanOrEqual(2);
+      expect(guide.sources?.length).toBeGreaterThanOrEqual(2);
+      expect(guide.title.length).toBeLessThanOrEqual(75);
+      expect(guide.description.length).toBeLessThanOrEqual(200);
+      expect(guide.paragraphs.length).toBeGreaterThanOrEqual(4);
+      expect(guide.steps.length).toBeGreaterThanOrEqual(3);
+      expect(guide.imageAlt?.length).toBeGreaterThan(20);
+      expect(guide.relatedLinks?.length).toBeGreaterThanOrEqual(1);
+      expect(["jp", "sg", "kr", "th", "my", "hk", "tw"]).toContain(
+        guide.relatedDestinations[0]?.code,
+      );
+      expect(guide.sources?.every((source) => source.url.startsWith("https://"))).toBe(true);
+      const image = guide.image;
+      expect(image).toMatch(/^\/assets\/guides\/.+\.jpg$/);
+      if (!image) continue;
+      expect(existsSync(resolve(process.cwd(), `public${image}`))).toBe(true);
+    }
+    expect(getNewestTravelGuides(10).map((guide) => guide.slug)).toEqual(
+      arrivals.map((guide) => guide.slug),
+    );
+  });
+
   it("builds RSS and full-text feeds for every guide", () => {
     const rss = buildGuideRss(travelGuides);
     const full = buildGuidesFullText(travelGuides);
@@ -75,6 +120,7 @@ describe("travel guide SEO registry", () => {
     const sitemap = readFileSync(resolve(process.cwd(), "src/routes/sitemap[.]xml.ts"), "utf8");
     expect(detail).toContain('rel: "canonical"');
     expect(detail).toContain('property: "og:type", content: "article"');
+    expect(detail).toContain('property: "og:image:alt"');
     expect(detail).toContain("<GuideShareActions title={guide.title}");
     expect(detail).toContain('"@type": "Article"');
     expect(detail).toContain(
@@ -82,6 +128,7 @@ describe("travel guide SEO registry", () => {
     );
     expect(detail).toContain('"@type": "BreadcrumbList"');
     expect(guideIndex).toContain("tax refund Jepang");
+    expect(guideIndex).toContain('property: "og:image"');
     expect(sitemap).toContain("getNewestTravelGuides().map");
     expect(sitemap).toContain("<lastmod>");
     expect(sitemap).not.toMatch(/urlEntry\(`\/(?:admin|api|checkout|order|receipt|my-esim)/);

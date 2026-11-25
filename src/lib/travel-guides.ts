@@ -1,4 +1,5 @@
 import { esimExplainerGuides } from "./travel-guides-esim";
+import { transitGuides } from "./travel-guides-transit";
 
 export type GuideLink =
   { to: "/titip-belanja" | "/my-trips/new"; label: string } | { guide: string; label: string };
@@ -30,6 +31,7 @@ export type TravelGuide = {
 
 /** Curated guides are intentionally versioned in source so every indexed page stays useful. */
 export const travelGuides: readonly TravelGuide[] = [
+  ...transitGuides,
   ...esimExplainerGuides,
   {
     slug: "tax-refund-jepang-2026",
@@ -152,6 +154,16 @@ export const travelGuides: readonly TravelGuide[] = [
       { code: "jp", label: "Lihat paket eSIM Jepang" },
       { code: "asia", label: "Bandingkan paket Asia" },
     ],
+    relatedLinks: [
+      {
+        guide: "jr-pass-jepang-worth-it-tokyo-kyoto-osaka",
+        label: "Hitung JR Pass untuk rute Jepangmu",
+      },
+      {
+        guide: "suica-vs-icoca-kartu-transportasi-jepang",
+        label: "Siapkan kartu Suica atau ICOCA",
+      },
+    ],
   },
   {
     slug: "internet-saat-umrah-dan-perjalanan-ke-arab-saudi",
@@ -256,6 +268,16 @@ export const travelGuides: readonly TravelGuide[] = [
     relatedDestinations: [
       { code: "sg", label: "Lihat paket eSIM Singapura" },
       { code: "my", label: "Lihat paket eSIM Malaysia" },
+    ],
+    relatedLinks: [
+      {
+        guide: "cara-naik-mrt-singapura-kartu-contactless-ez-link",
+        label: "Cara bayar MRT Singapura dari Changi",
+      },
+      {
+        guide: "klia-ke-kuala-lumpur-ekspres-atau-transit",
+        label: "Pilih kereta dari KLIA ke Kuala Lumpur",
+      },
     ],
   },
   {
@@ -588,6 +610,14 @@ export const travelGuides: readonly TravelGuide[] = [
     relatedLinks: [
       { guide: "cara-memilih-esim-untuk-liburan-ke-jepang", label: "Panduan memilih eSIM Jepang" },
       { guide: "cara-memasang-esim-sebelum-berangkat", label: "Cara memasang eSIM" },
+      {
+        guide: "jr-pass-jepang-worth-it-tokyo-kyoto-osaka",
+        label: "Hitung JR Pass sebelum berangkat",
+      },
+      {
+        guide: "suica-vs-icoca-kartu-transportasi-jepang",
+        label: "Pilih kartu transportasi Jepang",
+      },
       { to: "/my-trips/new", label: "Susun agenda perjalanan" },
     ],
   },
@@ -755,6 +785,18 @@ export const travelGuides: readonly TravelGuide[] = [
     relatedLinks: [
       { to: "/my-trips/new", label: "Susun agenda perjalanan" },
       { guide: "checklist-persiapan-ke-jepang", label: "Checklist persiapan ke Jepang" },
+      {
+        guide: "jr-pass-jepang-worth-it-tokyo-kyoto-osaka",
+        label: "Hitung JR Pass untuk rute ini",
+      },
+      {
+        guide: "suica-vs-icoca-kartu-transportasi-jepang",
+        label: "Pilih Suica atau ICOCA untuk kereta lokal",
+      },
+      {
+        guide: "kansai-airport-ke-osaka-nankai-rapit-haruka",
+        label: "Pilih kereta dari Bandara Kansai ke Osaka",
+      },
     ],
   },
   {
