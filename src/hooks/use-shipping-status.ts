@@ -1,15 +1,11 @@
 import { useEffect, useState } from "react";
 import { getShippingStatus } from "@/lib/shipping.fn";
-import {
-  DEFAULT_SHIPPING_CONFIG,
-  normalizeShippingConfig,
-  type ShippingConfig,
-} from "@/lib/shipping";
+import { DEFAULT_PUBLIC_SHIPPING_CONFIG, type PublicShippingConfig } from "@/lib/shipping";
 
-export type ShippingStatusView = { config: ShippingConfig; available: boolean };
+export type ShippingStatusView = { config: PublicShippingConfig; available: boolean };
 
 // Not available until the server says so: the Kirim Barang tile keeps its waitlist meanwhile.
-const FALLBACK: ShippingStatusView = { config: DEFAULT_SHIPPING_CONFIG, available: false };
+const FALLBACK: ShippingStatusView = { config: DEFAULT_PUBLIC_SHIPPING_CONFIG, available: false };
 
 let cached: ShippingStatusView | null = null;
 let inflight: Promise<ShippingStatusView> | null = null;
@@ -18,7 +14,7 @@ function load(): Promise<ShippingStatusView> {
   inflight ??= getShippingStatus()
     .then((value) => {
       cached = {
-        config: normalizeShippingConfig(value.config),
+        config: value.config,
         available: Boolean(value.available),
       };
       return cached;

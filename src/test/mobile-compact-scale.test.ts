@@ -26,6 +26,8 @@ const COMPACT_PAGES = [
   "src/components/feeds/feed-timeline.tsx",
   "src/routes/finder.tsx",
   "src/routes/index.tsx",
+  "src/routes/tiket.tsx",
+  "src/routes/tiket_.$rute.tsx",
   "src/routes/kirim-barang.index.tsx",
   "src/routes/kirim-barang.baru.tsx",
   "src/routes/kirim-barang.$id.tsx",

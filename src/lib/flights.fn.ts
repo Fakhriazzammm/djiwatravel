@@ -144,3 +144,12 @@ export const getAdminFlightEarnings = createServerFn({ method: "POST" })
     const { getFlightEarningsHandler } = await import("./flight-earnings.server");
     return getFlightEarningsHandler(data);
   });
+
+export const loadPublicFlightFares = createServerFn({ method: "GET" })
+  .validator((slug: string | undefined) =>
+    typeof slug === "string" ? slug.slice(0, 50) : undefined,
+  )
+  .handler(async ({ data }) => {
+    const { getPublicFlightFares } = await import("./public-flight-fares.server");
+    return getPublicFlightFares(data);
+  });

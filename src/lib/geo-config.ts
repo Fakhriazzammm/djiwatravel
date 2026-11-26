@@ -7,7 +7,7 @@
 export type GeoConfig = {
   /** Allows AI search/answer crawlers (OAI-SearchBot, PerplexityBot, Claude-SearchBot…) and serves llms.txt. */
   aiSearchEnabled: boolean;
-  /** Allows model-training crawlers (GPTBot, ClaudeBot, Google-Extended, CCBot…). */
+  /** Allows training crawlers and Google-Extended, which also governs Gemini app grounding. */
   aiTrainingEnabled: boolean;
 };
 

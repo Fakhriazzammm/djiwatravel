@@ -1,9 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { BackBar, Page } from "@/components/shell";
 import { FlightSearch } from "@/components/flight-search";
-import { getFlightsStatus } from "@/lib/flights.fn";
-import { DEFAULT_FLIGHTS_CONFIG } from "@/lib/flights";
+import { getFlightsStatus, loadPublicFlightFares } from "@/lib/flights.fn";
+import { DEFAULT_FLIGHTS_CONFIG, formatFlightPrice } from "@/lib/flights";
 import { getMyTripsHome } from "@/lib/my-trips.fn";
+import { FLIGHT_PRICE_NOTE } from "@/lib/public-flight-fares";
+import { SEO_BASE_URL } from "@/lib/seo";
 
 type FlightsSearch = {
   dari?: string;
@@ -40,21 +42,14 @@ export const Route = createFileRoute("/tiket")({
     if (pulang) out.pulang = pulang;
     return out;
   },
-  head: () => ({
-    meta: [
-      { title: "Cari tiket pesawat — Djiwa Travel" },
-      {
-        name: "description",
-        content: "Bandingkan harga tiket pesawat termurah lalu pesan di Aviasales.",
-      },
-    ],
-  }),
-  loaderDeps: ({ search }) => search,
+  loaderDeps: ({ search }): FlightsSearch => search,
   loader: async ({ deps }) => {
-    const status = await getFlightsStatus().catch(() => ({
-      config: DEFAULT_FLIGHTS_CONFIG,
-      available: false,
-    }));
+    const [status, routes] = await Promise.all([
+      getFlightsStatus().catch(() => ({ config: DEFAULT_FLIGHTS_CONFIG, available: false })),
+      !Object.values(deps).some(Boolean)
+        ? loadPublicFlightFares({ data: undefined }).catch(() => [])
+        : Promise.resolve([]),
+    ]);
     // Opened without a trip (the tile): borrow the traveler's next trip, when there is one.
     let prefill = {
       from: deps.dari,
@@ -81,25 +76,66 @@ export const Route = createFileRoute("/tiket")({
         // No session or no trips: the form simply starts empty.
       }
     }
-    return { status, prefill };
+    return { status, prefill, routes };
   },
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: "Cari tiket pesawat — Djiwa Travel" },
+      {
+        name: "description",
+        content:
+          "Lihat referensi harga tiket pesawat dari Jakarta dalam Rupiah dan cek harga terbaru untuk tanggal perjalananmu di Aviasales.",
+      },
+      ...(!loaderData?.status.available ? [{ name: "robots", content: "noindex" }] : []),
+    ],
+    links: [{ rel: "canonical", href: `${SEO_BASE_URL}/tiket` }],
+  }),
   component: FlightsPage,
 });
 
 function FlightsPage() {
-  const { status, prefill } = Route.useLoaderData();
+  const { status, prefill, routes } = Route.useLoaderData();
   return (
     <Page>
       <BackBar title="Tiket pesawat" fallbackTo="/" />
       {status.available ? (
         <FlightSearch prefill={prefill} config={status.config} />
       ) : (
-        <div role="status" className="rounded-2xl bg-surface p-6 text-center ring-1 ring-border/40">
+        <div role="status" className="rounded-2xl bg-surface p-4 text-center ring-1 ring-border/40">
           <p className="text-[15px] font-semibold">Pencarian tiket belum tersedia</p>
           <p className="mt-1 text-[13px] text-muted-foreground">
             Fitur ini sedang disiapkan. Coba lagi nanti.
           </p>
         </div>
+      )}
+      {routes.length > 0 && (
+        <section className="mt-4" aria-labelledby="public-flight-prices">
+          <h2 id="public-flight-prices" className="text-sm font-semibold">
+            Referensi harga tiket dari Jakarta
+          </h2>
+          <p className="mt-1 text-[13px] text-muted-foreground">{FLIGHT_PRICE_NOTE}</p>
+          <ul className="ios-group mt-2 divide-y divide-border">
+            {routes.map(({ route, fares }) => {
+              const fare = fares[0];
+              return (
+                <li key={route.slug}>
+                  <Link
+                    to="/tiket/$rute"
+                    params={{ rute: route.slug }}
+                    className="ios-row flex min-h-12 items-center justify-between gap-2"
+                  >
+                    <span className="text-sm font-semibold">
+                      {route.from} ke {route.to}
+                    </span>
+                    <span className="text-right text-[13px] text-muted-foreground">
+                      {fare ? `Mulai ${formatFlightPrice(fare.priceIdr)}` : "Cek rute"}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
     </Page>
   );

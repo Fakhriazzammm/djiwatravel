@@ -126,7 +126,7 @@ export function AdminFlightsPanel({
       <div className="flex items-center justify-between gap-2">
         <SectionHeading
           title="Tiket pesawat"
-          detail="Pencarian tiket di /tiket, pintu masuknya, White Label, dan skrip Travelpayouts."
+          detail="Pencarian tiket, White Label, dan tarif referensi publik. Tarif publik mengikuti status fitur, token, dan izin pencarian tamu."
         />
         <StatusPill tone={config.enabled ? "good" : "warn"}>
           {config.enabled ? "Aktif" : "Nonaktif"}
@@ -140,6 +140,15 @@ export function AdminFlightsPanel({
             value={tokenConfigured ? "Terpasang" : "Belum ada"}
             bad={!tokenConfigured}
           />
+          <Stat
+            label="Tarif publik"
+            value={
+              config.enabled && config.guestSearch && tokenConfigured ? "Diizinkan" : "Ditutup"
+            }
+          />
+          <a href="/tiket" className="self-center text-sm font-semibold underline">
+            Periksa halaman tiket publik
+          </a>
           <Stat label="Klik ke mitra (7 hari)" value={String(stats.clicks7d)} />
           <Stat label="Buka hasil lengkap (7 hari)" value={String(stats.embedOpens7d)} />
           <Stat label="Pencarian harga (sejak restart)" value={String(stats.searches)} />

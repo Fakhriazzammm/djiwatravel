@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { buildLlmsTxt } from "@/lib/geo";
 import { readGeoConfig } from "@/lib/geo-config.server";
+import { publicFlightFaresEnabled } from "@/lib/public-flight-fares.server";
 import { travelGuides } from "@/lib/travel-guides";
 
 export const Route = createFileRoute("/llms.txt")({
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/llms.txt")({
           .catch(() => []);
         const body = buildLlmsTxt({
           destinations: destinations.map((d) => ({ code: d.code, nameId: d.nameId })),
+          flightsEnabled: await publicFlightFaresEnabled().catch(() => false),
           guides: travelGuides.map((g) => ({
             slug: g.slug,
             title: g.title,
@@ -25,7 +27,7 @@ export const Route = createFileRoute("/llms.txt")({
         return new Response(body, {
           headers: {
             "content-type": "text/plain; charset=utf-8",
-            "cache-control": "public, max-age=3600",
+            "cache-control": "public, max-age=60",
           },
         });
       },

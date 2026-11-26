@@ -4,7 +4,7 @@ import {
   resolveCatalogDestination,
 } from "./destination-availability";
 import { toViewPackages } from "./package-view";
-import { getResellerCatalog } from "./reseller-catalog-cache";
+import { getResellerCatalog, isCatalogPriceCurrent } from "./reseller-catalog-cache";
 import { filterPackagesByDestination } from "./reseller-catalog-view";
 import { isBundleGroupCode, packagesForBundleGroup } from "./multi-country";
 import { getSellabilityState } from "./sellability.server";
@@ -70,6 +70,8 @@ export async function getDestinationPackagesHandler(code: string) {
       balanceUnknown ? undefined : sellability.preorderable,
     ),
     stale: catalog.stale,
+    priceCurrent: isCatalogPriceCurrent(catalog.syncedAt),
+    syncedAt: catalog.syncedAt,
     soldOut: unavailable.size,
     balanceUnknown,
     stockPending: balanceUnknown,

@@ -4,7 +4,7 @@ import {
   type ShippingBookingPayload,
 } from "@/components/shipping/shipping-booking-form";
 import { getLastShippingRecipient, getShippingStatus } from "@/lib/shipping.fn";
-import { DEFAULT_SHIPPING_CONFIG, normalizeShippingConfig } from "@/lib/shipping";
+import { DEFAULT_PUBLIC_SHIPPING_CONFIG } from "@/lib/shipping";
 
 export const Route = createFileRoute("/kirim-barang/baru")({
   head: () => ({
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/kirim-barang/baru")({
   }),
   loader: async () => {
     const status = await getShippingStatus().catch(() => ({
-      config: DEFAULT_SHIPPING_CONFIG,
+      config: DEFAULT_PUBLIC_SHIPPING_CONFIG,
       available: false,
     }));
     // Signed out: no previous recipient and the form asks to sign in at the end.
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/kirim-barang/baru")({
       .then((value) => ({ signedIn: true as const, value }))
       .catch(() => ({ signedIn: false as const, value: null }));
     return {
-      config: normalizeShippingConfig(status.config),
+      config: status.config,
       available: status.available,
       signedIn: last.signedIn,
       last: last.value,

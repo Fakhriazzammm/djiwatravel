@@ -108,11 +108,13 @@ export const Route = createFileRoute("/destination/$code")({
     const title = loaderData
       ? `eSIM ${loaderData.destination.nameId} — Djiwa Travel`
       : "Paket eSIM — Djiwa Travel";
-    const description = loaderData
-      ? buildDestinationFacts(loaderData.destination.nameId, loaderData.packages).answer.split(
-          /(?<=\.) /,
-        )[0]!
-      : "Paket eSIM untuk traveler Indonesia. Aktif otomatis, bayar QRIS atau VA.";
+    const facts = loaderData?.priceCurrent
+      ? buildDestinationFacts(loaderData.destination.nameId, loaderData.packages)
+      : null;
+    const description =
+      facts && facts.count > 0
+        ? (facts.answer.split(/(?<=\.) /)[0] ?? facts.answer)
+        : "Bandingkan kuota, masa aktif, dan ketersediaan paket eSIM untuk perjalananmu.";
     const code = loaderData?.destination.code.toLowerCase() ?? "";
     const image = destinationOgImage(code, BASE_URL);
     const listedPackages = loaderData?.packages ?? [];
@@ -126,9 +128,6 @@ export const Route = createFileRoute("/destination/$code")({
         url: `${BASE_URL}/plan/${encodeURIComponent(pkg.packageCode)}`,
       })),
     };
-    const facts = loaderData
-      ? buildDestinationFacts(loaderData.destination.nameId, loaderData.packages)
-      : null;
     const webPageSchema =
       loaderData && facts
         ? {
@@ -138,7 +137,9 @@ export const Route = createFileRoute("/destination/$code")({
             name: title,
             description: facts.answer,
             inLanguage: "id-ID",
-            dateModified: new Date().toISOString().slice(0, 10),
+            ...(loaderData.syncedAt != null
+              ? { dateModified: new Date(loaderData.syncedAt).toISOString() }
+              : {}),
             isPartOf: { "@type": "WebSite", name: "Djiwa Travel", url: BASE_URL },
           }
         : null;
@@ -423,8 +424,18 @@ const LONGER_PAGE = 12;
 
 function Destination() {
   const router = useRouter();
-  const { destination, packages, picks, switcher, network, stale, stockPending, daySlider } =
-    Route.useLoaderData();
+  const {
+    destination,
+    packages,
+    picks,
+    switcher,
+    network,
+    stale,
+    stockPending,
+    daySlider,
+    priceCurrent,
+    syncedAt,
+  } = Route.useLoaderData();
   const { availability } = Route.useSearch();
   const isRegionalDestination = destination.region === "Regional";
   const [quota, setQuota] = useState<QuotaFilter>("all");
@@ -541,7 +552,7 @@ function Destination() {
   const cheapest = packages
     .filter((pkg) => pkg.sellable)
     .sort((a, b) => a.priceIdr - b.priceIdr)[0];
-  const fromPrice = cheapest ? rupiah(cheapest.priceIdr) : null;
+  const fromPrice = priceCurrent && cheapest ? rupiah(cheapest.priceIdr) : null;
   const nothing = match.fit.length === 0 && match.longer.length === 0;
 
   return (
@@ -882,12 +893,12 @@ function Destination() {
           </div>
         </StickyCta>
       )}
-      {geoFacts.count > 0 ? (
+      {priceCurrent && syncedAt != null && geoFacts.count > 0 ? (
         <GeoAnswer
           heading={`Tentang eSIM ${destination.nameId}`}
           answer={geoFacts.answer}
           faqs={geoFacts.faqs}
-          updatedLabel={`Harga dan ketersediaan live dari katalog Djiwa Travel, diperbarui ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}.`}
+          updatedLabel={`Harga katalog per ${new Date(syncedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" })}. Cek harga terbaru sebelum membeli.`}
         />
       ) : null}
     </Page>

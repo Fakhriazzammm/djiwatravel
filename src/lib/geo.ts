@@ -5,6 +5,8 @@
  */
 import type { GeoConfig } from "./geo-config";
 import type { ViewPackage } from "./package-view";
+import { PUBLIC_SEARCH_PAGES } from "./public-search-pages";
+import { PUBLIC_FLIGHT_ROUTES, flightRouteUrl } from "./public-flight-fares";
 import { SEO_BASE_URL } from "./seo";
 
 export type FaqItem = { question: string; answer: string };
@@ -46,7 +48,7 @@ export function buildDestinationFacts(name: string, all: ViewPackage[]): Destina
   const answer = cheapest
     ? `Djiwa Travel menyediakan ${packages.length} paket eSIM ${name} untuk traveler Indonesia, mulai dari ${rupiah(cheapest.priceIdr)} untuk ${dataText(cheapest)} selama ${cheapest.durationDays} hari. ` +
       `Masa aktif ${minDays === maxDays ? `${maxDays} hari` : `${minDays}–${maxDays} hari`}${maxGb ? `, kuota hingga ${maxGb} GB` : ""}${hasUnlimited ? ", tersedia opsi data unlimited" : ""}. ` +
-      `Pembayaran lewat QRIS atau virtual account, eSIM dikirim digital setelah pembayaran, tanpa kartu fisik.`
+      `eSIM dikirim digital setelah pembayaran, tanpa kartu fisik.`
     : `Paket eSIM ${name} di Djiwa Travel sedang tidak tersedia. Lihat destinasi lain di djiwatravel.com/explore.`;
 
   const faqs: FaqItem[] = [
@@ -65,7 +67,7 @@ export function buildDestinationFacts(name: string, all: ViewPackage[]): Destina
     {
       question: `Bagaimana cara memakai eSIM ${name}?`,
       answer:
-        "Beli paket, bayar lewat QRIS atau virtual account, lalu buka eSIM dari halaman 'eSIM Saya' dan pindai QR code atau pasang manual. Ponsel harus mendukung eSIM dan tidak terkunci operator. Pasang eSIM sesuai petunjuk paket sebelum atau saat tiba di tujuan.",
+        "Beli paket, bayar melalui opsi yang tersedia di checkout, lalu buka eSIM dari halaman 'eSIM Saya' dan pindai QR code atau pasang manual. Ponsel harus mendukung eSIM dan tidak terkunci operator. Pasang eSIM sesuai petunjuk paket sebelum atau saat tiba di tujuan.",
     },
     {
       question: "Apakah ponsel saya mendukung eSIM?",
@@ -74,7 +76,7 @@ export function buildDestinationFacts(name: string, all: ViewPackage[]): Destina
     },
     {
       question: "Metode pembayaran apa yang tersedia?",
-      answer: "Djiwa Travel menerima pembayaran QRIS dan virtual account dalam Rupiah.",
+      answer: "Checkout menampilkan opsi pembayaran dalam Rupiah, termasuk QRIS.",
     },
   ];
   return { name, count: packages.length, cheapest, minDays, maxDays, maxGb, answer, faqs };
@@ -96,7 +98,7 @@ export const HOME_FAQS: FaqItem[] = [
   {
     question: "Apa itu Djiwa Travel?",
     answer:
-      "Djiwa Travel adalah layanan eSIM internasional untuk traveler Indonesia. Pilih destinasi, bayar dalam Rupiah lewat QRIS atau virtual account, lalu eSIM dikirim digital tanpa kartu fisik.",
+      "Djiwa Travel adalah layanan eSIM internasional untuk traveler Indonesia. Pilih destinasi, bayar dalam Rupiah melalui checkout, lalu eSIM dikirim digital tanpa kartu fisik.",
   },
   {
     question: "Apa itu eSIM dan apa bedanya dengan SIM biasa?",
@@ -111,7 +113,7 @@ export const HOME_FAQS: FaqItem[] = [
   {
     question: "Bagaimana cara membeli dan mengaktifkan eSIM?",
     answer:
-      "Pilih destinasi dan paket, bayar lewat QRIS atau virtual account, lalu pindai QR code dari halaman 'eSIM Saya'. Panduan lengkap ada di djiwatravel.com/panduan.",
+      "Pilih destinasi dan paket, selesaikan pembayaran di checkout, lalu pindai QR code dari halaman 'eSIM Saya'. Panduan lengkap ada di djiwatravel.com/panduan.",
   },
 ];
 
@@ -179,22 +181,31 @@ export function buildRobotsTxt(config: GeoConfig): string {
 }
 
 export type LlmsInput = {
+  flightsEnabled?: boolean;
   destinations: Array<{ code: string; nameId: string }>;
   guides: Array<{ slug: string; title: string; description: string; summary?: string | undefined }>;
 };
 
-export function buildLlmsTxt({ destinations, guides }: LlmsInput): string {
+export function buildLlmsTxt({ destinations, guides, flightsEnabled }: LlmsInput): string {
   const lines = [
     "# Djiwa Travel",
     "",
-    "> Djiwa Travel menjual eSIM internasional untuk traveler Indonesia. Harga dalam Rupiah (IDR), pembayaran QRIS atau virtual account, eSIM dikirim digital tanpa kartu fisik. Harga dan stok live ada di halaman destinasi; jangan mengutip harga dari sumber lain.",
+    "> Djiwa Travel menyediakan eSIM internasional dan layanan perjalanan. Gunakan halaman produk untuk harga dan ketersediaan terbaru. Tarif pesawat adalah harga indikatif dari Aviasales.",
     "",
     "## Halaman utama",
-    `- [Beranda](${SEO_BASE_URL}/): ringkasan layanan dan FAQ`,
-    `- [Explore destinasi](${SEO_BASE_URL}/explore): semua negara dan paket regional`,
-    `- [Panduan travel](${SEO_BASE_URL}/panduan): eSIM dan transportasi bandara`,
-    `- [Teks lengkap panduan](${SEO_BASE_URL}/llms-full.txt): seluruh isi panduan dalam teks biasa`,
+    ...PUBLIC_SEARCH_PAGES.map(({ path, label }) => `- [${label}](${SEO_BASE_URL}${path})`),
+    `- [Harga publik dan teks lengkap panduan](${SEO_BASE_URL}/llms-full.txt): tarif pesawat, harga eSIM dan panduan dalam teks biasa`,
     `- [Feed RSS panduan](${SEO_BASE_URL}/panduan/feed.xml)`,
+    ...(flightsEnabled
+      ? [
+          "",
+          "## Rute tiket pesawat",
+          `- [Pencarian tiket pesawat](${SEO_BASE_URL}/tiket)`,
+          ...PUBLIC_FLIGHT_ROUTES.map(
+            (route) => `- [Tiket ${route.from} ke ${route.to}](${flightRouteUrl(route)})`,
+          ),
+        ]
+      : []),
     "",
     "## Panduan",
     ...guides.map(

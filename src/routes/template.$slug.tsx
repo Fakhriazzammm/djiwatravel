@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { formatIdr, templatePath } from "@/lib/trip-templates";
 import { useBetterAuthUser } from "@/lib/use-better-auth-user";
+import { canonicalSearchPage } from "@/lib/public-search-pages";
 import { getPublicTemplate, reportTemplate, copyTemplate } from "@/lib/trip-templates.fn";
 
 export const Route = createFileRoute("/template/$slug")({
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/template/$slug")({
       ? `${t.days} hari di ${t.destinationName}${t.ownerName ? ` oleh ${t.ownerName}` : ""}. Pakai itinerary ini lalu atur tanggalmu.`
       : "Template itinerary di Djiwa Travel.";
     return {
+      ...(t ? { links: canonicalSearchPage(templatePath(t.slug)) } : {}),
       meta: [
         { title },
         { name: "description", content: description },

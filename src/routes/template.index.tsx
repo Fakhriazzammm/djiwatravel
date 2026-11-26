@@ -1,3 +1,4 @@
+import { canonicalSearchPage } from "@/lib/public-search-pages";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, Search } from "lucide-react";
 import { useState } from "react";
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/template/")({
     return out;
   },
   head: () => ({
+    links: canonicalSearchPage("/template"),
     meta: [
       { title: "Template itinerary — Djiwa Travel" },
       {

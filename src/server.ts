@@ -1,4 +1,5 @@
 import "./lib/error-capture";
+import { isNonSearchPage } from "./lib/public-search-pages";
 import { canonicalRedirectUrl } from "./lib/canonical-host";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
@@ -80,7 +81,15 @@ export default {
 
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeCatastrophicSsrResponse(response);
+      if (!isNonSearchPage(new URL(request.url).pathname)) return normalized;
+      const headers = new Headers(normalized.headers);
+      headers.set("X-Robots-Tag", "noindex, nofollow");
+      return new Response(normalized.body, {
+        status: normalized.status,
+        statusText: normalized.statusText,
+        headers,
+      });
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {

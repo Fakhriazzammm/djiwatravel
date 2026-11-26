@@ -1,78 +1,52 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { getListableDestinations } from "@/lib/destination-availability.server";
+import { PUBLIC_FLIGHT_ROUTES } from "@/lib/public-flight-fares";
+import { publicFlightFaresEnabled } from "@/lib/public-flight-fares.server";
+import { PUBLIC_SEARCH_PAGES } from "@/lib/public-search-pages";
 import { getNewestTravelGuides } from "@/lib/travel-guides";
 import { getIndexablePlans } from "@/lib/seo-indexability.server";
+import { listIndexableTemplateSlugs } from "@/lib/trip-templates.server";
+import { SEO_BASE_URL } from "@/lib/seo";
 
-const BASE_URL = "https://djiwatravel.com";
-
-/**
- * Thousands of near-identical /plan pages dilute crawl budget on a young domain, so the sitemap
- * only advertises a few representative plans per destination. Every other plan stays reachable
- * (and indexable) through links from its destination page.
- */
-const SITEMAP_PLANS_PER_DESTINATION = 3;
-
-function pickRepresentativePlans<
-  T extends { package: { locationCodes: string[]; priceIdr: number } },
->(plans: T[]): T[] {
-  const byDestination = new Map<string, T[]>();
-  for (const plan of plans) {
-    const key = plan.package.locationCodes[0] ?? "ASIA";
-    const list = byDestination.get(key) ?? [];
-    list.push(plan);
-    byDestination.set(key, list);
-  }
-  return [...byDestination.values()].flatMap((list) =>
-    [...list]
-      .sort((a, b) => a.package.priceIdr - b.package.priceIdr)
-      .slice(0, SITEMAP_PLANS_PER_DESTINATION),
-  );
-}
-
-/** Public pages that should be indexed. Order matters only for readability. */
-const STATIC_PATHS: Array<{ path: string; priority: string; changefreq: string }> = [
-  { path: "/", priority: "1.0", changefreq: "daily" },
-  { path: "/explore", priority: "0.9", changefreq: "daily" },
-  { path: "/panduan", priority: "0.8", changefreq: "weekly" },
-];
-
-function urlEntry(path: string, priority: string, changefreq: string, lastmod?: string) {
+function urlEntry(path: string, lastmod?: string) {
   return [
     "  <url>",
-    `    <loc>${BASE_URL}${path}</loc>`,
+    `    <loc>${SEO_BASE_URL}${path}</loc>`,
     ...(lastmod ? [`    <lastmod>${lastmod}</lastmod>`] : []),
-    `    <changefreq>${changefreq}</changefreq>`,
-    `    <priority>${priority}</priority>`,
     "  </url>",
   ].join("\n");
 }
 
-/**
- * XML sitemap: the storefront is a search-driven business (people Google "eSIM Jepang"), so
- * every destination page needs a discoverable URL. Generated from the same destination list
- * the app renders, so it cannot drift from the catalogue.
- */
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const [indexed, plans] = await Promise.all([
+        const [destinations, plans, flights, templates] = await Promise.allSettled([
           getListableDestinations(5_000),
           getIndexablePlans(5_000),
+          publicFlightFaresEnabled(),
+          listIndexableTemplateSlugs(),
         ]);
         const entries = [
-          ...STATIC_PATHS.map(({ path, priority, changefreq }) =>
-            urlEntry(path, priority, changefreq),
-          ),
+          ...PUBLIC_SEARCH_PAGES.map(({ path }) => urlEntry(path)),
+          ...(flights.status === "fulfilled" && flights.value
+            ? [
+                urlEntry("/tiket"),
+                ...PUBLIC_FLIGHT_ROUTES.map(({ slug }) => urlEntry(`/tiket/${slug}`)),
+              ]
+            : []),
           ...getNewestTravelGuides().map((guide) =>
-            urlEntry(`/panduan/${guide.slug}`, "0.7", "monthly", guide.updatedAt),
+            urlEntry(`/panduan/${guide.slug}`, guide.updatedAt),
           ),
-          ...indexed.map((destination) =>
-            urlEntry(`/destination/${destination.code.toLowerCase()}`, "0.8", "weekly"),
+          ...(destinations.status === "fulfilled" ? destinations.value : []).map((destination) =>
+            urlEntry(`/destination/${destination.code.toLowerCase()}`),
           ),
-          ...pickRepresentativePlans(plans).map(({ package: plan }) =>
-            urlEntry(`/plan/${encodeURIComponent(plan.packageCode)}`, "0.9", "weekly"),
+          ...(plans.status === "fulfilled" ? plans.value : []).map(({ package: plan }) =>
+            urlEntry(`/plan/${encodeURIComponent(plan.packageCode)}`),
+          ),
+          ...(templates.status === "fulfilled" ? templates.value : []).map((slug) =>
+            urlEntry(`/template/${encodeURIComponent(slug)}`),
           ),
         ];
         const body = [
@@ -85,7 +59,7 @@ export const Route = createFileRoute("/sitemap.xml")({
         return new Response(body, {
           headers: {
             "content-type": "application/xml; charset=utf-8",
-            "cache-control": "public, max-age=3600",
+            "cache-control": "public, max-age=60",
           },
         });
       },

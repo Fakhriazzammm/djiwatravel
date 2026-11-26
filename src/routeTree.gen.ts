@@ -104,6 +104,7 @@ import { Route as RefundOrderRouteImport } from './routes/refund.$order'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as TemplateIndexRouteImport } from './routes/template.index'
 import { Route as TemplateSlugRouteImport } from './routes/template.$slug'
+import { Route as TiketRuteRouteImport } from './routes/tiket_.$rute'
 import { Route as TitipBelanjaIndexRouteImport } from './routes/titip-belanja.index'
 import { Route as WalletPayRouteImport } from './routes/wallet.pay'
 import { Route as AdminCustomerIdRouteImport } from './routes/admin.customer.$id'
@@ -615,6 +616,11 @@ const TemplateSlugRoute = TemplateSlugRouteImport.update({
   path: '/template/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TiketRuteRoute = TiketRuteRouteImport.update({
+  id: '/tiket_/$rute',
+  path: '/tiket/$rute',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TitipBelanjaIndexRoute = TitipBelanjaIndexRouteImport.update({
   id: '/titip-belanja/',
   path: '/titip-belanja/',
@@ -882,6 +888,7 @@ export interface FileRoutesByFullPath {
   '/refund/$order': typeof RefundOrderRoute
   '/share/$token': typeof ShareTokenRoute
   '/template/$slug': typeof TemplateSlugRoute
+  '/tiket/$rute': typeof TiketRuteRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/feeds/': typeof FeedsIndexRoute
@@ -1013,6 +1020,7 @@ export interface FileRoutesByTo {
   '/refund/$order': typeof RefundOrderRoute
   '/share/$token': typeof ShareTokenRoute
   '/template/$slug': typeof TemplateSlugRoute
+  '/tiket/$rute': typeof TiketRuteRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin': typeof AdminIndexRoute
   '/feeds': typeof FeedsIndexRoute
@@ -1145,6 +1153,7 @@ export interface FileRoutesById {
   '/refund/$order': typeof RefundOrderRoute
   '/share/$token': typeof ShareTokenRoute
   '/template/$slug': typeof TemplateSlugRoute
+  '/tiket_/$rute': typeof TiketRuteRoute
   '/wallet/pay': typeof WalletPayRoute
   '/admin/': typeof AdminIndexRoute
   '/feeds/': typeof FeedsIndexRoute
@@ -1278,6 +1287,7 @@ export interface FileRouteTypes {
     | '/refund/$order'
     | '/share/$token'
     | '/template/$slug'
+    | '/tiket/$rute'
     | '/wallet/pay'
     | '/admin/'
     | '/feeds/'
@@ -1409,6 +1419,7 @@ export interface FileRouteTypes {
     | '/refund/$order'
     | '/share/$token'
     | '/template/$slug'
+    | '/tiket/$rute'
     | '/wallet/pay'
     | '/admin'
     | '/feeds'
@@ -1540,6 +1551,7 @@ export interface FileRouteTypes {
     | '/refund/$order'
     | '/share/$token'
     | '/template/$slug'
+    | '/tiket_/$rute'
     | '/wallet/pay'
     | '/admin/'
     | '/feeds/'
@@ -1670,6 +1682,7 @@ export interface RootRouteChildren {
   RefundOrderRoute: typeof RefundOrderRoute
   ShareTokenRoute: typeof ShareTokenRoute
   TemplateSlugRoute: typeof TemplateSlugRoute
+  TiketRuteRoute: typeof TiketRuteRoute
   AdminIndexRoute: typeof AdminIndexRoute
   FeedsIndexRoute: typeof FeedsIndexRoute
   KirimBarangIndexRoute: typeof KirimBarangIndexRoute
@@ -2374,6 +2387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TemplateSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tiket_/$rute': {
+      id: '/tiket_/$rute'
+      path: '/tiket/$rute'
+      fullPath: '/tiket/$rute'
+      preLoaderRoute: typeof TiketRuteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/titip-belanja/': {
       id: '/titip-belanja/'
       path: '/titip-belanja'
@@ -2765,6 +2785,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefundOrderRoute: RefundOrderRoute,
   ShareTokenRoute: ShareTokenRoute,
   TemplateSlugRoute: TemplateSlugRoute,
+  TiketRuteRoute: TiketRuteRoute,
   AdminIndexRoute: AdminIndexRoute,
   FeedsIndexRoute: FeedsIndexRoute,
   KirimBarangIndexRoute: KirimBarangIndexRoute,

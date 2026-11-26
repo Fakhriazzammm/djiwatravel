@@ -1,3 +1,4 @@
+import { canonicalSearchPage } from "@/lib/public-search-pages";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, MessageCircle, RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -48,6 +49,7 @@ async function getCases(): Promise<SupportData> {
 
 export const Route = createFileRoute("/support")({
   head: () => ({
+    links: canonicalSearchPage("/support"),
     meta: [
       { title: "Bantuan — Djiwa Travel" },
       { name: "description", content: "Hubungi tim bantuan Djiwa Travel." },

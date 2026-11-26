@@ -314,9 +314,19 @@ route, service, and environment at each boundary.
 
 ## GEO / AI discoverability
 
-- `/robots.txt` and `/llms.txt` are dynamic routes (`src/routes/robots[.]txt.ts`, `llms[.]txt.ts`);
-  `public/robots.txt` no longer exists. Both read `admin_settings.aiSearch` (Admin → Settings →
+- `/robots.txt`, `/llms.txt`, and `/llms-full.txt` read `admin_settings.aiSearch` (Admin → Settings →
   "Visibilitas AI (GEO)", audited, versioned). Missing row or DB failure falls back to open defaults.
+  `OAI-SearchBot`, `ChatGPT-User`, `Claude-SearchBot`, and `Claude-User` follow the AI search switch.
+  `Google-Extended` follows the training switch and also governs grounding for Gemini apps.
+  `Googlebot` remains eligible to crawl public pages for Google Search.
+- `/llms-full.txt` includes indicative Aviasales fares from the same public route loader used by
+  `/tiket/$rute`, published eSIM prices from the reseller catalogue, and the configured public
+  shipping tariff when available. Public flight fares require an enabled provider and guest search.
+  Airfare rows are one-way, dated, and link to a fresh search. The eSIM feed drops snapshots older
+  than 15 minutes and excludes unavailable packages.
+- `/sitemap.xml` includes the public service pages, published itineraries, guides, enabled flight
+  routes, eSIM destinations, and all eligible plan URLs. Private and tokenized surfaces are flagged
+  with an HTTP `X-Robots-Tag` in addition to their existing access checks.
 - `src/lib/geo.ts` builds the answer-first summary, FAQ, robots and llms text from live catalogue data;
   `GeoAnswer` renders it as visible SSR text and the same FAQ feeds `FAQPage` JSON-LD
   (Home + `/destination/$code`). Destination pages deliberately carry no `Product` (see

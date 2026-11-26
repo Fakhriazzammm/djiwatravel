@@ -30,14 +30,12 @@ export function productJsonLd(input: {
   priceIdr: number;
   available?: boolean;
   image?: string;
-  /** ISO date until which the price is stated valid; defaults to 7 days (catalogue is live). */
+  /** Use only when the merchant actually guarantees an expiry date. */
   priceValidUntil?: string;
   durationDays?: number;
   dataLabel?: string;
   coverage?: string;
 }): JsonLd {
-  const validUntil =
-    input.priceValidUntil ?? new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
   const props = [
     input.dataLabel && { "@type": "PropertyValue", name: "Kuota data", value: input.dataLabel },
     input.durationDays && {
@@ -63,7 +61,7 @@ export function productJsonLd(input: {
       url: input.url,
       priceCurrency: "IDR",
       price: input.priceIdr,
-      priceValidUntil: validUntil,
+      ...(input.priceValidUntil ? { priceValidUntil: input.priceValidUntil } : {}),
       itemCondition: "https://schema.org/NewCondition",
       availability:
         input.available === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",

@@ -43,6 +43,7 @@ import {
   normalizeJapanPostal,
   normalizeShippingConfig,
   parseShippingConfig,
+  publicShippingConfig,
   quoteShipping,
   shippingCodeFrom,
   shippingCountryEnabled,
@@ -87,7 +88,7 @@ const paymentConfigured = () => Boolean(process.env["MAYAR_API_KEY"]);
 export async function getShippingStatusHandler() {
   const config = await getShippingConfig();
   return {
-    config,
+    config: publicShippingConfig(config),
     available: shippingCountryEnabled(config, "JP") && paymentConfigured(),
   };
 }

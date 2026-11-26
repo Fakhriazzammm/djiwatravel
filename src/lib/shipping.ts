@@ -160,6 +160,36 @@ export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
   ],
 };
 
+/** Fields used by the public shipping page and booking form. */
+export function publicShippingConfig(config: ShippingConfig) {
+  const {
+    enabled,
+    minKg,
+    roundKg,
+    maxKg,
+    minPhotos,
+    dropPoint,
+    dropDeadlineDays,
+    eta,
+    prohibited,
+  } = config;
+  return {
+    enabled,
+    minKg,
+    roundKg,
+    maxKg,
+    minPhotos,
+    dropPoint,
+    dropDeadlineDays,
+    eta,
+    prohibited,
+    countries: { JP: { rateIdrPerKg: config.countries.JP.rateIdrPerKg } },
+  };
+}
+
+export type PublicShippingConfig = ReturnType<typeof publicShippingConfig>;
+export const DEFAULT_PUBLIC_SHIPPING_CONFIG = publicShippingConfig(DEFAULT_SHIPPING_CONFIG);
+
 const bool = (value: unknown, label: string) => {
   if (typeof value !== "boolean") throw new Error(`shipping.${label} harus boolean`);
   return value;

@@ -86,13 +86,13 @@ export function packageDestinationLabel(
   const prefix = trimPrefix(pkg.name);
   const localizedPrefix = codeNames[prefix] ?? prefix;
   if (localizedPrefix && !/^global\d*$/i.test(localizedPrefix)) return localizedPrefix;
-  const names = pkg.locationCodes.map(localizedCountryName).filter(Boolean);
+  const names = pkg.locationCodes.map((code) => localizedCountryName(code)).filter(Boolean);
   if (names.length === 1) return names[0];
   if (names.length > 1) return `Regional · ${names.length} negara`;
   return "Internasional";
 }
 export function packageCoverageLabel(pkg: Pick<ResellerCatalogPackage, "locationCodes">) {
-  const names = pkg.locationCodes.map(localizedCountryName).filter(Boolean);
+  const names = pkg.locationCodes.map((code) => localizedCountryName(code)).filter(Boolean);
   if (names.length === 0) return "Cakupan internasional";
   if (names.length <= 3) return names.join(", ");
   return `${names.slice(0, 2).join(", ")} + ${names.length - 2} negara lainnya`;

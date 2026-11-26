@@ -22,7 +22,7 @@ import {
   validateShippingGoods,
   validateShippingInbound,
   validateShippingRecipient,
-  type ShippingConfig,
+  type PublicShippingConfig,
 } from "@/lib/shipping";
 
 export type ShippingBookingPayload = {
@@ -41,7 +41,7 @@ export type ShippingBookingPayload = {
 };
 
 export type ShippingBookingFormProps = {
-  config: ShippingConfig;
+  config: PublicShippingConfig;
   available: boolean;
   signedIn: boolean;
   last: ShippingBookingPayload["recipient"] | null;

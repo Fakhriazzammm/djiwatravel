@@ -48,6 +48,27 @@ describe("GEO builders", () => {
     expect(closed).toContain("Sitemap:");
   });
 
+  it("permits ChatGPT, Claude and Gemini on public routes and keeps their Admin controls distinct", () => {
+    const rulesFor = (robots: string, agent: string) =>
+      robots.split("\n\n").find((group) => group.split("\n").includes(`User-agent: ${agent}`));
+
+    const open = buildRobotsTxt(DEFAULT_GEO_CONFIG);
+    const trainingOff = buildRobotsTxt({ aiSearchEnabled: true, aiTrainingEnabled: false });
+    const searchOff = buildRobotsTxt({ aiSearchEnabled: false, aiTrainingEnabled: true });
+    for (const agent of ["OAI-SearchBot", "ChatGPT-User", "Claude-SearchBot", "Claude-User"]) {
+      expect(rulesFor(open, agent)).toContain("\nAllow: /\nDisallow: /admin\nDisallow: /api/");
+      expect(rulesFor(trainingOff, agent)).toContain("\nAllow: /\n");
+      expect(rulesFor(searchOff, agent)).toBe(`User-agent: ${agent}\nDisallow: /`);
+    }
+
+    expect(rulesFor(open, "Google-Extended")).toContain("\nAllow: /\n");
+    expect(rulesFor(searchOff, "Google-Extended")).toContain("\nAllow: /\n");
+    expect(rulesFor(trainingOff, "Google-Extended")).toBe(
+      "User-agent: Google-Extended\nDisallow: /",
+    );
+    expect(rulesFor(trainingOff, "Googlebot")).toContain("\nAllow: /\n");
+  });
+
   it("llms.txt lists destinations and guides", () => {
     const t = buildLlmsTxt({
       destinations: [{ code: "JP", nameId: "Jepang" }],
@@ -62,7 +83,7 @@ describe("GEO builders", () => {
     expect(parseGeoConfig({})).toEqual(DEFAULT_GEO_CONFIG);
   });
 
-  it("product schema carries validity, availability and seller", () => {
+  it("product schema carries availability and seller without inventing a validity date", () => {
     const ld = productJsonLd({
       name: "n",
       description: "d",
@@ -71,10 +92,10 @@ describe("GEO builders", () => {
       priceIdr: 1,
       available: false,
     }) as {
-      offers: { availability: string; priceValidUntil: string; seller: unknown };
+      offers: { availability: string; priceValidUntil?: string; seller: unknown };
     };
     expect(ld.offers.availability).toBe("https://schema.org/OutOfStock");
-    expect(ld.offers.priceValidUntil).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(ld.offers.priceValidUntil).toBeUndefined();
     expect(ld.offers.seller).toBeTruthy();
   });
 });

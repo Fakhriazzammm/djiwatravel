@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { notFound } from "@tanstack/react-router";
-import { getResellerCatalog } from "@/lib/reseller-catalog-cache";
+import { getResellerCatalog, isCatalogPriceCurrent } from "@/lib/reseller-catalog-cache";
 import { loadLiveResellerPackage } from "@/lib/esim-access-catalog";
 import { resolveCheckoutPackage } from "@/lib/checkout-package";
 import { getSellabilityState } from "@/lib/sellability.server";
@@ -14,16 +14,17 @@ export const loadCheckout = createServerFn({ method: "GET" })
     // Price the page from the provider's current catalogue, so what the customer sees is what the
     // order is created with (and what the provider will accept).
     const live = await loadLiveResellerPackage(data).catch(() => null);
-    const catalog = await getResellerCatalog();
-    const pkg = live ?? resolveCheckoutPackage(catalog.packages, data);
+    const catalog = live ? null : await getResellerCatalog();
+    const pkg = live ?? (catalog && resolveCheckoutPackage(catalog.packages, data));
     if (!pkg) throw notFound();
     const sellability = await getSellabilityState([pkg]);
     // Display fields only: the full record carries our cost basis (lib/package-view.ts).
     return {
+      priceCurrent: Boolean(live || (catalog && isCatalogPriceCurrent(catalog.syncedAt))),
       pkg: toViewPackage(
         pkg,
-        !sellability.hidden.has(pkg.packageCode),
-        sellability.preorderable.has(pkg.packageCode),
+        pkg.available !== false && !sellability.hidden.has(pkg.packageCode),
+        pkg.available !== false && sellability.preorderable.has(pkg.packageCode),
       ),
       djiwaPayEnabled:
         Buffer.byteLength(

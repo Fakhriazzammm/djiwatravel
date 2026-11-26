@@ -230,6 +230,7 @@ export type FlightOffer = {
   flightNumber: string;
   departureAt: string;
   returnAt: string | null;
+  expiresAt?: string;
   transfers: number;
   durationMinutes: number | null;
   priceIdr: number;
@@ -382,6 +383,7 @@ export function normalizeFlightOffer(
   if (!Number.isFinite(price) || price <= 0 || price > 1e9) return null;
   if (Number.isNaN(Date.parse(departureAt))) return null;
   const returnAt = text(r["return_at"], 40);
+  const expiresAt = text(r["expires_at"], 40);
   const duration = Number(r["duration_to"] ?? r["duration"]);
   const airline = text(r["airline"], 3).toUpperCase();
   const flightNumber = text(r["flight_number"], 8);
@@ -394,6 +396,7 @@ export function normalizeFlightOffer(
     flightNumber,
     departureAt,
     returnAt: Number.isNaN(Date.parse(returnAt)) ? null : returnAt,
+    ...(Number.isFinite(Date.parse(expiresAt)) ? { expiresAt } : {}),
     transfers: Number.isInteger(Number(r["transfers"])) ? Math.max(0, Number(r["transfers"])) : 0,
     durationMinutes: Number.isFinite(duration) && duration > 0 ? Math.round(duration) : null,
     priceIdr: Math.round(price),

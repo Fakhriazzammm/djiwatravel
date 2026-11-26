@@ -63,7 +63,7 @@ export function buildGuidesFullText(guides: readonly TravelGuide[]): string {
   return [
     "# Djiwa Travel: panduan lengkap",
     "",
-    "> Teks lengkap panduan travel Djiwa Travel untuk mesin pencari AI. Harga dan stok paket tidak ada di sini; lihat halaman destinasi untuk data live.",
+    "> Teks lengkap panduan travel Djiwa Travel untuk mesin pencari AI. Lihat halaman produk dan rute untuk memeriksa harga terbaru.",
     "",
     ...blocks,
   ].join("\n");

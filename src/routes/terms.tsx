@@ -1,8 +1,10 @@
+import { canonicalSearchPage } from "@/lib/public-search-pages";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BackBar, Page } from "@/components/shell";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
+    links: canonicalSearchPage("/terms"),
     meta: [
       { title: "Syarat & Ketentuan — Djiwa Travel" },
       { name: "description", content: "Informasi syarat dan ketentuan Djiwa Travel." },

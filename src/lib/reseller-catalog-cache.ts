@@ -33,6 +33,12 @@ const defaultStore: ResellerCatalogCacheStore = {
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_MAX_STALE_MS = 15 * 60 * 1000;
+
+export function isCatalogPriceCurrent(syncedAt: number | null): boolean {
+  return (
+    syncedAt !== null && Number.isFinite(syncedAt) && Date.now() - syncedAt <= DEFAULT_MAX_STALE_MS
+  );
+}
 const DEFAULT_PROVIDER_TIMEOUT_MS = 8_000;
 const SHARED_STORE_KEY = "__djiwa_reseller_catalog_store__";
 

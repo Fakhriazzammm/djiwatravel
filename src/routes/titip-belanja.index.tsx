@@ -1,3 +1,4 @@
+import { canonicalSearchPage } from "@/lib/public-search-pages";
 import { useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ShopperHome } from "@/components/shopper/shopper-home";
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/titip-belanja/")({
   validateSearch: (search: Record<string, unknown>): { cart?: boolean } =>
     search["cart"] === true || search["cart"] === "true" ? { cart: true } : {},
   head: () => ({
+    links: canonicalSearchPage("/titip-belanja"),
     meta: [
       { title: "Titip Belanja — Djiwa Travel" },
       {

@@ -1,8 +1,10 @@
+import { canonicalSearchPage } from "@/lib/public-search-pages";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BackBar, Page } from "@/components/shell";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
+    links: canonicalSearchPage("/privacy"),
     meta: [
       { title: "Kebijakan Privasi — Djiwa Travel" },
       { name: "description", content: "Informasi privasi dan data pelanggan Djiwa Travel." },

@@ -1182,3 +1182,13 @@ export async function saveTemplatesConfigHandler({ data }: { data: unknown }) {
     client.release();
   }
 }
+
+/** The same publication gate as the public template detail loader. */
+export async function listIndexableTemplateSlugs(): Promise<string[]> {
+  const { config } = await readTripTemplatesConfig();
+  if (!config.enabled) return [];
+  const { rows } = await pool.query<{ slug: string }>(
+    "select slug from trip_templates where status = 'published' order by slug",
+  );
+  return rows.map(({ slug }) => slug);
+}

@@ -319,29 +319,58 @@ export async function fetchMonthOffers(
   destination: string,
   month: string,
 ): Promise<FlightOffer[]> {
+  return (await readMonthOffers(origin, destination, month)).offers;
+}
+
+type MonthOffers = { at: number; offers: FlightOffer[] };
+const monthOffersInFlight = new Map<string, Promise<MonthOffers>>();
+
+export async function readMonthOffers(
+  origin: string,
+  destination: string,
+  month: string,
+): Promise<MonthOffers> {
   const config = await getFlightsConfigHandler();
   const token = flightsToken();
-  if (!config.enabled || !token) return [];
   const search = parseFlightSearch({ origin, destination, departureDate: month });
-  if (!search) return [];
+  if (!config.enabled || !token || !search) return { at: Date.now(), offers: [] };
   const key = flightSearchKey(search);
   const hit = offerCache.get(key);
-  if (hit && Date.now() - hit.at < OFFER_CACHE_MS) return hit.offers;
-  const url = new URL(PRICES_URL);
-  url.searchParams.set("origin", search.origin);
-  url.searchParams.set("destination", search.destination);
-  url.searchParams.set("departure_at", search.departureDate);
-  url.searchParams.set("one_way", "true");
-  url.searchParams.set("currency", "idr");
-  url.searchParams.set("sorting", "price");
-  url.searchParams.set("unique", "false");
-  url.searchParams.set("limit", "30");
-  const body = (await fetchJson(url.toString(), token)) as { success?: unknown; data?: unknown };
-  if (body.success === false) throw new Error("provider rejected");
-  const offers = normalizeFlightOffers(body.data, config.partnerId, 31, await airlineNames());
-  offerCache.set(key, { at: Date.now(), offers });
-  trim(offerCache);
-  return offers;
+  if (hit && Date.now() - hit.at < OFFER_CACHE_MS) return hit;
+  const pending = monthOffersInFlight.get(key);
+  if (pending) return pending;
+
+  const refresh = (async () => {
+    const url = new URL(PRICES_URL);
+    url.searchParams.set("origin", search.origin);
+    url.searchParams.set("destination", search.destination);
+    url.searchParams.set("departure_at", search.departureDate);
+    url.searchParams.set("one_way", "true");
+    url.searchParams.set("currency", "idr");
+    url.searchParams.set("sorting", "price");
+    url.searchParams.set("unique", "false");
+    url.searchParams.set("limit", "30");
+    const body = (await fetchJson(url.toString(), token)) as {
+      success?: unknown;
+      currency?: unknown;
+      data?: unknown;
+    };
+    if (
+      body.success === false ||
+      (body.currency != null && String(body.currency).toLowerCase() !== "idr")
+    ) {
+      throw new Error("provider rejected monthly fare request");
+    }
+    const at = Date.now();
+    const offers = normalizeFlightOffers(body.data, config.partnerId, 31, await airlineNames());
+    const result = { at, offers };
+    offerCache.set(key, result);
+    trim(offerCache);
+    return result;
+  })().finally(() => monthOffersInFlight.delete(key));
+
+  monthOffersInFlight.set(key, refresh);
+  return refresh;
 }
 
 /** Cached offers carry the marker of the moment they were fetched; refresh it on every read. */

@@ -48,7 +48,7 @@ export function AdminGeoPanel({
       <div className="flex items-center justify-between gap-2">
         <SectionHeading
           title="Visibilitas AI (GEO)"
-          detail="Mengatur akses crawler AI di robots.txt dan berkas llms.txt. Berlaku maks. 5 menit."
+          detail="Mengatur akses crawler AI di robots.txt dan berkas teks publik. Aturan robots diperbarui dalam 5 menit."
         />
         <StatusPill tone={draft.aiSearchEnabled ? "good" : "warn"}>
           {draft.aiSearchEnabled ? "AI search terbuka" : "AI search ditutup"}
@@ -62,7 +62,7 @@ export function AdminGeoPanel({
             onChange={(e) => setDraft({ ...draft, aiSearchEnabled: e.target.checked })}
             className="size-5 accent-primary"
           />
-          Izinkan AI search (ChatGPT Search, Perplexity, Claude) + sajikan /llms.txt
+          Izinkan pencarian ChatGPT dan Claude, serta tampilkan sumber harga publik
         </label>
         <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
           <input
@@ -71,11 +71,15 @@ export function AdminGeoPanel({
             onChange={(e) => setDraft({ ...draft, aiTrainingEnabled: e.target.checked })}
             className="size-5 accent-primary"
           />
-          Izinkan crawler pelatihan model (GPTBot, ClaudeBot, Google-Extended, CCBot)
+          Izinkan pelatihan model dan akses sumber web Gemini (Google-Extended)
         </label>
         <p className="text-xs text-muted-foreground">
-          Menutup AI search membuat Djiwa Travel tidak muncul sebagai sumber di jawaban AI. /admin
-          dan /api selalu dilarang untuk semua crawler.
+          Google memakai satu izin untuk pelatihan model dan penggunaan halaman sebagai sumber di
+          aplikasi Gemini. Sumber teks publik menyajikan harga yang tersedia.{" "}
+          <a href="/llms-full.txt" className="font-semibold underline">
+            Periksa sumber harga publik
+          </a>
+          .
         </p>
         <input
           value={reason}

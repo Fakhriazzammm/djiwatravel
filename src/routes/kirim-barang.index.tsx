@@ -1,3 +1,4 @@
+import { canonicalSearchPage } from "@/lib/public-search-pages";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
@@ -10,10 +11,9 @@ import {
 import { ShippingHeroTruck } from "@/components/shipping/shipping-hero-truck";
 import { getShippingStatus, listMyShippingOrders } from "@/lib/shipping.fn";
 import {
-  DEFAULT_SHIPPING_CONFIG,
+  DEFAULT_PUBLIC_SHIPPING_CONFIG,
   formatIdr,
   formatKg,
-  normalizeShippingConfig,
   shippingIsDead,
 } from "@/lib/shipping";
 
@@ -35,6 +35,7 @@ type InfoTab = (typeof INFO_TABS)[number]["id"];
 
 export const Route = createFileRoute("/kirim-barang/")({
   head: () => ({
+    links: canonicalSearchPage("/kirim-barang"),
     meta: [
       { title: "Kirim Barang ke Jepang — Djiwa Travel" },
       {
@@ -46,12 +47,12 @@ export const Route = createFileRoute("/kirim-barang/")({
   }),
   loader: async () => {
     const status = await getShippingStatus().catch(() => ({
-      config: DEFAULT_SHIPPING_CONFIG,
+      config: DEFAULT_PUBLIC_SHIPPING_CONFIG,
       available: false,
     }));
     // A signed-out visitor still reads the tariff; the list only loads for a member.
     const mine = await listMyShippingOrders().catch(() => null);
-    return { config: normalizeShippingConfig(status.config), available: status.available, mine };
+    return { config: status.config, available: status.available, mine };
   },
   component: ShippingHome,
 });
@@ -84,7 +85,7 @@ function ShippingHome() {
       </section>
       <dl className="relative z-10 -mt-6 grid grid-cols-3 gap-2 px-2 text-center">
         {[
-          ["Tarif", `${formatIdr(tariff.rateIdrPerKg)}/kg`],
+          ["Tarif", open ? `${formatIdr(tariff.rateIdrPerKg)}/kg` : "Belum tersedia"],
           ["Estimasi", `${etaMin}–${etaMax} hari`],
           ["Minimum", formatKg(config.minKg)],
         ].map(([label, value]) => (
@@ -170,7 +171,9 @@ function ShippingHome() {
           <dl className="ios-group divide-y divide-border/70">
             <div className="ios-row justify-between">
               <dt className="text-muted-foreground">Per kg</dt>
-              <dd className="font-semibold">{formatIdr(tariff.rateIdrPerKg)}</dd>
+              <dd className="font-semibold">
+                {open ? formatIdr(tariff.rateIdrPerKg) : "Belum tersedia"}
+              </dd>
             </div>
             <div className="ios-row justify-between">
               <dt className="text-muted-foreground">Dihitung dari</dt>

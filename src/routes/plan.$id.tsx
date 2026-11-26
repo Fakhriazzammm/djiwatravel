@@ -18,16 +18,16 @@ export const Route = createFileRoute("/plan/$id")({
     const destination =
       plan.locationCodes.map((code) => getDest(code)).find(Boolean) ?? getDest("ASIA");
     if (!destination) throw notFound();
-    return { plan, destination };
+    return { plan, destination, priceCurrent: checkout.priceCurrent && plan.priceIdr > 0 };
   },
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [{ name: "robots", content: "noindex" }] };
-    const { plan, destination } = loaderData;
+    const { plan, destination, priceCurrent } = loaderData;
     const id = encodeURIComponent(plan.packageCode);
     const url = `${SEO_BASE_URL}/plan/${id}`;
     const planName = packageDestinationLabel(plan) ?? plan.name;
     const title = `${planName} — eSIM ${destination.nameId} | Djiwa Travel`;
-    const description = `${packageDataLabel(plan)}, ${plan.durationDays} hari, untuk ${packageCoverageLabel(plan)}. eSIM Djiwa Travel untuk traveler Indonesia.`;
+    const description = `${packageDataLabel(plan)}, ${plan.durationDays} hari, untuk ${packageCoverageLabel(plan)}.${plan.sellable && priceCurrent ? ` Harga ${rupiah(plan.priceIdr)} saat ditampilkan.` : ""} eSIM Djiwa Travel.`;
     return {
       meta: [
         { title },
@@ -45,20 +45,24 @@ export const Route = createFileRoute("/plan/$id")({
       ],
       links: [{ rel: "canonical", href: url }],
       scripts: [
-        jsonLdScript(
-          productJsonLd({
-            name: planName,
-            description,
-            sku: plan.packageCode,
-            url,
-            priceIdr: plan.priceIdr,
-            available: plan.sellable,
-            image: destinationOgImage(destination.code, SEO_BASE_URL),
-            durationDays: plan.durationDays,
-            dataLabel: packageDataLabel(plan),
-            coverage: packageCoverageLabel(plan),
-          }),
-        ),
+        ...(priceCurrent
+          ? [
+              jsonLdScript(
+                productJsonLd({
+                  name: planName,
+                  description,
+                  sku: plan.packageCode,
+                  url,
+                  priceIdr: plan.priceIdr,
+                  available: plan.sellable,
+                  image: destinationOgImage(destination.code, SEO_BASE_URL),
+                  durationDays: plan.durationDays,
+                  dataLabel: packageDataLabel(plan),
+                  coverage: packageCoverageLabel(plan),
+                }),
+              ),
+            ]
+          : []),
         jsonLdScript(
           breadcrumbJsonLd([
             { name: "Beranda", url: `${SEO_BASE_URL}/` },
@@ -81,7 +85,7 @@ function rupiah(value: number) {
 }
 
 function Plan() {
-  const { plan, destination } = Route.useLoaderData();
+  const { plan, destination, priceCurrent } = Route.useLoaderData();
   return (
     <Page>
       <BackBar title={`${destination.flag} ${destination.nameId}`} />
@@ -110,7 +114,9 @@ function Plan() {
           </div>
           <div className="flex min-h-12 items-center justify-between gap-3 py-3">
             <dt className="text-xs text-muted-foreground">Harga</dt>
-            <dd className="text-right text-sm font-bold text-brand-red">{rupiah(plan.priceIdr)}</dd>
+            <dd className="text-right text-sm font-bold text-brand-red">
+              {priceCurrent ? rupiah(plan.priceIdr) : "Perlu cek ulang"}
+            </dd>
           </div>
         </dl>
         <section className="mt-4" aria-labelledby="activation-title">
@@ -136,7 +142,10 @@ function Plan() {
             {plan.preorderAvailable && !plan.sellable ? "Pre-order paket ini" : "Pilih paket ini"}
           </Link>
         ) : (
-          <p role="status" className="mt-4 rounded-xl bg-secondary px-4 py-3 text-center text-sm text-muted-foreground">
+          <p
+            role="status"
+            className="mt-4 rounded-xl bg-secondary px-4 py-3 text-center text-sm text-muted-foreground"
+          >
             Stok paket belum dapat dipastikan.
           </p>
         )}
