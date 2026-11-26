@@ -1,8 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { ArrowRight, CalendarDays, ChevronRight } from "lucide-react";
 import { BackBar, Page } from "@/components/shell";
 import { formatFlightPrice } from "@/lib/flights";
 import { loadPublicFlightFares } from "@/lib/flights.fn";
-import { FLIGHT_PRICE_NOTE, flightRouteUrl } from "@/lib/public-flight-fares";
+import { FLIGHT_PRICE_NOTE, flightRouteUrl, type PublicFare } from "@/lib/public-flight-fares";
 import { breadcrumbJsonLd, jsonLdScript, SEO_BASE_URL } from "@/lib/seo";
 
 const departureDate = new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "UTC" });
@@ -81,75 +82,146 @@ function flightSearchUrl(dari: string, ke: string, berangkat: string) {
   return `${SEO_BASE_URL}/tiket?${new URLSearchParams({ dari, ke, berangkat })}`;
 }
 
+function fareSearch(fare: PublicFare) {
+  return { dari: fare.origin, ke: fare.destination, berangkat: fare.departureAt.slice(0, 10) };
+}
+
 function FlightRoutePage() {
   const { route, fares } = Route.useLoaderData();
+  const [lowest, ...otherFares] = fares;
+  const routeSearch = { dari: route.origin, ke: route.destination };
+  const latestCheck = fares
+    .map((fare) => fare.checkedAt)
+    .sort()
+    .at(-1);
+  const checkedLabel = (value: string) => checkedDate.format(new Date(value));
+  const lowestSearch = lowest ? fareSearch(lowest) : null;
+  const hasMultipleChecks = new Set(fares.map((fare) => checkedLabel(fare.checkedAt))).size > 1;
+  const describeFare = (fare: PublicFare) =>
+    [
+      fare.airlineName,
+      fare.origin !== route.origin || fare.destination !== route.destination
+        ? `${fare.origin} → ${fare.destination}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  const dateLabel = (day: string) => departureDate.format(new Date(day));
+
   return (
     <Page>
       <BackBar title="Tiket pesawat" fallbackTo="/tiket" />
-      <h1 className="ios-title">
-        Tiket pesawat {route.from} ke {route.to}
-      </h1>
-      <p className="mt-1 text-[13px] text-muted-foreground">
-        {route.origin} → {route.destination}. {FLIGHT_PRICE_NOTE}
-      </p>
-      {fares.length ? (
-        <ul className="ios-group mt-4 divide-y divide-border" aria-label="Tarif sekali jalan">
-          {fares.map((fare) => {
-            const day = fare.departureAt.slice(0, 10);
-            return (
-              <li key={fare.id}>
-                <Link
-                  to="/tiket"
-                  search={{ dari: fare.origin, ke: fare.destination, berangkat: day }}
-                  className="ios-row flex min-h-12 items-center justify-between gap-2"
-                >
-                  <span>
-                    <time dateTime={day} className="block text-sm font-semibold">
-                      {departureDate.format(new Date(day))}
-                    </time>
-                    <span className="block text-[11px] text-muted-foreground">
-                      {fare.origin} → {fare.destination}
-                      {fare.airlineName && ` · ${fare.airlineName}`}
-                    </span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      Data diambil{" "}
-                      <time dateTime={fare.checkedAt}>
-                        {checkedDate.format(new Date(fare.checkedAt))} WIB
-                      </time>
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block text-sm font-semibold tabular-nums">
-                      {formatFlightPrice(fare.priceIdr)}
-                    </span>
-                    <span className="block text-[11px] text-muted-foreground">Cek harga</span>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      <header>
+        <h1 className="ios-title">
+          {route.from} ke {route.to}
+        </h1>
+        <p className="ios-subtitle mt-1 flex items-center gap-2">
+          <span>{route.origin}</span>
+          <ArrowRight className="size-3" aria-label="ke" />
+          <span>{route.destination}</span>
+          <span aria-hidden="true">·</span>
+          Sekali jalan
+        </p>
+      </header>
+
+      {lowest && lowestSearch ? (
+        <section className="ios-group mt-4 p-3 ring-1 ring-border/60" aria-labelledby="lowest-fare">
+          <h2 id="lowest-fare" className="text-[11px] font-semibold text-muted-foreground">
+            Harga terendah tercatat
+          </h2>
+          <p className="mt-1 text-[25px] leading-tight font-bold tracking-tight tabular-nums">
+            {formatFlightPrice(lowest.priceIdr)}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-[13px]">
+              <time dateTime={lowestSearch.berangkat} className="block font-semibold">
+                {dateLabel(lowestSearch.berangkat)}
+              </time>
+              {describeFare(lowest) && (
+                <p className="text-[11px] text-muted-foreground">{describeFare(lowest)}</p>
+              )}
+            </div>
+            <Link
+              to="/tiket"
+              search={lowestSearch}
+              className="ios-btn min-h-11 shrink-0 bg-brand-red text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              Cek harga
+            </Link>
+          </div>
+        </section>
       ) : (
         <p role="status" className="ios-group mt-4 p-3 text-[13px] text-muted-foreground">
-          Belum ada tarif referensi untuk rute ini.
+          Belum ada tarif referensi untuk rute ini. Pilih tanggal untuk mencari penerbangan.
         </p>
       )}
-      <div className="mt-4 flex flex-wrap gap-2">
+
+      {otherFares.length > 0 && (
+        <section className="mt-4" aria-labelledby="other-fares">
+          <h2 id="other-fares" className="ios-section-label">
+            Tarif di tanggal lain
+          </h2>
+          <ul className="ios-group divide-y divide-border/70">
+            {otherFares.map((fare) => {
+              const search = fareSearch(fare);
+              const day = dateLabel(search.berangkat);
+              const price = formatFlightPrice(fare.priceIdr);
+              return (
+                <li key={fare.id}>
+                  <Link
+                    to="/tiket"
+                    search={search}
+                    aria-label={`Cek harga untuk ${day}, ${price}`}
+                    className="ios-row justify-between focus-visible:bg-secondary"
+                  >
+                    <span className="min-w-0">
+                      <time dateTime={search.berangkat} className="block text-sm font-semibold">
+                        {day}
+                      </time>
+                      {describeFare(fare) && (
+                        <span className="block break-words text-[11px] text-muted-foreground">
+                          {describeFare(fare)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2 text-sm font-semibold tabular-nums">
+                      {price}
+                      <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {latestCheck && (
+        <p className="mt-2 px-1 text-[11px] leading-relaxed text-muted-foreground">
+          Tarif indikatif dari Aviasales. Cek harga dan kursi terbaru sebelum memesan.{" "}
+          {hasMultipleChecks ? "Data terakhir diambil" : "Data diambil"}{" "}
+          <time dateTime={latestCheck}>{checkedLabel(latestCheck)} WIB</time>.
+        </p>
+      )}
+
+      <nav className="mt-3 flex flex-wrap gap-2" aria-label="Opsi perjalanan">
         <Link
           to="/tiket"
-          search={{ dari: route.origin, ke: route.destination }}
-          className="ios-chip text-[13px]"
+          search={routeSearch}
+          className="ios-btn min-h-11 bg-surface ring-1 ring-border/60 focus-visible:outline-2 focus-visible:outline-ring"
         >
+          <CalendarDays className="size-4" aria-hidden="true" />
           Cari tanggal lain
         </Link>
         <Link
           to="/destination/$code"
           params={{ code: route.esim }}
-          className="ios-chip text-[13px]"
+          className="ios-btn min-h-11 text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
         >
           Lihat paket eSIM
+          <ChevronRight className="size-4" aria-hidden="true" />
         </Link>
-      </div>
+      </nav>
     </Page>
   );
 }
