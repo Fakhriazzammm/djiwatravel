@@ -93,9 +93,17 @@ describe("travel guide SEO registry", () => {
       if (!image) continue;
       expect(existsSync(resolve(process.cwd(), `public${image}`))).toBe(true);
     }
-    expect(getNewestTravelGuides(10).map((guide) => guide.slug)).toEqual(
-      arrivals.map((guide) => guide.slug),
-    );
+  });
+
+  it("publishes ten illustrated search guides at the front of the November release", () => {
+    const guides = travelGuides.filter((g) => g.publishedAt === "2026-11-27");
+    expect(guides).toHaveLength(10);
+    expect(new Set(guides.map((g) => g.image)).size).toBe(10);
+    expect(getNewestTravelGuides(10)).toEqual(guides);
+    for (const guide of guides) {
+      expect(guide.faqs?.length).toBeGreaterThanOrEqual(2);
+      expect(guide.summary?.length).toBeGreaterThan(120);
+    }
   });
 
   it("builds RSS and full-text feeds for every guide", () => {

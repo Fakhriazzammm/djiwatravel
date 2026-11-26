@@ -1,3 +1,4 @@
+import { searchGuides } from "./travel-guides-search";
 import { esimExplainerGuides } from "./travel-guides-esim";
 import { transitGuides } from "./travel-guides-transit";
 
@@ -31,6 +32,7 @@ export type TravelGuide = {
 
 /** Curated guides are intentionally versioned in source so every indexed page stays useful. */
 export const travelGuides: readonly TravelGuide[] = [
+  ...searchGuides,
   ...transitGuides,
   ...esimExplainerGuides,
   {
@@ -215,6 +217,12 @@ export const travelGuides: readonly TravelGuide[] = [
     relatedDestinations: [
       { code: "sa", label: "Lihat paket eSIM Arab Saudi" },
       { code: "asia", label: "Lihat paket regional" },
+    ],
+    relatedLinks: [
+      {
+        guide: "esim-arab-saudi-nomor-lokal-atau-data",
+        label: "Perlu nomor Saudi atau cukup data?",
+      },
     ],
   },
   {
@@ -544,6 +552,9 @@ export const travelGuides: readonly TravelGuide[] = [
       { code: "jp", label: "Paket eSIM Jepang" },
       { code: "sg", label: "Paket eSIM Singapura" },
     ],
+    relatedLinks: [
+      { guide: "pindah-esim-travel-ke-hp-baru", label: "Memindahkan eSIM ke HP baru" },
+    ],
   },
   {
     slug: "checklist-persiapan-ke-jepang",
@@ -726,6 +737,10 @@ export const travelGuides: readonly TravelGuide[] = [
     ],
     relatedDestinations: [{ code: "jp", label: "Lihat paket eSIM Jepang" }],
     relatedLinks: [
+      {
+        guide: "anello-dan-legato-largo-apakah-sama",
+        label: "Apakah anello dan Legato Largo merek yang sama?",
+      },
       { to: "/titip-belanja", label: "Lihat katalog tas di Titip Belanja" },
       { guide: "titip-beli-barang-dari-jepang", label: "Cara kerja titip beli" },
     ],
@@ -783,6 +798,10 @@ export const travelGuides: readonly TravelGuide[] = [
       { code: "asia", label: "Bandingkan paket Asia" },
     ],
     relatedLinks: [
+      {
+        guide: "menginap-kyoto-atau-osaka-itinerary-jepang",
+        label: "Memilih hotel di Kyoto atau Osaka",
+      },
       { to: "/my-trips/new", label: "Susun agenda perjalanan" },
       { guide: "checklist-persiapan-ke-jepang", label: "Checklist persiapan ke Jepang" },
       {
