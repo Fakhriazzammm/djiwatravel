@@ -30,7 +30,37 @@ export const Route = createFileRoute("/template/$slug")({
     const description = t
       ? `${t.days} hari di ${t.destinationName}${t.ownerName ? ` oleh ${t.ownerName}` : ""}. Pakai itinerary ini lalu atur tanggalmu.`
       : "Template itinerary di Djiwa Travel.";
+    const tripSchema = t
+      ? {
+          "@context": "https://schema.org",
+          "@type": "TouristTrip",
+          name: t.title,
+          description: t.description || description,
+          inLanguage: "id-ID",
+          url: `https://djiwatravel.com${templatePath(t.slug)}`,
+          ...(t.coverUrl ? { image: t.coverUrl } : {}),
+          touristType: "Traveler Indonesia",
+          provider: {
+            "@type": "Organization",
+            name: "Djiwa Travel",
+            url: "https://djiwatravel.com",
+          },
+          itinerary: {
+            "@type": "ItemList",
+            numberOfItems: loaderData?.items.length ?? 0,
+            itemListElement: (loaderData?.items ?? []).map((item, index) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              name: `Hari ${item.day}: ${item.title}`,
+              ...(item.location ? { description: item.location } : {}),
+            })),
+          },
+        }
+      : null;
     return {
+      ...(tripSchema
+        ? { scripts: [{ type: "application/ld+json", children: JSON.stringify(tripSchema) }] }
+        : {}),
       ...(t ? { links: canonicalSearchPage(templatePath(t.slug)) } : {}),
       meta: [
         { title },

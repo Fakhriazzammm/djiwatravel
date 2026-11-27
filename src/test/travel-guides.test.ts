@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { itineraryGuides } from "@/lib/travel-guides-itinerary";
+import { officialTemplates } from "@/lib/official-templates";
 import { buildGuideRss, buildGuidesFullText } from "@/lib/guide-feed";
 import {
   getNewestTravelGuides,
@@ -96,14 +98,47 @@ describe("travel guide SEO registry", () => {
   });
 
   it("publishes ten illustrated search guides at the front of the November release", () => {
-    const guides = travelGuides.filter((g) => g.publishedAt === "2026-11-27");
+    const guides = travelGuides.filter(
+      (g) => g.publishedAt === "2026-11-27" && !itineraryGuides.includes(g),
+    );
     expect(guides).toHaveLength(10);
     expect(new Set(guides.map((g) => g.image)).size).toBe(10);
-    expect(getNewestTravelGuides(10)).toEqual(guides);
+    const newest = getNewestTravelGuides(10 + itineraryGuides.length);
+    for (const guide of guides) expect(newest).toContain(guide);
     for (const guide of guides) {
       expect(guide.faqs?.length).toBeGreaterThanOrEqual(2);
       expect(guide.summary?.length).toBeGreaterThan(120);
     }
+  });
+
+  it("publishes a copyable Travo template for every itinerary guide", () => {
+    expect(officialTemplates).toHaveLength(12);
+    const slugs = new Set(officialTemplates.map((t) => t.slug));
+    expect(slugs.size).toBe(12);
+    for (const t of officialTemplates) {
+      expect(t.slug).toMatch(/^[a-z0-9-]{6,80}$/);
+      expect(t.days.length).toBeGreaterThanOrEqual(4);
+      for (const day of t.days) {
+        expect(day.length).toBeGreaterThanOrEqual(2);
+        const times = day.map((i) => i[0]);
+        expect([...times].sort()).toEqual(times);
+        for (const [start, title, location] of day) {
+          expect(start).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
+          expect(title.length).toBeLessThanOrEqual(160);
+          expect(location.length).toBeLessThanOrEqual(200);
+        }
+      }
+    }
+    for (const guide of itineraryGuides) {
+      for (const link of guide.relatedLinks ?? []) {
+        if ("template" in link) expect(slugs.has(link.template)).toBe(true);
+      }
+    }
+    const sql = readFileSync(
+      resolve(process.cwd(), "migrations/088_travo_official_templates.sql"),
+      "utf8",
+    );
+    for (const slug of slugs) expect(sql).toContain(`'${slug}'`);
   });
 
   it("builds RSS and full-text feeds for every guide", () => {

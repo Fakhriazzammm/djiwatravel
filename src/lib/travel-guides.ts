@@ -1,9 +1,12 @@
 import { searchGuides } from "./travel-guides-search";
 import { esimExplainerGuides } from "./travel-guides-esim";
+import { itineraryGuides } from "./travel-guides-itinerary";
 import { transitGuides } from "./travel-guides-transit";
 
 export type GuideLink =
-  { to: "/titip-belanja" | "/my-trips/new"; label: string } | { guide: string; label: string };
+  | { to: "/titip-belanja" | "/my-trips/new"; label: string }
+  | { guide: string; label: string }
+  | { template: string; label: string };
 
 export type TravelGuide = {
   slug: string;
@@ -34,6 +37,7 @@ export type TravelGuide = {
 export const travelGuides: readonly TravelGuide[] = [
   ...searchGuides,
   ...transitGuides,
+  ...itineraryGuides,
   ...esimExplainerGuides,
   {
     slug: "tax-refund-jepang-2026",
@@ -802,6 +806,7 @@ export const travelGuides: readonly TravelGuide[] = [
         guide: "menginap-kyoto-atau-osaka-itinerary-jepang",
         label: "Memilih hotel di Kyoto atau Osaka",
       },
+      { template: "travo-jepang-7-hari-tokyo-kyoto-osaka", label: "Pakai template Jepang 7 hari" },
       { to: "/my-trips/new", label: "Susun agenda perjalanan" },
       { guide: "checklist-persiapan-ke-jepang", label: "Checklist persiapan ke Jepang" },
       {

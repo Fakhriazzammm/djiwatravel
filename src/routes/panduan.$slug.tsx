@@ -241,6 +241,15 @@ function TravelGuideDetail() {
                   >
                     {link.label}
                   </Link>
+                ) : "template" in link ? (
+                  <Link
+                    key={link.template}
+                    to="/template/$slug"
+                    params={{ slug: link.template }}
+                    className="rounded-xl bg-brand-red px-3.5 py-2.5 text-sm font-semibold text-white"
+                  >
+                    {link.label}
+                  </Link>
                 ) : (
                   <Link
                     key={link.to}
