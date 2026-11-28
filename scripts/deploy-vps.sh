@@ -18,7 +18,7 @@
 #   ssh <host> 'cd /home/ubuntu/djiwatravel && bash scripts/apply-migrations.sh --baseline'
 #
 # Overrides (env):
-#   DJIWA_DEPLOY_HOST=ubuntu@43.133.156.93
+#   DJIWA_DEPLOY_HOST=ubuntu@43.173.37.168
 #   DJIWA_DEPLOY_KEY=$HOME/.ssh/djiwa_vps
 #   DJIWA_DEPLOY_DIR=/home/ubuntu/djiwatravel
 #   DJIWA_DEPLOY_SERVICE=djiwatravel.service
@@ -32,7 +32,7 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${PROJECT_DIR}"
 
-HOST="${DJIWA_DEPLOY_HOST:-ubuntu@43.133.156.93}"
+HOST="${DJIWA_DEPLOY_HOST:-ubuntu@43.173.37.168}"
 KEY="${DJIWA_DEPLOY_KEY:-${HOME}/.ssh/djiwa_vps}"
 REMOTE_DIR="${DJIWA_DEPLOY_DIR:-/home/ubuntu/djiwatravel}"
 SERVICE="${DJIWA_DEPLOY_SERVICE:-djiwatravel.service}"
